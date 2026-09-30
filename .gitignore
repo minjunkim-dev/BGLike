@@ -1,0 +1,7 @@
+.godot/
+*.translation
+.DS_Store
+build/
+dist/
+.serena/
+graft/
