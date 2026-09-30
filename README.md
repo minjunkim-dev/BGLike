@@ -4,11 +4,13 @@
 
 ## 시작
 
-- Godot **4.7.2 Standard**와 Git LFS를 설치합니다.
+- Godot **4.7.2 Standard**와 Git LFS가 필요합니다. 이미 있다면 다시 설치하지 않습니다.
 - 저장소를 복제하고 `project.godot`을 Godot에서 엽니다.
 - F6으로 현재 장면을, F5로 메인 장면을 실행합니다.
 
 명령줄 확인: `godot --headless --path . --import` 후 `godot --headless --path . --quit-after 2`
+
+`godot`이 PATH에 없다면 설치된 Godot 앱의 실행 파일 경로를 사용합니다.
 
 ## 협업 규칙
 
