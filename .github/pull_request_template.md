@@ -1,3 +1,5 @@
+<!-- PR 제목 예시: feat(combat): add turn order. 규칙: docs/GIT_CONVENTIONS.md -->
+
 ## 관련 Issue
 
 Closes #
