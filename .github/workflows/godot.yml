@@ -31,3 +31,38 @@ jobs:
         run: '"$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" --headless --path . --import'
       - name: Start main scene
         run: '"$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" --headless --path . --quit-after 2'
+
+  notify:
+    needs: smoke
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    continue-on-error: true
+    permissions: {}
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_PR_WEBHOOK_URL }}
+      CI_RESULT: ${{ needs.smoke.result }}
+    steps:
+      - name: Post Godot result to Discord
+        shell: bash
+        run: |
+          test -n "$DISCORD_WEBHOOK_URL"
+          python3 - <<'PY' > "$RUNNER_TEMP/discord-ci.json"
+          import json
+          import os
+
+          with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as source:
+              event = json.load(source)
+
+          target = f"PR #{event['pull_request']['number']}" if os.environ["GITHUB_EVENT_NAME"] == "pull_request" else os.environ["GITHUB_REF_NAME"]
+          run_url = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+          print(json.dumps({
+              "content": f"Godot CI {os.environ['CI_RESULT']} on {target}\n{run_url}",
+              "allowed_mentions": {"parse": []},
+          }))
+          PY
+          curl --fail --silent --show-error --retry 2 \
+            --header 'Content-Type: application/json' \
+            --data-binary @"$RUNNER_TEMP/discord-ci.json" \
+            --output /dev/null \
+            "$DISCORD_WEBHOOK_URL?wait=true"

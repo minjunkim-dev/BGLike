@@ -6,6 +6,14 @@
 - 채팅이나 통화에서 내린 결정은 해당 Issue에 짧게 기록합니다. 막히면 작업 내용을 늘리기 전에 Issue에서 범위를 조정합니다.
 - 기능 작업은 한 사람이 소유하고 다른 사람이 PR을 검토합니다. 같은 `.tscn` 장면이나 LFS 바이너리를 동시에 수정해야 한다면 먼저 파일 담당을 나눕니다.
 
+## Discord 소통
+
+- [BGLike 서버](https://discord.com/channels/1554865028006547549/1554865028837015667)의 `#일반`에서 짧은 질문과 일정을 공유합니다. 게임 화면을 함께 볼 때는 음성 `플레이테스트` 채널을 사용합니다.
+- `#github-알림`의 PR 열기·수정·새 커밋·검토 요청·닫기 알림은 [Discord PR 알림 워크플로우](../.github/workflows/discord-pr.yml)가 보냅니다. 같은 저장소의 브랜치에서 만든 PR만 처리합니다.
+- Godot CI 결과는 [Godot 워크플로우](../.github/workflows/godot.yml)의 `notify` 작업이 보냅니다. Discord 전송 실패가 Godot 검사 결과를 바꾸지 않습니다. 알림이 오지 않으면 GitHub Actions에서 해당 작업의 실행 결과를 확인합니다. 중복 알림을 막기 위해 기존 GitHub 저장소 웹훅은 비활성화했습니다.
+- 두 워크플로우는 GitHub Actions의 `DISCORD_PR_WEBHOOK_URL` 저장소 비밀값을 사용합니다. Discord 웹훅 URL을 문서나 채팅에 공유하지 않습니다.
+- 채팅이나 통화에서 확정한 작업 범위와 결정은 해당 GitHub Issue 또는 PR에 기록합니다. 동료의 Discord 사용자명 확인 전에는 초대하지 않습니다.
+
 ## 브랜치와 병합
 
 1. 최신 `main`에서 `feat/주제`, `fix/주제`, `docs/주제`, `chore/주제`처럼 짧은 브랜치를 만듭니다.
