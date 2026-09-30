@@ -92,7 +92,7 @@ Refs #4
 
 ## PR 제목과 squash merge
 
-squash merge를 하면 `main`에는 PR 제목이 커밋 제목으로 남습니다. 그래서 **PR 제목은 반드시** 위 커밋 제목 규칙을 따릅니다.
+squash merge를 하면 `main`에는 PR 제목이 커밋 제목으로 남습니다. 저장소 설정에서 squash 커밋 제목은 커밋 수와 관계없이 항상 PR 제목(`PR_TITLE`)을 쓰고, 본문은 브랜치 커밋 메시지(`COMMIT_MESSAGES`)를 씁니다. 그래서 **PR 제목은 반드시** 위 커밋 제목 규칙을 따릅니다.
 
 - 좋은 예시: `feat(combat): add BG3-style turn-based combat prototype`
 - 나쁜 예시: `전투 프로토타입`, `Add combat prototype`
