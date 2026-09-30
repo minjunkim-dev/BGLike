@@ -1,0 +1,42 @@
+name: Discord PR notifications
+
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize, ready_for_review, converted_to_draft, review_requested, closed]
+
+permissions: {}
+
+jobs:
+  notify:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_PR_WEBHOOK_URL }}
+    steps:
+      - name: Post PR event to Discord
+        shell: bash
+        run: |
+          test -n "$DISCORD_WEBHOOK_URL"
+          python3 - <<'PY' > "$RUNNER_TEMP/discord-pr.json"
+          import json
+          import os
+
+          with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as source:
+              event = json.load(source)
+
+          pr = event["pull_request"]
+          action = event["action"]
+          if action == "closed" and pr["merged"]:
+              action = "merged"
+
+          print(json.dumps({
+              "content": f"PR #{pr['number']} {action}: {pr['title']}\n{pr['html_url']}",
+              "allowed_mentions": {"parse": []},
+          }))
+          PY
+          curl --fail --silent --show-error --retry 2 \
+            --header 'Content-Type: application/json' \
+            --data-binary @"$RUNNER_TEMP/discord-pr.json" \
+            --output /dev/null \
+            "$DISCORD_WEBHOOK_URL?wait=true"
