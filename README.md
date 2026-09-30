@@ -5,21 +5,26 @@
 ## 시작
 
 - Godot **4.7.2 Standard**와 Git LFS가 필요합니다. 이미 있다면 다시 설치하지 않습니다.
-- 저장소를 복제하고 `project.godot`을 Godot에서 엽니다.
+- `git lfs install`을 한 번 실행하고 저장소를 복제합니다.
+- `project.godot`을 Godot에서 엽니다.
 - F6으로 현재 장면을, F5로 메인 장면을 실행합니다.
 
-명령줄 확인: `godot --headless --path . --import` 후 `godot --headless --path . --quit-after 2`
+명령줄 확인:
 
-`godot`이 PATH에 없다면 설치된 Godot 앱의 실행 파일 경로를 사용합니다.
+```sh
+godot --headless --path . --import
+godot --headless --path . --quit-after 2
+git diff --check
+```
+
+`godot`이 PATH에 없다면 설치된 Godot 앱의 실행 파일 경로를 사용합니다. macOS 외장 SSD 설치 예시는 `/Volumes/P41_USB4/Godot.app/Contents/MacOS/Godot`입니다.
 
 ## 협업 규칙
 
-- `main`은 항상 실행 가능한 상태로 유지합니다.
-- `feat/이름` 또는 `fix/이름` 브랜치에서 작은 변경을 만들고 PR로 병합합니다. 기본 병합 방식은 squash입니다.
-- 미완성 기능을 병합할 때는 실제 진입점에서 기본값이 꺼진 간단한 플래그로 숨깁니다. 기능이 완성되면 그 플래그를 제거합니다. 아직 쓸 기능이 없으므로 플래그 체계는 만들지 않습니다.
-- 장면과 스크립트는 기능별로 모읍니다. 폴더는 필요한 시점에 추가합니다.
-- `.godot/` 캐시는 커밋하지 않습니다. `.tscn`, `.tres`, `.gd`, `.uid` 파일은 커밋합니다.
-- `.gitattributes`에 지정된 바이너리 원본 자산은 Git LFS로 관리합니다. 타인의 게임 자산은 허가 없이 넣지 않습니다.
+- 작업은 GitHub Issue에 목표와 완료 조건을 적고 시작합니다. 작은 브랜치에서 PR을 열고 동료 검토 후 squash merge합니다.
+- [협업 절차](docs/WORKFLOW.md)와 [AI 에이전트 지침](AGENTS.md)을 따릅니다. Claude Code는 `CLAUDE.md`에서 같은 지침을 읽습니다.
+- `main` 보호 규칙은 현재 비공개 저장소의 GitHub 요금제에서 사용할 수 없습니다. 자세한 상태와 운영 규칙은 협업 절차에 기록했습니다.
+- `.godot/` 캐시는 커밋하지 않습니다. 장면과 스크립트 등 원본 파일은 커밋합니다. `.gitattributes`에 지정된 바이너리는 Git LFS로 관리합니다.
 
 ## 현재 범위
 

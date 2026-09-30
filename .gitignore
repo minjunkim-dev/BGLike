@@ -1,7 +1,12 @@
 .godot/
 *.translation
 .DS_Store
+Thumbs.db
 build/
 dist/
 .serena/
 graft/
+CLAUDE.local.md
+.env
+.env.*
+!.env.example
