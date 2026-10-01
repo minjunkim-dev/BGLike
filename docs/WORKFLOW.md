@@ -47,12 +47,14 @@
 - Issue에 `claude` 라벨을 붙이거나, 새 Issue의 제목·본문, Issue·PR 코멘트, 인라인 코멘트, PR 리뷰에 `@claude`를 적으면 실행합니다. 담당자 지정, 본문 수정, 다른 라벨로는 실행하지 않습니다.
 - 저장소 쓰기 권한이 있는 사람만 호출할 수 있습니다. Claude GitHub App과 `CLAUDE_CODE_OAUTH_TOKEN` 저장소 비밀값을 사용합니다.
 - 비공개 저장소의 GitHub Actions 분을 Godot CI와 나눠 씁니다. 한 번에 최대 30분입니다.
+- 실행 환경에 Godot 4.7.2를 설치하므로 Claude가 `godot --headless` 검사를 직접 실행합니다. 허용한 명령은 `godot`, `git diff`뿐입니다.
 
 **Codex** (ChatGPT의 Codex GitHub 연동, 저장소 설정 파일 없음)
 
 - 리뷰용 PR을 열거나 Draft를 Ready로 바꾸면 자동으로 코드 리뷰와 보안 리뷰를 합니다. 열린 PR에 새 커밋을 push하면 다시 리뷰하지 않으므로, 다시 받으려면 `@codex review`를 적습니다.
 - PR 코멘트 `@codex 요청`으로 작업도 맡길 수 있습니다. 이 기능은 2026-10-01 기준 아직 시험하지 않았습니다.
 - 자동 리뷰와 `@codex 요청`에는 이 저장소의 [Codex 환경](https://chatgpt.com/codex/cloud/settings/environments)이 필요합니다. 설정은 [Codex 설정](https://chatgpt.com/codex/cloud/settings/general)에서 바꿉니다. 실행 비용은 ChatGPT 요금제에 포함되고 Actions 분을 쓰지 않습니다. 그래서 PR마다 도는 자동 리뷰를 Codex에 맡깁니다.
+- Codex 환경의 설정 스크립트가 Godot 4.7.2를 설치합니다. 스크립트는 Codex 설정 화면에서만 바꿀 수 있으므로, 엔진 버전을 올릴 때는 `godot.yml`, `claude.yml`과 함께 갱신합니다.
 
 두 에이전트 모두 [AGENTS.md](../AGENTS.md)를 읽고 위 규칙을 따릅니다. 에이전트는 Godot 편집기를 조작하지 못하므로 플레이 변경은 사람이 직접 확인합니다. **병합은 사람이 합니다.** `main` 보호 규칙이 없어 잘못된 병합을 막을 장치가 없으므로 자동 병합은 쓰지 않습니다.
 

@@ -32,7 +32,17 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 1
+          lfs: true
+      # Claude가 PR 전에 README의 Godot headless 검사를 직접 실행할 수 있게 합니다.
+      - name: Install Godot 4.7.2
+        run: |
+          curl -fL --retry 3 -o "$RUNNER_TEMP/godot.zip" https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          echo "cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4  $RUNNER_TEMP/godot.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP"
+          sudo ln -s "$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" /usr/local/bin/godot
+          godot --version
       - uses: anthropics/claude-code-action@12dd8d74c712f5f3669365b2369b558c495b1104 # v1 (2026-10-01)
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           label_trigger: claude
+          claude_args: --allowedTools "Bash(godot:*),Bash(git diff:*)"
