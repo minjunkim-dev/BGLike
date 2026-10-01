@@ -26,10 +26,35 @@
 
 ## AI 에이전트
 
-- **Claude**: Issue나 PR 코멘트에 `@claude 요청`을 적으면 [Claude 워크플로우](../.github/workflows/claude.yml)가 실행됩니다. 구현, 수정, 질문 답변, `@claude 이 PR 리뷰해줘` 같은 요청 리뷰를 합니다. 저장소 쓰기 권한이 있는 사람만 호출할 수 있고, `CLAUDE_CODE_OAUTH_TOKEN` 저장소 비밀값을 사용합니다.
-- **Codex**: ChatGPT의 Codex GitHub 연동을 씁니다. [Codex 설정](https://chatgpt.com/codex/settings)에서 이 저장소를 연결해야 동작합니다. 연결 후 PR 코멘트에 `@codex review`로 리뷰를, `@codex 요청`으로 작업을 맡깁니다. 모든 PR 자동 리뷰는 같은 설정의 Code review에서 켭니다. 저장소에 설정 파일은 없습니다. 2026-10-01 기준 저장소 연결은 아직 확인하지 못했습니다.
-- 두 에이전트 모두 [AGENTS.md](../AGENTS.md)를 읽습니다. 에이전트가 만든 브랜치와 PR도 위 규칙을 따릅니다. **병합은 사람이 합니다.** 에이전트는 Godot 편집기 조작을 확인하지 못하므로 플레이 변경은 사람이 직접 확인합니다.
-- Claude 실행은 비공개 저장소의 GitHub Actions 분을 사용합니다. 한 번에 최대 30분입니다.
+사람은 **무엇을 할지**와 **병합할지**를 정합니다. 그 사이의 구현, 리뷰, 수정을 에이전트에게 맡깁니다.
+
+1. 사람이 Issue에 목표와 완료 조건을 적고, 맡길 Issue에 `claude` 라벨을 붙입니다.
+2. Claude가 `claude/…` 브랜치에 구현을 커밋하고 Issue에 PR 생성 링크를 남깁니다. 사람이 링크를 열어 PR 제목을 [커밋 규칙](GIT_CONVENTIONS.md)에 맞게 확인하고 PR을 엽니다.
+3. PR이 열리면 Codex가 자동으로 리뷰합니다.
+4. 고칠 점은 PR 코멘트에 `@claude 요청`으로 맡깁니다.
+5. 사람이 플레이를 확인하고 squash merge합니다.
+
+**작성자와 리뷰어는 다른 에이전트가 맡습니다.** 같은 모델이 자기 결과를 검토하면 같은 실수를 놓치기 쉽습니다.
+
+| 작성자 | 리뷰 |
+| --- | --- |
+| Claude | Codex 자동 리뷰 |
+| Codex | 사람이 PR에 `@claude 이 PR 리뷰해줘`를 요청합니다. Codex 자동 리뷰는 참고만 합니다. |
+| 사람 | Codex 자동 리뷰와 동료 검토 |
+
+**Claude** ([워크플로우](../.github/workflows/claude.yml))
+
+- Issue에 `claude` 라벨을 붙이거나, Issue 제목·본문·PR 코멘트·인라인 코멘트·PR 리뷰에 `@claude`를 적으면 실행합니다. 그 밖에는 실행하지 않습니다.
+- 저장소 쓰기 권한이 있는 사람만 호출할 수 있습니다. Claude GitHub App과 `CLAUDE_CODE_OAUTH_TOKEN` 저장소 비밀값을 사용합니다.
+- 비공개 저장소의 GitHub Actions 분을 Godot CI와 나눠 씁니다. 한 번에 최대 30분입니다.
+
+**Codex** (ChatGPT의 Codex GitHub 연동, 저장소 설정 파일 없음)
+
+- 리뷰용 PR을 열거나 Draft를 Ready로 바꾸면 자동으로 코드 리뷰와 보안 리뷰를 합니다. 열린 PR에 새 커밋을 push하면 다시 리뷰하지 않으므로, 다시 받으려면 `@codex review`를 적습니다.
+- PR 코멘트 `@codex 요청`으로 작업도 맡길 수 있습니다. 이 기능은 2026-10-01 기준 아직 시험하지 않았습니다.
+- 설정은 [Codex 설정](https://chatgpt.com/codex/cloud/settings/general)에서 바꿉니다. 실행 비용은 ChatGPT 요금제에 포함되고 Actions 분을 쓰지 않습니다. 그래서 PR마다 도는 자동 리뷰를 Codex에 맡깁니다.
+
+두 에이전트 모두 [AGENTS.md](../AGENTS.md)를 읽고 위 규칙을 따릅니다. 에이전트는 Godot 편집기를 조작하지 못하므로 플레이 변경은 사람이 직접 확인합니다. **병합은 사람이 합니다.** `main` 보호 규칙이 없어 잘못된 병합을 막을 장치가 없으므로 자동 병합은 쓰지 않습니다.
 
 ## 현재 GitHub 제약
 
