@@ -27,7 +27,7 @@
 ## AI 에이전트
 
 - **Claude**: Issue나 PR 코멘트에 `@claude 요청`을 적으면 [Claude 워크플로우](../.github/workflows/claude.yml)가 실행됩니다. 구현, 수정, 질문 답변, `@claude 이 PR 리뷰해줘` 같은 요청 리뷰를 합니다. 저장소 쓰기 권한이 있는 사람만 호출할 수 있고, `CLAUDE_CODE_OAUTH_TOKEN` 저장소 비밀값을 사용합니다.
-- **Codex**: ChatGPT의 Codex GitHub 연동으로 모든 PR을 자동 리뷰합니다. PR 코멘트에 `@codex review`로 다시 요청하거나 `@codex 요청`으로 작업을 맡깁니다. 저장소에 설정 파일은 없습니다.
+- **Codex**: ChatGPT의 Codex GitHub 연동을 씁니다. [Codex 설정](https://chatgpt.com/codex/settings)에서 이 저장소를 연결해야 동작합니다. 연결 후 PR 코멘트에 `@codex review`로 리뷰를, `@codex 요청`으로 작업을 맡깁니다. 모든 PR 자동 리뷰는 같은 설정의 Code review에서 켭니다. 저장소에 설정 파일은 없습니다. 2026-10-01 기준 저장소 연결은 아직 확인하지 못했습니다.
 - 두 에이전트 모두 [AGENTS.md](../AGENTS.md)를 읽습니다. 에이전트가 만든 브랜치와 PR도 위 규칙을 따릅니다. **병합은 사람이 합니다.** 에이전트는 Godot 편집기 조작을 확인하지 못하므로 플레이 변경은 사람이 직접 확인합니다.
 - Claude 실행은 비공개 저장소의 GitHub Actions 분을 사용합니다. 한 번에 최대 30분입니다.
 
