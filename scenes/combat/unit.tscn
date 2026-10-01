@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/combat/unit.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://scenes/combat/art/units.png" id="2_units"]
+[ext_resource type="Shader" path="res://scenes/combat/art/flash.gdshader" id="3_flash"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_flash"]
+resource_local_to_scene = true
+shader = ExtResource("3_flash")
+shader_parameter/flash = 0.0
+
+[node name="Unit" type="Node2D"]
+script = ExtResource("1_unit")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+material = SubResource("ShaderMaterial_flash")
+texture = ExtResource("2_units")
+offset = Vector2(0, -12)
+hframes = 2
+vframes = 2
