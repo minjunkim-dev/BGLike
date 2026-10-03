@@ -1,0 +1,25 @@
+#!/bin/sh
+# 커밋 제목이 docs/GIT_CONVENTIONS.md 형식인지 확인합니다.
+# 켜기: git config core.hooksPath .githooks
+
+title=$(sed -n '1p' "$1")
+types='feat|fix|refactor|perf|test|docs|build|ci|chore|revert'
+
+case "$title" in
+  "Merge "*|"fixup! "*|"squash! "*|"Revert \""*) exit 0 ;;
+esac
+
+if ! printf '%s' "$title" | grep -Eq "^($types)(\([a-z0-9-]+\))?!?: [a-z]"; then
+  echo "commit-msg: 제목이 '<type>(<scope>): <소문자 설명>' 형식이 아닙니다." >&2
+  echo "  '$title'" >&2
+  echo "  type: $types. 예: feat(combat): add initiative turn order" >&2
+  echo "  규칙: docs/GIT_CONVENTIONS.md. 건너뛰려면 git commit --no-verify" >&2
+  exit 1
+fi
+
+if [ "${#title}" -gt 72 ]; then
+  echo "commit-msg: 제목이 72자를 넘습니다 (${#title}자)." >&2
+  exit 1
+fi
+
+case "$title" in *.) echo "commit-msg: 제목 끝에 마침표를 찍지 않습니다." >&2; exit 1 ;; esac
