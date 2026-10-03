@@ -57,6 +57,11 @@
 | Codex | 사람이 PR에 `@claude 이 PR 리뷰해줘`를 요청합니다. Codex 자동 리뷰는 참고만 합니다. |
 | 사람 | Codex 자동 리뷰와 동료 검토 |
 
+**에이전트를 부를 때**
+
+- 고칠 점이 여러 개면 Files 탭에서 인라인 코멘트를 모아 `@claude` 없이 Review changes로 제출한 뒤, PR 대화 탭에 `@claude 방금 리뷰 코멘트 모두 반영해줘`를 한 번 적습니다. `@claude` 코멘트마다 따로 실행되므로, 묶으면 Actions 분을 아끼고 커밋끼리 충돌하지 않습니다. 리뷰 본문에 `@claude`를 적으면 현재 버전의 Claude 액션이 그 리뷰의 인라인 코멘트를 받지 못합니다([upstream 수정 PR](https://github.com/anthropics/claude-code-action/pull/1618)).
+- 한 코멘트에서 `@claude`와 `@codex`를 함께 부르지 않습니다. 두 에이전트가 같은 브랜치에 동시에 커밋할 수 있습니다.
+
 **Claude** ([워크플로우](../.github/workflows/claude.yml))
 
 - Issue에 `claude` 라벨을 붙이거나, 새 Issue의 제목·본문, Issue·PR 코멘트, 인라인 코멘트, PR 리뷰에 `@claude`를 적으면 실행합니다. 담당자 지정, 본문 수정, 다른 라벨로는 실행하지 않습니다.
