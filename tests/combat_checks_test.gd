@@ -191,7 +191,7 @@ func _test_scene_input() -> void:
 	_check("사거리 밖" in hud.preview_label.text and "0.0%" in hud.preview_label.text, "기본 배치의 사거리 밖 안내")
 	await _click_unit(units[2])
 	_check(units[2].hit_points == hp_before and units[0].movement_left == movement_before
-		and units[0].action_left == action_before, "두 번 눌러도 아직 공격하거나 자원을 쓰지 않음")
+		and units[0].action_left == action_before, "사거리 밖이면 두 번 눌러도 공격하거나 자원을 쓰지 않음")
 	_check(units[0].is_selected and units[2].is_previewed, "조작 유닛과 미리보기 대상 표시 구분")
 	await _click_point(Vector2(8, 120))
 	_check(battle.get("preview_target") == null and hud.unit_label.text == "아군 전사",
@@ -204,19 +204,23 @@ func _test_scene_input() -> void:
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	units[3].cell = Vector2i(5, 5)
 	units[3].position = map.map_to_local(units[3].cell)
+	battle.call("_clear_preview")
 	await _click_unit(units[3])
 	_check("60.0%" in hud.preview_label.text and "AC 14" in hud.resource_label.text
 		and "HP 11 / 11" in hud.resource_label.text, "사거리 안 대상의 명중률과 능력치 표시")
 	units[3].is_stunned = true
+	battle.call("_clear_preview")
 	await _click_unit(units[3])
 	_check("84.0% · 유리" in hud.preview_label.text and "기절한 대상" in hud.preview_label.text,
 		"기절 대상의 유리 확률과 이유 표시")
 	units[2].cell = Vector2i(6, 9)
 	units[2].position = map.map_to_local(units[2].cell)
+	battle.call("_clear_preview")
 	await _click_unit(units[3])
 	_check("60.0% · 유리/불리 상쇄" in hud.preview_label.text
 		and "기절한 대상, 옆에 적" in hud.preview_label.text, "상쇄 확률과 양쪽 이유 표시")
 	units[3].is_stunned = false
+	battle.call("_clear_preview")
 	await _click_unit(units[3])
 	_check("36.0% · 불리" in hud.preview_label.text and "옆에 적" in hud.preview_label.text,
 		"인접 적에 따른 불리 확률과 이유 표시")

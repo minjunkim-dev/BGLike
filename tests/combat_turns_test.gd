@@ -225,6 +225,10 @@ func _test_scene() -> void:
 	_check(hud.unit_label.text == current.get_display_name(), "장면 연결: 현재 유닛 표시")
 	_check(current.is_selected, "장면 연결: 현재 유닛 선택 테두리")
 	var style: StyleBoxFlat = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
+	_check(style.bg_color == CombatTurnHud.DEFAULT_BUTTON_COLOR, "이동할 수 있으면 종료 강조 없음")
+	current.movement_left = 0
+	battle.call("_update_turn_ui")
+	style = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
 	_check(style.bg_color == CombatTurnHud.END_BUTTON_COLOR, "유효한 동작 없으면 버튼 색만 강조")
 	await process_frame
 	_check(turns.current_unit == current, "실행 가능한 동작이 없어도 자동 종료 없음")

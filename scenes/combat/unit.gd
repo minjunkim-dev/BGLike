@@ -25,6 +25,15 @@ var bonus_action_left: int = 1
 var reaction_left: int = 1
 var hit_points: int = 12
 var is_stunned: bool = false
+var disengaged: bool = false
+var marked_target: CombatUnit
+var second_wind_left: int = 1
+var parry_left: int = 2
+var surge_left: int = 1
+var mark_left: int = 1
+var shock_left: int = 1
+var disengage_left: int = 2
+var potion_left: int = 1
 var is_previewed: bool = false:
 	set(value):
 		is_previewed = value
@@ -77,6 +86,7 @@ func get_display_name() -> String:
 
 
 func begin_turn() -> void:
+	disengaged = false
 	movement_left = MOVEMENT_PER_TURN
 	action_left = 1
 	bonus_action_left = 1
