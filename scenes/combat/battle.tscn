@@ -99,6 +99,17 @@ mouse_filter = 2
 text = "아군: 파랑  |  적: 빨강
 전사: 검  |  궁수: 활"
 
+[node name="AttackPreview" type="Label" parent="UI/TurnHud"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -236.0
+offset_top = 72.0
+offset_right = -16.0
+offset_bottom = 110.0
+grow_horizontal = 0
+mouse_filter = 2
+
 [node name="EndTurn" type="Button" parent="UI/TurnHud"]
 anchors_preset = 3
 anchor_left = 1.0

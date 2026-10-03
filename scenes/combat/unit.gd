@@ -4,6 +4,7 @@ extends Node2D
 
 enum Kind { WARRIOR, ARCHER }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
+enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 
 const MOVEMENT_PER_TURN: int = 6
 
@@ -22,6 +23,12 @@ var movement_left: int = MOVEMENT_PER_TURN
 var action_left: int = 1
 var bonus_action_left: int = 1
 var reaction_left: int = 1
+var hit_points: int = 12
+var is_stunned: bool = false
+var is_previewed: bool = false:
+	set(value):
+		is_previewed = value
+		queue_redraw()
 var is_selected: bool = false:
 	set(value):
 		is_selected = value
@@ -30,6 +37,35 @@ var is_selected: bool = false:
 
 func get_dexterity() -> int:
 	return 1 if kind == Kind.WARRIOR else 3
+
+
+func get_attribute(attribute: Attribute) -> int:
+	match attribute:
+		Attribute.STRENGTH:
+			return 3 if kind == Kind.WARRIOR else 0
+		Attribute.DEXTERITY:
+			return get_dexterity()
+		Attribute.CONSTITUTION:
+			return 2 if kind == Kind.WARRIOR else 1
+		Attribute.MENTAL:
+			return -1 if kind == Kind.WARRIOR else 1
+	return 0
+
+
+func get_max_hit_points() -> int:
+	return 12 if kind == Kind.WARRIOR else 11
+
+
+func get_armor_class() -> int:
+	return 16 if kind == Kind.WARRIOR else 14
+
+
+func get_attack_bonus() -> int:
+	return 5
+
+
+func get_attack_range() -> int:
+	return 1 if kind == Kind.WARRIOR else 6
 
 
 func get_initiative() -> int:
@@ -84,6 +120,7 @@ func has_available_turn_action(
 
 func _ready() -> void:
 	cell = start_cell
+	hit_points = get_max_hit_points()
 	queue_redraw()
 
 
@@ -91,6 +128,8 @@ func _draw() -> void:
 	var body_color: Color = ALLY_COLOR if is_ally else ENEMY_COLOR
 	if is_selected:
 		draw_rect(Rect2(-7, -20, 14, 20), Color("f4cf69"), false)
+	elif is_previewed:
+		draw_rect(Rect2(-7, -20, 14, 20), Color("f4ead1"), false)
 	draw_rect(Rect2(-6, -1, 12, 3), OUTLINE_COLOR)
 	draw_rect(Rect2(-6, -19, 12, 18), OUTLINE_COLOR)
 	draw_rect(Rect2(-5, -18, 10, 16), body_color)

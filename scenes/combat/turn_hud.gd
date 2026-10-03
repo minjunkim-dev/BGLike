@@ -16,6 +16,7 @@ var _portraits: Dictionary[CombatUnit, Button] = {}
 @onready var unit_label: Label = $CurrentUnit
 @onready var resource_label: Label = $Resources
 @onready var end_button: Button = $EndTurn
+@onready var preview_label: Label = $AttackPreview
 
 
 func _ready() -> void:
@@ -23,6 +24,7 @@ func _ready() -> void:
 
 
 func refresh(turns: CombatTurns, has_available_action: bool) -> void:
+	preview_label.text = ""
 	if _shown_order != turns.ordered_units:
 		_build_portraits(turns)
 	var current: CombatUnit = turns.current_unit
@@ -59,6 +61,30 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 	end_button.add_theme_stylebox_override("normal", _button_style(end_color))
 	end_button.add_theme_stylebox_override("hover", _button_style(end_color.lightened(0.12)))
 	end_button.add_theme_stylebox_override("pressed", _button_style(end_color.darkened(0.12)))
+
+
+func show_attack_preview(target: CombatUnit, preview: CombatChecks.AttackPreview) -> void:
+	unit_label.text = target.get_display_name()
+	resource_label.text = "HP %d / %d  AC %d\n상태: %s" % [
+		target.hit_points, target.get_max_hit_points(), target.get_armor_class(),
+		"기절" if target.is_stunned else "없음"
+	]
+	var mode_text: String = "일반"
+	if preview.mode == CombatChecks.RollMode.ADVANTAGE:
+		mode_text = "유리"
+	elif preview.mode == CombatChecks.RollMode.DISADVANTAGE:
+		mode_text = "불리"
+	elif preview.reasons.size() == 2:
+		mode_text = "유리/불리 상쇄"
+	preview_label.text = "명중률 %.1f%% · %s" % [preview.chance * 100.0, mode_text]
+	if not preview.valid_target:
+		preview_label.text += "\n공격할 수 없는 대상"
+	elif not preview.blocked_reason.is_empty():
+		preview_label.text += "\n" + preview.blocked_reason
+	elif not preview.in_range:
+		preview_label.text += "\n사거리 밖"
+	elif not preview.reasons.is_empty():
+		preview_label.text += "\n" + ", ".join(preview.reasons)
 
 
 func _build_portraits(turns: CombatTurns) -> void:
