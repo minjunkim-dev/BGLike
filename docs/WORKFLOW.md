@@ -48,7 +48,7 @@
 1. 사람이 Issue에 목표와 완료 조건을 적습니다.
 2. Claude Code나 Codex 데스크탑 앱에 Issue 번호를 주고 구현합니다. 편집기에서 직접 확인합니다.
 3. PR을 열기 전에 구현하지 않은 쪽 에이전트로 로컬 리뷰를 받고 반영합니다. Claude Code로 구현했으면 Codex 앱에서 리뷰하고, Codex로 구현했으면 Claude Code에서 리뷰합니다. GitHub 자동 리뷰는 P0, P1만 올리므로 P2 이하는 이 단계에서 봅니다.
-4. PR을 열면 Codex가 자동으로 코드 리뷰와 보안 리뷰를 합니다.
+4. PR을 열면 Codex가 자동으로 코드 리뷰와 보안 리뷰를 합니다. Codex로 구현한 PR이면 이 리뷰는 참고만 하고, 독립 리뷰는 3단계의 Claude 리뷰가 맡습니다(아래 표).
 5. 리뷰 지적은 같은 로컬 세션에서 반영해 push하고, `@codex review`로 다시 리뷰를 받습니다.
 6. 사람이 플레이를 확인하고 squash merge합니다.
 
@@ -66,8 +66,8 @@
 
 | 작성자 | 리뷰 |
 | --- | --- |
-| Claude | Codex 자동 리뷰 |
-| Codex | 사람이 PR에 `@claude 이 PR 리뷰해줘`를 요청합니다. Codex 자동 리뷰는 참고만 합니다. |
+| Claude | PR을 열기 전 Codex 앱 로컬 리뷰, PR의 Codex 자동 리뷰 |
+| Codex | PR을 열기 전 Claude Code 로컬 리뷰. 로컬 리뷰를 못 했으면 PR에 `@claude 이 PR 리뷰해줘`를 요청합니다. Codex 자동 리뷰는 참고만 합니다. |
 | 사람 | Codex 자동 리뷰와 동료 검토 |
 
 **에이전트를 부를 때**
