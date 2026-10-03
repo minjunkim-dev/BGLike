@@ -6,7 +6,7 @@
 
 1. Godot 4.7.2 Standard를 설치하고 `git lfs install`을 한 번 실행합니다.
 2. 저장소를 복제하고 `project.godot`을 엽니다. 실행 확인은 [README](README.md)의 명령으로 합니다.
-3. 커밋 메시지 검사를 켭니다. 저장소 안에서 한 번만 실행합니다.
+3. 저장소 hook을 켭니다. 커밋 제목 검사와 Git LFS hook이 함께 켜집니다. 저장소 안에서 한 번만 실행합니다. 이 설정은 이 저장소에만 적용되고, 다른 저장소의 hook은 그대로입니다.
    ```sh
    git config core.hooksPath .githooks
    ```
@@ -101,7 +101,7 @@
 | 항목 | 방식 |
 |---|---|
 | PR 제목과 브랜치 이름 검사 | GitHub Actions `pr-lint`. 형식이 틀리면 CI 실패 |
-| 커밋 메시지 검사 | `.githooks/commit-msg`. 1절의 설정 한 줄이 필요 |
+| 커밋 메시지 검사, Git LFS | `.githooks/`. 1절의 설정 한 줄로 둘 다 켜짐 |
 | squash merge만 허용, 병합 후 브랜치 삭제 | 저장소 설정 |
 | Godot import와 메인 장면 실행 | GitHub Actions `godot` |
 | PR·CI 알림 | `#github-알림` Discord 웹훅 |
