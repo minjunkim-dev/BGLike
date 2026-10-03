@@ -1,0 +1,15 @@
+[gd_resource type="TileSet" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://scenes/combat/art/floor_tiles.svg" id="1_floor"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_floor"]
+texture = ExtResource("1_floor")
+texture_region_size = Vector2i(32, 16)
+0:0/0 = 0
+1:0/0 = 0
+
+[resource]
+tile_shape = 1
+tile_layout = 5
+tile_size = Vector2i(32, 16)
+sources/0 = SubResource("TileSetAtlasSource_floor")
