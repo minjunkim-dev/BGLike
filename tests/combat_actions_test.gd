@@ -43,8 +43,6 @@ func _fixture() -> Fixture:
 	dice.seed = 33
 	f.turns.start(f.units, dice)
 	f.actions.initialize(f.units, f.turns)
-	# 양쪽 DC 입력을 검증하는 fixture 값. 제품의 DC 결정과 구분한다.
-	f.actions.save_dc = 10
 	return f
 
 
@@ -73,6 +71,7 @@ func _run() -> void:
 	await _test_mark_and_stun()
 	await _test_reactions()
 	await _test_scene_input()
+	await _test_scene_shock()
 	for f: Fixture in _fixtures:
 		for connection: Dictionary in f.actions.reaction_requested.get_connections():
 			f.actions.reaction_requested.disconnect(connection["callable"] as Callable)
@@ -213,6 +212,7 @@ func _test_mark_and_stun() -> void:
 	await f.actions.attack(actor, target)
 	_check(f.actions.last_damage_rolls.size() == 4, "표식 치명타는 무기와 표식 각각2개")
 	var shock: Fixture = _fixture()
+	_check(shock.actions.save_dc == 13, "제품 기본 내성 DC는13")
 	shock.turns.select_unit(shock.units[1])
 	shock.units[2].reaction_left = 0
 	shock.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
@@ -224,6 +224,15 @@ func _test_mark_and_stun() -> void:
 	_check(shock.turns.current_unit == shock.units[3] and shock.turns.is_turn_finished(shock.units[2]),
 		"기절한 다음 턴은 자동으로 건너뜀")
 	_check(not shock.units[2].is_stunned, "건너뛴 턴 끝에서 기절 해제")
+	for roll: int in [13, 14]:
+		var boundary: Fixture = _fixture()
+		boundary.turns.select_unit(boundary.units[1])
+		boundary.units[2].reaction_left = 0
+		boundary.actions.dice = _dice_for([11, 4, roll], [20, 6, 20])
+		await boundary.actions.attack(boundary.units[1], boundary.units[2], true)
+		_check(boundary.units[2].hit_points == 5, "내성 성공 여부와 관계없이 충격 화살 피해 적용")
+		_check(boundary.units[2].is_stunned == (roll == 13),
+			"정신-1의 DC13 경계: d20의13은 기절,14는 버팀")
 	var waiting: Fixture = _fixture()
 	waiting.units[1].is_stunned = true
 	var start_dice: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -239,14 +248,19 @@ func _test_mark_and_stun() -> void:
 		"실제로 두 번째 유닛 순서를 건너뛴 끝에 기절 해제")
 	var missed: Fixture = _fixture()
 	missed.turns.select_unit(missed.units[1])
+	var before_miss: int = missed.units[3].hit_points
 	missed.actions.dice = _dice_for([1], [20])
 	await missed.actions.attack(missed.units[1], missed.units[3], true)
-	_check(missed.units[1].shock_left == 0 and not missed.units[3].is_stunned,
-		"빗나가도 충격 화살 횟수 소비, 기절 없음")
+	_check(missed.units[1].action_left == 0 and missed.units[1].shock_left == 0
+		and missed.units[3].hit_points == before_miss and not missed.units[3].is_stunned,
+		"빗나가도 충격 화살 행동·횟수 모두 소비, 피해·기절 없음")
+	_check(not missed.actions.can_use(missed.units[1], "shock"), "빗나간 충격 화살 재사용 거부")
+	missed.units[1].action_left = 1
+	_check(not missed.actions.can_use(missed.units[1], "shock"), "행동만 회복해도 사용 횟수는 돌아오지 않음")
 	missed.units[1].action_left = 1
 	missed.units[1].shock_left = 1
 	missed.actions.save_dc = 0
-	_check(not missed.actions.can_use(missed.units[1], "shock"), "미결정 DC 효과 실행 거부")
+	_check(not missed.actions.can_use(missed.units[1], "shock"), "유효하지 않은 DC 효과 실행 거부")
 
 
 func _enemy_archer(f: Fixture) -> void:
@@ -305,17 +319,26 @@ func _test_reactions() -> void:
 	parry.units[2].cell = Vector2i(5, 4)
 	parry.turns.end_turn()
 	parry.turns.end_turn()
-	parry.actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
+	parry.actions.reaction_requested.connect(func(kind: String, prompt: String) -> void:
 		_check(kind == "parry" and parry.actions.last_damage_rolls.is_empty(), "피해 굴림 전에 흘려내기 확인")
+		_check("45.0%" in prompt, "DC13 흘려내기 확인은 성공률45%")
 		parry.actions.resolve_reaction(true)
 	)
-	parry.actions.dice = _dice_for([20, 9], [20, 20])
+	parry.actions.dice = _dice_for([20, 12], [20, 20])
 	await parry.actions.attack(parry.units[2], parry.units[0])
 	_check(parry.units[0].hit_points == 12 and parry.actions.last_damage == 0, "흘려내기 성공은 치명타도 무효")
 	_check(parry.units[0].reaction_left == 0 and parry.units[0].parry_left == 1, "흘려내기 반응과 전투당 횟수 소비")
 	_check(parry.units[2].action_left == 0, "흘려내기 성공해도 공격자 행동 소비")
+	parry.units[2].action_left = 1
+	parry.units[0].reaction_left = 1
+	parry.actions.dice = _dice_for([20, 11], [20, 20])
+	await parry.actions.attack(parry.units[2], parry.units[0])
+	_check(parry.actions.last_damage > 0 and parry.actions.last_damage_rolls.size() == 2,
+		"민첩+1의 d20의11은 DC13 미달로 치명타 피해 적용")
+	_check(parry.units[0].reaction_left == 0 and parry.units[0].parry_left == 0,
+		"흘려내기 내성 실패도 반응과 횟수 소비")
 	var automatic: Fixture = _fixture()
-	automatic.actions.dice = _dice_for([11, 9], [20, 20])
+	automatic.actions.dice = _dice_for([11, 12], [20, 20])
 	await automatic.actions.attack(automatic.units[0], automatic.units[2])
 	_check(automatic.units[2].parry_left == 1 and automatic.units[2].reaction_left == 0
 		and automatic.units[2].hit_points == 12, "적 흘려내기는 자동 반응")
@@ -324,7 +347,7 @@ func _test_reactions() -> void:
 	parried_shock.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
 		parried_shock.actions.resolve_reaction(true)
 	)
-	parried_shock.actions.dice = _dice_for([11, 12, 9], [20, 20, 20])
+	parried_shock.actions.dice = _dice_for([11, 12, 12], [20, 20, 20])
 	await parried_shock.actions.attack(parried_shock.units[3], parried_shock.units[0], true)
 	_check(parried_shock.units[0].hit_points == 12 and not parried_shock.units[0].is_stunned
 		and parried_shock.units[3].shock_left == 0, "흘려낸 충격 화살은 피해와 기절도 없음")
@@ -365,8 +388,8 @@ func _test_scene_input() -> void:
 	_check("몰아치기" in hud.message_label.text, "실행 결과 화면 피드백")
 	turns.end_turn()
 	turns.end_turn()
-	actions.save_dc = 10
-	actions.dice = _dice_for([20, 9], [20, 20])
+	_check(actions.save_dc == 13, "실제 장면도 DC13을 연결")
+	actions.dice = _dice_for([20, 12], [20, 20])
 	actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
 		_check(kind == "parry" and hud.reaction_dialog.visible and hud.end_button.disabled,
 			"실제 확인 창이 뜨고 턴 종료가 잠김")
@@ -403,6 +426,38 @@ func _test_scene_input() -> void:
 	await _click(overlap_point)
 	_check(overlap.get("preview_target") == overlap_units[3], "겹친 몸통은 y-sort 앞쪽 유닛 선택")
 	overlap.queue_free()
+	await process_frame
+
+
+func _test_scene_shock() -> void:
+	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
+	var battle: Node2D = scene.instantiate() as Node2D
+	root.add_child(battle)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	dice.seed = 33
+	turns.start(units, dice)
+	units[3].cell = Vector2i(7, 9)
+	turns.select_unit(units[1])
+	var buttons: Dictionary = hud.get("_actions")
+	var shock_button: Button = buttons["shock"] as Button
+	_check(shock_button.visible and not shock_button.disabled, "실제 장면의 충격 화살 버튼 활성화")
+	shock_button.pressed.emit()
+	var before_miss: int = units[3].hit_points
+	actions.dice = _dice_for([1], [20])
+	var point: Vector2 = units[3].get_global_transform_with_canvas() * Vector2(0, -10)
+	await _click(point)
+	_check(units[1].action_left == 1 and units[1].shock_left == 1, "충격 화살 미리보기는 행동·횟수 유지")
+	await _click(point)
+	_check(units[1].action_left == 0 and units[1].shock_left == 0
+		and units[3].hit_points == before_miss and not units[3].is_stunned,
+		"실제 두 번째 클릭의 충격 화살 빗나감은 행동·횟수만 소비")
+	_check(shock_button.disabled and "(0)" in shock_button.text, "실행 후 충격 화살 비활성화와 횟수 갱신")
+	battle.queue_free()
 	await process_frame
 
 

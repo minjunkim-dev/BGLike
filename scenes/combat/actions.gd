@@ -16,8 +16,8 @@ var units: Array[CombatUnit] = []
 var turns: CombatTurns
 var dice: RandomNumberGenerator = RandomNumberGenerator.new()
 var map_size: Vector2i = Vector2i(10, 10)
-# 미결정 DC는 0으로 두고 해당 효과를 실행하지 않는다. 연결 전에 기획 결정을 받는다.
-var save_dc: int = 0
+# M1 전사·궁수 내성 DC: 8 + 숙련2 + 공격 능력치3.
+var save_dc: int = 13
 var busy: bool = false
 var pending_reactor: CombatUnit
 var pending_kind: String = ""
