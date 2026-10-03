@@ -1,12 +1,24 @@
+# Godot
 .godot/
 *.translation
+export_credentials.cfg
+
+# OS
 .DS_Store
 Thumbs.db
+
+# Build output
 build/
 dist/
+
+# Personal tool state and settings (not shared)
 .serena/
 graft/
+.ignore
+.claude/settings.local.json
 CLAUDE.local.md
+
+# Secrets
 .env
 .env.*
 !.env.example

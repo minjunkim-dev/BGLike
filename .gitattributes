@@ -1,9 +1,11 @@
 * text=auto eol=lf
 
-# Binary source assets for the 3D game.
-*.blend filter=lfs diff=lfs merge=lfs -text
-*.fbx filter=lfs diff=lfs merge=lfs -text
-*.glb filter=lfs diff=lfs merge=lfs -text
+# Binary source assets kept in Git LFS. Exported PNG and OGG stay in Git.
+*.aseprite filter=lfs diff=lfs merge=lfs -text
+*.ase filter=lfs diff=lfs merge=lfs -text
 *.psd filter=lfs diff=lfs merge=lfs -text
 *.kra filter=lfs diff=lfs merge=lfs -text
 *.wav filter=lfs diff=lfs merge=lfs -text
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.glb filter=lfs diff=lfs merge=lfs -text
