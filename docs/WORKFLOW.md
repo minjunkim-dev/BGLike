@@ -80,6 +80,7 @@
 - Issue에 `claude` 라벨을 붙이거나, 새 Issue의 제목·본문, Issue·PR 코멘트, 인라인 코멘트, PR 리뷰에 `@claude`를 적으면 실행합니다. 담당자 지정, 본문 수정, 다른 라벨로는 실행하지 않습니다.
 - 저장소 쓰기 권한이 있는 사람만 호출할 수 있습니다. Claude GitHub App과 `CLAUDE_CODE_OAUTH_TOKEN` 저장소 비밀값을 사용합니다.
 - 비공개 저장소의 GitHub Actions 분을 Godot CI와 나눠 씁니다. 한 번에 최대 30분입니다.
+- 모델은 Opus 5.5, effort는 `high`로 고정합니다(`claude_args`). Opus 5.5의 기본 effort는 `medium`입니다.
 - 실행 환경에 Godot 4.7.2를 설치하므로 Claude가 `godot --headless` 검사를 직접 실행합니다. 허용한 명령은 `godot`, `git diff`뿐입니다.
 
 **Codex** (ChatGPT의 Codex GitHub 연동, 저장소 설정 파일 없음)
