@@ -12,6 +12,7 @@ var _group_start: int = 0
 var _group_end: int = -1
 var _finished_units: Array[CombatUnit] = []
 var _started_units: Array[CombatUnit] = []
+var _stunned_turns: Array[CombatUnit] = []
 
 
 func start(combat_units: Array[CombatUnit], dice: RandomNumberGenerator) -> void:
@@ -32,6 +33,7 @@ func start(combat_units: Array[CombatUnit], dice: RandomNumberGenerator) -> void
 	round_number = 1 if not ordered_units.is_empty() else 0
 	_finished_units.clear()
 	_started_units.clear()
+	_stunned_turns.clear()
 	current_unit = null
 	_group_start = 0
 	_group_end = -1
@@ -60,7 +62,7 @@ func is_turn_finished(unit: CombatUnit) -> bool:
 
 
 func select_unit(unit: CombatUnit) -> bool:
-	if not unit.is_ally or unit not in get_current_group() or is_turn_finished(unit):
+	if not unit.is_ally or unit.is_stunned or unit not in get_current_group() or is_turn_finished(unit):
 		return false
 	current_unit = unit
 	changed.emit()
@@ -83,6 +85,7 @@ func remove_unit(unit: CombatUnit) -> void:
 	ordered_units.remove_at(index)
 	_finished_units.erase(unit)
 	_started_units.erase(unit)
+	_stunned_turns.erase(unit)
 	var previous_current: CombatUnit = current_unit
 	if current_unit == unit:
 		current_unit = null
@@ -105,6 +108,11 @@ func remove_unit(unit: CombatUnit) -> void:
 
 func _select_next_or_advance() -> void:
 	for unit: CombatUnit in get_current_group():
+		if unit in _stunned_turns:
+			# 실제로 이 유닛의 순서를 건너뛸 때 턴을 끝내고 기절을 푼다.
+			unit.is_stunned = false
+			_finished_units.append(unit)
+			_stunned_turns.erase(unit)
 		if not is_turn_finished(unit):
 			current_unit = unit
 			return
@@ -117,6 +125,7 @@ func _start_group_at(index: int) -> void:
 		round_number += 1
 		_finished_units.clear()
 		_started_units.clear()
+		_stunned_turns.clear()
 	_group_start = index
 	while (_group_start > 0
 		and ordered_units[_group_start - 1].is_ally == ordered_units[index].is_ally):
@@ -129,4 +138,6 @@ func _start_group_at(index: int) -> void:
 		if unit not in _started_units:
 			unit.begin_turn()
 			_started_units.append(unit)
+			if unit.is_stunned:
+				_stunned_turns.append(unit)
 	_select_next_or_advance()

@@ -4,12 +4,16 @@ extends Control
 
 signal unit_selected(unit: CombatUnit)
 signal end_turn_requested
+signal action_selected(action: String)
+signal reaction_selected(use_reaction: bool)
 
 const DEFAULT_BUTTON_COLOR: Color = Color("354656")
 const END_BUTTON_COLOR: Color = Color("926725")
 
 var _shown_order: Array[CombatUnit] = []
 var _portraits: Dictionary[CombatUnit, Button] = {}
+var _actions: Dictionary[String, Button] = {}
+var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 
 @onready var round_label: Label = $Round
 @onready var order_bar: HBoxContainer = $OrderBar
@@ -17,10 +21,64 @@ var _portraits: Dictionary[CombatUnit, Button] = {}
 @onready var resource_label: Label = $Resources
 @onready var end_button: Button = $EndTurn
 @onready var preview_label: Label = $AttackPreview
+@onready var action_bar: VBoxContainer = $Actions
+@onready var message_label: Label = $CombatMessage
 
 
 func _ready() -> void:
 	end_button.pressed.connect(func() -> void: end_turn_requested.emit())
+	for action: String in ["move", "attack", "second_wind", "surge", "mark", "shock", "disengage", "shove", "potion"]:
+		var button: Button = Button.new()
+		button.add_theme_font_size_override("font_size", 10)
+		button.pressed.connect(func() -> void: action_selected.emit(action))
+		action_bar.add_child(button)
+		_actions[action] = button
+	add_child(reaction_dialog)
+	reaction_dialog.confirmed.connect(func() -> void: reaction_selected.emit(true))
+	reaction_dialog.canceled.connect(func() -> void: reaction_selected.emit(false))
+
+
+func refresh_actions(actions: CombatActions, selected: String, last_ally: CombatUnit) -> void:
+	var actor: CombatUnit = actions.turns.current_unit
+	var shown: CombatUnit = actor if actor != null and actor.is_ally else last_ally
+	var names: Dictionary[String, String] = {"move": "이동", "attack": "공격 ●", "second_wind": "숨 고르기 ▲",
+		"surge": "몰아치기 ▲", "mark": "표식 ▲", "shock": "충격 화살 ●",
+		"disengage": "물러서며 쏘기 ▲", "shove": "밀치기 ▲", "potion": "물약 ▲"}
+	for action: String in _actions:
+		var button: Button = _actions[action]
+		button.visible = shown != null
+		if shown == null:
+			continue
+		if action in ["second_wind", "surge"]:
+			button.visible = shown.kind == CombatUnit.Kind.WARRIOR
+		elif action in ["mark", "shock", "disengage"]:
+			button.visible = shown.kind == CombatUnit.Kind.ARCHER
+		button.text = ("▷ " if action == selected else "") + names[action]
+		var uses: int = _remaining_uses(shown, action)
+		if uses >= 0:
+			button.text += " (%d)" % uses
+		button.disabled = actor == null or not actor.is_ally or not actions.can_use(actor, action)
+	end_button.disabled = actor == null or actions.busy or actions.is_over()
+	for button: Button in _portraits.values():
+		button.disabled = button.disabled or actions.busy or actions.is_over()
+
+
+func show_reaction(kind: String, prompt: String) -> void:
+	reaction_dialog.dialog_text = prompt
+	reaction_dialog.get_ok_button().text = "공격" if kind == "opportunity" else "흘려내기"
+	reaction_dialog.get_cancel_button().text = "넘기기"
+	reaction_dialog.popup_centered(Vector2i(360, 110))
+
+
+func _remaining_uses(actor: CombatUnit, action: String) -> int:
+	match action:
+		"second_wind": return actor.second_wind_left
+		"surge": return actor.surge_left
+		"mark": return actor.mark_left
+		"shock": return actor.shock_left
+		"disengage": return actor.disengage_left
+		"potion": return actor.potion_left
+	return -1
 
 
 func refresh(turns: CombatTurns, has_available_action: bool) -> void:
@@ -49,7 +107,7 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 		button.tooltip_text = "%s: d20 %d + 민첩 %d = %d" % [
 			unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()]
 		var in_group: bool = unit in turns.get_current_group()
-		button.disabled = not unit.is_ally or not in_group or turns.is_turn_finished(unit)
+		button.disabled = not unit.is_ally or unit.is_stunned or not in_group or turns.is_turn_finished(unit)
 		var color: Color = CombatUnit.ALLY_COLOR if unit.is_ally else CombatUnit.ENEMY_COLOR
 		if not in_group or turns.is_turn_finished(unit):
 			color = color.darkened(0.6)

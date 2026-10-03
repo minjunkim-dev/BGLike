@@ -123,3 +123,23 @@ offset_bottom = -12.0
 grow_horizontal = 0
 grow_vertical = 0
 text = "턴 종료"
+
+[node name="Actions" type="VBoxContainer" parent="UI/TurnHud"]
+offset_left = 16.0
+offset_top = 96.0
+offset_right = 156.0
+offset_bottom = 292.0
+theme_override_constants/separation = 2
+
+[node name="CombatMessage" type="Label" parent="UI/TurnHud"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 244.0
+offset_top = -66.0
+offset_right = 488.0
+offset_bottom = -12.0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 10
+autowrap_mode = 2
