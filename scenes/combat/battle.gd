@@ -10,11 +10,12 @@ var units: Array[CombatUnit] = []
 
 
 func _ready() -> void:
-	for x in range(MAP_SIZE.x):
-		for y in range(MAP_SIZE.y):
+	for x: int in range(MAP_SIZE.x):
+		for y: int in range(MAP_SIZE.y):
 			map.set_cell(Vector2i(x, y), 0, Vector2i((x + y) % 2, 0))
 
-	for child in $Units.get_children():
+	# Units의 자식은 모두 CombatUnit 장면이다.
+	for child: Node in $Units.get_children():
 		var unit: CombatUnit = child as CombatUnit
 		units.append(unit)
 		unit.position = map.map_to_local(unit.cell)
