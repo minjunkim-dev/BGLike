@@ -1,0 +1,4 @@
+#!/bin/sh
+# Git LFS hook. core.hooksPath=.githooks 로 바꾸면 git lfs install 이 넣는 hook이 빠지므로 여기서 같은 일을 합니다.
+command -v git-lfs >/dev/null 2>&1 || { echo "git-lfs 가 없습니다. https://git-lfs.com 에서 설치한 뒤 git lfs install 을 실행하세요." >&2; exit 2; }
+git lfs post-commit "$@"
