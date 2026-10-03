@@ -18,9 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          # HEAD^가 PR 기준 커밋(push면 직전 main)이어야 diff --check가 이 변경만 봅니다.
+          fetch-depth: 2
           lfs: true
+      - name: Check whitespace
+        run: git diff --check HEAD^ HEAD
       - name: Install Godot 4.7.2
         run: |
           curl -fL --retry 3 -o "$RUNNER_TEMP/godot.zip" https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
