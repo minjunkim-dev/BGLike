@@ -2,7 +2,7 @@
 
 ## 관련 Issue
 
-Closes #
+Refs # (Issue를 끝내는 마지막 PR이면 Closes #)
 
 ## 변경 내용
 

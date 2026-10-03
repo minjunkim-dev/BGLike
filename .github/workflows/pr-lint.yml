@@ -1,0 +1,47 @@
+name: PR lint
+
+# PR 제목과 브랜치 이름이 docs/GIT_CONVENTIONS.md 형식인지 확인합니다.
+# PR 제목은 squash merge 후 main의 커밋 제목이 됩니다.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    env:
+      TITLE: ${{ github.event.pull_request.title }}
+      BRANCH: ${{ github.head_ref }}
+    steps:
+      - name: PR title
+        run: |
+          types='feat|fix|refactor|perf|test|docs|build|ci|chore|revert'
+          if ! printf '%s' "$TITLE" | grep -Eq "^($types)(\([a-z0-9_-]+\))?!?: [a-z]"; then
+            echo "::error::PR 제목이 '<type>(<scope>): <소문자 설명>' 형식이 아닙니다: '$TITLE'"
+            echo "type: $types. 예: feat(combat): add initiative turn order. 규칙: docs/GIT_CONVENTIONS.md"
+            exit 1
+          fi
+          if [ "${#TITLE}" -gt 72 ]; then
+            echo "::error::PR 제목이 72자를 넘습니다 (${#TITLE}자)."
+            exit 1
+          fi
+          case "$TITLE" in *.) echo "::error::PR 제목 끝에 마침표를 찍지 않습니다."; exit 1;; esac
+      - name: Branch name
+        run: |
+          types='feat|fix|refactor|perf|test|docs|build|ci|chore|revert'
+          if printf '%s' "$BRANCH" | grep -Eq '^(claude|codex)/'; then
+            echo "에이전트 브랜치는 이름을 검사하지 않습니다: $BRANCH"
+            exit 0
+          fi
+          # 코드 브랜치(feat, fix, ...)는 <issue번호>-<설명> 필수. 문서·설정 브랜치(docs, build, ci, chore)는 Issue 없이 <설명>만 허용.
+          desc='[a-z0-9]+(-[a-z0-9]+)*'
+          if ! printf '%s' "$BRANCH" | grep -Eq "^(($types)/[0-9]+-$desc|(docs|build|ci|chore)/[a-z]$desc)$"; then
+            echo "::error::브랜치 이름이 '<type>/<issue번호>-<짧은-설명>' 형식이 아닙니다: '$BRANCH'"
+            echo "소문자, 숫자, '-'만 씁니다. feat, fix 등 코드 브랜치는 Issue 번호가 필요하고, docs, build, ci, chore는 Issue 없이 설명만 써도 됩니다. 예: feat/12-combat-base, docs/issue-flow. 규칙: docs/GIT_CONVENTIONS.md"
+            exit 1
+          fi
