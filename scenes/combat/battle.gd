@@ -1,5 +1,5 @@
 extends Node2D
-## M1 동작 실행. 적 AI와 전체 화면 배치는 이후 단계에서 연결한다.
+## M1 동작과 전투 화면. 적 AI는 이후 단계에서 연결한다.
 
 const MAP_SIZE: Vector2i = Vector2i(10, 10)
 
@@ -36,14 +36,25 @@ func _ready() -> void:
 	hud.end_turn_requested.connect(_end_turn)
 	hud.action_selected.connect(_on_action_selected)
 	hud.reaction_selected.connect(actions.resolve_reaction)
+	hud.restart_requested.connect(_restart)
 	actions.initialize(units, turns)
 	actions.changed.connect(_update_turn_ui)
-	actions.logged.connect(func(message: String) -> void: hud.message_label.text = message)
+	actions.logged.connect(hud.add_log)
+	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void: unit.show_feedback(text))
 	actions.reaction_requested.connect(hud.show_reaction)
 	turns.changed.connect(_on_turn_changed)
 	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
 	dice.randomize()
+	_last_ally = units[0]
 	turns.start(units, dice)
+	for unit: CombatUnit in turns.ordered_units:
+		hud.add_log("이니셔티브 %s: d20 %d + %d = %d" % [
+			unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()])
+
+
+func _restart() -> void:
+	if actions.is_over() and not actions.busy:
+		get_tree().reload_current_scene()
 
 
 func _on_unit_selected(unit: CombatUnit) -> void:
@@ -160,10 +171,16 @@ func _execute_target(target: CombatUnit) -> void:
 
 func _update_turn_ui() -> void:
 	for unit: CombatUnit in units:
+		unit.has_mark = false
+		for source: CombatUnit in units:
+			if source.hit_points > 0 and source.marked_target == unit:
+				unit.has_mark = true
+				break
 		unit.position = map.map_to_local(unit.cell)
 		unit.visible = unit.hit_points > 0
 		unit.is_selected = unit == turns.current_unit
 		unit.is_previewed = unit == preview_target
+		unit.queue_redraw()
 	if turns.current_unit != null and turns.current_unit.is_ally:
 		_last_ally = turns.current_unit
 	var can_act: bool = actions.has_available_action(turns.current_unit)
@@ -189,6 +206,7 @@ func _update_turn_ui() -> void:
 		hud.preview_label.text = "같은 동작 버튼을 다시 누르면 사용"
 	if actions.is_over():
 		hud.round_label.text = "승리" if _all_enemies_down() else "패배"
+		hud.show_result(_all_enemies_down())
 	queue_redraw()
 
 

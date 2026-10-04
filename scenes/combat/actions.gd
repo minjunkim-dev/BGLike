@@ -4,6 +4,7 @@ extends RefCounted
 
 signal changed
 signal logged(message: String)
+signal feedback(unit: CombatUnit, text: String)
 signal reaction_requested(kind: String, prompt: String)
 signal reaction_decided(use_reaction: bool)
 
@@ -162,6 +163,7 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 					var chance: float = CombatChecks.attack_preview(reactor, actor, units).chance
 					if await _ask_reaction(reactor, "opportunity", "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)" % [actor.get_display_name(), chance * 100.0]):
 						reactor.spend_resource(CombatUnit.TurnResource.REACTION)
+						logged.emit("%s 기회 공격: 반응 사용" % reactor.get_display_name())
 						await _perform_attack(reactor, actor, false)
 					if actor.hit_points <= 0:
 						break
@@ -278,6 +280,8 @@ func _ask_reaction(reactor: CombatUnit, kind: String, prompt: String) -> bool:
 	pending_kind = kind
 	_emit_reaction.call_deferred(kind, prompt)
 	var accepted: bool = await reaction_decided
+	logged.emit("%s %s: %s" % [reactor.get_display_name(),
+		"기회 공격" if kind == "opportunity" else "흘려내기", "사용" if accepted else "넘기기"])
 	pending_kind = ""
 	return accepted
 
@@ -291,10 +295,16 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	last_attack = CombatChecks.attack(actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
 	last_damage = 0
 	last_damage_rolls.clear()
-	logged.emit("%s 공격: d20 %s + %d = %d / AC %d · %s" % [actor.get_display_name(),
+	var mode_name: String = "일반"
+	if last_attack.mode == CombatChecks.RollMode.ADVANTAGE:
+		mode_name = "유리"
+	elif last_attack.mode == CombatChecks.RollMode.DISADVANTAGE:
+		mode_name = "불리"
+	logged.emit("%s 공격(%s): d20 %s + %d = %d / AC %d · %s" % [actor.get_display_name(), mode_name,
 		str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total, target.get_armor_class(),
 		"치명타" if last_attack.critical else "명중" if last_attack.success else "빗나감"])
 	if not last_attack.success:
+		feedback.emit(target, "빗나감")
 		return
 	if (save_dc > 0 and target.kind == CombatUnit.Kind.WARRIOR and not target.is_stunned
 		and target.reaction_left > 0 and target.parry_left > 0):
@@ -306,20 +316,24 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 			logged.emit("흘려내기: d20 %d + %d = %d / DC %d · %s" % [saved.selected_roll,
 				target.get_dexterity(), saved.total, save_dc, "성공" if saved.success else "실패"])
 			if saved.success:
+				feedback.emit(target, "흘려내기")
 				return
 	var count: int = 2 if last_attack.critical else 1
 	var sides: int = 8 if actor.kind == CombatUnit.Kind.WARRIOR else 6
 	for index: int in range(count):
 		last_damage_rolls.append(dice.randi_range(1, sides))
-	if actor.marked_target == target:
+	var has_mark_damage: bool = actor.marked_target == target
+	if has_mark_damage:
 		for index: int in range(count):
 			last_damage_rolls.append(dice.randi_range(1, 6))
 	last_damage = 3
 	for rolled: int in last_damage_rolls:
 		last_damage += rolled
 	_damage(target, last_damage)
-	logged.emit("%s 피해: %s + 3 = %d · HP %d" % [target.get_display_name(),
+	logged.emit("%s 피해%s: %s + 3 = %d · HP %d" % [target.get_display_name(),
+		" (표식 추가)" if has_mark_damage else "",
 		str(last_damage_rolls), last_damage, target.hit_points])
+	feedback.emit(target, "-%d" % last_damage)
 	if shock and target.hit_points > 0:
 		var saved: CombatChecks.RollResult = CombatChecks.saving_throw(
 			target.get_attribute(CombatUnit.Attribute.MENTAL), save_dc, dice)
@@ -344,6 +358,7 @@ func _heal(actor: CombatUnit, amount: int, name: String) -> void:
 	var before: int = actor.hit_points
 	actor.hit_points = mini(actor.get_max_hit_points(), actor.hit_points + amount)
 	logged.emit("%s %s: HP +%d → %d" % [actor.get_display_name(), name, actor.hit_points - before, actor.hit_points])
+	feedback.emit(actor, "+%d" % (actor.hit_points - before))
 
 
 func _finish() -> void:
