@@ -1,11 +1,13 @@
 extends Node2D
-## M1 동작과 전투 화면. 적 AI는 이후 단계에서 연결한다.
+## M1 동작과 전투 화면. 적 묶음은 이니셔티브 순서대로 실행한다.
 
 const MAP_SIZE: Vector2i = Vector2i(10, 10)
 
 var units: Array[CombatUnit] = []
 var turns: CombatTurns = CombatTurns.new()
 var actions: CombatActions = CombatActions.new()
+var enemy_ai: CombatEnemyAi = CombatEnemyAi.new()
+var _enemy_turn_running: bool = false
 var preview_target: CombatUnit
 var selected_action: String = "attack"
 var preview_cell: Vector2i = Vector2i(-1, -1)
@@ -54,8 +56,31 @@ func _ready() -> void:
 
 
 func _restart() -> void:
-	if actions.is_over() and not actions.busy:
+	if actions.is_over() and not actions.busy and not _enemy_turn_running:
 		get_tree().reload_current_scene()
+
+
+func _process(_delta: float) -> void:
+	var actor: CombatUnit = turns.current_unit
+	if (actor != null and not actor.is_ally and not actions.busy
+		and not actions.is_over() and not _enemy_turn_running):
+		_play_enemy_turn(actor)
+
+
+func _play_enemy_turn(actor: CombatUnit) -> void:
+	_enemy_turn_running = true
+	await _pause_enemy_action()
+	await enemy_ai.play_turn(actor, actions, _pause_enemy_action)
+	if not actions.is_over() and turns.current_unit == actor:
+		turns.end_turn()
+	_enemy_turn_running = false
+	_update_turn_ui()
+
+
+func _pause_enemy_action() -> void:
+	if actions.is_over():
+		return
+	await get_tree().create_timer(0.35).timeout
 
 
 func _on_unit_selected(unit: CombatUnit) -> void:
@@ -64,7 +89,8 @@ func _on_unit_selected(unit: CombatUnit) -> void:
 
 
 func _end_turn() -> void:
-	if not actions.busy and not actions.is_over():
+	if (turns.current_unit != null and turns.current_unit.is_ally
+		and not actions.busy and not actions.is_over()):
 		turns.end_turn()
 
 
@@ -229,6 +255,7 @@ func _update_turn_ui() -> void:
 	if actions.is_over():
 		hud.round_label.text = "승리" if _all_enemies_down() else "패배"
 		hud.show_result(_all_enemies_down())
+		hud.restart_button.disabled = _enemy_turn_running
 	queue_redraw()
 
 

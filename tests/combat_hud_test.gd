@@ -24,7 +24,9 @@ func _check(condition: bool, message: String) -> void:
 func _run() -> void:
 	var scene: PackedScene = load("res://scenes/main.tscn") as PackedScene
 	var main: Node = scene.instantiate()
+	# 화면 fixture는 턴을 직접 고정한다. 자동 실행은 AI 장면 검사에서 확인한다.
 	root.add_child(main)
+	main.get_node("Battle").set_process(false)
 	current_scene = main
 	await process_frame
 	battle = current_scene.get_node("Battle") as Node2D
@@ -134,6 +136,7 @@ func _test_archer_and_enemy() -> void:
 	_check(not turns.current_unit.is_ally and hud.unit_label.text == turns.current_unit.get_display_name(),
 		"적 턴에는 행동 중인 적 정보")
 	_check(hud.move_button.text == "이동", "적 턴 이동 버튼은 아군의 이동력으로 혼동할 숫자를 표시하지 않음")
+	_check(hud.end_button.disabled, "적 턴 종료는 AI가 처리하며 버튼은 잠김")
 	_check((buttons["shock"] as Button).visible and (buttons["shock"] as Button).disabled
 		and not (containers[2] as PanelContainer).visible, "적 턴에는 마지막 궁수 패널 회색 유지")
 	for button: Button in buttons.values():

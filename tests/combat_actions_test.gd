@@ -357,6 +357,7 @@ func _test_scene_input() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	var battle: Node2D = scene.instantiate() as Node2D
 	root.add_child(battle)
+	battle.set_process(false)
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
@@ -404,6 +405,7 @@ func _test_scene_input() -> void:
 	# 몸통에 가린 빈 칸과 겹친 유닛은 실제 입력으로 별도 확인한다.
 	var overlap: Node2D = scene.instantiate() as Node2D
 	root.add_child(overlap)
+	overlap.set_process(false)
 	await process_frame
 	var overlap_units: Array[CombatUnit] = overlap.get("units")
 	var overlap_turns: CombatTurns = overlap.get("turns") as CombatTurns
@@ -433,6 +435,7 @@ func _test_scene_shock() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	var battle: Node2D = scene.instantiate() as Node2D
 	root.add_child(battle)
+	battle.set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
