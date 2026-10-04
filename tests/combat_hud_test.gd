@@ -45,6 +45,8 @@ func _run() -> void:
 	_test_archer_and_enemy()
 	await _test_log_and_status()
 	await _test_layout()
+	await _test_order_bar_input()
+	await _test_reaction_flow()
 	await _test_results_and_restart()
 	current_scene.queue_free()
 	await process_frame
@@ -170,7 +172,9 @@ func _test_log_and_status() -> void:
 	units[2].cell = Vector2i(5, 8)
 	actions.dice = _dice_for_miss()
 	await actions.attack(units[1], units[2])
-	_check("공격(불리): d20 [" in hud.message_label.text, "불리 판정의 두 주사위 로그")
+	_check("공격(불리): d20 [" in hud.message_label.text
+		and ", " in hud.message_label.text.get_slice("d20", 1).get_slice("]", 0),
+		"불리 판정은 로그에 주사위 두 값을 모두 표시")
 	var parent: Node = units[2].get_parent()
 	var has_popup: bool = false
 	for child: Node in parent.get_children():
@@ -181,6 +185,9 @@ func _test_log_and_status() -> void:
 	units[2].is_stunned = true
 	actions.dice.seed = 100
 	await actions.attack(units[1], units[2])
+	_check("공격(유리): d20 [" in hud.message_label.text
+		and ", " in hud.message_label.text.get_slice("d20", 1).get_slice("]", 0),
+		"유리 판정은 로그에 주사위 두 값을 모두 표시")
 	_check("표식 추가" in hud.message_label.text, "표식 추가 피해를 로그에 명시")
 
 
@@ -256,3 +263,117 @@ func _test_results_and_restart() -> void:
 			turns.remove_unit(unit)
 	battle.call("_update_turn_ui")
 	_check(hud.get_node("Result").visible and hud.result_label.text == "패배", "아군 전멸시 패배 창")
+
+
+func _reset_units() -> void:
+	for unit: CombatUnit in units:
+		unit.hit_points = unit.get_max_hit_points()
+		unit.is_stunned = false
+		unit.marked_target = null
+		unit.parry_left = 2
+	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	dice.seed = 33
+	turns.start(units, dice)
+
+
+func _test_order_bar_input() -> void:
+	_reset_units()
+	units[0].cell = Vector2i(4, 4)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(8, 8)
+	units[3].cell = Vector2i(9, 9)
+	battle.call("_update_turn_ui")
+	var camera: Camera2D = battle.get_node("Camera") as Camera2D
+	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
+	var original: Vector2 = camera.position
+	var destination: Vector2i = Vector2i(4, 3)
+	var point: Vector2 = Vector2(260, 50)
+	# HUD 빈 영역 아래에 이동 가능한 칸을 놓아 클릭 통과를 재현한다.
+	camera.position = map.map_to_local(destination) + root.get_visible_rect().size / 2.0 - point - camera.offset
+	camera.force_update_scroll()
+	point = map.get_global_transform_with_canvas() * map.map_to_local(destination)
+	_check(hud.order_bar.get_global_rect().has_point(point), "클릭 통과 재현 조건: 턴 순서 바 아래 빈 칸")
+	await _click(point)
+	await _click(point)
+	_check(battle.get("preview_cell") == Vector2i(-1, -1) and units[0].cell == Vector2i(4, 4),
+		"턴 순서 바의 빈 영역 클릭은 이동 미리보기·확정으로 통과하지 않음")
+	var portraits: Dictionary = hud.get("_portraits")
+	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
+	_check(turns.current_unit == units[1] and units[0].movement_left == 6,
+		"턴 순서 바가 월드 입력을 막아도 자식 초상은 실제 클릭으로 전환")
+	camera.position = original
+	camera.force_update_scroll()
+
+
+func _click(point: Vector2) -> void:
+	var event: InputEventMouseButton = InputEventMouseButton.new()
+	event.position = root.get_final_transform() * point
+	event.global_position = event.position
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = true
+	Input.parse_input_event(event)
+	await process_frame
+	event.pressed = false
+	Input.parse_input_event(event)
+	await process_frame
+
+
+func _test_reaction_flow() -> void:
+	_reset_units()
+	units[0].cell = Vector2i(4, 4)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(8, 8)
+	units[3].cell = Vector2i(5, 4)
+	turns.end_turn()
+	turns.end_turn()
+	turns.end_turn()
+	_check(turns.current_unit == units[3] and actions.can_move(units[3], Vector2i(6, 4)),
+		"반응 재현 조건: 적 궁수의 이동. current=%s group=%s" % [
+			turns.current_unit.get_display_name(), turns.get_current_group()])
+	var messages: Array[String] = []
+	var choices: Array[int] = [0]
+	var on_log: Callable = func(message: String) -> void: messages.append(message)
+	var on_reaction: Callable = func(kind: String, _prompt: String) -> void:
+		_check(kind == "opportunity" and hud.reaction_dialog.visible, "실제 기회 공격 확인 창")
+		_check(hud.reaction_dialog.get_ok_button().text == "공격"
+			and hud.reaction_dialog.get_cancel_button().text == "넘기기", "기회 공격 선택 문구")
+		var before: CombatUnit = turns.current_unit
+		hud.end_button.pressed.emit()
+		hud.unit_selected.emit(units[0])
+		_check(hud.end_button.disabled and turns.current_unit == before, "확인 창 대기 중 턴·초상 잠금")
+		var use_reaction: bool = choices[0] > 0
+		choices[0] += 1
+		if not use_reaction:
+			hud.reaction_dialog.get_cancel_button().pressed.emit()
+		else:
+			hud.reaction_dialog.get_ok_button().pressed.emit()
+		_check(not actions.resolve_reaction(true), "같은 반응의 중복 결정 거부")
+	actions.logged.connect(on_log)
+	actions.reaction_requested.connect(on_reaction)
+	# 첫째 넘기기, 둘째 사용. 사용한 기회 공격은 확정 빗나감.
+	await actions.move_to(units[3], Vector2i(6, 4))
+	await process_frame
+	_check(units[0].reaction_left == 1 and units[3].cell == Vector2i(6, 4)
+		and not hud.reaction_dialog.visible and not actions.busy, "넘기기는 반응 유지와 이동 재개")
+	units[3].cell = Vector2i(5, 4)
+	for seed_value: int in range(1000):
+		actions.dice.seed = seed_value
+		if actions.dice.randi_range(1, 20) == 1:
+			actions.dice.seed = seed_value
+			break
+	messages.clear()
+	await actions.move_to(units[3], Vector2i(6, 4))
+	await process_frame
+	var use_count: int = 0
+	for message: String in messages:
+		if "기회 공격:" in message and "사용" in message:
+			use_count += 1
+	_check(use_count == 1 and units[0].reaction_left == 0, "아군 반응 사용 로그·비용은 정확히 한 번")
+	_check("d20 [1]" in hud.message_label.text, "3줄 로그에 기회 공격 판정이 남음")
+	_check(choices[0] == 2 and not hud.reaction_dialog.visible and not actions.busy, "두 선택의 연결과 입력 잠금 해제")
+	hud.show_reaction("parry", "흘려내기 확인")
+	_check(hud.reaction_dialog.get_ok_button().text == "흘려내기"
+		and hud.reaction_dialog.get_cancel_button().text == "넘기기", "흘려내기 선택 문구")
+	hud.reaction_dialog.hide()
+	actions.logged.disconnect(on_log)
+	actions.reaction_requested.disconnect(on_reaction)

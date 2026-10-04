@@ -60,6 +60,7 @@ theme_override_font_sizes/font_size = 10
 mouse_filter = 2
 
 [node name="OrderBar" type="HBoxContainer" parent="UI/TurnHud"]
+mouse_filter = 0
 offset_left = 8.0
 offset_top = 25.0
 offset_right = 300.0

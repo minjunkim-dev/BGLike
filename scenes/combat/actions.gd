@@ -163,7 +163,8 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 					var chance: float = CombatChecks.attack_preview(reactor, actor, units).chance
 					if await _ask_reaction(reactor, "opportunity", "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)" % [actor.get_display_name(), chance * 100.0]):
 						reactor.spend_resource(CombatUnit.TurnResource.REACTION)
-						logged.emit("%s 기회 공격: 반응 사용" % reactor.get_display_name())
+						if not reactor.is_ally:
+							logged.emit("%s 기회 공격: 반응 사용" % reactor.get_display_name())
 						await _perform_attack(reactor, actor, false)
 					if actor.hit_points <= 0:
 						break
