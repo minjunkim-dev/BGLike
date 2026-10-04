@@ -47,7 +47,7 @@
 
 1. 사람이 Issue에 목표와 완료 조건을 적습니다.
 2. Claude Code나 Codex 데스크탑 앱에 Issue 번호를 주고 구현합니다. 편집기에서 직접 확인합니다.
-3. PR을 열기 전에 구현하지 않은 쪽 에이전트로 로컬 리뷰를 받고 반영합니다. Claude Code로 구현했으면 Codex 앱에서 리뷰하고, Codex로 구현했으면 Claude Code에서 리뷰합니다. GitHub 자동 리뷰는 P0, P1만 올리므로 P2 이하는 이 단계에서 봅니다. 로컬 Claude 읽기 전용 리뷰는 [사전 승인 범위](#읽기-전용-claude-리뷰의-사전-승인)를 따릅니다.
+3. PR을 열기 전에 구현하지 않은 쪽 에이전트로 로컬 리뷰를 받고 반영합니다. Claude Code로 구현했으면 Codex 앱에서 리뷰하고, Codex로 구현했으면 Claude Code에서 리뷰합니다. GitHub 자동 코드 리뷰도 P2를 보고할 수 있습니다. 로컬 독립 리뷰와 실제 실행 검증을 함께 사용합니다. 로컬 Claude 읽기 전용 리뷰는 [사전 승인 범위](#읽기-전용-claude-리뷰의-사전-승인)를 따릅니다.
 4. PR을 열면 Codex가 자동으로 코드 리뷰와 보안 리뷰를 합니다. Codex로 구현한 PR이면 이 리뷰는 참고만 하고, 독립 리뷰는 3단계의 Claude 리뷰가 맡습니다(아래 표).
 5. 리뷰 지적은 같은 로컬 세션에서 반영해 push하고, `@codex review`로 다시 리뷰를 받습니다.
 6. 사람이 플레이를 확인하고 squash merge합니다.
@@ -89,7 +89,8 @@
 
 **Codex** (ChatGPT의 Codex GitHub 연동, 저장소 설정 파일 없음)
 
-- 리뷰용 PR을 열거나 Draft를 Ready로 바꾸면 자동으로 코드 리뷰와 보안 리뷰를 합니다. 열린 PR에 새 커밋을 push하면 다시 리뷰하지 않으므로, 다시 받으려면 `@codex review`를 적습니다.
+- 리뷰용 PR을 열거나 Draft를 Ready로 바꾸면 자동으로 코드 리뷰와 보안 리뷰를 합니다. 현재 연결은 새 커밋 push도 검토합니다. [PR #30](https://github.com/minjunkim-dev/BGLike/pull/30)에서 Ready 전환과 후속 커밋의 코드·보안 리뷰 시작을 2026-10-04 확인했습니다. 요청 시작과 현재 SHA의 완료 결과를 구분합니다.
+- 명시적인 재검토는 `@codex review`로 요청합니다. 자동 실행이 이미 진행 중이면 같은 SHA에 중복 요청하지 않습니다.
 - PR 코멘트 `@codex 요청`으로 작업도 맡길 수 있습니다. 이 기능은 2026-10-01 기준 아직 시험하지 않았습니다.
 - 자동 리뷰와 `@codex 요청`에는 이 저장소의 [Codex 환경](https://chatgpt.com/codex/cloud/settings/environments)이 필요합니다. 설정은 [Codex 설정](https://chatgpt.com/codex/cloud/settings/general)에서 바꿉니다. 실행 비용은 ChatGPT 요금제에 포함되고 Actions 분을 쓰지 않습니다. 그래서 PR마다 도는 자동 리뷰를 Codex에 맡깁니다.
 - Codex 환경의 설정 스크립트가 Godot 4.7.2를 설치합니다. 스크립트는 Codex 설정 화면에서만 바꿀 수 있으므로, 엔진 버전을 올릴 때는 `godot.yml`과 함께 갱신합니다. GitHub Claude의 리뷰 전용 작업에는 엔진을 설치하지 않습니다.
