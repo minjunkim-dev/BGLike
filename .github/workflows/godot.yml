@@ -17,7 +17,16 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      GODOT_FILE: Godot_v4.7.2-stable_linux.x86_64
+      GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
     steps:
+      - name: Restore Godot archive
+        id: godot-cache
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ runner.temp }}/godot.zip
+          key: godot-${{ runner.os }}-${{ runner.arch }}-4.7.2-${{ env.GODOT_SHA256 }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           # HEAD^가 PR 기준 커밋(push면 직전 main)이어야 diff --check가 이 변경만 봅니다.
@@ -27,10 +36,14 @@ jobs:
         run: git diff --check HEAD^ HEAD
       - name: Install Godot 4.7.2
         run: |
-          curl -fL --retry 3 -o "$RUNNER_TEMP/godot.zip" https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
-          echo "cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4  $RUNNER_TEMP/godot.zip" | sha256sum -c -
+          if [ ! -f "$RUNNER_TEMP/godot.zip" ]; then
+            curl -fL --retry 3 -o "$RUNNER_TEMP/godot.zip" \
+              "https://github.com/godotengine/godot/releases/download/4.7.2-stable/$GODOT_FILE.zip"
+          fi
+          printf '%s  %s\n' "$GODOT_SHA256" "$RUNNER_TEMP/godot.zip" | sha256sum -c -
           unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP"
-          chmod +x "$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64"
+          chmod +x "$RUNNER_TEMP/$GODOT_FILE"
+          "$RUNNER_TEMP/$GODOT_FILE" --version
       - name: Import project
         run: '"$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" --headless --path . --import'
       - name: Start main scene
@@ -41,6 +54,13 @@ jobs:
         run: '"$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" --headless --path . --script tests/combat_checks_test.gd'
       - name: Check combat actions
         run: '"$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" --headless --path . --script tests/combat_actions_test.gd'
+      - name: Record engine cache state
+        if: always()
+        env:
+          CACHE_HIT: ${{ steps.godot-cache.outputs.cache-hit }}
+        run: |
+          printf 'Godot 4.7.2 archive cache hit: %s. Cache restoration does not skip SHA-256 verification or engine checks.\n' \
+            "${CACHE_HIT:-false}" >> "$GITHUB_STEP_SUMMARY"
 
   notify:
     needs: smoke
