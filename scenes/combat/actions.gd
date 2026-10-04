@@ -251,6 +251,8 @@ func shove(actor: CombatUnit, target: CombatUnit) -> bool:
 			actor.get_attribute(CombatUnit.Attribute.STRENGTH),
 			maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), dice)
 		won = result.attacker_wins
+		feedback.emit(actor, "밀치기 %d" % result.attacker_total)
+		feedback.emit(target, "저항 %d" % result.defender_total)
 		logged.emit("밀치기 대결: %d + %d = %d / %d + %d = %d" % [
 			result.attacker_roll, actor.get_attribute(CombatUnit.Attribute.STRENGTH), result.attacker_total,
 			result.defender_roll, maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), result.defender_total])
@@ -306,6 +308,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	logged.emit("%s 공격(%s): d20 %s + %d = %d / AC %d · %s" % [actor.get_display_name(), mode_name,
 		str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total, target.get_armor_class(),
 		"치명타" if last_attack.critical else "명중" if last_attack.success else "빗나감"])
+	feedback.emit(actor, "공격 %d" % last_attack.total)
 	if not last_attack.success:
 		feedback.emit(target, "빗나감")
 		return
@@ -318,6 +321,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 			var saved: CombatChecks.RollResult = CombatChecks.saving_throw(target.get_dexterity(), save_dc, dice)
 			logged.emit("흘려내기: d20 %d + %d = %d / DC %d · %s" % [saved.selected_roll,
 				target.get_dexterity(), saved.total, save_dc, "성공" if saved.success else "실패"])
+			feedback.emit(target, "흘려내기 %d" % saved.total)
 			if saved.success:
 				feedback.emit(target, "흘려내기")
 				return
@@ -345,6 +349,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 		logged.emit("정신 내성: d20 %d + %d = %d / DC %d · %s" % [saved.selected_roll,
 			target.get_attribute(CombatUnit.Attribute.MENTAL), saved.total, save_dc,
 			"기절" if not saved.success else "버팀"])
+		feedback.emit(target, "정신 내성 %d" % saved.total)
 
 
 func _damage(target: CombatUnit, amount: int) -> void:

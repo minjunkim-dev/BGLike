@@ -174,6 +174,12 @@ func show_feedback(text: String) -> void:
 	popup.add_theme_color_override("font_outline_color", OUTLINE_COLOR)
 	popup.add_theme_constant_override("outline_size", 2)
 	popup.position = Vector2(-16, -42)
+	# 같은 유닛의 판정과 피해가 함께 떠도 글자가 겹치지 않는다.
+	for child: Node in get_parent().get_children():
+		if child is Label and child.get_meta("feedback_unit", 0) == get_instance_id():
+			popup.position.y = minf(popup.position.y,
+				child.position.y - position.y - popup.get_combined_minimum_size().y - 16)
+	popup.set_meta("feedback_unit", get_instance_id())
 	# 전투 불능 유닛도 마지막 피해를 표시한다.
 	get_parent().add_child(popup)
 	popup.position += position

@@ -181,7 +181,9 @@ func _test_log_and_status() -> void:
 	for child: Node in parent.get_children():
 		if child is Label and child.text == "빗나감":
 			has_popup = true
-	_check(has_popup, "실제 판정의 숫자 팝업 연결")
+	_check(has_popup, "실제 빗나감 결과 팝업 연결")
+	_check(_has_feedback(units[1], "공격 %d" % actions.last_attack.total),
+		"불리 공격의 실제 판정 합계를 숫자 팝업으로 표시")
 	units[1].action_left = 1
 	units[2].is_stunned = true
 	actions.dice.seed = 100
@@ -189,6 +191,92 @@ func _test_log_and_status() -> void:
 	_check(_has_two_dice_log("유리"),
 		"유리 판정은 로그에 주사위 두 값을 모두 표시")
 	_check("표식 추가" in hud.message_label.text, "표식 추가 피해를 로그에 명시")
+	_check(_has_feedback(units[1], "공격 %d" % actions.last_attack.total),
+		"유리 공격의 실제 판정 합계를 숫자 팝업으로 표시")
+	await _test_roll_popups()
+
+
+func _has_feedback(unit: CombatUnit, text: String) -> bool:
+	for child: Node in unit.get_parent().get_children():
+		if child is Label and child.text == text and child.get_meta("feedback_unit", 0) == unit.get_instance_id():
+			return true
+	return false
+
+
+func _test_roll_popups() -> void:
+	var warrior: CombatUnit = units[0]
+	var target: CombatUnit = units[2]
+	turns.select_unit(warrior)
+	warrior.cell = Vector2i(4, 4)
+	target.cell = Vector2i(5, 4)
+	target.hit_points = target.get_max_hit_points()
+	target.is_stunned = false
+	warrior.bonus_action_left = 1
+	var expected_dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	expected_dice.seed = 100
+	var contest: CombatChecks.ContestResult = CombatChecks.contest(
+		warrior.get_attribute(CombatUnit.Attribute.STRENGTH),
+		maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), expected_dice)
+	actions.dice.seed = 100
+	actions.shove(warrior, target)
+	_check(_has_feedback(warrior, "밀치기 %d" % contest.attacker_total)
+		and _has_feedback(target, "저항 %d" % contest.defender_total), "밀치기 양쪽 대결 합계를 표시")
+	# 기절 자동 성공에는 굴림이 없으므로 숫자를 새로 만들지 않는다.
+	warrior.bonus_action_left = 1
+	target.cell = Vector2i(5, 4)
+	target.is_stunned = true
+	var emitted: Array[String] = []
+	var capture: Callable = func(_unit: CombatUnit, text: String) -> void: emitted.append(text)
+	actions.feedback.connect(capture)
+	actions.shove(warrior, target)
+	_check(emitted.is_empty(), "기절 대상의 자동 밀치기는 가짜 대결 숫자를 표시하지 않음")
+	# 명중 후 정신 내성까지 진행할 seed를 선택하고 실제 로그 합계와 비교한다.
+	turns.select_unit(units[1])
+	units[1].cell = Vector2i(1, 4)
+	target.cell = Vector2i(5, 4)
+	target.is_stunned = false
+	target.reaction_left = 0
+	units[1].action_left = 1
+	units[1].shock_left = 1
+	units[1].marked_target = null
+	for seed_value: int in range(1000):
+		actions.dice.seed = seed_value
+		var roll: int = actions.dice.randi_range(1, 20)
+		if roll >= 11 and roll < 20:
+			actions.dice.seed = seed_value
+			break
+	await actions.attack(units[1], target, true)
+	var save_total: String = hud.message_label.text.get_slice("정신 내성: ", 1).get_slice(" = ", 1).get_slice(" /", 0)
+	_check(save_total.is_valid_int() and _has_feedback(target, "정신 내성 %s" % save_total),
+		"정신 내성 팝업은 실제 로그의 합계와 일치")
+	# 적 전사의 자동 흘려내기도 실제 내성 합계를 표시한다.
+	turns.select_unit(warrior)
+	warrior.action_left = 1
+	warrior.cell = Vector2i(4, 4)
+	target.cell = Vector2i(5, 4)
+	target.is_stunned = false
+	target.hit_points = target.get_max_hit_points()
+	target.reaction_left = 1
+	target.parry_left = 2
+	for seed_value: int in range(1000):
+		actions.dice.seed = seed_value
+		if actions.dice.randi_range(1, 20) == 11:
+			actions.dice.seed = seed_value
+			break
+	await actions.attack(warrior, target)
+	var parry_text: String = ""
+	for text: String in emitted:
+		if text.begins_with("흘려내기 ") and text.get_slice(" ", 1).is_valid_int():
+			parry_text = text
+	_check(not parry_text.is_empty() and _has_feedback(target, parry_text), "흘려내기 실제 내성 합계 표시")
+	var popup_rects: Array[Rect2] = []
+	await process_frame
+	for child: Node in target.get_parent().get_children():
+		if child is Label and child.get_meta("feedback_unit", 0) == target.get_instance_id():
+			for rect: Rect2 in popup_rects:
+				_check(not rect.intersects(child.get_rect()), "같은 유닛의 숫자 팝업은 겹치지 않음")
+			popup_rects.append(child.get_rect())
+	actions.feedback.disconnect(capture)
 
 
 func _has_two_dice_log(mode: String) -> bool:
