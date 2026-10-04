@@ -2,29 +2,34 @@ name: Godot
 
 on:
   pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: godot-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: godot-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
 jobs:
+  policy:
+    uses: ./.github/workflows/pr-lint.yml
+
   smoke:
+    needs: policy
+    if: needs.policy.outputs.game == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          # HEAD^가 PR 기준 커밋(push면 직전 main)이어야 diff --check가 이 변경만 봅니다.
           fetch-depth: 2
           lfs: true
-      - name: Check whitespace
-        run: git diff --check HEAD^ HEAD
+          persist-credentials: false
       - name: Install Godot 4.7.2
         run: |
           curl -fL --retry 3 -o "$RUNNER_TEMP/godot.zip" https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
@@ -45,8 +50,11 @@ jobs:
         run: '"$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" --headless --path . --script tests/combat_hud_test.gd'
 
   notify:
-    needs: smoke
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    needs: [policy, smoke]
+    if: >-
+      always() &&
+      (needs.policy.result == 'failure' || needs.smoke.result == 'failure') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 2
     continue-on-error: true
@@ -54,6 +62,7 @@ jobs:
     env:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_PR_WEBHOOK_URL }}
       CI_RESULT: ${{ needs.smoke.result }}
+      POLICY_RESULT: ${{ needs.policy.result }}
     steps:
       - name: Post Godot result to Discord
         shell: bash
@@ -69,7 +78,7 @@ jobs:
           target = f"PR #{event['pull_request']['number']}" if os.environ["GITHUB_EVENT_NAME"] == "pull_request" else os.environ["GITHUB_REF_NAME"]
           run_url = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
           print(json.dumps({
-              "content": f"Godot CI {os.environ['CI_RESULT']} on {target}\n{run_url}",
+              "content": f"CI failure on {target}: policy={os.environ['POLICY_RESULT']}, Godot={os.environ['CI_RESULT']}\n{run_url}",
               "allowed_mentions": {"parse": []},
           }))
           PY
