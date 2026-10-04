@@ -24,8 +24,9 @@ func _pause(pause: Callable) -> void:
 
 
 func _warrior_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:
+	var used_second_wind: bool = false
 	if actor.hit_points * 2 <= actor.get_max_hit_points() and actions.can_use(actor, "second_wind"):
-		actions.use_self(actor, "second_wind")
+		used_second_wind = actions.use_self(actor, "second_wind")
 		await _pause(pause)
 	if not _active(actor, actions):
 		return
@@ -41,7 +42,7 @@ func _warrior_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -
 	if target == null or not await actions.attack(actor, target):
 		return
 	await _pause(pause)
-	if not _active(actor, actions) or not actions.can_use(actor, "surge"):
+	if used_second_wind or not _active(actor, actions) or not actions.can_use(actor, "surge"):
 		return
 	# 공격 뒤 탈락한 대상은 제외한다. 행동 회복 전이므로 거리로 확인한다.
 	var remaining: Array[CombatUnit] = _targets(actor, actions)
@@ -152,15 +153,14 @@ func _retreat(actor: CombatUnit, actions: CombatActions) -> Vector2i:
 	var targets: Array[CombatUnit] = _targets(actor, actions)
 	var best: Vector2i = actor.cell
 	var best_cost: int = actor.movement_left + 1
-	# 불리를 없애고 사거리 안에 남는 가장 짧은 이동. 맵/점유 규칙을 그대로 쓴다.
+	# 모든 인접 위협에서 벗어나는 가장 짧은 이동. 맵/점유 규칙을 그대로 쓴다.
 	for x: int in range(actions.map_size.x):
 		for y: int in range(actions.map_size.y):
 			var cell: Vector2i = Vector2i(x, y)
 			if _nearest_distance(cell, targets, actions) <= 1 or not actions.can_move(actor, cell):
 				continue
 			var cost: int = actions.path_to(actor, cell).size()
-			for target: CombatUnit in targets:
-				if actions.distance(cell, target.cell) <= actor.get_attack_range() and cost < best_cost:
-					best = cell
-					best_cost = cost
+			if cost < best_cost:
+				best = cell
+				best_cost = cost
 	return best

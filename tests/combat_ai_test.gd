@@ -58,6 +58,7 @@ func _run() -> void:
 	await _test_warrior()
 	await _test_archer()
 	await _test_reaction_pause()
+	await _test_enemy_reactions()
 	await _test_guards()
 	await _test_scene()
 	await _test_default_scene()
@@ -146,7 +147,7 @@ func _test_archer() -> void:
 	_check(retreat.units[3].disengage_left == 1 and retreat.units[3].disengaged,
 		"인접 적이 있으면 물러서며 쏘기를 먼저 사용")
 	_check(retreat.actions.distance(retreat.units[3].cell, retreat.units[0].cell) > 1
-		and retreat.units[3].movement_left == 5, "사거리 유지하며 최단 후퇴")
+		and retreat.units[3].movement_left == 5, "인접 위협에서 벗어나는 최단 후퇴")
 	_check(prompts[0] == 0 and retreat.units[0].reaction_left == 1,
 		"물러서며 쏘기 이동은 아군 기회 공격을 일으키지 않음")
 	_check(retreat.units[3].mark_left == 1 and retreat.units[3].shock_left == 0,
@@ -210,6 +211,30 @@ func _test_reaction_pause() -> void:
 
 func _resolve_later(actions: CombatActions) -> void:
 	actions.resolve_reaction(false)
+
+
+func _test_enemy_reactions() -> void:
+	var f: Fixture = _fixture()
+	f.turns.end_turn()
+	f.turns.end_turn()
+	var actor: CombatUnit = f.units[0]
+	var reactor: CombatUnit = f.units[2]
+	actor.parry_left = 0
+	var prompts: Array[int] = [0]
+	f.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
+		prompts[0] += 1
+		f.actions.resolve_reaction(false)
+	)
+	f.actions.dice.seed = 2
+	_check(await f.actions.move_to(actor, Vector2i(6, 4)), "적 전사 옆에서 아군 이동 실행")
+	_check(reactor.reaction_left == 0 and prompts[0] == 0,
+		"적 기회 공격은 확인 창 없이 반응을 자동 소비")
+	actor.cell = Vector2i(5, 4)
+	reactor.reaction_left = 1
+	f.actions.dice.seed = 2
+	_check(await f.actions.attack(actor, reactor), "적 전사에게 아군 공격 실행")
+	_check(reactor.parry_left == 1 and reactor.reaction_left == 0 and prompts[0] == 0,
+		"적 흘려내기는 확인 창 없이 반응과 횟수를 자동 소비")
 
 
 func _test_guards() -> void:
