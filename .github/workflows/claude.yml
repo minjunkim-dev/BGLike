@@ -1,48 +1,176 @@
 name: Claude
 
 on:
+  issues:
+    types: [opened, edited, labeled]
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   issue_comment:
     types: [created]
-  pull_request_review_comment:
-    types: [created]
-  pull_request_review:
-    types: [submitted]
-  issues:
-    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: Review an issue or pull request
+        type: choice
+        options: [issue, pr]
+        required: true
+      number:
+        description: Issue or pull request number
+        type: string
+        required: true
+
+permissions:
+  contents: read
 
 jobs:
-  claude:
-    if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'claude') ||
-      (github.event_name == 'issues' && github.event.action == 'opened' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
-    runs-on: ubuntu-latest
-    # ponytail: 비공개 저장소의 Actions 분을 Godot CI와 나눠 쓰므로 폭주 실행을 끊습니다.
-    timeout-minutes: 30
+  authorize:
+    # Ignore bot feedback and comments that are not an explicit review request.
+    if: >-
+      github.event.sender.type == 'User' &&
+      (github.event_name != 'issue_comment' ||
+       startsWith(github.event.comment.body, '@claude review') ||
+       startsWith(github.event.comment.body, '@claude security review'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
     permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-      id-token: write
-      actions: read
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.context.outputs.run }}
+      kind: ${{ steps.context.outputs.kind }}
+      number: ${{ steps.context.outputs.number }}
+      sha: ${{ steps.context.outputs.sha }}
+      mode: ${{ steps.context.outputs.mode }}
     steps:
-      # 비밀값과 쓰기 권한을 받는 작업이라 태그 대신 검토한 커밋으로 고정합니다.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # Never check out, import, build, or run PR-head code with secrets.
+      # A manual dispatch may test a maintainer-selected workflow branch.
+      - name: Check out trusted instructions
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 1
-          lfs: true
-      # Claude가 PR 전에 README의 Godot headless 검사를 직접 실행할 수 있게 합니다.
-      - name: Install Godot 4.7.2
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Authorize the request using live repository permissions
+        id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/review_context.py
+  review:
+    needs: authorize
+    if: needs.authorize.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      report: ${{ steps.report.outputs.report }}
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    # Ignore unapproved events. An old PR head cannot replace a newer head's review.
+    concurrency:
+      group: claude-authorized-review-${{ needs.authorize.outputs.number }}-${{ needs.authorize.outputs.sha || 'issue' }}
+      cancel-in-progress: true
+    steps:
+      - name: Check out trusted instructions
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Check Claude authentication availability
+        env:
+          CLAUDE_AUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
-          curl -fL --retry 3 -o "$RUNNER_TEMP/godot.zip" https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
-          echo "cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4  $RUNNER_TEMP/godot.zip" | sha256sum -c -
-          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP"
-          sudo ln -s "$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" /usr/local/bin/godot
-          godot --version
-      - uses: anthropics/claude-code-action@12dd8d74c712f5f3669365b2369b558c495b1104 # v1 (2026-10-01)
+          if [ -z "$CLAUDE_AUTH" ]; then
+            echo 'Claude 인증이 없습니다. docs/WORKFLOW.md의 AI 자동화 설정을 확인하세요.' >> "$GITHUB_STEP_SUMMARY"
+            echo '::error::Missing CLAUDE_CODE_OAUTH_TOKEN; no AI review was performed'
+            exit 1
+          fi
+      - name: Install and verify subprocess isolation
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y bubblewrap socat
+          # Ubuntu 24.04 restricts user namespaces. Grant only bwrap the capability.
+          if [ "$(sysctl -n kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || echo 0)" = 1 ]; then
+            sudo tee /etc/apparmor.d/bwrap > /dev/null <<'PROFILE'
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+            include if exists <local/bwrap>
+          }
+          PROFILE
+            sudo apparmor_parser -r /etc/apparmor.d/bwrap
+          fi
+          bwrap --version
+          bwrap --unshare-user --ro-bind / / -- /usr/bin/true
+      - name: Prepare bounded evidence from GitHub
+        id: evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_KIND: ${{ needs.authorize.outputs.kind }}
+          REVIEW_NUMBER: ${{ needs.authorize.outputs.number }}
+          REVIEW_SHA: ${{ needs.authorize.outputs.sha }}
+          REVIEW_MODE: ${{ needs.authorize.outputs.mode }}
+        run: python3 scripts/review_report.py prepare
+      - name: Review supplied evidence without tools
+        id: claude
+        uses: anthropics/claude-code-action@12dd8d74c712f5f3669365b2369b558c495b1104 # reviewed v1, shared with BGLike
+        env:
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          label_trigger: claude
-          claude_args: --model claude-opus-5-5 --effort high --allowedTools "Bash(godot:*),Bash(git diff:*)"
+          # A job-scoped token avoids broad app/PAT permissions. Comments use github-actions[bot].
+          github_token: ${{ github.token }}
+          show_full_output: false
+          display_report: false
+          use_sticky_comment: false
+          use_commit_signing: false
+          classify_inline_comments: false
+          prompt: ${{ steps.evidence.outputs.prompt }}
+          claude_args: >-
+            --max-turns 2
+            --tools ""
+            --disallowedTools "*"
+            --strict-mcp-config
+            --mcp-config '{"mcpServers":{}}'
+            --disable-slash-commands
+      - name: Validate completed review and bind it to the authorized SHA
+        id: report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLAUDE_AUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          REVIEW_KIND: ${{ needs.authorize.outputs.kind }}
+          REVIEW_NUMBER: ${{ needs.authorize.outputs.number }}
+          REVIEW_SHA: ${{ needs.authorize.outputs.sha }}
+          REVIEW_EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: python3 scripts/review_report.py finish
+      - name: Summarize failure without model messages
+        if: failure() && steps.claude.outcome == 'failure'
+        env:
+          REVIEW_EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: python3 scripts/review_failure.py
+
+  publish:
+    needs: [authorize, review]
+    if: needs.review.outputs.report != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Check out trusted publication code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Recheck the target and post only the validated report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_KIND: ${{ needs.authorize.outputs.kind }}
+          REVIEW_NUMBER: ${{ needs.authorize.outputs.number }}
+          REVIEW_SHA: ${{ needs.authorize.outputs.sha }}
+          REVIEW_REPORT: ${{ needs.review.outputs.report }}
+        run: python3 scripts/review_report.py publish

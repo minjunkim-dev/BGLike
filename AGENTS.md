@@ -22,9 +22,18 @@
 
 ## 검증 기준
 
-- 모든 변경: `git diff --check`, Godot headless import, 메인 장면 실행을 확인합니다. 명령은 [README](README.md)에 있습니다.
+- 모든 변경: `git diff --check`, `python3 -m unittest discover -s scripts -p 'test_*.py'`를 확인합니다. 워크플로 변경은 `actionlint`도 실행합니다.
+- 게임 코드·장면·리소스·프로젝트 설정 변경: Godot headless import, 메인 장면과 기존 전투 회귀 테스트를 실행합니다. 명령은 [README](README.md)에 있습니다.
+- 문서와 명시된 관리 파일만 바뀌면 CI는 Godot 실행을 선택하지 않습니다. 범위 규칙과 알 수 없는 변경의 전체 검사 경로는 [CI 구성](docs/CI.md)을 따릅니다.
 - 게임 플레이 변경: CI 성공과 별도로, 변경한 입력과 화면 흐름을 편집기에서 직접 확인합니다. 자동 검사만으로 조작감이나 화면 가독성을 확인했다고 말하지 않습니다.
 - 문서나 설정만 바꾼 경우: 해당 설정을 실제로 읽는 도구 또는 GitHub 흐름을 확인하고, 확인하지 못한 부분을 PR에 적습니다.
+
+## 권리와 공개
+
+- [COPYRIGHT](COPYRIGHT.md)를 따릅니다. 자체 코드에 별도의 재사용 라이선스를 추가하지 않습니다.
+- 외부 코드·자산은 원래 출처와 조건을 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)에 기록합니다.
+- 외부 기여의 권리와 구매 자산의 원본 공개 권한을 임의로 확정하지 않습니다.
+- GitHub Claude는 권한 확인·모델 검토·보고 게시를 분리합니다. 모델의 도구와 쓰기 토큰을 허용하지 않습니다. PR 코드를 Secret 작업에서 실행하지 않습니다.
 
 ## Code Review Rules
 

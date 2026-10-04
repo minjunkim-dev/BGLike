@@ -2,6 +2,17 @@
 
 두 사람이 만드는 Godot 4 싱글 플레이 전술 RPG의 개발 작업명입니다. 게임의 정식 이름과 세계관은 첫 플레이 가능 구간을 만든 뒤 결정합니다.
 
+개발 중인 상업용 PC 게임입니다. 아직 출시하지 않았습니다. 기능과 화면은 변경될 수 있습니다.
+
+## 저작권과 사용 조건
+
+Copyright © 2026 김민준, 정이건. All rights reserved.
+
+자체 코드와 콘텐츠에는 모든 권리를 유보합니다. 별도의 재사용 라이선스를 제공하지 않습니다.
+소스 공개는 외부의 제품 출시·판매, 수정·재배포를 허락하는 의미가 아닙니다.
+GitHub 약관에서 허용하는 열람·fork와 적용 법률의 예외는 유지됩니다.
+상세 조건은 [COPYRIGHT](COPYRIGHT.md), 외부 구성 요소와 자산의 조건은 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)를 참조합니다.
+
 ## 시작
 
 - Godot 4.7.2 Standard와 Git LFS가 필요합니다. 이미 설치돼 있으면 그대로 씁니다.
@@ -16,12 +27,15 @@
 godot --headless --path . --import
 godot --headless --path . --quit-after 2
 git diff --check
+python3 -m unittest discover -s scripts -p 'test_*.py'
 godot --headless --path . --script tests/combat_turns_test.gd
 godot --headless --path . --script tests/combat_checks_test.gd
 godot --headless --path . --script tests/combat_actions_test.gd
 ```
 
 `godot`이 PATH에 없다면 설치된 Godot 앱의 실행 파일 경로를 사용합니다. macOS 외장 SSD 설치 예시는 `/Volumes/P41_USB4/Godot.app/Contents/MacOS/Godot`입니다.
+
+문서·관리 파일만 바뀌면 공백과 Python 검사를 수행합니다. CI의 엔진 선택과 알림 조건은 [CI 구성](docs/CI.md)을 따릅니다.
 
 ## 협업 규칙
 

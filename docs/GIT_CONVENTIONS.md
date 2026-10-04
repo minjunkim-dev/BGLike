@@ -103,7 +103,7 @@ squash merge를 하면 `main`에는 PR 제목이 커밋 제목으로 남습니�
 
 | 대상 | 검사 | 어긋나면 |
 | --- | --- | --- |
-| PR 제목, 브랜치 이름 | [PR lint 워크플로우](../.github/workflows/pr-lint.yml). PR을 열거나 제목을 고칠 때마다 실행 | CI 실패. 제목이나 브랜치 이름을 고치면 다시 검사 |
+| PR 제목, 브랜치 이름 | Godot workflow가 [재사용 PR lint](../.github/workflows/pr-lint.yml)를 호출. PR을 열거나 제목을 고칠 때마다 실행 | CI 실패. 제목이나 브랜치 이름을 고치면 다시 검사 |
 | 커밋 제목 | `.githooks/commit-msg`. `git config core.hooksPath .githooks`를 한 번 실행해 켬. 같은 폴더의 LFS hook도 함께 켜짐 | 커밋 거부. 급하면 `git commit --no-verify` |
 | 병합 방식 | 저장소 설정: squash merge만 허용, 병합 후 브랜치 자동 삭제 | 다른 방식은 선택할 수 없음 |
 
