@@ -70,7 +70,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           types='feat|fix|refactor|perf|test|docs|build|ci|chore|revert'
-          if printf '%s' "$BRANCH" | grep -Eq '^(claude|codex)/'; then
+          if printf '%s' "$BRANCH" | grep -Eq '^(claude|codex|dependabot)/'; then
             echo "에이전트 브랜치는 이름을 검사하지 않습니다: $BRANCH"
             exit 0
           fi

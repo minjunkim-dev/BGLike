@@ -30,7 +30,7 @@
 - 코드를 바꾸는 브랜치(`feat`, `fix`, `refactor`, `perf`, `test`, `revert`)는 Issue 번호를 반드시 넣습니다. 브랜치 목록에서 Issue를 바로 찾을 수 있습니다. 문서·설정 브랜치(`docs`, `build`, `ci`, `chore`)는 Issue가 없으면 번호를 생략합니다.
 - 소문자 영어, 숫자, `-`만 씁니다. 슬래시는 `type` 뒤에 한 번만 씁니다. 공백, 한글, 대문자, `_`는 쓰지 않습니다. 대문자를 금지하면 대소문자를 구분하지 않는 macOS 파일 시스템에서 `Feat/x`와 `feat/x`가 충돌하는 문제를 피합니다.
 - 설명은 짧게 씁니다. 2~5단어를 권장하며, 단어 수는 자동 검사하지 않습니다.
-- 도구가 자동으로 만든 `claude/…`, `codex/…` 브랜치는 이름을 바꾸지 않아도 됩니다. 사람이 이어받아 오래 작업하면 위 형식으로 새 브랜치를 만듭니다.
+- 도구가 자동으로 만든 `claude/…`, `codex/…`, `dependabot/…` 브랜치는 이름을 바꾸지 않아도 됩니다. 사람이 이어받아 오래 작업하면 위 형식으로 새 브랜치를 만듭니다.
 - 이 규칙 이전에 만든 브랜치는 이름을 바꾸지 않습니다.
 
 ## 커밋 메시지: Conventional Commits
@@ -107,4 +107,4 @@ squash merge를 하면 `main`에는 PR 제목이 커밋 제목으로 남습니�
 | 커밋 제목 | `.githooks/commit-msg`. `git config core.hooksPath .githooks`를 한 번 실행해 켬. 같은 폴더의 LFS hook도 함께 켜짐 | 커밋 거부. 급하면 `git commit --no-verify` |
 | 병합 방식 | 저장소 설정: squash merge만 허용, 병합 후 브랜치 자동 삭제 | 다른 방식은 선택할 수 없음 |
 
-`claude/…`, `codex/…` 브랜치는 이름 검사를 건너뜁니다. main 보호의 현재 적용 상태와 필수 검사는 [협업 규칙](WORKFLOW.md#현재-github-제약)을 참조합니다.
+`claude/…`, `codex/…`, `dependabot/…` 브랜치는 이름 검사를 건너뜁니다. main 보호의 현재 적용 상태와 필수 검사는 [협업 규칙](WORKFLOW.md#현재-github-제약)을 참조합니다.
