@@ -26,6 +26,7 @@ jobs:
     env:
       TITLE: ${{ github.event.pull_request.title }}
       BRANCH: ${{ github.head_ref }}
+      AUTHOR: ${{ github.event.pull_request.user.login }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -62,7 +63,8 @@ jobs:
             exit 1
           fi
           # Dependabot names long actions in full, e.g. anthropics/claude-code-action/base-action.
-          if [ "${#TITLE}" -gt 72 ] && [[ "$BRANCH" != dependabot/* ]]; then
+          # Gate on the GitHub-set author; anyone can name a branch dependabot/.
+          if [ "${#TITLE}" -gt 72 ] && [ "$AUTHOR" != 'dependabot[bot]' ]; then
             echo "::error::PR 제목이 72자를 넘습니다 (${#TITLE}자)."
             exit 1
           fi
