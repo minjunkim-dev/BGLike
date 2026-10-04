@@ -172,8 +172,7 @@ func _test_log_and_status() -> void:
 	units[2].cell = Vector2i(5, 8)
 	actions.dice = _dice_for_miss()
 	await actions.attack(units[1], units[2])
-	_check("공격(불리): d20 [" in hud.message_label.text
-		and ", " in hud.message_label.text.get_slice("d20", 1).get_slice("]", 0),
+	_check(_has_two_dice_log("불리"),
 		"불리 판정은 로그에 주사위 두 값을 모두 표시")
 	var parent: Node = units[2].get_parent()
 	var has_popup: bool = false
@@ -185,10 +184,19 @@ func _test_log_and_status() -> void:
 	units[2].is_stunned = true
 	actions.dice.seed = 100
 	await actions.attack(units[1], units[2])
-	_check("공격(유리): d20 [" in hud.message_label.text
-		and ", " in hud.message_label.text.get_slice("d20", 1).get_slice("]", 0),
+	_check(_has_two_dice_log("유리"),
 		"유리 판정은 로그에 주사위 두 값을 모두 표시")
 	_check("표식 추가" in hud.message_label.text, "표식 추가 피해를 로그에 명시")
+
+
+func _has_two_dice_log(mode: String) -> bool:
+	var marker: String = "공격(%s): d20 [" % mode
+	for line: String in hud.message_label.text.split("\n"):
+		if marker not in line:
+			continue
+		var values: PackedStringArray = line.get_slice(marker, 1).get_slice("]", 0).split(", ")
+		return values.size() == 2 and values[0].is_valid_int() and values[1].is_valid_int()
+	return false
 
 
 func _dice_for_miss() -> RandomNumberGenerator:
