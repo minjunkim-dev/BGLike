@@ -356,6 +356,33 @@ func _test_guidance() -> void:
 			var panel: Control = hud.get_node("ActionHelp") as Control
 			_check(not panel.get_global_rect().intersects((hud.get_node("CombatLog") as Control).get_global_rect()),
 				"동작 설명과 로그가 겹치지 않음: " + action)
+			_check(hud.help_label.text.begins_with("비용: "), "비용은 긴 효과 설명보다 먼저 표시: " + action)
+			print("Guidance layout: %s content=%d visible=%.0f scroll=%s" % [action,
+				hud.help_label.get_content_height(), hud.help_label.size.y,
+				hud.help_label.get_content_height() > hud.help_label.size.y])
+	# 플랫폼 글꼴이 더 크거나 안내가 길어도 패널은 로그 위에 머문다.
+	hud.help_label.add_theme_font_size_override("normal_font_size", 18)
+	hud.help_label.text = "글꼴 차이를 재현하는 긴 안내\n".repeat(30) + "마지막 안내"
+	await process_frame
+	await process_frame
+	var help_panel: Control = hud.get_node("ActionHelp") as Control
+	var scroll: VScrollBar = hud.help_label.get_v_scroll_bar()
+	_check(not help_panel.get_global_rect().intersects((hud.get_node("CombatLog") as Control).get_global_rect())
+		and scroll.max_value > scroll.page, "긴 안내는 패널을 늘리지 않고 스크롤 범위를 만든다")
+	var wheel: InputEventMouseButton = InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	wheel.position = root.get_final_transform() * hud.help_label.get_global_rect().get_center()
+	wheel.global_position = wheel.position
+	Input.parse_input_event(wheel)
+	await process_frame
+	_check(scroll.value > 0, "설명 영역의 실제 휠 입력으로 아래 내용을 읽을 수 있음")
+	wheel.pressed = false
+	Input.parse_input_event(wheel)
+	hud.help_label.remove_theme_font_size_override("normal_font_size")
+	battle.call("_update_turn_ui")
+	await process_frame
+	await process_frame
 
 
 func _test_results_and_restart() -> void:
