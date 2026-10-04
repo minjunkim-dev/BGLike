@@ -112,4 +112,4 @@
 | Issue·PR 조건 및 보안 리뷰 | `claude` 라벨 또는 `@claude review` / `@claude security review`. 구현·병합 권한 없음 |
 | Issue·PR 양식 | `.github/` 템플릿 |
 
-되지 않는 것: `main` 보호 규칙. 비공개 저장소의 현재 요금제에서는 켤 수 없어 "PR 없이 `main`에 push하지 않는다"는 약속으로 지킵니다.
+main 보호의 현재 적용 상태와 동료 승인·필수 검사 조건은 [협업 규칙](docs/WORKFLOW.md#현재-github-제약)을 참조합니다.

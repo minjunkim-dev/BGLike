@@ -107,4 +107,4 @@ squash merge를 하면 `main`에는 PR 제목이 커밋 제목으로 남습니�
 | 커밋 제목 | `.githooks/commit-msg`. `git config core.hooksPath .githooks`를 한 번 실행해 켬. 같은 폴더의 LFS hook도 함께 켜짐 | 커밋 거부. 급하면 `git commit --no-verify` |
 | 병합 방식 | 저장소 설정: squash merge만 허용, 병합 후 브랜치 자동 삭제 | 다른 방식은 선택할 수 없음 |
 
-`claude/…`, `codex/…` 브랜치는 이름 검사를 건너뜁니다. `main` 보호 규칙은 현재 요금제에서 켤 수 없으므로, 검토 없는 병합과 직접 push를 하지 않는 것은 팀의 약속입니다.
+`claude/…`, `codex/…` 브랜치는 이름 검사를 건너뜁니다. main 보호의 현재 적용 상태와 필수 검사는 [협업 규칙](WORKFLOW.md#현재-github-제약)을 참조합니다.
