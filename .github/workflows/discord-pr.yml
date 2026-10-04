@@ -2,13 +2,15 @@ name: Discord PR notifications
 
 on:
   pull_request:
-    types: [opened, reopened, edited, ready_for_review, converted_to_draft, review_requested, closed]
+    types: [opened, reopened, ready_for_review, closed]
 
 permissions: {}
 
 jobs:
   notify:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action == 'closed' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 2
     env:
