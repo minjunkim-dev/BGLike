@@ -300,6 +300,8 @@ func _test_scene() -> void:
 				hud.end_button.pressed.emit()
 		await create_timer(0.01).timeout
 	_check(actions.is_over() and hud.get_node("Result").visible, "실제 장면 처음부터 결과 화면까지 완료")
+	_check(not battle.get("_enemy_turn_running") and not hud.restart_button.disabled,
+		"전투 종료 후 추가 대기 없이 재시작 버튼 활성")
 	_check(turns.round_number < 50, "유한 라운드 안에 전투 종료")
 	while battle.get("_enemy_turn_running"):
 		await create_timer(0.01).timeout
@@ -362,6 +364,8 @@ func _test_default_scene() -> void:
 		await create_timer(0.01).timeout
 	_check(actions.is_over() and hud.get_node("Result").visible,
 		"기본 10×10 배치에서 결과 화면까지 실제 자동 적 턴 진행")
+	_check(not battle.get("_enemy_turn_running") and not hud.restart_button.disabled,
+		"기본 배치 전투 종료 후 AI 대기와 재시작 잠금 해제")
 	while battle.get("_enemy_turn_running"):
 		await create_timer(0.01).timeout
 	main.queue_free()

@@ -78,6 +78,8 @@ func _play_enemy_turn(actor: CombatUnit) -> void:
 
 
 func _pause_enemy_action() -> void:
+	if actions.is_over():
+		return
 	await get_tree().create_timer(0.35).timeout
 
 
