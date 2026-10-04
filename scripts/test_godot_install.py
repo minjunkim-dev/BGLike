@@ -127,17 +127,27 @@ class GodotInstallTests(unittest.TestCase):
         self.assert_not_executed(calls)
         self.assertIn("archive-source=recovered", outputs)
 
-    def test_failed_restore_is_not_reported_as_a_cache_miss(self):
+    def test_cache_summary_distinguishes_miss_from_unavailable_restore(self):
+        for outcome, hit, expected in [
+            ("success", "", "false"), ("success", "false", "false"),
+            ("success", "true", "true"), ("failure", "", "unknown"),
+            ("skipped", "", "unknown"), ("", "", "unknown"),
+        ]:
+            with self.subTest(outcome=outcome, hit=hit):
+                self.check_summary(outcome, hit, expected)
+
+    def check_summary(self, outcome, hit, expected):
         with tempfile.TemporaryDirectory() as directory:
             summary = Path(directory) / "summary"
             env = dict(os.environ, GITHUB_STEP_SUMMARY=str(summary),
-                       CACHE_HIT="", CACHE_RESULT="failure", ARCHIVE_SOURCE="",
+                       CACHE_HIT=hit, CACHE_RESULT=outcome, ARCHIVE_SOURCE="",
                        INSTALL_RESULT="skipped")
             result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c",
                                      step_script("Record engine cache state")],
                                     env=env, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("cache restore: failure; cache hit: unknown", summary.read_text())
+            self.assertIn(f"cache restore: {outcome or 'unknown'}; cache hit: {expected}",
+                          summary.read_text())
 
 
 if __name__ == "__main__":

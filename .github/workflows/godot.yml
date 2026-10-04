@@ -82,8 +82,12 @@ jobs:
           ARCHIVE_SOURCE: ${{ steps.godot-install.outputs.archive-source }}
           INSTALL_RESULT: ${{ steps.godot-install.outcome }}
         run: |
+          cache_hit="${CACHE_HIT:-unknown}"
+          if [ "${CACHE_RESULT:-}" = success ] && [ -z "${CACHE_HIT:-}" ]; then
+            cache_hit=false
+          fi
           printf 'Godot 4.7.2 cache restore: %s; cache hit: %s; archive source: %s; install: %s. Cache restoration does not skip SHA-256 verification or engine checks.\n' \
-            "${CACHE_RESULT:-unknown}" "${CACHE_HIT:-unknown}" \
+            "${CACHE_RESULT:-unknown}" "$cache_hit" \
             "${ARCHIVE_SOURCE:-unknown}" "${INSTALL_RESULT:-unknown}" >> "$GITHUB_STEP_SUMMARY"
 
   notify:
