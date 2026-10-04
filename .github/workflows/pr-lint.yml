@@ -61,7 +61,8 @@ jobs:
             echo "type: $types. 예: feat(combat): add initiative turn order. 규칙: docs/GIT_CONVENTIONS.md"
             exit 1
           fi
-          if [ "${#TITLE}" -gt 72 ]; then
+          # Dependabot names long actions in full, e.g. anthropics/claude-code-action/base-action.
+          if [ "${#TITLE}" -gt 72 ] && [[ "$BRANCH" != dependabot/* ]]; then
             echo "::error::PR 제목이 72자를 넘습니다 (${#TITLE}자)."
             exit 1
           fi
