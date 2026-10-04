@@ -40,32 +40,51 @@ jobs:
           lfs: true
           persist-credentials: false
       - name: Install Godot 4.7.2
+        id: godot-install
+        shell: bash
         run: |
-          if [ ! -f "$RUNNER_TEMP/godot.zip" ]; then
-            curl -fL --retry 3 -o "$RUNNER_TEMP/godot.zip" \
+          godot_archive="$RUNNER_TEMP/godot.zip"
+          godot_archive_source=restored
+          verify_godot_archive() {
+            printf '%s  %s\n' "$GODOT_SHA256" "$godot_archive" | sha256sum -c -
+          }
+          if [ ! -f "$godot_archive" ]; then
+            godot_archive_source=downloaded
+          elif ! verify_godot_archive; then
+            godot_archive_source=recovered
+            printf 'Restored Godot archive failed verification; downloading the official archive again.\n'
+            rm -f "$godot_archive"
+          fi
+          printf 'archive-source=%s\n' "$godot_archive_source" >> "$GITHUB_OUTPUT"
+          if [ ! -f "$godot_archive" ]; then
+            curl -fL --retry 3 --connect-timeout 15 --max-time 120 -o "$godot_archive" \
               "https://github.com/godotengine/godot/releases/download/4.7.2-stable/$GODOT_FILE.zip"
           fi
-          printf '%s  %s\n' "$GODOT_SHA256" "$RUNNER_TEMP/godot.zip" | sha256sum -c -
-          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP"
+          verify_godot_archive
+          unzip -q "$godot_archive" -d "$RUNNER_TEMP"
           chmod +x "$RUNNER_TEMP/$GODOT_FILE"
           "$RUNNER_TEMP/$GODOT_FILE" --version
       - name: Import project
-        run: '"$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" --headless --path . --import'
+        run: '"$RUNNER_TEMP/$GODOT_FILE" --headless --path . --import'
       - name: Start main scene
-        run: '"$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" --headless --path . --quit-after 2'
+        run: '"$RUNNER_TEMP/$GODOT_FILE" --headless --path . --quit-after 2'
       - name: Check combat turn rules
-        run: '"$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" --headless --path . --script tests/combat_turns_test.gd'
+        run: '"$RUNNER_TEMP/$GODOT_FILE" --headless --path . --script tests/combat_turns_test.gd'
       - name: Check combat roll rules
-        run: '"$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" --headless --path . --script tests/combat_checks_test.gd'
+        run: '"$RUNNER_TEMP/$GODOT_FILE" --headless --path . --script tests/combat_checks_test.gd'
       - name: Check combat actions
-        run: '"$RUNNER_TEMP/Godot_v4.7.2-stable_linux.x86_64" --headless --path . --script tests/combat_actions_test.gd'
+        run: '"$RUNNER_TEMP/$GODOT_FILE" --headless --path . --script tests/combat_actions_test.gd'
       - name: Record engine cache state
         if: always()
         env:
           CACHE_HIT: ${{ steps.godot-cache.outputs.cache-hit }}
+          CACHE_RESULT: ${{ steps.godot-cache.outcome }}
+          ARCHIVE_SOURCE: ${{ steps.godot-install.outputs.archive-source }}
+          INSTALL_RESULT: ${{ steps.godot-install.outcome }}
         run: |
-          printf 'Godot 4.7.2 archive cache hit: %s. Cache restoration does not skip SHA-256 verification or engine checks.\n' \
-            "${CACHE_HIT:-false}" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Godot 4.7.2 cache restore: %s; cache hit: %s; archive source: %s; install: %s. Cache restoration does not skip SHA-256 verification or engine checks.\n' \
+            "${CACHE_RESULT:-unknown}" "${CACHE_HIT:-unknown}" \
+            "${ARCHIVE_SOURCE:-unknown}" "${INSTALL_RESULT:-unknown}" >> "$GITHUB_STEP_SUMMARY"
 
   notify:
     needs: [policy, smoke]
