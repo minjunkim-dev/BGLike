@@ -25,6 +25,7 @@ var bonus_action_left: int = 1
 var reaction_left: int = 1
 var hit_points: int = 12
 var is_stunned: bool = false
+var has_mark: bool = false
 var disengaged: bool = false
 var marked_target: CombatUnit
 var second_wind_left: int = 1
@@ -135,6 +136,13 @@ func _ready() -> void:
 
 
 func _draw() -> void:
+	draw_rect(Rect2(-9, -25, 18, 4), OUTLINE_COLOR)
+	draw_rect(Rect2(-8, -24, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
+	var status: String = ("기절" if is_stunned else "") + (" ◎" if has_mark else "")
+	if not status.is_empty():
+		var font: Font = ThemeDB.fallback_font
+		var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		draw_string(font, Vector2(-width / 2.0, -29), status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, WEAPON_COLOR)
 	var body_color: Color = ALLY_COLOR if is_ally else ENEMY_COLOR
 	if is_selected:
 		draw_rect(Rect2(-7, -20, 14, 20), Color("f4cf69"), false)
@@ -154,3 +162,28 @@ func _draw() -> void:
 			Vector2(-2, -16), Vector2(2, -12), Vector2(-2, -8)
 		]), WEAPON_COLOR)
 		draw_line(Vector2(-2, -16), Vector2(-2, -8), WEAPON_COLOR)
+
+
+func show_feedback(text: String) -> void:
+	var popup: Label = Label.new()
+	popup.z_index = 10
+	popup.text = text
+	popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	popup.add_theme_font_size_override("font_size", 10)
+	popup.add_theme_color_override("font_color", WEAPON_COLOR)
+	popup.add_theme_color_override("font_outline_color", OUTLINE_COLOR)
+	popup.add_theme_constant_override("outline_size", 2)
+	popup.position = Vector2(-16, -42)
+	# 같은 유닛의 판정과 피해가 함께 떠도 글자가 겹치지 않는다.
+	for child: Node in get_parent().get_children():
+		if child is Label and child.get_meta("feedback_unit", 0) == get_instance_id():
+			popup.position.y = minf(popup.position.y,
+				child.position.y - position.y - popup.get_combined_minimum_size().y - 16)
+	popup.set_meta("feedback_unit", get_instance_id())
+	# 전투 불능 유닛도 마지막 피해를 표시한다.
+	get_parent().add_child(popup)
+	popup.position += position
+	var tween: Tween = popup.create_tween()
+	tween.tween_property(popup, "position:y", popup.position.y - 12, 0.8)
+	tween.parallel().tween_property(popup, "modulate:a", 0.0, 0.8)
+	tween.tween_callback(popup.queue_free)

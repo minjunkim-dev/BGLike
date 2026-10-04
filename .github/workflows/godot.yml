@@ -74,6 +74,8 @@ jobs:
         run: '"$RUNNER_TEMP/$GODOT_FILE" --headless --path . --script tests/combat_checks_test.gd'
       - name: Check combat actions
         run: '"$RUNNER_TEMP/$GODOT_FILE" --headless --path . --script tests/combat_actions_test.gd'
+      - name: Check combat HUD
+        run: '"$RUNNER_TEMP/$GODOT_FILE" --headless --path . --script tests/combat_hud_test.gd'
       - name: Record engine cache state
         if: always()
         env:

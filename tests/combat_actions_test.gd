@@ -456,7 +456,9 @@ func _test_scene_shock() -> void:
 	_check(units[1].action_left == 0 and units[1].shock_left == 0
 		and units[3].hit_points == before_miss and not units[3].is_stunned,
 		"실제 두 번째 클릭의 충격 화살 빗나감은 행동·횟수만 소비")
-	_check(shock_button.disabled and "(0)" in shock_button.text, "실행 후 충격 화살 비활성화와 횟수 갱신")
+	var badges: Dictionary = hud.get("_badges")
+	_check(shock_button.disabled and (badges["shock"] as Label).text == "0",
+		"실행 후 충격 화살 비활성화와 모서리 횟수 배지 갱신")
 	battle.queue_free()
 	await process_frame
 
