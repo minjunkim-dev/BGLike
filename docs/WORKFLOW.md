@@ -18,14 +18,14 @@
 | 범위가 달라질 때 | 본문을 고치지 않고 코멘트에 "변경 전 → 후" 표를 적습니다. 크게 바뀌면 새 Issue를 열고, 옛 Issue는 새 Issue 링크를 남기고 닫습니다 | 기획 |
 | 마지막 PR 병합 | PR 본문의 `Closes #번호`로 Issue를 자동 종료합니다. 기획 검수 결과는 닫기 전에 코멘트로 남깁니다 | 개발 |
 
-- Projects 보드, 마일스톤, 라벨 체계는 쓰지 않습니다. 라벨은 `claude` 하나입니다. 열린 Issue 목록이 곧 작업판입니다.
+- Projects 보드, 마일스톤, 제품 분류 라벨은 쓰지 않습니다. `claude`·`ai:review`·`ai:skip` 라벨은 AI 리뷰 요청과 제외에만 사용합니다. 열린 Issue 목록이 곧 작업판입니다.
 - Issue 본문은 처음 합의한 목표의 기록이므로 고치지 않습니다. 변경은 코멘트로 쌓습니다. 체크박스에 표시하는 것은 내용 변경이 아니므로 괜찮습니다.
 
 ## Discord 소통
 
 - [BGLike 서버](https://discord.com/channels/1554865028006547549/1554865028837015667)의 `#일반`에서 짧은 질문과 일정을 공유합니다. 게임 화면을 함께 볼 때는 음성 `플레이테스트` 채널을 사용합니다.
-- `#github-알림`의 PR 열기·수정·검토 요청·닫기 알림은 [Discord PR 알림 워크플로우](../.github/workflows/discord-pr.yml)가 보냅니다. 같은 저장소의 브랜치에서 만든 PR만 처리합니다.
-- Godot CI 결과는 [Godot 워크플로우](../.github/workflows/godot.yml)의 `notify` 작업이 보냅니다. PR에 새 커밋을 push하면 이 CI 결과 알림만 옵니다. Discord 전송 실패가 Godot 검사 결과를 바꾸지 않습니다. 알림이 오지 않으면 GitHub Actions에서 해당 작업의 실행 결과를 확인합니다. 중복 알림을 막기 위해 기존 GitHub 저장소 웹훅은 비활성화했습니다.
+- `#github-알림`에는 비-Draft PR의 열림·재열림·ready 전환과 PR 종료를 알립니다. [Discord PR 알림 워크플로우](../.github/workflows/discord-pr.yml)는 같은 저장소의 브랜치에서 만든 PR만 처리합니다.
+- [Godot 워크플로우](../.github/workflows/godot.yml)의 `notify` 작업은 정책 또는 게임 검사 실패를 알립니다. 정상 실행 결과는 GitHub Actions에서 확인합니다. Discord 전송 실패가 검사 결과를 바꾸지 않습니다. 중복 알림을 막기 위해 기존 GitHub 저장소 웹훅은 비활성화했습니다.
 - 두 워크플로우는 GitHub Actions의 `DISCORD_PR_WEBHOOK_URL` 저장소 비밀값을 사용합니다. Discord 웹훅 URL을 문서나 채팅에 공유하지 않습니다.
 - 채팅이나 통화에서 확정한 작업 범위와 결정은 해당 GitHub Issue 또는 PR에 기록합니다. 동료의 Discord 사용자명 확인 전에는 초대하지 않습니다.
 
@@ -47,7 +47,7 @@
 
 1. 사람이 Issue에 목표와 완료 조건을 적습니다.
 2. Claude Code나 Codex 데스크탑 앱에 Issue 번호를 주고 구현합니다. 편집기에서 직접 확인합니다.
-3. PR을 열기 전에 구현하지 않은 쪽 에이전트로 로컬 리뷰를 받고 반영합니다. Claude Code로 구현했으면 Codex 앱에서 리뷰하고, Codex로 구현했으면 Claude Code에서 리뷰합니다. GitHub 자동 리뷰는 P0, P1만 올리므로 P2 이하는 이 단계에서 봅니다. 로컬 Claude 읽기 전용 리뷰는 [사전 승인 범위](#읽기-전용-claude-리뷰의-사전-승인)를 따릅니다.
+3. PR을 열기 전에 구현하지 않은 쪽 에이전트로 로컬 리뷰를 받고 반영합니다. Claude Code로 구현했으면 Codex 앱에서 리뷰하고, Codex로 구현했으면 Claude Code에서 리뷰합니다. GitHub 자동 코드 리뷰도 P2를 보고할 수 있습니다. 로컬 독립 리뷰와 실제 실행 검증을 함께 사용합니다. 로컬 Claude 읽기 전용 리뷰는 [사전 승인 범위](#읽기-전용-claude-리뷰의-사전-승인)를 따릅니다.
 4. PR을 열면 Codex가 자동으로 코드 리뷰와 보안 리뷰를 합니다. Codex로 구현한 PR이면 이 리뷰는 참고만 하고, 독립 리뷰는 3단계의 Claude 리뷰가 맡습니다(아래 표).
 5. 리뷰 지적은 같은 로컬 세션에서 반영해 push하고, `@codex review`로 다시 리뷰를 받습니다.
 6. 사람이 플레이를 확인하고 squash merge합니다.
@@ -56,41 +56,50 @@
 
 **보조: GitHub에서 부르기**
 
-자리를 비웠을 때, 작은 수정, 로컬 에이전트를 쓰지 않는 사람이 일을 맡길 때 씁니다.
+공개 저장소의 GitHub Claude 작업은 리뷰 전용입니다. 구현은 승인된 Issue를 로컬 Claude Code나 Codex 앱에서 진행합니다.
 
-- Issue 전체를 맡기려면 `claude` 라벨을 붙입니다. Claude가 `claude/…` 브랜치에 구현을 커밋하고 Issue에 PR 생성 링크를 남기면, 사람이 링크를 열어 PR 제목을 [커밋 규칙](GIT_CONVENTIONS.md)에 맞게 확인하고 PR을 엽니다. 한 번 실행은 최대 30분이므로 단계가 여러 개인 Issue는 라벨 대신 `@claude 1단계만 구현해줘`처럼 범위를 좁힙니다.
-- 계획이나 의견만 들으려면 Issue 코멘트에 `@claude 코드 수정 없이 …`를 적습니다.
-- PR 수정은 아래 "에이전트를 부를 때"를 따릅니다.
+- Issue의 `claude` 라벨은 조건 검토를 요청합니다. 코드 구현이나 PR 생성을 요청하지 않습니다.
+- 댓글 첫 줄에 `@claude review` 또는 `@claude security review`를 적습니다.
+- 외부 fork는 Secret이 없는 환경에서 사람이 검토합니다.
 
 **작성자와 리뷰어는 다른 에이전트가 맡습니다.** 같은 모델이 자기 결과를 검토하면 같은 실수를 놓치기 쉽습니다.
 
 | 작성자 | 리뷰 |
 | --- | --- |
 | Claude | PR을 열기 전 Codex 앱 로컬 리뷰, PR의 Codex 자동 리뷰 |
-| Codex | PR을 열기 전 Claude Code 로컬 리뷰 ([사전 승인 범위](#읽기-전용-claude-리뷰의-사전-승인)). 로컬 리뷰를 못 했으면 PR에 `@claude 이 PR 리뷰해줘`를 요청합니다. Codex 자동 리뷰는 참고만 합니다. |
+| Codex | PR을 열기 전 Claude Code 로컬 리뷰 ([사전 승인 범위](#읽기-전용-claude-리뷰의-사전-승인)). 로컬 리뷰를 못 했으면 PR에 `@claude review`를 요청합니다. Codex 자동 리뷰는 참고만 합니다. |
 | 사람 | Codex 자동 리뷰와 동료 검토 |
 
 **에이전트를 부를 때**
 
-- 고칠 점이 여러 개면 Files 탭에서 인라인 코멘트를 모아 `@claude` 없이 Review changes로 제출한 뒤, PR 대화 탭에 `@claude 방금 리뷰 코멘트 모두 반영해줘`를 한 번 적습니다. `@claude` 코멘트마다 따로 실행되므로, 묶으면 Actions 분을 아끼고 커밋끼리 충돌하지 않습니다. 리뷰 본문에 `@claude`를 적으면 현재 버전의 Claude 액션이 그 리뷰의 인라인 코멘트를 받지 못합니다([upstream 수정 PR](https://github.com/anthropics/claude-code-action/pull/1618)).
-- 한 코멘트에서 `@claude`와 `@codex`를 함께 부르지 않습니다. 두 에이전트가 같은 브랜치에 동시에 커밋할 수 있습니다.
+- 검토 요청은 PR 대화 탭의 댓글 하나로 모읍니다. 인라인 코멘트나 리뷰 본문은 Claude 실행을 요청하지 않습니다.
+- 구현과 리뷰 요청을 섞지 않습니다. 리뷰 지적을 로컬 구현 세션에 전달합니다.
 
 **Claude** ([워크플로우](../.github/workflows/claude.yml))
 
-- Issue에 `claude` 라벨을 붙이거나, 새 Issue의 제목·본문, Issue·PR 코멘트, 인라인 코멘트, PR 리뷰에 `@claude`를 적으면 실행합니다. 담당자 지정, 본문 수정, 다른 라벨로는 실행하지 않습니다.
-- 저장소 쓰기 권한이 있는 사람만 호출할 수 있습니다. Claude GitHub App과 `CLAUDE_CODE_OAUTH_TOKEN` 저장소 비밀값을 사용합니다.
-- 비공개 저장소의 GitHub Actions 분을 Godot CI와 나눠 씁니다. 한 번에 최대 30분입니다.
-- 모델은 Opus 5.5, effort는 `high`로 고정합니다(`claude_args`). Opus 5.5의 기본 effort는 `medium`입니다.
-- 실행 환경에 Godot 4.7.2를 설치하므로 Claude가 `godot --headless` 검사를 직접 실행합니다. 허용한 명령은 `godot`, `git diff`뿐입니다.
+- 쓰기 권한 사용자의 Issue 생성·수정, `claude` 또는 `ai:review` 라벨, main 대상 비-Draft PR의 생성·갱신과 명시된 리뷰 댓글을 지원합니다. 봇과 일반 댓글은 검토를 요청하지 않습니다. `ai:skip` 항목은 제외합니다.
+- 읽기 전용 `authorize` 작업에서 GitHub API로 요청자의 현재 권한, 대상 상태, 저장소와 head SHA를 확인합니다. 검증된 요청만 Secret을 사용하는 `review` 작업을 시작합니다. 댓글은 별도 `publish` 작업에서 게시합니다.
+- 세 작업은 main의 신뢰된 코드만 checkout합니다. 임의 브랜치의 수동 workflow dispatch는 지원하지 않습니다. 반복 검토는 명시된 리뷰 댓글로 요청합니다. PR 코드를 checkout·import·실행하지 않습니다.
+- 모델 작업의 GitHub 토큰은 읽기 전용입니다. 신뢰된 Python 코드가 제한된 검토 자료를 준비하고 모델의 파일·셸·MCP 도구를 모두 끕니다.
+- PR의 Refs·Closes 등으로 연결된 같은 저장소의 Issue를 최대 3개 포함합니다. 연결된 기획 Markdown은 신뢰된 checkout의 추적된 docs/ 파일에서만 가져옵니다. 최대 6개·합계 48,000자로 제한합니다. 외부 링크·다른 Git ref·경로 탈출·추적되지 않은 파일은 읽지 않습니다. 누락과 잘림은 자료에 표시합니다.
+- 초기화 기록의 도구·MCP 목록이 모두 비어 있는지 확인합니다. 도구 호출이 있거나 기록이 없으면 게시하지 않습니다. 성공한 최종 응답의 길이와 인증정보 형식을 검사하고 대상 번호·SHA에 묶습니다.
+- 게시 작업만 댓글 쓰기 권한을 받고, 현재 head와 대상 상태를 다시 확인합니다. 모델 출력의 멘션을 무력화합니다. 저장소 관리자는 Actions의 PR 자동 승인 설정이 꺼진 상태인지 API로 확인합니다.
+- Issue의 제목·본문·댓글은 자료 SHA-256으로 보고서에 묶습니다. 게시 직전 자료가 바뀌었으면 게시하지 않습니다.
+- PR 메타데이터·연결 Issue·기획 자료는 수집 시점의 기록입니다. 현재 head 검사가 이 자료의 최신성까지 보증하지 않습니다. 완료 조건을 커밋 없이 바꿨다면 사람이 PR 재검토를 요청합니다.
+- 같은 대상과 SHA의 승인된 중복 검토만 취소합니다. `CLAUDE_CODE_OAUTH_TOKEN`을 사용합니다. 비공개 저장소에서는 Actions 분을 Godot CI와 공유합니다. 모델 검토는 최대 15분과 2턴입니다.
+- 인증 환경 변수의 하위 프로세스 제거 옵션을 활성화합니다. bubblewrap 설치와 사용자 네임스페이스 실행을 확인합니다. 실패하면 검토를 중단합니다. 모델·도구 전체 출력이나 자유 형식 오류는 로그에 표시하지 않습니다.
+- 검토 자료는 권한 0600의 runner 임시 파일로 전달합니다. SHA로 고정한 SDK 전용 `base-action`을 사용합니다. Action 입력·로그에는 파일 경로만 넣으며 상위 Action의 `prompt` 출력 경로는 사용하지 않습니다.
+- `@claude review` 요청과 실제 봇 응답을 구분합니다. 검토한 head SHA, 소스 검토 범위와 미확인 범위를 확인합니다.
 
 **Codex** (ChatGPT의 Codex GitHub 연동, 저장소 설정 파일 없음)
 
-- 리뷰용 PR을 열거나 Draft를 Ready로 바꾸면 자동으로 코드 리뷰와 보안 리뷰를 합니다. 열린 PR에 새 커밋을 push하면 다시 리뷰하지 않으므로, 다시 받으려면 `@codex review`를 적습니다.
+- 리뷰용 PR을 열거나 Draft를 Ready로 바꾸면 자동으로 코드 리뷰와 보안 리뷰를 합니다. 현재 연결은 새 커밋 push도 검토합니다. [PR #30](https://github.com/minjunkim-dev/BGLike/pull/30)에서 Ready 전환과 후속 커밋의 코드·보안 리뷰 시작을 2026-10-04 확인했습니다. 요청 시작과 현재 SHA의 완료 결과를 구분합니다.
+- 명시적인 재검토는 `@codex review`로 요청합니다. 자동 실행이 이미 진행 중이면 같은 SHA에 중복 요청하지 않습니다.
 - PR 코멘트 `@codex 요청`으로 작업도 맡길 수 있습니다. 이 기능은 2026-10-01 기준 아직 시험하지 않았습니다.
 - 자동 리뷰와 `@codex 요청`에는 이 저장소의 [Codex 환경](https://chatgpt.com/codex/cloud/settings/environments)이 필요합니다. 설정은 [Codex 설정](https://chatgpt.com/codex/cloud/settings/general)에서 바꿉니다. 실행 비용은 ChatGPT 요금제에 포함되고 Actions 분을 쓰지 않습니다. 그래서 PR마다 도는 자동 리뷰를 Codex에 맡깁니다.
-- Codex 환경의 설정 스크립트가 Godot 4.7.2를 설치합니다. 스크립트는 Codex 설정 화면에서만 바꿀 수 있으므로, 엔진 버전을 올릴 때는 `godot.yml`, `claude.yml`과 함께 갱신합니다.
+- Codex 환경의 설정 스크립트가 Godot 4.7.2를 설치합니다. 스크립트는 Codex 설정 화면에서만 바꿀 수 있으므로, 엔진 버전을 올릴 때는 `godot.yml`과 함께 갱신합니다. GitHub Claude의 리뷰 전용 작업에는 엔진을 설치하지 않습니다.
 
-두 에이전트 모두 [AGENTS.md](../AGENTS.md)를 읽고 위 규칙을 따릅니다. 에이전트는 Godot 편집기를 조작하지 못하므로 플레이 변경은 사람이 직접 확인합니다. **병합은 사람이 합니다.** `main` 보호 규칙이 없어 잘못된 병합을 막을 장치가 없으므로 자동 병합은 쓰지 않습니다.
+두 에이전트 모두 [AGENTS.md](../AGENTS.md)를 읽고 위 규칙을 따릅니다. 플레이 변경은 사람이 직접 확인합니다. **병합은 사람이 합니다.** main 보호는 [현재 GitHub 제약](#현재-github-제약)을 따릅니다. AI 리뷰가 동료 검토와 사람의 병합 결정을 대신하지 않습니다.
 
 ### 읽기 전용 Claude 리뷰의 사전 승인
 
@@ -107,11 +116,23 @@
 
 ## 현재 GitHub 제약
 
-저장소는 비공개이며, 2026-09-30 기준 GitHub 요금제에서 `main` 보호 규칙을 켤 수 없습니다. 따라서 PR, CI 통과, 동료 검토 규칙은 **팀의 약속**이며 GitHub가 강제하지 않습니다. 직접 push와 검토 없는 병합도 기술적으로 가능합니다. GitHub Pro/Team으로 바꾸면 `main`에 PR 필수, 승인 1명, Godot 상태 검사 필수, 강제 push 금지를 설정하고 이 문서를 갱신합니다.
+2026-10-04 저장소를 공개로 전환하고 main 보호를 적용했습니다. GitHub API로 설정을 확인했습니다.
+PR, 최신 기준 브랜치 검사, 작성자 외 승인 1명과 미해결 리뷰 대화 해결을 요구합니다.
+필수 상태 검사 이름은 `policy / PR conventions and scope`와 `smoke`입니다. 문서 전용 smoke skipped는 정상입니다.
+관리자에게도 규칙을 적용합니다. 선형 이력을 요구하며 강제 push와 main 삭제를 금지합니다.
+공개 전 비공개 요금제의 보호 제약은 현재 상태를 나타내지 않습니다.
 
 ## 검증의 경계
 
-- CI: 변경분의 `git diff --check`, Godot 4.7.2로 프로젝트 import와 메인 장면의 짧은 headless 실행을 확인합니다.
+- CI: [검사 선택 규칙](CI.md)에 따라 공백·PR 규칙·Python 검사와 필요한 Godot 4.7.2 import·실행·전투 테스트를 확인합니다.
 - 작성자: 변경된 게임 흐름을 Godot 편집기에서 직접 조작하고 결과를 PR에 적습니다.
 - 검토자: 코드와 장면 변경을 읽고, 플레이에 영향을 주는 변경은 가능한 한 직접 실행합니다.
 - 플랫폼 내보내기와 실제 기기 검증은 대상 플랫폼을 정한 뒤 추가합니다. 현재 CI 성공은 게임 플레이 품질이나 패키지 완성을 뜻하지 않습니다.
+
+## 저작권과 공개 전환
+
+자체 코드의 방침은 [COPYRIGHT](../COPYRIGHT.md)를 따릅니다. 외부 구성 요소와 자산은 [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md)에서 관리합니다.
+공개 전환 전에 공동 개발자의 동의, 자산 출처, 전체 Git 이력과 공개될 Issue·PR·Actions 로그의 민감정보를 확인합니다.
+2026-10-04 공개 전환 전에 기존 GitHub Claude 작업을 일시 중지했습니다. 리뷰 전용 워크플로를 main에 병합하기 전까지 중지 상태를 유지합니다.
+main에 새 워크플로를 반영한 뒤 다시 켜고, 실행 성공과 해당 SHA의 실제 댓글로 동작을 확인합니다.
+공개 후 main 보호 적용 결과는 위 현재 GitHub 제약에 기록했습니다. 권리 문구로 다운로드를 차단하거나 기존 사본을 회수할 수 있다고 보고하지 않습니다.

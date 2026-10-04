@@ -5,20 +5,55 @@ name: PR lint
 
 on:
   pull_request:
-    types: [opened, edited, reopened]
+    branches: [main]
+    types: [edited]
+  workflow_call:
+    outputs:
+      game:
+        description: Run engine checks for this change
+        value: ${{ jobs.lint.outputs.game }}
 
 permissions:
   contents: read
 
 jobs:
   lint:
+    name: PR conventions and scope
     runs-on: ubuntu-latest
-    timeout-minutes: 1
+    timeout-minutes: 5
+    outputs:
+      game: ${{ steps.scope.outputs.game }}
     env:
       TITLE: ${{ github.event.pull_request.title }}
       BRANCH: ${{ github.head_ref }}
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select game checks and check whitespace
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != workflow_dispatch ] &&
+             [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] &&
+             git show "$BASE_SHA:scripts/ci_scope.py" > "$RUNNER_TEMP/trusted-ci-scope.py"; then
+            python3 "$RUNNER_TEMP/trusted-ci-scope.py"
+          else
+            echo 'game=true' >> "$GITHUB_OUTPUT"
+            if [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] && git cat-file -e "$BASE_SHA" 2>/dev/null; then
+              git diff --check --no-renames "$BASE_SHA" HEAD
+            else
+              git show --check --format= --diff-merges=first-parent HEAD
+            fi
+          fi
+      - name: Test scope and review authorization
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - name: PR title
+        if: github.event_name == 'pull_request'
         run: |
           types='feat|fix|refactor|perf|test|docs|build|ci|chore|revert'
           if ! printf '%s' "$TITLE" | grep -Eq "^($types)(\([a-z0-9_-]+\))?!?: [a-z]"; then
@@ -32,6 +67,7 @@ jobs:
           fi
           case "$TITLE" in *.) echo "::error::PR 제목 끝에 마침표를 찍지 않습니다."; exit 1;; esac
       - name: Branch name
+        if: github.event_name == 'pull_request'
         run: |
           types='feat|fix|refactor|perf|test|docs|build|ci|chore|revert'
           if printf '%s' "$BRANCH" | grep -Eq '^(claude|codex)/'; then
