@@ -20,6 +20,18 @@ const ACTION_GROUPS: Array[Array] = [
 	["attack", "shock"], ["second_wind", "surge", "mark", "disengage", "shove", "potion"],
 	["opportunity", "parry"]
 ]
+const ACTION_EFFECTS: Dictionary[String, String] = {
+	"second_wind": "HP 1d10+1 회복.\n최대 HP를 넘지 않습니다.",
+	"surge": "이미 쓴 행동을 다시 채워\n한 번 더 공격할 수 있습니다.",
+	"mark": "1~6칸 적에게 표식.\n이 궁수가 맞히면 피해 +1d6.\n전투 중 유지됩니다.",
+	"shock": "1~6칸 공격.\n명중 후 정신 내성 실패 시 기절.\n빗나가도 비용은 사용.",
+	"disengage": "이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\n공격을 실행하지 않습니다.",
+	"shove": "내 힘 대 상대의 힘/민첩\n중 높은 값으로 대결.\n성공: 1칸 밀기, 동점: 실패.\n기절 대상은 대결 없이 성공.",
+	"potion": "HP 2d4+2 회복.\n최대 HP를 넘지 않습니다.",
+	"opportunity": "적이 내 인접 칸을 벗어나면 기본 공격. 발동할 때 사용 여부를 묻습니다.",
+	"parry": "공격에 맞으면 사용 여부를 묻습니다. 민첩 내성에 성공하면 피해와 추가 효과를 피합니다."
+}
+const MOVEMENT_HELP: String = "파랑: 이동 가능한 칸\n초록: 도착 시 공격할 적 있음\n\n이동은 행동을 쓰지 않습니다.\n칸을 한 번 눌러 경로 확인.\n같은 칸을 다시 누르면 이동."
 
 var _shown_order: Array[CombatUnit] = []
 var _portraits: Dictionary[CombatUnit, Button] = {}
@@ -41,6 +53,8 @@ var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 @onready var preview_label: Label = $AttackPreview
 @onready var action_bar: HBoxContainer = $Skills/Groups
 @onready var message_label: Label = $CombatLog/Message
+@onready var help_title: Label = $ActionHelp/Contents/Title
+@onready var help_label: Label = $ActionHelp/Contents/Details
 @onready var result_label: Label = $Result/Panel/Contents/Outcome
 @onready var restart_button: Button = $Result/Panel/Contents/Restart
 
@@ -59,6 +73,7 @@ func _ready() -> void:
 		column.add_theme_constant_override("separation", 3)
 		panel.add_child(column)
 		var title: Label = Label.new()
+		title.mouse_filter = Control.MOUSE_FILTER_PASS
 		title.add_theme_font_size_override("font_size", 10)
 		title.add_theme_color_override("font_color", RESOURCE_COLORS[index])
 		column.add_child(title)
@@ -123,13 +138,20 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 		if shown == null:
 			continue
 		var amounts: Array[int] = [shown.action_left, shown.bonus_action_left, shown.reaction_left]
-		_titles[index].text = "%s %s" % [names[index], symbols[index] if amounts[index] > 0 else empty_symbols[index]]
+		_titles[index].text = "%s %s · %s" % [names[index],
+			symbols[index] if amounts[index] > 0 else empty_symbols[index],
+			"남음" if amounts[index] > 0 else "사용함"]
+		_titles[index].tooltip_text = "%s: 자기 턴 시작에 1회 회복. 채운 기호는 남음, 빈 기호는 사용함." % names[index]
+		if index == 2:
+			_titles[index].tooltip_text += "\n기회 공격과 흘려내기가 같은 반응을 씁니다."
 		_titles[index].modulate = Color.WHITE if ally_turn else Color("888888")
 		for action: String in ACTION_GROUPS[index]:
 			var button: Button = _actions[action]
 			button.visible = _belongs_to(shown, action)
 			button.text = ACTION_NAMES[action] + "    "
 			_costs[action].text = symbols[index]
+			button.tooltip_text = action_details(actions, shown, action)
+			button.tooltip_text += "\n오른쪽 기호: 이번 턴 비용. 위 숫자: 이번 전투의 남은 횟수."
 			var active: bool = ally_turn and not locked and actions.can_use(actor, action)
 			# 반응은 횟수나 자원을 다 써도 자기 턴에는 켜진 표시로 남는다.
 			button.disabled = (not ally_turn or locked) if index == 2 else not active
@@ -145,10 +167,66 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			_badges[action].modulate = Color.WHITE if ally_turn else Color("888888")
 			_costs[action].modulate = Color.WHITE if not button.disabled else Color("666666")
 	move_button.disabled = not ally_turn or not actions.can_use(actor, "move")
-	move_button.text = "이동 ◀" if selected == "move" else "이동"
+	move_button.text = "이동 %d칸%s" % [actor.movement_left if actor != null else 0,
+		" ◀" if selected == "move" else ""]
+	if not ally_turn:
+		move_button.text = "이동"
+	move_button.tooltip_text = "이동력만 씁니다. 행동과 보조 행동은 쓰지 않습니다.\n자기 턴에 6칸 회복. 나눠 이동할 수 있습니다.\n적의 인접 칸을 벗어나면 기회 공격을 받을 수 있습니다."
 	end_button.disabled = actor == null or locked
 	for button: Button in _portraits.values():
 		button.disabled = button.disabled or locked
+	if not ally_turn:
+		help_title.text = "적 턴"
+		help_label.text = "아군 입력은 잠깁니다.\n현재는 턴 종료를 눌러 적 턴을 넘깁니다.\n\n● 행동: 공격\n▲ 보조 행동: 보조 스킬\n◆ 반응: 다른 유닛의 턴\n빈 기호는 이미 쓴 자원입니다."
+	else:
+		help_title.text = "이동 안내" if selected == "move" else ACTION_NAMES.get(selected, "동작 안내")
+		help_label.text = action_details(actions, shown, selected)
+
+
+func action_details(actions: CombatActions, actor: CombatUnit, action: String) -> String:
+	if actor == null:
+		return ""
+	if action == "move":
+		return MOVEMENT_HELP + "\n" + movement_caution(actor)
+	var effect: String = ACTION_EFFECTS.get(action, "")
+	if action == "attack":
+		effect = "인접한 적을 기본 공격합니다." if actor.kind == CombatUnit.Kind.WARRIOR else "1~6칸 원거리 공격.\n옆에 적이 있으면 불리."
+	var index: int = 0 if action in ACTION_GROUPS[0] else 1 if action in ACTION_GROUPS[1] else 2
+	var costs: Array[String] = ["행동 ●", "보조 행동 ▲", "반응 ◆"]
+	var amount: int = [actor.action_left, actor.bonus_action_left, actor.reaction_left][index]
+	var text: String = "%s\n비용: %s · %s" % [effect, costs[index], "남음" if amount > 0 else "사용함"]
+	var uses: int = _remaining_uses(actor, action)
+	text += "\n전투 중 %d회 남음" % uses if uses >= 0 else "\n전투당 횟수 제한 없음"
+	if index == 2:
+		return text + "\n버튼으로 실행하지 않습니다. 발동 시 확인 창을 사용합니다."
+	var reason: String = _unavailable_reason(actions, actor, action, amount, uses)
+	if not reason.is_empty():
+		return text + "\n지금 사용 불가: " + reason
+	return text + ("\n같은 버튼을 다시 눌러 사용." if action in ["second_wind", "surge", "disengage", "potion"]
+		else "\n적을 눌러 미리보기.\n같은 적을 다시 누르면 사용.")
+
+
+func _unavailable_reason(actions: CombatActions, actor: CombatUnit, action: String,
+	amount: int, uses: int) -> String:
+	if actions.busy or actions.is_over():
+		return "전투 입력 잠금"
+	if actor != actions.turns.current_unit or not actor.is_ally:
+		return "아군의 자기 턴에만 사용"
+	if uses == 0:
+		return "이번 전투의 횟수를 모두 씀"
+	if amount == 0:
+		return "자원을 이미 씀. 자기 턴 시작에 회복"
+	if action in ["second_wind", "potion"] and actor.hit_points == actor.get_max_hit_points():
+		return "HP가 이미 최대"
+	if action == "surge" and actor.action_left > 0:
+		return "행동이 아직 남아 있음"
+	if not actions.can_use(actor, action):
+		return "이동이 없거나 이미 효과 적용 중" if action == "disengage" else "사거리 또는 대상 조건을 확인"
+	return ""
+
+
+func movement_caution(actor: CombatUnit) -> String:
+	return "이번 턴 기회 공격 없음." if actor != null and actor.disengaged else "적 곁에서 반격 주의."
 
 
 func _belongs_to(actor: CombatUnit, action: String) -> bool:

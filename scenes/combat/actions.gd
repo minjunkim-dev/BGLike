@@ -89,10 +89,12 @@ func can_move(actor: CombatUnit, destination: Vector2i) -> bool:
 	return not path.is_empty() and path.size() <= actor.movement_left
 
 
-func can_target(actor: CombatUnit, target: CombatUnit, action: String) -> bool:
+func can_target(actor: CombatUnit, target: CombatUnit, action: String,
+	from_cell: Vector2i = Vector2i(-1, -1)) -> bool:
 	if actor == null or target == null or target.hit_points <= 0 or actor.is_ally == target.is_ally:
 		return false
-	var separation: int = distance(actor.cell, target.cell)
+	var origin: Vector2i = actor.cell if from_cell == Vector2i(-1, -1) else from_cell
+	var separation: int = distance(origin, target.cell)
 	match action:
 		"attack":
 			return actor.action_left > 0 and separation >= 1 and separation <= actor.get_attack_range()

@@ -45,6 +45,7 @@ func _run() -> void:
 	_test_archer_and_enemy()
 	await _test_log_and_status()
 	await _test_layout()
+	await _test_guidance()
 	await _test_order_bar_input()
 	await _test_reaction_flow()
 	await _test_results_and_restart()
@@ -67,8 +68,8 @@ func _test_warrior() -> void:
 		_check((buttons[action] as Button).is_visible_in_tree(), "전사 동작 표시: " + action)
 	for action: String in ["mark", "shock", "disengage"]:
 		_check(not (buttons[action] as Button).visible, "궁수 동작 숨김: " + action)
-	_check((titles[0] as Label).text == "행동 ●" and (titles[1] as Label).text == "보조 행동 ▲"
-		and (titles[2] as Label).text == "반응 ◆", "컨테이너 제목이 자원 표시")
+	_check((titles[0] as Label).text == "행동 ● · 남음" and (titles[1] as Label).text == "보조 행동 ▲ · 남음"
+		and (titles[2] as Label).text == "반응 ◆ · 남음", "컨테이너 제목이 자원 표시")
 	_check(not (badges["attack"] as Label).visible and not (badges["shove"] as Label).visible,
 		"횟수 제한이 없는 동작은 배지 숨김")
 	_check((badges["parry"] as Label).text == "2" and (costs["parry"] as Label).text == "◆",
@@ -95,14 +96,14 @@ func _test_resources() -> void:
 	units[0].reaction_left = 0
 	units[0].parry_left = 0
 	battle.call("_update_turn_ui")
-	_check((titles[0] as Label).text == "행동 ○" and (titles[2] as Label).text == "반응 ◇",
+	_check((titles[0] as Label).text == "행동 ○ · 사용함" and (titles[2] as Label).text == "반응 ◇ · 사용함",
 		"소비 자원은 빈 기호")
 	_check(not (buttons["surge"] as Button).disabled, "공격을 쓴 뒤 몰아치기 활성화")
 	_check(not (buttons["parry"] as Button).disabled, "자기 턴 반응 항목은 자원·횟수0도 켜진 표시")
 	(buttons["surge"] as Button).pressed.emit()
 	_check(units[0].action_left == 0 and units[0].surge_left == 1, "자기 대상 첫 클릭은 미리보기")
 	(buttons["surge"] as Button).pressed.emit()
-	_check((titles[0] as Label).text == "행동 ●" and (titles[1] as Label).text == "보조 행동 △",
+	_check((titles[0] as Label).text == "행동 ● · 남음" and (titles[1] as Label).text == "보조 행동 △ · 사용함",
 		"몰아치기는 기호 한 개만 다시 채움")
 	_check(units[0].surge_left == 0 and (buttons["surge"] as Button).disabled, "횟수 소진 비활성화")
 	units[0].movement_left = 0
@@ -132,6 +133,7 @@ func _test_archer_and_enemy() -> void:
 	hud.end_button.pressed.emit()
 	_check(not turns.current_unit.is_ally and hud.unit_label.text == turns.current_unit.get_display_name(),
 		"적 턴에는 행동 중인 적 정보")
+	_check(hud.move_button.text == "이동", "적 턴 이동 버튼은 아군의 이동력으로 혼동할 숫자를 표시하지 않음")
 	_check((buttons["shock"] as Button).visible and (buttons["shock"] as Button).disabled
 		and not (containers[2] as PanelContainer).visible, "적 턴에는 마지막 궁수 패널 회색 유지")
 	for button: Button in buttons.values():
@@ -227,7 +229,7 @@ func _test_layout() -> void:
 			await process_frame
 			var area: Rect2 = hud.get_global_rect()
 			for control: Control in [hud.order_bar, hud.action_bar, hud.message_label,
-				hud.end_button, hud.move_button, hud.resource_label]:
+				hud.end_button, hud.move_button, hud.resource_label, hud.help_label, hud.preview_label]:
 				_check(area.encloses(control.get_global_rect()), "%s: 화면 안 %s" % [size, control.name])
 			var skills: Rect2 = (hud.get_node("Skills") as Control).get_global_rect()
 			_check(not skills.intersects(hud.end_button.get_global_rect()), "스킬과 턴 종료가 겹치지 않음")
@@ -240,6 +242,120 @@ func _test_layout() -> void:
 						(costs[action] as Label).get_global_rect()), "크기 변경 후 배지 분리: " + action)
 	root.size = Vector2i(640, 360)
 	await process_frame
+
+
+func _test_guidance() -> void:
+	_reset_units()
+	units[0].cell = Vector2i(1, 1)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(3, 1)
+	units[3].cell = Vector2i(9, 9)
+	units[2].reaction_left = 0
+	units[0].movement_left = 2
+	battle.call("_update_turn_ui")
+	var buttons: Dictionary = hud.get("_actions")
+	_check("비용: 행동 ●" in hud.help_label.text
+		and "지금 사용 불가" in hud.help_label.text, "선택 동작의 비용과 사거리 조건 설명")
+	_check("자기 턴 시작" in (hud.get("_titles") as Array)[0].tooltip_text
+		and "6칸" in hud.move_button.tooltip_text, "자원 회복 시점과 별도 이동 자원 설명")
+	var title: Label = (hud.get("_titles") as Array)[0] as Label
+	var hovered: Array[bool] = [false]
+	title.mouse_entered.connect(func() -> void: hovered[0] = true, CONNECT_ONE_SHOT)
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = root.get_final_transform() * title.get_global_rect().get_center()
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
+	await process_frame
+	_check(title.mouse_filter != Control.MOUSE_FILTER_IGNORE and hovered[0],
+		"자원 제목의 툴팁은 문자열뿐 아니라 실제 포인터 입력을 받음")
+	_check("이번 턴 비용" in (buttons["attack"] as Button).tooltip_text
+		and "이번 전투의 남은 횟수" in (buttons["parry"] as Button).tooltip_text,
+		"비용 기호와 횟수 숫자의 뜻 설명")
+	hud.move_button.pressed.emit()
+	var cells: Array[Vector2i] = battle.get("movement_cells")
+	_check(cells.has(Vector2i(2, 1)) and not cells.has(units[2].cell)
+		and not cells.has(Vector2i(5, 1)) and not cells.has(units[0].cell),
+		"이동 가능 범위는 남은 이동·점유 칸·현재 칸을 반영")
+	_check("이동은 행동을 쓰지 않습니다" in hud.help_label.text
+		and "초록" in hud.help_label.text and "2칸" in hud.move_button.text, "이동 범위 범례와 현재 이동력")
+	await battle.call("_select_move_cell", Vector2i(2, 1))
+	_check("이동 1칸 → 1칸 남음" in hud.preview_label.text
+		and "도착 시 공격 가능: 1명" in hud.preview_label.text and units[2].is_previewed,
+		"선택한 목적지의 비용과 도착 시 공격 대상 표시")
+	_check("도착 시 공격 가능: 1명" in hud.help_label.text and not hud.preview_label.visible,
+		"이동 예측은 격자를 가리지 않는 설명 패널에 표시")
+	_check(units[0].cell == Vector2i(1, 1) and units[0].movement_left == 2 and units[0].action_left == 1
+		and not actions.can_target(units[0], units[2], "attack")
+		and actions.can_target(units[0], units[2], "attack", Vector2i(2, 1)),
+		"미리보기는 유닛·자원을 바꾸지 않고 이동 위치에서 같은 공격 판정을 사용")
+	units[0].action_left = 0
+	battle.call("_update_turn_ui")
+	_check("공격 불가: 행동을 이미 씀" in hud.preview_label.text
+		and not units[2].is_previewed and not (battle.get("movement_cells") as Array).is_empty(),
+		"행동을 썼으면 이동은 가능하지만 도착 시 공격 불가")
+	await process_frame
+	await process_frame
+	_check(not (hud.get_node("ActionHelp") as Control).get_global_rect().intersects(
+		(hud.get_node("CombatLog") as Control).get_global_rect()), "행동 소진 이동 안내도 설명과 로그가 겹치지 않음")
+	units[0].action_left = 1
+	await battle.call("_select_move_cell", Vector2i(1, 3))
+	_check("이동 2칸 → 0칸 남음" in hud.preview_label.text
+		and "공격 불가: 사거리 안 적 없음" in hud.preview_label.text, "이동은 가능해도 공격 사거리가 닿지 않는 칸 설명")
+	await process_frame
+	await process_frame
+	_check(not (hud.get_node("ActionHelp") as Control).get_global_rect().intersects(
+		(hud.get_node("CombatLog") as Control).get_global_rect()), "사거리 밖 이동 안내도 설명과 로그가 겹치지 않음")
+	(buttons["attack"] as Button).pressed.emit()
+	units[0].disengaged = true
+	await battle.call("_select_move_cell", Vector2i(2, 1))
+	_check(hud.help_title.text == "이동 미리보기" and "이번 턴 기회 공격 없음" in hud.help_label.text
+		and "반격 주의" not in hud.help_label.text and not hud.preview_label.visible,
+		"기본 공격 모드의 빈 칸 클릭도 이동 안내와 적용 중인 기회 공격 면제를 표시")
+	units[0].disengaged = false
+	hud.move_button.pressed.emit()
+	_check(battle.get("selected_action") == "move", "실제 이동 조작은 이동 모드에서 시작")
+	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
+	var move_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(Vector2i(2, 1))
+	await _click(move_point)
+	_check(battle.get("preview_cell") == Vector2i(2, 1) and units[0].cell == Vector2i(1, 1),
+		"이동 모드의 실제 첫 클릭은 경로 확인만 실행")
+	await _click(move_point)
+	_check(units[0].cell == Vector2i(2, 1) and units[0].movement_left == 1
+		and units[0].action_left == 1 and not (buttons["attack"] as Button).disabled
+		and battle.get("selected_action") == "attack",
+		"실제 이동 후 행동과 공격 버튼 유지")
+	_check((battle.get("movement_cells") as Array).is_empty(), "이동 선택을 해제하면 범위 표시 제거")
+	var point: Vector2 = units[2].get_global_transform_with_canvas() * Vector2(0, -10)
+	await _click(point)
+	_check(battle.get("preview_target") == units[2] and units[0].action_left == 1,
+		"이동 후 공격 버튼을 따로 누르지 않아도 적 클릭으로 공격 미리보기")
+	for seed_value: int in range(1000):
+		actions.dice.seed = seed_value
+		if actions.dice.randi_range(1, 20) == 1:
+			actions.dice.seed = seed_value
+			break
+	await _click(point)
+	_check(units[0].action_left == 0 and units[0].movement_left == 1 and units[2].hit_points == 12,
+		"이동 후 같은 적 재클릭은 공격만 소비하고 남은 이동은 유지")
+	units[0].action_left = 0
+	units[0].surge_left = 1
+	battle.call("_update_turn_ui")
+	(buttons["surge"] as Button).pressed.emit()
+	_check(hud.help_title.text == "몰아치기" and "이미 쓴 행동" in hud.help_label.text
+		and "비용: 보조 행동 ▲" in hud.help_label.text and "전투 중 1회 남음" in hud.help_label.text
+		and "같은 버튼을 다시" in hud.help_label.text and units[0].surge_left == 1,
+		"스킬 첫 선택은 효과·비용·횟수·사용법만 보여 줌")
+	for unit: CombatUnit in [units[0], units[1]]:
+		turns.select_unit(unit)
+		for action: String in CombatTurnHud.ACTION_NAMES:
+			if not (buttons[action] as Button).visible:
+				continue
+			hud.refresh_actions(actions, action, unit)
+			await process_frame
+			await process_frame
+			var panel: Control = hud.get_node("ActionHelp") as Control
+			_check(not panel.get_global_rect().intersects((hud.get_node("CombatLog") as Control).get_global_rect()),
+				"동작 설명과 로그가 겹치지 않음: " + action)
 
 
 func _test_results_and_restart() -> void:
@@ -309,6 +425,17 @@ func _test_order_bar_input() -> void:
 	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
 	_check(turns.current_unit == units[1] and units[0].movement_left == 6,
 		"턴 순서 바가 월드 입력을 막아도 자식 초상은 실제 클릭으로 전환")
+	destination = Vector2i(1, 0)
+	point = Vector2(80, 140)
+	camera.position = map.map_to_local(destination) + root.get_visible_rect().size / 2.0 - point - camera.offset
+	camera.force_update_scroll()
+	point = map.get_global_transform_with_canvas() * map.map_to_local(destination)
+	_check((hud.get_node("ActionHelp") as Control).get_global_rect().has_point(point)
+		and actions.can_move(units[1], destination), "설명 패널 입력 검사: 아래에 이동 가능한 칸을 배치")
+	await _click(point)
+	await _click(point)
+	_check(battle.get("preview_cell") == Vector2i(-1, -1) and units[1].cell == Vector2i(0, 0),
+		"동작 설명 패널을 눌러도 아래의 월드 칸을 선택하거나 이동하지 않음")
 	camera.position = original
 	camera.force_update_scroll()
 

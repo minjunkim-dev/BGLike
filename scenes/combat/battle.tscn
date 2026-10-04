@@ -101,10 +101,30 @@ anchor_right = 1.0
 offset_left = -212.0
 offset_top = 88.0
 offset_right = -8.0
-offset_bottom = 119.0
+offset_bottom = 158.0
 grow_horizontal = 0
 theme_override_font_sizes/font_size = 10
 mouse_filter = 2
+autowrap_mode = 2
+
+[node name="ActionHelp" type="PanelContainer" parent="UI/TurnHud"]
+offset_left = 8.0
+offset_top = 88.0
+offset_right = 160.0
+offset_bottom = 246.0
+
+[node name="Contents" type="VBoxContainer" parent="UI/TurnHud/ActionHelp"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="UI/TurnHud/ActionHelp/Contents"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+
+[node name="Details" type="Label" parent="UI/TurnHud/ActionHelp/Contents"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+autowrap_mode = 2
 
 [node name="CombatLog" type="PanelContainer" parent="UI/TurnHud"]
 anchor_top = 1.0
