@@ -9,7 +9,7 @@ import subprocess
 
 
 MAINTENANCE = {
-    ".gitignore", ".editorconfig", ".github/ISSUE_TEMPLATE/task.md",
+    ".gitignore", ".editorconfig", ".github/dependabot.yml", ".github/ISSUE_TEMPLATE/task.md",
     ".github/workflows/discord-pr.yml", ".github/workflows/claude.yml",
     "scripts/review_context.py", "scripts/review_failure.py",
     "scripts/test_review_context.py", "scripts/test_review_failure.py",

@@ -11,6 +11,11 @@ Thumbs.db
 build/
 dist/
 
+# Python (scripts/ tests and art generators)
+__pycache__/
+*.py[cod]
+.venv/
+
 # Personal tool state and settings (not shared)
 .serena/
 graft/
