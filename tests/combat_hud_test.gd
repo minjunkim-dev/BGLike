@@ -379,6 +379,21 @@ func _test_guidance() -> void:
 	_check(scroll.value > 0, "설명 영역의 실제 휠 입력으로 아래 내용을 읽을 수 있음")
 	wheel.pressed = false
 	Input.parse_input_event(wheel)
+	hud.refresh_actions(actions, "shove", units[0])
+	await process_frame
+	await process_frame
+	scroll.value = scroll.max_value - scroll.page
+	_check(scroll.value > 0, "큰 글꼴의 밀치기 설명을 끝까지 스크롤한 상태")
+	hud.refresh_actions(actions, "parry", units[0])
+	await process_frame
+	await process_frame
+	_check(scroll.value == 0 and hud.help_label.text.begins_with("비용: 반응 ◆"),
+		"다른 긴 동작을 선택하면 이전 스크롤을 초기화하여 비용부터 표시")
+	scroll.value = scroll.max_value - scroll.page
+	var scrolled: float = scroll.value
+	hud.refresh_actions(actions, "parry", units[0])
+	await process_frame
+	_check(scrolled > 0 and scroll.value == scrolled, "같은 안내를 새로 표시할 때는 읽던 스크롤 위치 유지")
 	hud.help_label.remove_theme_font_size_override("normal_font_size")
 	battle.call("_update_turn_ui")
 	await process_frame

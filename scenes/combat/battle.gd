@@ -224,8 +224,7 @@ func _update_turn_ui() -> void:
 	var showing_move: bool = selected_action == "move" or not preview_path.is_empty()
 	hud.preview_label.visible = not showing_move
 	if showing_move and not hud.preview_label.text.is_empty():
-		hud.help_title.text = "이동 미리보기"
-		hud.help_label.text = hud.preview_label.text + "\n\n행동 소비 없음.\n" + hud.movement_caution(turns.current_unit)
+		hud.show_help("이동 미리보기", hud.preview_label.text + "\n\n행동 소비 없음.\n" + hud.movement_caution(turns.current_unit))
 	if actions.is_over():
 		hud.round_label.text = "승리" if _all_enemies_down() else "패배"
 		hud.show_result(_all_enemies_down())

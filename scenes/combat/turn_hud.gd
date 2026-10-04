@@ -176,11 +176,18 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 	for button: Button in _portraits.values():
 		button.disabled = button.disabled or locked
 	if not ally_turn:
-		help_title.text = "적 턴"
-		help_label.text = "아군 입력은 잠깁니다.\n현재는 턴 종료를 눌러 적 턴을 넘깁니다.\n\n● 행동: 공격\n▲ 보조 행동: 보조 스킬\n◆ 반응: 다른 유닛의 턴\n빈 기호는 이미 쓴 자원입니다."
+		show_help("적 턴", "아군 입력은 잠깁니다.\n현재는 턴 종료를 눌러 적 턴을 넘깁니다.\n\n● 행동: 공격\n▲ 보조 행동: 보조 스킬\n◆ 반응: 다른 유닛의 턴\n빈 기호는 이미 쓴 자원입니다.")
 	else:
-		help_title.text = "이동 안내" if selected == "move" else ACTION_NAMES.get(selected, "동작 안내")
-		help_label.text = action_details(actions, shown, selected)
+		show_help("이동 안내" if selected == "move" else ACTION_NAMES.get(selected, "동작 안내"),
+			action_details(actions, shown, selected))
+
+
+func show_help(title: String, details: String) -> void:
+	var changed: bool = help_title.text != title or help_label.text != details
+	help_title.text = title
+	help_label.text = details
+	if changed:
+		help_label.get_v_scroll_bar().value = 0
 
 
 func action_details(actions: CombatActions, actor: CombatUnit, action: String) -> String:
