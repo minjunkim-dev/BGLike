@@ -54,7 +54,7 @@ var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 @onready var action_bar: HBoxContainer = $Skills/Groups
 @onready var message_label: Label = $CombatLog/Message
 @onready var help_title: Label = $ActionHelp/Contents/Title
-@onready var help_label: Label = $ActionHelp/Contents/Details
+@onready var help_label: RichTextLabel = $ActionHelp/Contents/Details
 @onready var result_label: Label = $Result/Panel/Contents/Outcome
 @onready var restart_button: Button = $Result/Panel/Contents/Restart
 
@@ -194,9 +194,10 @@ func action_details(actions: CombatActions, actor: CombatUnit, action: String) -
 	var index: int = 0 if action in ACTION_GROUPS[0] else 1 if action in ACTION_GROUPS[1] else 2
 	var costs: Array[String] = ["행동 ●", "보조 행동 ▲", "반응 ◆"]
 	var amount: int = [actor.action_left, actor.bonus_action_left, actor.reaction_left][index]
-	var text: String = "%s\n비용: %s · %s" % [effect, costs[index], "남음" if amount > 0 else "사용함"]
+	var text: String = "비용: %s · %s" % [costs[index], "남음" if amount > 0 else "사용함"]
 	var uses: int = _remaining_uses(actor, action)
 	text += "\n전투 중 %d회 남음" % uses if uses >= 0 else "\n전투당 횟수 제한 없음"
+	text += "\n" + effect
 	if index == 2:
 		return text + "\n버튼으로 실행하지 않습니다. 발동 시 확인 창을 사용합니다."
 	var reason: String = _unavailable_reason(actions, actor, action, amount, uses)

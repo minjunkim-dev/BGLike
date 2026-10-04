@@ -121,9 +121,10 @@ theme_override_constants/separation = 4
 layout_mode = 2
 theme_override_font_sizes/font_size = 12
 
-[node name="Details" type="Label" parent="UI/TurnHud/ActionHelp/Contents"]
+[node name="Details" type="RichTextLabel" parent="UI/TurnHud/ActionHelp/Contents"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 10
+size_flags_vertical = 3
+theme_override_font_sizes/normal_font_size = 10
 autowrap_mode = 2
 
 [node name="CombatLog" type="PanelContainer" parent="UI/TurnHud"]
