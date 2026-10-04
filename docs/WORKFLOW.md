@@ -77,9 +77,9 @@
 
 **Claude** ([워크플로우](../.github/workflows/claude.yml))
 
-- 쓰기 권한 사용자의 Issue 생성·수정, `claude` 또는 `ai:review` 라벨, main 대상 비-Draft PR의 생성·갱신, 명시된 리뷰 댓글과 수동 실행을 지원합니다. 봇과 일반 댓글은 검토를 요청하지 않습니다. `ai:skip` 항목은 제외합니다.
+- 쓰기 권한 사용자의 Issue 생성·수정, `claude` 또는 `ai:review` 라벨, main 대상 비-Draft PR의 생성·갱신과 명시된 리뷰 댓글을 지원합니다. 봇과 일반 댓글은 검토를 요청하지 않습니다. `ai:skip` 항목은 제외합니다.
 - 읽기 전용 `authorize` 작업에서 GitHub API로 요청자의 현재 권한, 대상 상태, 저장소와 head SHA를 확인합니다. 검증된 요청만 Secret을 사용하는 `review` 작업을 시작합니다. 댓글은 별도 `publish` 작업에서 게시합니다.
-- 세 작업은 신뢰된 기본 브랜치만 checkout합니다. 수동 실행은 저장소 쓰기 권한자가 선택한 workflow SHA를 사용합니다. PR 코드를 checkout·import·실행하지 않습니다.
+- 세 작업은 main의 신뢰된 코드만 checkout합니다. 임의 브랜치의 수동 workflow dispatch는 지원하지 않습니다. 반복 검토는 명시된 리뷰 댓글로 요청합니다. PR 코드를 checkout·import·실행하지 않습니다.
 - 모델 작업의 GitHub 토큰은 읽기 전용입니다. 신뢰된 Python 코드가 제한된 검토 자료를 준비하고 모델의 파일·셸·MCP 도구를 모두 끕니다.
 - PR의 Refs·Closes 등으로 연결된 같은 저장소의 Issue를 최대 3개 포함합니다. 연결된 기획 Markdown은 신뢰된 checkout의 추적된 docs/ 파일에서만 가져옵니다. 최대 6개·합계 48,000자로 제한합니다. 외부 링크·다른 Git ref·경로 탈출·추적되지 않은 파일은 읽지 않습니다. 누락과 잘림은 자료에 표시합니다.
 - 초기화 기록의 도구·MCP 목록이 모두 비어 있는지 확인합니다. 도구 호출이 있거나 기록이 없으면 게시하지 않습니다. 성공한 최종 응답의 길이와 인증정보 형식을 검사하고 대상 번호·SHA에 묶습니다.

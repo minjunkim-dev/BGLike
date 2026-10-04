@@ -66,9 +66,13 @@ class ReviewTests(unittest.TestCase):
         result, _ = review_request("issues", event, REPO, self.get)
         self.assertEqual(result["kind"], "issue")
 
-    def test_dispatch_cannot_disguise_a_pr_as_an_issue(self):
-        event = {"sender": self.event["sender"], "inputs": {"kind": "issue", "number": "29"}}
-        self.assertIsNone(review_request("workflow_dispatch", event, REPO, self.get)[0])
+    def test_dispatch_is_rejected_even_for_valid_writer_and_target(self):
+        for ref in ["refs/heads/main", "refs/heads/untrusted"]:
+            for kind in ["issue", "pr"]:
+                event = {"sender": self.event["sender"], "ref": ref,
+                         "inputs": {"kind": kind, "number": "29"}}
+                with self.subTest(ref=ref, kind=kind):
+                    self.assertIsNone(review_request("workflow_dispatch", event, REPO, self.get)[0])
 
     def test_invalid_sha_is_rejected(self):
         self.responses["pulls/29"]["head"]["sha"] = "invalid"
