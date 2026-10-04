@@ -188,7 +188,6 @@ func _update_turn_ui() -> void:
 		_last_ally = turns.current_unit
 	var can_act: bool = actions.has_available_action(turns.current_unit)
 	hud.refresh(turns, can_act)
-	hud.refresh_actions(actions, selected_action, _last_ally)
 	movement_cells.clear()
 	if selected_action == "move":
 		for x: int in range(MAP_SIZE.x):
@@ -222,8 +221,10 @@ func _update_turn_ui() -> void:
 			preview_path.size(), actor.movement_left - preview_path.size(), attack_text]
 	# 이동 정보는 왼쪽 설명 패널에 모아 격자 오른쪽을 가리지 않는다.
 	var showing_move: bool = selected_action == "move" or not preview_path.is_empty()
+	var move_preview: bool = showing_move and not hud.preview_label.text.is_empty()
+	hud.refresh_actions(actions, selected_action, _last_ally, not move_preview)
 	hud.preview_label.visible = not showing_move
-	if showing_move and not hud.preview_label.text.is_empty():
+	if move_preview:
 		hud.show_help("이동 미리보기", hud.preview_label.text + "\n\n행동 소비 없음.\n" + hud.movement_caution(turns.current_unit))
 	if actions.is_over():
 		hud.round_label.text = "승리" if _all_enemies_down() else "패배"

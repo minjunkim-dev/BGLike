@@ -394,6 +394,17 @@ func _test_guidance() -> void:
 	hud.refresh_actions(actions, "parry", units[0])
 	await process_frame
 	_check(scrolled > 0 and scroll.value == scrolled, "같은 안내를 새로 표시할 때는 읽던 스크롤 위치 유지")
+	hud.move_button.pressed.emit()
+	await battle.call("_select_move_cell", Vector2i(0, 1))
+	await process_frame
+	await process_frame
+	scroll.value = scroll.max_value - scroll.page
+	scrolled = scroll.value
+	_check(hud.help_title.text == "이동 미리보기" and scrolled > 0,
+		"큰 글꼴의 이동 미리보기를 끝까지 스크롤한 상태")
+	battle.call("_update_turn_ui")
+	await process_frame
+	_check(scroll.value == scrolled, "같은 이동 미리보기의 UI 갱신은 읽던 스크롤 위치 유지")
 	hud.help_label.remove_theme_font_size_override("normal_font_size")
 	battle.call("_update_turn_ui")
 	await process_frame

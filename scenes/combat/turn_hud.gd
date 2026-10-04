@@ -125,7 +125,8 @@ func _ready() -> void:
 	reaction_dialog.canceled.connect(func() -> void: reaction_selected.emit(false))
 
 
-func refresh_actions(actions: CombatActions, selected: String, last_ally: CombatUnit) -> void:
+func refresh_actions(actions: CombatActions, selected: String, last_ally: CombatUnit,
+		show_action_help: bool = true) -> void:
 	var actor: CombatUnit = actions.turns.current_unit
 	var shown: CombatUnit = actor if actor != null and actor.is_ally else last_ally
 	var ally_turn: bool = actor != null and actor.is_ally
@@ -175,8 +176,10 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 	end_button.disabled = actor == null or locked
 	for button: Button in _portraits.values():
 		button.disabled = button.disabled or locked
+	if not show_action_help:
+		return
 	if not ally_turn:
-		show_help("적 턴", "아군 입력은 잠깁니다.\n현재는 턴 종료를 눌러 적 턴을 넘깁니다.\n\n● 행동: 공격\n▲ 보조 행동: 보조 스킬\n◆ 반응: 다른 유닛의 턴\n빈 기호는 이미 쓴 자원입니다.")
+		show_help("적 턴", "아군 입력은 잠깁니다.\n적은 아직 자동으로\n이동·공격하지 않습니다.\n턴 종료로 넘기세요.\n\n● 행동: 공격\n▲ 보조 행동: 보조 스킬\n◆ 반응: 다른 유닛의 턴\n빈 기호는 이미 쓴 자원입니다.")
 	else:
 		show_help("이동 안내" if selected == "move" else ACTION_NAMES.get(selected, "동작 안내"),
 			action_details(actions, shown, selected))
