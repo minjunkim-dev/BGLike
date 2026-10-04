@@ -1,6 +1,6 @@
 class_name CombatActions
 extends RefCounted
-## 동작 실행과 반응 대기. 적 AI는 같은 API를 이후 단계에서 호출한다.
+## 아군과 적 AI가 함께 쓰는 동작 실행과 반응 대기.
 
 signal changed
 signal logged(message: String)

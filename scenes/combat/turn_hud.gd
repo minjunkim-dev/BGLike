@@ -173,13 +173,13 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 	if not ally_turn:
 		move_button.text = "이동"
 	move_button.tooltip_text = "이동력만 씁니다. 행동과 보조 행동은 쓰지 않습니다.\n자기 턴에 6칸 회복. 나눠 이동할 수 있습니다.\n적의 인접 칸을 벗어나면 기회 공격을 받을 수 있습니다."
-	end_button.disabled = actor == null or locked
+	end_button.disabled = not ally_turn or locked
 	for button: Button in _portraits.values():
 		button.disabled = button.disabled or locked
 	if not show_action_help:
 		return
 	if not ally_turn:
-		show_help("적 턴", "아군 입력은 잠깁니다.\n적은 아직 자동으로\n이동·공격하지 않습니다.\n턴 종료로 넘기세요.\n\n● 행동: 공격\n▲ 보조 행동: 보조 스킬\n◆ 반응: 다른 유닛의 턴\n빈 기호는 이미 쓴 자원입니다.")
+		show_help("적 턴", "적이 자동으로 이동·공격합니다.\n아군 입력은 잠깁니다.\n반응 확인 창에서 사용할지 고르세요.\n\n● 행동: 공격\n▲ 보조 행동: 보조 스킬\n◆ 반응: 다른 유닛의 턴\n빈 기호는 이미 쓴 자원입니다.")
 	else:
 		show_help("이동 안내" if selected == "move" else ACTION_NAMES.get(selected, "동작 안내"),
 			action_details(actions, shown, selected))
