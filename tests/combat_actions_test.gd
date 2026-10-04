@@ -387,6 +387,14 @@ func _test_scene_input() -> void:
 	hud.action_selected.emit("surge")
 	_check(units[0].surge_left == 0 and units[0].action_left == 1, "자기 대상 동작 두 번째 클릭 실행")
 	_check("몰아치기" in hud.message_label.text, "실행 결과 화면 피드백")
+	actions.dice = _dice_for([11], [20])
+	await _click(point)
+	_check(units[0].action_left == 1 and units[2].hit_points == 12
+		and battle.get("preview_target") == units[2], "몰아치기 뒤 추가 공격 첫 클릭은 미리보기")
+	await _click(point)
+	_check(turns.current_unit == units[0] and units[0].action_left == 0
+		and units[0].bonus_action_left == 0 and units[2].hit_points < 12,
+		"아군은 같은 턴에 몰아치기 뒤 두 번째 클릭으로 추가 공격")
 	turns.end_turn()
 	turns.end_turn()
 	_check(actions.save_dc == 13, "실제 장면도 DC13을 연결")
