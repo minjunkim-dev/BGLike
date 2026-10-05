@@ -1,8 +1,9 @@
-"""Exercise the actual workflow install script with safe command fixtures."""
+"""Exercise the shared install script with safe command fixtures."""
 
 import hashlib
 import json
 import os
+import platform
 from pathlib import Path
 import subprocess
 import sys
@@ -10,7 +11,8 @@ import tempfile
 import unittest
 
 
-WORKFLOW = Path(__file__).resolve().parents[1] / ".github/workflows/godot.yml"
+ROOT = Path(__file__).resolve().parents[1]
+WORKFLOW = ROOT / ".github/workflows/godot.yml"
 ARCHIVE = b"test fixture for a verified Godot archive"
 
 
@@ -48,7 +50,8 @@ elif command == "sha256sum":
     print("archive: OK" if expected == actual else "archive: FAILED")
     sys.exit(0 if expected == actual else 1)
 elif command == "unzip":
-    target = Path(args[args.index("-d") + 1]) / os.environ["GODOT_FILE"]
+    target = Path(os.environ["BGLIKE_BINARY"])
+    target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("#!" + sys.executable + "\n" +
         "import json, os\n" +
         "with open(os.environ['BGLIKE_COMMAND_LOG'], 'a') as log:\n" +
@@ -71,14 +74,23 @@ class GodotInstallTests(unittest.TestCase):
                 archive.write_bytes(cached)
             log = root / "commands.jsonl"
             output = root / "outputs"
+            config = root / "godot.env"
+            digest = hashlib.sha256(ARCHIVE).hexdigest()
+            config.write_text("GODOT_VERSION=fixture\n" + "\n".join(
+                f"{key}={digest}" for key in ("GODOT_LINUX_X86_64_SHA256",
+                                             "GODOT_LINUX_ARM64_SHA256", "GODOT_MACOS_SHA256")) + "\n")
+            if platform.system() == "Darwin":
+                binary = root / "Godot.app/Contents/MacOS/Godot"
+            else:
+                suffix = "linux.x86_64" if platform.machine() == "x86_64" else "linux.arm64"
+                binary = root / f"Godot_vfixture-stable_{suffix}"
             env = dict(os.environ, PATH=f"{commands}{os.pathsep}{os.environ['PATH']}",
-                       RUNNER_TEMP=str(root), GODOT_FILE="fixture_godot",
-                       GODOT_SHA256=hashlib.sha256(ARCHIVE).hexdigest(),
+                       RUNNER_TEMP=str(root), GODOT_DIR=str(root), GODOT_CONFIG=str(config),
+                       BGLIKE_BINARY=str(binary),
                        GITHUB_OUTPUT=str(output), BGLIKE_COMMAND_LOG=str(log),
                        BGLIKE_DOWNLOAD_HEX=downloaded.hex(),
                        BGLIKE_DOWNLOAD_FAIL="1" if fail_download else "0")
-            result = subprocess.run(["bash", "-e", "-o", "pipefail", "-c",
-                                     step_script("Install Godot 4.7.2")],
+            result = subprocess.run(["bash", "scripts/install_godot.sh"], cwd=ROOT,
                                     env=env, capture_output=True, text=True)
             calls = [json.loads(line) for line in log.read_text().splitlines()]
             outputs = output.read_text() if output.exists() else ""

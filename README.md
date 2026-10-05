@@ -24,18 +24,12 @@ GitHub 약관에서 허용하는 열람·fork와 적용 법률의 예외는 유�
 명령줄에서는 다음으로 확인합니다.
 
 ```sh
-godot --headless --path . --import
-godot --headless --path . --quit-after 2
-git diff --check
-python3 -m unittest discover -s scripts -p 'test_*.py'
-godot --headless --path . --script tests/combat_turns_test.gd
-godot --headless --path . --script tests/combat_checks_test.gd
-godot --headless --path . --script tests/combat_actions_test.gd
-godot --headless --path . --script tests/combat_hud_test.gd
-godot --headless --path . --script tests/combat_ai_test.gd
+make godot-install
+make check
 ```
 
-`godot`이 PATH에 없다면 설치된 Godot 앱의 실행 파일 경로를 사용합니다. macOS 외장 SSD 설치 예시는 `/Volumes/P41_USB4/Godot.app/Contents/MacOS/Godot`입니다.
+기존 편집기는 `GODOT=/Applications/Godot.app/Contents/MacOS/Godot make check`로 검사합니다.
+플랫폼별 설치, 버전 검사와 캐시 없는 실행은 [공통 환경](docs/ENVIRONMENT.md)을 따릅니다.
 
 문서·관리 파일만 바뀌면 공백과 Python 검사를 수행합니다. CI의 엔진 선택과 알림 조건은 [CI 구성](docs/CI.md)을 따릅니다.
 
