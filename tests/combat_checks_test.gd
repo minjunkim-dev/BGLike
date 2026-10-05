@@ -175,6 +175,7 @@ func _test_scene_input() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	var battle: Node2D = scene.instantiate() as Node2D
 	root.add_child(battle)
+	battle.set_process(false)
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var units: Array[CombatUnit] = battle.get("units")
@@ -193,7 +194,8 @@ func _test_scene_input() -> void:
 	_check(units[2].hit_points == hp_before and units[0].movement_left == movement_before
 		and units[0].action_left == action_before, "사거리 밖이면 두 번 눌러도 공격하거나 자원을 쓰지 않음")
 	_check(units[0].is_selected and units[2].is_previewed, "조작 유닛과 미리보기 대상 표시 구분")
-	await _click_point(Vector2(8, 120))
+	# 왼쪽 설명 패널 밖의 실제 빈 영역을 누른다.
+	await _click_point(Vector2(4, 120))
 	_check(battle.get("preview_target") == null and hud.unit_label.text == "아군 전사",
 		"빈 곳 클릭은 미리보기를 해제하고 현재 유닛을 표시")
 	await _click_unit(units[2])

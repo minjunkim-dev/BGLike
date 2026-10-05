@@ -26,8 +26,9 @@ jobs:
     env:
       TITLE: ${{ github.event.pull_request.title }}
       BRANCH: ${{ github.head_ref }}
+      AUTHOR: ${{ github.event.pull_request.user.login }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -61,7 +62,9 @@ jobs:
             echo "type: $types. 예: feat(combat): add initiative turn order. 규칙: docs/GIT_CONVENTIONS.md"
             exit 1
           fi
-          if [ "${#TITLE}" -gt 72 ]; then
+          # Dependabot names long actions in full, e.g. anthropics/claude-code-action/base-action.
+          # Gate on the GitHub-set author; anyone can name a branch dependabot/.
+          if [ "${#TITLE}" -gt 72 ] && [ "$AUTHOR" != 'dependabot[bot]' ]; then
             echo "::error::PR 제목이 72자를 넘습니다 (${#TITLE}자)."
             exit 1
           fi
@@ -70,7 +73,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           types='feat|fix|refactor|perf|test|docs|build|ci|chore|revert'
-          if printf '%s' "$BRANCH" | grep -Eq '^(claude|codex)/'; then
+          if printf '%s' "$BRANCH" | grep -Eq '^(claude|codex|dependabot)/'; then
             echo "에이전트 브랜치는 이름을 검사하지 않습니다: $BRANCH"
             exit 0
           fi

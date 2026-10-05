@@ -36,6 +36,7 @@ start_cell = Vector2i(4, 0)
 
 [node name="Camera" type="Camera2D" parent="."]
 position_smoothing_enabled = false
+offset = Vector2(0, 20)
 
 [node name="UI" type="CanvasLayer" parent="."]
 
@@ -51,95 +52,167 @@ theme = SubResource("Theme_legend")
 script = ExtResource("4_hud")
 
 [node name="Round" type="Label" parent="UI/TurnHud"]
-offset_left = 16.0
+offset_left = 8.0
 offset_top = 8.0
-offset_right = 336.0
-offset_bottom = 24.0
+offset_right = 300.0
+offset_bottom = 22.0
+theme_override_font_sizes/font_size = 10
 mouse_filter = 2
 
 [node name="OrderBar" type="HBoxContainer" parent="UI/TurnHud"]
-offset_left = 16.0
-offset_top = 28.0
-offset_right = 336.0
-offset_bottom = 84.0
-theme_override_constants/separation = 8
+mouse_filter = 0
+offset_left = 8.0
+offset_top = 25.0
+offset_right = 300.0
+offset_bottom = 74.0
+theme_override_constants/separation = 6
 
-[node name="CurrentUnit" type="Label" parent="UI/TurnHud"]
-anchors_preset = 1
+[node name="UnitPanel" type="PanelContainer" parent="UI/TurnHud"]
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -236.0
+offset_left = -212.0
 offset_top = 8.0
-offset_right = -16.0
-offset_bottom = 24.0
+offset_right = -8.0
+offset_bottom = 82.0
 grow_horizontal = 0
+
+[node name="Info" type="VBoxContainer" parent="UI/TurnHud/UnitPanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="CurrentUnit" type="Label" parent="UI/TurnHud/UnitPanel/Info"]
+layout_mode = 2
 mouse_filter = 2
 
-[node name="Resources" type="Label" parent="UI/TurnHud"]
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -236.0
-offset_top = 28.0
-offset_right = -16.0
-offset_bottom = 68.0
-grow_horizontal = 0
+[node name="Health" type="ProgressBar" parent="UI/TurnHud/UnitPanel/Info"]
+custom_minimum_size = Vector2(0, 5)
+layout_mode = 2
+show_percentage = false
 mouse_filter = 2
 
-[node name="Legend" type="Label" parent="UI/TurnHud"]
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = -48.0
-offset_right = 240.0
-offset_bottom = -12.0
-grow_vertical = 0
+[node name="Resources" type="Label" parent="UI/TurnHud/UnitPanel/Info"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
 mouse_filter = 2
-text = "아군: 파랑  |  적: 빨강
-전사: 검  |  궁수: 활"
 
 [node name="AttackPreview" type="Label" parent="UI/TurnHud"]
-anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -236.0
-offset_top = 72.0
-offset_right = -16.0
-offset_bottom = 110.0
+offset_left = -212.0
+offset_top = 88.0
+offset_right = -8.0
+offset_bottom = 158.0
 grow_horizontal = 0
+theme_override_font_sizes/font_size = 10
+mouse_filter = 2
+autowrap_mode = 2
+
+[node name="ActionHelp" type="PanelContainer" parent="UI/TurnHud"]
+offset_left = 8.0
+offset_top = 88.0
+offset_right = 160.0
+offset_bottom = 246.0
+
+[node name="Contents" type="VBoxContainer" parent="UI/TurnHud/ActionHelp"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="UI/TurnHud/ActionHelp/Contents"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+
+[node name="Details" type="RichTextLabel" parent="UI/TurnHud/ActionHelp/Contents"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/normal_font_size = 10
+autowrap_mode = 2
+
+[node name="CombatLog" type="PanelContainer" parent="UI/TurnHud"]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -108.0
+offset_right = 544.0
+offset_bottom = -60.0
+grow_vertical = 0
+
+[node name="Message" type="Label" parent="UI/TurnHud/CombatLog"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "전투 시작"
 mouse_filter = 2
 
-[node name="EndTurn" type="Button" parent="UI/TurnHud"]
-anchors_preset = 3
+[node name="Skills" type="PanelContainer" parent="UI/TurnHud"]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -54.0
+offset_right = 544.0
+offset_bottom = -6.0
+grow_vertical = 0
+
+[node name="Groups" type="HBoxContainer" parent="UI/TurnHud/Skills"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Move" type="Button" parent="UI/TurnHud"]
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -144.0
+offset_left = -88.0
+offset_top = -78.0
+offset_right = -8.0
+offset_bottom = -54.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "이동"
+theme_override_font_sizes/font_size = 10
+
+[node name="EndTurn" type="Button" parent="UI/TurnHud"]
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -88.0
 offset_top = -48.0
-offset_right = -16.0
-offset_bottom = -12.0
+offset_right = -8.0
+offset_bottom = -6.0
 grow_horizontal = 0
 grow_vertical = 0
 text = "턴 종료"
 
-[node name="Actions" type="VBoxContainer" parent="UI/TurnHud"]
-offset_left = 16.0
-offset_top = 96.0
-offset_right = 156.0
-offset_bottom = 292.0
-theme_override_constants/separation = 2
-
-[node name="CombatMessage" type="Label" parent="UI/TurnHud"]
-anchors_preset = 2
-anchor_top = 1.0
+[node name="Result" type="ColorRect" parent="UI/TurnHud"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 244.0
-offset_top = -66.0
-offset_right = 488.0
-offset_bottom = -12.0
-grow_vertical = 0
-mouse_filter = 2
-theme_override_font_sizes/font_size = 10
-autowrap_mode = 2
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.06, 0.08, 0.8)
+
+[node name="Panel" type="PanelContainer" parent="UI/TurnHud/Result"]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -90.0
+offset_top = -48.0
+offset_right = 90.0
+offset_bottom = 48.0
+
+[node name="Contents" type="VBoxContainer" parent="UI/TurnHud/Result/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Outcome" type="Label" parent="UI/TurnHud/Result/Panel/Contents"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+horizontal_alignment = 1
+
+[node name="Restart" type="Button" parent="UI/TurnHud/Result/Panel/Contents"]
+layout_mode = 2
+text = "재시작"

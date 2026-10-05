@@ -357,6 +357,7 @@ func _test_scene_input() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	var battle: Node2D = scene.instantiate() as Node2D
 	root.add_child(battle)
+	battle.set_process(false)
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
@@ -386,6 +387,14 @@ func _test_scene_input() -> void:
 	hud.action_selected.emit("surge")
 	_check(units[0].surge_left == 0 and units[0].action_left == 1, "자기 대상 동작 두 번째 클릭 실행")
 	_check("몰아치기" in hud.message_label.text, "실행 결과 화면 피드백")
+	actions.dice = _dice_for([11], [20])
+	await _click(point)
+	_check(units[0].action_left == 1 and units[2].hit_points == 12
+		and battle.get("preview_target") == units[2], "몰아치기 뒤 추가 공격 첫 클릭은 미리보기")
+	await _click(point)
+	_check(turns.current_unit == units[0] and units[0].action_left == 0
+		and units[0].bonus_action_left == 0 and units[2].hit_points < 12,
+		"아군은 같은 턴에 몰아치기 뒤 두 번째 클릭으로 추가 공격")
 	turns.end_turn()
 	turns.end_turn()
 	_check(actions.save_dc == 13, "실제 장면도 DC13을 연결")
@@ -404,6 +413,7 @@ func _test_scene_input() -> void:
 	# 몸통에 가린 빈 칸과 겹친 유닛은 실제 입력으로 별도 확인한다.
 	var overlap: Node2D = scene.instantiate() as Node2D
 	root.add_child(overlap)
+	overlap.set_process(false)
 	await process_frame
 	var overlap_units: Array[CombatUnit] = overlap.get("units")
 	var overlap_turns: CombatTurns = overlap.get("turns") as CombatTurns
@@ -433,6 +443,7 @@ func _test_scene_shock() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	var battle: Node2D = scene.instantiate() as Node2D
 	root.add_child(battle)
+	battle.set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -456,7 +467,9 @@ func _test_scene_shock() -> void:
 	_check(units[1].action_left == 0 and units[1].shock_left == 0
 		and units[3].hit_points == before_miss and not units[3].is_stunned,
 		"실제 두 번째 클릭의 충격 화살 빗나감은 행동·횟수만 소비")
-	_check(shock_button.disabled and "(0)" in shock_button.text, "실행 후 충격 화살 비활성화와 횟수 갱신")
+	var badges: Dictionary = hud.get("_badges")
+	_check(shock_button.disabled and (badges["shock"] as Label).text == "0",
+		"실행 후 충격 화살 비활성화와 모서리 횟수 배지 갱신")
 	battle.queue_free()
 	await process_frame
 

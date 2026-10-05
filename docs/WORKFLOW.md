@@ -77,7 +77,7 @@
 
 **Claude** ([워크플로우](../.github/workflows/claude.yml))
 
-- 쓰기 권한 사용자의 Issue 생성·수정, `claude` 또는 `ai:review` 라벨, main 대상 비-Draft PR의 생성·갱신과 명시된 리뷰 댓글을 지원합니다. 봇과 일반 댓글은 검토를 요청하지 않습니다. `ai:skip` 항목은 제외합니다.
+- 수동 호출만 지원합니다. 쓰기 권한 사용자가 Issue·main 대상 비-Draft PR에 `claude` 또는 `ai:review` 라벨을 붙이거나 명시된 리뷰 댓글을 달 때만 실행합니다. Issue·PR 생성과 push는 Claude를 실행하지 않습니다. PR마다 도는 자동 리뷰는 Codex가 맡습니다. 봇과 일반 댓글, 다른 라벨은 검토를 요청하지 않습니다. `ai:skip` 항목은 제외합니다.
 - 읽기 전용 `authorize` 작업에서 GitHub API로 요청자의 현재 권한, 대상 상태, 저장소와 head SHA를 확인합니다. 검증된 요청만 Secret을 사용하는 `review` 작업을 시작합니다. 댓글은 별도 `publish` 작업에서 게시합니다.
 - 세 작업은 main의 신뢰된 코드만 checkout합니다. 임의 브랜치의 수동 workflow dispatch는 지원하지 않습니다. 반복 검토는 명시된 리뷰 댓글로 요청합니다. PR 코드를 checkout·import·실행하지 않습니다.
 - 모델 작업의 GitHub 토큰은 읽기 전용입니다. 신뢰된 Python 코드가 제한된 검토 자료를 준비하고 모델의 파일·셸·MCP 도구를 모두 끕니다.

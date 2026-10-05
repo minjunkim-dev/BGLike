@@ -195,6 +195,7 @@ func _test_scene() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	var battle: Node2D = scene.instantiate() as Node2D
 	root.add_child(battle)
+	battle.set_process(false)
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
