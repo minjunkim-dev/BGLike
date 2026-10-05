@@ -36,7 +36,7 @@ make check
 ## 협업 규칙
 
 - 처음이라면 [참여 안내](CONTRIBUTING.md)를 읽습니다. Issue, 브랜치, 커밋, 문서, 개발 규칙을 한 장으로 요약했습니다.
-- 작업은 GitHub Issue에 목표와 완료 조건을 적고 시작합니다. 작은 브랜치에서 PR을 열고 동료 검토 후 squash merge합니다.
+- 작업은 GitHub Issue에 목표와 완료 조건을 적고 시작합니다. 작은 브랜치에서 PR을 열고 필수 CI와 리뷰 지적을 처리한 뒤 squash merge합니다. 동료 승인은 필수가 아닙니다.
 - [협업 절차](docs/WORKFLOW.md)와 [AI 에이전트 지침](AGENTS.md)을 따릅니다. Claude Code는 `CLAUDE.md`에서 같은 지침을 읽습니다.
 - 비공개 저장소의 현재 GitHub 요금제로는 `main` 보호 규칙을 켤 수 없습니다. 자세한 상태와 대신 지키는 운영 규칙은 협업 절차에 있습니다.
 - `.godot/` 캐시는 커밋하지 않습니다. 장면과 스크립트 등 원본 파일은 커밋합니다. `.gitattributes`에 지정된 바이너리는 Git LFS로 관리합니다.
