@@ -25,6 +25,8 @@ PR에서는 제목과 브랜치 규칙도 검사합니다.
 edited 전용 lint 검사는 제목 변경을 빠르게 확인하는 보조 검사입니다.
 
 Godot 작업은 headless import, 메인 장면 시작과 기존 전투 회귀 테스트를 모두 수행합니다.
+Ubuntu 24.04에서 로컬과 같은 `make godot-install`, `make godot-check`를 호출합니다.
+엔진 버전·해시는 `scripts/godot.env`를 따릅니다. [공통 환경](ENVIRONMENT.md)에 새 환경 설치와 캐시 없는 실행을 기록합니다.
 검사 실패를 통과로 처리하지 않습니다. PR 병합 전에 `PR conventions and scope`와 선택된 `smoke` 결과를 함께 확인합니다.
 공개 후 main 보호를 설정할 때도 두 검사 모두 필수로 지정합니다. 문서 변경의 smoke skipped는 정상입니다.
 재사용 작업의 실제 check 이름은 호출 작업 이름을 포함할 수 있습니다. GitHub의 해당 실행에서 이름을 확인한 뒤 보호 규칙에 지정합니다.
