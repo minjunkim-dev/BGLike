@@ -323,7 +323,7 @@ func _test_layout() -> void:
 			for control: Control in [hud.order_bar, hud.action_bar, hud.message_label,
 				hud.end_button, hud.input_hint, hud.resource_label, hud.actor_label, hud.help_label, hud.preview_label]:
 				_check(area.encloses(control.get_global_rect()), "%s: 화면 안 %s" % [size, control.name])
-			_check(not (hud.get_node("UnitPanel") as Control).get_global_rect().intersects(
+			_check(not (hud.get_node("UnitDetails/UnitPanel") as Control).get_global_rect().intersects(
 				hud.preview_label.get_global_rect()), "확장한 유닛 정보와 공격 예측은 겹치지 않음")
 			var skills: Rect2 = (hud.get_node("Skills") as Control).get_global_rect()
 			_check(not skills.intersects(hud.end_button.get_global_rect()), "스킬과 턴 종료가 겹치지 않음")
@@ -334,6 +334,14 @@ func _test_layout() -> void:
 				if badge.is_visible_in_tree():
 					_check(badge.size.y <= 15 and not badge.get_global_rect().intersects(
 						(costs[action] as Label).get_global_rect()), "크기 변경 후 배지 분리: " + action)
+	# 다른 플랫폼의 글꼴이 줄 높이를 늘려도 정보 아래에 공격 예측을 배치한다.
+	hud.resource_label.add_theme_constant_override("line_spacing", 6)
+	battle.call("preview_enemy", units[2])
+	await process_frame
+	await process_frame
+	_check(not (hud.get_node("UnitDetails/UnitPanel") as Control).get_global_rect().intersects(
+		hud.preview_label.get_global_rect()), "줄 높이가 커져도 정보·공격 예측은 겹치지 않음")
+	hud.resource_label.remove_theme_constant_override("line_spacing")
 	root.size = Vector2i(640, 360)
 	await process_frame
 
