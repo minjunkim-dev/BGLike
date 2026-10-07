@@ -63,7 +63,7 @@ func get_attribute(attribute: Attribute) -> int:
 
 
 func get_max_hit_points() -> int:
-	return 12 if kind == Kind.WARRIOR else 11
+	return 12 if kind == Kind.WARRIOR else 14
 
 
 func get_armor_class() -> int:

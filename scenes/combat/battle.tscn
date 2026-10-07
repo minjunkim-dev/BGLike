@@ -67,42 +67,46 @@ offset_right = 300.0
 offset_bottom = 74.0
 theme_override_constants/separation = 6
 
-[node name="UnitPanel" type="PanelContainer" parent="UI/TurnHud"]
+[node name="UnitDetails" type="VBoxContainer" parent="UI/TurnHud"]
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -212.0
 offset_top = 8.0
 offset_right = -8.0
-offset_bottom = 82.0
+offset_bottom = 210.0
 grow_horizontal = 0
+mouse_filter = 2
+theme_override_constants/separation = 6
 
-[node name="Info" type="VBoxContainer" parent="UI/TurnHud/UnitPanel"]
+[node name="UnitPanel" type="PanelContainer" parent="UI/TurnHud/UnitDetails"]
+layout_mode = 2
+
+[node name="Info" type="VBoxContainer" parent="UI/TurnHud/UnitDetails/UnitPanel"]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="CurrentUnit" type="Label" parent="UI/TurnHud/UnitPanel/Info"]
+[node name="Actor" type="Label" parent="UI/TurnHud/UnitDetails/UnitPanel/Info"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+mouse_filter = 2
+
+[node name="CurrentUnit" type="Label" parent="UI/TurnHud/UnitDetails/UnitPanel/Info"]
 layout_mode = 2
 mouse_filter = 2
 
-[node name="Health" type="ProgressBar" parent="UI/TurnHud/UnitPanel/Info"]
+[node name="Health" type="ProgressBar" parent="UI/TurnHud/UnitDetails/UnitPanel/Info"]
 custom_minimum_size = Vector2(0, 5)
 layout_mode = 2
 show_percentage = false
 mouse_filter = 2
 
-[node name="Resources" type="Label" parent="UI/TurnHud/UnitPanel/Info"]
+[node name="Resources" type="Label" parent="UI/TurnHud/UnitDetails/UnitPanel/Info"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 10
 mouse_filter = 2
 
-[node name="AttackPreview" type="Label" parent="UI/TurnHud"]
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -212.0
-offset_top = 88.0
-offset_right = -8.0
-offset_bottom = 158.0
-grow_horizontal = 0
+[node name="AttackPreview" type="Label" parent="UI/TurnHud/UnitDetails"]
+layout_mode = 2
 theme_override_font_sizes/font_size = 10
 mouse_filter = 2
 autowrap_mode = 2
@@ -155,19 +159,20 @@ grow_vertical = 0
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Move" type="Button" parent="UI/TurnHud"]
+[node name="InputHint" type="Label" parent="UI/TurnHud"]
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -88.0
-offset_top = -78.0
+offset_top = -86.0
 offset_right = -8.0
 offset_bottom = -54.0
 grow_horizontal = 0
 grow_vertical = 0
-text = "이동"
+text = "좌클릭: 공격\n우클릭: 이동"
 theme_override_font_sizes/font_size = 10
+mouse_filter = 0
 
 [node name="EndTurn" type="Button" parent="UI/TurnHud"]
 anchor_left = 1.0
