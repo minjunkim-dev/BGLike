@@ -333,13 +333,14 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	if has_mark_damage:
 		for index: int in range(count):
 			last_damage_rolls.append(dice.randi_range(1, 6))
-	last_damage = 3
+	var damage_bonus: int = 3 if actor.kind == CombatUnit.Kind.WARRIOR else 1
+	last_damage = damage_bonus
 	for rolled: int in last_damage_rolls:
 		last_damage += rolled
 	_damage(target, last_damage)
-	logged.emit("%s 피해%s: %s + 3 = %d · HP %d" % [target.get_display_name(),
+	logged.emit("%s 피해%s: %s + %d = %d · HP %d" % [target.get_display_name(),
 		" (표식 추가)" if has_mark_damage else "",
-		str(last_damage_rolls), last_damage, target.hit_points])
+		str(last_damage_rolls), damage_bonus, last_damage, target.hit_points])
 	feedback.emit(target, "-%d" % last_damage)
 	if shock and target.hit_points > 0:
 		var saved: CombatChecks.RollResult = CombatChecks.saving_throw(

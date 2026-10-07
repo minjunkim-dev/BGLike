@@ -209,7 +209,7 @@ func _test_scene_input() -> void:
 	battle.call("_clear_preview")
 	await _click_unit(units[3])
 	_check("60.0%" in hud.preview_label.text and "AC 14" in hud.resource_label.text
-		and "HP 11 / 11" in hud.resource_label.text, "사거리 안 대상의 명중률과 능력치 표시")
+		and "HP 14 / 14" in hud.resource_label.text, "사거리 안 대상의 명중률과 능력치 표시")
 	units[3].is_stunned = true
 	battle.call("_clear_preview")
 	await _click_unit(units[3])

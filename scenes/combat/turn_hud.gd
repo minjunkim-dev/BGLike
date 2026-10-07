@@ -31,7 +31,7 @@ const ACTION_EFFECTS: Dictionary[String, String] = {
 	"opportunity": "적이 내 인접 칸을 벗어나면 기본 공격. 발동할 때 사용 여부를 묻습니다.",
 	"parry": "공격에 맞으면 사용 여부를 묻습니다. 민첩 내성에 성공하면 피해와 추가 효과를 피합니다."
 }
-const MOVEMENT_HELP: String = "파랑: 이동 가능한 칸\n초록: 도착 시 공격할 적 있음\n\n이동은 행동을 쓰지 않습니다.\n칸을 한 번 눌러 경로 확인.\n같은 칸을 다시 누르면 이동."
+const MOVEMENT_HELP: String = "파랑: 이동 가능한 칸\n초록: 도착 시 공격할 적 있음\n\n이동은 행동을 쓰지 않습니다.\n우클릭으로 경로 확인.\n같은 칸을 다시 우클릭하면 이동."
 
 var _shown_order: Array[CombatUnit] = []
 var _portraits: Dictionary[CombatUnit, Button] = {}
@@ -45,12 +45,13 @@ var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 
 @onready var round_label: Label = $Round
 @onready var order_bar: HBoxContainer = $OrderBar
-@onready var unit_label: Label = $UnitPanel/Info/CurrentUnit
-@onready var resource_label: Label = $UnitPanel/Info/Resources
-@onready var health_bar: ProgressBar = $UnitPanel/Info/Health
+@onready var unit_label: Label = $UnitDetails/UnitPanel/Info/CurrentUnit
+@onready var actor_label: Label = $UnitDetails/UnitPanel/Info/Actor
+@onready var resource_label: Label = $UnitDetails/UnitPanel/Info/Resources
+@onready var health_bar: ProgressBar = $UnitDetails/UnitPanel/Info/Health
 @onready var end_button: Button = $EndTurn
-@onready var move_button: Button = $Move
-@onready var preview_label: Label = $AttackPreview
+@onready var input_hint: Label = $InputHint
+@onready var preview_label: Label = $UnitDetails/AttackPreview
 @onready var action_bar: HBoxContainer = $Skills/Groups
 @onready var message_label: Label = $CombatLog/Message
 @onready var help_title: Label = $ActionHelp/Contents/Title
@@ -61,9 +62,7 @@ var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 
 func _ready() -> void:
 	end_button.pressed.connect(func() -> void: end_turn_requested.emit())
-	move_button.pressed.connect(func() -> void: action_selected.emit("move"))
 	restart_button.pressed.connect(func() -> void: restart_requested.emit())
-	_actions["move"] = move_button
 	for index: int in range(ACTION_GROUPS.size()):
 		var panel: PanelContainer = PanelContainer.new()
 		panel.add_theme_stylebox_override("panel", _panel_style())
@@ -167,19 +166,15 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			_costs[action].reset_size()
 			_badges[action].modulate = Color.WHITE if ally_turn else Color("888888")
 			_costs[action].modulate = Color.WHITE if not button.disabled else Color("666666")
-	move_button.disabled = not ally_turn or not actions.can_use(actor, "move")
-	move_button.text = "이동 %d칸%s" % [actor.movement_left if actor != null else 0,
-		" ◀" if selected == "move" else ""]
-	if not ally_turn:
-		move_button.text = "이동"
-	move_button.tooltip_text = "이동력만 씁니다. 행동과 보조 행동은 쓰지 않습니다.\n자기 턴에 6칸 회복. 나눠 이동할 수 있습니다.\n적의 인접 칸을 벗어나면 기회 공격을 받을 수 있습니다."
+	input_hint.modulate = Color.WHITE if ally_turn and not locked else Color("888888")
+	input_hint.tooltip_text = "이동력만 씁니다. 행동과 보조 행동은 쓰지 않습니다.\n자기 턴에 6칸 회복. 나눠 이동할 수 있습니다.\n우클릭으로 경로 확인, 같은 칸을 다시 우클릭해 이동."
 	end_button.disabled = not ally_turn or locked
 	for button: Button in _portraits.values():
 		button.disabled = button.disabled or locked
 	if not show_action_help:
 		return
 	if not ally_turn:
-		show_help("적 턴", "적이 자동으로 이동·공격합니다.\n아군 입력은 잠깁니다.\n반응 확인 창에서 사용할지 고르세요.\n\n● 행동: 공격\n▲ 보조 행동: 보조 스킬\n◆ 반응: 다른 유닛의 턴\n빈 기호는 이미 쓴 자원입니다.")
+		show_help("적 턴", "적이 자동으로 이동·공격합니다.\n이동·공격 입력은 잠깁니다.\n초상으로 정보를 확인할 수 있습니다.\n반응 확인 창에서 사용할지 고르세요.\n\n● 행동: 공격\n▲ 보조 행동: 보조 스킬\n◆ 반응: 조건이 맞으면 사용\n빈 기호는 이미 쓴 자원입니다.")
 	else:
 		show_help("이동 안내" if selected == "move" else ACTION_NAMES.get(selected, "동작 안내"),
 			action_details(actions, shown, selected))
@@ -214,7 +209,7 @@ func action_details(actions: CombatActions, actor: CombatUnit, action: String) -
 	if not reason.is_empty():
 		return text + "\n지금 사용 불가: " + reason
 	return text + ("\n같은 버튼을 다시 눌러 사용." if action in ["second_wind", "surge", "disengage", "potion"]
-		else "\n적을 눌러 미리보기.\n같은 적을 다시 누르면 사용.")
+		else "\n적을 좌클릭해 미리보기.\n같은 적을 다시 좌클릭하면 사용.")
 
 
 func _unavailable_reason(actions: CombatActions, actor: CombatUnit, action: String,
@@ -291,8 +286,10 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 		round_label.text = "턴 종료"
 		unit_label.text = "유닛 없음"
 		resource_label.text = ""
+		actor_label.text = ""
 		return
 	round_label.text = "라운드 %d · %s 턴 묶음" % [turns.round_number, "아군" if current.is_ally else "적"]
+	actor_label.text = ("조작: " if current.is_ally else "진행: ") + current.get_display_name()
 	show_unit(current)
 	for unit: CombatUnit in _portraits:
 		var button: Button = _portraits[unit]
@@ -301,7 +298,7 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 		button.tooltip_text = "%s: d20 %d + 민첩 %d = %d" % [
 			unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()]
 		var in_group: bool = unit in turns.get_current_group()
-		button.disabled = not unit.is_ally or unit.is_stunned or not in_group or turns.is_turn_finished(unit)
+		button.disabled = false
 		var color: Color = CombatUnit.ALLY_COLOR if unit.is_ally else CombatUnit.ENEMY_COLOR
 		if not in_group or turns.is_turn_finished(unit):
 			color = color.darkened(0.6)
@@ -323,9 +320,15 @@ func show_unit(unit: CombatUnit) -> void:
 		states.append("기절")
 	if unit.has_mark:
 		states.append("◎ 표식")
-	resource_label.text = "HP %d / %d   AC %d\n이동 %d / %d · 상태: %s" % [
+	if unit.disengaged:
+		states.append("기회 공격 면제")
+	resource_label.text = "HP %d / %d   AC %d\n힘 %+d · 민첩 %+d · 체력 %+d · 정신 %+d\n명중 %+d · 사거리 %d칸\n이동 %d / %d · 행동 %d · 보조 %d · 반응 %d\n상태: %s" % [
 		unit.hit_points, unit.get_max_hit_points(), unit.get_armor_class(),
+		unit.get_attribute(CombatUnit.Attribute.STRENGTH), unit.get_dexterity(),
+		unit.get_attribute(CombatUnit.Attribute.CONSTITUTION), unit.get_attribute(CombatUnit.Attribute.MENTAL),
+		unit.get_attack_bonus(), unit.get_attack_range(),
 		unit.movement_left, CombatUnit.MOVEMENT_PER_TURN,
+		unit.action_left, unit.bonus_action_left, unit.reaction_left,
 		", ".join(states) if not states.is_empty() else "없음"]
 
 
