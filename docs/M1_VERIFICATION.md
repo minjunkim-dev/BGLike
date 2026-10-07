@@ -4,7 +4,8 @@ Issue #12의 7단계 자료입니다. 규칙은 [전투 기획서](COMBAT_DESIGN
 
 ## 기준과 상태
 
-- 게임 기준: PR #36 병합 커밋 `85e63b5c55f6aa19f6c7769bb7c9ab8407786b8e` (2026-10-04).
+- 최초 게임 기준: PR #36 병합 커밋 `85e63b5c55f6aa19f6c7769bb7c9ab8407786b8e` (2026-10-04).
+- 이번 후속 작업은 최신 main `6c708bb5b5676e961f578b59599e68c3cf7afb92`에서 시작했다. PR #46의 자기 턴 반응 결정과 PR #47의 궁수 수치를 검사에 반영한다.
 - 1~6단계 구현이 main에 있습니다. 아래 표는 검수 기준 28개와 기존 자동 검사의 연결을 기록합니다.
 - 자동 검사는 자원·판정·장면 입력·UI 상태를 확인합니다. 화면의 실제 가독성과 사람의 조작감은 확인하지 않습니다.
 - 개발자 직접 플레이와 2026-10-11 기획 검수는 미완료입니다. 원본 개발 요청서의 체크박스를 자동 검사 결과만으로 채우지 않습니다. Issue #12도 열어 둡니다.
@@ -17,11 +18,11 @@ Issue #12의 7단계 자료입니다. 규칙은 [전투 기획서](COMBAT_DESIGN
 |---|---:|---|
 | `combat_turns_test.gd` | 2366 | 이니셔티브, 턴 묶음, 자원, 라운드와 탈락 |
 | `combat_checks_test.gd` | 59 | 명중, 유리/불리, 내성, 대결, 확률과 미리보기 |
-| `combat_actions_test.gd` | 105 | 이동, 공격, 스킬, 공용 동작, 반응과 두 번 클릭 입력 |
+| `combat_actions_test.gd` | 176 | 이동, 공격, 스킬, 공용 동작, 반응과 두 번 클릭 입력 |
 | `combat_hud_test.gd` | 237 | 자원 기호, 비용·횟수 배지, 입력 연결, 로그·팝업과 결과 |
 | `combat_ai_test.gd` | 67 | 적 우선순위, 자동 반응, 아군 반응 대기와 전체 전투 |
 
-검사 수 합계는 2834입니다. 이는 검수 기준 28개의 수와 다릅니다. 각 스크립트는 여러 경계 조건과 조합도 확인합니다. Python 관리 검사 50개, `git diff --check`, import와 메인 장면 실행도 별도로 확인합니다. 검사를 바꾸면 이 표와 실행 증거를 함께 갱신합니다.
+검사 수 합계는 2905입니다. 이는 검수 기준 28개의 수와 다릅니다. 각 스크립트는 여러 경계 조건과 조합도 확인합니다. Python 관리 검사 51개, `git diff --check`, import와 메인 장면 실행도 별도로 확인합니다. 검사를 바꾸면 이 표와 실행 증거를 함께 갱신합니다.
 
 2026-10-04 실행 증거:
 
@@ -29,6 +30,13 @@ Issue #12의 7단계 자료입니다. 규칙은 [전투 기획서](COMBAT_DESIGN
 - 병합된 main의 [Godot CI 실행 37210424407](https://github.com/minjunkim-dev/BGLike/actions/runs/37210424407)이 기준 커밋 `85e63b5`에서 기존 2832개 검사와 Python 50개에 성공했습니다.
 - 7단계에서 아군의 몰아치기 후 추가 공격을 실제 장면 클릭으로 확인하는 검사 2개를 보완했습니다. 로컬 동작 검사는 105개에 성공했습니다. 나머지 검사와 합한 로컬 확인 수는 2834개입니다. 이 변경의 CI 결과는 관련 PR에 기록합니다.
 - [PR #36 검증·리뷰 기록](https://github.com/minjunkim-dev/BGLike/pull/36)과 실행 결과는 소스·자동 검사 증거입니다. 직접 플레이 증거는 아직 없습니다.
+
+2026-10-07 후속 실행 증거:
+
+- `GODOT=/Applications/Godot.app/Contents/MacOS/Godot make check`를 실행했다. Godot `4.7.2.stable.official.ed1daf0bf`의 import, 메인 장면 실행, 회귀 검사 2905개와 Python 검사 51개가 통과했다. `git diff --check`도 통과했다. 이 기록은 이번 PR의 로컬 변경에 대한 실행 결과다.
+- A `_test_own_turn_parry`는 실제 장면에서 자기 턴 이동 중 기회 공격을 받는다. 흘려내기 성공·실패·넘기기, 확인 창, 입력 잠금, 피해, 반응·횟수 소비와 이동 재개를 확인한다. 아군 선택 전환과 적 턴은 반응을 회복하지 않는다. 다음 자기 턴 시작에는 반응만 회복한다.
+- A `_test_archer_balance`는 아군과 적 궁수의 HP14, 기본 피해 고정값1, 일반·치명타·표식의 피해와 로그를 확인한다. 민첩+3, 공격 보너스+5와 DC13은 유지한다. 기존 충격 화살 피해 검사와 실제 HP 미리보기 검사도 새 수치에 맞췄다.
+- GitHub CI 결과는 이번 PR에 별도로 기록한다. 실제 장면 검사는 자동 입력이다. 개발자 직접 플레이와 기획 검수는 미완료다.
 
 ### 검수 기준과 검사 위치
 
@@ -42,7 +50,7 @@ Issue #12의 7단계 자료입니다. 규칙은 [전투 기획서](COMBAT_DESIGN
 | T4 | 연속 아군 초상으로 조작 순서 전환 | T `_test_resources_and_groups`; H `_test_order_bar_input` |
 | R1 | 전사 옆에서 벗어나는 적의 기회 공격 창 | A `_test_reactions`; H `_test_reaction_flow`; E `_test_reaction_pause` |
 | R2 | 궁수 옆에서는 기회 공격 없음 | A `_test_reactions` |
-| R3 | 흘려내기 창, DC13·45%, 피해·추가 효과 무효 | A `_test_reactions`, `_test_scene_input` |
+| R3 | 자기 턴 포함 흘려내기 창, DC13·45%, 피해·추가 효과 무효 | A `_test_reactions`, `_test_own_turn_parry`, `_test_scene_input` |
 | R4 | 기회 공격과 흘려내기의 반응 공유 | A `_test_reactions` |
 | R5 | 물러서며 쏘기 후 기회 공격 없음 | A `_test_reactions`; E `_test_archer` |
 | C1 | 인접 적이 있는 궁수는 불리, 로그에 두 주사위 | C `_test_preview_conditions`; H `_test_log_and_status` |

@@ -66,10 +66,12 @@ func _dice_for(expected: Array[int], sides: Array[int]) -> RandomNumberGenerator
 func _run() -> void:
 	await _test_movement()
 	await _test_attacks()
+	await _test_archer_balance()
 	_test_self_actions()
 	_test_shove()
 	await _test_mark_and_stun()
 	await _test_reactions()
+	await _test_own_turn_parry()
 	await _test_scene_input()
 	await _test_scene_shock()
 	for f: Fixture in _fixtures:
@@ -135,6 +137,42 @@ func _test_attacks() -> void:
 		"HP0은 즉시 전투 불능과 턴 순서 제거")
 	_check(killed.units[1].marked_target == null, "전투 불능 대상의 표식 제거")
 	_check(not await killed.actions.attack(killed.units[0], killed.units[2]), "전투 불능 대상 재공격 거부")
+
+
+func _test_archer_balance() -> void:
+	for actor_index: int in [1, 3]:
+		for marked: bool in [false, true]:
+			for attack_roll: int in [11, 20]:
+				var f: Fixture = _fixture()
+				var actor: CombatUnit = f.units[actor_index]
+				var target: CombatUnit = f.units[3 if actor_index == 1 else 1]
+				if actor_index == 1:
+					f.turns.select_unit(actor)
+				else:
+					_enemy_archer(f)
+					actor.cell = Vector2i(7, 4)
+					f.units[0].cell = Vector2i(9, 9)
+					target.cell = Vector2i(3, 4)
+				if not marked and attack_roll == 11:
+					_check(actor.hit_points == 14 and actor.get_max_hit_points() == 14,
+						"아군과 적 궁수의 시작·최대 HP는14")
+					_check(actor.get_dexterity() == 3 and actor.get_attack_bonus() == 5
+						and f.actions.save_dc == 13, "궁수 피해 고정값은 능력치·명중·DC와 별개")
+				if marked:
+					_check(f.actions.mark(actor, target), "궁수 피해 검사에서 표식 사용")
+				var logs: Array[String] = []
+				f.actions.logged.connect(func(line: String) -> void: logs.append(line))
+				f.actions.dice = _dice_for([attack_roll], [20])
+				_check(await f.actions.attack(actor, target), "양쪽 궁수 기본 공격 실행")
+				var count: int = (2 if attack_roll == 20 else 1) * (2 if marked else 1)
+				var total: int = 1
+				for rolled: int in f.actions.last_damage_rolls:
+					total += rolled
+				_check(f.actions.last_damage_rolls.size() == count and f.actions.last_damage == total
+					and target.hit_points == maxi(0, 14 - total),
+					"궁수 피해는 무기·표식 주사위에 고정값1을 한 번만 더함")
+				_check(" + 1 = %d · HP %d" % [total, target.hit_points] in "\n".join(logs),
+					"궁수 피해 로그도 고정값1과 실제 HP를 표시")
 
 
 func _test_self_actions() -> void:
@@ -230,7 +268,7 @@ func _test_mark_and_stun() -> void:
 		boundary.units[2].reaction_left = 0
 		boundary.actions.dice = _dice_for([11, 4, roll], [20, 6, 20])
 		await boundary.actions.attack(boundary.units[1], boundary.units[2], true)
-		_check(boundary.units[2].hit_points == 5, "내성 성공 여부와 관계없이 충격 화살 피해 적용")
+		_check(boundary.units[2].hit_points == 7, "내성 성공 여부와 관계없이 충격 화살 피해 적용")
 		_check(boundary.units[2].is_stunned == (roll == 13),
 			"정신-1의 DC13 경계: d20의13은 기절,14는 버팀")
 	var waiting: Fixture = _fixture()
@@ -351,6 +389,78 @@ func _test_reactions() -> void:
 	await parried_shock.actions.attack(parried_shock.units[3], parried_shock.units[0], true)
 	_check(parried_shock.units[0].hit_points == 12 and not parried_shock.units[0].is_stunned
 		and parried_shock.units[3].shock_left == 0, "흘려낸 충격 화살은 피해와 기절도 없음")
+
+
+func _test_own_turn_parry() -> void:
+	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
+	for choice: int in range(3):
+		var battle: Node2D = scene.instantiate() as Node2D
+		root.add_child(battle)
+		battle.set_process(false)
+		await process_frame
+		var units: Array[CombatUnit] = battle.get("units")
+		var turns: CombatTurns = battle.get("turns") as CombatTurns
+		var actions: CombatActions = battle.get("actions") as CombatActions
+		var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+		var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+		dice.seed = 33
+		turns.start(units, dice)
+		units[0].cell = Vector2i(4, 4)
+		units[1].cell = Vector2i(0, 0)
+		units[2].cell = Vector2i(5, 4)
+		units[3].cell = Vector2i(0, 9)
+		battle.call("_update_turn_ui")
+		_check(units[1].hit_points == 14 and units[3].hit_points == 14,
+			"실제 장면의 아군과 적 궁수 HP는14")
+		var asked: Array[String] = []
+		var respond: Callable = func(kind: String, prompt: String) -> void:
+			asked.append(kind)
+			_check(kind == "parry" and turns.current_unit == units[0]
+				and actions.pending_reactor == units[0], "자기 턴 기회 공격 명중에도 흘려내기 요청")
+			_check(hud.reaction_dialog.visible and hud.end_button.disabled
+				and hud.move_button.disabled and actions.busy, "자기 턴 흘려내기 창과 입력 잠금")
+			_check("45.0%" in prompt and actions.last_damage_rolls.is_empty(),
+				"자기 턴에도 피해 굴림 전에 DC13·45% 표시")
+			if choice == 2:
+				hud.reaction_dialog.get_cancel_button().pressed.emit()
+			else:
+				hud.reaction_dialog.get_ok_button().pressed.emit()
+		actions.reaction_requested.connect(respond)
+		if choice == 0:
+			actions.dice = _dice_for([11, 12], [20, 20])
+		elif choice == 1:
+			actions.dice = _dice_for([11, 11, 4], [20, 20, 8])
+		else:
+			actions.dice = _dice_for([11, 4], [20, 8])
+		_check(await actions.move_to(units[0], Vector2i(3, 4)), "자기 턴 기회 공격 후 이동 완료")
+		await process_frame
+		_check(asked == ["parry"] and units[2].reaction_left == 0, "적 기회 공격은 자동이며 반응 소비")
+		_check(units[0].hit_points == (12 if choice == 0 else 5),
+			"흘려내기 성공은 피해 무효, 실패·넘기기는 피해 적용")
+		var reaction: int = 1 if choice == 2 else 0
+		var uses: int = 2 if choice == 2 else 1
+		_check(units[0].reaction_left == reaction and units[0].parry_left == uses,
+			"성공·실패는 반응과 횟수 소비, 넘기기는 유지")
+		_check(units[0].cell == Vector2i(3, 4) and units[0].movement_left == 5
+			and units[0].action_left == 1 and units[0].bonus_action_left == 1,
+			"흘려내기 뒤 이동1만 소비하고 행동·보조 행동 유지")
+		_check(not hud.reaction_dialog.visible and not actions.busy
+			and actions.pending_reactor == null and not hud.end_button.disabled,
+			"자기 턴 반응 선택 후 창과 입력 잠금 해제")
+		turns.select_unit(units[1])
+		turns.select_unit(units[0])
+		_check(units[0].reaction_left == reaction, "아군 선택 전환은 쓴 반응을 회복하지 않음")
+		turns.end_turn()
+		turns.end_turn()
+		_check(not turns.current_unit.is_ally and units[0].reaction_left == reaction,
+			"적 턴 시작에도 아군 반응 회복 없음")
+		turns.end_turn()
+		turns.end_turn()
+		_check(turns.current_unit == units[0] and units[0].reaction_left == 1
+			and units[0].parry_left == uses, "다음 자기 턴 시작에는 반응만 회복")
+		actions.reaction_requested.disconnect(respond)
+		battle.queue_free()
+		await process_frame
 
 
 func _test_scene_input() -> void:
