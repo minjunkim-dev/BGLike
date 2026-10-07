@@ -14,6 +14,7 @@ var preview_cell: Vector2i = Vector2i(-1, -1)
 var preview_path: Array[Vector2i] = []
 var movement_cells: Array[Vector2i] = []
 var _last_ally: CombatUnit
+var _inspected_unit: CombatUnit
 
 @onready var map: TileMapLayer = $Map
 @onready var camera: Camera2D = $Camera
@@ -84,8 +85,15 @@ func _pause_enemy_action() -> void:
 
 
 func _on_unit_selected(unit: CombatUnit) -> void:
-	if not actions.busy and not actions.is_over():
-		turns.select_unit(unit)
+	if actions.busy or actions.is_over() or unit not in units or unit.hit_points <= 0:
+		return
+	_clear_preview()
+	if selected_action == "move":
+		selected_action = "attack"
+	# 조작 가능한 아군만 전환한다. 다른 초상은 정보만 표시한다.
+	turns.select_unit(unit)
+	_inspected_unit = unit
+	_update_turn_ui()
 
 
 func _end_turn() -> void:
@@ -98,6 +106,7 @@ func _on_action_selected(action: String) -> void:
 	var actor: CombatUnit = turns.current_unit
 	if actor == null or not actor.is_ally or not actions.can_use(actor, action):
 		return
+	_inspected_unit = null
 	if action == selected_action and action in ["second_wind", "surge", "disengage", "potion"]:
 		_clear_preview()
 		actions.use_self(actor, action)
@@ -110,18 +119,24 @@ func _on_action_selected(action: String) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if (event is not InputEventMouseButton or not event.pressed
-		or event.button_index != MOUSE_BUTTON_LEFT):
+		or event.button_index not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]):
 		return
 	if actions.busy or actions.is_over():
 		return
 	var world_position: Vector2 = get_canvas_transform().affine_inverse() * event.position
 	var cell: Vector2i = map.local_to_map(map.to_local(world_position))
 	var actor: CombatUnit = turns.current_unit
-	# 이동 버튼을 고른 경우에는 몸통에 가려진 빈 칸도 먼저 선택한다.
-	if selected_action == "move" and actor != null and actor.is_ally and actions.can_move(actor, cell):
+	if actor == null or not actor.is_ally:
+		return
+	_inspected_unit = null
+	# 우클릭은 몸통에 가려진 칸도 격자 위치로 이동 판정한다.
+	if event.button_index == MOUSE_BUTTON_RIGHT:
 		get_viewport().set_input_as_handled()
 		await _select_move_cell(cell)
 		return
+	if selected_action == "move":
+		selected_action = "attack"
+		_clear_preview()
 	var candidates: Array[CombatUnit] = []
 	for unit: CombatUnit in units:
 		if unit.hit_points > 0 and Rect2(-7, -20, 14, 22).has_point(unit.to_local(world_position)):
@@ -140,11 +155,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			_clear_preview()
 			_update_turn_ui()
 		return
-	await _select_move_cell(cell)
+	_clear_preview()
+	_update_turn_ui()
 
 
 func _select_move_cell(cell: Vector2i) -> void:
 	var actor: CombatUnit = turns.current_unit
+	selected_action = "move"
 	if actor != null and actor.is_ally and actions.can_move(actor, cell):
 		if cell == preview_cell:
 			_clear_preview()
@@ -170,6 +187,7 @@ func preview_enemy(target: CombatUnit) -> bool:
 
 
 func _on_turn_changed() -> void:
+	_inspected_unit = null
 	_clear_preview()
 	selected_action = "attack"
 	_update_turn_ui()
@@ -198,6 +216,8 @@ func _execute_target(target: CombatUnit) -> void:
 
 
 func _update_turn_ui() -> void:
+	if _inspected_unit != null and _inspected_unit.hit_points <= 0:
+		_inspected_unit = null
 	for unit: CombatUnit in units:
 		unit.has_mark = false
 		for source: CombatUnit in units:
@@ -233,8 +253,8 @@ func _update_turn_ui() -> void:
 				hud.preview_label.text = "밀려날 칸: %d, %d" % [cell.x, cell.y]
 			else:
 				hud.preview_label.text = "밀치기를 사용할 수 없음"
-		elif selected_action == "move":
-			hud.preview_label.text = "유닛이 있는 칸은 이동할 수 없음"
+	elif _inspected_unit != null:
+		hud.show_unit(_inspected_unit)
 	elif not preview_path.is_empty():
 		var actor: CombatUnit = turns.current_unit
 		var targets: int = _attack_targets_from(preview_cell).size()
@@ -243,7 +263,7 @@ func _update_turn_ui() -> void:
 			attack_text = "도착 시 공격 불가: 행동을 이미 씀"
 		elif targets == 0:
 			attack_text = "도착 시 공격 불가: 사거리 안 적 없음"
-		hud.preview_label.text = "이동 %d칸 → %d칸 남음\n%s\n같은 칸을 다시 눌러 이동" % [
+		hud.preview_label.text = "이동 %d칸 → %d칸 남음\n%s\n같은 칸을 다시 우클릭해 이동" % [
 			preview_path.size(), actor.movement_left - preview_path.size(), attack_text]
 	# 이동 정보는 왼쪽 설명 패널에 모아 격자 오른쪽을 가리지 않는다.
 	var showing_move: bool = selected_action == "move" or not preview_path.is_empty()
@@ -251,7 +271,8 @@ func _update_turn_ui() -> void:
 	hud.refresh_actions(actions, selected_action, _last_ally, not move_preview)
 	hud.preview_label.visible = not showing_move
 	if move_preview:
-		hud.show_help("이동 미리보기", hud.preview_label.text + "\n\n행동 소비 없음.\n" + hud.movement_caution(turns.current_unit))
+		hud.show_help("이동 미리보기", "파랑: 이동 가능한 칸\n초록: 도착 시 공격할 적 있음\n\n"
+			+ hud.preview_label.text + "\n\n행동 소비 없음.\n" + hud.movement_caution(turns.current_unit))
 	if actions.is_over():
 		hud.round_label.text = "승리" if _all_enemies_down() else "패배"
 		hud.show_result(_all_enemies_down())

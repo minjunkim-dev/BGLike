@@ -418,7 +418,7 @@ func _test_own_turn_parry() -> void:
 			_check(kind == "parry" and turns.current_unit == units[0]
 				and actions.pending_reactor == units[0], "자기 턴 기회 공격 명중에도 흘려내기 요청")
 			_check(hud.reaction_dialog.visible and hud.end_button.disabled
-				and hud.move_button.disabled and actions.busy, "자기 턴 흘려내기 창과 입력 잠금")
+				and actions.busy, "자기 턴 흘려내기 창과 입력 잠금")
 			_check("45.0%" in prompt and actions.last_damage_rolls.is_empty(),
 				"자기 턴에도 피해 굴림 전에 DC13·45% 표시")
 			if choice == 2:
@@ -479,9 +479,9 @@ func _test_scene_input() -> void:
 	turns.start(units, dice)
 	var destination: Vector2i = Vector2i(4, 7)
 	var screen: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(destination)
-	await _click(screen)
+	await _click(screen, MOUSE_BUTTON_RIGHT)
 	_check(units[0].cell == Vector2i(4, 9) and not (battle.get("preview_path") as Array).is_empty(), "이동 첫 클릭은 미리보기")
-	await _click(screen)
+	await _click(screen, MOUSE_BUTTON_RIGHT)
 	_check(units[0].cell == destination and units[0].movement_left == 4, "이동 두 번째 클릭 실행")
 	units[2].cell = Vector2i(5, 7)
 	units[2].parry_left = 0
@@ -531,12 +531,11 @@ func _test_scene_input() -> void:
 	var overlap_map: TileMapLayer = overlap.get_node("Map") as TileMapLayer
 	dice.seed = 33
 	overlap_turns.start(overlap_units, dice)
-	overlap_hud.action_selected.emit("move")
 	var hidden_cell: Vector2i = overlap_units[0].cell - Vector2i.ONE
 	var hidden_screen: Vector2 = overlap_map.get_global_transform_with_canvas() * overlap_map.map_to_local(hidden_cell)
-	await _click(hidden_screen)
+	await _click(hidden_screen, MOUSE_BUTTON_RIGHT)
 	_check(overlap.get("preview_cell") == hidden_cell, "이동 모드에서 몸통 뒤 빈 칸 중앙 선택")
-	await _click(hidden_screen)
+	await _click(hidden_screen, MOUSE_BUTTON_RIGHT)
 	_check(overlap_units[0].cell == hidden_cell, "몸통에 가린 빈 칸 이동 실행")
 	overlap_hud.action_selected.emit("attack")
 	overlap_units[2].cell = Vector2i(5, 4)
@@ -584,11 +583,11 @@ func _test_scene_shock() -> void:
 	await process_frame
 
 
-func _click(point: Vector2) -> void:
+func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> void:
 	var event: InputEventMouseButton = InputEventMouseButton.new()
 	event.position = root.get_final_transform() * point
 	event.global_position = event.position
-	event.button_index = MOUSE_BUTTON_LEFT
+	event.button_index = button_index
 	event.pressed = true
 	Input.parse_input_event(event)
 	await process_frame

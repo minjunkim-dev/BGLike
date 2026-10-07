@@ -220,8 +220,11 @@ func _test_scene() -> void:
 	_check(turns.current_unit == scene_units[1] and hud.unit_label.text == "아군 궁수",
 		"초상 클릭 신호의 대상과 정보 표시가 일치")
 	hud.end_button.pressed.emit()
-	_check(archer_button.disabled, "턴을 끝낸 초상은 비활성")
 	var current: CombatUnit = turns.current_unit
+	archer_button.pressed.emit()
+	_check(not archer_button.disabled and turns.current_unit == current
+		and hud.unit_label.text == "아군 궁수", "턴을 끝낸 초상은 정보만 조회하며 조작 전환 없음")
+	hud.unit_selected.emit(current)
 	var old_round: int = turns.round_number
 	_check(hud.unit_label.text == current.get_display_name(), "장면 연결: 현재 유닛 표시")
 	_check(current.is_selected, "장면 연결: 현재 유닛 선택 테두리")
