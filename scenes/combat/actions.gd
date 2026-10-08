@@ -8,11 +8,6 @@ signal feedback(unit: CombatUnit, text: String)
 signal reaction_requested(kind: String, prompt: String)
 signal reaction_decided(use_reaction: bool)
 
-const DIRECTIONS: Array[Vector2i] = [
-	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
-	Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1)
-]
-
 var units: Array[CombatUnit] = []
 var turns: CombatTurns
 var dice: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -34,7 +29,7 @@ func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> v
 
 
 func distance(a: Vector2i, b: Vector2i) -> int:
-	return maxi(absi(a.x - b.x), absi(a.y - b.y))
+	return CombatHexGrid.distance(a, b)
 
 
 func unit_at(cell: Vector2i) -> CombatUnit:
@@ -68,8 +63,7 @@ func path_to(actor: CombatUnit, destination: Vector2i) -> Array[Vector2i]:
 	while index < frontier.size() and not parents.has(destination):
 		var here: Vector2i = frontier[index]
 		index += 1
-		for direction: Vector2i in DIRECTIONS:
-			var next: Vector2i = here + direction
+		for next: Vector2i in CombatHexGrid.neighbors(here):
 			if is_inside(next) and not parents.has(next) and unit_at(next) == null:
 				parents[next] = here
 				frontier.append(next)
@@ -114,8 +108,8 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 		return false
 	match action:
 		"move":
-			for direction: Vector2i in DIRECTIONS:
-				if can_move(actor, actor.cell + direction):
+			for neighbor: Vector2i in CombatHexGrid.neighbors(actor.cell):
+				if can_move(actor, neighbor):
 					return true
 		"attack", "shock", "mark", "shove":
 			for target: CombatUnit in units:
@@ -140,8 +134,8 @@ func has_available_action(actor: CombatUnit) -> bool:
 	if not _can_act(actor):
 		return false
 	if actor.movement_left > 0:
-		for direction: Vector2i in DIRECTIONS:
-			if can_move(actor, actor.cell + direction):
+		for neighbor: Vector2i in CombatHexGrid.neighbors(actor.cell):
+			if can_move(actor, neighbor):
 				return true
 	for action: String in ["attack", "shock", "mark", "shove", "second_wind", "surge", "disengage", "potion"]:
 		if can_use(actor, action):
@@ -230,8 +224,7 @@ func mark(actor: CombatUnit, target: CombatUnit) -> bool:
 
 
 func shove_destination(actor: CombatUnit, target: CombatUnit) -> Vector2i:
-	var delta: Vector2i = target.cell - actor.cell
-	return target.cell + Vector2i(signi(delta.x), signi(delta.y))
+	return CombatHexGrid.push_destination(actor.cell, target.cell)
 
 
 func can_shove(actor: CombatUnit, target: CombatUnit) -> bool:

@@ -93,7 +93,7 @@ static func attack_preview(
 	preview.valid_target = true
 	if attacker.is_stunned:
 		preview.blocked_reason = "기절하여 공격 불가"
-	var distance: int = _grid_distance(attacker.cell, target.cell)
+	var distance: int = CombatHexGrid.distance(attacker.cell, target.cell)
 	preview.in_range = distance >= 1 and distance <= attacker.get_attack_range()
 	var advantages: int = 0
 	var disadvantages: int = 0
@@ -102,7 +102,7 @@ static func attack_preview(
 		preview.reasons.append("기절한 대상")
 	if attacker.kind == CombatUnit.Kind.ARCHER:
 		for unit: CombatUnit in units:
-			var adjacent_distance: int = _grid_distance(attacker.cell, unit.cell)
+			var adjacent_distance: int = CombatHexGrid.distance(attacker.cell, unit.cell)
 			if (unit.is_ally != attacker.is_ally and unit.hit_points > 0 and not unit.is_stunned
 				and adjacent_distance == 1):
 				disadvantages = 1
@@ -128,7 +128,3 @@ static func _roll_d20(mode: RollMode, dice: RandomNumberGenerator) -> RollResult
 
 static func _attack_hits(natural: int, bonus: int, armor_class: int) -> bool:
 	return natural == 20 or (natural != 1 and natural + bonus >= armor_class)
-
-
-static func _grid_distance(a: Vector2i, b: Vector2i) -> int:
-	return maxi(absi(a.x - b.x), absi(a.y - b.y))
