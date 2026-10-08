@@ -34,7 +34,7 @@ var surge_left: int = 1
 var mark_left: int = 1
 var shock_left: int = 1
 var disengage_left: int = 2
-var potion_left: int = 1
+var potion_left: int = 0
 var is_previewed: bool = false:
 	set(value):
 		is_previewed = value
@@ -92,6 +92,24 @@ func begin_turn() -> void:
 	action_left = 1
 	bonus_action_left = 1
 	reaction_left = 1
+
+
+func begin_stage(restore_act: bool) -> void:
+	if restore_act:
+		hit_points = get_max_hit_points()
+		second_wind_left = 1
+		parry_left = 2
+		surge_left = 1
+		mark_left = 1
+		shock_left = 1
+		disengage_left = 2
+	# 물약은 막 시작과 재시작에서도 현재 개수를 유지한다.
+	is_stunned = false
+	has_mark = false
+	marked_target = null
+	is_selected = false
+	is_previewed = false
+	begin_turn()
 
 
 func spend_movement(cost: int) -> bool:
