@@ -4,12 +4,13 @@
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_floor"]
 texture = ExtResource("1_floor")
-texture_region_size = Vector2i(32, 16)
+texture_region_size = Vector2i(20, 20)
 0:0/0 = 0
 1:0/0 = 0
 
 [resource]
-tile_shape = 1
-tile_layout = 5
-tile_size = Vector2i(32, 16)
+tile_shape = 3
+tile_layout = 0
+tile_offset_axis = 0
+tile_size = Vector2i(20, 20)
 sources/0 = SubResource("TileSetAtlasSource_floor")

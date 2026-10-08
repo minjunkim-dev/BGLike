@@ -121,11 +121,15 @@ func _test_probabilities() -> void:
 func _test_preview_conditions() -> void:
 	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 4))
 	var target: CombatUnit = _unit(CombatUnit.Kind.ARCHER, false, Vector2i(7, 4))
-	var nearby: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(5, 5))
+	var nearby: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(4, 5))
 	var units: Array[CombatUnit] = [archer, target, nearby]
 	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(archer, target, units)
 	_check(preview.in_range and preview.mode == CombatChecks.RollMode.DISADVANTAGE
-		and is_equal_approx(preview.chance, 0.36) and "옆에 적" in preview.reasons, "대각선 인접 적도 원거리 불리")
+		and is_equal_approx(preview.chance, 0.36) and "옆에 적" in preview.reasons, "헥사 인접 적도 원거리 불리")
+	nearby.cell = Vector2i(5, 5)
+	preview = CombatChecks.attack_preview(archer, target, units)
+	_check(preview.mode == CombatChecks.RollMode.NORMAL, "사각 대각선의 헥사 거리2는 불리를 주지 않음")
+	nearby.cell = Vector2i(4, 5)
 	nearby.is_stunned = true
 	preview = CombatChecks.attack_preview(archer, target, units)
 	_check(preview.mode == CombatChecks.RollMode.NORMAL, "기절한 인접 적은 불리를 주지 않음")
@@ -157,9 +161,11 @@ func _test_preview_conditions() -> void:
 	preview = CombatChecks.attack_preview(archer, target, units)
 	_check(not preview.in_range and preview.chance == 0.0, "궁수 사거리7 밖이면0%")
 	archer.kind = CombatUnit.Kind.WARRIOR
-	target.cell = Vector2i(5, 5)
+	target.cell = Vector2i(4, 5)
 	preview = CombatChecks.attack_preview(archer, target, units)
-	_check(preview.in_range and preview.mode == CombatChecks.RollMode.NORMAL, "근접은 대각선1 가능, 옆 적 때문에 불리 없음")
+	_check(preview.in_range and preview.mode == CombatChecks.RollMode.NORMAL, "근접은 헥사 인접1 가능, 옆 적 때문에 불리 없음")
+	target.cell = Vector2i(5, 5)
+	_check(not CombatChecks.attack_preview(archer, target, units).in_range, "근접은 헥사 거리2 공격 불가")
 	target.cell = archer.cell
 	_check(not CombatChecks.attack_preview(archer, target, units).in_range, "같은 칸은 공격 사거리가 아님")
 	target.is_ally = true
