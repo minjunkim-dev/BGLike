@@ -1,0 +1,27 @@
+{
+  "potion_limit": 3,
+  "extra_drop_chance": 0.35,
+  "items": [
+    {
+      "id": "trial_weapon",
+      "name": "시험 무기",
+      "kind": "weapon",
+      "weight": 1,
+      "stats": {"attack_bonus": [0, 2], "damage_bonus": [1, 3]}
+    },
+    {
+      "id": "trial_armor",
+      "name": "시험 방어구",
+      "kind": "armor",
+      "weight": 1,
+      "stats": {"armor_class": [1, 3]}
+    },
+    {
+      "id": "healing_potion",
+      "name": "회복 물약",
+      "kind": "potion",
+      "weight": 1,
+      "stats": {}
+    }
+  ]
+}

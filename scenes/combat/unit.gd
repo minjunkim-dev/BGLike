@@ -35,6 +35,8 @@ var mark_left: int = 1
 var shock_left: int = 1
 var disengage_left: int = 2
 var potion_left: int = 0
+var weapon: Dictionary = {}
+var armor: Dictionary = {}
 var is_previewed: bool = false:
 	set(value):
 		is_previewed = value
@@ -67,11 +69,19 @@ func get_max_hit_points() -> int:
 
 
 func get_armor_class() -> int:
-	return 16 if kind == Kind.WARRIOR else 14
+	return (16 if kind == Kind.WARRIOR else 14) + _equipment_stat("armor_class")
 
 
 func get_attack_bonus() -> int:
-	return 5
+	return 5 + _equipment_stat("attack_bonus")
+
+
+func get_damage_bonus() -> int:
+	return (3 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus")
+
+
+func _equipment_stat(stat: String) -> int:
+	return int(weapon.get("stats", {}).get(stat, 0)) + int(armor.get("stats", {}).get(stat, 0))
 
 
 func get_attack_range() -> int:

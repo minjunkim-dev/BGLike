@@ -544,6 +544,10 @@ func _test_results_and_restart() -> void:
 	hud.unit_selected.emit(units[1])
 	_check(turns.round_number == before and hud.end_button.disabled, "전투 종료 입력 잠금")
 	hud.restart_button.pressed.emit()
+	var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
+	preparation.continue_button.pressed.emit()
+	preparation.continue_button.pressed.emit()
+	preparation.discard_dialog.confirmed.emit()
 	await process_frame
 	await process_frame
 	battle = current_scene.get_node("Battle") as Node2D
@@ -552,7 +556,7 @@ func _test_results_and_restart() -> void:
 	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	_check(units.size() == 4 and turns.ordered_units.size() == 4
 		and not hud.get_node("Result").visible and hud.progress_label.text == "1막 · 2스테이지",
-		"승리 결과 버튼으로 다음 스테이지 진입")
+		"승리 뒤 보상·정비 종료로 다음 스테이지 진입")
 	for index: int in range(2):
 		_check(units[index].hit_points == ally_hp[index] and units[index].potion_left == 0,
 			"같은 막은 HP를 유지하고 물약을 지급하지 않음")
