@@ -1,6 +1,6 @@
 class_name CombatTurnHud
 extends Control
-## M1 전투 화면. 비용 기호와 전투당 횟수를 서로 다른 위치에 표시한다.
+## 전투 화면. 비용 기호와 막당 횟수를 서로 다른 위치에 표시한다.
 
 signal unit_selected(unit: CombatUnit)
 signal end_turn_requested
@@ -44,6 +44,7 @@ var _log_lines: Array[String] = []
 var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 
 @onready var round_label: Label = $Round
+@onready var progress_label: Label = $Progress
 @onready var order_bar: HBoxContainer = $OrderBar
 @onready var unit_label: Label = $UnitDetails/UnitPanel/Info/CurrentUnit
 @onready var actor_label: Label = $UnitDetails/UnitPanel/Info/Actor
@@ -151,7 +152,8 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			button.text = ACTION_NAMES[action] + "    "
 			_costs[action].text = symbols[index]
 			button.tooltip_text = action_details(actions, shown, action)
-			button.tooltip_text += "\n오른쪽 기호: 이번 턴 비용. 위 숫자: 이번 전투의 남은 횟수."
+			button.tooltip_text += "\n오른쪽 기호: 이번 턴 비용. 위 숫자: " + (
+				"현재 보유 물약." if action == "potion" else "이번 막의 남은 횟수.")
 			var active: bool = ally_turn and not locked and actions.can_use(actor, action)
 			# 반응은 횟수나 자원을 다 써도 자기 턴에는 켜진 표시로 남는다.
 			button.disabled = (not ally_turn or locked) if index == 2 else not active
@@ -201,7 +203,10 @@ func action_details(actions: CombatActions, actor: CombatUnit, action: String) -
 	var amount: int = [actor.action_left, actor.bonus_action_left, actor.reaction_left][index]
 	var text: String = "비용: %s · %s" % [costs[index], "남음" if amount > 0 else "사용함"]
 	var uses: int = _remaining_uses(actor, action)
-	text += "\n전투 중 %d회 남음" % uses if uses >= 0 else "\n전투당 횟수 제한 없음"
+	if action == "potion":
+		text += "\n보유 물약 %d개" % uses
+	else:
+		text += "\n막당 %d회 남음" % uses if uses >= 0 else "\n횟수 제한 없음"
 	text += "\n" + effect
 	if index == 2:
 		return text + "\n버튼으로 실행하지 않습니다. 발동 시 확인 창을 사용합니다."
@@ -219,7 +224,7 @@ func _unavailable_reason(actions: CombatActions, actor: CombatUnit, action: Stri
 	if actor != actions.turns.current_unit or not actor.is_ally:
 		return "아군의 자기 턴에만 사용"
 	if uses == 0:
-		return "이번 전투의 횟수를 모두 씀"
+		return "보유 물약 없음" if action == "potion" else "이번 막의 횟수를 모두 씀"
 	if amount == 0:
 		return "자원을 이미 씀. 자기 턴 시작에 회복"
 	if action in ["second_wind", "potion"] and actor.hit_points == actor.get_max_hit_points():
@@ -269,11 +274,24 @@ func show_reaction(kind: String, prompt: String) -> void:
 	reaction_dialog.popup_centered(Vector2i(360, 110))
 
 
-func show_result(victory: bool) -> void:
+func begin_stage(act: int, stage: int) -> void:
+	progress_label.text = "%d막 · %d스테이지" % [act, stage]
+	$Result.hide()
 	reaction_dialog.hide()
-	result_label.text = "승리" if victory else "패배"
+	_log_lines.clear()
+	message_label.text = ""
+	restart_button.show()
+
+
+func show_result(victory: bool, final_stage: bool = false, last_in_act: bool = false) -> void:
+	reaction_dialog.hide()
+	var graduated: bool = victory and final_stage
+	result_label.text = "3막 졸업" if graduated else "승리" if victory else "패배"
+	restart_button.visible = not graduated
+	restart_button.text = ("다음 막 시작" if last_in_act else "다음 스테이지") if victory else "이 막 다시 시작"
 	$Result.show()
-	restart_button.grab_focus()
+	if not graduated:
+		restart_button.grab_focus()
 
 
 func refresh(turns: CombatTurns, has_available_action: bool) -> void:

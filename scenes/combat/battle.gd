@@ -1,8 +1,13 @@
 extends Node2D
-## M1 동작과 전투 화면. 적 묶음은 이니셔티브 순서대로 실행한다.
+## 전투 화면과 3막 진행. 적 묶음은 이니셔티브 순서대로 실행한다.
 
-# Issue #53 시안. 정확한 맵 모양·칸 수·타일 크기는 기획 확인 전 임시값이다.
-const MAP_SIZE: Vector2i = Vector2i(10, 10)
+const STAGES_PER_ACT: int = 3
+
+@export var stages: Array[CombatStage] = []
+
+var stage_index: int = 0
+var map_size: Vector2i
+var party: Array[CombatUnit] = []
 
 var units: Array[CombatUnit] = []
 var turns: CombatTurns = CombatTurns.new()
@@ -23,44 +28,84 @@ var _inspected_unit: CombatUnit
 
 
 func _ready() -> void:
-	actions.map_size = MAP_SIZE
-	for x: int in range(MAP_SIZE.x):
-		for y: int in range(MAP_SIZE.y):
-			map.set_cell(Vector2i(x, y), 0, Vector2i((x + y) % 2, 0))
-
-	# Units의 자식은 모두 CombatUnit 장면이다.
+	assert(stages.size() == 9, "전투 진행에는 스테이지 데이터9개가 필요합니다.")
+	# 파티 노드를 유지해 같은 막의 HP와 스킬 횟수를 이어 간다.
 	for child: Node in $Units.get_children():
-		var unit: CombatUnit = child as CombatUnit
-		units.append(unit)
-		unit.position = map.map_to_local(unit.cell)
-
-	# 고정 카메라. 창이 넓어져도 격자는 화면 가운데에 남는다.
-	camera.position = (map.map_to_local(Vector2i.ZERO)
-		+ map.map_to_local(MAP_SIZE - Vector2i.ONE)) / 2.0
+		party.append(child as CombatUnit)
 
 	hud.unit_selected.connect(_on_unit_selected)
 	hud.end_turn_requested.connect(_end_turn)
 	hud.action_selected.connect(_on_action_selected)
 	hud.reaction_selected.connect(actions.resolve_reaction)
 	hud.restart_requested.connect(_restart)
-	actions.initialize(units, turns)
 	actions.changed.connect(_update_turn_ui)
 	actions.logged.connect(hud.add_log)
 	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void: unit.show_feedback(text))
 	actions.reaction_requested.connect(hud.show_reaction)
 	turns.changed.connect(_on_turn_changed)
+	_start_stage(true)
+
+
+func _start_stage(restore_act: bool) -> void:
+	var stage: CombatStage = stages[stage_index]
+	assert(stage != null, "스테이지 데이터가 비어 있습니다: %d" % (stage_index + 1))
+	assert(stage.ally_cells.size() == party.size(),
+		"아군 시작 칸 수가 파티 크기와 다릅니다: " + stage.resource_path)
+	for unit: CombatUnit in party:
+		unit.begin_stage(restore_act)
+	for unit: CombatUnit in units:
+		if not unit.is_ally:
+			unit.free()
+	for child: Node in $Units.get_children():
+		if child is Label:
+			child.free()
+	units = party.duplicate()
+	map_size = stage.map_size
+	map.clear()
+	map.tile_set = stage.tile_set
+	actions.map_size = map_size
+	for x: int in range(map_size.x):
+		for y: int in range(map_size.y):
+			map.set_cell(Vector2i(x, y), 0, Vector2i((x + y) % 2, 0))
+	for index: int in range(party.size()):
+		party[index].cell = stage.ally_cells[index]
+	var enemies: Node = stage.enemies.instantiate()
+	$Units.add_child(enemies)
+	for child: Node in enemies.get_children():
+		var unit: CombatUnit = child as CombatUnit
+		unit.reparent($Units, false)
+		units.append(unit)
+	enemies.free()
+	camera.position = (map.map_to_local(Vector2i.ZERO)
+		+ map.map_to_local(map_size - Vector2i.ONE)) / 2.0
+	_inspected_unit = null
+	_clear_preview()
+	selected_action = "attack"
+	hud.begin_stage(stage_index / STAGES_PER_ACT + 1, stage_index % STAGES_PER_ACT + 1)
+	actions.initialize(units, turns)
 	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
 	dice.randomize()
-	_last_ally = units[0]
-	turns.start(units, dice)
+	var living: Array[CombatUnit] = []
+	for unit: CombatUnit in units:
+		if unit.hit_points > 0:
+			living.append(unit)
+	_last_ally = living[0]
+	turns.start(living, dice)
 	for unit: CombatUnit in turns.ordered_units:
 		hud.add_log("이니셔티브 %s: d20 %d + %d = %d" % [
 			unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()])
 
 
 func _restart() -> void:
-	if actions.is_over() and not actions.busy and not _enemy_turn_running:
-		get_tree().reload_current_scene()
+	if not actions.is_over() or actions.busy or _enemy_turn_running:
+		return
+	if _all_enemies_down():
+		if stage_index == stages.size() - 1:
+			return
+		stage_index += 1
+	else:
+		stage_index -= stage_index % STAGES_PER_ACT
+	_start_stage(stage_index % STAGES_PER_ACT == 0)
 
 
 func _process(_delta: float) -> void:
@@ -238,8 +283,8 @@ func _update_turn_ui() -> void:
 	hud.refresh(turns, can_act)
 	movement_cells.clear()
 	if selected_action == "move":
-		for x: int in range(MAP_SIZE.x):
-			for y: int in range(MAP_SIZE.y):
+		for x: int in range(map_size.x):
+			for y: int in range(map_size.y):
 				var cell: Vector2i = Vector2i(x, y)
 				if turns.current_unit != null and turns.current_unit.is_ally and actions.can_move(turns.current_unit, cell):
 					movement_cells.append(cell)
@@ -277,7 +322,8 @@ func _update_turn_ui() -> void:
 			+ hud.preview_label.text + "\n\n행동 소비 없음.\n" + hud.movement_caution(turns.current_unit))
 	if actions.is_over():
 		hud.round_label.text = "승리" if _all_enemies_down() else "패배"
-		hud.show_result(_all_enemies_down())
+		hud.show_result(_all_enemies_down(), stage_index == stages.size() - 1,
+			stage_index % STAGES_PER_ACT == STAGES_PER_ACT - 1)
 		hud.restart_button.disabled = _enemy_turn_running
 	queue_redraw()
 

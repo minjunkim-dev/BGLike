@@ -1,15 +1,18 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scenes/combat/battle.gd" id="1_battle"]
 [ext_resource type="PackedScene" path="res://scenes/combat/unit.tscn" id="2_unit"]
 [ext_resource type="TileSet" path="res://scenes/combat/floor_tiles.tres" id="3_floor"]
 [ext_resource type="Script" path="res://scenes/combat/turn_hud.gd" id="4_hud"]
+[ext_resource type="Resource" path="res://scenes/combat/stage.tres" id="5_stage"]
+[ext_resource type="Script" path="res://scenes/combat/stage.gd" id="6_stage_script"]
 
 [sub_resource type="Theme" id="Theme_legend"]
 default_font_size = 12
 
 [node name="Battle" type="Node2D"]
 script = ExtResource("1_battle")
+stages = Array[ExtResource("6_stage_script")]([ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage")])
 
 [node name="Map" type="TileMapLayer" parent="."]
 z_index = -1
@@ -24,15 +27,6 @@ start_cell = Vector2i(4, 9)
 [node name="AllyArcher" parent="Units" instance=ExtResource("2_unit")]
 kind = 1
 start_cell = Vector2i(5, 9)
-
-[node name="EnemyWarrior" parent="Units" instance=ExtResource("2_unit")]
-is_ally = false
-start_cell = Vector2i(5, 0)
-
-[node name="EnemyArcher" parent="Units" instance=ExtResource("2_unit")]
-kind = 1
-is_ally = false
-start_cell = Vector2i(4, 0)
 
 [node name="Camera" type="Camera2D" parent="."]
 position_smoothing_enabled = false
@@ -54,7 +48,7 @@ script = ExtResource("4_hud")
 [node name="Round" type="Label" parent="UI/TurnHud"]
 offset_left = 8.0
 offset_top = 8.0
-offset_right = 300.0
+offset_right = 220.0
 offset_bottom = 22.0
 theme_override_font_sizes/font_size = 10
 mouse_filter = 2
@@ -66,6 +60,15 @@ offset_top = 25.0
 offset_right = 300.0
 offset_bottom = 74.0
 theme_override_constants/separation = 6
+
+[node name="Progress" type="Label" parent="UI/TurnHud"]
+offset_left = 230.0
+offset_top = 8.0
+offset_right = 420.0
+offset_bottom = 22.0
+theme_override_font_sizes/font_size = 10
+mouse_filter = 2
+text = "1막 · 1스테이지"
 
 [node name="UnitDetails" type="VBoxContainer" parent="UI/TurnHud"]
 anchor_left = 1.0

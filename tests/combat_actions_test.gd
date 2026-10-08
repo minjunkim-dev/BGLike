@@ -261,16 +261,17 @@ func _test_self_actions() -> void:
 	_check(warrior.hit_points == 12 and warrior.second_wind_left == 0 and warrior.bonus_action_left == 0,
 		"1d10+1 회복과 횟수·보조 행동 소비")
 	warrior.begin_turn()
-	_check(warrior.second_wind_left == 0, "자기 턴은 전투당 횟수를 회복하지 않음")
+	_check(warrior.second_wind_left == 0, "자기 턴은 막당 횟수를 회복하지 않음")
 	warrior.action_left = 0
 	_check(f.actions.use_self(warrior, "surge"), "몰아치기 사용")
 	_check(warrior.action_left == 1 and warrior.bonus_action_left == 0 and warrior.surge_left == 0,
 		"몰아치기는 행동을 최대1로 채움")
 	warrior.begin_turn()
 	warrior.hit_points = 1
+	warrior.potion_left = 1
 	f.actions.dice = _dice_for([4, 4], [4, 4])
 	_check(f.actions.use_self(warrior, "potion"), "물약 사용")
-	_check(warrior.hit_points == 11 and warrior.potion_left == 0, "2d4+2 회복과 유닛당 물약1개")
+	_check(warrior.hit_points == 11 and warrior.potion_left == 0, "보유 물약 소비와2d4+2 회복")
 	warrior.begin_turn()
 	_check(not f.actions.use_self(warrior, "potion"), "물약 횟수 회복 없음")
 	f.turns.select_unit(f.units[1])
@@ -440,7 +441,7 @@ func _test_reactions() -> void:
 	parry.actions.dice = _dice_for([20, 12], [20, 20])
 	await parry.actions.attack(parry.units[2], parry.units[0])
 	_check(parry.units[0].hit_points == 12 and parry.actions.last_damage == 0, "흘려내기 성공은 치명타도 무효")
-	_check(parry.units[0].reaction_left == 0 and parry.units[0].parry_left == 1, "흘려내기 반응과 전투당 횟수 소비")
+	_check(parry.units[0].reaction_left == 0 and parry.units[0].parry_left == 1, "흘려내기 반응과 막당 횟수 소비")
 	_check(parry.units[2].action_left == 0, "흘려내기 성공해도 공격자 행동 소비")
 	parry.units[2].action_left = 1
 	parry.units[0].reaction_left = 1

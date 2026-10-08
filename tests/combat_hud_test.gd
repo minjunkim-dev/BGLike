@@ -339,8 +339,11 @@ func _test_layout() -> void:
 			await process_frame
 			var area: Rect2 = hud.get_global_rect()
 			for control: Control in [hud.order_bar, hud.action_bar, hud.message_label,
-				hud.end_button, hud.input_hint, hud.resource_label, hud.actor_label, hud.help_label, hud.preview_label]:
+				hud.end_button, hud.input_hint, hud.resource_label, hud.actor_label, hud.help_label,
+				hud.preview_label, hud.round_label, hud.progress_label]:
 				_check(area.encloses(control.get_global_rect()), "%s: 화면 안 %s" % [size, control.name])
+			_check(not hud.round_label.get_global_rect().intersects(hud.progress_label.get_global_rect()),
+				"라운드와 막 진행 표시 영역은 겹치지 않음")
 			_check(not (hud.get_node("UnitDetails/UnitPanel") as Control).get_global_rect().intersects(
 				hud.preview_label.get_global_rect()), "확장한 유닛 정보와 공격 예측은 겹치지 않음")
 			var skills: Rect2 = (hud.get_node("Skills") as Control).get_global_rect()
@@ -389,7 +392,7 @@ func _test_guidance() -> void:
 	_check(title.mouse_filter != Control.MOUSE_FILTER_IGNORE and hovered[0],
 		"자원 제목의 툴팁은 문자열뿐 아니라 실제 포인터 입력을 받음")
 	_check("이번 턴 비용" in (buttons["attack"] as Button).tooltip_text
-		and "이번 전투의 남은 횟수" in (buttons["parry"] as Button).tooltip_text,
+		and "이번 막의 남은 횟수" in (buttons["parry"] as Button).tooltip_text,
 		"비용 기호와 횟수 숫자의 뜻 설명")
 	await battle.call("_select_move_cell", Vector2i(2, 1))
 	var cells: Array[Vector2i] = battle.get("movement_cells")
@@ -460,7 +463,7 @@ func _test_guidance() -> void:
 	battle.call("_update_turn_ui")
 	(buttons["surge"] as Button).pressed.emit()
 	_check(hud.help_title.text == "몰아치기" and "이미 쓴 행동" in hud.help_label.text
-		and "비용: 보조 행동 ▲" in hud.help_label.text and "전투 중 1회 남음" in hud.help_label.text
+		and "비용: 보조 행동 ▲" in hud.help_label.text and "막당 1회 남음" in hud.help_label.text
 		and "같은 버튼을 다시" in hud.help_label.text and units[0].surge_left == 1,
 		"스킬 첫 선택은 효과·비용·횟수·사용법만 보여 줌")
 	for unit: CombatUnit in [units[0], units[1]]:
@@ -536,6 +539,7 @@ func _test_results_and_restart() -> void:
 	battle.call("_update_turn_ui")
 	_check(hud.get_node("Result").visible and hud.result_label.text == "승리", "전멸시 승리 창")
 	var before: int = turns.round_number
+	var ally_hp: Array[int] = [units[0].hit_points, units[1].hit_points]
 	hud.end_button.pressed.emit()
 	hud.unit_selected.emit(units[1])
 	_check(turns.round_number == before and hud.end_button.disabled, "전투 종료 입력 잠금")
@@ -547,10 +551,11 @@ func _test_results_and_restart() -> void:
 	turns = battle.get("turns") as CombatTurns
 	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	_check(units.size() == 4 and turns.ordered_units.size() == 4
-		and not hud.get_node("Result").visible, "실제 재시작으로 새 전투 진입")
-	for unit: CombatUnit in units:
-		_check(unit.hit_points == unit.get_max_hit_points() and unit.potion_left == 1,
-			"재시작 HP와 전투당 횟수 초기화")
+		and not hud.get_node("Result").visible and hud.progress_label.text == "1막 · 2스테이지",
+		"승리 결과 버튼으로 다음 스테이지 진입")
+	for index: int in range(2):
+		_check(units[index].hit_points == ally_hp[index] and units[index].potion_left == 0,
+			"같은 막은 HP를 유지하고 물약을 지급하지 않음")
 	for unit: CombatUnit in units:
 		if unit.is_ally:
 			unit.hit_points = 0
