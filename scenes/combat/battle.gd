@@ -1,6 +1,7 @@
 extends Node2D
 ## M1 동작과 전투 화면. 적 묶음은 이니셔티브 순서대로 실행한다.
 
+# Issue #53 시안. 정확한 맵 모양·칸 수·타일 크기는 기획 확인 전 임시값이다.
 const MAP_SIZE: Vector2i = Vector2i(10, 10)
 
 var units: Array[CombatUnit] = []
@@ -22,6 +23,7 @@ var _inspected_unit: CombatUnit
 
 
 func _ready() -> void:
+	actions.map_size = MAP_SIZE
 	for x: int in range(MAP_SIZE.x):
 		for y: int in range(MAP_SIZE.y):
 			map.set_cell(Vector2i(x, y), 0, Vector2i((x + y) % 2, 0))
@@ -288,13 +290,16 @@ func _all_enemies_down() -> bool:
 
 
 func _draw() -> void:
+	var half: Vector2 = Vector2(map.tile_set.tile_size) / 2.0
 	for cell: Vector2i in movement_cells:
 		var center: Vector2 = map.map_to_local(cell)
 		var color: Color = Color(0.22, 0.56, 0.92, 0.4)
 		if not _attack_targets_from(cell).is_empty():
 			color = Color(0.22, 0.8, 0.5, 0.45)
-		draw_colored_polygon(PackedVector2Array([center + Vector2(-14, 0),
-			center + Vector2(0, -7), center + Vector2(14, 0), center + Vector2(0, 7)]), color)
+		draw_colored_polygon(PackedVector2Array([center + Vector2(0, -half.y),
+			center + Vector2(half.x, -half.y / 2.0), center + Vector2(half.x, half.y / 2.0),
+			center + Vector2(0, half.y), center + Vector2(-half.x, half.y / 2.0),
+			center + Vector2(-half.x, -half.y / 2.0)]), color)
 	if preview_path.is_empty():
 		return
 	var points: PackedVector2Array = [map.map_to_local(turns.current_unit.cell)]

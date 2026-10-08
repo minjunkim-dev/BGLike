@@ -101,8 +101,8 @@ func _test_warrior() -> void:
 	await ai.play_turn(approach.units[2], approach.actions)
 	_check(approach.actions.distance(approach.units[2].cell, approach.units[0].cell) == 1,
 		"사거리 밖에서는 낮은 HP의 먼 대상보다 가장 가까운 대상에게 접근")
-	_check(approach.units[2].movement_left == 3 and approach.units[2].action_left == 0,
-		"8방향 최단 접근 후 공격, 이동과 행동 별도 소비")
+	_check(approach.units[2].movement_left == 1 and approach.units[2].action_left == 0,
+		"헥사 거리6에서5칸 접근 후 공격, 이동과 행동 별도 소비")
 	var retarget: Fixture = _fixture()
 	retarget.units[1].cell = Vector2i(4, 5)
 	retarget.units[1].hit_points = 1
@@ -159,8 +159,8 @@ func _test_archer() -> void:
 	approach.units[0].cell = Vector2i(8, 8)
 	approach.units[1].cell = Vector2i(9, 9)
 	await ai.play_turn(approach.units[3], approach.actions)
-	_check(approach.units[3].movement_left == 4 and approach.units[3].action_left == 0,
-		"사거리 밖에서 사거리6까지 필요한 두 칸만 이동 후 공격")
+	_check(approach.units[3].movement_left == 0 and approach.units[3].action_left == 0,
+		"헥사 거리12에서 사거리6까지6칸 이동 후 공격")
 	var exhausted: Fixture = _fixture(true)
 	exhausted.units[3].cell = Vector2i(2, 2)
 	exhausted.units[3].mark_left = 0

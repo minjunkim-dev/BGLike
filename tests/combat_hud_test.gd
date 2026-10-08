@@ -42,6 +42,7 @@ func _run() -> void:
 	battle.call("_update_turn_ui")
 	await process_frame
 	await process_frame
+	_test_hex_map()
 	_test_warrior()
 	await _test_resources()
 	_test_archer_and_enemy()
@@ -56,6 +57,23 @@ func _run() -> void:
 	await process_frame
 	print("Combat HUD: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_hex_map() -> void:
+	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
+	_check(map.get_used_cells().size() == 100, "헥사 시안은100칸")
+	_check(map.tile_set.tile_shape == TileSet.TILE_SHAPE_HEXAGON
+		and map.tile_set.tile_offset_axis == TileSet.TILE_OFFSET_AXIS_HORIZONTAL,
+		"타일은 pointy-top 헥사")
+	for cell: Vector2i in map.get_used_cells():
+		_check(map.local_to_map(map.map_to_local(cell)) == cell, "헥사 중심 클릭의 좌표 왕복")
+		var visual_neighbors: Array[Vector2i] = map.get_surrounding_cells(cell)
+		var neighbors: Array[Vector2i] = CombatHexGrid.neighbors(cell)
+		_check(visual_neighbors.size() == 6 and neighbors.size() == 6,
+			"표시와 전투 판정 모두 인접6칸")
+		for neighbor: Vector2i in visual_neighbors:
+			_check(neighbors.has(neighbor) and actions.distance(cell, neighbor) == 1,
+				"Godot 타일 이웃과 전투 인접 판정 일치")
 
 
 func _test_warrior() -> void:
