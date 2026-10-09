@@ -28,7 +28,7 @@ func _run() -> void:
 	if hud.has_node("Progress"):
 		_check((hud.get_node("Progress") as Label).text == "1막 · 1스테이지", "첫 전투는1-1")
 	for unit: CombatUnit in battle.get("units"):
-		_check(unit.potion_left == 0, "드랍 구현 전 시작 물약은0개")
+		_check(unit.potion_left == 0, "드랍 전 시작 물약은0개")
 	await _test_stage_transition(battle)
 	await _test_act_and_defeat(battle)
 	await _test_graduation(battle)
@@ -66,6 +66,7 @@ func _test_async_transition() -> void:
 	_check(not battle.get("_enemy_turn_running") and not hud.restart_button.disabled,
 		"적 턴 await 완료 뒤 결과 버튼 잠금 해제")
 	hud.restart_button.pressed.emit()
+	_finish_rewards(battle)
 	await process_frame
 	_check(hud.progress_label.text == "1막 · 2스테이지"
 		and not hud.get_node("Result").visible, "이전 적 턴 처리 종료 뒤 다음 전투로 진입")
@@ -106,9 +107,10 @@ func _test_stage_transition(battle: Node2D) -> void:
 	second.ally_cells = [Vector2i(1, 8), Vector2i(2, 8)]
 	stages[1] = second
 	_win(battle)
-	_check(hud.result_label.text == "승리" and hud.restart_button.text == "다음 스테이지",
-		"스테이지 승리 결과에서 다음 전투로 진입")
+	_check(hud.result_label.text == "승리" and hud.restart_button.text == "보상 확인",
+		"스테이지 승리 결과에서 보상 확인 안내")
 	hud.restart_button.pressed.emit()
+	_finish_rewards(battle)
 	await process_frame
 	await process_frame
 	_check((hud.get_node("Progress") as Label).text == "1막 · 2스테이지", "승리 뒤1-2 진행")
@@ -144,6 +146,15 @@ func _next(battle: Node2D) -> void:
 	Input.parse_input_event(click)
 	await process_frame
 	await process_frame
+	_finish_rewards(battle)
+	await process_frame
+
+
+func _finish_rewards(battle: Node2D) -> void:
+	var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
+	preparation.continue_button.pressed.emit()
+	preparation.continue_button.pressed.emit()
+	preparation.discard_dialog.confirmed.emit()
 
 
 func _test_act_and_defeat(battle: Node2D) -> void:
@@ -153,8 +164,14 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	_check((battle.get_node("Map") as TileMapLayer).get_used_cells().size() == 100,
 		"다음 스테이지 데이터가 이전 맵 크기를 덮어씀")
 	_win(battle)
-	_check(hud.restart_button.text == "다음 막 시작", "막 마지막 전투는 다음 막 안내")
+	_check(hud.restart_button.text == "보상 확인", "막 마지막 전투도 보상 확인 안내")
 	hud.restart_button.pressed.emit()
+	var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
+	preparation.continue_button.pressed.emit()
+	_check(preparation.continue_button.text == "다음 막 시작", "정비 뒤 다음 막 안내")
+	preparation.continue_button.pressed.emit()
+	await process_frame
+	preparation.discard_dialog.confirmed.emit()
 	await process_frame
 	_check(hud.progress_label.text == "2막 · 1스테이지", "1-3 승리 뒤2-1 진행")
 	_check((battle.get("turns") as CombatTurns).ordered_units.size() == 4,
@@ -220,6 +237,10 @@ func _test_graduation(battle: Node2D) -> void:
 	await _next(battle)
 	await _next(battle)
 	_win(battle)
+	_check(hud.result_label.text == "승리" and hud.restart_button.visible,
+		"3-3도 졸업 전에 보상과 정비 제공")
+	hud.restart_button.pressed.emit()
+	_finish_rewards(battle)
 	_check(hud.result_label.text == "3막 졸업" and not hud.restart_button.visible,
 		"3-3 승리 뒤 졸업 화면과 추가 스테이지 없음")
 	hud.restart_button.pressed.emit()

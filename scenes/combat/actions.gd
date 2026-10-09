@@ -326,7 +326,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	if has_mark_damage:
 		for index: int in range(count):
 			last_damage_rolls.append(dice.randi_range(1, 6))
-	var damage_bonus: int = 3 if actor.kind == CombatUnit.Kind.WARRIOR else 1
+	var damage_bonus: int = actor.get_damage_bonus()
 	last_damage = damage_bonus
 	for rolled: int in last_damage_rolls:
 		last_damage += rolled

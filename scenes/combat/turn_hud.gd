@@ -283,14 +283,14 @@ func begin_stage(act: int, stage: int) -> void:
 	restart_button.show()
 
 
-func show_result(victory: bool, final_stage: bool = false, last_in_act: bool = false) -> void:
+func show_result(victory: bool, graduated: bool = false) -> void:
 	reaction_dialog.hide()
-	var graduated: bool = victory and final_stage
-	result_label.text = "3막 졸업" if graduated else "승리" if victory else "패배"
-	restart_button.visible = not graduated
-	restart_button.text = ("다음 막 시작" if last_in_act else "다음 스테이지") if victory else "이 막 다시 시작"
+	var complete: bool = victory and graduated
+	result_label.text = "3막 졸업" if complete else "승리" if victory else "패배"
+	restart_button.visible = not complete
+	restart_button.text = "보상 확인" if victory else "이 막 다시 시작"
 	$Result.show()
-	if not graduated:
+	if not complete:
 		restart_button.grab_focus()
 
 
