@@ -393,5 +393,8 @@ func _test_default_scene() -> void:
 		"기본 배치 전투 종료 후 AI 대기와 재시작 잠금 해제")
 	while battle.get("_enemy_turn_running"):
 		await create_timer(0.01).timeout
+	var sound: AudioStreamPlayer = battle.get_node("HitSound") as AudioStreamPlayer
+	while sound.playing:
+		await process_frame
 	main.queue_free()
 	await process_frame

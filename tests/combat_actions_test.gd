@@ -5,6 +5,7 @@ class Fixture extends RefCounted:
 	var units: Array[CombatUnit] = []
 	var turns: CombatTurns = CombatTurns.new()
 	var actions: CombatActions = CombatActions.new()
+	var hits: Array[bool] = []
 
 
 var _checks: int = 0
@@ -43,6 +44,7 @@ func _fixture() -> Fixture:
 	dice.seed = 33
 	f.turns.start(f.units, dice)
 	f.actions.initialize(f.units, f.turns)
+	f.actions.hit_landed.connect(f.hits.append.bind(true))
 	return f
 
 
@@ -191,6 +193,7 @@ func _test_attacks() -> void:
 	_check(await f.actions.attack(actor, target), "빗나간 공격도 실행 성공")
 	_check(actor.action_left == 0 and target.hit_points == 12 and f.actions.last_damage == 0,
 		"자연1 공격은 행동을 소비하고 피해 없음")
+	_check(f.hits.is_empty(), "빗나감은 타격음을 요청하지 않음")
 	_check(not await f.actions.attack(actor, target), "행동 없는 재공격 거부")
 	actor.action_left = 1
 	f.actions.dice = _dice_for([20], [20])
@@ -202,6 +205,7 @@ func _test_attacks() -> void:
 		total += rolled
 	_check(f.actions.last_damage == total, "능력치3은 치명타에서도 한 번만 더함")
 	_check(target.hit_points == maxi(0, 12 - total), "피해와 HP0 하한")
+	_check(f.hits.size() == 1, "치명타 주사위가 여러 개여도 타격음은 한 번")
 	var killed: Fixture = _fixture()
 	killed.units[2].hit_points = 1
 	killed.units[2].parry_left = 0
@@ -212,6 +216,11 @@ func _test_attacks() -> void:
 		"HP0은 즉시 전투 불능과 턴 순서 제거")
 	_check(killed.units[1].marked_target == null, "전투 불능 대상의 표식 제거")
 	_check(not await killed.actions.attack(killed.units[0], killed.units[2]), "전투 불능 대상 재공격 거부")
+	_check(killed.hits.size() == 1, "전투 불능 타격도 한 번 재생하고 거부한 공격은 무음")
+	f.actions._damage(target, 0)
+	_check(f.hits.size() == 1, "HP가 줄지 않으면 타격음을 요청하지 않음")
+	f.actions._heal(actor, 1, "회복 검사")
+	_check(f.hits.size() == 1, "회복은 타격음을 요청하지 않음")
 
 
 func _test_archer_balance() -> void:
@@ -239,6 +248,7 @@ func _test_archer_balance() -> void:
 				f.actions.logged.connect(func(line: String) -> void: logs.append(line))
 				f.actions.dice = _dice_for([attack_roll], [20])
 				_check(await f.actions.attack(actor, target), "양쪽 궁수 기본 공격 실행")
+				_check(f.hits.size() == 1, "아군·적 궁수와 표식 공격도 타격음 한 번")
 				var count: int = (2 if attack_roll == 20 else 1) * (2 if marked else 1)
 				var total: int = 1
 				for rolled: int in f.actions.last_damage_rolls:
@@ -333,6 +343,7 @@ func _test_mark_and_stun() -> void:
 	_check(await shock.actions.attack(shock.units[1], shock.units[2], true), "충격 화살 실행")
 	_check(shock.units[1].shock_left == 0 and shock.units[1].action_left == 0, "충격 화살 횟수와 행동 소비")
 	_check(shock.units[2].is_stunned and shock.units[2].hit_points > 0, "명중·피해 후 정신 내성 실패 기절")
+	_check(shock.hits.size() == 1, "충격 화살 피해와 기절은 타격음 한 번")
 	shock.turns.end_turn()
 	shock.turns.end_turn()
 	_check(shock.turns.current_unit == shock.units[3] and shock.turns.is_turn_finished(shock.units[2]),
@@ -428,6 +439,7 @@ func _test_reactions() -> void:
 	await dead.actions.move_to(dead.units[3], Vector2i(6, 4))
 	_check(dead.units[3].hit_points == 0 and dead.units[3].cell == Vector2i(5, 4)
 		and dead.units[3].movement_left == 6, "기회 공격으로 탈락하면 벗어나기 전 칸에서 이동 중단")
+	_check(dead.hits.size() == 1, "기회 공격 피해도 타격음 한 번")
 	var parry: Fixture = _fixture()
 	parry.units[0].cell = Vector2i(4, 4)
 	parry.units[2].cell = Vector2i(5, 4)
@@ -441,6 +453,7 @@ func _test_reactions() -> void:
 	parry.actions.dice = _dice_for([20, 12], [20, 20])
 	await parry.actions.attack(parry.units[2], parry.units[0])
 	_check(parry.units[0].hit_points == 12 and parry.actions.last_damage == 0, "흘려내기 성공은 치명타도 무효")
+	_check(parry.hits.is_empty(), "성공한 흘려내기는 타격음을 요청하지 않음")
 	_check(parry.units[0].reaction_left == 0 and parry.units[0].parry_left == 1, "흘려내기 반응과 막당 횟수 소비")
 	_check(parry.units[2].action_left == 0, "흘려내기 성공해도 공격자 행동 소비")
 	parry.units[2].action_left = 1
@@ -449,6 +462,7 @@ func _test_reactions() -> void:
 	await parry.actions.attack(parry.units[2], parry.units[0])
 	_check(parry.actions.last_damage > 0 and parry.actions.last_damage_rolls.size() == 2,
 		"민첩+1의 d20의11은 DC13 미달로 치명타 피해 적용")
+	_check(parry.hits.size() == 1, "실패한 흘려내기는 실제 피해 타격음 한 번")
 	_check(parry.units[0].reaction_left == 0 and parry.units[0].parry_left == 0,
 		"흘려내기 내성 실패도 반응과 횟수 소비")
 	var automatic: Fixture = _fixture()

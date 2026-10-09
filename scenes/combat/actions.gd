@@ -5,6 +5,7 @@ extends RefCounted
 signal changed
 signal logged(message: String)
 signal feedback(unit: CombatUnit, text: String)
+signal hit_landed
 signal reaction_requested(kind: String, prompt: String)
 signal reaction_decided(use_reaction: bool)
 
@@ -347,7 +348,10 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 
 
 func _damage(target: CombatUnit, amount: int) -> void:
+	var before: int = target.hit_points
 	target.hit_points = maxi(0, target.hit_points - amount)
+	if target.hit_points < before:
+		hit_landed.emit()
 	if target.hit_points == 0:
 		for unit: CombatUnit in units:
 			if unit.marked_target == target:

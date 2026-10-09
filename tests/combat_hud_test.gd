@@ -47,6 +47,7 @@ func _run() -> void:
 	await _test_resources()
 	_test_archer_and_enemy()
 	await _test_log_and_status()
+	await _test_hit_sound_mix()
 	await _test_layout()
 	await _test_guidance()
 	await _test_mouse_controls_and_inspection()
@@ -185,6 +186,14 @@ func _test_log_and_status() -> void:
 	battle.call("_update_turn_ui")
 	_check(not units[2].has_mark, "표식 해제 표시")
 	# 실제 동작의 판정 로그와 숫자 팝업 연결. 마지막 적이 아닌 대상에 확정 명중.
+	var hit_sound: AudioStreamPlayer = battle.get_node("HitSound") as AudioStreamPlayer
+	var hit_stream: AudioStreamOggVorbis = hit_sound.stream as AudioStreamOggVorbis
+	_check(hit_stream != null and hit_stream.get_length() > 0.0
+		and hit_stream.get_length() < 0.5 and not hit_stream.loop,
+		"타격음은0.5초 미만의 반복 없는 OGG")
+	_check(not hit_sound.autoplay and hit_sound.volume_db == -12.0
+		and hit_sound.max_polyphony == 4, "타격음 자동 재생 없음·음량-12dB·동시4개 제한")
+	hit_sound.stop()
 	units[2].is_stunned = false
 	units[2].reaction_left = 0
 	units[2].hit_points = 12
@@ -196,6 +205,7 @@ func _test_log_and_status() -> void:
 	units[2].cell = Vector2i(5, 8)
 	actions.dice = _dice_for_miss()
 	await actions.attack(units[1], units[2])
+	_check(not hit_sound.playing, "실제 장면의 빗나감은 타격음 무음")
 	_check(_has_two_dice_log("불리"),
 		"불리 판정은 로그에 주사위 두 값을 모두 표시")
 	var parent: Node = units[2].get_parent()
@@ -210,12 +220,36 @@ func _test_log_and_status() -> void:
 	units[2].is_stunned = true
 	actions.dice.seed = 100
 	await actions.attack(units[1], units[2])
+	await process_frame
+	_check(hit_sound.playing, "실제 피해 신호가 장면의 타격음 재생으로 연결됨")
 	_check(_has_two_dice_log("유리"),
 		"유리 판정은 로그에 주사위 두 값을 모두 표시")
 	_check("표식 추가" in hud.message_label.text, "표식 추가 피해를 로그에 명시")
 	_check(_has_feedback(units[1], "공격 %d" % actions.last_attack.total),
 		"유리 공격의 실제 판정 합계를 숫자 팝업으로 표시")
 	await _test_roll_popups()
+
+
+func _test_hit_sound_mix() -> void:
+	var sound: AudioStreamPlayer = battle.get_node("HitSound") as AudioStreamPlayer
+	sound.stop()
+	var capture: AudioEffectCapture = AudioEffectCapture.new()
+	capture.buffer_length = 2.0
+	var effect_index: int = AudioServer.get_bus_effect_count(0)
+	AudioServer.add_bus_effect(0, capture)
+	await create_timer(0.08).timeout
+	capture.clear_buffer()
+	for index: int in range(6):
+		actions.hit_landed.emit()
+	await create_timer(sound.stream.get_length() + 0.2).timeout
+	var samples: PackedVector2Array = capture.get_buffer(capture.get_frames_available())
+	var peak: float = 0.0
+	for sample: Vector2 in samples:
+		peak = maxf(peak, maxf(absf(sample.x), absf(sample.y)))
+	_check(samples.size() > 1000 and peak > 0.001 and peak < 1.0,
+		"연속 타격의 실제 믹서 출력은 무음·클리핑이 없음")
+	_check(not sound.playing, "연속 타격음은 반복 없이 종료")
+	AudioServer.remove_bus_effect(0, effect_index)
 
 
 func _has_feedback(unit: CombatUnit, text: String) -> bool:
