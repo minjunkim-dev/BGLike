@@ -50,6 +50,7 @@ func _ready() -> void:
 	actions.changed.connect(_update_turn_ui)
 	actions.logged.connect(hud.add_log)
 	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void: unit.show_feedback(text))
+	actions.hit_landed.connect($HitSound.play)
 	actions.reaction_requested.connect(hud.show_reaction)
 	turns.changed.connect(_on_turn_changed)
 	_start_stage(true)
