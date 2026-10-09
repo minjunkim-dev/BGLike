@@ -33,7 +33,7 @@ Git 기여 기록만으로 제3자 자료의 원저작권을 확정하지 않습
 
 | 파일 | 원본·권리자 | 조건과 출처 |
 | --- | --- | --- |
-| `scenes/combat/audio/hit.ogg` | Kenney, Impact Sounds 1.0의 `Audio/impactPunch_medium_000.ogg`. 원본 그대로 사용. 피해 발생 시 임시 타격음 | CC0 1.0 Universal. 사용·수정·재배포와 원본 공개를 허용합니다. 출처 표시는 필수가 아닙니다. [자산 페이지](https://kenney.nl/assets/impact-sounds), [CC0](https://creativecommons.org/publicdomain/zero/1.0/), [패키지의 원래 고지](scenes/combat/audio/kenney_license.txt). 2026-10-09 확인 |
+| `scenes/combat/audio/hit.ogg` | Kenney, Impact Sounds 1.0의 `Audio/impactWood_heavy_000.ogg`. 원본 그대로 사용. 피해 발생 시 임시 타격음 | CC0 1.0 Universal. 사용·수정·재배포와 원본 공개를 허용합니다. 출처 표시는 필수가 아닙니다. [자산 페이지](https://kenney.nl/assets/impact-sounds), [CC0](https://creativecommons.org/publicdomain/zero/1.0/), [패키지의 원래 고지](scenes/combat/audio/kenney_license.txt). 2026-10-09 확인 |
 
 효과음의 CC0는 BGLike 자체 코드에 적용하지 않습니다.
 
