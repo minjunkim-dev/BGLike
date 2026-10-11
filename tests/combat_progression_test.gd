@@ -29,6 +29,7 @@ func _run() -> void:
 		_check((hud.get_node("Progress") as Label).text == "1막 · 1스테이지", "첫 전투는1-1")
 	for unit: CombatUnit in battle.get("units"):
 		_check(unit.potion_left == 0, "드랍 전 시작 물약은0개")
+	_check_enemy_values(battle, 1)
 	await _test_stage_transition(battle)
 	await _test_act_and_defeat(battle)
 	await _test_graduation(battle)
@@ -38,6 +39,24 @@ func _run() -> void:
 	await _test_async_transition()
 	print("Combat progression: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _check_enemy_values(battle: Node2D, act: int) -> void:
+	var expected: Array = [
+		[[12, 5, 16, 3], [14, 5, 14, 1]],
+		[[18, 7, 18, 5], [21, 7, 16, 3]],
+		[[24, 10, 21, 7], [28, 10, 19, 5]]
+	]
+	for unit: CombatUnit in battle.get("units"):
+		if unit.is_ally:
+			_check(unit.get_attack_bonus() == 5
+				and unit.get_armor_class() == (16 if unit.kind == CombatUnit.Kind.WARRIOR else 14),
+				"막 강화는 아군 기본 명중·AC를 바꾸지 않음")
+			continue
+		var values: Array = expected[act - 1][unit.kind]
+		_check(unit.get_max_hit_points() == values[0] and unit.hit_points == values[0]
+			and unit.get_attack_bonus() == values[1] and unit.get_armor_class() == values[2]
+			and unit.get_damage_bonus() == values[3], "%d막 실제 적의 HP·명중·AC·피해" % act)
 
 
 func _test_async_transition() -> void:
@@ -68,6 +87,7 @@ func _test_async_transition() -> void:
 	hud.restart_button.pressed.emit()
 	_finish_rewards(battle)
 	await process_frame
+	_check_enemy_values(battle, int(battle.get("stage_index")) / 3 + 1)
 	_check(hud.progress_label.text == "1막 · 2스테이지"
 		and not hud.get_node("Result").visible, "이전 적 턴 처리 종료 뒤 다음 전투로 진입")
 	main.queue_free()
@@ -148,6 +168,7 @@ func _next(battle: Node2D) -> void:
 	await process_frame
 	_finish_rewards(battle)
 	await process_frame
+	_check_enemy_values(battle, int(battle.get("stage_index")) / 3 + 1)
 
 
 func _finish_rewards(battle: Node2D) -> void:
@@ -174,6 +195,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	preparation.discard_dialog.confirmed.emit()
 	await process_frame
 	_check(hud.progress_label.text == "2막 · 1스테이지", "1-3 승리 뒤2-1 진행")
+	_check_enemy_values(battle, 2)
 	_check((battle.get("turns") as CombatTurns).ordered_units.size() == 4,
 		"새 막에서 전투 불능 아군 부활과 적 재배치")
 	var party: Array[CombatUnit] = battle.get("party")
@@ -214,6 +236,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	hud.restart_button.pressed.emit()
 	await process_frame
 	_check(hud.progress_label.text == "2막 · 1스테이지", "패배한 막의1스테이지로 복귀")
+	_check_enemy_values(battle, 2)
 	for unit: CombatUnit in party:
 		_check(unit.hit_points == unit.get_max_hit_points() and unit.mark_left == 1
 			and unit.shock_left == 1 and unit.disengage_left == 2, "전멸 뒤 부활과 스킬 회복")
@@ -234,6 +257,7 @@ func _test_graduation(battle: Node2D) -> void:
 	await process_frame
 	_check(hud.progress_label.text == "3막 · 1스테이지" and not hud.get_node("Result").visible,
 		"최종 스테이지 패배도 현재 막의 첫 전투로 복귀")
+	_check_enemy_values(battle, 3)
 	await _next(battle)
 	await _next(battle)
 	_win(battle)

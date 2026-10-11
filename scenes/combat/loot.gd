@@ -4,7 +4,8 @@ extends RefCounted
 
 const DATA_PATH: String = "res://scenes/combat/item_data.json"
 const STAT_NAMES: Dictionary = {
-	"attack_bonus": "명중", "damage_bonus": "피해", "armor_class": "AC"
+	"attack_bonus": "명중", "damage_bonus": "피해", "armor_class": "AC",
+	"max_hit_points": "최대 HP"
 }
 
 var data: Dictionary
@@ -28,23 +29,26 @@ func _init() -> void:
 		total_weight += int(item["weight"])
 		assert(item.get("stats", null) is Dictionary, "stats가 필요합니다. 물약은 빈 객체를 둡니다.")
 		for stat: String in item["stats"]:
-			var bounds: Array = item["stats"][stat]
 			assert(stat in STAT_NAMES and item["kind"] != "potion", "지원하지 않는 장비 수치")
-			assert(bounds.size() == 2 and int(bounds[0]) >= 0
-				and int(bounds[0]) <= int(bounds[1]), "장비 범위는0이상 최소·최대입니다.")
+			var act_ranges: Array = item["stats"][stat]
+			assert(act_ranges.size() == 3, "장비 수치는 막별 범위3개가 필요합니다.")
+			for bounds: Array in act_ranges:
+				assert(bounds.size() == 2 and int(bounds[0]) >= 0
+					and int(bounds[0]) <= int(bounds[1]), "장비 범위는0이상 최소·최대입니다.")
 	assert(total_weight > 0)
 
 
-func roll_rewards(monster_count: int, dice: RandomNumberGenerator) -> Array[Dictionary]:
-	var rewards: Array[Dictionary] = [_roll_item(dice)]
+func roll_rewards(monster_count: int, dice: RandomNumberGenerator, act_number: int) -> Array[Dictionary]:
+	assert(act_number >= 1 and act_number <= 3, "아이템을 얻은 막은1~3입니다.")
+	var rewards: Array[Dictionary] = [_roll_item(dice, act_number)]
 	var chance: float = float(data["extra_drop_chance"])
 	for index: int in range(monster_count):
 		if chance >= 1.0 or dice.randf() < chance:
-			rewards.append(_roll_item(dice))
+			rewards.append(_roll_item(dice, act_number))
 	return rewards
 
 
-func _roll_item(dice: RandomNumberGenerator) -> Dictionary:
+func _roll_item(dice: RandomNumberGenerator, act_number: int) -> Dictionary:
 	var total: int = 0
 	for definition: Dictionary in data["items"]:
 		total += int(definition["weight"])
@@ -55,7 +59,7 @@ func _roll_item(dice: RandomNumberGenerator) -> Dictionary:
 			continue
 		var item: Dictionary = definition.duplicate(true)
 		for stat: String in definition["stats"]:
-			var bounds: Array = definition["stats"][stat]
+			var bounds: Array = definition["stats"][stat][act_number - 1]
 			item["stats"][stat] = dice.randi_range(int(bounds[0]), int(bounds[1]))
 		return item
 	return {}

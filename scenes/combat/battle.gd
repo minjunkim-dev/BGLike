@@ -82,6 +82,8 @@ func _start_stage(restore_act: bool) -> void:
 	for index: int in range(party.size()):
 		party[index].cell = stage.ally_cells[index]
 	var enemies: Node = stage.enemies.instantiate()
+	for child: Node in enemies.get_children():
+		(child as CombatUnit).act_number = stage_index / STAGES_PER_ACT + 1
 	$Units.add_child(enemies)
 	for child: Node in enemies.get_children():
 		var unit: CombatUnit = child as CombatUnit
@@ -352,7 +354,8 @@ func _update_turn_ui() -> void:
 			var monster_count: int = units.size() - party.size()
 			var reward_dice: RandomNumberGenerator = RandomNumberGenerator.new()
 			reward_dice.randomize()
-			rewards = loot.roll_rewards(monster_count, reward_dice)
+			rewards = loot.roll_rewards(monster_count, reward_dice,
+				stage_index / STAGES_PER_ACT + 1)
 			_rewards_generated = true
 		if not preparation.visible:
 			hud.show_result(_all_enemies_down(), _graduated)
