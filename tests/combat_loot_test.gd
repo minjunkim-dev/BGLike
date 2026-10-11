@@ -33,6 +33,8 @@ func _run() -> void:
 	await _test_reward_flow()
 	await _test_accidental_advance()
 	await _test_scaled_combat()
+	# 완료된 검사 코루틴의 참조를 해제한 뒤 종료한다.
+	await process_frame
 	print("Combat loot: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
 
@@ -45,7 +47,19 @@ func _test_armor_hit_points(loot: CombatLoot) -> void:
 	loot.receive(unit, armor)
 	_check(unit.hit_points == 10 and unit.get_max_hit_points() == 17,
 		"방어구 최대 HP 증가 시 잃은 HP 7 유지")
+	var weaker: Dictionary = {"kind": "armor", "name": "낮은 HP 방어구",
+		"stats": {"armor_class": 1, "max_hit_points": 2}}
+	loot.receive(unit, weaker)
+	_check(unit.hit_points == 7 and unit.get_max_hit_points() == 14,
+		"실제 수령 경로로 더 낮은 방어구 직접 교체 시 잃은 HP 유지")
+	loot.receive(unit, armor)
+	_check(unit.hit_points == 10 and unit.get_max_hit_points() == 17,
+		"실제 수령 경로로 더 높은 방어구 직접 교체 시 잃은 HP 유지")
 	unit.hit_points = 1
+	loot.receive(unit, weaker)
+	loot.receive(unit, armor)
+	_check(unit.hit_points == 1 and unit.get_max_hit_points() == 17,
+		"실제 방어구 직접 교체도 HP 하한에서 무료 회복 방지")
 	unit.armor = {}
 	_check(unit.hit_points == 1 and unit.get_max_hit_points() == 12,
 		"방어구 해제는 현재 HP 최소1 유지")

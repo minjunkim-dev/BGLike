@@ -113,6 +113,7 @@ func _render() -> void:
 			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			allies.add_child(card)
 			_label(card, unit.get_display_name() + (" · 전투 불능" if unit.hit_points <= 0 else ""))
+			_label(card, "HP %d / %d" % [unit.hit_points, unit.get_max_hit_points()])
 			_label(card, "무기: " + CombatLoot.describe(unit.weapon))
 			_label(card, "방어구: " + CombatLoot.describe(unit.armor))
 			_label(card, "물약 %d/%d" % [unit.potion_left, int(loot.data["potion_limit"])])

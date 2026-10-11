@@ -52,6 +52,7 @@ Issue #61에서 확정한 수치를 적용한다. 범위는 아이템을 얻은 
 | 등급 | 보류. 막별 수치 상승을 사용 |
 
 지원 수치는 `attack_bonus`·`damage_bonus`·`armor_class`·`max_hit_points`다.
+`max_hit_points`는 방어구 전용이다. 무기에 넣으면 데이터 검증에서 거부한다.
 장비의 두 수치를 독립 추첨한다. 얻은 장비는 다음 막에서도 수치를 유지한다.
 장비가 올리는 값은 능력치 자체를 바꾸지 않는다.
 명중 미리보기, 일반 공격·기회 공격·충격 화살과 대상AC가 같은 장비 수치를 사용한다.
@@ -71,8 +72,8 @@ Issue #61에서 확정한 수치를 적용한다. 범위는 아이템을 얻은 
 ## 검증 경계
 
 `GODOT=/Applications/Godot.app/Contents/MacOS/Godot make check`는 기존 전투 회귀 검사와 새 `combat_loot_test.gd`를 실행한다.
-2026-10-11 로컬 전체 검사에서 Python51개와 Godot4039개 검사를 통과했다.
-Godot 확인 수는 turns2366·checks61·actions284·HUD1091·AI67·progression104·loot66이다.
+2026-10-11 로컬 전체 검사에서 Python51개와 Godot4042개 검사를 통과했다.
+Godot 확인 수는 turns2366·checks61·actions284·HUD1091·AI67·progression104·loot69이다.
 드랍 검사에는 고정seed와 추가 확률0·1을 사용한다.
 검사 전용 데이터로 범위와 세 종류, 독립 수치, 장비 교체, 한도와 양도, 전투 불능 수령을 검사한다.
 검사 전용 데이터와 별도로 실제 기획 데이터의 막별 범위와 추첨 비중을 검사한다.
@@ -90,6 +91,7 @@ Godot 확인 수는 turns2366·checks61·actions284·HUD1091·AI67·progression1
 
 ## 실제 렌더링 화면
 
+아래 캡처는 2026-10-08 Issue #55의 임시 데이터 기록이다. 현재 확정값은 위 표를 따른다.
 Godot4.7.2의 실제 장면을640×360에서 렌더링했다.
 캡처는 승리와 궁수 전투 불능·물약3개를 테스트 값으로 설정했다.
 세 종류를 함께 보여 주려고 추가 확률1로 굴린 고정seed 보상이다.

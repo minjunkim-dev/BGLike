@@ -30,6 +30,8 @@ func _init() -> void:
 		assert(item.get("stats", null) is Dictionary, "stats가 필요합니다. 물약은 빈 객체를 둡니다.")
 		for stat: String in item["stats"]:
 			assert(stat in STAT_NAMES and item["kind"] != "potion", "지원하지 않는 장비 수치")
+			assert(stat != "max_hit_points" or item["kind"] == "armor",
+				"최대 HP 효과는 방어구 전용입니다.")
 			var act_ranges: Array = item["stats"][stat]
 			assert(act_ranges.size() == 3, "장비 수치는 막별 범위3개가 필요합니다.")
 			for bounds: Array in act_ranges:
