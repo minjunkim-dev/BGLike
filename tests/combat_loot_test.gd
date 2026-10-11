@@ -343,6 +343,8 @@ func _test_scaled_combat() -> void:
 		and rewards[0]["stats"]["max_hit_points"] <= 14
 		and rewards[0]["stats"]["armor_class"] >= 5,
 		"실제3막 승리는 얻은3막의 방어구 수치로 보상 생성")
+	# 오디오 믹서가 재생 참조를 정리한 뒤 장면을 해제한다.
+	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
 	await create_timer(0.4).timeout
 	main.queue_free()
 	await process_frame
