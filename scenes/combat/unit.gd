@@ -7,6 +7,9 @@ enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 
 const MOVEMENT_PER_TURN: int = 6
+const ENEMY_COMBAT_BONUSES: Array[int] = [0, 2, 5]
+const ENEMY_DAMAGE_BONUSES: Array[int] = [0, 2, 4]
+const ENEMY_HP_MULTIPLIERS: Array[float] = [1.0, 1.5, 2.0]
 
 const ALLY_COLOR: Color = Color("509be0")
 const ENEMY_COLOR: Color = Color("df6256")
@@ -23,7 +26,13 @@ var movement_left: int = MOVEMENT_PER_TURN
 var action_left: int = 1
 var bonus_action_left: int = 1
 var reaction_left: int = 1
-var hit_points: int = 12
+var act_number: int = 1
+var _lost_hit_points: int = 0
+var hit_points: int = 12:
+	set(value):
+		if value != hit_points:
+			_lost_hit_points = maxi(0, get_max_hit_points() - value)
+		hit_points = value
 var is_stunned: bool = false
 var has_mark: bool = false
 var disengaged: bool = false
@@ -36,7 +45,15 @@ var shock_left: int = 1
 var disengage_left: int = 2
 var potion_left: int = 0
 var weapon: Dictionary = {}
-var armor: Dictionary = {}
+var armor: Dictionary = {}:
+	set(value):
+		var lost: int = maxi(_lost_hit_points, get_max_hit_points() - hit_points)
+		armor = value
+		if hit_points > 0:
+			hit_points = maxi(1, get_max_hit_points() - lost)
+			# 최소1 보정 전의 손실을 다음 장비 교체에도 보존한다.
+			_lost_hit_points = lost
+		queue_redraw()
 var is_previewed: bool = false:
 	set(value):
 		is_previewed = value
@@ -65,19 +82,24 @@ func get_attribute(attribute: Attribute) -> int:
 
 
 func get_max_hit_points() -> int:
-	return 12 if kind == Kind.WARRIOR else 14
+	var base: int = 12 if kind == Kind.WARRIOR else 14
+	return int(base * (1.0 if is_ally else ENEMY_HP_MULTIPLIERS[act_number - 1])) \
+		+ _equipment_stat("max_hit_points")
 
 
 func get_armor_class() -> int:
-	return (16 if kind == Kind.WARRIOR else 14) + _equipment_stat("armor_class")
+	return (16 if kind == Kind.WARRIOR else 14) + _equipment_stat("armor_class") \
+		+ (0 if is_ally else ENEMY_COMBAT_BONUSES[act_number - 1])
 
 
 func get_attack_bonus() -> int:
-	return 5 + _equipment_stat("attack_bonus")
+	return 5 + _equipment_stat("attack_bonus") \
+		+ (0 if is_ally else ENEMY_COMBAT_BONUSES[act_number - 1])
 
 
 func get_damage_bonus() -> int:
-	return (3 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus")
+	return (3 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus") \
+		+ (0 if is_ally else ENEMY_DAMAGE_BONUSES[act_number - 1])
 
 
 func _equipment_stat(stat: String) -> int:

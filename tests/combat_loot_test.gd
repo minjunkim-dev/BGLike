@@ -23,15 +23,65 @@ func _run() -> void:
 		var loot: RefCounted = script.new()
 		var dice: RandomNumberGenerator = RandomNumberGenerator.new()
 		dice.seed = 55
+		_test_armor_hit_points(loot)
+		_test_act_values(loot, dice)
 		loot.data["extra_drop_chance"] = 0.0
-		_check(loot.roll_rewards(2, dice).size() == 1, "추가 확률0이어도 보장1개")
+		_check(loot.roll_rewards(2, dice, 1).size() == 1, "추가 확률0이어도 보장1개")
 		loot.data["extra_drop_chance"] = 1.0
-		_check(loot.roll_rewards(2, dice).size() == 3, "확률1이면 보장1개와 몬스터당1개")
+		_check(loot.roll_rewards(2, dice, 1).size() == 3, "확률1이면 보장1개와 몬스터당1개")
 		_test_items(loot, dice)
 	await _test_reward_flow()
 	await _test_accidental_advance()
+	await _test_scaled_combat()
+	# 완료된 검사 코루틴의 참조를 해제한 뒤 종료한다.
+	await process_frame
 	print("Combat loot: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_armor_hit_points(loot: CombatLoot) -> void:
+	var unit: CombatUnit = CombatUnit.new()
+	unit.hit_points = 5
+	var armor: Dictionary = {"kind": "armor", "name": "HP 방어구",
+		"stats": {"armor_class": 2, "max_hit_points": 5}}
+	loot.receive(unit, armor)
+	_check(unit.hit_points == 10 and unit.get_max_hit_points() == 17,
+		"방어구 최대 HP 증가 시 잃은 HP 7 유지")
+	var weaker: Dictionary = {"kind": "armor", "name": "낮은 HP 방어구",
+		"stats": {"armor_class": 1, "max_hit_points": 2}}
+	loot.receive(unit, weaker)
+	_check(unit.hit_points == 7 and unit.get_max_hit_points() == 14,
+		"실제 수령 경로로 더 낮은 방어구 직접 교체 시 잃은 HP 유지")
+	loot.receive(unit, armor)
+	_check(unit.hit_points == 10 and unit.get_max_hit_points() == 17,
+		"실제 수령 경로로 더 높은 방어구 직접 교체 시 잃은 HP 유지")
+	unit.hit_points = 1
+	loot.receive(unit, weaker)
+	loot.receive(unit, armor)
+	_check(unit.hit_points == 1 and unit.get_max_hit_points() == 17,
+		"실제 방어구 직접 교체도 HP 하한에서 무료 회복 방지")
+	unit.armor = {}
+	_check(unit.hit_points == 1 and unit.get_max_hit_points() == 12,
+		"방어구 해제는 현재 HP 최소1 유지")
+	loot.receive(unit, armor)
+	_check(unit.hit_points == 1 and unit.get_max_hit_points() == 17,
+		"최소1 보정 전 잃은 HP를 기억해 재장착 회복 방지")
+	unit.armor = {}
+	unit.begin_stage(false)
+	loot.receive(unit, armor)
+	_check(unit.hit_points == 1, "같은 막 전투 전환도 HP 하한 손실 유지")
+	unit.hit_points = 0
+	unit.armor = {}
+	loot.receive(unit, armor)
+	_check(unit.hit_points == 0 and unit.get_max_hit_points() == 17,
+		"전투 불능도 최대 HP 효과는 적용하지만 부활하지 않음")
+	unit.begin_stage(true)
+	_check(unit.hit_points == 17, "막 복구는 장비 포함 최대 HP까지 회복")
+	unit.armor = {}
+	loot.receive(unit, armor)
+	_check(unit.hit_points == 17, "막 복구 뒤 과거 HP 하한 손실 제거")
+	_check("최대 HP+5" in CombatLoot.describe(armor), "보상에 최대 HP 수치 표시")
+	unit.free()
 
 
 func _test_items(loot: CombatLoot, dice: RandomNumberGenerator) -> void:
@@ -40,14 +90,16 @@ func _test_items(loot: CombatLoot, dice: RandomNumberGenerator) -> void:
 	# 기획 데이터 변경과 독립된 검사 범위. 숫자는 검사 입력의 계약이다.
 	loot.data["items"] = [
 		{"kind": "weapon", "name": "검사 무기", "weight": 1,
-			"stats": {"attack_bonus": [0, 2], "damage_bonus": [1, 3]}},
-		{"kind": "armor", "name": "검사 방어구", "weight": 1, "stats": {"armor_class": [1, 3]}},
+			"stats": {"attack_bonus": [[0, 2], [0, 2], [0, 2]],
+				"damage_bonus": [[1, 3], [1, 3], [1, 3]]}},
+		{"kind": "armor", "name": "검사 방어구", "weight": 1,
+			"stats": {"armor_class": [[1, 3], [1, 3], [1, 3]]}},
 		{"kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}
 	]
 	var seen: Dictionary = {}
 	var in_bounds: bool = true
 	for sample: int in range(100):
-		var drops: Array[Dictionary] = loot.roll_rewards(2, dice)
+		var drops: Array[Dictionary] = loot.roll_rewards(2, dice, 1)
 		in_bounds = in_bounds and drops.size() >= 1 and drops.size() <= 3
 		for item: Dictionary in drops:
 			seen[item["kind"]] = true
@@ -57,8 +109,8 @@ func _test_items(loot: CombatLoot, dice: RandomNumberGenerator) -> void:
 				in_bounds = in_bounds and value <= (2 if stat == "attack_bonus" else 3)
 	_check(in_bounds and seen.size() == 3, "고정seed에서 세 종류·보장 수량·임시 수치 범위")
 	loot.data["items"] = [{"kind": "weapon", "name": "데이터 무기", "weight": 1,
-		"stats": {"attack_bonus": [9, 9]}}]
-	var changed: Array[Dictionary] = loot.roll_rewards(0, dice)
+		"stats": {"attack_bonus": [[9, 9], [9, 9], [9, 9]]}}]
+	var changed: Array[Dictionary] = loot.roll_rewards(0, dice, 1)
 	_check(changed.size() == 1 and changed[0]["name"] == "데이터 무기"
 		and changed[0]["stats"]["attack_bonus"] == 9, "종류·이름·수치 범위를 데이터 변경으로 적용")
 	var warrior: CombatUnit = CombatUnit.new()
@@ -96,6 +148,43 @@ func _test_items(loot: CombatLoot, dice: RandomNumberGenerator) -> void:
 	archer.free()
 
 
+func _test_act_values(loot: CombatLoot, dice: RandomNumberGenerator) -> void:
+	var expected: Dictionary = {
+		"weapon": {"attack_bonus": [[1, 2], [3, 4], [5, 7]],
+			"damage_bonus": [[1, 3], [4, 6], [7, 10]]},
+		"armor": {"armor_class": [[1, 2], [3, 4], [5, 7]],
+			"max_hit_points": [[2, 4], [5, 8], [9, 14]]},
+		"potion": {}
+	}
+	var weights: Dictionary = {}
+	for definition: Dictionary in loot.data["items"]:
+		weights[definition["kind"]] = int(definition["weight"])
+	_check(weights == {"weapon": 2, "armor": 2, "potion": 3}
+		and is_equal_approx(float(loot.data["extra_drop_chance"]), 0.35),
+		"실제 데이터 비중2/2/3과 몬스터당35%")
+	loot.data["extra_drop_chance"] = 1.0
+	for act: int in range(1, 4):
+		var combinations: Dictionary = {"weapon": {}, "armor": {}}
+		var valid: bool = true
+		var seen: Dictionary = {}
+		for sample: int in range(200):
+			var drops: Array[Dictionary] = loot.roll_rewards(2, dice, act)
+			valid = valid and drops.size() == 3
+			for item: Dictionary in drops:
+				var kind: String = item["kind"]
+				seen[kind] = true
+				valid = valid and item["stats"].size() == expected[kind].size()
+				for stat: String in item["stats"]:
+					var bounds: Array = expected[kind][stat][act - 1]
+					valid = valid and int(item["stats"][stat]) >= int(bounds[0]) \
+						and int(item["stats"][stat]) <= int(bounds[1])
+				if kind != "potion":
+					combinations[kind][str(item["stats"].values())] = true
+		_check(valid and seen.size() == 3, "%d막 실제 데이터의 보장·추가 수치 범위" % act)
+		_check(combinations["weapon"].size() > 3 and combinations["armor"].size() > 3,
+			"%d막 두 수치를 독립 추첨" % act)
+
+
 func _test_reward_flow() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
@@ -124,7 +213,8 @@ func _test_reward_flow() -> void:
 		_check(actual_rewards == battle.get("rewards"), "결과 갱신은 드랍을 다시 굴리지 않음")
 		# 입력 검사를 재현할 고정 보상. 드랍 생성은 위와 모델 검사에서 별도로 확인한다.
 		actual_rewards.clear()
-		actual_rewards.append({"kind": "armor", "name": "검사 방어구", "stats": {"armor_class": 2}})
+		actual_rewards.append({"kind": "armor", "name": "검사 방어구",
+			"stats": {"armor_class": 2, "max_hit_points": 4}})
 		actual_rewards.append({"kind": "potion", "name": "검사 물약", "stats": {}})
 		actual_rewards.append({"kind": "weapon", "name": "버릴 무기", "stats": {"damage_bonus": 1}})
 		await _click(hud.restart_button)
@@ -136,7 +226,8 @@ func _test_reward_flow() -> void:
 		await _click(preparation.continue_button)
 		_check(preparation.maintaining and preparation.title_label.text == "정비", "보상 다음 정비 단계")
 		await _click(preparation.content.get_node("Item0/Ally1") as Button)
-		_check(party[1].get_armor_class() == 16 and party[1].hit_points == 0,
+		_check(party[1].get_armor_class() == 16 and party[1].hit_points == 0
+			and party[1].get_max_hit_points() == 18,
 			"실제 분배 버튼은 전투 불능 궁수에게 방어구 장착")
 		_check(preparation.continue_button.has_focus(), "분배 뒤 키보드 포커스 유지")
 		await _click(preparation.content.get_node("Item0/Ally1") as Button)
@@ -187,6 +278,74 @@ func _test_reward_flow() -> void:
 		_check(battle.get("stage_index") == 0 and party[0].potion_left == 2
 			and party[1].potion_left == 1 and party[1].get_armor_class() == 16,
 			"막 재시작은 장비·남은 물약 유지, 소비한 물약 복구 없음")
+		_check(party[1].hit_points == 18, "실제 막 재시작에서 방어구 최대 HP 포함 부활")
+	main.queue_free()
+	await process_frame
+
+
+func _test_scaled_combat() -> void:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	battle.set("stage_index", 6)
+	battle.call("_start_stage", true)
+	var units: Array[CombatUnit] = battle.get("units")
+	var actor: CombatUnit = units[2]
+	var target: CombatUnit = units[0]
+	actor.cell = Vector2i(4, 3)
+	target.cell = Vector2i(4, 4)
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	for seed_value: int in range(100):
+		dice.seed = seed_value
+		turns.start(units, dice)
+		if turns.current_unit == actor:
+			break
+	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(actor, target, units)
+	_check(is_equal_approx(preview.chance, 0.75), "3막 적 명중+10 대 아군 AC16 미리보기")
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	actions.save_dc = 0
+	for seed_value: int in range(100):
+		dice.seed = seed_value
+		if dice.randi_range(1, 20) >= 6:
+			actions.dice.seed = seed_value
+			break
+	var used: bool = await actions.attack(actor, target)
+	_check(used and actions.last_attack.success
+		and actions.last_attack.total == actions.last_attack.selected_roll + 10,
+		"3막 실제 적 공격에 명중+5 강화 적용")
+	var rolled_damage: int = 0
+	for rolled: int in actions.last_damage_rolls:
+		rolled_damage += rolled
+	_check(actions.last_damage == rolled_damage + 7, "3막 실제 적 피해에+4 강화 한 번 적용")
+	# 적 강화와 별개로 방어구 최대 HP를 실제 물약 회복 상한에 적용한다.
+	var loot: CombatLoot = battle.get("loot") as CombatLoot
+	loot.receive(units[1], {"kind": "armor", "name": "검사 방어구",
+		"stats": {"armor_class": 7, "max_hit_points": 14}})
+	units[1].hit_points = 26
+	units[1].potion_left = 1
+	dice.seed = 33
+	turns.start(units, dice)
+	turns.current_unit = units[1]
+	_check(actions.use_self(units[1], "potion") and units[1].hit_points == 28,
+		"실제 물약 회복은 방어구 포함 최대 HP에서 제한")
+	loot.data["extra_drop_chance"] = 0.0
+	loot.data["items"] = [loot.data["items"][1]]
+	for unit: CombatUnit in units:
+		if not unit.is_ally:
+			unit.hit_points = 0
+			turns.remove_unit(unit)
+	actions.changed.emit()
+	var rewards: Array[Dictionary] = battle.get("rewards")
+	_check(rewards.size() == 1 and rewards[0]["stats"]["max_hit_points"] >= 9
+		and rewards[0]["stats"]["max_hit_points"] <= 14
+		and rewards[0]["stats"]["armor_class"] >= 5,
+		"실제3막 승리는 얻은3막의 방어구 수치로 보상 생성")
+	# 오디오 믹서가 재생 참조를 정리한 뒤 장면을 해제한다.
+	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	await create_timer(0.4).timeout
 	main.queue_free()
 	await process_frame
 
