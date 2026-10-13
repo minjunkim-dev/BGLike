@@ -36,7 +36,7 @@
 - 코드를 바꾸는 일은 Issue부터 엽니다. 본문에 **목표, 완료 조건, 관련 문서 링크**를 적습니다. 양식이 자동으로 뜹니다. 문서나 설정만 바꾸는 작은 작업은 Issue 없이 PR만 열어도 됩니다.
 - 본문은 처음 합의한 기록이므로 **고치지 않습니다.** 바뀐 것은 코멘트로 쌓습니다. 범위가 크게 바뀌면 새 Issue를 열고 옛 Issue는 링크를 남기고 닫습니다.
 - 열린 Issue 목록이 곧 작업판입니다. 보드, 마일스톤은 쓰지 않습니다.
-- GitHub Claude·Codex 자동 AI 리뷰는 이 저장소에서 중지합니다. 라벨·댓글을 시험 호출로 쓰지 않습니다. 재활성은 [협업 규칙](docs/WORKFLOW.md)의 별도 승인 조건을 따릅니다.
+- 실제 자동 AI 리뷰만 GitHub workflow·App·리뷰 설정에서 확인하고 이 저장소 범위에서 정리합니다. 기존 Claude 수동 리뷰는 유지합니다. 계정 탐색과 다른 저장소 연결 변경은 제외합니다. [협업 규칙](docs/WORKFLOW.md)을 따릅니다.
 
 ## 5. 코멘트
 
@@ -111,7 +111,7 @@
 | squash merge만 허용, 병합 후 브랜치 삭제 | 저장소 설정 |
 | Godot import·메인 장면·전투 회귀 검사 | GitHub Actions `godot`. 문서만 바뀌면 엔진 작업은 생략 |
 | PR·CI 알림 | `#github-알림` Discord 웹훅 |
-| GitHub AI 리뷰 | Claude workflow와 Codex 자동 코드·보안 리뷰는 이 저장소에서 중지. Cloud와 다른 저장소 연결은 유지 |
+| GitHub AI 리뷰 | Claude는 기존 수동 호출 전용. 자동 리뷰는 현재 GitHub 연결·설정을 확인하고 실제 연결만 정리. 다른 저장소·계정 연결은 유지 |
 | 로컬 독립 리뷰 / Bugbot | Standards·Spec·필요한 Security / 필요한 PR에서 수동 보조 리뷰. 자동화 완료로 간주하지 않음 |
 | Issue·PR 양식 | `.github/` 템플릿 |
 

@@ -93,6 +93,9 @@ class ReportTests(unittest.TestCase):
                 Path("AGENTS.md").write_text("See docs/WORKFLOW.md", encoding="utf-8")
                 Path("docs/WORKFLOW.md").write_text("workflow-rule-marker", encoding="utf-8")
                 Path("docs/GIT_CONVENTIONS.md").write_text("naming-rule-marker", encoding="utf-8")
+                Path("docs/coding-standards.md").write_text("coding-rule-marker", encoding="utf-8")
+                Path("docs/agents").mkdir()
+                Path("docs/agents/review.md").write_text("review-rule-marker", encoding="utf-8")
                 prompts = {}
                 for kind in ["issue", "pr"]:
                     env = {"GITHUB_REPOSITORY": "owner/repo", "REVIEW_KIND": kind,
@@ -108,6 +111,8 @@ class ReportTests(unittest.TestCase):
                         self.assertNotIn("workflow-rule-marker", str(output.call_args_list))
                         self.assertIn("workflow-rule-marker", prompts[kind])
                         self.assertIn("naming-rule-marker", prompts[kind])
+                        self.assertIn("coding-rule-marker", prompts[kind])
+                        self.assertIn("review-rule-marker", prompts[kind])
                 self.assertIn("acceptance criteria", prompts["issue"])
                 self.assertNotIn("P0/P1/P2 findings", prompts["issue"])
                 self.assertIn("file, location, trigger", prompts["pr"])

@@ -45,7 +45,7 @@ Draft CD의 실행 승인은 [Draft Release 절차](DRAFT_RELEASE.md)를 따릅�
 
 ## AI 에이전트
 
-사람은 **무엇을 할지**와 **병합할지**를 정합니다. 그 사이의 구현, 독립 리뷰와 수정을 로컬 에이전트에게 맡깁니다. 병합 위임은 위 위험별 정책을 따릅니다. GitHub 자동 AI 댓글·코드·보안 리뷰는 이 저장소에서 중지합니다. 결정적인 보안 스캔, dependency 검사와 CI는 유지합니다. Codex Cloud 기능과 다른 저장소의 App 연결은 유지합니다.
+사람은 **무엇을 할지**와 **병합할지**를 정합니다. 그 사이의 구현, 독립 리뷰와 수정을 로컬 에이전트에게 맡깁니다. 병합 위임은 위 위험별 정책을 따릅니다. 실제로 연결된 자동 AI 리뷰만 이 저장소 범위에서 정리합니다. 기존 수동 리뷰, 결정적인 보안 스캔, dependency 검사와 CI는 유지합니다. 다른 저장소의 App 접근과 계정 연결은 변경하지 않습니다.
 
 **기본: 로컬 앱으로 구현**
 
@@ -57,15 +57,17 @@ Draft CD의 실행 승인은 [Draft Release 절차](DRAFT_RELEASE.md)를 따릅�
 
 로컬에서는 작업 중에 방향을 바로잡고 편집기로 플레이해 볼 수 있습니다. GitHub에서 부른 Claude는 한 번 실행하고 끝나며 Actions 분을 씁니다.
 
-**중지한 GitHub AI 리뷰의 재활성 조건**
+**GitHub 범위의 자동 AI 리뷰 확인**
 
-아래 Claude·Codex 호출 설명은 보존한 재활성 계약입니다. 현재 운영 절차로 사용하지 않습니다. 구현은 승인된 Issue를 로컬 Claude Code나 Codex 앱에서 진행합니다. 재활성은 사용자의 별도 승인과 해당 저장소의 실제 설정 확인 후에만 합니다. 승인 없이 라벨·댓글·새 PR을 시험 호출로 사용하지 않습니다.
+현재 저장소의 workflow, GitHub 리뷰 설정, GitHub App 접근, 최근 PR 봇 코멘트·check와 branch protection을 확인합니다. App 설치만으로 자동 리뷰가 켜졌다고 판단하지 않습니다. 과거 코멘트만으로 현재 연결을 판단하지 않습니다. 연결이 없음을 확인하면 해당 경로를 `비해당`으로 기록합니다. 권한 부족 등으로 확인하지 못하면 `미확인`으로 기록합니다. 서비스 목록에서 저장소를 찾지 못한 것은 비활성화 증거가 아닙니다.
 
-- 재활성한 공개 저장소의 GitHub Claude 작업은 리뷰 전용입니다. Issue의 `claude` 라벨은 조건 검토를 요청합니다. 코드 구현이나 PR 생성을 요청하지 않습니다.
-- 재활성 후 댓글 첫 줄의 `@claude review` 또는 `@claude security review`만 검토를 요청합니다.
+ChatGPT·Codex Cloud 계정 설정과 서비스의 저장소 목록 탐색은 이 셋업 범위에서 제외합니다. OAuth를 재연결하지 않습니다. App 접근을 바꿔야 하면 이 저장소에 한정하고 다른 용도의 접근을 보존합니다. 확인 한계로 독립적인 문서·CI/CD·로컬 리뷰·수동 Bugbot 작업을 중단하지 않습니다.
+
+- 공개 저장소의 GitHub Claude 작업은 기존 수동 리뷰 전용입니다. Issue의 `claude` 라벨은 조건 검토를 요청합니다. 코드 구현이나 PR 생성을 요청하지 않습니다.
+- 댓글 첫 줄의 `@claude review` 또는 `@claude security review`만 댓글 기반 검토를 요청합니다. 이번 셋업에서는 시험 호출하지 않습니다.
 - 외부 fork는 Secret이 없는 환경에서 사람이 검토합니다.
 
-**작성자와 리뷰어는 다른 컨텍스트를 사용합니다.** 로컬 리뷰를 못 했으면 미완료로 기록합니다. 중지한 GitHub 자동 리뷰로 대체하지 않습니다. 다른 모델을 사용하지 않았으면 다른 모델의 리뷰라고 보고하지 않습니다.
+**작성자와 리뷰어는 다른 컨텍스트를 사용합니다.** 로컬 리뷰를 못 했으면 미완료로 기록합니다. GitHub 리뷰로 로컬 독립 리뷰를 대체하지 않습니다. 다른 모델을 사용하지 않았으면 다른 모델의 리뷰라고 보고하지 않습니다.
 
 **에이전트를 부를 때**
 
@@ -74,7 +76,7 @@ Draft CD의 실행 승인은 [Draft Release 절차](DRAFT_RELEASE.md)를 따릅�
 
 **Claude** ([워크플로우](../.github/workflows/claude.yml))
 
-- 이 저장소에서는 workflow runtime을 비활성화합니다. 코드와 SDK의 신뢰 경계는 보존합니다. 아래 조건은 재활성한 경우에만 적용합니다.
+- workflow는 수동 호출 전용으로 유지합니다. 자동 AI 리뷰 정리 대상으로 오인해 끄지 않습니다. 코드와 SDK의 기존 신뢰 경계를 보존합니다.
 - 수동 호출만 지원합니다. 쓰기 권한 사용자가 Issue·main 대상 비-Draft PR에 `claude` 또는 `ai:review` 라벨을 붙이거나 명시된 리뷰 댓글을 달 때만 실행합니다. Issue·PR 생성과 push는 Claude를 실행하지 않습니다. 봇과 일반 댓글, 다른 라벨은 검토를 요청하지 않습니다. `ai:skip` 항목은 제외합니다.
 - 읽기 전용 `authorize` 작업에서 GitHub API로 요청자의 현재 권한, 대상 상태, 저장소와 head SHA를 확인합니다. 검증된 요청만 Secret을 사용하는 `review` 작업을 시작합니다. 댓글은 별도 `publish` 작업에서 게시합니다.
 - 세 작업은 main의 신뢰된 코드만 checkout합니다. 임의 브랜치의 수동 workflow dispatch는 지원하지 않습니다. 반복 검토는 명시된 리뷰 댓글로 요청합니다. PR 코드를 checkout·import·실행하지 않습니다.
@@ -88,16 +90,14 @@ Draft CD의 실행 승인은 [Draft Release 절차](DRAFT_RELEASE.md)를 따릅�
 - 인증 환경 변수의 하위 프로세스 제거 옵션을 활성화합니다. bubblewrap 설치와 사용자 네임스페이스 실행을 확인합니다. 실패하면 검토를 중단합니다. 모델·도구 전체 출력이나 자유 형식 오류는 로그에 표시하지 않습니다.
 - 검토 자료는 권한 0600의 runner 임시 파일로 전달합니다. SHA로 고정한 SDK 전용 `base-action`을 사용합니다. Action 입력·로그에는 파일 경로만 넣으며 상위 Action의 `prompt` 출력 경로는 사용하지 않습니다.
 - `@claude review` 요청과 실제 봇 응답을 구분합니다. 검토한 head SHA, 소스 검토 범위와 미확인 범위를 확인합니다.
-- 재활성 전 [코딩 규칙](coding-standards.md)과 [독립 리뷰 절차](agents/review.md)를 실제 검토 입력에 포함하는지 확인합니다. main 코드·권한·sandbox·문서 전달 검증과 사용자 승인 없이는 켜지 않습니다.
+- 모델의 도구를 끄므로 [코딩 규칙](coding-standards.md)과 [독립 리뷰 절차](agents/review.md)의 내용을 신뢰된 main checkout에서 검토 입력에 포함합니다. 링크만 전달한 것을 문서 읽기로 기록하지 않습니다.
 
-**Codex** (ChatGPT의 Codex GitHub 연동, 저장소 설정 파일 없음)
+**Codex의 GitHub 연결 확인**
 
-- 이 저장소의 자동 코드 리뷰와 자동 AI 보안 리뷰를 설정 화면에서 끕니다. Cloud 작업용 App·환경은 유지합니다. 다른 저장소, 다른 계정과 전역 연결은 변경하지 않습니다.
-- [PR #30](https://github.com/minjunkim-dev/BGLike/pull/30)의 2026-10-04 기록은 과거 자동 실행 관측입니다. 현재 활성 상태의 근거로 쓰지 않습니다. 재활성은 사용자 승인 후 이 저장소의 설정을 다시 확인합니다.
-- 재활성한 경우 명시적인 재검토는 `@codex review`로 요청합니다. 자동 실행이 진행 중이면 같은 SHA에 중복 요청하지 않습니다.
-- PR 코멘트 `@codex 요청`으로 작업도 맡길 수 있습니다. 이 기능은 2026-10-01 기준 아직 시험하지 않았습니다.
-- `@codex 요청`과 Cloud 기능에는 이 저장소의 [Codex 환경](https://chatgpt.com/codex/cloud/settings/environments)이 필요합니다. 설정은 [Codex 설정](https://chatgpt.com/codex/cloud/settings/general)에서 바꿉니다. 자동 리뷰를 끄기 위해 환경이나 App 설치를 삭제하지 않습니다.
-- Codex 환경의 설정 스크립트가 Godot 4.7.2를 설치합니다. 스크립트는 Codex 설정 화면에서만 바꿀 수 있으므로, 엔진 버전을 올릴 때는 `godot.yml`과 함께 갱신합니다. GitHub Claude의 리뷰 전용 작업에는 엔진을 설치하지 않습니다.
+- 2026-10-14 [이 저장소의 Installed GitHub Apps](https://github.com/minjunkim-dev/BGLike/settings/installations)에는 Cursor, Linear Code, Semgrep Code - minjunkim-dev, semgrep-app이 표시됐습니다. Codex App과 Codex workflow는 없습니다. 이 GitHub App·workflow 경로의 자동 리뷰 정리는 `비해당`입니다. 서비스의 비활성화 설정을 변경했다고 기록하지 않습니다.
+- [PR #71의 Codex 보안 코멘트](https://github.com/minjunkim-dev/BGLike/pull/71#issuecomment-6138953198)는 과거 실행 증거입니다. 현재 연결이나 활성 설정을 증명하지 않습니다.
+- App 상세 접근 설정은 GitHub sudo 인증이 필요하면 `미확인`으로 기록합니다. 인증·계정 탐색을 늘리지 않습니다. 현재 확인한 연결·실제 자동 리뷰가 있을 때만 이 저장소 설정을 정리합니다.
+- Cursor는 Bugbot 수동 리뷰에 사용합니다. Linear Code와 Semgrep App은 설치 사실만으로 자동 AI 리뷰라고 분류하지 않습니다. 결정적인 검사와 다른 용도는 보존합니다.
 
 두 에이전트 모두 [AGENTS.md](../AGENTS.md)를 읽고 위 규칙을 따릅니다. 플레이 변경은 사람이 직접 확인합니다. 병합은 위 위험별 정책을 따릅니다. main 보호는 [현재 GitHub 제약](#현재-github-제약)을 따릅니다. 동료 검토는 선택입니다. AI 리뷰가 사람의 병합 결정을 대신하지 않습니다.
 
@@ -136,5 +136,5 @@ Issue #72는 기존 두 check를 보존하고 필수 aggregate `CI`를 추가합
 
 자체 코드의 방침은 [COPYRIGHT](../COPYRIGHT.md)를 따릅니다. 외부 구성 요소와 자산은 [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md)에서 관리합니다.
 공개 전환 전에 공동 개발자의 동의, 자산 출처, 전체 Git 이력과 공개될 Issue·PR·Actions 로그의 민감정보를 확인합니다.
-2026-10-04 공개 전환 전의 GitHub Claude 일시 중지는 과거 기록입니다. 현재는 위 중지 정책을 따릅니다. main 병합만으로 자동 재활성하지 않습니다. 사용자의 별도 승인과 재활성 계약 검증 후에만 켭니다.
+2026-10-04 공개 전환 전의 GitHub Claude 일시 중지는 과거 기록입니다. 현재 수동 호출 workflow와 위 GitHub 확인 범위를 따릅니다. 자동 AI 리뷰 활성화는 별도 요청과 실제 설정 검증 없이 추가하지 않습니다.
 공개 후 main 보호 적용 결과는 위 현재 GitHub 제약에 기록했습니다. 권리 문구로 다운로드를 차단하거나 기존 사본을 회수할 수 있다고 보고하지 않습니다.
