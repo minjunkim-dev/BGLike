@@ -210,10 +210,10 @@ func _test_scene() -> void:
 	var panel: Node = hud.order_bar.get_child(0)
 	var portraits: Node = panel.get_child(0)
 	var archer_button: Button = portraits.get_child(1) as Button
-	# 순서가 같은 채 데이터가 바뀌어도 기존 초상의 숫자와 툴팁을 갱신한다.
+	# 순서가 같은 채 데이터가 바뀌어도 계산식 툴팁을 갱신한다.
 	scene_units[1].initiative_roll += 1
 	hud.refresh(turns, false)
-	_check(archer_button.text.ends_with(str(scene_units[1].get_initiative())), "같은 순서의 이니셔티브 숫자 갱신")
+	_check(archer_button.text == "아군\n궁수", "같은 순서에서도 초상에 이니셔티브 숫자 없음")
 	_check(archer_button.tooltip_text.ends_with(str(scene_units[1].get_initiative())), "같은 순서의 이니셔티브 툴팁 갱신")
 	_check(not archer_button.disabled, "같은 묶음의 아군 초상 활성")
 	archer_button.pressed.emit()
