@@ -26,8 +26,8 @@ def package(root, output, version, source_sha, godot, engine_hash):
         raise ValueError("Expected vX.Y.Z-alpha.N or vX.Y.Z-beta.N")
     if not re.fullmatch(r"[0-9a-f]{40}", source_sha) or command(["git", "rev-parse", "HEAD"], root) != source_sha:
         raise ValueError("Build checkout differs from full source SHA")
-    if command(["git", "status", "--porcelain", "--untracked-files=no"], root):
-        raise ValueError("Build checkout has tracked modifications")
+    if command(["git", "status", "--porcelain", "--untracked-files=all"], root):
+        raise ValueError("Build checkout has uncommitted files")
     if not re.fullmatch(r"[0-9a-f]{64}", engine_hash):
         raise ValueError("Invalid engine archive checksum")
     engine = command([godot, "--version"], root)

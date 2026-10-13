@@ -23,6 +23,7 @@ GitHub API 오류와 조회 한계도 실패 처리합니다.
 ## 패키지와 권한
 
 읽기 권한 `build` 작업이 전체 SHA로 checkout합니다.
+tracked 변경이나 untracked 파일이 있으면 패키지를 만들지 않습니다.
 Git LFS를 가져오고 `git lfs fsck`와 미해결 pointer 검사를 수행합니다.
 기존 고정 Godot 4.7.2 설치 스크립트가 엔진 archive SHA-256을 확인합니다.
 `Verification PCK` preset은 `--export-pack`에 필요한 exporter를 고릅니다.

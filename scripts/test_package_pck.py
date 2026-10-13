@@ -25,6 +25,18 @@ class PackageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "source SHA"):
                 package(root, root / "output", "v0.1.0-alpha.1", "a" * 40, "must-not-run", "b" * 64)
 
+    def test_real_git_checkout_rejects_untracked_resource_before_export(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(["git", "init", "--quiet", str(root)], check=True)
+            (root / "main.tscn").write_text('[gd_scene format=3]\n[node name="Main" type="Node"]\n')
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(["git", "-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid", "commit", "--quiet", "-m", "fixture"], cwd=root, check=True)
+            sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+            (root / "extra.tscn").write_text('[gd_scene format=3]\n[node name="Extra" type="Node"]\n')
+            with self.assertRaisesRegex(ValueError, "uncommitted"):
+                package(root, root / "output", "v0.1.0-alpha.1", sha, "must-not-run", "b" * 64)
+
 
 if __name__ == "__main__":
     unittest.main()
