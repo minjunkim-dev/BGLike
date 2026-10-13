@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Source this file from the repository root.
+# shellcheck source=scripts/godot.env
 source "${GODOT_CONFIG:-scripts/godot.env}"
 case "$(uname -s)/$(uname -m)" in
   Linux/x86_64) GODOT_PLATFORM=linux.x86_64; GODOT_SHA256=$GODOT_LINUX_X86_64_SHA256 ;;
