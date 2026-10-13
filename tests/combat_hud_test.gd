@@ -525,6 +525,11 @@ func _test_guidance() -> void:
 			await _hover(button)
 			_check(_has_tooltip(root, button.tooltip_text),
 				"활성·비활성 버튼의 실제 호버 설명: " + action)
+			var tooltip: PanelContainer = hud.get("_tooltip_panel") as PanelContainer
+			_check(hud.get_global_rect().encloses(tooltip.get_global_rect())
+				and not tooltip.get_global_rect().intersects((hud.get_node("Skills") as Control).get_global_rect())
+				and tooltip.z_index > (hud.get_node("Skills") as Control).z_index,
+				"호버 전체 설명은 화면 안에서 스킬 패널 위에 표시: " + action)
 			_check(button.tooltip_text.begins_with(CombatTurnHud.ACTION_NAMES[action] + "\n비용: ")
 				and "위 숫자:" in button.tooltip_text, "이름·비용·횟수의 설명 유지: " + action)
 			_check(unit.hit_points == hp and unit.surge_left == uses,

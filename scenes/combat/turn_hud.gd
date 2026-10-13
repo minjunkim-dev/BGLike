@@ -8,6 +8,15 @@ signal action_selected(action: String)
 signal reaction_selected(use_reaction: bool)
 signal restart_requested
 
+# 기본 툴팁 창 대신 같은 HUD의 최상단에 설명을 그린다.
+class HoverButton extends Button:
+	func _get_tooltip(_at_position: Vector2) -> String:
+		return ""
+
+class HoverTitle extends Label:
+	func _get_tooltip(_at_position: Vector2) -> String:
+		return ""
+
 const DEFAULT_BUTTON_COLOR: Color = Color("354656")
 const END_BUTTON_COLOR: Color = Color("926725")
 const RESOURCE_COLORS: Array[Color] = [Color("70c76d"), Color("edaa54"), Color("ac90e5")]
@@ -40,6 +49,10 @@ var _costs: Dictionary[String, Label] = {}
 var _containers: Array[PanelContainer] = []
 var _titles: Array[Label] = []
 var _log_lines: Array[String] = []
+var _tooltip_owner: Control
+var _tooltip_panel: PanelContainer = PanelContainer.new()
+var _tooltip_label: Label = Label.new()
+var _tooltip_timer: Timer = Timer.new()
 var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 
 @onready var round_label: Label = $Round
@@ -58,6 +71,18 @@ var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 
 
 func _ready() -> void:
+	_tooltip_panel.z_index = 10
+	_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tooltip_panel.add_theme_stylebox_override("panel", _panel_style())
+	_tooltip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tooltip_label.add_theme_font_size_override("font_size", 10)
+	_tooltip_panel.add_child(_tooltip_label)
+	add_child(_tooltip_panel)
+	_tooltip_panel.hide()
+	_tooltip_timer.one_shot = true
+	_tooltip_timer.wait_time = 0.5
+	_tooltip_timer.timeout.connect(_update_tooltip)
+	add_child(_tooltip_timer)
 	end_button.pressed.connect(func() -> void: end_turn_requested.emit())
 	restart_button.pressed.connect(func() -> void: restart_requested.emit())
 	for index: int in range(ACTION_GROUPS.size()):
@@ -68,17 +93,18 @@ func _ready() -> void:
 		var column: VBoxContainer = VBoxContainer.new()
 		column.add_theme_constant_override("separation", 3)
 		panel.add_child(column)
-		var title: Label = Label.new()
+		var title: Label = HoverTitle.new()
 		title.mouse_filter = Control.MOUSE_FILTER_PASS
 		title.add_theme_font_size_override("font_size", 10)
 		title.add_theme_color_override("font_color", RESOURCE_COLORS[index])
 		column.add_child(title)
+		_connect_tooltip(title)
 		_titles.append(title)
 		var buttons: HBoxContainer = HBoxContainer.new()
 		buttons.add_theme_constant_override("separation", 3)
 		column.add_child(buttons)
 		for action: String in ACTION_GROUPS[index]:
-			var button: Button = Button.new()
+			var button: Button = HoverButton.new()
 			button.custom_minimum_size.y = 23
 			button.add_theme_font_size_override("font_size", 10)
 			button.add_theme_color_override("font_disabled_color", Color("8a939b"))
@@ -86,6 +112,7 @@ func _ready() -> void:
 			if index != 2:
 				button.pressed.connect(func() -> void: action_selected.emit(action))
 			buttons.add_child(button)
+			_connect_tooltip(button)
 			_actions[action] = button
 			button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			var cost: Label = Label.new()
@@ -119,6 +146,41 @@ func _ready() -> void:
 	reaction_dialog.dialog_autowrap = true
 	reaction_dialog.confirmed.connect(func() -> void: reaction_selected.emit(true))
 	reaction_dialog.canceled.connect(func() -> void: reaction_selected.emit(false))
+
+
+func _connect_tooltip(control: Control) -> void:
+	control.mouse_entered.connect(func() -> void:
+		_tooltip_owner = control
+		_tooltip_panel.hide()
+		_tooltip_timer.start())
+	control.mouse_exited.connect(func() -> void:
+		if _tooltip_owner == control:
+			_tooltip_owner = null
+			_tooltip_timer.stop()
+			_tooltip_panel.hide())
+
+
+func _process(_delta: float) -> void:
+	if _tooltip_panel.visible:
+		_update_tooltip()
+
+
+func _update_tooltip() -> void:
+	if not is_instance_valid(_tooltip_owner) or not _tooltip_owner.is_visible_in_tree() \
+		or reaction_dialog.visible or $Result.visible:
+		_tooltip_panel.hide()
+		return
+	_tooltip_label.text = _tooltip_owner.tooltip_text
+	_tooltip_panel.size = _tooltip_panel.get_combined_minimum_size()
+	var rect: Rect2 = _tooltip_owner.get_global_rect()
+	var top: float = ($Skills as Control).position.y if $Skills.is_ancestor_of(_tooltip_owner) else rect.position.y
+	var y: float = top - _tooltip_panel.size.y - 4
+	if y < 4:
+		y = rect.end.y + 4
+	_tooltip_panel.position = Vector2(
+		clampf(rect.position.x, 4, size.x - _tooltip_panel.size.x - 4),
+		clampf(y, 4, size.y - _tooltip_panel.size.y - 4))
+	_tooltip_panel.show()
 
 
 func refresh_actions(actions: CombatActions, selected: String, last_ally: CombatUnit) -> void:
@@ -354,12 +416,13 @@ func _build_portraits(turns: CombatTurns) -> void:
 		panel.add_child(box)
 		order_bar.add_child(panel)
 		for unit: CombatUnit in group:
-			var button: Button = Button.new()
+			var button: Button = HoverButton.new()
 			button.custom_minimum_size = Vector2(40, 43)
 			button.add_theme_font_size_override("font_size", 10)
 			button.add_theme_color_override("font_disabled_color", Color("b5bdc4"))
 			button.pressed.connect(func() -> void: unit_selected.emit(unit))
 			box.add_child(button)
+			_connect_tooltip(button)
 			_portraits[unit] = button
 
 
