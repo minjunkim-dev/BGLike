@@ -8,6 +8,15 @@ signal action_selected(action: String)
 signal reaction_selected(use_reaction: bool)
 signal restart_requested
 
+# 기본 툴팁 창 대신 같은 HUD의 최상단에 설명을 그린다.
+class HoverButton extends Button:
+	func _get_tooltip(_at_position: Vector2) -> String:
+		return ""
+
+class HoverTitle extends Label:
+	func _get_tooltip(_at_position: Vector2) -> String:
+		return ""
+
 const DEFAULT_BUTTON_COLOR: Color = Color("354656")
 const END_BUTTON_COLOR: Color = Color("926725")
 const RESOURCE_COLORS: Array[Color] = [Color("70c76d"), Color("edaa54"), Color("ac90e5")]
@@ -28,10 +37,9 @@ const ACTION_EFFECTS: Dictionary[String, String] = {
 	"disengage": "이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\n공격을 실행하지 않습니다.",
 	"shove": "내 힘 대 상대의 힘/민첩\n중 높은 값으로 대결.\n성공: 1칸 밀기, 동점: 실패.\n기절 대상은 대결 없이 성공.",
 	"potion": "HP 2d4+2 회복.\n최대 HP를 넘지 않습니다.",
-	"opportunity": "적이 내 인접 칸을 벗어나면 기본 공격. 발동할 때 사용 여부를 묻습니다.",
-	"parry": "공격에 맞으면 사용 여부를 묻습니다. 민첩 내성에 성공하면 피해와 추가 효과를 피합니다."
+	"opportunity": "적이 내 인접 칸을 벗어나면 기본 공격.\n발동할 때 사용 여부를 묻습니다.",
+	"parry": "공격에 맞으면 사용 여부를 묻습니다.\n민첩 내성에 성공하면\n피해와 추가 효과를 피합니다."
 }
-const MOVEMENT_HELP: String = "파랑: 이동 가능한 칸\n초록: 도착 시 공격할 적 있음\n\n이동은 행동을 쓰지 않습니다.\n우클릭으로 경로 확인.\n같은 칸을 다시 우클릭하면 이동."
 
 var _shown_order: Array[CombatUnit] = []
 var _portraits: Dictionary[CombatUnit, Button] = {}
@@ -41,6 +49,10 @@ var _costs: Dictionary[String, Label] = {}
 var _containers: Array[PanelContainer] = []
 var _titles: Array[Label] = []
 var _log_lines: Array[String] = []
+var _tooltip_owner: Control
+var _tooltip_panel: PanelContainer = PanelContainer.new()
+var _tooltip_label: Label = Label.new()
+var _tooltip_timer: Timer = Timer.new()
 var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 
 @onready var round_label: Label = $Round
@@ -51,17 +63,26 @@ var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 @onready var resource_label: Label = $UnitDetails/UnitPanel/Info/Resources
 @onready var health_bar: ProgressBar = $UnitDetails/UnitPanel/Info/Health
 @onready var end_button: Button = $EndTurn
-@onready var input_hint: Label = $InputHint
 @onready var preview_label: Label = $UnitDetails/AttackPreview
 @onready var action_bar: HBoxContainer = $Skills/Groups
 @onready var message_label: Label = $CombatLog/Message
-@onready var help_title: Label = $ActionHelp/Contents/Title
-@onready var help_label: RichTextLabel = $ActionHelp/Contents/Details
 @onready var result_label: Label = $Result/Panel/Contents/Outcome
 @onready var restart_button: Button = $Result/Panel/Contents/Restart
 
 
 func _ready() -> void:
+	_tooltip_panel.z_index = 10
+	_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tooltip_panel.add_theme_stylebox_override("panel", _panel_style())
+	_tooltip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tooltip_label.add_theme_font_size_override("font_size", 10)
+	_tooltip_panel.add_child(_tooltip_label)
+	add_child(_tooltip_panel)
+	_tooltip_panel.hide()
+	_tooltip_timer.one_shot = true
+	_tooltip_timer.wait_time = 0.5
+	_tooltip_timer.timeout.connect(_update_tooltip)
+	add_child(_tooltip_timer)
 	end_button.pressed.connect(func() -> void: end_turn_requested.emit())
 	restart_button.pressed.connect(func() -> void: restart_requested.emit())
 	for index: int in range(ACTION_GROUPS.size()):
@@ -72,17 +93,18 @@ func _ready() -> void:
 		var column: VBoxContainer = VBoxContainer.new()
 		column.add_theme_constant_override("separation", 3)
 		panel.add_child(column)
-		var title: Label = Label.new()
+		var title: Label = HoverTitle.new()
 		title.mouse_filter = Control.MOUSE_FILTER_PASS
 		title.add_theme_font_size_override("font_size", 10)
 		title.add_theme_color_override("font_color", RESOURCE_COLORS[index])
 		column.add_child(title)
+		_connect_tooltip(title)
 		_titles.append(title)
 		var buttons: HBoxContainer = HBoxContainer.new()
 		buttons.add_theme_constant_override("separation", 3)
 		column.add_child(buttons)
 		for action: String in ACTION_GROUPS[index]:
-			var button: Button = Button.new()
+			var button: Button = HoverButton.new()
 			button.custom_minimum_size.y = 23
 			button.add_theme_font_size_override("font_size", 10)
 			button.add_theme_color_override("font_disabled_color", Color("8a939b"))
@@ -90,6 +112,7 @@ func _ready() -> void:
 			if index != 2:
 				button.pressed.connect(func() -> void: action_selected.emit(action))
 			buttons.add_child(button)
+			_connect_tooltip(button)
 			_actions[action] = button
 			button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			var cost: Label = Label.new()
@@ -125,8 +148,42 @@ func _ready() -> void:
 	reaction_dialog.canceled.connect(func() -> void: reaction_selected.emit(false))
 
 
-func refresh_actions(actions: CombatActions, selected: String, last_ally: CombatUnit,
-		show_action_help: bool = true) -> void:
+func _connect_tooltip(control: Control) -> void:
+	control.mouse_entered.connect(func() -> void:
+		_tooltip_owner = control
+		_tooltip_panel.hide()
+		_tooltip_timer.start())
+	control.mouse_exited.connect(func() -> void:
+		if _tooltip_owner == control:
+			_tooltip_owner = null
+			_tooltip_timer.stop()
+			_tooltip_panel.hide())
+
+
+func _process(_delta: float) -> void:
+	if _tooltip_panel.visible:
+		_update_tooltip()
+
+
+func _update_tooltip() -> void:
+	if not is_instance_valid(_tooltip_owner) or not _tooltip_owner.is_visible_in_tree() \
+		or reaction_dialog.visible or $Result.visible:
+		_tooltip_panel.hide()
+		return
+	_tooltip_label.text = _tooltip_owner.tooltip_text
+	_tooltip_panel.size = _tooltip_panel.get_combined_minimum_size()
+	var rect: Rect2 = _tooltip_owner.get_global_rect()
+	var top: float = ($Skills as Control).position.y if $Skills.is_ancestor_of(_tooltip_owner) else rect.position.y
+	var y: float = top - _tooltip_panel.size.y - 4
+	if y < 4:
+		y = rect.end.y + 4
+	_tooltip_panel.position = Vector2(
+		clampf(rect.position.x, 4, size.x - _tooltip_panel.size.x - 4),
+		clampf(y, 4, size.y - _tooltip_panel.size.y - 4))
+	_tooltip_panel.show()
+
+
+func refresh_actions(actions: CombatActions, selected: String, last_ally: CombatUnit) -> void:
 	var actor: CombatUnit = actions.turns.current_unit
 	var shown: CombatUnit = actor if actor != null and actor.is_ally else last_ally
 	var ally_turn: bool = actor != null and actor.is_ally
@@ -139,10 +196,11 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 		if shown == null:
 			continue
 		var amounts: Array[int] = [shown.action_left, shown.bonus_action_left, shown.reaction_left]
-		_titles[index].text = "%s %s · %s" % [names[index],
-			symbols[index] if amounts[index] > 0 else empty_symbols[index],
-			"남음" if amounts[index] > 0 else "사용함"]
-		_titles[index].tooltip_text = "%s: 자기 턴 시작에 1회 회복. 채운 기호는 남음, 빈 기호는 사용함." % names[index]
+		var capacities: Array[int] = [shown.action_capacity, shown.bonus_action_capacity, shown.reaction_capacity]
+		var remaining: int = clampi(amounts[index], 0, capacities[index])
+		_titles[index].text = "%s %s" % [names[index],
+			symbols[index].repeat(remaining) + empty_symbols[index].repeat(capacities[index] - remaining)]
+		_titles[index].tooltip_text = "%s: 자기 턴 시작에 %d회 회복.\n채운 기호는 남음, 빈 기호는 사용함." % [names[index], capacities[index]]
 		if index == 2:
 			_titles[index].tooltip_text += "\n기회 공격과 흘려내기가 같은 반응을 씁니다."
 		_titles[index].modulate = Color.WHITE if ally_turn else Color("888888")
@@ -151,8 +209,8 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			button.visible = _belongs_to(shown, action)
 			button.text = ACTION_NAMES[action] + "    "
 			_costs[action].text = symbols[index]
-			button.tooltip_text = action_details(actions, shown, action)
-			button.tooltip_text += "\n오른쪽 기호: 이번 턴 비용. 위 숫자: " + (
+			button.tooltip_text = ACTION_NAMES[action] + "\n" + action_details(actions, shown, action)
+			button.tooltip_text += "\n오른쪽 기호: 이번 턴 비용.\n위 숫자: " + (
 				"현재 보유 물약." if action == "potion" else "이번 막의 남은 횟수.")
 			var active: bool = ally_turn and not locked and actions.can_use(actor, action)
 			# 반응은 횟수나 자원을 다 써도 자기 턴에는 켜진 표시로 남는다.
@@ -168,33 +226,14 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			_costs[action].reset_size()
 			_badges[action].modulate = Color.WHITE if ally_turn else Color("888888")
 			_costs[action].modulate = Color.WHITE if not button.disabled else Color("666666")
-	input_hint.modulate = Color.WHITE if ally_turn and not locked else Color("888888")
-	input_hint.tooltip_text = "이동력만 씁니다. 행동과 보조 행동은 쓰지 않습니다.\n자기 턴에 6칸 회복. 나눠 이동할 수 있습니다.\n우클릭으로 경로 확인, 같은 칸을 다시 우클릭해 이동."
 	end_button.disabled = not ally_turn or locked
 	for button: Button in _portraits.values():
 		button.disabled = button.disabled or locked
-	if not show_action_help:
-		return
-	if not ally_turn:
-		show_help("적 턴", "적이 자동으로 이동·공격합니다.\n이동·공격 입력은 잠깁니다.\n초상으로 정보를 확인할 수 있습니다.\n반응 확인 창에서 사용할지 고르세요.\n\n● 행동: 공격\n▲ 보조 행동: 보조 스킬\n◆ 반응: 조건이 맞으면 사용\n빈 기호는 이미 쓴 자원입니다.")
-	else:
-		show_help("이동 안내" if selected == "move" else ACTION_NAMES.get(selected, "동작 안내"),
-			action_details(actions, shown, selected))
-
-
-func show_help(title: String, details: String) -> void:
-	var changed: bool = help_title.text != title or help_label.text != details
-	help_title.text = title
-	help_label.text = details
-	if changed:
-		help_label.get_v_scroll_bar().value = 0
 
 
 func action_details(actions: CombatActions, actor: CombatUnit, action: String) -> String:
 	if actor == null:
 		return ""
-	if action == "move":
-		return MOVEMENT_HELP + "\n" + movement_caution(actor)
 	var effect: String = ACTION_EFFECTS.get(action, "")
 	if action == "attack":
 		effect = "인접한 적을 기본 공격합니다." if actor.kind == CombatUnit.Kind.WARRIOR else "1~6칸 원거리 공격.\n옆에 적이 있으면 불리."
@@ -209,7 +248,7 @@ func action_details(actions: CombatActions, actor: CombatUnit, action: String) -
 		text += "\n막당 %d회 남음" % uses if uses >= 0 else "\n횟수 제한 없음"
 	text += "\n" + effect
 	if index == 2:
-		return text + "\n버튼으로 실행하지 않습니다. 발동 시 확인 창을 사용합니다."
+		return text + "\n버튼으로 실행하지 않습니다.\n발동 시 확인 창을 사용합니다."
 	var reason: String = _unavailable_reason(actions, actor, action, amount, uses)
 	if not reason.is_empty():
 		return text + "\n지금 사용 불가: " + reason
@@ -234,10 +273,6 @@ func _unavailable_reason(actions: CombatActions, actor: CombatUnit, action: Stri
 	if not actions.can_use(actor, action):
 		return "이동이 없거나 이미 효과 적용 중" if action == "disengage" else "사거리 또는 대상 조건을 확인"
 	return ""
-
-
-func movement_caution(actor: CombatUnit) -> String:
-	return "이번 턴 기회 공격 없음." if actor != null and actor.disengaged else "적 곁에서 반격 주의."
 
 
 func _belongs_to(actor: CombatUnit, action: String) -> bool:
@@ -311,8 +346,8 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 	show_unit(current)
 	for unit: CombatUnit in _portraits:
 		var button: Button = _portraits[unit]
-		button.text = "%s\n%s\n%d" % ["아군" if unit.is_ally else "적",
-			"전사" if unit.kind == CombatUnit.Kind.WARRIOR else "궁수", unit.get_initiative()]
+		button.text = "%s\n%s" % ["아군" if unit.is_ally else "적",
+			"전사" if unit.kind == CombatUnit.Kind.WARRIOR else "궁수"]
 		button.tooltip_text = "%s: d20 %d + 민첩 %d = %d" % [
 			unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()]
 		var in_group: bool = unit in turns.get_current_group()
@@ -340,13 +375,11 @@ func show_unit(unit: CombatUnit) -> void:
 		states.append("◎ 표식")
 	if unit.disengaged:
 		states.append("기회 공격 면제")
-	resource_label.text = "HP %d / %d   AC %d\n힘 %+d · 민첩 %+d · 체력 %+d · 정신 %+d\n명중 %+d · 사거리 %d칸\n이동 %d / %d · 행동 %d · 보조 %d · 반응 %d\n상태: %s" % [
+	resource_label.text = "HP %d / %d   AC %d\n힘 %+d · 민첩 %+d · 체력 %+d · 정신 %+d\n명중 %+d · 사거리 %d칸\n상태: %s" % [
 		unit.hit_points, unit.get_max_hit_points(), unit.get_armor_class(),
 		unit.get_attribute(CombatUnit.Attribute.STRENGTH), unit.get_dexterity(),
 		unit.get_attribute(CombatUnit.Attribute.CONSTITUTION), unit.get_attribute(CombatUnit.Attribute.MENTAL),
 		unit.get_attack_bonus(), unit.get_attack_range(),
-		unit.movement_left, CombatUnit.MOVEMENT_PER_TURN,
-		unit.action_left, unit.bonus_action_left, unit.reaction_left,
 		", ".join(states) if not states.is_empty() else "없음"]
 
 
@@ -383,12 +416,13 @@ func _build_portraits(turns: CombatTurns) -> void:
 		panel.add_child(box)
 		order_bar.add_child(panel)
 		for unit: CombatUnit in group:
-			var button: Button = Button.new()
+			var button: Button = HoverButton.new()
 			button.custom_minimum_size = Vector2(40, 43)
 			button.add_theme_font_size_override("font_size", 10)
 			button.add_theme_color_override("font_disabled_color", Color("b5bdc4"))
 			button.pressed.connect(func() -> void: unit_selected.emit(unit))
 			box.add_child(button)
+			_connect_tooltip(button)
 			_portraits[unit] = button
 
 

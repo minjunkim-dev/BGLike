@@ -105,9 +105,6 @@ func _start_stage(restore_act: bool) -> void:
 			living.append(unit)
 	_last_ally = living[0]
 	turns.start(living, dice)
-	for unit: CombatUnit in turns.ordered_units:
-		hud.add_log("이니셔티브 %s: d20 %d + %d = %d" % [
-			unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()])
 
 
 func _restart() -> void:
@@ -330,24 +327,9 @@ func _update_turn_ui() -> void:
 				hud.preview_label.text = "밀치기를 사용할 수 없음"
 	elif _inspected_unit != null:
 		hud.show_unit(_inspected_unit)
-	elif not preview_path.is_empty():
-		var actor: CombatUnit = turns.current_unit
-		var targets: int = _attack_targets_from(preview_cell).size()
-		var attack_text: String = "도착 시 공격 가능: %d명" % targets
-		if actor.action_left == 0:
-			attack_text = "도착 시 공격 불가: 행동을 이미 씀"
-		elif targets == 0:
-			attack_text = "도착 시 공격 불가: 사거리 안 적 없음"
-		hud.preview_label.text = "이동 %d칸 → %d칸 남음\n%s\n같은 칸을 다시 우클릭해 이동" % [
-			preview_path.size(), actor.movement_left - preview_path.size(), attack_text]
-	# 이동 정보는 왼쪽 설명 패널에 모아 격자 오른쪽을 가리지 않는다.
 	var showing_move: bool = selected_action == "move" or not preview_path.is_empty()
-	var move_preview: bool = showing_move and not hud.preview_label.text.is_empty()
-	hud.refresh_actions(actions, selected_action, _last_ally, not move_preview)
+	hud.refresh_actions(actions, selected_action, _last_ally)
 	hud.preview_label.visible = not showing_move
-	if move_preview:
-		hud.show_help("이동 미리보기", "파랑: 이동 가능한 칸\n초록: 도착 시 공격할 적 있음\n\n"
-			+ hud.preview_label.text + "\n\n행동 소비 없음.\n" + hud.movement_caution(turns.current_unit))
 	if actions.is_over():
 		hud.round_label.text = "승리" if _all_enemies_down() else "패배"
 		if _all_enemies_down() and not _rewards_generated:
