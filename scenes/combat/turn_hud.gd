@@ -248,6 +248,8 @@ func _unavailable_reason(actions: CombatActions, actor: CombatUnit, action: Stri
 	if amount == 0:
 		return "자원을 이미 씀"
 	if reaction:
+		if actor.hit_points <= 0:
+			return "전투 불능"
 		return "기절 상태" if actor.is_stunned else ""
 	if action in ["second_wind", "potion"] and actor.hit_points == actor.get_max_hit_points():
 		return "HP가 이미 최대"

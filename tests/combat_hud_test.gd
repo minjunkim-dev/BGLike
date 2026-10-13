@@ -558,10 +558,12 @@ func _test_guidance() -> void:
 	_check("자원을 이미 씀" in (buttons["opportunity"] as Button).tooltip_text,
 		"반응을 이미 썼으면 이유 표시")
 	units[0].reaction_left = 1
+	turns.select_unit(units[1])
 	turns.end_turn()
 	turns.end_turn()
 	battle.call("_update_turn_ui")
-	_check(not turns.current_unit.is_ally and "지금 사용 불가" not in (buttons["parry"] as Button).tooltip_text,
+	_check(not turns.current_unit.is_ally and (buttons["parry"] as Button).is_visible_in_tree()
+		and "지금 사용 불가" not in (buttons["parry"] as Button).tooltip_text,
 		"적 턴에도 남은 반응에 아군 자기 턴 제한을 안내하지 않음")
 	actions.busy = true
 	battle.call("_update_turn_ui")
@@ -574,6 +576,12 @@ func _test_guidance() -> void:
 		and "기절 상태" in (buttons["opportunity"] as Button).tooltip_text,
 		"기절한 전사는 반응을 사용할 수 없는 이유 표시")
 	units[0].is_stunned = false
+	units[0].hit_points = 0
+	battle.call("_update_turn_ui")
+	_check("전투 불능" in (buttons["parry"] as Button).tooltip_text
+		and "전투 불능" in (buttons["opportunity"] as Button).tooltip_text,
+		"전투 불능 전사의 반응에는 사용 불가 이유 표시")
+	units[0].hit_points = 12
 	actions.busy = false
 	await _hover(hud.end_button)
 
