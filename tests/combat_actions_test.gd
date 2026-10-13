@@ -685,3 +685,14 @@ func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> vo
 	event.pressed = false
 	Input.parse_input_event(event)
 	await process_frame
+	var battle: Node2D = root.get_node_or_null("Battle") as Node2D
+	if battle == null:
+		return
+	for frame: int in range(600):
+		var moving: bool = false
+		for unit: CombatUnit in battle.get("units"):
+			moving = moving or unit.is_moving
+		if not moving and not battle.has_node("Arrow"):
+			return
+		await process_frame
+	_check(false, "포인터 입력 후 연출이 제한 시간 안에 끝나지 않음")

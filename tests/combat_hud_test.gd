@@ -54,7 +54,10 @@ func _run() -> void:
 	await _test_mouse_controls_and_inspection()
 	await _test_order_bar_input()
 	await _test_reaction_flow()
+	await _test_action_animations()
 	await _test_results_and_restart()
+	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	await create_timer(0.08).timeout
 	current_scene.queue_free()
 	await process_frame
 	print("Combat HUD: %d checks, %d failures" % [checks, failures])
@@ -801,6 +804,132 @@ func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> vo
 	event.pressed = false
 	Input.parse_input_event(event)
 	await process_frame
+	for frame: int in range(600):
+		var moving: bool = false
+		for unit: CombatUnit in units:
+			moving = moving or unit.is_moving
+		if not moving and not battle.has_node("Arrow"):
+			return
+		await process_frame
+	_check(false, "포인터 입력 후 연출이 제한 시간 안에 끝나지 않음")
+
+
+func _test_action_animations() -> void:
+	_reset_units()
+	units[0].cell = Vector2i(4, 4)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(8, 8)
+	units[3].cell = Vector2i(9, 9)
+	battle.call("_update_turn_ui")
+	var origin: Vector2 = units[0].position
+	var finished: Array[bool] = [false]
+	_animated_move(units[0], Vector2i(4, 2), finished)
+	_check(actions.busy and units[0].is_moving and units[0].cell == Vector2i(4, 4)
+		and units[0].movement_left == 6, "이동 연출 시작은 입력 잠금, 논리 칸·이동력 유지")
+	hud.end_button.pressed.emit()
+	hud.unit_selected.emit(units[1])
+	hud.restart_button.pressed.emit()
+	_check(turns.current_unit == units[0] and battle.stage_index == 0,
+		"이동 중 턴 종료·유닛 전환·스테이지 전환 거부")
+	await process_frame
+	await process_frame
+	await process_frame
+	var intermediate: Vector2 = units[0].position
+	battle.call("_update_turn_ui")
+	_check(units[0].position == intermediate and units[0].position != origin,
+		"이동 중 UI 갱신은 실제 중간 위치를 되돌리지 않음")
+	while not finished[0]:
+		await process_frame
+	_check(units[0].cell == Vector2i(4, 2) and units[0].movement_left == 4
+		and units[0].position == (battle.get_node("Map") as TileMapLayer).map_to_local(units[0].cell)
+		and not units[0].is_moving and units[0].body_offset_y == 0.0 and not actions.busy,
+		"두 헥사 칸 이동은 도착 후 자원 갱신과 몸통·입력 복구")
+	for side: bool in [true, false]:
+		for shock: bool in [false, true]:
+			_reset_units()
+			var actor: CombatUnit = units[1] if side else units[3]
+			var target: CombatUnit = units[2] if side else units[0]
+			actor.shock_left = 1
+			actor.cell = Vector2i(1, 4)
+			target.cell = Vector2i(4, 4)
+			(units[0] if side else units[2]).cell = Vector2i(9, 9)
+			(units[3] if side else units[1]).cell = Vector2i(0, 0)
+			target.reaction_left = 0
+			if side:
+				turns.select_unit(actor)
+			else:
+				while turns.current_unit != actor:
+					turns.end_turn()
+			battle.call("_update_turn_ui")
+			for seed_value: int in range(1000):
+				actions.dice.seed = seed_value
+				if actions.dice.randi_range(1, 20) == 20:
+					actions.dice.seed = seed_value
+					break
+			var hp: int = target.hit_points
+			finished[0] = false
+			_animated_attack(actor, target, shock, finished)
+			_check(actions.busy and battle.has_node("Arrow") and target.hit_points == hp,
+				"아군·적 궁수 기본/충격 화살은 비행 중 피해 적용 전: %s/%s" % [side, shock])
+			_check(not actions.can_move(actor, Vector2i(2, 4)) and not actions.can_use(actor, "attack")
+				and not await actions.attack(actor, target, shock), "화살 비행 중 중복 입력 거부")
+			while not finished[0]:
+				await process_frame
+			await process_frame
+			_check(target.hit_points < hp and actor.action_left == 0 and (not shock or actor.shock_left == 0)
+				and not battle.has_node("Arrow")
+				and not actions.busy, "화살 도착 후 피해·비용 처리와 투사체 정리")
+	_reset_units()
+	units[1].cell = Vector2i(1, 4)
+	units[2].cell = Vector2i(4, 4)
+	turns.select_unit(units[1])
+	battle.call("_update_turn_ui")
+	actions.dice = _dice_for_miss()
+	finished[0] = false
+	_animated_attack(units[1], units[2], false, finished)
+	_check(battle.has_node("Arrow"), "확정 빗나감에도 화살 비행 표시")
+	while not finished[0]:
+		await process_frame
+	_check(units[2].hit_points == units[2].get_max_hit_points() and units[1].action_left == 0,
+		"빗나감은 비행 후 행동만 소비하고 피해 없음")
+	_reset_units()
+	units[0].cell = Vector2i(4, 4)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(9, 9)
+	units[3].cell = Vector2i(1, 4)
+	while turns.current_unit != units[3]:
+		turns.end_turn()
+	battle.call("_update_turn_ui")
+	for seed_value: int in range(1000):
+		actions.dice.seed = seed_value
+		if actions.dice.randi_range(1, 20) == 20:
+			actions.dice.seed = seed_value
+			break
+	var reactions: Array[int] = [0]
+	var on_reaction: Callable = func(kind: String, _prompt: String) -> void:
+		var arrow: Node = battle.get_node_or_null("Arrow")
+		_check(kind == "parry" and (arrow == null or arrow.is_queued_for_deletion())
+			and units[0].hit_points == units[0].get_max_hit_points() and actions.busy,
+			"적 화살이 도착한 뒤 피해 전에 흘려내기 확인")
+		reactions[0] += 1
+		hud.reaction_dialog.get_cancel_button().pressed.emit()
+	actions.reaction_requested.connect(on_reaction)
+	await actions.attack(units[3], units[0])
+	await process_frame
+	_check(reactions[0] == 1 and not actions.busy and not hud.reaction_dialog.visible,
+		"화살 도착 뒤 반응 넘기기는 전투를 정상 재개")
+	actions.reaction_requested.disconnect(on_reaction)
+	_reset_units()
+
+
+func _animated_move(actor: CombatUnit, cell: Vector2i, finished: Array[bool]) -> void:
+	await actions.move_to(actor, cell)
+	finished[0] = true
+
+
+func _animated_attack(actor: CombatUnit, target: CombatUnit, shock: bool, finished: Array[bool]) -> void:
+	await actions.attack(actor, target, shock)
+	finished[0] = true
 
 
 func _test_reaction_flow() -> void:

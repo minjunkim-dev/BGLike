@@ -2,6 +2,8 @@ extends Node2D
 ## 전투 화면과 3막 진행. 적 묶음은 이니셔티브 순서대로 실행한다.
 
 const STAGES_PER_ACT: int = 3
+const MOVE_STEP_TIME: float = 0.09
+const ARROW_FLIGHT_TIME: float = 0.16
 
 @export var stages: Array[CombatStage] = []
 
@@ -52,8 +54,15 @@ func _ready() -> void:
 	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void: unit.show_feedback(text))
 	actions.hit_landed.connect($HitSound.play)
 	actions.reaction_requested.connect(hud.show_reaction)
+	actions.movement_animation = _animate_movement
+	actions.attack_animation = _animate_attack
 	turns.changed.connect(_on_turn_changed)
 	_start_stage(true)
+
+
+func _exit_tree() -> void:
+	actions.movement_animation = Callable()
+	actions.attack_animation = Callable()
 
 
 func _start_stage(restore_act: bool) -> void:
@@ -287,6 +296,40 @@ func _execute_target(target: CombatUnit) -> void:
 	_update_turn_ui()
 
 
+func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
+	var destination: Vector2 = map.map_to_local(cell)
+	unit.face_toward(destination)
+	unit.is_moving = true
+	var tween: Tween = create_tween().set_parallel()
+	tween.tween_property(unit, "position", destination, MOVE_STEP_TIME)
+	tween.tween_property(unit, "body_offset_y", -3.0, MOVE_STEP_TIME / 2.0)
+	tween.tween_property(unit, "body_offset_y", 0.0, MOVE_STEP_TIME / 2.0).from(-3.0).set_delay(MOVE_STEP_TIME / 2.0)
+	await tween.finished
+	unit.position = destination
+	unit.body_offset_y = 0.0
+	unit.is_moving = false
+
+
+func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
+	actor.face_toward(target.position)
+	if actor.kind != CombatUnit.Kind.ARCHER:
+		return
+	var arrow: Polygon2D = Polygon2D.new()
+	arrow.name = "Arrow"
+	arrow.polygon = PackedVector2Array([
+		Vector2(-4, -1), Vector2(4, -1), Vector2(4, 1), Vector2(-4, 1)
+	])
+	arrow.color = Color("efe4c8")
+	arrow.z_index = 1
+	arrow.position = actor.position + Vector2(0, -14)
+	arrow.rotation = (target.position - actor.position).angle()
+	add_child(arrow)
+	var tween: Tween = create_tween()
+	tween.tween_property(arrow, "position", target.position + Vector2(0, -14), ARROW_FLIGHT_TIME)
+	await tween.finished
+	arrow.queue_free()
+
+
 func _update_turn_ui() -> void:
 	if _inspected_unit != null and _inspected_unit.hit_points <= 0:
 		_inspected_unit = null
@@ -296,7 +339,8 @@ func _update_turn_ui() -> void:
 			if source.hit_points > 0 and source.marked_target == unit:
 				unit.has_mark = true
 				break
-		unit.position = map.map_to_local(unit.cell)
+		if not unit.is_moving:
+			unit.position = map.map_to_local(unit.cell)
 		unit.visible = unit.hit_points > 0
 		unit.is_selected = unit == turns.current_unit
 		unit.is_previewed = unit == preview_target or (not preview_path.is_empty()

@@ -21,6 +21,12 @@ const WEAPON_COLOR: Color = Color("f4ead1")
 @export var start_cell: Vector2i = Vector2i.ZERO
 
 var cell: Vector2i = Vector2i.ZERO
+var is_moving: bool = false
+var facing_left: bool = false
+var body_offset_y: float = 0.0:
+	set(value):
+		body_offset_y = value
+		queue_redraw()
 var initiative_roll: int = 0
 var movement_left: int = MOVEMENT_PER_TURN
 var action_capacity: int = 1
@@ -188,6 +194,12 @@ func _ready() -> void:
 	queue_redraw()
 
 
+func face_toward(destination: Vector2) -> void:
+	if absf(destination.x - position.x) > 0.5:
+		facing_left = destination.x < position.x
+		queue_redraw()
+
+
 func _draw() -> void:
 	draw_rect(Rect2(-9, -25, 18, 4), OUTLINE_COLOR)
 	draw_rect(Rect2(-8, -24, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
@@ -202,6 +214,7 @@ func _draw() -> void:
 	elif is_previewed:
 		draw_rect(Rect2(-7, -20, 14, 20), Color("f4ead1"), false)
 	draw_rect(Rect2(-6, -1, 12, 3), OUTLINE_COLOR)
+	draw_set_transform(Vector2(0, body_offset_y), 0.0, Vector2(-1 if facing_left else 1, 1))
 	draw_rect(Rect2(-6, -19, 12, 18), OUTLINE_COLOR)
 	draw_rect(Rect2(-5, -18, 10, 16), body_color)
 
@@ -215,6 +228,7 @@ func _draw() -> void:
 			Vector2(-2, -16), Vector2(2, -12), Vector2(-2, -8)
 		]), WEAPON_COLOR)
 		draw_line(Vector2(-2, -16), Vector2(-2, -8), WEAPON_COLOR)
+	draw_set_transform(Vector2.ZERO)
 
 
 func show_feedback(text: String) -> void:
