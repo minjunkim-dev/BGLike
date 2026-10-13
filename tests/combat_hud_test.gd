@@ -426,6 +426,9 @@ func _test_guidance() -> void:
 	await _hover(title)
 	_check(title.mouse_filter != Control.MOUSE_FILTER_IGNORE and hovered[0],
 		"자원 제목은 실제 포인터 입력을 받음")
+	units[0].action_capacity = 3
+	units[0].bonus_action_capacity = 2
+	units[0].reaction_capacity = 2
 	units[0].action_left = 3
 	units[0].bonus_action_left = 2
 	units[0].reaction_left = 2
@@ -433,9 +436,26 @@ func _test_guidance() -> void:
 	var titles: Array = hud.get("_titles")
 	_check(titles[0].text == "행동 ●●●" and titles[1].text == "보조 행동 ▲▲"
 		and titles[2].text == "반응 ◆◆", "여러 자원은 개수만큼 마크 표시")
-	units[0].action_left = 1
-	units[0].bonus_action_left = 1
-	units[0].reaction_left = 1
+	for resource: CombatUnit.TurnResource in CombatUnit.TurnResource.values():
+		units[0].spend_resource(resource)
+	battle.call("_update_turn_ui")
+	_check(titles[0].text == "행동 ●●○" and titles[1].text == "보조 행동 ▲△"
+		and titles[2].text == "반응 ◆◇", "일부 자원을 써도 전체 마크 수 유지")
+	units[0].action_left = 0
+	units[0].bonus_action_left = 0
+	units[0].reaction_left = 0
+	battle.call("_update_turn_ui")
+	_check(titles[0].text == "행동 ○○○" and titles[1].text == "보조 행동 △△"
+		and titles[2].text == "반응 ◇◇", "전부 소비하면 가진 개수만큼 빈 마크 유지")
+	units[0].begin_turn()
+	battle.call("_update_turn_ui")
+	_check(titles[0].text == "행동 ●●●" and "3회 회복" in titles[0].tooltip_text,
+		"자기 턴 시작은 같은 개수의 마크를 다시 채움")
+	units[0].action_capacity = 1
+	units[0].bonus_action_capacity = 1
+	units[0].reaction_capacity = 1
+	units[0].begin_turn()
+	units[0].movement_left = 2
 	battle.call("_update_turn_ui")
 	var portraits: Dictionary = hud.get("_portraits")
 	for unit: CombatUnit in portraits:

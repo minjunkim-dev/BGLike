@@ -23,6 +23,9 @@ const WEAPON_COLOR: Color = Color("f4ead1")
 var cell: Vector2i = Vector2i.ZERO
 var initiative_roll: int = 0
 var movement_left: int = MOVEMENT_PER_TURN
+var action_capacity: int = 1
+var bonus_action_capacity: int = 1
+var reaction_capacity: int = 1
 var action_left: int = 1
 var bonus_action_left: int = 1
 var reaction_left: int = 1
@@ -121,9 +124,9 @@ func get_display_name() -> String:
 func begin_turn() -> void:
 	disengaged = false
 	movement_left = MOVEMENT_PER_TURN
-	action_left = 1
-	bonus_action_left = 1
-	reaction_left = 1
+	action_left = action_capacity
+	bonus_action_left = bonus_action_capacity
+	reaction_left = reaction_capacity
 
 
 func begin_stage(restore_act: bool) -> void:
@@ -156,15 +159,15 @@ func spend_resource(resource: TurnResource) -> bool:
 		TurnResource.ACTION:
 			if action_left == 0:
 				return false
-			action_left = 0
+			action_left -= 1
 		TurnResource.BONUS_ACTION:
 			if bonus_action_left == 0:
 				return false
-			bonus_action_left = 0
+			bonus_action_left -= 1
 		TurnResource.REACTION:
 			if reaction_left == 0:
 				return false
-			reaction_left = 0
+			reaction_left -= 1
 		_:
 			return false
 	return true

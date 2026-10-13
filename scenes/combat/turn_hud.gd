@@ -134,9 +134,11 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 		if shown == null:
 			continue
 		var amounts: Array[int] = [shown.action_left, shown.bonus_action_left, shown.reaction_left]
+		var capacities: Array[int] = [shown.action_capacity, shown.bonus_action_capacity, shown.reaction_capacity]
+		var remaining: int = clampi(amounts[index], 0, capacities[index])
 		_titles[index].text = "%s %s" % [names[index],
-			(symbols[index] if amounts[index] > 0 else empty_symbols[index]).repeat(maxi(1, amounts[index]))]
-		_titles[index].tooltip_text = "%s: 자기 턴 시작에 1회 회복.\n채운 기호는 남음, 빈 기호는 사용함." % names[index]
+			symbols[index].repeat(remaining) + empty_symbols[index].repeat(capacities[index] - remaining)]
+		_titles[index].tooltip_text = "%s: 자기 턴 시작에 %d회 회복.\n채운 기호는 남음, 빈 기호는 사용함." % [names[index], capacities[index]]
 		if index == 2:
 			_titles[index].tooltip_text += "\n기회 공격과 흘려내기가 같은 반응을 씁니다."
 		_titles[index].modulate = Color.WHITE if ally_turn else Color("888888")
