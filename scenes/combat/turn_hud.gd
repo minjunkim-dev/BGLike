@@ -238,9 +238,9 @@ func action_details(actions: CombatActions, actor: CombatUnit, action: String) -
 
 func _unavailable_reason(actions: CombatActions, actor: CombatUnit, action: String,
 	amount: int, uses: int) -> String:
-	if actions.busy or actions.is_over():
-		return "전투 입력 잠금"
 	var reaction: bool = action in ACTION_GROUPS[2]
+	if actions.is_over() or (actions.busy and not reaction):
+		return "전투 입력 잠금"
 	if not reaction and (actor != actions.turns.current_unit or not actor.is_ally):
 		return "아군의 자기 턴에만 사용"
 	if uses == 0:
@@ -248,7 +248,7 @@ func _unavailable_reason(actions: CombatActions, actor: CombatUnit, action: Stri
 	if amount == 0:
 		return "자원을 이미 씀"
 	if reaction:
-		return ""
+		return "기절 상태" if actor.is_stunned else ""
 	if action in ["second_wind", "potion"] and actor.hit_points == actor.get_max_hit_points():
 		return "HP가 이미 최대"
 	if action == "surge" and actor.action_left > 0:
