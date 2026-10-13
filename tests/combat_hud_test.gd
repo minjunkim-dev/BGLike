@@ -97,6 +97,9 @@ func _test_warrior() -> void:
 		"횟수 제한이 없는 동작은 배지 숨김")
 	_check((badges["parry"] as Label).text == "2" and (costs["parry"] as Label).text == "◆",
 		"비용 기호와 횟수 숫자 분리")
+	_check((badges["second_wind"] as Label).text == "1" and (badges["potion"] as Label).text == "0"
+		and (costs["second_wind"] as Label).text == "▲" and (costs["potion"] as Label).text == "▲",
+		"호버에서 제거한 스킬 횟수·물약 개수와 비용은 배지·마크에 유지")
 	var badge: Label = badges["parry"] as Label
 	var cost: Label = costs["parry"] as Label
 	_check(badge.size.y <= 15 and not badge.get_global_rect().intersects(cost.get_global_rect()),
@@ -415,17 +418,17 @@ func _test_guidance() -> void:
 	var buttons: Dictionary = hud.get("_actions")
 	_check(not hud.has_node("ActionHelp") and not hud.has_node("InputHint"),
 		"좌측 고정 설명과 우측 조작 안내 제거")
-	_check("비용: 행동 ●" in (buttons["attack"] as Button).tooltip_text
+	_check("인접한 적을 기본 공격합니다." in (buttons["attack"] as Button).tooltip_text
 		and "지금 사용 불가" in (buttons["attack"] as Button).tooltip_text,
-		"공격 버튼 호버에 비용과 사거리 조건 설명")
-	_check("자기 턴 시작" in (hud.get("_titles") as Array)[0].tooltip_text,
-		"자원 회복 시점은 제목 호버로 조회")
-	var title: Label = (hud.get("_titles") as Array)[0] as Label
-	var hovered: Array[bool] = [false]
-	title.mouse_entered.connect(func() -> void: hovered[0] = true, CONNECT_ONE_SHOT)
-	await _hover(title)
-	_check(title.mouse_filter != Control.MOUSE_FILTER_IGNORE and hovered[0],
-		"자원 제목은 실제 포인터 입력을 받음")
+		"공격 버튼 호버에 효과와 사용 불가 이유 유지")
+	await _hover((buttons["second_wind"] as Button))
+	_check((buttons["second_wind"] as Button).tooltip_text ==
+		"숨 고르기\nHP 1d10+1 회복.\n최대 HP를 넘지 않습니다.\n지금 사용 불가: HP가 이미 최대",
+		"비활성 숨 고르기는 기획 예시의 이름·효과·이유만 표시")
+	for title: Label in hud.get("_titles"):
+		await _hover(title)
+		_check(title.tooltip_text.is_empty() and not (hud.get("_tooltip_panel") as Control).visible,
+			"자원 제목에 실제 호버 설명 없음: " + title.text)
 	units[0].action_capacity = 3
 	units[0].bonus_action_capacity = 2
 	units[0].reaction_capacity = 2
@@ -449,7 +452,7 @@ func _test_guidance() -> void:
 		and titles[2].text == "반응 ◇◇", "전부 소비하면 가진 개수만큼 빈 마크 유지")
 	units[0].begin_turn()
 	battle.call("_update_turn_ui")
-	_check(titles[0].text == "행동 ●●●" and "3회 회복" in titles[0].tooltip_text,
+	_check(titles[0].text == "행동 ●●●" and titles[0].tooltip_text.is_empty(),
 		"자기 턴 시작은 같은 개수의 마크를 다시 채움")
 	units[0].action_capacity = 1
 	units[0].bonus_action_capacity = 1
@@ -510,9 +513,8 @@ func _test_guidance() -> void:
 	(buttons["surge"] as Button).pressed.emit()
 	var details: String = (buttons["surge"] as Button).tooltip_text
 	_check("몰아치기" in details and "이미 쓴 행동" in details
-		and "비용: 보조 행동 ▲" in details and "막당 1회 남음" in details
-		and "같은 버튼을 다시" in details and units[0].surge_left == 1,
-		"자기 대상 스킬은 첫 클릭에 실행하지 않고 호버에 효과·비용·횟수 유지")
+		and units[0].surge_left == 1,
+		"자기 대상 스킬 첫 클릭은 실행하지 않고 이름·효과 유지")
 	for unit: CombatUnit in [units[0], units[1]]:
 		turns.select_unit(unit)
 		battle.call("_update_turn_ui")
@@ -530,14 +532,13 @@ func _test_guidance() -> void:
 				and not tooltip.get_global_rect().intersects((hud.get_node("Skills") as Control).get_global_rect())
 				and tooltip.z_index > (hud.get_node("Skills") as Control).z_index,
 				"호버 전체 설명은 화면 안에서 스킬 패널 위에 표시: " + action)
-			_check(button.tooltip_text.begins_with(CombatTurnHud.ACTION_NAMES[action] + "\n비용: ")
-				and "위 숫자:" in button.tooltip_text, "이름·비용·횟수의 설명 유지: " + action)
+			_check(button.tooltip_text.begins_with(CombatTurnHud.ACTION_NAMES[action] + "\n"),
+				"호버에 동작 이름 유지: " + action)
+			for removed: String in ["비용", "막당 ", "횟수 제한", "\n보유 물약", "오른쪽 기호",
+				"위 숫자", "좌클릭", "같은 버튼", "버튼으로 실행", "확인 창", "묻습니다"]:
+				_check(removed not in button.tooltip_text, "호버에서 안내 제거: %s / %s" % [action, removed])
 			_check(unit.hit_points == hp and unit.surge_left == uses,
 				"호버는 동작 실행·자원 소비 없음: " + action)
-			var font: Font = button.get_theme_font("font", "TooltipLabel")
-			var font_size: int = button.get_theme_font_size("font_size", "TooltipLabel")
-			_check(font.get_multiline_string_size(button.tooltip_text, HORIZONTAL_ALIGNMENT_LEFT,
-				-1, font_size).x < 620, "호버 설명의 줄 너비는640화면 안: " + action)
 	# 비활성 버튼은 비용 소진·횟수 소진·효과 없음의 이유를 호버에 유지한다.
 	turns.select_unit(units[0])
 	units[0].action_left = 0
@@ -547,6 +548,21 @@ func _test_guidance() -> void:
 		and "이번 막의 횟수를 모두 씀" in (buttons["surge"] as Button).tooltip_text
 		and "HP가 이미 최대" in (buttons["second_wind"] as Button).tooltip_text,
 		"사용 불가 이유는 비활성 버튼 호버에 유지")
+	units[0].parry_left = 0
+	battle.call("_update_turn_ui")
+	_check("이번 막의 횟수를 모두 씀" in (buttons["parry"] as Button).tooltip_text,
+		"반응 스킬 횟수가 없으면 이유 표시")
+	units[0].parry_left = 2
+	units[0].reaction_left = 0
+	battle.call("_update_turn_ui")
+	_check("자원을 이미 씀" in (buttons["opportunity"] as Button).tooltip_text,
+		"반응을 이미 썼으면 이유 표시")
+	units[0].reaction_left = 1
+	turns.end_turn()
+	turns.end_turn()
+	battle.call("_update_turn_ui")
+	_check(not turns.current_unit.is_ally and "지금 사용 불가" not in (buttons["parry"] as Button).tooltip_text,
+		"적 턴에도 남은 반응에 아군 자기 턴 제한을 안내하지 않음")
 	await _hover(hud.end_button)
 
 

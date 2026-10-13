@@ -276,8 +276,9 @@ func _test_usage_text(battle: Node2D) -> void:
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var party: Array[CombatUnit] = battle.get("party")
-	_check("막당" in hud.action_details(actions, party[0], "second_wind"),
-		"스킬 횟수 안내는 막당")
-	_check("보유" in hud.action_details(actions, party[0], "potion")
-		and "막당" not in hud.action_details(actions, party[0], "potion"),
-		"물약은 막당 횟수가 아니라 현재 보유 개수")
+	_check("HP 1d10+1 회복" in hud.action_details(actions, party[0], "second_wind")
+		and "막당" not in hud.action_details(actions, party[0], "second_wind"),
+		"스킬 호버에는 효과만 남기고 막당 횟수 줄 제거")
+	_check("HP 2d4+2 회복" in hud.action_details(actions, party[0], "potion")
+		and "\n보유 물약" not in hud.action_details(actions, party[0], "potion"),
+		"물약 호버에는 효과만 남기고 보유 개수 줄 제거")
