@@ -1,5 +1,6 @@
 import copy
 import hashlib
+import io
 import json
 from pathlib import Path
 import tempfile
@@ -114,6 +115,12 @@ class DraftTests(unittest.TestCase):
             self.assertIsNone(api.request("GET", "releases/tags/test", missing=True))
             with self.assertRaises(ValueError):
                 api.request("GET", "commits/test")
+
+    def test_api_repository_root_uses_canonical_endpoint(self):
+        api = GitHub("owner/repo", "fake-test-token")
+        with patch.object(api.opener, "open", return_value=io.BytesIO(b'{"default_branch": "main"}')) as opened:
+            self.assertEqual(api.request("GET", ""), {"default_branch": "main"})
+            self.assertEqual(opened.call_args.args[0].full_url, "https://api.github.com/repos/owner/repo")
 
     def test_archive_round_trip_and_provenance_mismatch(self):
         with tempfile.TemporaryDirectory() as temporary:

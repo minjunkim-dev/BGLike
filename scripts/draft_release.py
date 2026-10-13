@@ -27,7 +27,8 @@ class GitHub:
     def request(self, method, path, data=None, missing=False, upload=False):
         host = "https://uploads.github.com" if upload else "https://api.github.com"
         body = data if isinstance(data, bytes) else (json.dumps(data).encode() if data is not None else None)
-        req = urllib.request.Request(f"{host}/repos/{self.repo}/{path}", data=body, method=method,
+        url = f"{host}/repos/{self.repo}" + (f"/{path}" if path else "")
+        req = urllib.request.Request(url, data=body, method=method,
                                      headers={"Authorization": f"Bearer {self.token}", "Accept": "application/vnd.github+json",
                                               "X-GitHub-Api-Version": "2022-11-28",
                                               "Content-Type": "application/octet-stream" if upload else "application/json"})
