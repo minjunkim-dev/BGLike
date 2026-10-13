@@ -21,6 +21,8 @@ var pending_kind: String = ""
 var last_attack: CombatChecks.RollResult
 var last_damage_rolls: Array[int] = []
 var last_damage: int = 0
+var movement_animation: Callable
+var attack_animation: Callable
 
 
 func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> void:
@@ -167,6 +169,8 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 						break
 		if actor.hit_points <= 0:
 			break
+		if movement_animation.is_valid():
+			await movement_animation.call(actor, step)
 		actor.spend_movement(1)
 		actor.cell = step
 		moved += 1
@@ -290,6 +294,8 @@ func _emit_reaction(kind: String, prompt: String) -> void:
 
 
 func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void:
+	if attack_animation.is_valid():
+		await attack_animation.call(actor, target)
 	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(actor, target, units)
 	last_attack = CombatChecks.attack(actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
 	last_damage = 0
