@@ -949,6 +949,9 @@ func _test_reaction_flow() -> void:
 	var on_log: Callable = func(message: String) -> void: messages.append(message)
 	var on_reaction: Callable = func(kind: String, _prompt: String) -> void:
 		_check(kind == "opportunity" and hud.reaction_dialog.visible, "실제 기회 공격 확인 창")
+		_check(not units[3].is_moving and units[3].cell == Vector2i(5, 4)
+			and units[3].position == (battle.get_node("Map") as TileMapLayer).map_to_local(Vector2i(5, 4)),
+			"기회 공격을 기다리는 동안 이동 연출 전의 칸·위치 유지")
 		_check(hud.reaction_dialog.get_ok_button().text == "공격"
 			and hud.reaction_dialog.get_cancel_button().text == "넘기기", "기회 공격 선택 문구")
 		var before: CombatUnit = turns.current_unit
