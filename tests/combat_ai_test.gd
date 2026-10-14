@@ -38,7 +38,7 @@ func _fixture(archer: bool = false) -> Fixture:
 		unit.cell = [Vector2i(5, 4), Vector2i(8, 8), Vector2i(4, 4), Vector2i(0, 0)][index]
 		unit.hit_points = unit.get_max_hit_points()
 		f.units.append(unit)
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	f.turns.start(f.units, dice)
 	f.actions.initialize(f.units, f.turns)
@@ -99,7 +99,7 @@ func _test_warrior() -> void:
 	approach.units[1].cell = Vector2i(9, 9)
 	approach.units[1].hit_points = 1
 	await ai.play_turn(approach.units[2], approach.actions)
-	_check(approach.actions.distance(approach.units[2].cell, approach.units[0].cell) == 1,
+	_check(CombatHexGrid.distance(approach.units[2].cell, approach.units[0].cell) == 1,
 		"사거리 밖에서는 낮은 HP의 먼 대상보다 가장 가까운 대상에게 접근")
 	_check(approach.units[2].movement_left == 1 and approach.units[2].action_left == 0,
 		"헥사 거리6에서5칸 접근 후 공격, 이동과 행동 별도 소비")
@@ -145,7 +145,7 @@ func _test_archer() -> void:
 	await ai.play_turn(retreat.units[3], retreat.actions)
 	_check(retreat.units[3].disengage_left == 1 and retreat.units[3].disengaged,
 		"인접 적이 있으면 물러서며 쏘기를 먼저 사용")
-	_check(retreat.actions.distance(retreat.units[3].cell, retreat.units[0].cell) > 1
+	_check(CombatHexGrid.distance(retreat.units[3].cell, retreat.units[0].cell) > 1
 		and retreat.units[3].movement_left == 5, "인접 위협에서 벗어나는 최단 후퇴")
 	_check(prompts[0] == 0 and retreat.units[0].reaction_left == 1,
 		"물러서며 쏘기 이동은 아군 기회 공격을 일으키지 않음")
@@ -263,7 +263,7 @@ func _test_scene() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
 	var prompts: Array[int] = [0]
@@ -311,7 +311,7 @@ func _test_scene() -> void:
 					target = unit
 					break
 			if target == null:
-				var destination: Vector2i = ai.call("_approach", actor, actions)
+				var destination: Vector2i = ai.approach_cell(actor, actions)
 				if destination != actor.cell:
 					await actions.move_to(actor, destination)
 				for unit: CombatUnit in units:
@@ -355,7 +355,7 @@ func _test_default_scene() -> void:
 	for unit: CombatUnit in units:
 		_check(unit.cell == unit.start_cell and unit.hit_points == unit.get_max_hit_points(),
 			"기본 배치와 최대 HP에서 전투 시작")
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
 	actions.dice.seed = 33
@@ -374,7 +374,7 @@ func _test_default_scene() -> void:
 					target = unit
 					break
 			if target == null:
-				var destination: Vector2i = ai.call("_approach", actor, actions)
+				var destination: Vector2i = ai.approach_cell(actor, actions)
 				if destination != actor.cell:
 					await actions.move_to(actor, destination)
 				for unit: CombatUnit in units:

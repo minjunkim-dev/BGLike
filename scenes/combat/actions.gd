@@ -11,7 +11,7 @@ signal reaction_decided(use_reaction: bool)
 
 var units: Array[CombatUnit] = []
 var turns: CombatTurns
-var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+var dice: CombatDice = CombatDice.new()
 var map_size: Vector2i = Vector2i(10, 10)
 # M1 전사·궁수 내성 DC: 8 + 숙련2 + 공격 능력치3.
 var save_dc: int = 13
@@ -29,10 +29,6 @@ func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> v
 	units = combat_units
 	turns = combat_turns
 	dice.randomize()
-
-
-func distance(a: Vector2i, b: Vector2i) -> int:
-	return CombatHexGrid.distance(a, b)
 
 
 func unit_at(cell: Vector2i) -> CombatUnit:
@@ -105,11 +101,28 @@ func path_to(actor: CombatUnit, destination: Vector2i) -> Array[Vector2i]:
 	return path
 
 
-func can_move(actor: CombatUnit, destination: Vector2i) -> bool:
+## 이번 턴에 도착할 수 있는 칸과 이동 비용. 현재 칸과 점유 칸은 빠진다.
+func reachable_cells(actor: CombatUnit) -> Dictionary[Vector2i, int]:
+	var costs: Dictionary[Vector2i, int] = {}
 	if not _can_act(actor):
-		return false
-	var path: Array[Vector2i] = path_to(actor, destination)
-	return not path.is_empty() and path.size() <= actor.movement_left
+		return costs
+	var frontier: Array[Vector2i] = [actor.cell]
+	var index: int = 0
+	while index < frontier.size():
+		var here: Vector2i = frontier[index]
+		index += 1
+		var cost: int = costs.get(here, 0) + 1
+		if cost > actor.movement_left:
+			continue
+		for next: Vector2i in CombatHexGrid.neighbors(here):
+			if next != actor.cell and not costs.has(next) and is_inside(next) and unit_at(next) == null:
+				costs[next] = cost
+				frontier.append(next)
+	return costs
+
+
+func can_move(actor: CombatUnit, destination: Vector2i) -> bool:
+	return reachable_cells(actor).has(destination)
 
 
 func can_target(actor: CombatUnit, target: CombatUnit, action: String,
@@ -117,7 +130,7 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	if actor == null or target == null or target.hit_points <= 0 or actor.is_ally == target.is_ally:
 		return false
 	var origin: Vector2i = actor.cell if from_cell == Vector2i(-1, -1) else from_cell
-	var separation: int = distance(origin, target.cell)
+	var separation: int = CombatHexGrid.distance(origin, target.cell)
 	match action:
 		"attack":
 			return actor.action_left > 0 and separation >= 1 and separation <= actor.get_attack_range()
@@ -207,7 +220,7 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 			for reactor: CombatUnit in units:
 				if (reactor.hit_points > 0 and not reactor.is_stunned and reactor.is_ally != actor.is_ally
 					and CombatActionRules.belongs_to(reactor, "opportunity") and reactor.reaction_left > 0
-					and distance(reactor.cell, actor.cell) == 1 and distance(reactor.cell, step) > 1):
+					and CombatHexGrid.distance(reactor.cell, actor.cell) == 1 and CombatHexGrid.distance(reactor.cell, step) > 1):
 					var chance: float = CombatChecks.attack_preview(reactor, actor, units).chance
 					if await _ask_reaction(reactor, "opportunity", "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)" % [actor.get_display_name(), chance * 100.0]):
 						reactor.spend_resource(CombatUnit.TurnResource.REACTION)
@@ -250,7 +263,7 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 	CombatActionRules.spend_use(actor, action)
 	match action:
 		"second_wind":
-			_heal(actor, dice.randi_range(1, 10) + 1, "숨 고르기")
+			_heal(actor, dice.roll(10) + 1, "숨 고르기")
 		"surge":
 			actor.action_left = 1
 			logged.emit("%s 몰아치기: 행동 회복" % actor.get_display_name())
@@ -258,7 +271,7 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 			actor.disengaged = true
 			logged.emit("%s 물러서며 쏘기: 이번 턴 이동은 기회 공격 제외" % actor.get_display_name())
 		"potion":
-			_heal(actor, dice.randi_range(1, 4) + dice.randi_range(1, 4) + 2, "물약")
+			_heal(actor, dice.roll(4) + dice.roll(4) + 2, "물약")
 	changed.emit()
 	return true
 
@@ -279,7 +292,7 @@ func shove_destination(actor: CombatUnit, target: CombatUnit) -> Vector2i:
 
 
 func can_shove(actor: CombatUnit, target: CombatUnit) -> bool:
-	if actor == null or target == null or distance(actor.cell, target.cell) != 1:
+	if actor == null or target == null or CombatHexGrid.distance(actor.cell, target.cell) != 1:
 		return false
 	var destination: Vector2i = shove_destination(actor, target)
 	return is_inside(destination) and unit_at(destination) == null
@@ -374,11 +387,11 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	var count: int = 2 if last_attack.critical else 1
 	var sides: int = 8 if actor.kind == CombatUnit.Kind.WARRIOR else 6
 	for index: int in range(count):
-		last_damage_rolls.append(dice.randi_range(1, sides))
+		last_damage_rolls.append(dice.roll(sides))
 	var has_mark_damage: bool = actor.marked_target == target
 	if has_mark_damage:
 		for index: int in range(count):
-			last_damage_rolls.append(dice.randi_range(1, 6))
+			last_damage_rolls.append(dice.roll(6))
 	var damage_bonus: int = actor.get_damage_bonus()
 	last_damage = damage_bonus
 	for rolled: int in last_damage_rolls:

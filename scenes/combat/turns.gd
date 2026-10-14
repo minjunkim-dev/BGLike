@@ -15,10 +15,10 @@ var _started_units: Array[CombatUnit] = []
 var _stunned_turns: Array[CombatUnit] = []
 
 
-func start(combat_units: Array[CombatUnit], dice: RandomNumberGenerator) -> void:
+func start(combat_units: Array[CombatUnit], dice: CombatDice) -> void:
 	ordered_units = combat_units.duplicate()
 	for unit: CombatUnit in ordered_units:
-		unit.initiative_roll = dice.randi_range(1, 20)
+		unit.initiative_roll = dice.roll(20)
 	# sort_custom은 안정 정렬이 아니므로 완전히 같은 값은 배치 순서를 보존한다.
 	var placement_order: Array[CombatUnit] = ordered_units.duplicate()
 	ordered_units.sort_custom(func(a: CombatUnit, b: CombatUnit) -> bool:

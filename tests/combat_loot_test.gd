@@ -1,6 +1,8 @@
 extends SceneTree
 ## 드랍 모델과 실제 보상·정비 입력을 검사한다.
 
+const ScriptedDice = preload("res://tests/scripted_dice.gd")
+
 var checks: int = 0
 var failures: int = 0
 
@@ -21,7 +23,7 @@ func _run() -> void:
 	_check(script != null, "드랍 모델 로드")
 	if script != null:
 		var loot: RefCounted = script.new()
-		var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+		var dice: CombatDice = CombatDice.new()
 		dice.seed = 55
 		_test_armor_hit_points(loot)
 		_test_act_values(loot, dice)
@@ -35,6 +37,7 @@ func _run() -> void:
 	await _test_scaled_combat()
 	# 완료된 검사 코루틴의 참조를 해제한 뒤 종료한다.
 	await process_frame
+	_check(ScriptedDice.mismatches.is_empty(), "준비한 주사위 값과 실제 굴림 요청 일치 " + str(ScriptedDice.mismatches))
 	print("Combat loot: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
 
@@ -84,7 +87,7 @@ func _test_armor_hit_points(loot: CombatLoot) -> void:
 	unit.free()
 
 
-func _test_items(loot: CombatLoot, dice: RandomNumberGenerator) -> void:
+func _test_items(loot: CombatLoot, dice: CombatDice) -> void:
 	loot.data["extra_drop_chance"] = 0.35
 	loot.data["potion_limit"] = 3
 	# 기획 데이터 변경과 독립된 검사 범위. 숫자는 검사 입력의 계약이다.
@@ -148,7 +151,7 @@ func _test_items(loot: CombatLoot, dice: RandomNumberGenerator) -> void:
 	archer.free()
 
 
-func _test_act_values(loot: CombatLoot, dice: RandomNumberGenerator) -> void:
+func _test_act_values(loot: CombatLoot, dice: CombatDice) -> void:
 	var expected: Dictionary = {
 		"weapon": {"attack_bonus": [[1, 2], [3, 4], [5, 7]],
 			"damage_bonus": [[1, 3], [4, 6], [7, 10]]},
@@ -257,7 +260,7 @@ func _test_reward_flow() -> void:
 		var actions: CombatActions = battle.get("actions") as CombatActions
 		# 실제 보유 물약을 보조 행동으로 소비한다.
 		var turns: CombatTurns = battle.get("turns") as CombatTurns
-		var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+		var dice: CombatDice = CombatDice.new()
 		dice.seed = 33
 		var living: Array[CombatUnit] = []
 		for unit: CombatUnit in battle.get("units"):
@@ -294,21 +297,16 @@ func _test_scaled_combat() -> void:
 	actor.cell = Vector2i(4, 3)
 	target.cell = Vector2i(4, 4)
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
-	for seed_value: int in range(100):
-		dice.seed = seed_value
-		turns.start(units, dice)
-		if turns.current_unit == actor:
-			break
+	var initiative: Array[int] = []
+	for unit: CombatUnit in units:
+		initiative.append(20 if unit == actor else 1)
+	turns.start(units, ScriptedDice.new(initiative))
+	_check(turns.current_unit == actor, "이니셔티브 d20 20으로 3막 적이 먼저 행동")
 	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(actor, target, units)
 	_check(is_equal_approx(preview.chance, 0.75), "3막 적 명중+10 대 아군 AC16 미리보기")
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	actions.save_dc = 0
-	for seed_value: int in range(100):
-		dice.seed = seed_value
-		if dice.randi_range(1, 20) >= 6:
-			actions.dice.seed = seed_value
-			break
+	actions.dice = ScriptedDice.new([15], [20])
 	var used: bool = await actions.attack(actor, target)
 	_check(used and actions.last_attack.success
 		and actions.last_attack.total == actions.last_attack.selected_roll + 10,
@@ -323,6 +321,7 @@ func _test_scaled_combat() -> void:
 		"stats": {"armor_class": 7, "max_hit_points": 14}})
 	units[1].hit_points = 26
 	units[1].potion_left = 1
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
 	turns.current_unit = units[1]
@@ -356,19 +355,13 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	party[0].cell = Vector2i(4, 4)
 	target.cell = Vector2i(4, 3)
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
 	turns.select_unit(party[0])
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	actions.save_dc = 0
-	var attack_seed: int = 0
-	for candidate: int in range(100):
-		dice.seed = candidate
-		if dice.randi_range(1, 20) >= 12:
-			attack_seed = candidate
-			break
-	actions.dice.seed = attack_seed
+	actions.dice = ScriptedDice.new([19], [20])
 	await actions.attack(party[0], target)
 	_check(actions.last_attack.success and actions.last_attack.total == actions.last_attack.selected_roll + 7,
 		"실제 공격 판정은 무기 명중+2 포함")

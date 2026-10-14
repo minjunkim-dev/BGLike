@@ -8,6 +8,8 @@ class Fixture extends RefCounted:
 	var hits: Array[bool] = []
 
 
+const ScriptedDice = preload("res://tests/scripted_dice.gd")
+
 var _checks: int = 0
 var _failures: int = 0
 var _created: Array[CombatUnit] = []
@@ -40,7 +42,7 @@ func _fixture() -> Fixture:
 		unit.hit_points = unit.get_max_hit_points()
 		f.units.append(unit)
 		_created.append(unit)
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	f.turns.start(f.units, dice)
 	f.actions.initialize(f.units, f.turns)
@@ -48,21 +50,8 @@ func _fixture() -> Fixture:
 	return f
 
 
-func _dice_for(expected: Array[int], sides: Array[int]) -> RandomNumberGenerator:
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
-	for seed_value: int in range(1000000):
-		dice.seed = seed_value
-		var matches: bool = true
-		for index: int in range(expected.size()):
-			var rolled: int = dice.randi_range(1, sides[index])
-			if expected[index] != 0 and rolled != expected[index]:
-				matches = false
-				break
-		if matches:
-			dice.seed = seed_value
-			return dice
-	_check(false, "동작 주사위 fixture를 찾지 못함")
-	return dice
+func _dice_for(expected: Array[int], sides: Array[int]) -> CombatDice:
+	return ScriptedDice.new(expected, sides)
 
 
 func _run() -> void:
@@ -83,6 +72,7 @@ func _run() -> void:
 	_fixtures.clear()
 	for unit: CombatUnit in _created:
 		unit.free()
+	_check(ScriptedDice.mismatches.is_empty(), "준비한 주사위 값과 실제 굴림 요청 일치 " + str(ScriptedDice.mismatches))
 	print("Combat actions: %d checks, %d failures" % [_checks, _failures])
 	quit(0 if _failures == 0 else 1)
 
@@ -97,9 +87,23 @@ func _test_movement() -> void:
 	_check(not f.actions.can_move(actor, actor.cell), "같은 칸 이동 거부")
 	_check(not f.actions.can_move(actor, Vector2i(-1, 4)), "맵 밖 이동 거부")
 	_check(not f.actions.can_move(actor, f.units[2].cell), "점유 칸 이동 거부")
-	_check(f.actions.distance(Vector2i(4, 4), Vector2i(5, 5)) == 2,
+	var reachable: Dictionary[Vector2i, int] = f.actions.reachable_cells(actor)
+	var costs_match: bool = not reachable.is_empty()
+	for cell: Vector2i in reachable:
+		costs_match = costs_match and reachable[cell] == f.actions.path_to(actor, cell).size() \
+			and reachable[cell] <= actor.movement_left
+	_check(costs_match and not reachable.has(actor.cell) and not reachable.has(f.units[2].cell),
+		"도달 칸 비용은 최단 경로 길이이고 남은 이동 안")
+	var all_listed: bool = true
+	for x: int in range(f.actions.map_size.x):
+		for y: int in range(f.actions.map_size.y):
+			var path: Array[Vector2i] = f.actions.path_to(actor, Vector2i(x, y))
+			if not path.is_empty() and path.size() <= actor.movement_left:
+				all_listed = all_listed and reachable.has(Vector2i(x, y))
+	_check(all_listed, "남은 이동 안의 경로가 있는 칸은 모두 도달 칸")
+	_check(CombatHexGrid.distance(Vector2i(4, 4), Vector2i(5, 5)) == 2,
 		"짝수 행 오른쪽 아래 대각선은 헥사 거리2")
-	_check(f.actions.distance(Vector2i(4, 5), Vector2i(5, 6)) == 1,
+	_check(CombatHexGrid.distance(Vector2i(4, 5), Vector2i(5, 6)) == 1,
 		"홀수 행 오른쪽 아래 대각선은 헥사 인접")
 	_check(f.actions.path_to(actor, Vector2i(5, 5)).size() == 2,
 		"사각 격자 대각선으로 헥사 경로를 단축하지 않음")
@@ -365,7 +369,7 @@ func _test_mark_and_stun() -> void:
 			"정신-1의 DC13 경계: d20의13은 기절,14는 버팀")
 	var waiting: Fixture = _fixture()
 	waiting.units[1].is_stunned = true
-	var start_dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var start_dice: CombatDice = CombatDice.new()
 	start_dice.seed = 33
 	waiting.turns.start(waiting.units, start_dice)
 	_check(waiting.turns.current_unit == waiting.units[0] and waiting.units[1].is_stunned,
@@ -497,7 +501,7 @@ func _test_own_turn_parry() -> void:
 		var turns: CombatTurns = battle.get("turns") as CombatTurns
 		var actions: CombatActions = battle.get("actions") as CombatActions
 		var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
-		var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+		var dice: CombatDice = CombatDice.new()
 		dice.seed = 33
 		turns.start(units, dice)
 		units[0].cell = Vector2i(4, 4)
@@ -569,7 +573,7 @@ func _test_scene_input() -> void:
 	var units: Array[CombatUnit] = battle.get("units")
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
 	var destination: Vector2i = Vector2i(4, 7)
@@ -654,7 +658,7 @@ func _test_scene_shock() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
 	units[3].cell = Vector2i(7, 9)

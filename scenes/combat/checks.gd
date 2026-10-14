@@ -40,7 +40,7 @@ static func roll_mode(advantage_count: int, disadvantage_count: int) -> RollMode
 
 
 static func attack(
-	attack_bonus: int, armor_class: int, mode: RollMode, dice: RandomNumberGenerator
+	attack_bonus: int, armor_class: int, mode: RollMode, dice: CombatDice
 ) -> RollResult:
 	var result: RollResult = _roll_d20(mode, dice)
 	result.total = result.selected_roll + attack_bonus
@@ -49,7 +49,7 @@ static func attack(
 	return result
 
 
-static func saving_throw(modifier: int, dc: int, dice: RandomNumberGenerator) -> RollResult:
+static func saving_throw(modifier: int, dc: int, dice: CombatDice) -> RollResult:
 	var result: RollResult = _roll_d20(RollMode.NORMAL, dice)
 	result.total = result.selected_roll + modifier
 	# 내성은 1과 20도 합계로만 판단한다.
@@ -58,11 +58,11 @@ static func saving_throw(modifier: int, dc: int, dice: RandomNumberGenerator) ->
 
 
 static func contest(
-	attacker_modifier: int, defender_modifier: int, dice: RandomNumberGenerator
+	attacker_modifier: int, defender_modifier: int, dice: CombatDice
 ) -> ContestResult:
 	var result: ContestResult = ContestResult.new()
-	result.attacker_roll = dice.randi_range(1, 20)
-	result.defender_roll = dice.randi_range(1, 20)
+	result.attacker_roll = dice.roll(20)
+	result.defender_roll = dice.roll(20)
 	result.attacker_total = result.attacker_roll + attacker_modifier
 	result.defender_total = result.defender_roll + defender_modifier
 	result.attacker_wins = result.attacker_total > result.defender_total
@@ -114,13 +114,13 @@ static func attack_preview(
 	return preview
 
 
-static func _roll_d20(mode: RollMode, dice: RandomNumberGenerator) -> RollResult:
+static func _roll_d20(mode: RollMode, dice: CombatDice) -> RollResult:
 	var result: RollResult = RollResult.new()
 	result.mode = mode
-	result.rolls.append(dice.randi_range(1, 20))
+	result.rolls.append(dice.roll(20))
 	result.selected_roll = result.rolls[0]
 	if mode != RollMode.NORMAL:
-		result.rolls.append(dice.randi_range(1, 20))
+		result.rolls.append(dice.roll(20))
 		result.selected_roll = (maxi(result.rolls[0], result.rolls[1])
 			if mode == RollMode.ADVANTAGE else mini(result.rolls[0], result.rolls[1]))
 	return result

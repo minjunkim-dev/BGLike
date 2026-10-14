@@ -40,21 +40,21 @@ func _init() -> void:
 	assert(total_weight > 0)
 
 
-func roll_rewards(monster_count: int, dice: RandomNumberGenerator, act_number: int) -> Array[Dictionary]:
+func roll_rewards(monster_count: int, dice: CombatDice, act_number: int) -> Array[Dictionary]:
 	assert(act_number >= 1 and act_number <= 3, "아이템을 얻은 막은1~3입니다.")
 	var rewards: Array[Dictionary] = [_roll_item(dice, act_number)]
 	var chance: float = float(data["extra_drop_chance"])
 	for index: int in range(monster_count):
-		if chance >= 1.0 or dice.randf() < chance:
+		if chance >= 1.0 or dice.chance() < chance:
 			rewards.append(_roll_item(dice, act_number))
 	return rewards
 
 
-func _roll_item(dice: RandomNumberGenerator, act_number: int) -> Dictionary:
+func _roll_item(dice: CombatDice, act_number: int) -> Dictionary:
 	var total: int = 0
 	for definition: Dictionary in data["items"]:
 		total += int(definition["weight"])
-	var ticket: int = dice.randi_range(1, total)
+	var ticket: int = dice.roll(total)
 	for definition: Dictionary in data["items"]:
 		ticket -= int(definition["weight"])
 		if ticket > 0:
@@ -62,7 +62,7 @@ func _roll_item(dice: RandomNumberGenerator, act_number: int) -> Dictionary:
 		var item: Dictionary = definition.duplicate(true)
 		for stat: String in definition["stats"]:
 			var bounds: Array = definition["stats"][stat][act_number - 1]
-			item["stats"][stat] = dice.randi_range(int(bounds[0]), int(bounds[1]))
+			item["stats"][stat] = dice.roll_between(int(bounds[0]), int(bounds[1]))
 		return item
 	return {}
 

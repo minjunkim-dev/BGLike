@@ -102,7 +102,7 @@ func _start_stage(restore_act: bool) -> void:
 	selected_action = "attack"
 	hud.begin_stage(progress.act_number(), progress.stage_in_act())
 	actions.initialize(units, turns)
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.randomize()
 	var living: Array[CombatUnit] = []
 	for unit: CombatUnit in units:
@@ -263,7 +263,7 @@ func preview_enemy(target: CombatUnit) -> bool:
 
 func _on_actions_changed() -> void:
 	if actions.is_over() and actions.is_victory():
-		var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+		var dice: CombatDice = CombatDice.new()
 		dice.randomize()
 		progress.record_victory(loot, units.size() - party.size(), dice)
 	_update_turn_ui()
@@ -349,12 +349,8 @@ func _update_turn_ui() -> void:
 	var can_act: bool = actions.has_available_action(turns.current_unit)
 	hud.refresh(turns, can_act)
 	movement_cells.clear()
-	if selected_action == "move":
-		for x: int in range(map_size.x):
-			for y: int in range(map_size.y):
-				var cell: Vector2i = Vector2i(x, y)
-				if turns.current_unit != null and turns.current_unit.is_ally and actions.can_move(turns.current_unit, cell):
-					movement_cells.append(cell)
+	if selected_action == "move" and turns.current_unit != null and turns.current_unit.is_ally:
+		movement_cells.assign(actions.reachable_cells(turns.current_unit).keys())
 	if preview_target != null:
 		var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(
 			turns.current_unit, preview_target, units)
