@@ -6,7 +6,13 @@ import sys
 import tempfile
 import unittest
 
-from check_bugbot_rules import REQUIRED, ROOT_RULE, check_rules
+from check_bugbot_rules import ROOT_RULE, check_rules
+
+
+REQUIRED = {
+    "AGENTS.md", "docs/CI.md", "docs/coding-standards.md",
+    "docs/COMBAT_UIUX.md", "docs/M1_VERIFICATION.md",
+}
 
 
 class BugbotRulesTests(unittest.TestCase):
@@ -34,6 +40,10 @@ class BugbotRulesTests(unittest.TestCase):
         self.assertEqual(set(sizes), REQUIRED | {ROOT_RULE})
         self.assertEqual(sizes["AGENTS.md"], len((self.root / "AGENTS.md").read_text()))
 
+    def test_core_only_root_does_not_require_detailed_documents(self):
+        self.write(ROOT_RULE, "핵심 리뷰 규칙\n")
+        self.assertEqual(check_rules(self.root), {ROOT_RULE: len("핵심 리뷰 규칙\n")})
+
     def test_total_boundary_and_one_extra_character(self):
         remaining = 95_000 - sum(check_rules(self.root).values())
         for name in sorted(REQUIRED):
@@ -54,18 +64,7 @@ class BugbotRulesTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
             check_rules(self.root)
 
-    def test_each_required_document_must_be_reachable_from_root(self):
-        for name in REQUIRED:
-            with self.subTest(name=name):
-                self.write(ROOT_RULE, self.links.replace(f"[{name}](../{name})", ""))
-                with self.assertRaisesRegex(ValueError, "not included from root"):
-                    check_rules(self.root)
 
-    def test_external_link_cannot_replace_required_local_link(self):
-        self.write(ROOT_RULE, self.links.replace("../docs/COMBAT_UIUX.md",
-                   "https://github.com/minjunkim-dev/BGLike/blob/main/docs/COMBAT_UIUX.md"))
-        with self.assertRaisesRegex(ValueError, "not included from root"):
-            check_rules(self.root)
 
     def test_reference_links_fragment_and_percent_encoded_path(self):
         self.write("docs/space name.mdc", "extra rule")
@@ -101,15 +100,6 @@ class BugbotRulesTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
                     check_rules(self.root)
 
-    def test_plain_indented_code_cannot_supply_required_coverage(self):
-        missing = self.links.replace("[docs/COMBAT_UIUX.md](../docs/COMBAT_UIUX.md)", "")
-        for example in ["    [example](../docs/COMBAT_UIUX.md)",
-                        "- notes\n\n        [example](../docs/COMBAT_UIUX.md)",
-                        "<!-- [example](../docs/COMBAT_UIUX.md) -->"]:
-            with self.subTest(example=example):
-                self.write(ROOT_RULE, missing + "\n" + example)
-                with self.assertRaisesRegex(ValueError, "not included from root"):
-                    check_rules(self.root)
 
     def test_unmatched_code_spans_do_not_hide_live_links_across_blocks(self):
         for text in ["`literal\n\n[new](../extra.md)\n\n`literal",
@@ -127,11 +117,6 @@ class BugbotRulesTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
             check_rules(self.root)
 
-    def test_nested_root_cannot_supply_global_required_coverage(self):
-        self.write(ROOT_RULE, self.links.replace("[docs/M1_VERIFICATION.md](../docs/M1_VERIFICATION.md)", ""))
-        self.write("scenes/.cursor/BUGBOT.md", "[M1](../../docs/M1_VERIFICATION.md)")
-        with self.assertRaisesRegex(ValueError, "not included from root"):
-            check_rules(self.root)
 
     def test_missing_untracked_and_symlink_documents_fail(self):
         for kind in ["missing", "untracked", "symlink"]:
@@ -162,12 +147,12 @@ class BugbotRulesTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Missing, untracked or symlink"):
             check_rules(self.root)
 
-    def test_cli_returns_nonzero_for_missing_coverage(self):
-        self.write(ROOT_RULE, "no links")
+    def test_cli_returns_nonzero_for_missing_root(self):
+        (self.root / ROOT_RULE).unlink()
         result = subprocess.run([sys.executable, str(Path(__file__).with_name("check_bugbot_rules.py"))],
                                 cwd=self.root, text=True, capture_output=True)
         self.assertEqual(result.returncode, 1)
-        self.assertIn("not included from root", result.stderr)
+        self.assertIn("Missing, untracked or symlink", result.stderr)
         self.assertNotIn("Traceback", result.stderr)
 
 
