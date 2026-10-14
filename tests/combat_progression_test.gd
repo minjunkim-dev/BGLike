@@ -118,7 +118,7 @@ func _test_act_progress() -> void:
 	progress.record_victory(loot, 2, dice)
 	var first: Array[Dictionary] = progress.rewards
 	progress.record_victory(loot, 2, dice)
-	_check(not first.is_empty() and progress.rewards == first and progress.rewards.size() >= 1,
+	_check(not first.is_empty() and is_same(progress.rewards, first),
 		"승리 기록은 스테이지마다 드랍을 한 번만 굴림")
 	progress.begin_stage()
 	_check(progress.rewards.is_empty(), "다음 스테이지 시작에서 드랍 비움")

@@ -79,6 +79,9 @@ func _run() -> void:
 
 func _test_movement() -> void:
 	var f: Fixture = _fixture()
+	for action: String in CombatActionRules.USE_COUNTERS:
+		_check(CombatActionRules.USE_COUNTERS[action] in f.units[0],
+			"동작 횟수 필드가 유닛에 있음: " + action)
 	f.units[2].cell = Vector2i(9, 0)
 	var actor: CombatUnit = f.units[0]
 	_check(not f.actions.can_move(actor, actor.cell), "같은 칸 이동 거부")
@@ -91,6 +94,13 @@ func _test_movement() -> void:
 			and reachable[cell] <= actor.movement_left
 	_check(costs_match and not reachable.has(actor.cell) and not reachable.has(f.units[2].cell),
 		"도달 칸 비용은 최단 경로 길이이고 남은 이동 안")
+	var all_listed: bool = true
+	for x: int in range(f.actions.map_size.x):
+		for y: int in range(f.actions.map_size.y):
+			var path: Array[Vector2i] = f.actions.path_to(actor, Vector2i(x, y))
+			if not path.is_empty() and path.size() <= actor.movement_left:
+				all_listed = all_listed and reachable.has(Vector2i(x, y))
+	_check(all_listed, "남은 이동 안의 경로가 있는 칸은 모두 도달 칸")
 	_check(CombatHexGrid.distance(Vector2i(4, 4), Vector2i(5, 5)) == 2,
 		"짝수 행 오른쪽 아래 대각선은 헥사 거리2")
 	_check(CombatHexGrid.distance(Vector2i(4, 5), Vector2i(5, 6)) == 1,
