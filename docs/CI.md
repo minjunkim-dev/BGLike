@@ -11,7 +11,7 @@ Godot 워크플로는 main push, main 대상 PR과 수동 실행을 검사합니
 전체 PR diff와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인하고 Python 회귀 테스트를 실행합니다.
 PR에서는 제목과 브랜치 규칙도 검사합니다.
 
-policy와 `make repository-check`는 `scripts/check_bugbot_rules.py`를 실행합니다. 추적된 root·중첩 BUGBOT.md의 상대 Markdown 링크를 재귀 검사합니다. 공유·순환 문서는 한 번만 셉니다. 총 95,000자·개별 30,000자 초과, root 경로의 핵심 문서·COMBAT_UIUX·M1_VERIFICATION 누락, 깨진 링크·symlink·경로 탈출은 실패합니다. 코드 예시의 추적된 문서 링크도 보수적으로 집계하되 필수 경로로 인정하지 않습니다. CI는 기준 SHA의 검사기를 사용하며 최초 도입에는 현재 검사기를 사용합니다. 서버 실제 포함과 계정 규칙은 수동 verbose 표로 확인합니다.
+policy와 `make repository-check`는 `scripts/check_bugbot_rules.py`를 실행합니다. 추적된 root·중첩 BUGBOT.md의 상대 Markdown 링크를 재귀 검사합니다. 공유·순환 문서는 한 번만 셉니다. 총 95,000자·개별 30,000자 초과, 깨진 링크·symlink·경로 탈출은 실패합니다. 코드 예시의 추적된 문서 링크도 보수적으로 집계하되 필수 경로로 인정하지 않습니다. CI는 기준 SHA의 검사기를 사용하며 최초 도입에는 현재 검사기를 사용합니다. 상세 문서의 필수 포함은 요구하지 않습니다. Bugbot에는 핵심·영역별 규칙만 전달하는 전환을 허용합니다. 서버 실제 포함과 계정 규칙은 수동 verbose 표로 확인합니다.
 
 - Markdown, `docs/` 자료와 `scripts/ci_scope.py`에 명시된 관리 파일만 바뀌면 Godot 작업을 선택하지 않습니다.
 - 게임 코드·장면·자산·프로젝트 설정, CI 선택기와 게임 검사 워크플로 변경은 모든 기존 Godot 검사를 선택합니다.

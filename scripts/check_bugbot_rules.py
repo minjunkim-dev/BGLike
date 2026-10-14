@@ -12,12 +12,7 @@ from urllib.parse import unquote, urlsplit
 TOTAL_LIMIT = 95_000
 RULE_LIMIT = 30_000
 ROOT_RULE = ".cursor/BUGBOT.md"
-REQUIRED = {
-    "AGENTS.md", "docs/WORKFLOW.md", "docs/GIT_CONVENTIONS.md",
-    "docs/coding-standards.md", "docs/agents/review.md", "docs/agents/domain.md",
-    "docs/CI.md", "COPYRIGHT.md", "THIRD_PARTY_NOTICES.md", "CONTEXT.md",
-    "docs/DRAFT_RELEASE.md", "docs/COMBAT_UIUX.md", "docs/M1_VERIFICATION.md",
-}
+
 
 
 def markdown_targets(text, *, coverage=False):
@@ -123,9 +118,6 @@ def check_rules(root):
         return seen
 
     reachable = closure([ROOT_RULE], coverage=True)
-    missing = REQUIRED - reachable
-    if missing:
-        raise ValueError(f"Required rules are not included from root: {sorted(missing)!r}")
     # Count all nested roots together, even if a particular PR visits fewer scopes.
     roots = {name for name in tracked if name == ROOT_RULE or name.endswith("/" + ROOT_RULE)}
     included = closure(roots) | closure(roots, coverage=True)
@@ -146,7 +138,7 @@ def main():
         print(f"Bugbot rules FAILED: {error}", file=sys.stderr)
         return 1
     print(f"Bugbot rules PASS: {len(sizes)} documents, {sum(sizes.values())}/{TOTAL_LIMIT} characters; "
-          f"largest {max(sizes.values())}/{RULE_LIMIT}; required root coverage complete")
+          f"largest {max(sizes.values())}/{RULE_LIMIT}; root and link validation complete")
     return 0
 
 
