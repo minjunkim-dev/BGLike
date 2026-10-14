@@ -349,12 +349,8 @@ func _update_turn_ui() -> void:
 	var can_act: bool = actions.has_available_action(turns.current_unit)
 	hud.refresh(turns, can_act)
 	movement_cells.clear()
-	if selected_action == "move":
-		for x: int in range(map_size.x):
-			for y: int in range(map_size.y):
-				var cell: Vector2i = Vector2i(x, y)
-				if turns.current_unit != null and turns.current_unit.is_ally and actions.can_move(turns.current_unit, cell):
-					movement_cells.append(cell)
+	if selected_action == "move" and turns.current_unit != null and turns.current_unit.is_ally:
+		movement_cells.assign(actions.reachable_cells(turns.current_unit).keys())
 	if preview_target != null:
 		var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(
 			turns.current_unit, preview_target, units)
