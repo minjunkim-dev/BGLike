@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
-"""Check repository Bugbot link coverage and conservative rule-size bounds."""
+"""Validate bounded core/scoped Bugbot rules without importing detailed docs."""
 
 from pathlib import Path
-import os
 import re
 import subprocess
 import sys
-from urllib.parse import unquote, urlsplit
-
+from urllib.parse import urlsplit
 
 TOTAL_LIMIT = 95_000
 RULE_LIMIT = 30_000
 ROOT_RULE = ".cursor/BUGBOT.md"
-
+REQUIRED = {'.github/.cursor/BUGBOT.md', '.cursor/BUGBOT.md', 'scripts/.cursor/BUGBOT.md', 'scenes/.cursor/BUGBOT.md', 'tests/.cursor/BUGBOT.md', 'docs/.cursor/BUGBOT.md'}
 
 
 def markdown_targets(text, *, coverage=False):
@@ -78,53 +76,29 @@ def check_rules(root):
     root = root.resolve()
     tracked = set(subprocess.check_output(
         ["git", "ls-files", "-z"], cwd=root, text=True).split("\0")) - {""}
-    if ROOT_RULE not in tracked:
-        raise ValueError(f"Missing tracked root rule: {ROOT_RULE}")
-    texts = {}
-
-    def document(name):
-        path = root / name
-        if name not in tracked or not path.is_file() or path.resolve() != path:
-            raise ValueError(f"Missing, untracked or symlink rule: {name!r}")
-        if name not in texts:
-            texts[name] = path.read_text(encoding="utf-8")
-        return texts[name]
-
-    def closure(seeds, *, coverage=False):
-        pending = list(seeds)
-        seen = set()
-        while pending:
-            name = pending.pop()
-            if name in seen:
-                continue
-            seen.add(name)
-            for target in markdown_targets(document(name), coverage=coverage):
-                url = urlsplit(target)
-                if url.scheme or url.netloc or url.path.startswith("/") or not url.path:
-                    continue
-                path = unquote(url.path, errors="strict")
-                if Path(path).suffix not in {".md", ".mdc"}:
-                    continue
-                if url.query or "\0" in path or "\\" in path:
-                    raise ValueError(f"Unsupported rule link in {name!r}: {target!r}")
-                resolved = Path(os.path.normpath(root / name / ".." / path))
-                if not resolved.is_relative_to(root):
-                    raise ValueError(f"Rule link escapes repository in {name!r}: {target!r}")
-                relative = resolved.relative_to(root).as_posix()
-                # Budget every tracked candidate, including code examples; missing
-                # visible links are rejected separately by the coverage walk.
-                if coverage or relative in tracked:
-                    pending.append(relative)
-        return seen
-
-    reachable = closure([ROOT_RULE], coverage=True)
-    # Count all nested roots together, even if a particular PR visits fewer scopes.
     roots = {name for name in tracked if name == ROOT_RULE or name.endswith("/" + ROOT_RULE)}
-    included = closure(roots) | closure(roots, coverage=True)
-    sizes = {name: len(texts[name]) for name in included}
-    oversized = {name: size for name, size in sizes.items() if size > RULE_LIMIT}
-    if oversized:
-        raise ValueError(f"Rule exceeds {RULE_LIMIT} characters: {oversized!r}")
+    missing = REQUIRED - roots
+    if missing:
+        raise ValueError(f"Missing tracked rule files: {sorted(missing)!r}")
+    sizes = {}
+    for name in sorted(roots):
+        path = root / name
+        if not path.is_file() or path.resolve() != path:
+            raise ValueError(f"Missing or symlink rule: {name!r}")
+        text = path.read_text(encoding="utf-8")
+        if not text.strip():
+            raise ValueError(f"Empty rule: {name!r}")
+        sizes[name] = len(text)
+        if len(text) > RULE_LIMIT:
+            raise ValueError(f"Rule exceeds {RULE_LIMIT} characters: {name!r}")
+        # Scan both visible Markdown and examples conservatively. Rules must not
+        # link local docs or other scopes; Bugbot selects scopes by changed paths.
+        targets = set(markdown_targets(text)) | set(markdown_targets(text, coverage=True))
+        for target in targets:
+            url = urlsplit(target)
+            if not url.scheme and not url.netloc and url.path:
+                raise ValueError(f"Local rule link is not allowed in {name!r}: {target!r}; "
+                                 "keep detailed-document links in the local review guide")
     total = sum(sizes.values())
     if total > TOTAL_LIMIT:
         raise ValueError(f"Rule total {total} exceeds {TOTAL_LIMIT} characters")
@@ -137,8 +111,9 @@ def main():
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Bugbot rules FAILED: {error}", file=sys.stderr)
         return 1
-    print(f"Bugbot rules PASS: {len(sizes)} documents, {sum(sizes.values())}/{TOTAL_LIMIT} characters; "
-          f"largest {max(sizes.values())}/{RULE_LIMIT}; root and link validation complete")
+    print(f"Bugbot rules PASS: {len(sizes)} core/scoped files, "
+          f"{sum(sizes.values())}/{TOTAL_LIMIT} characters; "
+          f"largest {max(sizes.values())}/{RULE_LIMIT}; no local document expansion")
     return 0
 
 

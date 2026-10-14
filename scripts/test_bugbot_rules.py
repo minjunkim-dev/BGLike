@@ -1,4 +1,4 @@
-"""Reject oversized or unreachable Bugbot rules using real tracked documents."""
+"""Exercise rule budgets, scoped coverage, and unwanted context expansion."""
 
 from pathlib import Path
 import subprocess
@@ -6,25 +6,17 @@ import sys
 import tempfile
 import unittest
 
-from check_bugbot_rules import ROOT_RULE, check_rules
-
-
-REQUIRED = {
-    "AGENTS.md", "docs/CI.md", "docs/coding-standards.md",
-    "docs/COMBAT_UIUX.md", "docs/M1_VERIFICATION.md",
-}
+from check_bugbot_rules import REQUIRED, ROOT_RULE, check_rules
 
 
 class BugbotRulesTests(unittest.TestCase):
     def setUp(self):
-        self.folder = tempfile.TemporaryDirectory()
-        self.addCleanup(self.folder.cleanup)
-        self.root = Path(self.folder.name).resolve()
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.root = Path(folder.name).resolve()
         subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
-        self.links = "\n".join(f"[{name}](../{name})" for name in sorted(REQUIRED))
-        self.write(ROOT_RULE, self.links)
         for name in REQUIRED:
-            self.write(name, "rule\n")
+            self.write(name, "핵심 규칙\n")
 
     def write(self, name, text, tracked=True):
         path = self.root / name
@@ -33,126 +25,90 @@ class BugbotRulesTests(unittest.TestCase):
         if tracked:
             subprocess.run(["git", "add", "--", name], cwd=self.root, check=True)
 
-    def test_normal_rules_count_characters_and_deduplicate_cycles(self):
-        self.write("AGENTS.md", "한글\n[shared](docs/CI.md)\n[root](.cursor/BUGBOT.md)")
-        self.write(ROOT_RULE, self.links + "\n[duplicate](../docs/CI.md)")
+    def test_only_core_and_scoped_rules_count_not_large_detailed_docs(self):
+        self.write("docs/detail.md", "x" * 100_001)
         sizes = check_rules(self.root)
-        self.assertEqual(set(sizes), REQUIRED | {ROOT_RULE})
-        self.assertEqual(sizes["AGENTS.md"], len((self.root / "AGENTS.md").read_text()))
+        self.assertEqual(set(sizes), REQUIRED)
+        self.assertEqual(sizes[ROOT_RULE], len("핵심 규칙\n"))
 
-    def test_core_only_root_does_not_require_detailed_documents(self):
-        self.write(ROOT_RULE, "핵심 리뷰 규칙\n")
-        self.assertEqual(check_rules(self.root), {ROOT_RULE: len("핵심 리뷰 규칙\n")})
+    def test_individual_boundary_and_one_extra_character(self):
+        self.write(ROOT_RULE, "x" * 30_000)
+        self.assertEqual(check_rules(self.root)[ROOT_RULE], 30_000)
+        self.write(ROOT_RULE, "x" * 30_001)
+        with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
+            check_rules(self.root)
 
     def test_total_boundary_and_one_extra_character(self):
         remaining = 95_000 - sum(check_rules(self.root).values())
-        for name in sorted(REQUIRED):
-            text = (self.root / name).read_text()
-            extra = min(remaining, 30_000 - len(text))
-            self.write(name, text + "x" * extra)
+        for i in range(4):
+            extra = min(remaining, 30_000)
+            self.write(f"area{i}/.cursor/BUGBOT.md", "x" * extra)
             remaining -= extra
         self.assertEqual(remaining, 0)
         self.assertEqual(sum(check_rules(self.root).values()), 95_000)
-        self.write("docs/coding-standards.md", (self.root / "docs/coding-standards.md").read_text() + "x")
+        self.write(ROOT_RULE, "핵심 규칙\nx")
         with self.assertRaisesRegex(ValueError, "total 95001 exceeds"):
             check_rules(self.root)
 
-    def test_individual_boundary_and_one_extra_character(self):
-        self.write("AGENTS.md", "x" * 30_000)
-        self.assertEqual(check_rules(self.root)["AGENTS.md"], 30_000)
-        self.write("AGENTS.md", "x" * 30_001)
-        with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
-            check_rules(self.root)
-
-
-
-    def test_reference_links_fragment_and_percent_encoded_path(self):
-        self.write("docs/space name.mdc", "extra rule")
-        self.write(ROOT_RULE, self.links + '\n[extra][Rule File]\n[rule file]: <../docs/space%20name.mdc#part> "title"')
-        self.assertIn("docs/space name.mdc", check_rules(self.root))
-
-    def test_code_examples_and_images_do_not_add_rules(self):
-        self.write(ROOT_RULE, self.links + "\n`[inline](../missing.md)`\n```md\n[fence](../missing.md)\n```\n"
-                   "![image](../missing.md)")
-        self.assertEqual(set(check_rules(self.root)), REQUIRED | {ROOT_RULE})
-
-    def test_tracked_code_example_rules_are_budgeted_conservatively(self):
-        self.write("extra.md", "x" * 30_001)
-        self.write(ROOT_RULE, self.links + "\n`[example](../extra.md)`")
-        with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
-            check_rules(self.root)
-
-    def test_reference_example_cannot_shadow_a_live_oversized_rule(self):
-        self.write("extra.md", "x" * 30_001)
-        self.write(ROOT_RULE, self.links + "\n```md\n[extra]: https://example.com/example.md\n```\n\n"
-                   "[extra]: ../extra.md\n\n[extra]\n")
-        with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
-            check_rules(self.root)
-
-    def test_multiline_nested_list_and_parenthesized_links_cannot_hide_oversize_rules(self):
-        for link in ["[new\n rules](../extra(copy).md)",
-                     "[new](../extra(copy).md)", "[new](../extra\\(copy\\).md)",
-                     "- rules\n    - [new](../extra(copy).md)",
-                     "[outer [inner] label](../extra(copy).md)"]:
-            with self.subTest(link=link):
-                self.write("extra(copy).md", "x" * 30_001)
-                self.write(ROOT_RULE, self.links + "\n" + link)
-                with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
+    def test_missing_untracked_deleted_empty_and_symlink_rules(self):
+        for name in REQUIRED:
+            with self.subTest(name=name):
+                (self.root / name).unlink()
+                with self.assertRaisesRegex(ValueError, "Missing or symlink"):
                     check_rules(self.root)
+                self.write(name, "핵심 규칙\n")
+        subprocess.run(["git", "rm", "--cached", "--", ROOT_RULE], cwd=self.root,
+                       check=True, stdout=subprocess.DEVNULL)
+        with self.assertRaisesRegex(ValueError, "Missing tracked"):
+            check_rules(self.root)
+        self.write(ROOT_RULE, " \n")
+        with self.assertRaisesRegex(ValueError, "Empty rule"):
+            check_rules(self.root)
+        (self.root / ROOT_RULE).unlink()
+        self.write("docs/detail.md", "detail")
+        (self.root / ROOT_RULE).symlink_to(self.root / "docs/detail.md")
+        subprocess.run(["git", "add", "--", ROOT_RULE], cwd=self.root, check=True)
+        with self.assertRaisesRegex(ValueError, "Missing or symlink"):
+            check_rules(self.root)
 
-
-    def test_unmatched_code_spans_do_not_hide_live_links_across_blocks(self):
-        for text in ["`literal\n\n[new](../extra.md)\n\n`literal",
-                     "``literal\n[new](../extra.md)\n`literal",
-                     "`literal\n```text\nexample\n```\n[new](../extra.md)\n`literal"]:
+    def test_local_links_cannot_expand_context_or_cross_scopes(self):
+        for text in ["[detail](../docs/detail.md)", "[missing](../missing.md)",
+                     "[escape](../../outside.md)", "[absolute](/tmp/detail.md)",
+                     "[scope](../area/.cursor/BUGBOT.md)",
+                     "[multi\nline](../detail(copy).md)",
+                     "[outer [inner]](../detail\\(copy\\).md)",
+                     "[ref][DETAIL]\n[detail]: <../docs/detail%20name.md#part>",
+                     "`[example](../detail.md)`", "```md\n[x](../detail.md)\n```",
+                     "<!-- [example](../detail.md) -->"]:
             with self.subTest(text=text):
-                self.write("extra.md", "x" * 30_001)
-                self.write(ROOT_RULE, self.links + "\n" + text)
-                with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
+                self.write(ROOT_RULE, text)
+                with self.assertRaisesRegex(ValueError, "Local rule link"):
                     check_rules(self.root)
 
-    def test_nested_roots_count_even_without_root_link(self):
-        self.write("scenes/.cursor/BUGBOT.md", "[extra](../../extra.md)")
-        self.write("extra.md", "x" * 30_001)
+    def test_example_reference_cannot_shadow_a_visible_local_link(self):
+        self.write(ROOT_RULE, "```md\n[x]: https://example.com/example.md\n```\n"
+                   "[x]: ../detail.md\n[x]\n")
+        with self.assertRaisesRegex(ValueError, "Local rule link"):
+            check_rules(self.root)
+
+    def test_nested_rules_checked_without_global_links(self):
+        self.write("extra/.cursor/BUGBOT.md", "x" * 30_001)
         with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
             check_rules(self.root)
-
-
-    def test_missing_untracked_and_symlink_documents_fail(self):
-        for kind in ["missing", "untracked", "symlink"]:
-            with self.subTest(kind=kind):
-                self.write(ROOT_RULE, self.links + "\n[extra](../extra.md)")
-                extra = self.root / "extra.md"
-                if extra.exists() or extra.is_symlink():
-                    extra.unlink()
-                if kind == "untracked":
-                    self.write("extra.md", "untracked", tracked=False)
-                elif kind == "symlink":
-                    extra.symlink_to(self.root / "AGENTS.md")
-                    subprocess.run(["git", "add", "extra.md"], cwd=self.root, check=True)
-                with self.assertRaisesRegex(ValueError, "Missing, untracked or symlink"):
-                    check_rules(self.root)
-
-    def test_repository_escape_is_rejected(self):
-        self.write(ROOT_RULE, self.links + "\n[outside](../../outside.md)")
-        with self.assertRaisesRegex(ValueError, "escapes repository"):
+        self.write("extra/.cursor/BUGBOT.md", "[detail](../../detail.md)")
+        with self.assertRaisesRegex(ValueError, "Local rule link"):
             check_rules(self.root)
 
-    def test_missing_root_and_deleted_required_file_fail(self):
-        (self.root / ROOT_RULE).unlink()
-        with self.assertRaisesRegex(ValueError, "Missing, untracked or symlink"):
-            check_rules(self.root)
-        self.write(ROOT_RULE, self.links)
-        (self.root / "docs/COMBAT_UIUX.md").unlink()
-        with self.assertRaisesRegex(ValueError, "Missing, untracked or symlink"):
-            check_rules(self.root)
+    def test_external_reference_and_fragment_do_not_import_docs(self):
+        self.write(ROOT_RULE, "[official](https://cursor.com/docs/bugbot)\n[here](#rules)\n")
+        self.assertIn(ROOT_RULE, check_rules(self.root))
 
-    def test_cli_returns_nonzero_for_missing_root(self):
-        (self.root / ROOT_RULE).unlink()
+    def test_cli_fails_closed_for_unwanted_expansion(self):
+        self.write(ROOT_RULE, "[detail](../docs/detail.md)")
         result = subprocess.run([sys.executable, str(Path(__file__).with_name("check_bugbot_rules.py"))],
                                 cwd=self.root, text=True, capture_output=True)
         self.assertEqual(result.returncode, 1)
-        self.assertIn("Missing, untracked or symlink", result.stderr)
+        self.assertIn("Local rule link", result.stderr)
         self.assertNotIn("Traceback", result.stderr)
 
 
