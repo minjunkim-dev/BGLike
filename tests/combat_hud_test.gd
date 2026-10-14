@@ -611,8 +611,7 @@ func _has_tooltip(node: Node, text: String) -> bool:
 func _test_results_and_restart() -> void:
 	for unit: CombatUnit in units:
 		if not unit.is_ally:
-			unit.hit_points = 0
-			turns.remove_unit(unit)
+			actions.incapacitate(unit)
 	battle.call("_update_turn_ui")
 	_check(hud.get_node("Result").visible and hud.result_label.text == "승리", "전멸시 승리 창")
 	var before: int = turns.round_number
@@ -639,8 +638,7 @@ func _test_results_and_restart() -> void:
 			"같은 막은 HP를 유지하고 물약을 지급하지 않음")
 	for unit: CombatUnit in units:
 		if unit.is_ally:
-			unit.hit_points = 0
-			turns.remove_unit(unit)
+			actions.incapacitate(unit)
 	battle.call("_update_turn_ui")
 	_check(hud.get_node("Result").visible and hud.result_label.text == "패배", "아군 전멸시 패배 창")
 

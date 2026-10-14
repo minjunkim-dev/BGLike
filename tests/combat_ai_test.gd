@@ -113,8 +113,7 @@ func _test_warrior() -> void:
 		"첫 대상 탈락 후 남은 인접 대상에게 몰아치기 공격")
 	var last: Fixture = _fixture()
 	last.units[0].hit_points = 1
-	last.units[1].hit_points = 0
-	last.turns.remove_unit(last.units[1])
+	last.actions.incapacitate(last.units[1])
 	last.actions.dice.seed = 2
 	await ai.play_turn(last.units[2], last.actions)
 	_check(last.actions.is_over() and last.units[2].surge_left == 1,
