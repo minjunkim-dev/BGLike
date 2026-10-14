@@ -1,6 +1,8 @@
 extends SceneTree
 ## M1 3단계의 판정 수학, 상태 조건과 실제 클릭 경로를 검사한다.
 
+const ScriptedDice = preload("res://tests/scripted_dice.gd")
+
 var _checks: int = 0
 var _failures: int = 0
 var _created_units: Array[CombatUnit] = []
@@ -23,6 +25,7 @@ func _run() -> void:
 	await _test_scene_input()
 	for unit: CombatUnit in _created_units:
 		unit.free()
+	_check(ScriptedDice.mismatches.is_empty(), "준비한 주사위 값과 실제 굴림 요청 일치 " + str(ScriptedDice.mismatches))
 	print("Combat checks: %d checks, %d failures" % [_checks, _failures])
 	quit(0 if _failures == 0 else 1)
 
@@ -34,20 +37,11 @@ func _check(condition: bool, message: String) -> void:
 		push_error(message)
 
 
-func _dice_for(expected: Array[int]) -> RandomNumberGenerator:
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
-	for seed_value: int in range(100000):
-		dice.seed = seed_value
-		var matches: bool = true
-		for value: int in expected:
-			if dice.randi_range(1, 20) != value:
-				matches = false
-				break
-		if matches:
-			dice.seed = seed_value
-			return dice
-	_check(false, "주사위 fixture를 찾지 못함")
-	return dice
+func _dice_for(expected: Array[int]) -> CombatDice:
+	var sides: Array[int] = []
+	sides.resize(expected.size())
+	sides.fill(20)
+	return ScriptedDice.new(expected, sides)
 
 
 func _unit(kind: CombatUnit.Kind, ally: bool, cell: Vector2i) -> CombatUnit:
@@ -186,7 +180,7 @@ func _test_scene_input() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var units: Array[CombatUnit] = battle.get("units")
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
 	var hp_before: int = units[2].hit_points

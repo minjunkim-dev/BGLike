@@ -11,7 +11,7 @@ signal reaction_decided(use_reaction: bool)
 
 var units: Array[CombatUnit] = []
 var turns: CombatTurns
-var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+var dice: CombatDice = CombatDice.new()
 var map_size: Vector2i = Vector2i(10, 10)
 # M1 전사·궁수 내성 DC: 8 + 숙련2 + 공격 능력치3.
 var save_dc: int = 13
@@ -263,7 +263,7 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 	CombatActionRules.spend_use(actor, action)
 	match action:
 		"second_wind":
-			_heal(actor, dice.randi_range(1, 10) + 1, "숨 고르기")
+			_heal(actor, dice.roll(10) + 1, "숨 고르기")
 		"surge":
 			actor.action_left = 1
 			logged.emit("%s 몰아치기: 행동 회복" % actor.get_display_name())
@@ -271,7 +271,7 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 			actor.disengaged = true
 			logged.emit("%s 물러서며 쏘기: 이번 턴 이동은 기회 공격 제외" % actor.get_display_name())
 		"potion":
-			_heal(actor, dice.randi_range(1, 4) + dice.randi_range(1, 4) + 2, "물약")
+			_heal(actor, dice.roll(4) + dice.roll(4) + 2, "물약")
 	changed.emit()
 	return true
 
@@ -387,11 +387,11 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	var count: int = 2 if last_attack.critical else 1
 	var sides: int = 8 if actor.kind == CombatUnit.Kind.WARRIOR else 6
 	for index: int in range(count):
-		last_damage_rolls.append(dice.randi_range(1, sides))
+		last_damage_rolls.append(dice.roll(sides))
 	var has_mark_damage: bool = actor.marked_target == target
 	if has_mark_damage:
 		for index: int in range(count):
-			last_damage_rolls.append(dice.randi_range(1, 6))
+			last_damage_rolls.append(dice.roll(6))
 	var damage_bonus: int = actor.get_damage_bonus()
 	last_damage = damage_bonus
 	for rolled: int in last_damage_rolls:

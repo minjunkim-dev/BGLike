@@ -42,7 +42,7 @@ func begin_stage() -> void:
 	_victory_recorded = false
 
 
-func record_victory(loot: CombatLoot, monster_count: int, dice: RandomNumberGenerator) -> void:
+func record_victory(loot: CombatLoot, monster_count: int, dice: CombatDice) -> void:
 	if _victory_recorded:
 		return
 	rewards = loot.roll_rewards(monster_count, dice, act_number())

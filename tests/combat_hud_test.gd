@@ -1,6 +1,8 @@
 extends SceneTree
 ## 실제 장면의 화면 상태, 입력 연결, 전투 종료와 재시작을 검사한다.
 
+const ScriptedDice = preload("res://tests/scripted_dice.gd")
+
 var checks: int = 0
 var failures: int = 0
 var battle: Node2D
@@ -34,7 +36,7 @@ func _run() -> void:
 	turns = battle.get("turns") as CombatTurns
 	actions = battle.get("actions") as CombatActions
 	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
 	units[2].cell = Vector2i(4, 8)
@@ -60,6 +62,7 @@ func _run() -> void:
 	await create_timer(0.08).timeout
 	current_scene.queue_free()
 	await process_frame
+	_check(ScriptedDice.mismatches.is_empty(), "준비한 주사위 값과 실제 굴림 요청 일치 " + str(ScriptedDice.mismatches))
 	print("Combat HUD: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
 
@@ -204,7 +207,7 @@ func _test_log_and_status() -> void:
 	units[2].is_stunned = false
 	units[2].reaction_left = 0
 	units[2].hit_points = 12
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
 	turns.select_unit(units[1])
@@ -275,7 +278,7 @@ func _test_roll_popups() -> void:
 	target.hit_points = target.get_max_hit_points()
 	target.is_stunned = false
 	warrior.bonus_action_left = 1
-	var expected_dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var expected_dice: CombatDice = CombatDice.new()
 	expected_dice.seed = 100
 	var contest: CombatChecks.ContestResult = CombatChecks.contest(
 		warrior.get_attribute(CombatUnit.Attribute.STRENGTH),
@@ -302,12 +305,7 @@ func _test_roll_popups() -> void:
 	units[1].action_left = 1
 	units[1].shock_left = 1
 	units[1].marked_target = null
-	for seed_value: int in range(1000):
-		actions.dice.seed = seed_value
-		var roll: int = actions.dice.randi_range(1, 20)
-		if roll >= 11 and roll < 20:
-			actions.dice.seed = seed_value
-			break
+	actions.dice = ScriptedDice.new([15], [20])
 	await actions.attack(units[1], target, true)
 	var save_total: String = hud.message_label.text.get_slice("정신 내성: ", 1).get_slice(" = ", 1).get_slice(" /", 0)
 	_check(save_total.is_valid_int() and _has_feedback(target, "정신 내성 %s" % save_total),
@@ -321,11 +319,7 @@ func _test_roll_popups() -> void:
 	target.hit_points = target.get_max_hit_points()
 	target.reaction_left = 1
 	target.parry_left = 2
-	for seed_value: int in range(1000):
-		actions.dice.seed = seed_value
-		if actions.dice.randi_range(1, 20) == 11:
-			actions.dice.seed = seed_value
-			break
+	actions.dice = ScriptedDice.new([11], [20])
 	await actions.attack(warrior, target)
 	var parry_text: String = ""
 	for text: String in emitted:
@@ -352,16 +346,8 @@ func _has_two_dice_log(mode: String) -> bool:
 	return false
 
 
-func _dice_for_miss() -> RandomNumberGenerator:
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
-	for value: int in range(1000):
-		dice.seed = value
-		var first: int = dice.randi_range(1, 20)
-		var second: int = dice.randi_range(1, 20)
-		if mini(first, second) < 11:
-			dice.seed = value
-			return dice
-	return dice
+func _dice_for_miss() -> CombatDice:
+	return ScriptedDice.new([10, 10], [20, 20])
 
 
 func _test_layout() -> void:
@@ -503,11 +489,7 @@ func _test_guidance() -> void:
 	await _click(point)
 	_check(battle.get("preview_target") == units[2] and units[0].action_left == 1,
 		"이동 후 적 클릭으로 공격 미리보기")
-	for seed_value: int in range(1000):
-		actions.dice.seed = seed_value
-		if actions.dice.randi_range(1, 20) == 1:
-			actions.dice.seed = seed_value
-			break
+	actions.dice = ScriptedDice.new([1], [20])
 	await _click(point)
 	_check(units[0].action_left == 0 and units[0].movement_left == 1 and units[2].hit_points == 12,
 		"같은 적 재클릭은 공격만 소비하고 남은 이동 유지")
@@ -650,7 +632,7 @@ func _reset_units() -> void:
 		unit.is_stunned = false
 		unit.marked_target = null
 		unit.parry_left = 2
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
 
@@ -860,11 +842,7 @@ func _test_action_animations() -> void:
 				while turns.current_unit != actor:
 					turns.end_turn()
 			battle.call("_update_turn_ui")
-			for seed_value: int in range(1000):
-				actions.dice.seed = seed_value
-				if actions.dice.randi_range(1, 20) == 20:
-					actions.dice.seed = seed_value
-					break
+			actions.dice = ScriptedDice.new([20], [20])
 			var hp: int = target.hit_points
 			finished[0] = false
 			_animated_attack(actor, target, shock, finished)
@@ -899,11 +877,7 @@ func _test_action_animations() -> void:
 	while turns.current_unit != units[3]:
 		turns.end_turn()
 	battle.call("_update_turn_ui")
-	for seed_value: int in range(1000):
-		actions.dice.seed = seed_value
-		if actions.dice.randi_range(1, 20) == 20:
-			actions.dice.seed = seed_value
-			break
+	actions.dice = ScriptedDice.new([20], [20])
 	var reactions: Array[int] = [0]
 	var on_reaction: Callable = func(kind: String, _prompt: String) -> void:
 		var arrow: Node = battle.get_node_or_null("Arrow")
@@ -972,11 +946,7 @@ func _test_reaction_flow() -> void:
 	_check(units[0].reaction_left == 1 and units[3].cell == Vector2i(6, 4)
 		and not hud.reaction_dialog.visible and not actions.busy, "넘기기는 반응 유지와 이동 재개")
 	units[3].cell = Vector2i(5, 4)
-	for seed_value: int in range(1000):
-		actions.dice.seed = seed_value
-		if actions.dice.randi_range(1, 20) == 1:
-			actions.dice.seed = seed_value
-			break
+	actions.dice = ScriptedDice.new([1], [20])
 	messages.clear()
 	await actions.move_to(units[3], Vector2i(6, 4))
 	await process_frame

@@ -68,7 +68,7 @@ func _test_async_transition() -> void:
 	battle.set_process(false)
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(battle.get("units"), dice)
 	hud.end_button.pressed.emit()
@@ -112,7 +112,7 @@ func _test_act_progress() -> void:
 	progress.advance()
 	_check(progress.graduated and progress.stage_index == 8, "마지막 스테이지 정비 뒤 3막 졸업")
 	var loot: CombatLoot = CombatLoot.new()
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 7
 	progress.begin_stage()
 	progress.record_victory(loot, 2, dice)

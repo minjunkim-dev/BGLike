@@ -102,7 +102,7 @@ func _start_stage(restore_act: bool) -> void:
 	selected_action = "attack"
 	hud.begin_stage(progress.act_number(), progress.stage_in_act())
 	actions.initialize(units, turns)
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.randomize()
 	var living: Array[CombatUnit] = []
 	for unit: CombatUnit in units:
@@ -263,7 +263,7 @@ func preview_enemy(target: CombatUnit) -> bool:
 
 func _on_actions_changed() -> void:
 	if actions.is_over() and actions.is_victory():
-		var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+		var dice: CombatDice = CombatDice.new()
 		dice.randomize()
 		progress.record_victory(loot, units.size() - party.size(), dice)
 	_update_turn_ui()

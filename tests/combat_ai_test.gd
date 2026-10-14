@@ -38,7 +38,7 @@ func _fixture(archer: bool = false) -> Fixture:
 		unit.cell = [Vector2i(5, 4), Vector2i(8, 8), Vector2i(4, 4), Vector2i(0, 0)][index]
 		unit.hit_points = unit.get_max_hit_points()
 		f.units.append(unit)
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	f.turns.start(f.units, dice)
 	f.actions.initialize(f.units, f.turns)
@@ -263,7 +263,7 @@ func _test_scene() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
 	var prompts: Array[int] = [0]
@@ -355,7 +355,7 @@ func _test_default_scene() -> void:
 	for unit: CombatUnit in units:
 		_check(unit.cell == unit.start_cell and unit.hit_points == unit.get_max_hit_points(),
 			"기본 배치와 최대 HP에서 전투 시작")
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
 	actions.dice.seed = 33
