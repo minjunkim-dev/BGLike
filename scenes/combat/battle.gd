@@ -1,13 +1,12 @@
 extends Node2D
 ## 전투 화면과 3막 진행. 적 묶음은 이니셔티브 순서대로 실행한다.
 
-const STAGES_PER_ACT: int = 3
 const MOVE_STEP_TIME: float = 0.09
 const ARROW_FLIGHT_TIME: float = 0.16
 
 @export var stages: Array[CombatStage] = []
 
-var stage_index: int = 0
+var progress: CombatActProgress
 var map_size: Vector2i
 var party: Array[CombatUnit] = []
 
@@ -24,9 +23,6 @@ var movement_cells: Array[Vector2i] = []
 var _last_ally: CombatUnit
 var _inspected_unit: CombatUnit
 var loot: CombatLoot = CombatLoot.new()
-var rewards: Array[Dictionary] = []
-var _rewards_generated: bool = false
-var _graduated: bool = false
 var preparation: CombatPreparation
 
 @onready var map: TileMapLayer = $Map
@@ -36,6 +32,7 @@ var preparation: CombatPreparation
 
 func _ready() -> void:
 	assert(stages.size() == 9, "전투 진행에는 스테이지 데이터9개가 필요합니다.")
+	progress = CombatActProgress.new(stages.size())
 	# 파티 노드를 유지해 같은 막의 HP와 스킬 횟수를 이어 간다.
 	for child: Node in $Units.get_children():
 		party.append(child as CombatUnit)
@@ -49,7 +46,7 @@ func _ready() -> void:
 	hud.action_selected.connect(_on_action_selected)
 	hud.reaction_selected.connect(actions.resolve_reaction)
 	hud.restart_requested.connect(_restart)
-	actions.changed.connect(_update_turn_ui)
+	actions.changed.connect(_on_actions_changed)
 	actions.logged.connect(hud.add_log)
 	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void: unit.show_feedback(text))
 	actions.hit_landed.connect($HitSound.play)
@@ -66,10 +63,9 @@ func _exit_tree() -> void:
 
 
 func _start_stage(restore_act: bool) -> void:
-	rewards.clear()
-	_rewards_generated = false
-	var stage: CombatStage = stages[stage_index]
-	assert(stage != null, "스테이지 데이터가 비어 있습니다: %d" % (stage_index + 1))
+	progress.begin_stage()
+	var stage: CombatStage = stages[progress.stage_index]
+	assert(stage != null, "스테이지 데이터가 비어 있습니다: %d" % (progress.stage_index + 1))
 	assert(stage.ally_cells.size() == party.size(),
 		"아군 시작 칸 수가 파티 크기와 다릅니다: " + stage.resource_path)
 	for unit: CombatUnit in party:
@@ -92,7 +88,7 @@ func _start_stage(restore_act: bool) -> void:
 		party[index].cell = stage.ally_cells[index]
 	var enemies: Node = stage.enemies.instantiate()
 	for child: Node in enemies.get_children():
-		(child as CombatUnit).act_number = stage_index / STAGES_PER_ACT + 1
+		(child as CombatUnit).act_number = progress.act_number()
 	$Units.add_child(enemies)
 	for child: Node in enemies.get_children():
 		var unit: CombatUnit = child as CombatUnit
@@ -104,7 +100,7 @@ func _start_stage(restore_act: bool) -> void:
 	_inspected_unit = null
 	_clear_preview()
 	selected_action = "attack"
-	hud.begin_stage(stage_index / STAGES_PER_ACT + 1, stage_index % STAGES_PER_ACT + 1)
+	hud.begin_stage(progress.act_number(), progress.stage_in_act())
 	actions.initialize(units, turns)
 	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
 	dice.randomize()
@@ -120,26 +116,24 @@ func _restart() -> void:
 	if not actions.is_over() or actions.busy or _enemy_turn_running:
 		return
 	if _all_enemies_down():
-		if _graduated or preparation.visible:
+		if progress.graduated or preparation.visible:
 			return
-		preparation.open_rewards(loot, party, rewards, stage_index == stages.size() - 1,
-			stage_index % STAGES_PER_ACT == STAGES_PER_ACT - 1)
-		hud.get_node("Result").hide()
+		preparation.open_rewards(loot, party, progress.rewards, progress.is_final_stage(),
+			progress.is_last_in_act())
+		hud.hide_result()
 		return
-	else:
-		stage_index -= stage_index % STAGES_PER_ACT
-	_start_stage(stage_index % STAGES_PER_ACT == 0)
+	progress.restart_act()
+	_start_stage(progress.starts_act())
 
 
 func _finish_preparation() -> void:
 	if not actions.is_over() or actions.busy or _enemy_turn_running or not _all_enemies_down():
 		return
-	if stage_index == stages.size() - 1:
-		_graduated = true
+	progress.advance()
+	if progress.graduated:
 		_update_turn_ui()
 		return
-	stage_index += 1
-	_start_stage(stage_index % STAGES_PER_ACT == 0)
+	_start_stage(progress.starts_act())
 
 
 func _process(_delta: float) -> void:
@@ -267,6 +261,14 @@ func preview_enemy(target: CombatUnit) -> bool:
 	return true
 
 
+func _on_actions_changed() -> void:
+	if actions.is_over() and _all_enemies_down():
+		var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+		dice.randomize()
+		progress.record_victory(loot, units.size() - party.size(), dice)
+	_update_turn_ui()
+
+
 func _on_turn_changed() -> void:
 	_inspected_unit = null
 	_clear_preview()
@@ -334,11 +336,7 @@ func _update_turn_ui() -> void:
 	if _inspected_unit != null and _inspected_unit.hit_points <= 0:
 		_inspected_unit = null
 	for unit: CombatUnit in units:
-		unit.has_mark = false
-		for source: CombatUnit in units:
-			if source.hit_points > 0 and source.marked_target == unit:
-				unit.has_mark = true
-				break
+		unit.has_mark = actions.is_marked(unit)
 		if not unit.is_moving:
 			unit.position = map.map_to_local(unit.cell)
 		unit.visible = unit.hit_points > 0
@@ -362,30 +360,22 @@ func _update_turn_ui() -> void:
 			turns.current_unit, preview_target, units)
 		hud.show_attack_preview(preview_target, preview)
 		if selected_action == "mark":
-			hud.preview_label.text = "표식 대상" if actions.can_target(turns.current_unit, preview_target, "mark") else "표식을 사용할 수 없음"
+			hud.show_target_note("표식 대상" if actions.can_target(turns.current_unit, preview_target, "mark") else "표식을 사용할 수 없음")
 		elif selected_action == "shove":
 			if actions.can_target(turns.current_unit, preview_target, "shove"):
 				var cell: Vector2i = actions.shove_destination(turns.current_unit, preview_target)
-				hud.preview_label.text = "밀려날 칸: %d, %d" % [cell.x, cell.y]
+				hud.show_target_note("밀려날 칸: %d, %d" % [cell.x, cell.y])
 			else:
-				hud.preview_label.text = "밀치기를 사용할 수 없음"
+				hud.show_target_note("밀치기를 사용할 수 없음")
 	elif _inspected_unit != null:
 		hud.show_unit(_inspected_unit)
 	var showing_move: bool = selected_action == "move" or not preview_path.is_empty()
 	hud.refresh_actions(actions, selected_action, _last_ally)
-	hud.preview_label.visible = not showing_move
+	hud.show_move_mode(showing_move)
 	if actions.is_over():
-		hud.round_label.text = "승리" if _all_enemies_down() else "패배"
-		if _all_enemies_down() and not _rewards_generated:
-			var monster_count: int = units.size() - party.size()
-			var reward_dice: RandomNumberGenerator = RandomNumberGenerator.new()
-			reward_dice.randomize()
-			rewards = loot.roll_rewards(monster_count, reward_dice,
-				stage_index / STAGES_PER_ACT + 1)
-			_rewards_generated = true
+		hud.show_outcome(_all_enemies_down())
 		if not preparation.visible:
-			hud.show_result(_all_enemies_down(), _graduated)
-			hud.restart_button.disabled = _enemy_turn_running or actions.busy
+			hud.show_result(_all_enemies_down(), progress.graduated, _enemy_turn_running or actions.busy)
 	queue_redraw()
 
 

@@ -207,10 +207,10 @@ func _test_reward_flow() -> void:
 				unit.hit_points = 0
 				(battle.get("turns") as CombatTurns).remove_unit(unit)
 		(battle.get("actions") as CombatActions).changed.emit()
-		var actual_rewards: Array[Dictionary] = battle.get("rewards")
+		var actual_rewards: Array[Dictionary] = (battle.get("progress") as CombatActProgress).rewards
 		_check(actual_rewards.size() >= 1 and actual_rewards.size() <= 3, "실제 승리에서 적2명 기준 드랍")
 		(battle.get("actions") as CombatActions).changed.emit()
-		_check(actual_rewards == battle.get("rewards"), "결과 갱신은 드랍을 다시 굴리지 않음")
+		_check(actual_rewards == (battle.get("progress") as CombatActProgress).rewards, "결과 갱신은 드랍을 다시 굴리지 않음")
 		# 입력 검사를 재현할 고정 보상. 드랍 생성은 위와 모델 검사에서 별도로 확인한다.
 		actual_rewards.clear()
 		actual_rewards.append({"kind": "armor", "name": "검사 방어구",
@@ -220,7 +220,7 @@ func _test_reward_flow() -> void:
 		await _click(hud.restart_button)
 		var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
 		_check(preparation.visible and not preparation.maintaining, "승리 뒤 보상 화면 진입")
-		_check(battle.get("stage_index") == 0, "보상 확인은 다음 전투를 시작하지 않음")
+		_check((battle.get("progress") as CombatActProgress).stage_index == 0, "보상 확인은 다음 전투를 시작하지 않음")
 		_check(preparation.content.get_node("Item0").get_child_count() == 1,
 			"보상 확인 단계는 수치를 보여 주고 정비에서만 분배")
 		await _click(preparation.continue_button)
@@ -251,7 +251,7 @@ func _test_reward_flow() -> void:
 		await _click(preparation.continue_button)
 		preparation.discard_dialog.confirmed.emit()
 		await process_frame
-		_check(battle.get("stage_index") == 1 and actual_rewards.is_empty()
+		_check((battle.get("progress") as CombatActProgress).stage_index == 1 and actual_rewards.is_empty()
 			and not preparation.visible, "미수령 보상 폐기 뒤 다음 전투")
 		_check(party[1].hit_points == 0 and party[1].get_armor_class() == 16,
 			"같은 막 다음 전투는 전투 불능과 장비 유지")
@@ -273,9 +273,9 @@ func _test_reward_flow() -> void:
 			unit.hit_points = 0
 			turns.remove_unit(unit)
 		actions.changed.emit()
-		_check(battle.get("rewards").is_empty(), "패배는 드랍을 주지 않음")
+		_check((battle.get("progress") as CombatActProgress).rewards.is_empty(), "패배는 드랍을 주지 않음")
 		await _click(hud.restart_button)
-		_check(battle.get("stage_index") == 0 and party[0].potion_left == 2
+		_check((battle.get("progress") as CombatActProgress).stage_index == 0 and party[0].potion_left == 2
 			and party[1].potion_left == 1 and party[1].get_armor_class() == 16,
 			"막 재시작은 장비·남은 물약 유지, 소비한 물약 복구 없음")
 		_check(party[1].hit_points == 18, "실제 막 재시작에서 방어구 최대 HP 포함 부활")
@@ -289,7 +289,7 @@ func _test_scaled_combat() -> void:
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
-	battle.set("stage_index", 6)
+	(battle.get("progress") as CombatActProgress).stage_index = 6
 	battle.call("_start_stage", true)
 	var units: Array[CombatUnit] = battle.get("units")
 	var actor: CombatUnit = units[2]
@@ -338,7 +338,7 @@ func _test_scaled_combat() -> void:
 			unit.hit_points = 0
 			turns.remove_unit(unit)
 	actions.changed.emit()
-	var rewards: Array[Dictionary] = battle.get("rewards")
+	var rewards: Array[Dictionary] = (battle.get("progress") as CombatActProgress).rewards
 	_check(rewards.size() == 1 and rewards[0]["stats"]["max_hit_points"] >= 9
 		and rewards[0]["stats"]["max_hit_points"] <= 14
 		and rewards[0]["stats"]["armor_class"] >= 5,
@@ -418,7 +418,7 @@ func _test_accidental_advance() -> void:
 	var count: int = preparation.rewards.size()
 	await _click(preparation.continue_button)
 	await _click(preparation.continue_button)
-	_check(battle.get("stage_index") == 0 and preparation.rewards.size() == count,
+	_check((battle.get("progress") as CombatActProgress).stage_index == 0 and preparation.rewards.size() == count,
 		"정비 진입 버튼 연속 클릭은 미수령 보상을 바로 폐기하지 않음")
 	if preparation.has_node("Discard"):
 		var dialog: ConfirmationDialog = preparation.get_node("Discard") as ConfirmationDialog
@@ -444,6 +444,6 @@ func _test_accidental_advance() -> void:
 		key.pressed = false
 		dialog.push_input(key)
 		await process_frame
-		_check(battle.get("stage_index") == 1 and preparation.rewards.is_empty(), "명시적 폐기 확인 후 진행")
+		_check((battle.get("progress") as CombatActProgress).stage_index == 1 and preparation.rewards.is_empty(), "명시적 폐기 확인 후 진행")
 	main.queue_free()
 	await process_frame
