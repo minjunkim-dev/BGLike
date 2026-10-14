@@ -54,7 +54,7 @@ class GitHub:
 
 
 def inputs(version, sha):
-    if not re.fullmatch(r"v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)-(?:alpha|beta)\.[1-9][0-9]*", version):
+    if not re.fullmatch(r"v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)-(?:alpha-smoke|beta)\.[1-9][0-9]*", version):
         raise ValueError("Expected prerelease version")
     if not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError("Expected full lowercase commit SHA")
