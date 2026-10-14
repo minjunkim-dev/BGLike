@@ -128,8 +128,7 @@ def check_rules(root):
         raise ValueError(f"Required rules are not included from root: {sorted(missing)!r}")
     # Count all nested roots together, even if a particular PR visits fewer scopes.
     roots = {name for name in tracked if name == ROOT_RULE or name.endswith("/" + ROOT_RULE)}
-    closure(roots, coverage=True)
-    included = closure(roots)
+    included = closure(roots) | closure(roots, coverage=True)
     sizes = {name: len(texts[name]) for name in included}
     oversized = {name: size for name, size in sizes.items() if size > RULE_LIMIT}
     if oversized:

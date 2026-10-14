@@ -83,6 +83,13 @@ class BugbotRulesTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
             check_rules(self.root)
 
+    def test_reference_example_cannot_shadow_a_live_oversized_rule(self):
+        self.write("extra.md", "x" * 30_001)
+        self.write(ROOT_RULE, self.links + "\n```md\n[extra]: https://example.com/example.md\n```\n\n"
+                   "[extra]: ../extra.md\n\n[extra]\n")
+        with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
+            check_rules(self.root)
+
     def test_multiline_nested_list_and_parenthesized_links_cannot_hide_oversize_rules(self):
         for link in ["[new\n rules](../extra(copy).md)",
                      "[new](../extra(copy).md)", "[new](../extra\\(copy\\).md)",
