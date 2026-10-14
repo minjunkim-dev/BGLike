@@ -80,7 +80,7 @@
 |---|---|
 | [README](README.md) | 설치와 실행 |
 | 이 문서 | 참여 방법 요약 |
-| [AGENTS.md](AGENTS.md) | 에이전트와 사람이 지키는 Godot 작업 규칙, 검증 기준 |
+| [AGENTS.md](AGENTS.md) | 구현·리뷰 문서 길잡이와 승인 경계 |
 | [docs/WORKFLOW.md](docs/WORKFLOW.md) | Issue 운영, 검토와 병합, 에이전트 사용법 |
 | [docs/GIT_CONVENTIONS.md](docs/GIT_CONVENTIONS.md) | 브랜치 이름, 커밋 메시지 |
 | [코딩 규칙](docs/coding-standards.md), [독립 리뷰 절차](docs/agents/review.md) | Standards·Spec·Security 리뷰, 검사 근거와 Bugbot 수동 보조 리뷰 |
