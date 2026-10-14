@@ -78,3 +78,29 @@ GitHub 자동 병합 예약은 독립 리뷰 결과를 대상 SHA의 필수 체�
 실제 수동 시험은 적절한 PR에서 `bugbot run verbose=true`로 한 번 요청합니다. 요청 ID 또는 요청 코멘트 ID, 관측한 head, 규칙 포함 여부, 지적과 사용량을 기록합니다. 새 요약 코멘트를 직접 확인한 경우에만 출력 검증으로 기록합니다. `neutral`이나 지적 0건은 결함 부재의 증거가 아닙니다.
 
 로컬 작업자는 지적을 `실제 결함`, `오탐`, `판단 보류`로 분류합니다. 확실한 실제 결함만 승인된 범위 안에서 수정합니다. Bugbot 설정 파일 작성, 대시보드 반영과 실제 리뷰 출력을 각각 기록합니다.
+
+## Bugbot 입력과 로컬 문서 선택
+
+Bugbot에는 root `.cursor/BUGBOT.md`의 핵심 규칙과 변경 경로의 하위 `.cursor/BUGBOT.md`만 전달한다.
+규칙 파일에는 상세 문서·다른 영역 규칙으로 향하는 상대 Markdown 링크를 두지 않는다.
+상세 문서 원문을 복제하거나 모든 문서를 읽도록 일괄 지시하지 않는다.
+영역 규칙은 변경 경로에 따라 적용한다. root에서 모든 영역을 연결하지 않는다.
+
+로컬 독립 리뷰 에이전트는 `docs/coding-standards.md`와 티켓의 확정 완료 조건을 읽는다.
+그다음 변경 영역에 필요한 원문만 선택한다. 아래 표는 로컬 리뷰의 길잡이다. Bugbot 입력 목록이 아니다.
+
+| 변경 영역 | 로컬 리뷰가 선택할 상세 문서 |
+| --- | --- |
+| 게임·입력·화면 | `CONTEXT.md`, `docs/COMBAT_UIUX.md`, 관련 Issue가 연결한 기획 문서·ADR |
+| 게임 검사 | `docs/M1_VERIFICATION.md`의 과거 근거 범위, 현재 티켓의 합격 조건·재현 기록 |
+| GitHub·CI·Draft | `docs/CI.md`, `docs/DRAFT_RELEASE.md`, `docs/REPOSITORY_SETUP.md`, 엔진 잠금 값 |
+| 작업·검증 | `docs/WORKFLOW.md`, `docs/GIT_CONVENTIONS.md`, `docs/agents/domain.md` |
+| 문서·권리 | 변경한 기준 문서, `COPYRIGHT.md`, `THIRD_PARTY_NOTICES.md` |
+
+
+CI는 모든 추적된 root·영역 규칙을 합쳐 95,000자 이하인지 확인한다. 개별 규칙은 30,000자 이하로 유지한다.
+필수 규칙 파일 누락·빈 파일·symlink와 상세 문서의 로컬 링크도 거부한다.
+상세 문서 길이는 이 Bugbot 예산에 포함하지 않는다. 새 영역을 추가하면 필수 규칙 목록을 갱신한다.
+이 합계는 모든 영역을 더한 보수적인 값이다. 특정 PR의 서버 입력·팀 규칙·학습 규칙 전체를 증명하지 않는다.
+서버 포함·생략·잘림은 필요한 수동 리뷰의 `bugbot run verbose=true` 표로 확인한다.
+Manual Only·Autofix Off·On-demand Off를 유지한다. 이 정리로 새 Bugbot 실행이나 결제 설정 변경을 시작하지 않는다.
