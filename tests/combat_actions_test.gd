@@ -89,6 +89,9 @@ func _run() -> void:
 
 func _test_movement() -> void:
 	var f: Fixture = _fixture()
+	for action: String in CombatActionRules.USE_COUNTERS:
+		_check(CombatActionRules.USE_COUNTERS[action] in f.units[0],
+			"동작 횟수 필드가 유닛에 있음: " + action)
 	f.units[2].cell = Vector2i(9, 0)
 	var actor: CombatUnit = f.units[0]
 	_check(not f.actions.can_move(actor, actor.cell), "같은 칸 이동 거부")

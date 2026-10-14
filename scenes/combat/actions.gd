@@ -50,7 +50,7 @@ func is_marked(target: CombatUnit) -> bool:
 	return false
 
 
-## 남은 적이 없으면 승리다. 양편이 함께 전멸해도 승리로 본다.
+## 남은 적이 없으면 승리다.
 func is_victory() -> bool:
 	for unit: CombatUnit in units:
 		if not unit.is_ally and unit.hit_points > 0:
