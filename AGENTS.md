@@ -34,7 +34,6 @@
 - [COPYRIGHT](COPYRIGHT.md)를 따릅니다. 자체 코드에 별도의 재사용 라이선스를 추가하지 않습니다.
 - 외부 코드·자산은 원래 출처와 조건을 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)에 기록합니다.
 - 외부 기여의 권리와 구매 자산의 원본 공개 권한을 임의로 확정하지 않습니다.
-- GitHub Claude는 권한 확인·모델 검토·보고 게시를 분리합니다. 모델의 도구와 쓰기 토큰을 허용하지 않습니다. PR 코드를 Secret 작업에서 실행하지 않습니다.
 
 ## Code Review Rules
 

@@ -13,7 +13,7 @@
 - 작업할 Issue의 본문, 라벨과 코멘트를 읽습니다. Issue에 연결된 기획 문서도 직접 엽니다.
 - 새 Issue는 [Issue 양식](../../.github/ISSUE_TEMPLATE/task.md)의 `목표`, `완료 조건`, `범위와 참고` 제목을 사용합니다.
 - 기존 Issue의 목표나 범위를 본문에서 다시 쓰지 않습니다. 결정과 변경은 코멘트에 남깁니다. 큰 범위 변경은 새 Issue로 나눕니다.
-- 기존 GitHub 운영에는 `claude` 라벨을 사용합니다. 분류 역할의 이름은 [triage-labels.md](triage-labels.md)를 따릅니다. 이 설정 작업은 원격 라벨을 만들거나 Issue에 붙이지 않습니다.
+- 분류 역할의 이름은 [triage-labels.md](triage-labels.md)를 따릅니다. GitHub Claude 호출용 라벨은 실행 요청으로 사용하지 않습니다. 이 설정 작업은 원격 라벨을 만들거나 Issue에 붙이지 않습니다.
 - 최신 `main`에서 짧은 브랜치를 만듭니다. PR은 [PR 양식](../../.github/pull_request_template.md)을 사용합니다. 관련 Issue는 `Refs #번호`, 해당 Issue를 끝내는 마지막 PR은 `Closes #번호`를 씁니다.
 - Issue는 완료 조건과 검수 결과를 확인한 뒤 닫습니다. 다단계 작업은 한 단계가 끝났다는 이유만으로 닫지 않습니다.
 
