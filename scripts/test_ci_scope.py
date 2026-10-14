@@ -13,7 +13,7 @@ from ci_scope import game_required, main, select_game
 class ScopeTests(unittest.TestCase):
     def test_document_and_known_maintenance_changes(self):
         self.assertFalse(select_game(["README.md", "COPYRIGHT.md", "docs/images/example.png",
-                                     ".github/workflows/discord-pr.yml", "scripts/review_context.py"]))
+                                     ".github/workflows/discord-pr.yml", ".github/ISSUE_TEMPLATE/task.md"]))
 
     def test_game_and_unknown_changes(self):
         for path in ["project.godot", "scenes/combat/main.tscn", "tests/combat_hud_test.gd",
