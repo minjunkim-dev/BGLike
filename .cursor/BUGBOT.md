@@ -6,8 +6,8 @@
 
 - [전투 화면 정보 정리](../docs/COMBAT_UIUX.md): 입력·표시·tooltip·후속 확인의 기준.
 - [M1 전체 검수 기록](../docs/M1_VERIFICATION.md): 과거 자동 검사와 직접 플레이의 구분. 과거 검수 결과를 현재 head의 성공으로 사용하지 않습니다.
-- [AGENTS.md](../AGENTS.md): 제품·보안·LFS·권리 제약과 P0/P1/P2.
-- [코딩 규칙](../docs/coding-standards.md): Godot 이름·타입·interface·검사.
+- [AGENTS.md](../AGENTS.md): 작업 문서의 길잡이와 승인 경계.
+- [코딩 규칙](../docs/coding-standards.md): Godot 이름·타입·interface·검사와 P0/P1/P2 리뷰 우선순위.
 - [독립 리뷰 절차](../docs/agents/review.md), [협업 규칙](../docs/WORKFLOW.md): 리뷰와 병합 경계.
 - [문서 길잡이](../docs/agents/domain.md): Issue가 연결한 기획 문서와 관련 ADR. 파일이 없으면 누락을 기록합니다.
 - [CI 구성](../docs/CI.md): 실제 검사 범위. PR의 Issue 합격 기준과 결정 코멘트를 함께 확인합니다.

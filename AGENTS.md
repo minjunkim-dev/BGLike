@@ -1,62 +1,22 @@
 # BGLike 작업 지침
 
-이 저장소는 두 사람이 만드는 Godot 4 싱글 플레이 PC 게임의 개발 작업 공간입니다. 장르의 세부 규칙과 이야기는 아직 정하지 않았습니다. 기능을 임의로 확정하지 마세요.
+두 사람이 만드는 Godot 4 싱글 플레이 PC 게임입니다. 미확정 제품 결정은 관련 Issue에서 확인합니다.
+이 파일은 사람, Claude Code, Codex의 공통 길잡이입니다. 도구별 프로젝트 지침 파일을 만들지 않습니다.
 
-이 파일은 사람, Claude Code, Codex의 공통 작업 지침입니다.
-도구별 프로젝트 지침 파일을 만들지 않습니다.
+## 구현 길잡이
 
-**작업을 시작하기 전에 [협업 규칙](docs/WORKFLOW.md)과 [브랜치와 커밋 규칙](docs/GIT_CONVENTIONS.md)을 읽습니다.** 사람용 한 장 요약은 [참여 안내](https://github.com/minjunkim-dev/BGLike/blob/main/CONTRIBUTING.md)입니다. 이 두 문서는 모든 작업에 적용되는 작업 방식 규칙입니다. 무엇을 만들지 적은 기획 문서는 작업할 Issue가 링크하므로 Issue에서 따라가 읽습니다. 링크는 자동으로 읽히지 않으므로 직접 엽니다.
+- 작업 시작: [협업 규칙](docs/WORKFLOW.md)과 [브랜치·커밋 규칙](docs/GIT_CONVENTIONS.md)을 읽습니다. 다른 작업자의 변경을 보존합니다.
+- 제품 사양: 관련 Issue의 목표·완료 조건과 연결한 기획 문서를 읽습니다. 용어·ADR은 [문서 길잡이](docs/agents/domain.md)를 따릅니다.
+- 검증: [README](https://github.com/minjunkim-dev/BGLike/blob/main/README.md)의 명령과 [CI 구성](docs/CI.md)의 범위 규칙을 확인합니다. 플레이 변경의 직접 확인 기준은 [협업 규칙](docs/WORKFLOW.md#검증과-보고)을 따릅니다.
+- 권리·외부 자산: [COPYRIGHT](COPYRIGHT.md)와 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)를 확인합니다.
 
-코드 변경에는 [코딩 규칙](docs/coding-standards.md)을 읽습니다. PR 리뷰에는 [독립 리뷰 절차](docs/agents/review.md)를 읽습니다. 도메인 문서와 관련 ADR은 [문서 길잡이](docs/agents/domain.md)를 따라 확인합니다.
+## 독립 리뷰와 병합
+
+리뷰 에이전트는 [코딩 규칙](docs/coding-standards.md)과 [독립 리뷰 절차](docs/agents/review.md)를 읽습니다. 코딩 규칙은 구현 컨텍스트에 일괄 주입하지 않습니다.
+맡긴 `two-way/narrow` 작업은 최종 독립 리뷰·필수 CI·완료 조건 통과 후 병합합니다. `one-way/broad`는 사람이 최종 head를 승인합니다. 자세한 조건은 [병합 정책](docs/WORKFLOW.md#브랜치와-병합)을 따릅니다.
 
 ## Agent skills
 
-### Issue tracker
-
-작업은 GitHub `minjunkim-dev/BGLike`의 Issues에서 관리합니다. `docs/agents/issue-tracker.md`를 읽습니다.
-
-### Triage labels
-
-분류 스킬의 다섯 역할은 기본 라벨 이름을 사용합니다. 이름과 적용 범위는 `docs/agents/triage-labels.md`를 읽습니다.
-
-### Domain docs
-
-단일 문서 구조를 사용합니다. 루트의 `CONTEXT.md`와 관련 기획 문서를 읽습니다. 결정 기록은 필요할 때 `docs/adr/`에 만듭니다. `docs/agents/domain.md`를 읽습니다.
-
-## 작업 단위
-
-1. 작업 전 관련 Issue의 목표와 완료 조건을 확인합니다. 빠진 제품 결정은 Issue에 질문으로 남깁니다. Issue 본문은 고치지 않고, 결정과 범위 변경은 코멘트로 남깁니다. 범위가 크게 바뀌면 새 Issue를 엽니다.
-2. 관련 장면, 스크립트, 리소스를 살펴보고 가장 작은 변경을 만듭니다. 기존 작업과 충돌할 때 다른 사람의 변경을 덮어쓰지 않습니다.
-3. `main`에서 직접 개발하지 않습니다. 짧은 브랜치에서 작업하고 PR을 엽니다. 자세한 절차는 [협업 규칙](docs/WORKFLOW.md)을, 브랜치 이름과 커밋 메시지는 [브랜치와 커밋 규칙](docs/GIT_CONVENTIONS.md)을 따릅니다. PR 제목은 squash merge 후 `main`의 커밋 제목이 되므로 Conventional Commits 형식으로 씁니다.
-4. Issue와 PR 본문은 웹에서 만들지 않아도 [Issue 양식](.github/ISSUE_TEMPLATE/task.md)과 [PR 양식](.github/pull_request_template.md)의 제목 구조를 그대로 씁니다. 관련 Issue가 있으면 PR 본문에 `Refs #번호`로, Issue를 끝내는 마지막 PR에는 `Closes #번호`로 적습니다. Issue 없는 문서·설정 작업은 "없음"이라고 적습니다. 변경 내용, 실행한 검증, 직접 확인하지 못한 항목을 구분해 적습니다. 게임 동작이 바뀌면 Godot 편집기에서 사람이 조작해 확인할 항목도 적습니다.
-5. 기획 문서(`docs/`)의 규칙과 수치가 기준입니다. 문서와 다르게 만들어야 하면 먼저 Issue에 질문을 남깁니다. 다른 사람의 PR 브랜치에 커밋을 추가하면 PR 코멘트로 알립니다.
-
-## Godot 규칙
-
-- 엔진 기준은 Godot 4.7.2 Standard와 GDScript입니다. 엔진 업그레이드와 외부 애드온 도입은 별도 Issue에서 합의합니다.
-- 파일 이름, 타입과 코드 구조는 [코딩 규칙](docs/coding-standards.md)을 따릅니다.
-- `.tscn`, `.tres`, `.gd`, `.uid`, 원본 자산과 필요한 `*.import` 설정은 커밋합니다. `.godot/` 캐시와 개인 설정, 비밀 정보는 커밋하지 않습니다.
-- 큰 바이너리 원본 자산은 `.gitattributes`의 Git LFS 규칙을 따릅니다. 같은 바이너리 파일을 동시에 편집하지 않도록 담당자를 정합니다.
-
-## 검증 기준
-
-- 모든 변경: `git diff --check`, `python3 -m unittest discover -s scripts -p 'test_*.py'`를 확인합니다. 워크플로 변경은 `actionlint`도 실행합니다.
-- 게임 코드·장면·리소스·프로젝트 설정 변경: Godot headless import, 메인 장면과 기존 전투 회귀 테스트를 실행합니다. 명령은 [README](https://github.com/minjunkim-dev/BGLike/blob/main/README.md)에 있습니다.
-- 문서와 명시된 관리 파일만 바뀌면 CI는 Godot 실행을 선택하지 않습니다. 범위 규칙과 알 수 없는 변경의 전체 검사 경로는 [CI 구성](docs/CI.md)을 따릅니다.
-- 게임 플레이 변경: CI 성공과 별도로, 변경한 입력과 화면 흐름을 편집기에서 직접 확인합니다. 자동 검사만으로 조작감이나 화면 가독성을 확인했다고 말하지 않습니다.
-- 문서나 설정만 바꾼 경우: 해당 설정을 실제로 읽는 도구 또는 GitHub 흐름을 확인하고, 확인하지 못한 부분을 PR에 적습니다.
-
-## 권리와 공개
-
-- [COPYRIGHT](COPYRIGHT.md)를 따릅니다. 자체 코드에 별도의 재사용 라이선스를 추가하지 않습니다.
-- 외부 코드·자산은 원래 출처와 조건을 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)에 기록합니다.
-- 외부 기여의 권리와 구매 자산의 원본 공개 권한을 임의로 확정하지 않습니다.
-
-## Code Review Rules
-
-PR을 리뷰하는 에이전트는 위 규칙을 기준으로 아래 우선순위를 씁니다. 로컬 독립 리뷰는 P0, P1, P2를 확인합니다. 자동 AI 리뷰의 정리는 [협업 규칙](docs/WORKFLOW.md)의 GitHub 확인 범위를 따릅니다. 계정 탐색을 추가하지 않습니다. 세부 절차는 [독립 리뷰 절차](docs/agents/review.md)에 있습니다.
-
-- P0: 비밀 정보, `.godot/` 캐시, 개인 설정이 커밋됨. 큰 바이너리 원본이 `.gitattributes`의 LFS 규칙을 벗어남.
-- P1: 메인 장면이 열리지 않거나 실행이 깨짐(리소스 경로, `.uid`, 필요한 `*.import` 누락 포함). `docs/` 기획 문서의 규칙이나 수치와 다르게 구현했는데 Issue에 근거가 없음. 기획에서 정하지 않은 장르 규칙, 이야기, 기능을 임의로 확정함. 엔진 업그레이드나 외부 애드온을 Issue 합의 없이 도입함. 게임 동작이 바뀌는데 PR 본문에 실행한 검증, 직접 확인하지 못한 항목, 편집기에서 사람이 확인할 항목이 빠짐.
-- P2: 새 GDScript에 넣을 수 있는 타입이 빠짐. 사용처 없는 Autoload, 추상화, 기능 플래그를 추가함. 리소스 파일이나 폴더 이름이 소문자 `snake_case`가 아님.
-- 위 규칙이나 문서화된 기준에 어긋나지 않는 사소한 스타일은 지적하지 않습니다.
+- Issue tracker: GitHub `minjunkim-dev/BGLike`. `docs/agents/issue-tracker.md`를 읽습니다.
+- Triage labels: `docs/agents/triage-labels.md`에서 다섯 역할과 라벨을 확인합니다.
+- Domain docs: [문서 길잡이](docs/agents/domain.md)를 따릅니다.

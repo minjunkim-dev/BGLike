@@ -18,7 +18,7 @@
 
 | 리뷰 | 확인할 내용 |
 | --- | --- |
-| Standards | 코딩 규칙, 기존 interface, 오류·취소·자원 처리, 검사 품질, AGENTS의 P0/P1/P2 |
+| Standards | [코딩 규칙과 리뷰 우선순위](../coding-standards.md#리뷰-우선순위), 기존 interface, 오류·취소·자원 처리, 검사 품질 |
 | Spec | Issue 합격 기준, 기획 규칙·수치, 관련 ADR, 구현 범위와 누락 |
 | Security | 권한·trust·승인·비밀값·외부 명령·경로·삭제·dependency·workflow 권한의 변경 |
 

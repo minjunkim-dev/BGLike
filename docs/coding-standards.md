@@ -1,6 +1,8 @@
 # 코딩 규칙
 
-[AGENTS.md](../AGENTS.md)의 제품·실행·보안·권리 제약을 함께 따릅니다. 엔진 기준은 Godot 4.7.2 Standard와 GDScript입니다. 엔진 업그레이드와 외부 애드온은 별도 Issue에서 합의합니다.
+리뷰 에이전트가 읽는 기준 문서입니다. 구현 에이전트는 관련 Issue·기획 문서와 [협업 규칙](WORKFLOW.md)을 읽습니다. 코딩 규칙 전체를 구현 컨텍스트에 일괄 주입하지 않습니다.
+엔진 기준은 Godot 4.7.2 Standard와 GDScript입니다. 엔진 업그레이드와 외부 애드온은 별도 Issue에서 합의합니다.
+제품 사양은 Issue가 연결한 기획 문서와 [문서 길잡이](agents/domain.md), 실행·검증은 [협업 규칙](WORKFLOW.md)과 [CI 구성](CI.md)을 따릅니다. 권리·외부 자산은 [COPYRIGHT](../COPYRIGHT.md)와 [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md)를 따릅니다.
 
 ## Godot 파일과 코드
 
@@ -24,4 +26,11 @@
 - 반복된 실제 결함은 재현 테스트, 자동 검사 또는 이 규칙에 반영합니다. 가상 문제를 위한 검사와 자동화를 만들지 않습니다.
 - 필수 명령은 [README](https://github.com/minjunkim-dev/BGLike/blob/main/README.md)와 [CI 구성](CI.md)을 따릅니다. 자동 검사와 사람이 편집기에서 확인한 항목을 구분합니다.
 
-리뷰 우선순위는 [AGENTS.md](../AGENTS.md#code-review-rules)에 있습니다. 리뷰 실행과 기록은 [독립 리뷰 절차](agents/review.md)를 따릅니다.
+## 리뷰 우선순위
+
+로컬 독립 리뷰는 P0, P1, P2를 확인합니다. 실행과 기록은 [독립 리뷰 절차](agents/review.md)를 따릅니다.
+
+- P0: 비밀 정보, `.godot/` 캐시, 개인 설정이 커밋됨. 큰 바이너리 원본이 `.gitattributes`의 LFS 규칙을 벗어남.
+- P1: 메인 장면이 열리지 않거나 실행이 깨짐(리소스 경로, `.uid`, 필요한 `*.import` 누락 포함). `docs/` 기획 문서의 규칙이나 수치와 다르게 구현했는데 Issue에 근거가 없음. 기획에서 정하지 않은 장르 규칙, 이야기, 기능을 임의로 확정함. 엔진 업그레이드나 외부 애드온을 Issue 합의 없이 도입함. 게임 동작이 바뀌는데 PR 본문에 실행한 검증, 직접 확인하지 못한 항목, 편집기에서 사람이 확인할 항목이 빠짐.
+- P2: 새 GDScript에 넣을 수 있는 타입이 빠짐. 사용처 없는 Autoload, 추상화, 기능 플래그를 추가함. 리소스 파일이나 폴더 이름이 소문자 `snake_case`가 아님.
+- 위 규칙이나 문서화된 기준에 어긋나지 않는 사소한 스타일은 지적하지 않습니다.
