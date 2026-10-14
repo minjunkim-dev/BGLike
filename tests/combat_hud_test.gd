@@ -77,7 +77,7 @@ func _test_hex_map() -> void:
 		_check(visual_neighbors.size() == 6 and neighbors.size() == 6,
 			"표시와 전투 판정 모두 인접6칸")
 		for neighbor: Vector2i in visual_neighbors:
-			_check(neighbors.has(neighbor) and actions.distance(cell, neighbor) == 1,
+			_check(neighbors.has(neighbor) and CombatHexGrid.distance(cell, neighbor) == 1,
 				"Godot 타일 이웃과 전투 인접 판정 일치")
 
 

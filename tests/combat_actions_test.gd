@@ -94,9 +94,16 @@ func _test_movement() -> void:
 	_check(not f.actions.can_move(actor, actor.cell), "같은 칸 이동 거부")
 	_check(not f.actions.can_move(actor, Vector2i(-1, 4)), "맵 밖 이동 거부")
 	_check(not f.actions.can_move(actor, f.units[2].cell), "점유 칸 이동 거부")
-	_check(f.actions.distance(Vector2i(4, 4), Vector2i(5, 5)) == 2,
+	var reachable: Dictionary[Vector2i, int] = f.actions.reachable_cells(actor)
+	var costs_match: bool = not reachable.is_empty()
+	for cell: Vector2i in reachable:
+		costs_match = costs_match and reachable[cell] == f.actions.path_to(actor, cell).size() \
+			and reachable[cell] <= actor.movement_left
+	_check(costs_match and not reachable.has(actor.cell) and not reachable.has(f.units[2].cell),
+		"도달 칸 비용은 최단 경로 길이이고 남은 이동 안")
+	_check(CombatHexGrid.distance(Vector2i(4, 4), Vector2i(5, 5)) == 2,
 		"짝수 행 오른쪽 아래 대각선은 헥사 거리2")
-	_check(f.actions.distance(Vector2i(4, 5), Vector2i(5, 6)) == 1,
+	_check(CombatHexGrid.distance(Vector2i(4, 5), Vector2i(5, 6)) == 1,
 		"홀수 행 오른쪽 아래 대각선은 헥사 인접")
 	_check(f.actions.path_to(actor, Vector2i(5, 5)).size() == 2,
 		"사각 격자 대각선으로 헥사 경로를 단축하지 않음")
