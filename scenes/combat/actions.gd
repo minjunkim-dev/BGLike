@@ -96,11 +96,11 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 		"attack":
 			return actor.action_left > 0 and separation >= 1 and separation <= actor.get_attack_range()
 		"shock":
-			return (actor.kind == CombatUnit.Kind.ARCHER and actor.action_left > 0
-				and actor.shock_left > 0 and save_dc > 0 and separation >= 1 and separation <= 6)
+			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
+				and save_dc > 0 and separation >= 1 and separation <= CombatActionRules.SKILL_RANGE)
 		"mark":
-			return (actor.kind == CombatUnit.Kind.ARCHER and actor.bonus_action_left > 0
-				and actor.mark_left > 0 and separation >= 1 and separation <= 6)
+			return (CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
+				and separation >= 1 and separation <= CombatActionRules.SKILL_RANGE)
 		"shove":
 			return actor.bonus_action_left > 0 and separation == 1 and can_shove(actor, target)
 	return false
@@ -118,18 +118,15 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 			for target: CombatUnit in units:
 				if can_target(actor, target, action):
 					return true
-		"second_wind":
-			return (actor.kind == CombatUnit.Kind.WARRIOR and actor.bonus_action_left > 0
-				and actor.second_wind_left > 0 and actor.hit_points < actor.get_max_hit_points())
-		"surge":
-			return (actor.kind == CombatUnit.Kind.WARRIOR and actor.bonus_action_left > 0
-				and actor.surge_left > 0 and actor.action_left == 0)
-		"disengage":
-			return (actor.kind == CombatUnit.Kind.ARCHER and actor.bonus_action_left > 0
-				and actor.disengage_left > 0 and not actor.disengaged and actor.movement_left > 0)
-		"potion":
-			return (actor.bonus_action_left > 0 and actor.potion_left > 0
+		"second_wind", "potion":
+			return (CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
 				and actor.hit_points < actor.get_max_hit_points())
+		"surge":
+			return (CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
+				and actor.action_left == 0)
+		"disengage":
+			return (CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
+				and not actor.disengaged and actor.movement_left > 0)
 	return false
 
 
@@ -140,10 +137,36 @@ func has_available_action(actor: CombatUnit) -> bool:
 		for neighbor: Vector2i in CombatHexGrid.neighbors(actor.cell):
 			if can_move(actor, neighbor):
 				return true
-	for action: String in ["attack", "shock", "mark", "shove", "second_wind", "surge", "disengage", "potion"]:
-		if can_use(actor, action):
-			return true
+	for group: Array in CombatActionRules.GROUPS.slice(0, 2):
+		for action: String in group:
+			if can_use(actor, action):
+				return true
 	return false
+
+
+## 아군 조작 화면에 보일 사용 불가 이유. 빈 문자열이면 지금 쓸 수 있다.
+func unavailable_reason(actor: CombatUnit, action: String) -> String:
+	var resource: CombatUnit.TurnResource = CombatActionRules.resource_of(action)
+	var reaction: bool = resource == CombatUnit.TurnResource.REACTION
+	if is_over() or (busy and not reaction):
+		return "전투 입력 잠금"
+	if not reaction and (actor != turns.current_unit or not actor.is_ally):
+		return "아군의 자기 턴에만 사용"
+	if CombatActionRules.uses_left(actor, action) == 0:
+		return "보유 물약 없음" if action == "potion" else "이번 막의 횟수를 모두 씀"
+	if [actor.action_left, actor.bonus_action_left, actor.reaction_left][resource] == 0:
+		return "자원을 이미 씀"
+	if reaction:
+		if actor.hit_points <= 0:
+			return "전투 불능"
+		return "기절 상태" if actor.is_stunned else ""
+	if action in ["second_wind", "potion"] and actor.hit_points == actor.get_max_hit_points():
+		return "HP가 이미 최대"
+	if action == "surge" and actor.action_left > 0:
+		return "행동이 아직 남아 있음"
+	if not can_use(actor, action):
+		return "이동이 없거나 이미 효과 적용 중" if action == "disengage" else "사거리 또는 대상 조건을 확인"
+	return ""
 
 
 func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
@@ -157,7 +180,7 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 		if not actor.disengaged:
 			for reactor: CombatUnit in units:
 				if (reactor.hit_points > 0 and not reactor.is_stunned and reactor.is_ally != actor.is_ally
-					and reactor.kind == CombatUnit.Kind.WARRIOR and reactor.reaction_left > 0
+					and CombatActionRules.belongs_to(reactor, "opportunity") and reactor.reaction_left > 0
 					and distance(reactor.cell, actor.cell) == 1 and distance(reactor.cell, step) > 1):
 					var chance: float = CombatChecks.attack_preview(reactor, actor, units).chance
 					if await _ask_reaction(reactor, "opportunity", "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)" % [actor.get_display_name(), chance * 100.0]):
@@ -187,7 +210,7 @@ func attack(actor: CombatUnit, target: CombatUnit, shock: bool = false) -> bool:
 	busy = true
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	if shock:
-		actor.shock_left -= 1
+		CombatActionRules.spend_use(actor, action)
 	changed.emit()
 	await _perform_attack(actor, target, shock)
 	_finish()
@@ -195,23 +218,20 @@ func attack(actor: CombatUnit, target: CombatUnit, shock: bool = false) -> bool:
 
 
 func use_self(actor: CombatUnit, action: String) -> bool:
-	if not can_use(actor, action) or action not in ["second_wind", "surge", "disengage", "potion"]:
+	if not can_use(actor, action) or action not in CombatActionRules.SELF_TARGET:
 		return false
 	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
+	CombatActionRules.spend_use(actor, action)
 	match action:
 		"second_wind":
-			actor.second_wind_left -= 1
 			_heal(actor, dice.randi_range(1, 10) + 1, "숨 고르기")
 		"surge":
-			actor.surge_left -= 1
 			actor.action_left = 1
 			logged.emit("%s 몰아치기: 행동 회복" % actor.get_display_name())
 		"disengage":
-			actor.disengage_left -= 1
 			actor.disengaged = true
 			logged.emit("%s 물러서며 쏘기: 이번 턴 이동은 기회 공격 제외" % actor.get_display_name())
 		"potion":
-			actor.potion_left -= 1
 			_heal(actor, dice.randi_range(1, 4) + dice.randi_range(1, 4) + 2, "물약")
 	changed.emit()
 	return true
@@ -221,7 +241,7 @@ func mark(actor: CombatUnit, target: CombatUnit) -> bool:
 	if not _can_act(actor) or not can_target(actor, target, "mark"):
 		return false
 	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
-	actor.mark_left -= 1
+	CombatActionRules.spend_use(actor, "mark")
 	actor.marked_target = target
 	logged.emit("%s 표식: %s" % [actor.get_display_name(), target.get_display_name()])
 	changed.emit()
@@ -312,12 +332,12 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	if not last_attack.success:
 		feedback.emit(target, "빗나감")
 		return
-	if (save_dc > 0 and target.kind == CombatUnit.Kind.WARRIOR and not target.is_stunned
-		and target.reaction_left > 0 and target.parry_left > 0):
+	if (save_dc > 0 and CombatActionRules.has_uses(target, "parry") and not target.is_stunned
+		and target.reaction_left > 0):
 		var success_rolls: int = clampi(21 + target.get_dexterity() - save_dc, 0, 20)
 		if await _ask_reaction(target, "parry", "%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)" % [target.get_display_name(), success_rolls * 5.0, target.parry_left]):
 			target.spend_resource(CombatUnit.TurnResource.REACTION)
-			target.parry_left -= 1
+			CombatActionRules.spend_use(target, "parry")
 			var saved: CombatChecks.RollResult = CombatChecks.saving_throw(target.get_dexterity(), save_dc, dice)
 			logged.emit("흘려내기: d20 %d + %d = %d / DC %d · %s" % [saved.selected_roll,
 				target.get_dexterity(), saved.total, save_dc, "성공" if saved.success else "실패"])

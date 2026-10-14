@@ -521,7 +521,7 @@ func _test_guidance() -> void:
 	for unit: CombatUnit in [units[0], units[1]]:
 		turns.select_unit(unit)
 		battle.call("_update_turn_ui")
-		for action: String in CombatTurnHud.ACTION_NAMES:
+		for action: String in CombatActionRules.NAMES:
 			var button: Button = buttons[action] as Button
 			if not button.visible:
 				continue
@@ -535,7 +535,7 @@ func _test_guidance() -> void:
 				and not tooltip.get_global_rect().intersects((hud.get_node("Skills") as Control).get_global_rect())
 				and tooltip.z_index > (hud.get_node("Skills") as Control).z_index,
 				"호버 전체 설명은 화면 안에서 스킬 패널 위에 표시: " + action)
-			_check(button.tooltip_text.begins_with(CombatTurnHud.ACTION_NAMES[action] + "\n"),
+			_check(button.tooltip_text.begins_with(CombatActionRules.NAMES[action] + "\n"),
 				"호버에 동작 이름 유지: " + action)
 			for removed: String in ["비용", "막당 ", "횟수 제한", "\n보유 물약", "오른쪽 기호",
 				"위 숫자", "좌클릭", "같은 버튼", "버튼으로 실행", "확인 창", "묻습니다"]:
