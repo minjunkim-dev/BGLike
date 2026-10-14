@@ -20,10 +20,11 @@ REQUIRED = {
 }
 
 
-def markdown_targets(text):
+def markdown_targets(text, *, coverage=False):
     """Read inline/reference links; examples in code and images are not rules."""
     lines = []
     fence = None
+    in_list = False
     for line in text.splitlines():
         marker = re.match(r"^ {0,3}(`{3,}|~{3,})", line)
         if marker:
@@ -33,16 +34,46 @@ def markdown_targets(text):
             elif token[0] == fence[0] and len(token) >= len(fence):
                 fence = None
             continue
-        if fence is None and not line.startswith(("    ", "\t")):
+        if line and not line[0].isspace():
+            in_list = bool(re.match(r"(?:[-+*]|\d+[.)])\s", line))
+        # Budget ambiguous indented links conservatively; coverage excludes plain code.
+        if fence is None and (not coverage or in_list or not line.startswith(("    ", "\t"))):
             lines.append(line)
     text = re.sub(r"(`+).*?\1", "", "\n".join(lines), flags=re.DOTALL)
     definitions = {}
     for match in re.finditer(r"^ {0,3}\[([^\]\n]+)\]:\s*(<[^>\n]+>|\S+)", text, re.MULTILINE):
         definitions.setdefault(" ".join(match[1].split()).casefold(), match[2])
     text = re.sub(r"^ {0,3}\[[^\]\n]+\]:[^\n]*", "", text, flags=re.MULTILINE)
-    for match in re.finditer(r"(?<![!\\])\[[^\n]*?\]\(\s*(<[^>\n]+>|[^\s)]+)(?:\s+[^\n]*?)?\)", text):
-        yield match[1].strip("<>")
-    for match in re.finditer(r"(?<![!\\])\[([^\]\n]+)\](?:\[([^\]\n]*)\])?(?!\()", text):
+    for match in re.finditer(r"(?<![!\\])\[[\s\S]*?\]\(\s*", text):
+        start = match.end()
+        if start == len(text):
+            continue
+        if text[start] == "<":
+            end = text.find(">", start + 1)
+            if end == -1:
+                raise ValueError("Unclosed angle Markdown destination")
+            yield text[start + 1:end]
+            continue
+        end = start
+        depth = 0
+        while end < len(text):
+            char = text[end]
+            if char == "\\":
+                end += 2
+                continue
+            if char.isspace():
+                break
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                if depth == 0:
+                    break
+                depth -= 1
+            end += 1
+        if depth:
+            raise ValueError("Unbalanced Markdown destination")
+        yield re.sub(r"\\([() ])", r"\1", text[start:end])
+    for match in re.finditer(r"(?<![!\\])\[([^\]]+)\](?:\[([^\]]*)\])?(?!\()", text):
         label = " ".join((match[2] or match[1]).split()).casefold()
         if label in definitions:
             yield definitions[label].strip("<>")
@@ -64,7 +95,7 @@ def check_rules(root):
             texts[name] = path.read_text(encoding="utf-8")
         return texts[name]
 
-    def closure(seeds):
+    def closure(seeds, *, coverage=False):
         pending = list(seeds)
         seen = set()
         while pending:
@@ -72,7 +103,7 @@ def check_rules(root):
             if name in seen:
                 continue
             seen.add(name)
-            for target in markdown_targets(document(name)):
+            for target in markdown_targets(document(name), coverage=coverage):
                 url = urlsplit(target)
                 if url.scheme or url.netloc or url.path.startswith("/") or not url.path:
                     continue
@@ -87,7 +118,7 @@ def check_rules(root):
                 pending.append(resolved.relative_to(root).as_posix())
         return seen
 
-    reachable = closure([ROOT_RULE])
+    reachable = closure([ROOT_RULE], coverage=True)
     missing = REQUIRED - reachable
     if missing:
         raise ValueError(f"Required rules are not included from root: {sorted(missing)!r}")

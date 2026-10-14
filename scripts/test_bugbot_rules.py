@@ -74,8 +74,25 @@ class BugbotRulesTests(unittest.TestCase):
 
     def test_code_examples_and_images_do_not_add_rules(self):
         self.write(ROOT_RULE, self.links + "\n`[inline](../missing.md)`\n```md\n[fence](../missing.md)\n```\n"
-                   "    [indented](../missing.md)\n![image](../missing.md)")
+                   "![image](../missing.md)")
         self.assertEqual(set(check_rules(self.root)), REQUIRED | {ROOT_RULE})
+
+    def test_multiline_nested_list_and_parenthesized_links_cannot_hide_oversize_rules(self):
+        for link in ["[new\n rules](../extra(copy).md)",
+                     "[new](../extra(copy).md)", "[new](../extra\\(copy\\).md)",
+                     "- rules\n    - [new](../extra(copy).md)",
+                     "[outer [inner] label](../extra(copy).md)"]:
+            with self.subTest(link=link):
+                self.write("extra(copy).md", "x" * 30_001)
+                self.write(ROOT_RULE, self.links + "\n" + link)
+                with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
+                    check_rules(self.root)
+
+    def test_plain_indented_code_cannot_supply_required_coverage(self):
+        self.write(ROOT_RULE, self.links.replace("[docs/COMBAT_UIUX.md](../docs/COMBAT_UIUX.md)", "")
+                   + "\n    [example](../docs/COMBAT_UIUX.md)")
+        with self.assertRaisesRegex(ValueError, "not included from root"):
+            check_rules(self.root)
 
     def test_nested_roots_count_even_without_root_link(self):
         self.write("scenes/.cursor/BUGBOT.md", "[extra](../../extra.md)")
