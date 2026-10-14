@@ -296,7 +296,7 @@ func _test_roll_popups() -> void:
 	actions.feedback.connect(capture)
 	actions.shove(warrior, target)
 	_check(emitted.is_empty(), "기절 대상의 자동 밀치기는 가짜 대결 숫자를 표시하지 않음")
-	# 명중 후 정신 내성까지 진행할 seed를 선택하고 실제 로그 합계와 비교한다.
+	# 명중(비치명타) 굴림을 정해 정신 내성까지 진행하고 실제 로그 합계와 비교한다.
 	turns.select_unit(units[1])
 	units[1].cell = Vector2i(1, 4)
 	target.cell = Vector2i(5, 4)
