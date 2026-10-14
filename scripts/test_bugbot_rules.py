@@ -89,10 +89,14 @@ class BugbotRulesTests(unittest.TestCase):
                     check_rules(self.root)
 
     def test_plain_indented_code_cannot_supply_required_coverage(self):
-        self.write(ROOT_RULE, self.links.replace("[docs/COMBAT_UIUX.md](../docs/COMBAT_UIUX.md)", "")
-                   + "\n    [example](../docs/COMBAT_UIUX.md)")
-        with self.assertRaisesRegex(ValueError, "not included from root"):
-            check_rules(self.root)
+        missing = self.links.replace("[docs/COMBAT_UIUX.md](../docs/COMBAT_UIUX.md)", "")
+        for example in ["    [example](../docs/COMBAT_UIUX.md)",
+                        "- notes\n\n        [example](../docs/COMBAT_UIUX.md)",
+                        "<!-- [example](../docs/COMBAT_UIUX.md) -->"]:
+            with self.subTest(example=example):
+                self.write(ROOT_RULE, missing + "\n" + example)
+                with self.assertRaisesRegex(ValueError, "not included from root"):
+                    check_rules(self.root)
 
     def test_nested_roots_count_even_without_root_link(self):
         self.write("scenes/.cursor/BUGBOT.md", "[extra](../../extra.md)")

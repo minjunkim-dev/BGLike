@@ -24,7 +24,6 @@ def markdown_targets(text, *, coverage=False):
     """Read inline/reference links; examples in code and images are not rules."""
     lines = []
     fence = None
-    in_list = False
     for line in text.splitlines():
         marker = re.match(r"^ {0,3}(`{3,}|~{3,})", line)
         if marker:
@@ -34,12 +33,12 @@ def markdown_targets(text, *, coverage=False):
             elif token[0] == fence[0] and len(token) >= len(fence):
                 fence = None
             continue
-        if line and not line[0].isspace():
-            in_list = bool(re.match(r"(?:[-+*]|\d+[.)])\s", line))
-        # Budget ambiguous indented links conservatively; coverage excludes plain code.
-        if fence is None and (not coverage or in_list or not line.startswith(("    ", "\t"))):
+        # Budget ambiguous indented links; never let code indentation prove coverage.
+        if fence is None and (not coverage or not line.startswith(("    ", "\t"))):
             lines.append(line)
     text = re.sub(r"(`+).*?\1", "", "\n".join(lines), flags=re.DOTALL)
+    if coverage:
+        text = re.sub(r"<!--.*?(?:-->|$)", "", text, flags=re.DOTALL)
     definitions = {}
     for match in re.finditer(r"^ {0,3}\[([^\]\n]+)\]:\s*(<[^>\n]+>|\S+)", text, re.MULTILINE):
         definitions.setdefault(" ".join(match[1].split()).casefold(), match[2])
