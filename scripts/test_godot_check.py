@@ -50,12 +50,41 @@ class GodotCheckTests(unittest.TestCase):
                     self.assertNotEqual(result.returncode, 0)
                     self.assertIn(line, result.stdout)
                     self.assertIn("Godot script error during:", result.stderr)
-                    self.assertIn(step, calls[-1])
+                    self.assertTrue(any(step in call for call in calls))
 
     def test_nonzero_godot_exit_still_fails(self):
         result, calls = self.run_check("combat_hud_test", broken_exit="3")
         self.assertEqual(result.returncode, 3)
-        self.assertIn("combat_hud_test", calls[-1])
+        self.assertTrue(any("combat_hud_test" in call for call in calls))
+
+    def test_hud_and_ai_run_concurrently_after_import(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "godot"
+            binary.write_text(FAKE_GODOT + """
+case "$*" in
+  *--import*) touch "$PROBE/imported" ;;
+  *combat_hud_test*|*combat_ai_test*)
+    test -f "$PROBE/imported" || exit 12
+    case "$*" in
+      *combat_hud_test*) own=hud; other=ai ;;
+      *) own=ai; other=hud ;;
+    esac
+    touch "$PROBE/$own"
+    attempt=0
+    while [ ! -f "$PROBE/$other" ]; do
+      attempt=$((attempt + 1))
+      [ "$attempt" -lt 100 ] || exit 13
+      sleep 0.02
+    done ;;
+esac
+""")
+            binary.chmod(0o755)
+            result = subprocess.run(["bash", "scripts/check_godot.sh"], cwd=ROOT,
+                                    env=dict(os.environ, GODOT=str(binary), CALL_LOG=str(root / "calls"),
+                                             BROKEN="no-such-step", ERROR_LINE="", BROKEN_EXIT="0",
+                                             PROBE=str(root)), text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":
