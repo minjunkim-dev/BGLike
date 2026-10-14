@@ -612,8 +612,9 @@ func _test_results_and_restart() -> void:
 	for unit: CombatUnit in units:
 		if not unit.is_ally:
 			actions.incapacitate(unit)
-	battle.call("_update_turn_ui")
+	actions.changed.emit()
 	_check(hud.get_node("Result").visible and hud.result_label.text == "승리", "전멸시 승리 창")
+	_check(not battle.progress.rewards.is_empty(), "실제 승리 신호에서 드랍 생성")
 	var before: int = turns.round_number
 	var ally_hp: Array[int] = [units[0].hit_points, units[1].hit_points]
 	hud.end_button.pressed.emit()
