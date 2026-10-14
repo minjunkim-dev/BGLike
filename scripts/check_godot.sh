@@ -24,8 +24,71 @@ run_godot() {
 }
 run_godot --import
 run_godot --quit-after 2
-for test in tests/combat_turns_test.gd tests/combat_checks_test.gd \
-  tests/combat_actions_test.gd tests/combat_hud_test.gd tests/combat_ai_test.gd \
-  tests/combat_progression_test.gd tests/combat_loot_test.gd; do
-  run_godot --script "$test"
-done
+rm -f "$log"
+trap - EXIT
+# Separate process groups let cancellation stop each owned test and its children.
+exec python3 - "$godot" <<'PY'
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+
+tests = iter(f"tests/combat_{name}_test.gd" for name in
+             ("hud", "ai", "turns", "checks", "actions", "progression", "loot"))
+active = []
+status = 0
+def cancel(_signal, _frame):
+    raise KeyboardInterrupt
+signal.signal(signal.SIGTERM, cancel)
+with tempfile.TemporaryDirectory() as directory:
+    try:
+        pending = True
+        while pending or active:
+            while pending and len(active) < 2:
+                test = next(tests, None)
+                if test is None:
+                    pending = False
+                    break
+                log = Path(directory) / Path(test).name
+                with log.open("w") as output:
+                    process = subprocess.Popen([sys.argv[1], "--headless", "--path", ".", "--script", test],
+                                               stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
+                active.append((test, process, log))
+            for item in active[:]:
+                test, process, log = item
+                result = process.poll()
+                if result is None:
+                    continue
+                output = log.read_text()
+                print(output, end="", flush=True)
+                if "SCRIPT ERROR" in output or "Failed to load script" in output:
+                    print(f"Godot script error during: --script {test}", file=sys.stderr)
+                    result = 1
+                if result:
+                    status = result if result > 0 else 128 - result
+                active.remove(item)
+            if active:
+                time.sleep(0.02)
+    except KeyboardInterrupt:
+        status = 130
+    finally:
+        for _, process, _ in active:
+            if process.poll() is None:
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+        for _, process, _ in active:
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.wait()
+sys.exit(status)
+PY
