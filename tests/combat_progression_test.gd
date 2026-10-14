@@ -17,6 +17,7 @@ func _check(condition: bool, message: String) -> void:
 
 
 func _run() -> void:
+	_test_act_progress()
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
@@ -87,11 +88,40 @@ func _test_async_transition() -> void:
 	hud.restart_button.pressed.emit()
 	_finish_rewards(battle)
 	await process_frame
-	_check_enemy_values(battle, int(battle.get("stage_index")) / 3 + 1)
+	_check_enemy_values(battle, int((battle.get("progress") as CombatActProgress).stage_index) / 3 + 1)
 	_check(hud.progress_label.text == "1막 · 2스테이지"
 		and not hud.get_node("Result").visible, "이전 적 턴 처리 종료 뒤 다음 전투로 진입")
 	main.queue_free()
 	await process_frame
+
+
+func _test_act_progress() -> void:
+	var progress: CombatActProgress = CombatActProgress.new(9)
+	_check(progress.act_number() == 1 and progress.stage_in_act() == 1 and progress.starts_act(),
+		"장면 없이 1막 1스테이지에서 시작")
+	progress.stage_index = 5
+	progress.restart_act()
+	_check(progress.stage_index == 3 and progress.act_number() == 2 and progress.starts_act(),
+		"2막 3스테이지 패배는 2막 1스테이지로 재시작")
+	progress.stage_index = 2
+	_check(progress.is_last_in_act() and not progress.is_final_stage(), "1막 마지막 스테이지")
+	progress.advance()
+	_check(progress.stage_index == 3 and progress.starts_act() and not progress.graduated,
+		"정비 뒤 다음 막 첫 스테이지")
+	progress.stage_index = 8
+	progress.advance()
+	_check(progress.graduated and progress.stage_index == 8, "마지막 스테이지 정비 뒤 3막 졸업")
+	var loot: CombatLoot = CombatLoot.new()
+	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	dice.seed = 7
+	progress.begin_stage()
+	progress.record_victory(loot, 2, dice)
+	var first: Array[Dictionary] = progress.rewards
+	progress.record_victory(loot, 2, dice)
+	_check(not first.is_empty() and is_same(progress.rewards, first),
+		"승리 기록은 스테이지마다 드랍을 한 번만 굴림")
+	progress.begin_stage()
+	_check(progress.rewards.is_empty(), "다음 스테이지 시작에서 드랍 비움")
 
 
 func _win(battle: Node2D) -> void:
@@ -168,7 +198,7 @@ func _next(battle: Node2D) -> void:
 	await process_frame
 	_finish_rewards(battle)
 	await process_frame
-	_check_enemy_values(battle, int(battle.get("stage_index")) / 3 + 1)
+	_check_enemy_values(battle, int((battle.get("progress") as CombatActProgress).stage_index) / 3 + 1)
 
 
 func _finish_rewards(battle: Node2D) -> void:

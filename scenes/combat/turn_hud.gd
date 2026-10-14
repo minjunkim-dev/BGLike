@@ -234,7 +234,7 @@ func begin_stage(act: int, stage: int) -> void:
 	restart_button.show()
 
 
-func show_result(victory: bool, graduated: bool = false) -> void:
+func show_result(victory: bool, graduated: bool = false, locked: bool = false) -> void:
 	reaction_dialog.hide()
 	var complete: bool = victory and graduated
 	result_label.text = "3막 졸업" if complete else "승리" if victory else "패배"
@@ -243,6 +243,24 @@ func show_result(victory: bool, graduated: bool = false) -> void:
 	$Result.show()
 	if not complete:
 		restart_button.grab_focus()
+	restart_button.disabled = locked
+
+
+func hide_result() -> void:
+	$Result.hide()
+
+
+func show_outcome(victory: bool) -> void:
+	round_label.text = "승리" if victory else "패배"
+
+
+## 표식·밀치기처럼 명중률 대신 보일 대상 안내.
+func show_target_note(text: String) -> void:
+	preview_label.text = text
+
+
+func show_move_mode(showing_move: bool) -> void:
+	preview_label.visible = not showing_move
 
 
 func refresh(turns: CombatTurns, has_available_action: bool) -> void:

@@ -46,6 +46,14 @@ func is_inside(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < map_size.x and cell.y < map_size.y
 
 
+## 살아 있는 유닛이 이 대상을 표식으로 지정했는지.
+func is_marked(target: CombatUnit) -> bool:
+	for source: CombatUnit in units:
+		if source.hit_points > 0 and source.marked_target == target:
+			return true
+	return false
+
+
 func is_over() -> bool:
 	var ally: bool = false
 	var enemy: bool = false

@@ -829,7 +829,7 @@ func _test_action_animations() -> void:
 	hud.end_button.pressed.emit()
 	hud.unit_selected.emit(units[1])
 	hud.restart_button.pressed.emit()
-	_check(turns.current_unit == units[0] and battle.stage_index == 0,
+	_check(turns.current_unit == units[0] and battle.progress.stage_index == 0,
 		"이동 중 턴 종료·유닛 전환·스테이지 전환 거부")
 	await process_frame
 	await process_frame
