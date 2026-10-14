@@ -13,10 +13,11 @@ case "$actual" in
 esac
 printf 'Godot: %s\nCommit: %s\n' "$actual" "$(git rev-parse HEAD)"
 # Godot exits 0 even when a script fails to parse, so the output decides.
+log=$(mktemp)
+trap 'rm -f "$log"' EXIT
 run_godot() {
-  local output
-  output=$("$godot" --headless --path . "$@" 2>&1 | tee /dev/stderr)
-  if grep -qE 'SCRIPT ERROR|Failed to load script' <<<"$output"; then
+  "$godot" --headless --path . "$@" 2>&1 | tee "$log"
+  if grep -qE 'SCRIPT ERROR|Failed to load script' "$log"; then
     printf 'Godot script error during: %s\n' "$*" >&2
     exit 1
   fi

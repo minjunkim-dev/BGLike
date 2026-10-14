@@ -6,21 +6,21 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-# Godot 4.7.2 prints this pair for a parse error and still exits 0.
+# Godot 4.7.2 prints these lines for a parse error and still exits 0.
+SCRIPT_ERROR = 'SCRIPT ERROR: Parse Error: Identifier "x" not declared in the current scope.'
+LOAD_ERROR = 'ERROR: Failed to load script "res://broken.gd" with error "Parse error".'
 FAKE_GODOT = """#!/bin/sh
 printf '%s\\n' "$*" >> "$CALL_LOG"
 case "$*" in
   --version) echo 4.7.2.stable.official.fixture ;;
-  *"$BROKEN"*)
-    echo 'SCRIPT ERROR: Parse Error: Identifier "x" not declared in the current scope.'
-    echo 'ERROR: Failed to load script "res://broken.gd" with error "Parse error".' >&2 ;;
+  *"$BROKEN"*) echo "$ERROR_LINE" >&2; exit "$BROKEN_EXIT" ;;
   *--script*) echo 'Fixture: 1 checks, 0 failures' ;;
 esac
 """
 
 
 class GodotCheckTests(unittest.TestCase):
-    def run_check(self, broken):
+    def run_check(self, broken="no-such-step", error_line="", broken_exit="0"):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             binary = root / "godot"
@@ -29,24 +29,33 @@ class GodotCheckTests(unittest.TestCase):
             binary.chmod(0o755)
             result = subprocess.run(["bash", "scripts/check_godot.sh"], cwd=ROOT,
                                     env=dict(os.environ, GODOT=str(binary), CALL_LOG=str(log),
-                                             BROKEN=broken),
+                                             BROKEN=broken, ERROR_LINE=error_line,
+                                             BROKEN_EXIT=broken_exit),
                                     text=True, capture_output=True)
             return result, log.read_text().splitlines()
 
     def test_clean_output_passes_every_step(self):
-        result, calls = self.run_check("no-such-step")
+        result, calls = self.run_check()
         self.assertEqual(result.returncode, 0, result.stderr)
+        # --version, --import, --quit-after and the seven combat tests.
         self.assertEqual(len(calls), 10)
-        self.assertIn("Fixture: 1 checks, 0 failures", result.stderr)
+        self.assertIn("Fixture: 1 checks, 0 failures", result.stdout)
 
     def test_script_error_fails_each_step(self):
-        for step in ["--import", "--quit-after", "combat_turns_test", "combat_loot_test"]:
-            with self.subTest(step=step):
-                result, calls = self.run_check(step)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertIn("SCRIPT ERROR", result.stderr)
-                self.assertIn("Godot script error during:", result.stderr)
-                self.assertIn(step, calls[-1])
+        steps = ["--import", "--quit-after", "combat_turns_test", "combat_loot_test"]
+        for step in steps:
+            for line in [SCRIPT_ERROR, LOAD_ERROR]:
+                with self.subTest(step=step, line=line):
+                    result, calls = self.run_check(step, line)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(line, result.stdout)
+                    self.assertIn("Godot script error during:", result.stderr)
+                    self.assertIn(step, calls[-1])
+
+    def test_nonzero_godot_exit_still_fails(self):
+        result, calls = self.run_check("combat_hud_test", broken_exit="3")
+        self.assertEqual(result.returncode, 3)
+        self.assertIn("combat_hud_test", calls[-1])
 
 
 if __name__ == "__main__":
