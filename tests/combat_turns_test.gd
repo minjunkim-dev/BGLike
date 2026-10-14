@@ -1,6 +1,8 @@
 extends SceneTree
 ## 턴 계약과 실제 전투 장면의 버튼 연결을 Godot에서 검사한다.
 
+const ScriptedDice = preload("res://tests/scripted_dice.gd")
+
 var _failures: int = 0
 var _checks: int = 0
 var _created_units: Array[CombatUnit] = []
@@ -26,6 +28,7 @@ func _run() -> void:
 	await _test_scene()
 	for unit: CombatUnit in _created_units:
 		unit.free()
+	_check(ScriptedDice.mismatches.is_empty(), "준비한 주사위 값과 실제 굴림 요청 일치 " + str(ScriptedDice.mismatches))
 	print("Combat turns: %d checks, %d failures" % [_checks, _failures])
 	quit(0 if _failures == 0 else 1)
 
@@ -53,29 +56,34 @@ func _ordered_fixture(units: Array[CombatUnit], order: Array[int]) -> CombatTurn
 	for index: int in order:
 		desired.append(units[index])
 	var turns: CombatTurns = CombatTurns.new()
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
-	for seed_value: int in range(10000):
-		dice.seed = seed_value
-		turns.start(units, dice)
-		if turns.ordered_units == desired:
-			return turns
-	_check(false, "이니셔티브 fixture를 찾지 못함")
+	turns.start(units, _dice_for_order(units, desired))
+	_check(turns.ordered_units == desired, "정해진 이니셔티브 순서 fixture")
 	return turns
+
+
+## 원하는 순서대로 이니셔티브가 3씩 내려가도록 d20 값을 준비한다.
+func _dice_for_order(units: Array[CombatUnit], desired: Array[CombatUnit]) -> CombatDice:
+	var rolls: Array[int] = []
+	var sides: Array[int] = []
+	for unit: CombatUnit in units:
+		rolls.append(20 - 3 * desired.find(unit) - unit.get_dexterity())
+		sides.append(20)
+	return ScriptedDice.new(rolls, sides)
 
 
 func _test_initiative() -> void:
 	var units: Array[CombatUnit] = _make_units()
 	var turns: CombatTurns = CombatTurns.new()
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	var dice: CombatDice = CombatDice.new()
 	var saw_dexterity_tie: bool = false
 	var saw_team_tie: bool = false
 	for seed_value: int in range(200):
 		dice.seed = seed_value
-		var expected_dice: RandomNumberGenerator = RandomNumberGenerator.new()
+		var expected_dice: CombatDice = CombatDice.new()
 		expected_dice.seed = seed_value
 		turns.start(units, dice)
 		for unit: CombatUnit in units:
-			_check(unit.initiative_roll == expected_dice.randi_range(1, 20), "유닛마다 d20 한 번")
+			_check(unit.initiative_roll == expected_dice.roll(20), "유닛마다 d20 한 번")
 			_check(unit.initiative_roll >= 1 and unit.initiative_roll <= 20, "d20 범위")
 		for index: int in range(3):
 			var first: CombatUnit = turns.ordered_units[index]
@@ -200,12 +208,7 @@ func _test_scene() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var scene_units: Array[CombatUnit] = battle.get("units")
-	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
-	for seed_value: int in range(10000):
-		dice.seed = seed_value
-		turns.start(scene_units, dice)
-		if turns.ordered_units == scene_units:
-			break
+	turns.start(scene_units, _dice_for_order(scene_units, scene_units))
 	_check(turns.get_current_group().size() == 2, "장면 확인용 아군 묶음")
 	var panel: Node = hud.order_bar.get_child(0)
 	var portraits: Node = panel.get_child(0)
