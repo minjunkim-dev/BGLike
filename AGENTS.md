@@ -2,7 +2,7 @@
 
 이 저장소는 두 사람이 만드는 Godot 4 싱글 플레이 PC 게임의 개발 작업 공간입니다. 장르의 세부 규칙과 이야기는 아직 정하지 않았습니다. 기능을 임의로 확정하지 마세요.
 
-**작업을 시작하기 전에 [협업 규칙](docs/WORKFLOW.md)과 [브랜치와 커밋 규칙](docs/GIT_CONVENTIONS.md)을 읽습니다.** 사람용 한 장 요약은 [참여 안내](CONTRIBUTING.md)입니다. 이 두 문서는 모든 작업에 적용되는 작업 방식 규칙입니다. 무엇을 만들지 적은 기획 문서는 작업할 Issue가 링크하므로 Issue에서 따라가 읽습니다. 링크는 자동으로 읽히지 않으므로 직접 엽니다.
+**작업을 시작하기 전에 [협업 규칙](docs/WORKFLOW.md)과 [브랜치와 커밋 규칙](docs/GIT_CONVENTIONS.md)을 읽습니다.** 사람용 한 장 요약은 [참여 안내](https://github.com/minjunkim-dev/BGLike/blob/main/CONTRIBUTING.md)입니다. 이 두 문서는 모든 작업에 적용되는 작업 방식 규칙입니다. 무엇을 만들지 적은 기획 문서는 작업할 Issue가 링크하므로 Issue에서 따라가 읽습니다. 링크는 자동으로 읽히지 않으므로 직접 엽니다.
 
 코드 변경에는 [코딩 규칙](docs/coding-standards.md)을 읽습니다. PR 리뷰에는 [독립 리뷰 절차](docs/agents/review.md)를 읽습니다. 도메인 문서와 관련 ADR은 [문서 길잡이](docs/agents/domain.md)를 따라 확인합니다.
 
@@ -24,7 +24,7 @@
 ## 검증 기준
 
 - 모든 변경: `git diff --check`, `python3 -m unittest discover -s scripts -p 'test_*.py'`를 확인합니다. 워크플로 변경은 `actionlint`도 실행합니다.
-- 게임 코드·장면·리소스·프로젝트 설정 변경: Godot headless import, 메인 장면과 기존 전투 회귀 테스트를 실행합니다. 명령은 [README](README.md)에 있습니다.
+- 게임 코드·장면·리소스·프로젝트 설정 변경: Godot headless import, 메인 장면과 기존 전투 회귀 테스트를 실행합니다. 명령은 [README](https://github.com/minjunkim-dev/BGLike/blob/main/README.md)에 있습니다.
 - 문서와 명시된 관리 파일만 바뀌면 CI는 Godot 실행을 선택하지 않습니다. 범위 규칙과 알 수 없는 변경의 전체 검사 경로는 [CI 구성](docs/CI.md)을 따릅니다.
 - 게임 플레이 변경: CI 성공과 별도로, 변경한 입력과 화면 흐름을 편집기에서 직접 확인합니다. 자동 검사만으로 조작감이나 화면 가독성을 확인했다고 말하지 않습니다.
 - 문서나 설정만 바꾼 경우: 해당 설정을 실제로 읽는 도구 또는 GitHub 흐름을 확인하고, 확인하지 못한 부분을 PR에 적습니다.
