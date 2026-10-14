@@ -28,9 +28,17 @@ Godot 작업은 headless import, 메인 장면 시작과 기존 전투 회귀 �
 Ubuntu 24.04에서 로컬과 같은 `make godot-install`, `make godot-check`를 호출합니다.
 엔진 버전·해시는 `scripts/godot.env`를 따릅니다. [공통 환경](ENVIRONMENT.md)에 새 환경 설치와 캐시 없는 실행을 기록합니다.
 검사 실패를 통과로 처리하지 않습니다. PR 병합 전에 `PR conventions and scope`와 선택된 `smoke` 결과를 함께 확인합니다.
-공개 후 main 보호를 설정할 때도 두 검사 모두 필수로 지정합니다. 문서 변경의 smoke skipped는 정상입니다.
+`CI` 작업은 `always()`로 두 하위 작업의 결과를 확인합니다.
+policy 성공과 `game=true`·smoke 성공 조합만 게임 검사를 통과합니다.
+policy 성공과 `game=false`·smoke skipped 조합만 문서 검사 생략을 허용합니다.
+실패·취소·누락·알 수 없는 scope 또는 결과는 `CI`를 실패 처리합니다.
+기존 두 필수 검사 이름을 유지합니다. 실제 `CI` required check 등록 여부는 GitHub 보호 API로 따로 확인합니다.
 재사용 작업의 실제 check 이름은 호출 작업 이름을 포함할 수 있습니다. GitHub의 해당 실행에서 이름을 확인한 뒤 보호 규칙에 지정합니다.
-현재 CI는 PC 출시 패키지를 내보내거나 배포하지 않습니다.
+policy는 Python 회귀 검사 뒤 전체 workflow에 actionlint 1.7.12를 실행합니다.
+공식 Linux x86_64 배포 파일의 SHA-256을 검사한 뒤 실행합니다.
+Ubuntu runner의 ShellCheck로 workflow shell과 `scripts/*.sh`를 검사합니다. 도구가 없으면 실패합니다.
+로컬 정적 검사 명령은 `actionlint -shellcheck=shellcheck`와 `shellcheck -x scripts/*.sh`입니다.
+CI는 출시 OS 지원을 검증하지 않습니다. 검증용 PCK의 수동 미공개 Draft 절차는 [Draft CD](DRAFT_RELEASE.md)를 따릅니다.
 외부 Action은 전체 커밋 SHA로 고정합니다. Dependabot이 매주 수요일 Action 업데이트 PR을 엽니다.
 
 ## 알림과 권한
@@ -40,4 +48,4 @@ Godot 워크플로의 별도 알림 작업은 정책 또는 게임 검사 실패
 정상 실행마다 별도 runner를 할당하거나 제목 수정·검토자 요청마다 반복 알림을 보내지 않습니다.
 알림 작업은 PR 코드를 checkout하거나 실행하지 않습니다. 외부 fork에는 Secret 알림을 실행하지 않습니다.
 
-Claude의 공개 저장소용 신뢰 경계는 [협업 규칙](WORKFLOW.md)의 AI 자동화 절차를 따릅니다.
+GitHub Claude는 기존 수동 호출 전용으로 유지합니다. 자동 리뷰의 확인 범위와 기존 신뢰 경계는 [협업 규칙](WORKFLOW.md)을 따릅니다.

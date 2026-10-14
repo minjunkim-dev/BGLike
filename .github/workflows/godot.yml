@@ -70,6 +70,23 @@ jobs:
             "${ENGINE_VERSION:-unknown}" "${CACHE_RESULT:-unknown}" "$cache_hit" \
             "${ARCHIVE_SOURCE:-unknown}" "${INSTALL_RESULT:-unknown}" >> "$GITHUB_STEP_SUMMARY"
 
+  ci:
+    name: CI
+    needs: [policy, smoke]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require every selected check
+        env:
+          POLICY_RESULT: ${{ needs.policy.result }}
+          GAME_REQUIRED: ${{ needs.policy.outputs.game }}
+          SMOKE_RESULT: ${{ needs.smoke.result }}
+        run: python3 scripts/ci_gate.py
+
   notify:
     needs: [policy, smoke]
     if: >-

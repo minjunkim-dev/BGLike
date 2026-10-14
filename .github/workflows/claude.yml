@@ -1,7 +1,7 @@
 name: Claude
 
 on:
-  # Manual only: a review label or an explicit review comment. Codex reviews every push.
+  # Manual only: a review label or an explicit review comment.
   issues:
     types: [labeled]
   pull_request_target:

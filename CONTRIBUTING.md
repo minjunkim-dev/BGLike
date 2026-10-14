@@ -29,14 +29,14 @@
 기획 논의 → 기획서·개발 요청서 PR → 개발 Issue → 브랜치 → PR → 리뷰 → squash merge → 기획 검수 → 회고
 ```
 
-사람은 **무엇을 할지**와 **병합할지**를 정하고, 그 사이의 구현·리뷰·수정은 AI 에이전트(Claude, Codex)에게 맡겨도 됩니다. 병합은 항상 사람이 합니다. 자세한 절차는 [협업 규칙](docs/WORKFLOW.md)에 있습니다.
+사람은 **무엇을 할지**와 **병합할지**를 정합니다. 구현·독립 리뷰·수정은 로컬 AI 에이전트에게 맡겨도 됩니다. 병합 주체는 기본적으로 사람입니다. 명시적으로 위임한 `two-way/narrow` 변경만 에이전트가 최종 CI·합격 기준 확인 후 병합합니다. `one-way/broad`와 새 Draft 쓰기 권한은 사람이 최종 head를 승인해야 합니다. 자세한 절차는 [협업 규칙](docs/WORKFLOW.md)에 있습니다.
 
 ## 4. Issue
 
 - 코드를 바꾸는 일은 Issue부터 엽니다. 본문에 **목표, 완료 조건, 관련 문서 링크**를 적습니다. 양식이 자동으로 뜹니다. 문서나 설정만 바꾸는 작은 작업은 Issue 없이 PR만 열어도 됩니다.
 - 본문은 처음 합의한 기록이므로 **고치지 않습니다.** 바뀐 것은 코멘트로 쌓습니다. 범위가 크게 바뀌면 새 Issue를 열고 옛 Issue는 링크를 남기고 닫습니다.
 - 열린 Issue 목록이 곧 작업판입니다. 보드, 마일스톤은 쓰지 않습니다.
-- `claude` 라벨은 Issue 조건의 리뷰를 요청합니다. 구현은 로컬 Claude Code·Codex 앱에서 진행합니다. 공개 저장소의 GitHub Claude는 리뷰 전용입니다. 자세한 요청과 권한 조건은 [협업 규칙](docs/WORKFLOW.md)을 따릅니다.
+- 실제 자동 AI 리뷰만 GitHub workflow·App·리뷰 설정에서 확인하고 이 저장소 범위에서 정리합니다. 기존 Claude 수동 리뷰는 유지합니다. 계정 탐색과 다른 저장소 연결 변경은 제외합니다. [협업 규칙](docs/WORKFLOW.md)을 따릅니다.
 
 ## 5. 코멘트
 
@@ -45,7 +45,7 @@
 | 회의·채팅에서 결정 | 해당 Issue | 날짜, 결정, 이유 한 줄. 문서를 고쳐야 하면 문서 PR 링크 |
 | 범위 변경 | 해당 Issue | "변경 전 → 후" 표 |
 | 기획에 질문 | 해당 Issue | 선택지와 내 추천을 함께. 답이 오면 문서에 옮김 |
-| 코드 리뷰 | PR | 고쳐야 하는 것과 제안을 구분. 재검토는 `@claude review`. 수정은 로컬 앱에서 수행 |
+| 코드 리뷰 | PR | 위치·실패 조건·영향·수정 근거를 기록. 독립 리뷰와 수정은 로컬 앱에서 수행 |
 | 남의 PR 브랜치에 커밋 추가 | 그 PR | 무엇을 더했는지 한 줄 |
 
 ## 6. 브랜치
@@ -83,6 +83,8 @@
 | [AGENTS.md](AGENTS.md) | 에이전트와 사람이 지키는 Godot 작업 규칙, 검증 기준 |
 | [docs/WORKFLOW.md](docs/WORKFLOW.md) | Issue 운영, 검토와 병합, 에이전트 사용법 |
 | [docs/GIT_CONVENTIONS.md](docs/GIT_CONVENTIONS.md) | 브랜치 이름, 커밋 메시지 |
+| [코딩 규칙](docs/coding-standards.md), [독립 리뷰 절차](docs/agents/review.md) | Standards·Spec·Security 리뷰, 검사 근거와 Bugbot 수동 보조 리뷰 |
+| [Draft Release 절차](docs/DRAFT_RELEASE.md) | 미공개 Draft CD와 최종 head 승인 |
 | `docs/` 기획 문서 | 기획 현황, 로드맵, 전투 기획서, 마일스톤별 개발 요청서 |
 | `CONTEXT.md` (M1 첫 PR에서 추가 예정) | 용어집. 코드, 문서, 대화에서 같은 말을 씁니다 |
 
@@ -98,6 +100,7 @@
 - `.godot/` 캐시와 개인 설정은 커밋하지 않습니다. 큰 바이너리는 LFS 규칙(`.gitattributes`)을 따릅니다.
 - PR을 열기 전에 공백과 Python 검사를 수행합니다. 게임 변경에는 Godot import·실행·회귀 테스트를 추가합니다. [CI 범위 규칙](docs/CI.md)을 따릅니다. 플레이가 바뀌면 편집기에서 직접 조작해 보고 PR에 적습니다. CI 통과가 조작감 확인을 대신하지 않습니다.
 - PR 본문에는 변경 내용, 실행한 검증, **확인하지 못한 것**을 구분해 적습니다. 양식이 자동으로 뜹니다.
+- Standards와 Spec을 각각 별도 컨텍스트에서 검토합니다. 위험 변경에는 Security를 추가합니다. 확실한 결함을 수정·커밋한 뒤 최종 전체 diff와 CI를 확인합니다. 같은 모델이면 같은 모델의 별도 컨텍스트로 기록합니다.
 
 ## 10. 자동으로 되는 것
 
@@ -108,8 +111,8 @@
 | squash merge만 허용, 병합 후 브랜치 삭제 | 저장소 설정 |
 | Godot import·메인 장면·전투 회귀 검사 | GitHub Actions `godot`. 문서만 바뀌면 엔진 작업은 생략 |
 | PR·CI 알림 | `#github-알림` Discord 웹훅 |
-| 코드·보안 리뷰 | PR을 열면 Codex가 자동으로 |
-| Issue·PR 조건 및 보안 리뷰 | `claude` 라벨 또는 `@claude review` / `@claude security review`. 구현·병합 권한 없음 |
+| GitHub AI 리뷰 | Claude는 기존 수동 호출 전용. 자동 리뷰는 현재 GitHub 연결·설정을 확인하고 실제 연결만 정리. 다른 저장소·계정 연결은 유지 |
+| 로컬 독립 리뷰 / Bugbot | Standards·Spec·필요한 Security / 필요한 PR에서 수동 보조 리뷰. 자동화 완료로 간주하지 않음 |
 | Issue·PR 양식 | `.github/` 템플릿 |
 
 동료 승인은 필수가 아닙니다. main 보호의 현재 적용 상태와 필수 검사 조건은 [협업 규칙](docs/WORKFLOW.md#현재-github-제약)을 참조합니다.

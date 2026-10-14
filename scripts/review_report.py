@@ -253,7 +253,8 @@ def prepare():
     rules = "\n\n".join(
         name + ":\n" + bounded(Path(name).read_text(encoding="utf-8"), limit)
         for name, limit in [("AGENTS.md", 16000), ("docs/WORKFLOW.md", 24000)])
-    for name in ["docs/GIT_CONVENTIONS.md", "docs/DECISIONS.md"]:
+    for name in ["docs/GIT_CONVENTIONS.md", "docs/DECISIONS.md",
+                 "docs/coding-standards.md", "docs/agents/review.md"]:
         if Path(name).is_file():
             rules += "\n\n" + name + ":\n" + bounded(Path(name).read_text(encoding="utf-8"), 12000)
     instructions = (
