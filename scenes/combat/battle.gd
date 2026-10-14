@@ -188,7 +188,7 @@ func _on_action_selected(action: String) -> void:
 	if actor == null or not actor.is_ally or not actions.can_use(actor, action):
 		return
 	_inspected_unit = null
-	if action == selected_action and action in ["second_wind", "surge", "disengage", "potion"]:
+	if action == selected_action and action in CombatActionRules.SELF_TARGET:
 		_clear_preview()
 		actions.use_self(actor, action)
 		selected_action = "attack"

@@ -16,26 +16,6 @@ class HoverButton extends Button:
 const DEFAULT_BUTTON_COLOR: Color = Color("354656")
 const END_BUTTON_COLOR: Color = Color("926725")
 const RESOURCE_COLORS: Array[Color] = [Color("70c76d"), Color("edaa54"), Color("ac90e5")]
-const ACTION_NAMES: Dictionary[String, String] = {
-	"attack": "공격", "second_wind": "숨 고르기", "surge": "몰아치기",
-	"mark": "표식", "shock": "충격 화살", "disengage": "물러서며 쏘기",
-	"shove": "밀치기", "potion": "물약", "opportunity": "기회 공격", "parry": "흘려내기"
-}
-const ACTION_GROUPS: Array[Array] = [
-	["attack", "shock"], ["second_wind", "surge", "mark", "disengage", "shove", "potion"],
-	["opportunity", "parry"]
-]
-const ACTION_EFFECTS: Dictionary[String, String] = {
-	"second_wind": "HP 1d10+1 회복.\n최대 HP를 넘지 않습니다.",
-	"surge": "이미 쓴 행동을 다시 채워\n한 번 더 공격할 수 있습니다.",
-	"mark": "1~6칸 적에게 표식.\n이 궁수가 맞히면 피해 +1d6.\n전투 중 유지됩니다.",
-	"shock": "1~6칸 공격.\n명중 후 정신 내성 실패 시 기절.",
-	"disengage": "이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\n공격을 실행하지 않습니다.",
-	"shove": "내 힘 대 상대의 힘/민첩\n중 높은 값으로 대결.\n성공: 1칸 밀기, 동점: 실패.\n기절 대상은 대결 없이 성공.",
-	"potion": "HP 2d4+2 회복.\n최대 HP를 넘지 않습니다.",
-	"opportunity": "적이 내 인접 칸을 벗어나면 기본 공격.",
-	"parry": "공격에 맞았을 때 민첩 내성에 성공하면\n피해와 추가 효과를 피합니다."
-}
 
 var _shown_order: Array[CombatUnit] = []
 var _portraits: Dictionary[CombatUnit, Button] = {}
@@ -81,7 +61,7 @@ func _ready() -> void:
 	add_child(_tooltip_timer)
 	end_button.pressed.connect(func() -> void: end_turn_requested.emit())
 	restart_button.pressed.connect(func() -> void: restart_requested.emit())
-	for index: int in range(ACTION_GROUPS.size()):
+	for index: int in range(CombatActionRules.GROUPS.size()):
 		var panel: PanelContainer = PanelContainer.new()
 		panel.add_theme_stylebox_override("panel", _panel_style())
 		action_bar.add_child(panel)
@@ -98,7 +78,7 @@ func _ready() -> void:
 		var buttons: HBoxContainer = HBoxContainer.new()
 		buttons.add_theme_constant_override("separation", 3)
 		column.add_child(buttons)
-		for action: String in ACTION_GROUPS[index]:
+		for action: String in CombatActionRules.GROUPS[index]:
 			var button: Button = HoverButton.new()
 			button.custom_minimum_size.y = 23
 			button.add_theme_font_size_override("font_size", 10)
@@ -196,12 +176,12 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 		_titles[index].text = "%s %s" % [names[index],
 			symbols[index].repeat(remaining) + empty_symbols[index].repeat(capacities[index] - remaining)]
 		_titles[index].modulate = Color.WHITE if ally_turn else Color("888888")
-		for action: String in ACTION_GROUPS[index]:
+		for action: String in CombatActionRules.GROUPS[index]:
 			var button: Button = _actions[action]
-			button.visible = _belongs_to(shown, action)
-			button.text = ACTION_NAMES[action] + "    "
+			button.visible = CombatActionRules.belongs_to(shown, action)
+			button.text = CombatActionRules.NAMES[action] + "    "
 			_costs[action].text = symbols[index]
-			button.tooltip_text = ACTION_NAMES[action] + "\n" + action_details(actions, shown, action)
+			button.tooltip_text = CombatActionRules.NAMES[action] + "\n" + action_details(actions, shown, action)
 			var active: bool = ally_turn and not locked and actions.can_use(actor, action)
 			# 반응은 횟수나 자원을 다 써도 자기 턴에는 켜진 표시로 남는다.
 			button.disabled = (not ally_turn or locked) if index == 2 else not active
@@ -209,7 +189,7 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			var border: Color = Color("f4cf69") if selected == action and active else Color("61717e")
 			for state: String in ["normal", "hover", "pressed", "disabled", "focus"]:
 				button.add_theme_stylebox_override(state, _button_style(color, border))
-			var uses: int = _remaining_uses(shown, action)
+			var uses: int = CombatActionRules.uses_left(shown, action)
 			_badges[action].visible = uses >= 0
 			_badges[action].text = str(uses)
 			_badges[action].reset_size()
@@ -224,60 +204,11 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 func action_details(actions: CombatActions, actor: CombatUnit, action: String) -> String:
 	if actor == null:
 		return ""
-	var effect: String = ACTION_EFFECTS.get(action, "")
-	if action == "attack":
-		effect = "인접한 적을 기본 공격합니다." if actor.kind == CombatUnit.Kind.WARRIOR else "1~6칸 원거리 공격.\n옆에 적이 있으면 불리."
-	var index: int = 0 if action in ACTION_GROUPS[0] else 1 if action in ACTION_GROUPS[1] else 2
-	var amount: int = [actor.action_left, actor.bonus_action_left, actor.reaction_left][index]
-	var uses: int = _remaining_uses(actor, action)
-	var reason: String = _unavailable_reason(actions, actor, action, amount, uses)
+	var effect: String = CombatActionRules.effect(actor, action)
+	var reason: String = actions.unavailable_reason(actor, action)
 	if not reason.is_empty():
 		return effect + "\n지금 사용 불가: " + reason
 	return effect
-
-
-func _unavailable_reason(actions: CombatActions, actor: CombatUnit, action: String,
-	amount: int, uses: int) -> String:
-	var reaction: bool = action in ACTION_GROUPS[2]
-	if actions.is_over() or (actions.busy and not reaction):
-		return "전투 입력 잠금"
-	if not reaction and (actor != actions.turns.current_unit or not actor.is_ally):
-		return "아군의 자기 턴에만 사용"
-	if uses == 0:
-		return "보유 물약 없음" if action == "potion" else "이번 막의 횟수를 모두 씀"
-	if amount == 0:
-		return "자원을 이미 씀"
-	if reaction:
-		if actor.hit_points <= 0:
-			return "전투 불능"
-		return "기절 상태" if actor.is_stunned else ""
-	if action in ["second_wind", "potion"] and actor.hit_points == actor.get_max_hit_points():
-		return "HP가 이미 최대"
-	if action == "surge" and actor.action_left > 0:
-		return "행동이 아직 남아 있음"
-	if not actions.can_use(actor, action):
-		return "이동이 없거나 이미 효과 적용 중" if action == "disengage" else "사거리 또는 대상 조건을 확인"
-	return ""
-
-
-func _belongs_to(actor: CombatUnit, action: String) -> bool:
-	if action in ["second_wind", "surge", "opportunity", "parry"]:
-		return actor.kind == CombatUnit.Kind.WARRIOR
-	if action in ["mark", "shock", "disengage"]:
-		return actor.kind == CombatUnit.Kind.ARCHER
-	return true
-
-
-func _remaining_uses(actor: CombatUnit, action: String) -> int:
-	match action:
-		"second_wind": return actor.second_wind_left
-		"surge": return actor.surge_left
-		"mark": return actor.mark_left
-		"shock": return actor.shock_left
-		"disengage": return actor.disengage_left
-		"potion": return actor.potion_left
-		"parry": return actor.parry_left
-	return -1
 
 
 func add_log(message: String) -> void:
