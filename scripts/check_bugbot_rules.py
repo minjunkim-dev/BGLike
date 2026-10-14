@@ -24,20 +24,21 @@ def markdown_targets(text, *, coverage=False):
     """Read inline/reference links; examples in code and images are not rules."""
     lines = []
     fence = None
-    for line in text.splitlines():
+    for line in text.splitlines() if coverage else []:
         marker = re.match(r"^ {0,3}(`{3,}|~{3,})", line)
         if marker:
+            lines.extend(["", ""])
             token = marker[1]
             if fence is None:
                 fence = token
             elif token[0] == fence[0] and len(token) >= len(fence):
                 fence = None
             continue
-        # Budget ambiguous indented links; never let code indentation prove coverage.
-        if fence is None and (not coverage or not line.startswith(("    ", "\t"))):
+        if fence is None and not line.startswith(("    ", "\t")):
             lines.append(line)
-    text = re.sub(r"(`+).*?\1", "", "\n".join(lines), flags=re.DOTALL)
     if coverage:
+        text = re.sub(r"(?<![\\`])(`+)(?!`)(?:(?!\n[ \t]*\n).)*?(?<!`)\1(?!`)",
+                      "", "\n".join(lines), flags=re.DOTALL)
         text = re.sub(r"<!--.*?(?:-->|$)", "", text, flags=re.DOTALL)
     definitions = {}
     for match in re.finditer(r"^ {0,3}\[([^\]\n]+)\]:\s*(<[^>\n]+>|\S+)", text, re.MULTILINE):
@@ -114,7 +115,11 @@ def check_rules(root):
                 resolved = Path(os.path.normpath(root / name / ".." / path))
                 if not resolved.is_relative_to(root):
                     raise ValueError(f"Rule link escapes repository in {name!r}: {target!r}")
-                pending.append(resolved.relative_to(root).as_posix())
+                relative = resolved.relative_to(root).as_posix()
+                # Budget every tracked candidate, including code examples; missing
+                # visible links are rejected separately by the coverage walk.
+                if coverage or relative in tracked:
+                    pending.append(relative)
         return seen
 
     reachable = closure([ROOT_RULE], coverage=True)
@@ -123,6 +128,7 @@ def check_rules(root):
         raise ValueError(f"Required rules are not included from root: {sorted(missing)!r}")
     # Count all nested roots together, even if a particular PR visits fewer scopes.
     roots = {name for name in tracked if name == ROOT_RULE or name.endswith("/" + ROOT_RULE)}
+    closure(roots, coverage=True)
     included = closure(roots)
     sizes = {name: len(texts[name]) for name in included}
     oversized = {name: size for name, size in sizes.items() if size > RULE_LIMIT}

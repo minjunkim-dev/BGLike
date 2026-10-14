@@ -77,6 +77,12 @@ class BugbotRulesTests(unittest.TestCase):
                    "![image](../missing.md)")
         self.assertEqual(set(check_rules(self.root)), REQUIRED | {ROOT_RULE})
 
+    def test_tracked_code_example_rules_are_budgeted_conservatively(self):
+        self.write("extra.md", "x" * 30_001)
+        self.write(ROOT_RULE, self.links + "\n`[example](../extra.md)`")
+        with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
+            check_rules(self.root)
+
     def test_multiline_nested_list_and_parenthesized_links_cannot_hide_oversize_rules(self):
         for link in ["[new\n rules](../extra(copy).md)",
                      "[new](../extra(copy).md)", "[new](../extra\\(copy\\).md)",
@@ -96,6 +102,16 @@ class BugbotRulesTests(unittest.TestCase):
             with self.subTest(example=example):
                 self.write(ROOT_RULE, missing + "\n" + example)
                 with self.assertRaisesRegex(ValueError, "not included from root"):
+                    check_rules(self.root)
+
+    def test_unmatched_code_spans_do_not_hide_live_links_across_blocks(self):
+        for text in ["`literal\n\n[new](../extra.md)\n\n`literal",
+                     "``literal\n[new](../extra.md)\n`literal",
+                     "`literal\n```text\nexample\n```\n[new](../extra.md)\n`literal"]:
+            with self.subTest(text=text):
+                self.write("extra.md", "x" * 30_001)
+                self.write(ROOT_RULE, self.links + "\n" + text)
+                with self.assertRaisesRegex(ValueError, "Rule exceeds 30000"):
                     check_rules(self.root)
 
     def test_nested_roots_count_even_without_root_link(self):
