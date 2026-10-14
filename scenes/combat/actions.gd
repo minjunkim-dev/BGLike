@@ -54,6 +54,24 @@ func is_marked(target: CombatUnit) -> bool:
 	return false
 
 
+## 남은 적이 없으면 승리다.
+func is_victory() -> bool:
+	for unit: CombatUnit in units:
+		if not unit.is_ally and unit.hit_points > 0:
+			return false
+	return true
+
+
+## 전투 불능 전환. 표식, 턴 순서와 표시를 함께 정리한다.
+func incapacitate(target: CombatUnit) -> void:
+	target.hit_points = 0
+	for unit: CombatUnit in units:
+		if unit.marked_target == target:
+			unit.marked_target = null
+	turns.remove_unit(target)
+	target.visible = false
+
+
 func is_over() -> bool:
 	var ally: bool = false
 	var enemy: bool = false
@@ -387,11 +405,7 @@ func _damage(target: CombatUnit, amount: int) -> void:
 	if target.hit_points < before:
 		hit_landed.emit()
 	if target.hit_points == 0:
-		for unit: CombatUnit in units:
-			if unit.marked_target == target:
-				unit.marked_target = null
-		turns.remove_unit(target)
-		target.visible = false
+		incapacitate(target)
 
 
 func _heal(actor: CombatUnit, amount: int, name: String) -> void:

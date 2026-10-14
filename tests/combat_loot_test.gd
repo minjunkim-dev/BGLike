@@ -199,13 +199,11 @@ func _test_reward_flow() -> void:
 		loot.data["potion_limit"] = 3
 		var party: Array[CombatUnit] = battle.get("party")
 		await _test_equipped_attack(battle)
-		party[1].hit_points = 0
 		party[1].potion_left = 1
-		(battle.get("turns") as CombatTurns).remove_unit(party[1])
+		(battle.get("actions") as CombatActions).incapacitate(party[1])
 		for unit: CombatUnit in battle.get("units"):
 			if not unit.is_ally:
-				unit.hit_points = 0
-				(battle.get("turns") as CombatTurns).remove_unit(unit)
+				(battle.get("actions") as CombatActions).incapacitate(unit)
 		(battle.get("actions") as CombatActions).changed.emit()
 		var actual_rewards: Array[Dictionary] = (battle.get("progress") as CombatActProgress).rewards
 		_check(actual_rewards.size() >= 1 and actual_rewards.size() <= 3, "실제 승리에서 적2명 기준 드랍")
@@ -270,8 +268,7 @@ func _test_reward_flow() -> void:
 		_check(actions.use_self(party[0], "potion") and party[0].potion_left == 2
 			and party[0].bonus_action_left == 0, "드랍 물약은 전투 보조 행동으로1개 소비")
 		for unit: CombatUnit in party:
-			unit.hit_points = 0
-			turns.remove_unit(unit)
+			(battle.get("actions") as CombatActions).incapacitate(unit)
 		actions.changed.emit()
 		_check((battle.get("progress") as CombatActProgress).rewards.is_empty(), "패배는 드랍을 주지 않음")
 		await _click(hud.restart_button)
@@ -335,8 +332,7 @@ func _test_scaled_combat() -> void:
 	loot.data["items"] = [loot.data["items"][1]]
 	for unit: CombatUnit in units:
 		if not unit.is_ally:
-			unit.hit_points = 0
-			turns.remove_unit(unit)
+			(battle.get("actions") as CombatActions).incapacitate(unit)
 	actions.changed.emit()
 	var rewards: Array[Dictionary] = (battle.get("progress") as CombatActProgress).rewards
 	_check(rewards.size() == 1 and rewards[0]["stats"]["max_hit_points"] >= 9
@@ -410,8 +406,7 @@ func _test_accidental_advance() -> void:
 	battle.set_process(false)
 	for unit: CombatUnit in battle.get("units"):
 		if not unit.is_ally:
-			unit.hit_points = 0
-			(battle.get("turns") as CombatTurns).remove_unit(unit)
+			(battle.get("actions") as CombatActions).incapacitate(unit)
 	(battle.get("actions") as CombatActions).changed.emit()
 	await _click((battle.get_node("UI/TurnHud") as CombatTurnHud).restart_button)
 	var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation

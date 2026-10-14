@@ -218,6 +218,8 @@ func _test_attacks() -> void:
 	_check(killed.units[2].hit_points == 0 and killed.units[2] not in killed.turns.ordered_units,
 		"HP0은 즉시 전투 불능과 턴 순서 제거")
 	_check(killed.units[1].marked_target == null, "전투 불능 대상의 표식 제거")
+	_check(not killed.units[2].visible and not killed.actions.is_marked(killed.units[2]),
+		"전투 불능 대상은 숨기고 표식 표시도 해제")
 	_check(not await killed.actions.attack(killed.units[0], killed.units[2]), "전투 불능 대상 재공격 거부")
 	_check(killed.hits.size() == 1, "전투 불능 타격도 한 번 재생하고 거부한 공격은 무음")
 	f.actions._damage(target, 0)

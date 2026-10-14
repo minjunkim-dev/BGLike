@@ -115,7 +115,7 @@ func _start_stage(restore_act: bool) -> void:
 func _restart() -> void:
 	if not actions.is_over() or actions.busy or _enemy_turn_running:
 		return
-	if _all_enemies_down():
+	if actions.is_victory():
 		if progress.graduated or preparation.visible:
 			return
 		preparation.open_rewards(loot, party, progress.rewards, progress.is_final_stage(),
@@ -127,7 +127,7 @@ func _restart() -> void:
 
 
 func _finish_preparation() -> void:
-	if not actions.is_over() or actions.busy or _enemy_turn_running or not _all_enemies_down():
+	if not actions.is_over() or actions.busy or _enemy_turn_running or not actions.is_victory():
 		return
 	progress.advance()
 	if progress.graduated:
@@ -262,7 +262,7 @@ func preview_enemy(target: CombatUnit) -> bool:
 
 
 func _on_actions_changed() -> void:
-	if actions.is_over() and _all_enemies_down():
+	if actions.is_over() and actions.is_victory():
 		var dice: RandomNumberGenerator = RandomNumberGenerator.new()
 		dice.randomize()
 		progress.record_victory(loot, units.size() - party.size(), dice)
@@ -373,17 +373,10 @@ func _update_turn_ui() -> void:
 	hud.refresh_actions(actions, selected_action, _last_ally)
 	hud.show_move_mode(showing_move)
 	if actions.is_over():
-		hud.show_outcome(_all_enemies_down())
+		hud.show_outcome(actions.is_victory())
 		if not preparation.visible:
-			hud.show_result(_all_enemies_down(), progress.graduated, _enemy_turn_running or actions.busy)
+			hud.show_result(actions.is_victory(), progress.graduated, _enemy_turn_running or actions.busy)
 	queue_redraw()
-
-
-func _all_enemies_down() -> bool:
-	for unit: CombatUnit in units:
-		if not unit.is_ally and unit.hit_points > 0:
-			return false
-	return true
 
 
 func _draw() -> void:

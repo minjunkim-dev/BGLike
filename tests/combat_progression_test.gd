@@ -125,12 +125,11 @@ func _test_act_progress() -> void:
 
 
 func _win(battle: Node2D) -> void:
-	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var actions: CombatActions = battle.get("actions") as CombatActions
 	for unit: CombatUnit in battle.get("units"):
 		if not unit.is_ally:
-			unit.hit_points = 0
-			turns.remove_unit(unit)
-	(battle.get("actions") as CombatActions).changed.emit()
+			actions.incapacitate(unit)
+	actions.changed.emit()
 
 
 func _test_stage_transition(battle: Node2D) -> void:
@@ -148,8 +147,7 @@ func _test_stage_transition(battle: Node2D) -> void:
 	warrior.is_stunned = true
 	warrior.disengaged = true
 	warrior.marked_target = (battle.get("units") as Array)[2] as CombatUnit
-	archer.hit_points = 0
-	(battle.get("turns") as CombatTurns).remove_unit(archer)
+	(battle.get("actions") as CombatActions).incapacitate(archer)
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var stages: Array[CombatStage] = battle.get("stages")
 	var second: CombatStage = stages[1].duplicate() as CombatStage
@@ -249,8 +247,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	_check(hud.progress_label.text == "2막 · 2스테이지", "전투 중 임의 진행 거부")
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	for unit: CombatUnit in party:
-		unit.hit_points = 0
-		(battle.get("turns") as CombatTurns).remove_unit(unit)
+		(battle.get("actions") as CombatActions).incapacitate(unit)
 	party[0].potion_left = 2
 	actions.changed.emit()
 	_check(hud.result_label.text == "패배" and hud.restart_button.text == "이 막 다시 시작",
@@ -280,8 +277,7 @@ func _test_graduation(battle: Node2D) -> void:
 		await _next(battle)
 		_check(hud.progress_label.text == label, "정해진 순서: " + label)
 	for unit: CombatUnit in battle.get("party"):
-		unit.hit_points = 0
-		(battle.get("turns") as CombatTurns).remove_unit(unit)
+		(battle.get("actions") as CombatActions).incapacitate(unit)
 	(battle.get("actions") as CombatActions).changed.emit()
 	hud.restart_button.pressed.emit()
 	await process_frame
