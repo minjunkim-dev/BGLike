@@ -1,8 +1,10 @@
 """A script that fails to load must fail the Godot check even when Godot exits 0."""
 import os
 from pathlib import Path
+import signal
 import subprocess
 import tempfile
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -85,6 +87,46 @@ esac
                                              BROKEN="no-such-step", ERROR_LINE="", BROKEN_EXIT="0",
                                              PROBE=str(root)), text=True, capture_output=True, timeout=10)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_cancellation_stops_owned_godot_processes(self):
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            with self.subTest(signum=signum), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                binary = root / "godot"
+                binary.write_text(FAKE_GODOT + """
+case "$*" in
+  *combat_hud_test*) echo $$ > "$PROBE/hud.pid"; exec sleep 30 ;;
+  *combat_ai_test*) echo $$ > "$PROBE/ai.pid"; exec sleep 30 ;;
+esac
+""")
+                binary.chmod(0o755)
+                process = subprocess.Popen(["bash", "scripts/check_godot.sh"], cwd=ROOT,
+                                           env=dict(os.environ, GODOT=str(binary), CALL_LOG=str(root / "calls"),
+                                                    BROKEN="no-such-step", ERROR_LINE="", BROKEN_EXIT="0",
+                                                    PROBE=str(root)), stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE, text=True, start_new_session=True)
+                children = []
+                try:
+                    deadline = time.monotonic() + 5
+                    while not all((root / f"{name}.pid").exists() for name in ("hud", "ai")):
+                        self.assertLess(time.monotonic(), deadline, "Parallel tests did not start")
+                        time.sleep(0.02)
+                    children = [int((root / f"{name}.pid").read_text()) for name in ("hud", "ai")]
+                    os.kill(process.pid, signum)
+                    process.communicate(timeout=3)
+                    self.assertEqual(process.returncode, 130)
+                    for child in children:
+                        with self.assertRaises(ProcessLookupError):
+                            os.kill(child, 0)
+                finally:
+                    if process.poll() is None:
+                        os.killpg(process.pid, signal.SIGKILL)
+                        process.communicate()
+                    for child in children:
+                        try:
+                            os.killpg(child, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
 
 
 if __name__ == "__main__":
