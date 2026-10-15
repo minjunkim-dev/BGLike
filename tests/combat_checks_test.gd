@@ -204,6 +204,7 @@ func _test_preview_conditions() -> void:
 func _test_scene_input() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	var battle: Node2D = scene.instantiate() as Node2D
+	battle.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(battle)
 	battle.set_process(false)
 	await process_frame

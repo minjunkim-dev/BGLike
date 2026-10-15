@@ -398,8 +398,9 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 				return
 	var count: int = 2 if last_attack.critical else 1
 	var sides: int = actor.get_damage_sides()
-	for index: int in range(count):
-		last_damage_rolls.append(dice.roll(sides))
+	if sides > 0:
+		for index: int in range(count):
+			last_damage_rolls.append(dice.roll(sides))
 	var has_mark_damage: bool = actor.marked_target == target
 	if has_mark_damage:
 		for index: int in range(count):

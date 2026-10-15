@@ -20,9 +20,17 @@ const SCRAP_ROBOT_1000: Dictionary = {
 	"attack_bonus": 5, "damage_bonus": 2, "damage_sides": 8, "attack_range": 1, "save_dc": 13,
 	"actions": ["attack", "opportunity"]
 }
+const SPIDERLING: Dictionary = {
+	"name": "새끼 거미", "max_hit_points": 1, "armor_class": 6,
+	"strength": 0, "dexterity": 2, "constitution": -2, "mental": -2,
+	"attack_bonus": 4, "damage_bonus": 1, "damage_sides": 0, "attack_range": 1, "save_dc": 10,
+	"actions": ["attack"]
+}
 
 
 static func for_kind(kind: CombatUnit.Kind) -> Dictionary:
 	if kind == CombatUnit.Kind.SCRAP_ROBOT_1000:
 		return SCRAP_ROBOT_1000
+	if kind == CombatUnit.Kind.SPIDERLING:
+		return SPIDERLING
 	return NOVICE_BARBARIAN if kind == CombatUnit.Kind.WARRIOR else NOVICE_ARCHER

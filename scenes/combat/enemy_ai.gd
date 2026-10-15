@@ -8,10 +8,10 @@ func play_turn(actor: CombatUnit, actions: CombatActions, pause: Callable = Call
 		return
 	if actor.is_boss():
 		await _boss_turn(actor, actions, pause)
-	elif actor.kind == CombatUnit.Kind.WARRIOR:
-		await _warrior_turn(actor, actions, pause)
-	else:
+	elif actor.kind == CombatUnit.Kind.ARCHER:
 		await _archer_turn(actor, actions, pause)
+	else:
+		await _warrior_turn(actor, actions, pause)
 
 
 func _boss_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:

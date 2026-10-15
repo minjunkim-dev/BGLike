@@ -2,7 +2,7 @@ class_name CombatUnit
 extends Node2D
 ## 팀과 직업, 격자 위치와 유닛별 턴 자원을 가진 임시 유닛.
 
-enum Kind { WARRIOR, ARCHER, SCRAP_ROBOT_1000 = 4 }
+enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, SCRAP_ROBOT_1000 = 4 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 
@@ -156,6 +156,10 @@ func is_boss() -> bool:
 	return not is_ally and bool(CombatEnemyDefinitions.for_kind(kind).get("boss", false))
 
 
+func can_drop_extra_reward() -> bool:
+	return not is_ally and kind != Kind.SPIDERLING
+
+
 func begin_turn() -> void:
 	disengaged = false
 	movement_left = (MOVEMENT_PER_TURN if is_ally
@@ -249,7 +253,7 @@ func _draw() -> void:
 		draw_rect(Rect2(-3, -15, 2, 2), OUTLINE_COLOR)
 		draw_rect(Rect2(1, -15, 2, 2), OUTLINE_COLOR)
 		draw_line(Vector2(-3, -7), Vector2(3, -7), WEAPON_COLOR)
-	elif kind == Kind.WARRIOR:
+	elif kind != Kind.ARCHER:
 		# 검: 직선 칼날과 가로 손잡이.
 		draw_rect(Rect2(-1, -16, 2, 9), WEAPON_COLOR)
 		draw_rect(Rect2(-3, -8, 6, 2), WEAPON_COLOR)
