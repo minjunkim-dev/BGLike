@@ -2,7 +2,7 @@
 
 > 몬스터를 디자인할 때 채울 항목과 등급을 정한 뼈대 문서입니다. 개별 몬스터의 수치는 이 문서가 아니라 [전투 시스템 기획서](../COMBAT_DESIGN.md)와 [게임 구조 기획서](../GAME_STRUCTURE.md)가 기준입니다.
 >
-> - 기준일: 2026-10-13 (2026-10-13 기획 논의 반영)
+> - 기준일: 2026-10-14 (2026-10-13~14 기획 논의 반영)
 > - 관련 문서: [캐릭터 디자인 기획서](../characters/README.md) · [기획 로드맵 8장](../ROADMAP.md#8-m5-콘텐츠-기획) · [게임 구조 기획서](../GAME_STRUCTURE.md) · [전투 시스템 기획서](../COMBAT_DESIGN.md)
 > - 결정 근거: [Issue #99 세부 결정 기록](https://github.com/minjunkim-dev/BGLike/issues/99#issuecomment-6182272879)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
