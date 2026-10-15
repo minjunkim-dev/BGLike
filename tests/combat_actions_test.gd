@@ -60,6 +60,8 @@ func _run() -> void:
 	_test_scrap_robot_overload()
 	_test_scrap_robot_turn_damage()
 	await _test_spiderling_stats_and_damage()
+	await _test_mother_stats_and_damage()
+	_test_spawn_spiderling()
 	_test_novice_uses()
 	await _test_novice_damage()
 	await _test_scrap_robot_stun_immunity()
@@ -279,6 +281,85 @@ func _test_spiderling_stats_and_damage() -> void:
 		_check(await f.actions.attack(spiderling, f.units[0]), "새끼 거미 기본 공격 실행")
 		_check(f.actions.last_damage == 1 and f.units[0].hit_points == 11
 			and f.actions.last_damage_rolls.is_empty(), "새끼 거미는 치명타도 피해1이며 피해 주사위를 굴리지 않음")
+
+
+func _test_mother_stats_and_damage() -> void:
+	var f: Fixture = _fixture()
+	var mother: CombatUnit = f.units[2]
+	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
+	for act: int in range(1, 4):
+		mother.act_number = act
+		mother.begin_turn()
+		_check(mother.get_max_hit_points() == 20 and mother.get_armor_class() == 13
+			and mother.get_attack_bonus() == 4 and mother.get_damage_bonus() == 2
+			and mother.get_damage_sides() == 6 and mother.get_attack_range() == 1
+			and mother.get_save_dc() == 12 and mother.movement_left == 4,
+			"엄마 거미의 HP·방어·공격·이동력은 모든 막에서 고정")
+		_check(mother.get_attribute(CombatUnit.Attribute.STRENGTH) == 2
+			and mother.get_dexterity() == 0
+			and mother.get_attribute(CombatUnit.Attribute.CONSTITUTION) == 2
+			and mother.get_attribute(CombatUnit.Attribute.MENTAL) == 1,
+			"엄마 거미의 힘·민첩·건강·정신")
+	_check(CombatActionRules.belongs_to(mother, "opportunity")
+		and not CombatActionRules.belongs_to(mother, "parry"), "엄마 거미는 기회 공격을 하고 흘려내기는 하지 않음")
+	f.turns.end_turn()
+	f.turns.end_turn()
+	f.units[0].reaction_left = 0
+	f.actions.dice = _dice_for([12, 6], [20, 6])
+	_check(await f.actions.attack(mother, f.units[0]) and f.actions.last_damage == 8
+		and f.units[0].hit_points == 4, "엄마 거미 기본 공격은 명중+4와 피해1d6+2 적용")
+
+
+func _test_spawn_spiderling() -> void:
+	var expected: Array[Vector2i] = [Vector2i(4, 5), Vector2i(3, 5), Vector2i(3, 4), Vector2i(3, 3), Vector2i(4, 3)]
+	for choice: int in range(expected.size()):
+		var f: Fixture = _fixture()
+		var mother: CombatUnit = f.units[2]
+		mother.kind = CombatUnit.Kind.MOTHER_SPIDER
+		mother.cell = Vector2i(4, 4)
+		f.units[0].cell = Vector2i(5, 4)
+		f.units[1].cell = Vector2i(1, 4)
+		f.units[3].cell = Vector2i(9, 9)
+		f.turns.end_turn()
+		f.turns.end_turn()
+		f.actions.dice = _dice_for([choice + 1], [5])
+		_check(f.actions.can_use(mother, "spawn") and f.actions.spawn_spiderling(mother),
+			"엄마 거미는 점유 칸을 뺀 무작위 빈 칸에 새끼 낳기")
+		var child: CombatUnit = f.units.back()
+		_created.append(child)
+		_check(f.units.size() == 5 and child.kind == CombatUnit.Kind.SPIDERLING
+			and child.hit_points == 1 and child.cell == expected[choice] and not child.is_ally,
+			"무작위 선택은 모든 인접 빈 칸을 포함하고 HP1 새끼를 생성")
+		_check(mother.action_left == 0 and mother.bonus_action_left == 1
+			and mother.movement_left == 4 and f.turns.current_unit == mother
+			and f.turns.is_turn_finished(child), "새끼 낳기는 행동만 쓰고 새끼는 생성 라운드 대기")
+		_check(f.actions.unit_at(child.cell) == child and not f.actions.can_move(mother, child.cell)
+			and f.actions.can_target(f.units[1], child, "attack"),
+			"생성한 새끼를 기존 점유 칸·공격 대상 검사에 반영")
+		_check(not f.actions.spawn_spiderling(mother) and f.units.size() == 5,
+			"행동을 쓴 엄마는 같은 턴에 새끼를 다시 낳지 못함")
+	var edge: Fixture = _fixture()
+	var mother: CombatUnit = edge.units[2]
+	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
+	mother.cell = Vector2i.ZERO
+	edge.actions.map_size = Vector2i(2, 2)
+	edge.units[0].cell = Vector2i(1, 0)
+	edge.units[1].cell = Vector2i(0, 1)
+	edge.units[3].cell = Vector2i(9, 9)
+	edge.turns.end_turn()
+	edge.turns.end_turn()
+	_check(not edge.actions.can_use(mother, "spawn") and not edge.actions.spawn_spiderling(mother)
+		and mother.action_left == 1, "가장자리의 맵 안 인접 칸이 모두 점유되면 생성·비용 소비 없음")
+	edge.units[1].cell = Vector2i(1, 1)
+	mother.is_stunned = true
+	_check(not edge.actions.can_use(mother, "spawn") and not edge.actions.spawn_spiderling(mother),
+		"빈 칸이 있어도 기절한 엄마는 새끼 낳기 불가")
+	mother.is_stunned = false
+	edge.actions.dice = _dice_for([1], [1])
+	_check(edge.actions.spawn_spiderling(mother), "빈 칸이 다시 생기면 새끼 낳기 가능")
+	var child: CombatUnit = edge.units.back()
+	_created.append(child)
+	_check(child.cell == Vector2i(0, 1), "가장자리에서는 맵 밖 좌표를 생성 후보에서 제외")
 
 
 func _test_novice_uses() -> void:
