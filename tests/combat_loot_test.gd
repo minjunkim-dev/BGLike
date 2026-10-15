@@ -488,6 +488,16 @@ func _test_accidental_advance() -> void:
 		"정비 진입 버튼 연속 클릭은 미수령 보상을 바로 폐기하지 않음")
 	if preparation.has_node("Discard"):
 		var dialog: ConfirmationDialog = preparation.get_node("Discard") as ConfirmationDialog
+		var stale_focus_requests: Array[int] = [0]
+		var finishes: Array[int] = [0]
+		# Headless 접근성 분기 모형. 제거된 exclusive child에 보내는 포커스를 검출한다.
+		var on_parent_focus: Callable = func() -> void:
+			if dialog.exclusive:
+				stale_focus_requests[0] += 1
+				dialog.grab_focus()
+		var on_finished: Callable = func() -> void: finishes[0] += 1
+		root.focus_entered.connect(on_parent_focus)
+		preparation.finished.connect(on_finished)
 		_check(dialog.visible and dialog.get_cancel_button().has_focus(), "폐기 확인 기본 포커스는 돌아가기")
 		var key: InputEventKey = InputEventKey.new()
 		key.keycode = KEY_ENTER
@@ -500,6 +510,31 @@ func _test_accidental_advance() -> void:
 		await process_frame
 		_check(not dialog.visible and preparation.visible and preparation.rewards.size() == count,
 			"확인 창의 Enter 입력은 돌아가기와 보상 유지")
+		for choice: String in ["cancel", "close", "escape"]:
+			preparation.continue_button.pressed.emit()
+			await process_frame
+			await process_frame
+			_check(dialog.visible and dialog.exclusive and dialog.get_cancel_button().has_focus(),
+				"폐기 재확인은 모달과 돌아가기 포커스를 복원: " + choice)
+			match choice:
+				"cancel":
+					dialog.get_cancel_button().pressed.emit()
+				"close":
+					dialog.notification(Window.NOTIFICATION_WM_CLOSE_REQUEST)
+				"escape":
+					var escape_event: InputEventKey = InputEventKey.new()
+					escape_event.keycode = KEY_ESCAPE
+					escape_event.physical_keycode = KEY_ESCAPE
+					escape_event.pressed = true
+					Input.parse_input_event(escape_event)
+					await process_frame
+					escape_event.pressed = false
+					Input.parse_input_event(escape_event)
+			await process_frame
+			await process_frame
+			_check(not dialog.visible and preparation.visible and preparation.rewards.size() == count
+				and finishes[0] == 0 and (battle.get("progress") as CombatActProgress).stage_index == 0,
+				"폐기 취소는 보상과 스테이지를 유지: " + choice)
 		preparation.continue_button.pressed.emit()
 		await process_frame
 		await process_frame
@@ -510,6 +545,10 @@ func _test_accidental_advance() -> void:
 		key.pressed = false
 		dialog.push_input(key)
 		await process_frame
-		_check((battle.get("progress") as CombatActProgress).stage_index == 1 and preparation.rewards.is_empty(), "명시적 폐기 확인 후 진행")
+		_check((battle.get("progress") as CombatActProgress).stage_index == 1
+			and preparation.rewards.is_empty() and finishes[0] == 1, "명시적 폐기 확인 후 한 번 진행")
+		_check(stale_focus_requests[0] == 0, "제거된 폐기 확인 창에 접근성 포커스를 전달하지 않음")
+		root.focus_entered.disconnect(on_parent_focus)
+		preparation.finished.disconnect(on_finished)
 	main.queue_free()
 	await process_frame
