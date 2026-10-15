@@ -32,9 +32,9 @@ func _run() -> void:
 		loot.data["extra_drop_chance"] = 1.0
 		_check(loot.roll_rewards(2, dice, 1).size() == 3, "확률1이면 보장1개와 몬스터당1개")
 		loot.data["extra_drop_chance"] = 0.35
-		_check(loot.roll_rewards(1, ScriptedDice.new([], [], [0.349]), 1).size() == 2,
+		_check(loot.roll_rewards(1, ScriptedDice.new([], [], [0.349]).then_seeded(), 1).size() == 2,
 			"추가 드랍 굴림 0.349는 35% 성공")
-		_check(loot.roll_rewards(1, ScriptedDice.new([], [], [0.35]), 1).size() == 1,
+		_check(loot.roll_rewards(1, ScriptedDice.new([], [], [0.35]).then_seeded(), 1).size() == 1,
 			"추가 드랍 굴림 0.35는 35% 실패")
 		_test_items(loot, dice)
 	await _test_reward_flow()
@@ -312,7 +312,7 @@ func _test_scaled_combat() -> void:
 	_check(is_equal_approx(preview.chance, 0.75), "3막 적 명중+10 대 아군 AC16 미리보기")
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	actions.save_dc = 0
-	actions.dice = ScriptedDice.new([15], [20])
+	actions.dice = ScriptedDice.new([15], [20]).then_seeded()
 	var used: bool = await actions.attack(actor, target)
 	_check(used and actions.last_attack.success
 		and actions.last_attack.total == actions.last_attack.selected_roll + 10,
@@ -367,7 +367,7 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	turns.select_unit(party[0])
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	actions.save_dc = 0
-	actions.dice = ScriptedDice.new([19], [20])
+	actions.dice = ScriptedDice.new([19], [20]).then_seeded()
 	await actions.attack(party[0], target)
 	_check(actions.last_attack.success and actions.last_attack.total == actions.last_attack.selected_roll + 7,
 		"실제 공격 판정은 무기 명중+2 포함")

@@ -229,6 +229,7 @@ func _test_log_and_status() -> void:
 		"불리 공격의 실제 판정 합계를 숫자 팝업으로 표시")
 	units[1].action_left = 1
 	units[2].is_stunned = true
+	actions.dice = CombatDice.new()
 	actions.dice.seed = 100
 	await actions.attack(units[1], units[2])
 	await process_frame
@@ -306,7 +307,7 @@ func _test_roll_popups() -> void:
 	units[1].action_left = 1
 	units[1].shock_left = 1
 	units[1].marked_target = null
-	actions.dice = ScriptedDice.new([15], [20])
+	actions.dice = ScriptedDice.new([15], [20]).then_seeded()
 	await actions.attack(units[1], target, true)
 	var save_total: String = hud.message_label.text.get_slice("정신 내성: ", 1).get_slice(" = ", 1).get_slice(" /", 0)
 	_check(save_total.is_valid_int() and _has_feedback(target, "정신 내성 %s" % save_total),
@@ -320,7 +321,7 @@ func _test_roll_popups() -> void:
 	target.hit_points = target.get_max_hit_points()
 	target.reaction_left = 1
 	target.parry_left = 2
-	actions.dice = ScriptedDice.new([11], [20])
+	actions.dice = ScriptedDice.new([11], [20]).then_seeded()
 	await actions.attack(warrior, target)
 	var parry_text: String = ""
 	for text: String in emitted:
@@ -843,7 +844,7 @@ func _test_action_animations() -> void:
 				while turns.current_unit != actor:
 					turns.end_turn()
 			battle.call("_update_turn_ui")
-			actions.dice = ScriptedDice.new([20], [20])
+			actions.dice = ScriptedDice.new([20], [20]).then_seeded()
 			var hp: int = target.hit_points
 			finished[0] = false
 			_animated_attack(actor, target, shock, finished)
@@ -878,7 +879,7 @@ func _test_action_animations() -> void:
 	while turns.current_unit != units[3]:
 		turns.end_turn()
 	battle.call("_update_turn_ui")
-	actions.dice = ScriptedDice.new([20], [20])
+	actions.dice = ScriptedDice.new([20], [20]).then_seeded()
 	var reactions: Array[int] = [0]
 	var on_reaction: Callable = func(kind: String, _prompt: String) -> void:
 		var arrow: Node = battle.get_node_or_null("Arrow")

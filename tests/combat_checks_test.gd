@@ -18,6 +18,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_scripted_dice_leftovers()
+	_test_scripted_dice_shortfall()
 	_test_modes()
 	_test_attacks()
 	_test_saves_and_contests()
@@ -50,6 +51,20 @@ func _test_scripted_dice_leftovers() -> void:
 	_check(problems == ["7는 1~6 밖", "확률 1.0은 0 이상 1 미만 밖", "굴리지 않은 준비값 [4, 0.5]"],
 		"finish()가 범위 밖 정수·확률과 남은 준비값을 보고 " + str(problems))
 	_check(ScriptedDice.finish().is_empty(), "finish()는 보고한 문제와 인스턴스를 비움")
+
+
+func _test_scripted_dice_shortfall() -> void:
+	var dice: ScriptedDice = ScriptedDice.new([3], [6])
+	dice.roll(6)
+	dice.roll(8)
+	dice.chance()
+	var seeded: CombatDice = ScriptedDice.new([3], [6]).then_seeded()
+	seeded.roll(6)
+	seeded.roll(8)
+	seeded.chance()
+	var problems: Array[String] = ScriptedDice.finish()
+	_check(problems == ["준비값 부족 d8", "확률 준비값 부족"],
+		"준비값보다 더 굴리면 보고하고 then_seeded()는 seed 굴림을 허용 " + str(problems))
 
 
 func _dice_for(expected: Array[int]) -> CombatDice:
