@@ -163,6 +163,9 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 	if not _can_act(actor):
 		return false
 	match action:
+		"spin":
+			return (CombatActionRules.belongs_to(actor, action) and actor.action_left > 0
+				and not spin_targets(actor).is_empty())
 		"spawn":
 			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
 				and actor in turns.ordered_units and not _spawn_cells(actor).is_empty())
@@ -269,6 +272,32 @@ func attack(actor: CombatUnit, target: CombatUnit, shock: bool = false) -> bool:
 		CombatActionRules.spend_use(actor, action)
 	changed.emit()
 	await _perform_attack(actor, target, shock)
+	_finish()
+	return true
+
+
+func spin_targets(actor: CombatUnit) -> Array[CombatUnit]:
+	var targets: Array[CombatUnit] = []
+	for unit: CombatUnit in units:
+		if (unit.hit_points > 0 and unit.is_ally != actor.is_ally
+			and CombatHexGrid.distance(actor.cell, unit.cell) == 1):
+			targets.append(unit)
+	return targets
+
+
+func spin(actor: CombatUnit) -> bool:
+	if not can_use(actor, "spin"):
+		return false
+	var targets: Array[CombatUnit] = spin_targets(actor)
+	busy = true
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	logged.emit("%s 회전회오리: 인접 대상 %d명" % [actor.get_display_name(), targets.size()])
+	changed.emit()
+	for target: CombatUnit in targets:
+		if actor.hit_points <= 0 or actor.is_stunned or actor != turns.current_unit or is_over():
+			break
+		if target.hit_points > 0 and CombatHexGrid.distance(actor.cell, target.cell) == 1:
+			await _perform_attack(actor, target, false)
 	_finish()
 	return true
 
@@ -445,6 +474,8 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	var save_dc: int = actor.get_save_dc()
 	if attack_animation.is_valid():
 		await attack_animation.call(actor, target)
+	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
+		return
 	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(actor, target, units)
 	last_attack = CombatChecks.attack(actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
 	last_damage = 0
