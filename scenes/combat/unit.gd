@@ -2,7 +2,7 @@ class_name CombatUnit
 extends Node2D
 ## 팀과 직업, 격자 위치와 유닛별 턴 자원을 가진 임시 유닛.
 
-enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, SCRAP_ROBOT_1000 = 4 }
+enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 
@@ -221,6 +221,7 @@ func has_available_turn_action(
 func _ready() -> void:
 	cell = start_cell
 	hit_points = get_max_hit_points()
+	begin_turn()
 	queue_redraw()
 
 

@@ -321,6 +321,7 @@ func _test_reward_flow() -> void:
 
 func _test_scaled_combat() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	(main.get_node("Battle") as Node2D).stages[6] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(main)
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D

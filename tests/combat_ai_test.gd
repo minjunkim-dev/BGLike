@@ -57,6 +57,7 @@ func _fixture(archer: bool = false) -> Fixture:
 
 func _run() -> void:
 	await _test_scrap_robot()
+	await _test_mother()
 	await _test_spiderling()
 	await _test_warrior()
 	await _test_archer()
@@ -117,6 +118,56 @@ func _test_scrap_robot() -> void:
 	_check(boss.movement_left == 0 and boss.action_left == 1
 		and CombatHexGrid.distance(boss.cell, distant.units[0].cell) == 3,
 		"사거리 밖의 보스는 가장 가까운 아군에게 4칸만 접근")
+
+
+func _test_mother() -> void:
+	var spawning: Fixture = _fixture()
+	var mother: CombatUnit = spawning.units[2]
+	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
+	mother.hit_points = 20
+	mother.begin_turn()
+	spawning.actions.dice = ScriptedDice.new([1], [5])
+	await ai.play_turn(mother, spawning.actions)
+	_check(spawning.units.size() == 5 and mother.cell == Vector2i(4, 4)
+		and mother.movement_left == 4 and mother.action_left == 0
+		and mother.bonus_action_left == 1 and spawning.units[0].hit_points == 12,
+		"아군이 인접해도 빈 칸이 있는 엄마는 이동·공격 없이 새끼 낳기 우선")
+	_check(spawning.turns.current_unit == mother
+		and spawning.turns.is_turn_finished(spawning.units.back()), "새끼를 낳은 엄마 턴에 새끼가 끼어들지 않음")
+	var blocked: Fixture = _fixture()
+	mother = blocked.units[2]
+	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
+	mother.hit_points = 20
+	mother.cell = Vector2i.ZERO
+	mother.begin_turn()
+	blocked.actions.map_size = Vector2i(2, 2)
+	blocked.units[0].cell = Vector2i(1, 0)
+	blocked.units[1].cell = Vector2i(0, 1)
+	blocked.units[1].hit_points = 5
+	blocked.units[3].cell = Vector2i(9, 9)
+	blocked.actions.dice = ScriptedDice.new([10, 1], [20, 6])
+	await ai.play_turn(mother, blocked.actions)
+	_check(blocked.units.size() == 4 and blocked.units[1].hit_points == 2
+		and blocked.units[0].hit_points == 12 and mother.action_left == 0,
+		"빈 칸이 없는 엄마는 가장 가까운 대상 중 HP가 낮은 아군을 기본 공격")
+	blocked.turns.end_turn()
+	while blocked.turns.current_unit != mother:
+		blocked.turns.end_turn()
+	blocked.units[1].cell = Vector2i(1, 1)
+	blocked.actions.dice = ScriptedDice.new([1], [1])
+	await ai.play_turn(mother, blocked.actions)
+	_check(blocked.units.size() == 5 and mother.movement_left == 4
+		and blocked.units[0].hit_points == 12 and blocked.units[1].hit_points == 2,
+		"다음 턴에 빈 칸이 생긴 엄마는 공격 대신 새끼 낳기로 복귀")
+	var stunned: Fixture = _fixture()
+	mother = stunned.units[2]
+	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
+	mother.begin_turn()
+	mother.is_stunned = true
+	stunned.actions.dice = ScriptedDice.new([])
+	await ai.play_turn(mother, stunned.actions)
+	_check(stunned.units.size() == 4 and mother.action_left == 1 and stunned.logs.is_empty(),
+		"기절한 엄마의 AI는 새끼 낳기·이동·공격을 실행하지 않음")
 
 
 func _test_spiderling() -> void:
