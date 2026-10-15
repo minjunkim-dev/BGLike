@@ -309,19 +309,19 @@ func _test_scaled_combat() -> void:
 	turns.start(units, ScriptedDice.new(initiative))
 	_check(turns.current_unit == actor, "이니셔티브 d20 20으로 3막 적이 먼저 행동")
 	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(actor, target, units)
-	_check(is_equal_approx(preview.chance, 0.75), "3막 적 명중+10 대 아군 AC16 미리보기")
+	_check(is_equal_approx(preview.chance, 0.5), "3막 풋내기 명중+5 대 아군 AC16 미리보기")
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.save_dc = 0
+	target.reaction_left = 0
 	actions.dice = ScriptedDice.new([15], [20]).then_seeded()
 	var used: bool = await actions.attack(actor, target)
 	_check(used and actions.last_attack.success
-		and actions.last_attack.total == actions.last_attack.selected_roll + 10,
-		"3막 실제 적 공격에 명중+5 강화 적용")
+		and actions.last_attack.total == actions.last_attack.selected_roll + 5,
+		"3막 풋내기 공격도 명중+5 고정")
 	var rolled_damage: int = 0
 	for rolled: int in actions.last_damage_rolls:
 		rolled_damage += rolled
-	_check(actions.last_damage == rolled_damage + 7, "3막 실제 적 피해에+4 강화 한 번 적용")
-	# 적 강화와 별개로 방어구 최대 HP를 실제 물약 회복 상한에 적용한다.
+	_check(actions.last_damage == rolled_damage + 1, "3막 풋내기 피해도 고정값1 적용")
+	# 방어구 최대 HP를 실제 물약 회복 상한에 적용한다.
 	var loot: CombatLoot = battle.get("loot") as CombatLoot
 	loot.receive(units[1], {"kind": "armor", "name": "검사 방어구",
 		"stats": {"armor_class": 7, "max_hit_points": 14}})
@@ -366,7 +366,7 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	turns.start(units, dice)
 	turns.select_unit(party[0])
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.save_dc = 0
+	target.reaction_left = 0
 	actions.dice = ScriptedDice.new([19], [20]).then_seeded()
 	await actions.attack(party[0], target)
 	_check(actions.last_attack.success and actions.last_attack.total == actions.last_attack.selected_roll + 7,
@@ -378,7 +378,7 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	party[0].cell = Vector2i(4, 1)
 	units[3].cell = Vector2i(4, 0)
 	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(party[0], units[3], units)
-	_check(is_equal_approx(preview.chance, 0.7), "명중 미리보기도 장비 포함+7 대 AC14")
+	_check(is_equal_approx(preview.chance, 0.85), "명중 미리보기도 장비 포함+7 대 AC11")
 
 
 func _click(button: Button) -> void:

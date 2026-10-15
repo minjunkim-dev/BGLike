@@ -86,6 +86,7 @@ func _start_stage(restore_act: bool) -> void:
 			map.set_cell(Vector2i(x, y), 0, Vector2i((x + y) % 2, 0))
 	for index: int in range(party.size()):
 		party[index].cell = stage.ally_cells[index]
+		party[index].facing_left = false
 	var enemies: Node = stage.enemies.instantiate()
 	for child: Node in enemies.get_children():
 		(child as CombatUnit).act_number = progress.act_number()

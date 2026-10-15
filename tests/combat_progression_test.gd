@@ -18,6 +18,7 @@ func _check(condition: bool, message: String) -> void:
 
 func _run() -> void:
 	_test_act_progress()
+	await _test_novice_placements()
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
@@ -43,21 +44,54 @@ func _run() -> void:
 
 
 func _check_enemy_values(battle: Node2D, act: int) -> void:
-	var expected: Array = [
-		[[12, 5, 16, 3], [14, 5, 14, 1]],
-		[[18, 7, 18, 5], [21, 7, 16, 3]],
-		[[24, 10, 21, 7], [28, 10, 19, 5]]
-	]
+	var expected: Array = [[12, 5, 12, 1], [14, 5, 11, 1]]
 	for unit: CombatUnit in battle.get("units"):
 		if unit.is_ally:
 			_check(unit.get_attack_bonus() == 5
 				and unit.get_armor_class() == (16 if unit.kind == CombatUnit.Kind.WARRIOR else 14),
 				"막 강화는 아군 기본 명중·AC를 바꾸지 않음")
 			continue
-		var values: Array = expected[act - 1][unit.kind]
+		var values: Array = expected[unit.kind]
 		_check(unit.get_max_hit_points() == values[0] and unit.hit_points == values[0]
 			and unit.get_attack_bonus() == values[1] and unit.get_armor_class() == values[2]
 			and unit.get_damage_bonus() == values[3], "%d막 실제 적의 HP·명중·AC·피해" % act)
+
+
+func _test_novice_placements() -> void:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+	var expected: Dictionary = {
+		1: [[CombatUnit.Kind.WARRIOR, Vector2i(7, 4)]],
+		4: [[CombatUnit.Kind.WARRIOR, Vector2i(6, 3)], [CombatUnit.Kind.ARCHER, Vector2i(8, 6)]],
+		7: [[CombatUnit.Kind.WARRIOR, Vector2i(6, 2)], [CombatUnit.Kind.WARRIOR, Vector2i(6, 7)],
+			[CombatUnit.Kind.ARCHER, Vector2i(9, 4)]]
+	}
+	for index: int in range(9):
+		var party: Array[CombatUnit] = battle.get("party")
+		for ally: CombatUnit in party:
+			ally.facing_left = true
+		progress.stage_index = index
+		battle.call("_start_stage", true)
+		_check(party[0].cell == Vector2i(1, 4) and party[1].cell == Vector2i(0, 5)
+			and not party[0].facing_left and not party[1].facing_left,
+			"모든 스테이지에서 아군이 왼쪽 두 칸에서 오른쪽을 보고 시작")
+		_check(battle.get("map_size") == Vector2i(10, 10), "모든 스테이지의 기존 10×10 헥사 맵 유지")
+		_check_enemy_values(battle, progress.act_number())
+		if not expected.has(index):
+			continue
+		var enemies: Array[CombatUnit] = []
+		for unit: CombatUnit in battle.get("units"):
+			if not unit.is_ally:
+				enemies.append(unit)
+		_check(enemies.size() == expected[index].size(), "%d막 2스테이지 풋내기 수" % progress.act_number())
+		for enemy: int in range(mini(enemies.size(), expected[index].size())):
+			_check(enemies[enemy].kind == expected[index][enemy][0]
+				and enemies[enemy].cell == expected[index][enemy][1], "2스테이지 풋내기 종류와 좌표")
+	main.queue_free()
+	await process_frame
 
 
 func _test_async_transition() -> void:
