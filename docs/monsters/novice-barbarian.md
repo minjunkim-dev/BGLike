@@ -5,7 +5,7 @@
 > - 기준일: 2026-10-13 (2026-10-13 기획 논의 반영)
 > - 관련 문서: [몬스터 디자인 기획서](README.md) · [전투 시스템 기획서](../COMBAT_DESIGN.md) · [게임 구조 기획서](../GAME_STRUCTURE.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
-> - [Issue #107](https://github.com/minjunkim-dev/BGLike/issues/107)에서 구현합니다. 세 막의 2스테이지에 배치합니다.
+> - [Issue #107](https://github.com/minjunkim-dev/BGLike/issues/107)에서 구현했습니다. 세 막의 2스테이지에 배치했습니다.
 
 ---
 

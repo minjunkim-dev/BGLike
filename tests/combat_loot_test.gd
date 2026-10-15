@@ -3,6 +3,12 @@ extends SceneTree
 
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
 
+class ScriptedLoot extends CombatLoot:
+	var scripted_dice: CombatDice
+
+	func roll_rewards(monster_count: int, _dice: CombatDice, act_number: int) -> Array[Dictionary]:
+		return super.roll_rewards(monster_count, scripted_dice, act_number)
+
 var checks: int = 0
 var failures: int = 0
 
@@ -41,6 +47,7 @@ func _run() -> void:
 	await _test_accidental_advance()
 	await _test_scaled_combat()
 	await _test_spiderling_rewards()
+	await _test_boss_reward_boundary()
 	# 완료된 검사 코루틴의 참조를 해제한 뒤 종료한다.
 	await process_frame
 	var dice_problems: Array[String] = ScriptedDice.finish()
@@ -75,6 +82,39 @@ func _test_spiderling_rewards() -> void:
 			"새끼만 처치하면 보장1개이고 혼합 전투는 풋내기1마리분만 추가 드랍")
 		main.queue_free()
 		await process_frame
+
+
+func _test_boss_reward_boundary() -> void:
+	for stage: int in [2, 5, 8]:
+		for extra: bool in [false, true]:
+			var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+			root.add_child(main)
+			var battle: Node2D = main.get_node("Battle") as Node2D
+			battle.set_process(false)
+			var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+			progress.stage_index = stage
+			battle.call("_start_stage", true)
+			var units: Array[CombatUnit] = battle.get("units")
+			_check(units.size() == 3 and units[2].is_boss(), "각 막의 실제3스테이지는 보스1마리")
+			if units.size() != 3 or not units[2].is_boss():
+				main.queue_free()
+				await process_frame
+				continue
+			var loot: ScriptedLoot = ScriptedLoot.new()
+			_check(is_equal_approx(float(loot.data["extra_drop_chance"]), 0.35),
+				"각 보스의 실제 보상 연결도 제품 데이터의35% 사용")
+			# 승리 연결이 만든 주사위만 교체한다. 추첨과 드랍 대상 수는 실제 코드를 실행한다.
+			loot.scripted_dice = (ScriptedDice.new([1, 1], [1, 1], [0.349]) if extra
+				else ScriptedDice.new([1], [1], [0.35]))
+			loot.data["items"] = [{"kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}]
+			battle.set("loot", loot)
+			var actions: CombatActions = battle.get("actions") as CombatActions
+			actions.incapacitate(units[2])
+			actions.changed.emit()
+			_check(actions.is_victory() and progress.rewards.size() == (2 if extra else 1),
+				"%d막 보스 승리는 보장1개와0.349성공·0.35실패 경계를 적용" % progress.act_number())
+			main.queue_free()
+			await process_frame
 
 
 func _test_armor_hit_points(loot: CombatLoot) -> void:
