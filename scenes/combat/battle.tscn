@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scenes/combat/battle.gd" id="1_battle"]
 [ext_resource type="PackedScene" path="res://scenes/combat/unit.tscn" id="2_unit"]
@@ -10,13 +10,14 @@
 [ext_resource type="Resource" path="res://scenes/combat/stages/act1_stage2.tres" id="8_stage2"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act2_stage2.tres" id="9_stage2"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act3_stage2.tres" id="10_stage2"]
+[ext_resource type="Resource" path="res://scenes/combat/stages/act1_stage1.tres" id="11_stage1"]
 
 [sub_resource type="Theme" id="Theme_legend"]
 default_font_size = 12
 
 [node name="Battle" type="Node2D"]
 script = ExtResource("1_battle")
-stages = Array[ExtResource("6_stage_script")]([ExtResource("5_stage"), ExtResource("8_stage2"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("9_stage2"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("10_stage2"), ExtResource("5_stage")])
+stages = Array[ExtResource("6_stage_script")]([ExtResource("11_stage1"), ExtResource("8_stage2"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("9_stage2"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("10_stage2"), ExtResource("5_stage")])
 
 [node name="HitSound" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("7_hit")

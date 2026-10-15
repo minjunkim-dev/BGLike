@@ -281,7 +281,7 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 	for unit: CombatUnit in _portraits:
 		var button: Button = _portraits[unit]
 		button.text = "%s\n%s" % ["아군" if unit.is_ally else "적",
-			"전사" if unit.kind == CombatUnit.Kind.WARRIOR else "궁수"]
+			unit.get_display_name().trim_prefix("아군 ")]
 		button.tooltip_text = "%s: d20 %d + 민첩 %d = %d" % [
 			unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()]
 		var in_group: bool = unit in turns.get_current_group()

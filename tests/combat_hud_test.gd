@@ -26,6 +26,8 @@ func _check(condition: bool, message: String) -> void:
 func _run() -> void:
 	var scene: PackedScene = load("res://scenes/main.tscn") as PackedScene
 	var main: Node = scene.instantiate()
+	# 전사·궁수 UI 회귀는 기존 풋내기 배치를 fixture로 유지한다.
+	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	# 화면 fixture는 턴을 직접 고정한다. 자동 실행은 AI 장면 검사에서 확인한다.
 	root.add_child(main)
 	main.get_node("Battle").set_process(false)

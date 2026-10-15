@@ -56,6 +56,7 @@ func _dice_for(expected: Array[int], sides: Array[int]) -> ScriptedDice:
 
 func _run() -> void:
 	_test_novice_stats()
+	await _test_spiderling_stats_and_damage()
 	_test_novice_uses()
 	await _test_novice_damage()
 	await _test_movement()
@@ -129,6 +130,34 @@ func _test_novice_damage() -> void:
 			_check(f.actions.last_damage == (7 if critical else 5)
 				and target.hit_points == (5 if critical else 7),
 				"풋내기 피해는 일반1d4+1·치명타2d4+1")
+
+
+func _test_spiderling_stats_and_damage() -> void:
+	for critical: bool in [false, true]:
+		var f: Fixture = _fixture()
+		var spiderling: CombatUnit = f.units[2]
+		spiderling.kind = CombatUnit.Kind.SPIDERLING
+		for act: int in range(1, 4):
+			spiderling.act_number = act
+			_check(spiderling.get_max_hit_points() == 1 and spiderling.get_armor_class() == 6
+				and spiderling.get_attack_bonus() == 4 and spiderling.get_damage_bonus() == 1
+				and spiderling.get_damage_sides() == 0 and spiderling.get_attack_range() == 1
+				and spiderling.get_save_dc() == 10, "새끼 거미의 HP·방어·공격은 모든 막에서 고정")
+			_check(spiderling.get_attribute(CombatUnit.Attribute.STRENGTH) == 0
+				and spiderling.get_dexterity() == 2
+				and spiderling.get_attribute(CombatUnit.Attribute.CONSTITUTION) == -2
+				and spiderling.get_attribute(CombatUnit.Attribute.MENTAL) == -2
+				and spiderling.movement_left == 6, "새끼 거미의 능력치·이동력")
+		for action: String in CombatActionRules.NAMES:
+			_check(CombatActionRules.belongs_to(spiderling, action) == (action == "attack"),
+				"새끼 거미는 스킬·기회 공격 없이 기본 공격만 사용: " + action)
+		f.turns.end_turn()
+		f.turns.end_turn()
+		f.units[0].reaction_left = 0
+		f.actions.dice = _dice_for([20 if critical else 12], [20])
+		_check(await f.actions.attack(spiderling, f.units[0]), "새끼 거미 기본 공격 실행")
+		_check(f.actions.last_damage == 1 and f.units[0].hit_points == 11
+			and f.actions.last_damage_rolls.is_empty(), "새끼 거미는 치명타도 피해1이며 피해 주사위를 굴리지 않음")
 
 
 func _test_novice_uses() -> void:
@@ -575,6 +604,7 @@ func _test_own_turn_parry() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	for choice: int in range(3):
 		var battle: Node2D = scene.instantiate() as Node2D
+		battle.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 		root.add_child(battle)
 		battle.set_process(false)
 		await process_frame
@@ -646,6 +676,7 @@ func _test_own_turn_parry() -> void:
 func _test_scene_input() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	var battle: Node2D = scene.instantiate() as Node2D
+	battle.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(battle)
 	battle.set_process(false)
 	await process_frame
@@ -703,6 +734,7 @@ func _test_scene_input() -> void:
 	await process_frame
 	# 몸통에 가린 빈 칸과 겹친 유닛은 실제 입력으로 별도 확인한다.
 	var overlap: Node2D = scene.instantiate() as Node2D
+	overlap.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(overlap)
 	overlap.set_process(false)
 	await process_frame
@@ -733,6 +765,7 @@ func _test_scene_input() -> void:
 func _test_scene_shock() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	var battle: Node2D = scene.instantiate() as Node2D
+	battle.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(battle)
 	battle.set_process(false)
 	await process_frame

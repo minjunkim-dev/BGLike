@@ -3,6 +3,7 @@ extends SceneTree
 
 var checks: int = 0
 var failures: int = 0
+const ScriptedDice = preload("res://tests/scripted_dice.gd")
 
 
 func _initialize() -> void:
@@ -18,6 +19,7 @@ func _check(condition: bool, message: String) -> void:
 
 func _run() -> void:
 	_test_act_progress()
+	await _test_spiderling_placement_and_turns()
 	await _test_novice_placements()
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
@@ -39,12 +41,60 @@ func _run() -> void:
 	main.queue_free()
 	await process_frame
 	await _test_async_transition()
+	var dice_problems: Array[String] = ScriptedDice.finish()
+	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat progression: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
 
 
+func _test_spiderling_placement_and_turns() -> void:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	var units: Array[CombatUnit] = battle.get("units")
+	_check(units.size() == 6, "1막 1스테이지는 아군2명과 새끼 거미4마리")
+	if units.size() != 6:
+		main.queue_free()
+		await process_frame
+		return
+	var cells: Array[Vector2i] = [Vector2i(7, 2), Vector2i(8, 4), Vector2i(7, 6), Vector2i(8, 8)]
+	for index: int in range(4):
+		_check(units[index + 2].kind == CombatUnit.Kind.SPIDERLING
+			and units[index + 2].cell == cells[index] and units[index + 2].hit_points == 1,
+			"처음 배치한 새끼 거미의 종류·HP·좌표 순서")
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	turns.start(units, ScriptedDice.new([11, 9, 10, 10, 10, 10]))
+	_check(turns.ordered_units == [units[1], units[2], units[3], units[4], units[5], units[0]],
+		"이니셔티브 동점은 민첩을 먼저 비교하고 새끼끼리는 배치 좌표 순서")
+	var rolls: Array[int] = [2, 1, 20, 18, 16, 14]
+	turns.start(units, ScriptedDice.new(rolls))
+	for index: int in range(units.size()):
+		_check(units[index].initiative_roll == rolls[index]
+			and units[index].get_initiative() == rolls[index] + units[index].get_dexterity(),
+			"처음 배치한 새끼를 포함해 유닛마다 d20+민첩을 독립 적용")
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	for index: int in range(2, 6):
+		_check(turns.current_unit == units[index] and units[index].action_left == 1,
+			"새끼 거미는 각자 이니셔티브 순서의 자기 턴으로 진입")
+		_check(await actions.move_to(units[index], cells[index - 2] + Vector2i(-1, 0))
+			and units[index].movement_left == 5, "새끼 거미는 자기 턴에 자기 이동력으로 이동")
+		for waiting: int in range(index + 1, 6):
+			_check(units[waiting].cell == cells[waiting - 2] and units[waiting].movement_left == 6,
+				"다른 새끼의 이동은 대기 중인 새끼의 위치·이동력을 바꾸지 않음")
+		turns.end_turn()
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var spiderling_portraits: int = 0
+	for portrait: Node in hud.order_bar.find_children("*", "Button", true, false):
+		if "새끼 거미" in (portrait as Button).text:
+			spiderling_portraits += 1
+	_check(spiderling_portraits == 4, "턴 순서 바는 새끼 거미4마리의 이름을 표시")
+	main.queue_free()
+	await process_frame
+
+
 func _check_enemy_values(battle: Node2D, act: int) -> void:
-	var expected: Array = [[12, 5, 12, 1], [14, 5, 11, 1]]
+	var expected: Array = [[12, 5, 12, 1], [14, 5, 11, 1], [1, 4, 6, 1]]
 	for unit: CombatUnit in battle.get("units"):
 		if unit.is_ally:
 			_check(unit.get_attack_bonus() == 5
@@ -96,6 +146,7 @@ func _test_novice_placements() -> void:
 
 func _test_async_transition() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(main)
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
