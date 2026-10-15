@@ -7,9 +7,6 @@ enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 
 const MOVEMENT_PER_TURN: int = 6
-const ENEMY_COMBAT_BONUSES: Array[int] = [0, 2, 5]
-const ENEMY_DAMAGE_BONUSES: Array[int] = [0, 2, 4]
-const ENEMY_HP_MULTIPLIERS: Array[float] = [1.0, 1.5, 2.0]
 
 const ALLY_COLOR: Color = Color("509be0")
 const ENEMY_COLOR: Color = Color("df6256")
@@ -74,10 +71,15 @@ var is_selected: bool = false:
 
 
 func get_dexterity() -> int:
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["dexterity"])
 	return 1 if kind == Kind.WARRIOR else 3
 
 
 func get_attribute(attribute: Attribute) -> int:
+	if not is_ally:
+		var key: String = ["strength", "dexterity", "constitution", "mental"][attribute]
+		return int(CombatEnemyDefinitions.for_kind(kind)[key])
 	match attribute:
 		Attribute.STRENGTH:
 			return 3 if kind == Kind.WARRIOR else 0
@@ -92,23 +94,37 @@ func get_attribute(attribute: Attribute) -> int:
 
 func get_max_hit_points() -> int:
 	var base: int = 12 if kind == Kind.WARRIOR else 14
-	return int(base * (1.0 if is_ally else ENEMY_HP_MULTIPLIERS[act_number - 1])) \
-		+ _equipment_stat("max_hit_points")
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["max_hit_points"])
+	return base + _equipment_stat("max_hit_points")
 
 
 func get_armor_class() -> int:
-	return (16 if kind == Kind.WARRIOR else 14) + _equipment_stat("armor_class") \
-		+ (0 if is_ally else ENEMY_COMBAT_BONUSES[act_number - 1])
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["armor_class"])
+	return (16 if kind == Kind.WARRIOR else 14) + _equipment_stat("armor_class")
 
 
 func get_attack_bonus() -> int:
-	return 5 + _equipment_stat("attack_bonus") \
-		+ (0 if is_ally else ENEMY_COMBAT_BONUSES[act_number - 1])
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["attack_bonus"])
+	return 5 + _equipment_stat("attack_bonus")
 
 
 func get_damage_bonus() -> int:
-	return (3 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus") \
-		+ (0 if is_ally else ENEMY_DAMAGE_BONUSES[act_number - 1])
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["damage_bonus"])
+	return (3 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus")
+
+
+func get_damage_sides() -> int:
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["damage_sides"])
+	return 8 if kind == Kind.WARRIOR else 6
+
+
+func get_save_dc() -> int:
+	return 13 if is_ally else int(CombatEnemyDefinitions.for_kind(kind)["save_dc"])
 
 
 func _equipment_stat(stat: String) -> int:
@@ -116,6 +132,8 @@ func _equipment_stat(stat: String) -> int:
 
 
 func get_attack_range() -> int:
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["attack_range"])
 	return 1 if kind == Kind.WARRIOR else 6
 
 
@@ -124,7 +142,9 @@ func get_initiative() -> int:
 
 
 func get_display_name() -> String:
-	return ("아군 " if is_ally else "적 ") + ("전사" if kind == Kind.WARRIOR else "궁수")
+	if not is_ally:
+		return CombatEnemyDefinitions.for_kind(kind)["name"]
+	return "아군 " + ("전사" if kind == Kind.WARRIOR else "궁수")
 
 
 func begin_turn() -> void:

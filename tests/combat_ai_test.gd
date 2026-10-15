@@ -88,10 +88,10 @@ func _test_warrior() -> void:
 	healthy.units[2].hit_points = 7
 	healthy.units[0].hit_points = 100
 	await ai.play_turn(healthy.units[2], healthy.actions)
-	_check(healthy.units[2].second_wind_left == 1 and healthy.units[2].surge_left == 0,
-		"절반 초과는 회복 없이 몰아치기")
-	_check(healthy.units[2].action_left == 0 and healthy.units[2].bonus_action_left == 0,
-		"몰아치기 후 두 번째 공격의 행동 소비")
+	_check(healthy.units[2].second_wind_left == 1 and healthy.units[2].surge_left == 1,
+		"절반 초과는 회복하지 않고 몰아치기도 사용하지 않음")
+	_check(healthy.units[2].action_left == 0 and healthy.units[2].bonus_action_left == 1,
+		"기본 공격 한 번은 행동만 소비")
 	var approach: Fixture = _fixture()
 	approach.units[2].cell = Vector2i(0, 0)
 	approach.units[3].cell = Vector2i(9, 0)
@@ -109,8 +109,9 @@ func _test_warrior() -> void:
 	retarget.actions.dice.seed = 2
 	await ai.play_turn(retarget.units[2], retarget.actions)
 	_check(retarget.units[1].hit_points == 0, "인접한 대상 중 낮은 HP부터 공격")
-	_check(retarget.units[2].surge_left == 0 and retarget.units[2].action_left == 0,
-		"첫 대상 탈락 후 남은 인접 대상에게 몰아치기 공격")
+	_check(retarget.units[2].surge_left == 1 and retarget.units[2].action_left == 0
+		and retarget.units[0].hit_points == 12,
+		"첫 대상 탈락 뒤 두 번째 대상을 추가 공격하지 않음")
 	var last: Fixture = _fixture()
 	last.units[0].hit_points = 1
 	last.actions.incapacitate(last.units[1])
@@ -127,10 +128,10 @@ func _test_archer() -> void:
 	ranged.units[1].cell = Vector2i(7, 2)
 	ranged.units[1].hit_points = 5
 	await ai.play_turn(ranged.units[3], ranged.actions)
-	_check(ranged.units[3].mark_left == 0 and ranged.units[3].marked_target == ranged.units[1],
-		"사거리 안에서 HP가 낮은 대상에게 표식을 먼저 사용")
-	_check("표식" in ranged.logs[0] and ranged.units[3].shock_left == 0,
-		"첫 공격 전 표식, 충격 화살 우선 사용")
+	_check(ranged.units[3].mark_left == 1 and ranged.units[3].marked_target == null,
+		"풋내기 궁수는 표식을 사용하지 않음")
+	_check("공격" in ranged.logs[0] and ranged.units[3].shock_left == 1
+		and not ranged.units[1].is_stunned, "풋내기 궁수는 충격 화살 없이 기본 공격")
 	_check(ranged.units[3].movement_left == 6 and ranged.units[3].disengage_left == 2,
 		"인접 위협이 없으면 불필요한 후퇴 없음")
 	var retreat: Fixture = _fixture(true)
@@ -149,8 +150,9 @@ func _test_archer() -> void:
 		and retreat.units[3].movement_left == 5, "인접 위협에서 벗어나는 최단 후퇴")
 	_check(prompts[0] == 0 and retreat.units[0].reaction_left == 1,
 		"물러서며 쏘기 이동은 아군 기회 공격을 일으키지 않음")
-	_check(retreat.units[3].mark_left == 1 and retreat.units[3].shock_left == 0,
-		"후퇴 스킬이 보조 행동을 써서 표식은 남고 충격 화살은 실행")
+	_check(retreat.units[3].mark_left == 1 and retreat.units[3].shock_left == 1
+		and retreat.units[3].action_left == 0,
+		"후퇴 뒤 표식·충격 화살 없이 기본 공격")
 	_check(retreat.actions.last_attack.mode == CombatChecks.RollMode.NORMAL,
 		"후퇴 후 공격의 인접 불리 제거")
 	var approach: Fixture = _fixture(true)
@@ -174,6 +176,8 @@ func _test_archer() -> void:
 	await ai.play_turn(edge.units[3], edge.actions)
 	_check(edge.units[3].movement_left == 6 and edge.units[3].disengage_left == 2
 		and edge.units[3].action_left == 0, "후퇴 칸이 없으면 헛이동·후퇴 스킬 없이 공격")
+	_check(edge.actions.last_attack.mode == CombatChecks.RollMode.DISADVANTAGE,
+		"후퇴할 수 없는 풋내기 궁수는 인접 위협의 불리 유지")
 
 
 func _test_reaction_pause() -> void:
@@ -232,8 +236,8 @@ func _test_enemy_reactions() -> void:
 	reactor.reaction_left = 1
 	f.actions.dice.seed = 2
 	_check(await f.actions.attack(actor, reactor), "적 전사에게 아군 공격 실행")
-	_check(reactor.parry_left == 1 and reactor.reaction_left == 0 and prompts[0] == 0,
-		"적 흘려내기는 확인 창 없이 반응과 횟수를 자동 소비")
+	_check(reactor.parry_left == 2 and reactor.reaction_left == 1 and prompts[0] == 0,
+		"야만인은 흘려내기 반응을 하지 않음")
 
 
 func _test_guards() -> void:

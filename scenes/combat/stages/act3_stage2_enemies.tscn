@@ -1,0 +1,18 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/combat/unit.tscn" id="1_unit"]
+
+[node name="Enemies" type="Node2D"]
+
+[node name="NoviceBarbarian1" parent="." instance=ExtResource("1_unit")]
+is_ally = false
+start_cell = Vector2i(6, 2)
+
+[node name="NoviceBarbarian2" parent="." instance=ExtResource("1_unit")]
+is_ally = false
+start_cell = Vector2i(6, 7)
+
+[node name="NoviceArcher" parent="." instance=ExtResource("1_unit")]
+kind = 1
+is_ally = false
+start_cell = Vector2i(9, 4)
