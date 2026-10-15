@@ -31,13 +31,19 @@ func _run() -> void:
 		_check(loot.roll_rewards(2, dice, 1).size() == 1, "추가 확률0이어도 보장1개")
 		loot.data["extra_drop_chance"] = 1.0
 		_check(loot.roll_rewards(2, dice, 1).size() == 3, "확률1이면 보장1개와 몬스터당1개")
+		loot.data["extra_drop_chance"] = 0.35
+		_check(loot.roll_rewards(1, ScriptedDice.new([], [], [0.349]), 1).size() == 2,
+			"추가 드랍 굴림 0.349는 35% 성공")
+		_check(loot.roll_rewards(1, ScriptedDice.new([], [], [0.35]), 1).size() == 1,
+			"추가 드랍 굴림 0.35는 35% 실패")
 		_test_items(loot, dice)
 	await _test_reward_flow()
 	await _test_accidental_advance()
 	await _test_scaled_combat()
 	# 완료된 검사 코루틴의 참조를 해제한 뒤 종료한다.
 	await process_frame
-	_check(ScriptedDice.mismatches.is_empty(), "준비한 주사위 값과 실제 굴림 요청 일치 " + str(ScriptedDice.mismatches))
+	var dice_problems: Array[String] = ScriptedDice.finish()
+	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat loot: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
 
