@@ -6,10 +6,10 @@ extends RefCounted
 func play_turn(actor: CombatUnit, actions: CombatActions, pause: Callable = Callable()) -> void:
 	if not _active(actor, actions):
 		return
-	if actor.kind == CombatUnit.Kind.WARRIOR:
-		await _warrior_turn(actor, actions, pause)
-	else:
+	if actor.kind == CombatUnit.Kind.ARCHER:
 		await _archer_turn(actor, actions, pause)
+	else:
+		await _warrior_turn(actor, actions, pause)
 
 
 func _active(actor: CombatUnit, actions: CombatActions) -> bool:
