@@ -56,6 +56,7 @@ func _fixture(archer: bool = false) -> Fixture:
 
 
 func _run() -> void:
+	await _test_scrap_robot()
 	await _test_spiderling()
 	await _test_warrior()
 	await _test_archer()
@@ -76,6 +77,46 @@ func _run() -> void:
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat AI: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_scrap_robot() -> void:
+	var normal: Fixture = _fixture()
+	var boss: CombatUnit = normal.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = 40
+	boss.begin_turn()
+	normal.actions.dice = ScriptedDice.new([11, 8], [20, 8])
+	await ai.play_turn(boss, normal.actions)
+	_check(normal.units[0].hit_points == 2 and boss.action_left == 0
+		and boss.bonus_action_left == 1 and boss.movement_left == 4,
+		"일반 보스는 인접 아군에게 1d8+2 기본 공격 한 번")
+	var overloaded: Fixture = _fixture()
+	boss = overloaded.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = 20
+	boss.begin_turn()
+	overloaded.units[0].hit_points = 3
+	overloaded.units[1].cell = Vector2i(6, 4)
+	overloaded.actions.dice = ScriptedDice.new([11, 1, 10, 8], [20, 8, 20, 8])
+	await ai.play_turn(boss, overloaded.actions)
+	_check(overloaded.units[0].hit_points == 0 and overloaded.units[1].hit_points == 4,
+		"과부하 첫 행동으로 전투 불능 뒤 두 번째 행동 대상을 다시 선택")
+	_check(boss.cell == Vector2i(5, 4) and boss.movement_left == 3
+		and boss.action_left == 0 and boss.bonus_action_left == 1,
+		"두 번째 행동에 인접 대상이 없으면 남은 이동으로 접근 후 공격")
+	var distant: Fixture = _fixture()
+	boss = distant.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = 40
+	boss.cell = Vector2i(8, 4)
+	distant.units[0].cell = Vector2i(1, 4)
+	distant.units[1].cell = Vector2i(0, 5)
+	boss.begin_turn()
+	distant.actions.dice = ScriptedDice.new([], [])
+	await ai.play_turn(boss, distant.actions)
+	_check(boss.movement_left == 0 and boss.action_left == 1
+		and CombatHexGrid.distance(boss.cell, distant.units[0].cell) == 3,
+		"사거리 밖의 보스는 가장 가까운 아군에게 4칸만 접근")
 
 
 func _test_spiderling() -> void:

@@ -56,9 +56,14 @@ func _dice_for(expected: Array[int], sides: Array[int]) -> ScriptedDice:
 
 func _run() -> void:
 	_test_novice_stats()
+	_test_scrap_robot_stats()
+	_test_scrap_robot_overload()
+	_test_scrap_robot_turn_damage()
 	await _test_spiderling_stats_and_damage()
 	_test_novice_uses()
 	await _test_novice_damage()
+	await _test_scrap_robot_stun_immunity()
+	await _test_scrap_robot_opportunity()
 	await _test_movement()
 	await _test_hex_rules()
 	await _test_attacks()
@@ -80,6 +85,122 @@ func _run() -> void:
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat actions: %d checks, %d failures" % [_checks, _failures])
 	quit(0 if _failures == 0 else 1)
+
+
+func _test_scrap_robot_stats() -> void:
+	var boss: CombatUnit = _fixture().units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	for act: int in range(1, 4):
+		boss.act_number = act
+		boss.hit_points = boss.get_max_hit_points()
+		boss.begin_turn()
+		_check(boss.get_max_hit_points() == 40 and boss.get_armor_class() == 14
+			and boss.get_attack_bonus() == 5 and boss.get_damage_bonus() == 2
+			and boss.get_damage_sides() == 8 and boss.get_attack_range() == 1
+			and boss.get_save_dc() == 13 and boss.movement_left == 4,
+			"고철로봇-1000 전투 수치는 모든 막에서 고정")
+		_check(boss.get_attribute(CombatUnit.Attribute.STRENGTH) == 3
+			and boss.get_dexterity() == -1
+			and boss.get_attribute(CombatUnit.Attribute.CONSTITUTION) == 3
+			and boss.get_attribute(CombatUnit.Attribute.MENTAL) == 0,
+			"고철로봇-1000 능력치")
+	_check(boss.is_boss() and boss.get_display_name() == "고철로봇-1000"
+		and CombatActionRules.belongs_to(boss, "opportunity")
+		and not CombatActionRules.belongs_to(boss, "second_wind")
+		and not CombatActionRules.belongs_to(boss, "surge"), "보스는 기본 공격과 기회 공격만 사용")
+
+
+func _test_scrap_robot_overload() -> void:
+	var boss: CombatUnit = _fixture().units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = 21
+	boss.begin_turn()
+	_check(boss.action_left == 1, "HP 21에서 과부하가 켜지지 않음")
+	boss.hit_points = 20
+	boss.begin_turn()
+	_check(boss.action_left == 2, "HP 20에서 턴 행동 2개")
+	boss.spend_resource(CombatUnit.TurnResource.ACTION)
+	boss.hit_points = 19
+	_check(boss.action_left == 1, "추가 피해로 과부하 행동을 중복 지급하지 않음")
+	boss.hit_points = 40
+	boss.begin_turn()
+	_check(boss.action_left == 2, "회복해도 과부하가 전투 중 유지됨")
+
+
+func _test_scrap_robot_turn_damage() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = 20
+	f.turns.start(f.units, _dice_for([19, 14, 2, 7], [20, 20, 20, 20]))
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(f.turns.current_unit == f.units[3] and boss.hit_points == 20,
+		"같은 적 묶음에 들어가도 실제 보스 순서 전에는 자기 피해 없음")
+	f.turns.end_turn()
+	_check(f.turns.current_unit == boss and boss.hit_points == 18 and boss.action_left == 2,
+		"보스 실제 턴 시작에 자기 피해 2와 행동 2개")
+	f.turns.remove_unit(f.units[3])
+	_check(boss.hit_points == 18, "묶음 재계산으로 자기 피해를 중복 적용하지 않음")
+	f.turns.end_turn()
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(f.turns.current_unit == boss and boss.hit_points == 16,
+		"다음 라운드 자기 턴에 다시 자기 피해 2")
+	for remaining_enemy: bool in [false, true]:
+		var dying: Fixture = _fixture()
+		var doomed: CombatUnit = dying.units[2]
+		doomed.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+		doomed.hit_points = 2 if remaining_enemy else 1
+		dying.units[1].marked_target = doomed
+		if not remaining_enemy:
+			dying.actions.incapacitate(dying.units[3])
+		var living: Array[CombatUnit] = dying.units.duplicate()
+		var rolls: Array[int] = [19, 14, 2, 7]
+		var sides: Array[int] = [20, 20, 20, 20]
+		if not remaining_enemy:
+			living.erase(dying.units[3])
+			rolls.pop_back()
+			sides.pop_back()
+		dying.turns.start(living, _dice_for(rolls, sides))
+		dying.turns.end_turn()
+		dying.turns.end_turn()
+		if remaining_enemy:
+			dying.turns.end_turn()
+		_check(doomed.hit_points == 0 and doomed not in dying.turns.ordered_units
+			and not doomed.visible and dying.units[1].marked_target == null,
+			"자기 피해 HP 0은 즉시 전투 불능·턴 제거·표식 해제")
+		_check(dying.actions.is_victory() == not remaining_enemy
+			and dying.actions.is_over() == not remaining_enemy,
+			"다른 살아 있는 적이 없을 때만 승리")
+		_check(not dying.actions.can_use(doomed, "attack")
+			and dying.turns.current_unit != doomed, "전투 불능 보스는 그 턴과 이후 턴에 행동 불가")
+
+
+func _test_scrap_robot_stun_immunity() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = 40
+	boss.cell = Vector2i(6, 4)
+	var archer: CombatUnit = f.units[1]
+	f.turns.select_unit(archer)
+	f.actions.dice = _dice_for([10, 3], [20, 6])
+	_check(await f.actions.attack(archer, boss, true), "보스에게 충격 화살 공격 가능")
+	_check(boss.hit_points == 36 and not boss.is_stunned and archer.shock_left == 0,
+		"보스는 충격 화살 피해를 받지만 내성 굴림 없이 기절에 면역")
+
+
+func _test_scrap_robot_opportunity() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = 40
+	f.units[0].parry_left = 0
+	f.actions.dice = _dice_for([11, 8], [20, 8])
+	_check(await f.actions.move_to(f.units[0], Vector2i(3, 5)), "보스 인접 칸에서 이동")
+	_check(f.units[0].hit_points == 2 and boss.reaction_left == 0,
+		"보스 기회 공격은 명중 +5·피해 1d8+2로 반응을 소비")
 
 
 func _test_novice_stats() -> void:

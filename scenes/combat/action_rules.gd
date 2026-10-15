@@ -79,5 +79,5 @@ static func restore_uses(unit: CombatUnit) -> void:
 
 static func effect(actor: CombatUnit, action: String) -> String:
 	if action == "attack":
-		return "인접한 적을 기본 공격합니다." if actor.kind == CombatUnit.Kind.WARRIOR else "1~6칸 원거리 공격.\n옆에 적이 있으면 불리."
+		return "인접한 적을 기본 공격합니다." if actor.get_attack_range() == 1 else "1~6칸 원거리 공격.\n옆에 적이 있으면 불리."
 	return EFFECTS.get(action, "")

@@ -1,9 +1,10 @@
 extends SceneTree
 ## 실제 메인 장면과 결과 버튼에서 막 진행과 자원 유지 규칙을 검사한다.
 
+const ScriptedDice = preload("res://tests/scripted_dice.gd")
+
 var checks: int = 0
 var failures: int = 0
-const ScriptedDice = preload("res://tests/scripted_dice.gd")
 
 
 func _initialize() -> void:
@@ -21,6 +22,7 @@ func _run() -> void:
 	_test_act_progress()
 	await _test_spiderling_placement_and_turns()
 	await _test_novice_placements()
+	await _test_scrap_robot_stage()
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
@@ -94,7 +96,11 @@ func _test_spiderling_placement_and_turns() -> void:
 
 
 func _check_enemy_values(battle: Node2D, act: int) -> void:
-	var expected: Array = [[12, 5, 12, 1], [14, 5, 11, 1], [1, 4, 6, 1]]
+	var expected: Dictionary = {
+		CombatUnit.Kind.WARRIOR: [12, 5, 12, 1], CombatUnit.Kind.ARCHER: [14, 5, 11, 1],
+		CombatUnit.Kind.SPIDERLING: [1, 4, 6, 1],
+		CombatUnit.Kind.SCRAP_ROBOT_1000: [40, 5, 14, 2]
+	}
 	for unit: CombatUnit in battle.get("units"):
 		if unit.is_ally:
 			_check(unit.get_attack_bonus() == 5
@@ -140,6 +146,38 @@ func _test_novice_placements() -> void:
 		for enemy: int in range(mini(enemies.size(), expected[index].size())):
 			_check(enemies[enemy].kind == expected[index][enemy][0]
 				and enemies[enemy].cell == expected[index][enemy][1], "2스테이지 풋내기 종류와 좌표")
+	main.queue_free()
+	await process_frame
+
+
+func _test_scrap_robot_stage() -> void:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+	progress.stage_index = 2
+	battle.call("_start_stage", true)
+	var units: Array[CombatUnit] = battle.get("units")
+	_check(units.size() == 3 and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_1000
+		and units[2].cell == Vector2i(8, 4), "1막 3스테이지에 고철로봇-1000 한 마리 배치")
+	var boss: CombatUnit = units[2]
+	boss.hit_points = 2
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	turns.start(units, ScriptedDice.new([19, 14, 2], [20, 20, 20]))
+	turns.end_turn()
+	turns.end_turn()
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	_check(boss.hit_points == 0 and boss not in turns.ordered_units
+		and hud.result_label.text == "승리", "실제 보스 자기 피해 전투 불능이 승리 UI로 연결")
+	_check(progress.rewards.size() >= 1 and progress.rewards.size() <= 2,
+		"보스 승리도 보장 아이템 1개와 한 마리분 추가 드랍 적용")
+	hud.restart_button.pressed.emit()
+	var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
+	_check(preparation.visible, "보스 자기 피해 승리 뒤 정비 단계 진입")
+	_finish_rewards(battle)
+	_check(progress.stage_index == 3 and hud.progress_label.text == "2막 · 1스테이지",
+		"보스 정비를 마치면 다음 막으로 진행")
 	main.queue_free()
 	await process_frame
 
