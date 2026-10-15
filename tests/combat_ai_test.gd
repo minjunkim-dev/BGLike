@@ -11,6 +11,7 @@ var checks: int = 0
 var failures: int = 0
 var fixtures: Array[Fixture] = []
 var ai: CombatEnemyAi = CombatEnemyAi.new()
+const ScriptedDice = preload("res://tests/scripted_dice.gd")
 
 
 func _initialize() -> void:
@@ -55,6 +56,7 @@ func _fixture(archer: bool = false) -> Fixture:
 
 
 func _run() -> void:
+	await _test_spiderling()
 	await _test_warrior()
 	await _test_archer()
 	await _test_reaction_pause()
@@ -70,8 +72,56 @@ func _run() -> void:
 		for unit: CombatUnit in f.units:
 			unit.free()
 	fixtures.clear()
+	var dice_problems: Array[String] = ScriptedDice.finish()
+	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat AI: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_spiderling() -> void:
+	var close: Fixture = _fixture()
+	var spiderling: CombatUnit = close.units[2]
+	spiderling.kind = CombatUnit.Kind.SPIDERLING
+	spiderling.hit_points = 1
+	close.actions.dice = ScriptedDice.new([12], [20])
+	await ai.play_turn(spiderling, close.actions)
+	_check(spiderling.cell == Vector2i(4, 4) and spiderling.movement_left == 6
+		and spiderling.action_left == 0 and close.units[0].hit_points == 11,
+		"인접한 새끼 거미는 후퇴 없이 기본 공격만 실행")
+	var approach: Fixture = _fixture()
+	spiderling = approach.units[2]
+	spiderling.kind = CombatUnit.Kind.SPIDERLING
+	spiderling.hit_points = 1
+	spiderling.cell = Vector2i(0, 0)
+	approach.units[0].cell = Vector2i(4, 4)
+	approach.units[1].cell = Vector2i(9, 9)
+	approach.units[1].hit_points = 1
+	approach.actions.dice = ScriptedDice.new([12], [20])
+	await ai.play_turn(spiderling, approach.actions)
+	_check(CombatHexGrid.distance(spiderling.cell, approach.units[0].cell) == 1
+		and spiderling.movement_left == 1 and approach.units[0].hit_points == 11,
+		"새끼 거미는 낮은 HP의 먼 아군보다 가장 가까운 아군에 접근해 공격")
+	var opportunity: Fixture = _fixture()
+	spiderling = opportunity.units[2]
+	spiderling.kind = CombatUnit.Kind.SPIDERLING
+	spiderling.hit_points = 1
+	opportunity.units[0].reaction_left = 1
+	opportunity.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
+		opportunity.actions.resolve_reaction(true)
+	)
+	opportunity.actions.dice = ScriptedDice.new([20, 1, 1], [20, 8, 8])
+	_check(await opportunity.actions.move_to(spiderling, Vector2i(3, 4))
+		and spiderling.hit_points == 0 and spiderling.cell == Vector2i(4, 4)
+		and spiderling.movement_left == 6 and opportunity.units[0].reaction_left == 0,
+		"이동하는 새끼 거미는 아군 기회 공격을 받고 벗어나기 전에 전투 불능")
+	var no_opportunity: Fixture = _fixture()
+	no_opportunity.units[2].kind = CombatUnit.Kind.SPIDERLING
+	no_opportunity.turns.end_turn()
+	no_opportunity.turns.end_turn()
+	no_opportunity.actions.dice = ScriptedDice.new([])
+	_check(await no_opportunity.actions.move_to(no_opportunity.units[0], Vector2i(6, 4))
+		and no_opportunity.units[0].hit_points == 12
+		and no_opportunity.units[2].reaction_left == 1, "새끼 거미는 아군 이동에 기회 공격을 하지 않음")
 
 
 func _test_warrior() -> void:
@@ -259,6 +309,7 @@ func _test_guards() -> void:
 
 func _test_scene() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	root.add_child(main)
 	battle.set_process(false)

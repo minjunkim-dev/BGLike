@@ -203,6 +203,7 @@ func _test_rounds() -> void:
 func _test_scene() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	var battle: Node2D = scene.instantiate() as Node2D
+	battle.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(battle)
 	battle.set_process(false)
 	await process_frame

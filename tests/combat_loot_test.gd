@@ -40,12 +40,41 @@ func _run() -> void:
 	await _test_reward_flow()
 	await _test_accidental_advance()
 	await _test_scaled_combat()
+	await _test_spiderling_rewards()
 	# 완료된 검사 코루틴의 참조를 해제한 뒤 종료한다.
 	await process_frame
 	var dice_problems: Array[String] = ScriptedDice.finish()
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat loot: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_spiderling_rewards() -> void:
+	for mixed: bool in [false, true]:
+		var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+		root.add_child(main)
+		var battle: Node2D = main.get_node("Battle") as Node2D
+		battle.set_process(false)
+		var units: Array[CombatUnit] = battle.get("units")
+		var actions: CombatActions = battle.get("actions") as CombatActions
+		var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+		var loot: CombatLoot = battle.get("loot") as CombatLoot
+		# 추가 추첨을 모두 성공시켜도 새끼는 보상 수를 늘리지 않아야 한다.
+		loot.data["extra_drop_chance"] = 1.0
+		loot.data["items"] = [{"kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}]
+		if mixed:
+			units[2].kind = CombatUnit.Kind.WARRIOR
+			units[2].hit_points = units[2].get_max_hit_points()
+		for index: int in range(2, units.size()):
+			actions.incapacitate(units[index])
+			actions.changed.emit()
+			if index < units.size() - 1:
+				_check(not actions.is_victory() and progress.rewards.is_empty(),
+					"새끼 거미가 한 마리라도 남으면 승리·보상 없음")
+		_check(actions.is_victory() and progress.rewards.size() == (2 if mixed else 1),
+			"새끼만 처치하면 보장1개이고 혼합 전투는 풋내기1마리분만 추가 드랍")
+		main.queue_free()
+		await process_frame
 
 
 func _test_armor_hit_points(loot: CombatLoot) -> void:
@@ -196,6 +225,7 @@ func _test_act_values(loot: CombatLoot, dice: CombatDice) -> void:
 
 func _test_reward_flow() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(main)
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
@@ -399,6 +429,7 @@ func _click(button: Button) -> void:
 
 func _test_accidental_advance() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(main)
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
