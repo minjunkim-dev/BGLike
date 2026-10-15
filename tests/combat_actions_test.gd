@@ -50,7 +50,7 @@ func _fixture() -> Fixture:
 	return f
 
 
-func _dice_for(expected: Array[int], sides: Array[int]) -> CombatDice:
+func _dice_for(expected: Array[int], sides: Array[int]) -> ScriptedDice:
 	return ScriptedDice.new(expected, sides)
 
 
@@ -204,7 +204,7 @@ func _test_attacks() -> void:
 	_check(f.hits.is_empty(), "빗나감은 타격음을 요청하지 않음")
 	_check(not await f.actions.attack(actor, target), "행동 없는 재공격 거부")
 	actor.action_left = 1
-	f.actions.dice = _dice_for([20], [20])
+	f.actions.dice = _dice_for([20], [20]).then_seeded()
 	_check(await f.actions.attack(actor, target), "치명타 공격")
 	_check(f.actions.last_attack.critical and f.actions.last_damage_rolls.size() == 2,
 		"치명타는 무기 주사위 두 개")
@@ -218,7 +218,7 @@ func _test_attacks() -> void:
 	killed.units[2].hit_points = 1
 	killed.units[2].parry_left = 0
 	killed.units[1].marked_target = killed.units[2]
-	killed.actions.dice = _dice_for([11], [20])
+	killed.actions.dice = _dice_for([11], [20]).then_seeded()
 	await killed.actions.attack(killed.units[0], killed.units[2])
 	_check(killed.units[2].hit_points == 0 and killed.units[2] not in killed.turns.ordered_units,
 		"HP0은 즉시 전투 불능과 턴 순서 제거")
@@ -256,7 +256,7 @@ func _test_archer_balance() -> void:
 					_check(f.actions.mark(actor, target), "궁수 피해 검사에서 표식 사용")
 				var logs: Array[String] = []
 				f.actions.logged.connect(func(line: String) -> void: logs.append(line))
-				f.actions.dice = _dice_for([attack_roll], [20])
+				f.actions.dice = _dice_for([attack_roll], [20]).then_seeded()
 				_check(await f.actions.attack(actor, target), "양쪽 궁수 기본 공격 실행")
 				_check(f.hits.size() == 1, "아군·적 궁수와 표식 공격도 타격음 한 번")
 				var count: int = (2 if attack_roll == 20 else 1) * (2 if marked else 1)
@@ -342,7 +342,7 @@ func _test_mark_and_stun() -> void:
 		"표식은 유닛별 대상·횟수·자원 기록")
 	actor.bonus_action_left = 1
 	_check(not f.actions.mark(actor, f.units[2]), "사용한 표식 대상 변경 거부")
-	f.actions.dice = _dice_for([20], [20])
+	f.actions.dice = _dice_for([20], [20]).then_seeded()
 	await f.actions.attack(actor, target)
 	_check(f.actions.last_damage_rolls.size() == 4, "표식 치명타는 무기와 표식 각각2개")
 	var shock: Fixture = _fixture()
@@ -422,7 +422,7 @@ func _test_reactions() -> void:
 	_check(asked == ["opportunity"] and f.units[0].reaction_left == 0, "아군 기회 공격은 물어보고 반응 소비")
 	_check(f.units[3].cell == Vector2i(6, 4) and f.units[3].movement_left == 5, "빗나가면 이동 계속")
 	_check(not f.actions.busy and f.actions.pending_reactor == null, "반응 종료 후 대기 해제")
-	f.actions.dice = _dice_for([11], [20])
+	f.actions.dice = _dice_for([11], [20]).then_seeded()
 	await f.actions.attack(f.units[3], f.units[0])
 	_check(asked.size() == 1 and f.units[0].parry_left == 2 and f.units[0].hit_points < 12,
 		"기회 공격에 쓴 반응으로 흘려내기를 다시 쓸 수 없음")
@@ -445,7 +445,7 @@ func _test_reactions() -> void:
 	_enemy_archer(dead)
 	dead.units[3].hit_points = 1
 	dead.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: dead.actions.resolve_reaction(true))
-	dead.actions.dice = _dice_for([20], [20])
+	dead.actions.dice = _dice_for([20], [20]).then_seeded()
 	await dead.actions.move_to(dead.units[3], Vector2i(6, 4))
 	_check(dead.units[3].hit_points == 0 and dead.units[3].cell == Vector2i(5, 4)
 		and dead.units[3].movement_left == 6, "기회 공격으로 탈락하면 벗어나기 전 칸에서 이동 중단")
@@ -468,7 +468,7 @@ func _test_reactions() -> void:
 	_check(parry.units[2].action_left == 0, "흘려내기 성공해도 공격자 행동 소비")
 	parry.units[2].action_left = 1
 	parry.units[0].reaction_left = 1
-	parry.actions.dice = _dice_for([20, 11], [20, 20])
+	parry.actions.dice = _dice_for([20, 11], [20, 20]).then_seeded()
 	await parry.actions.attack(parry.units[2], parry.units[0])
 	_check(parry.actions.last_damage > 0 and parry.actions.last_damage_rolls.size() == 2,
 		"민첩+1의 d20의11은 DC13 미달로 치명타 피해 적용")
@@ -597,7 +597,7 @@ func _test_scene_input() -> void:
 	hud.action_selected.emit("surge")
 	_check(units[0].surge_left == 0 and units[0].action_left == 1, "자기 대상 동작 두 번째 클릭 실행")
 	_check("몰아치기" in hud.message_label.text, "실행 결과 화면 피드백")
-	actions.dice = _dice_for([11], [20])
+	actions.dice = _dice_for([11], [20]).then_seeded()
 	await _click(point)
 	_check(units[0].action_left == 1 and units[2].hit_points == 12
 		and battle.get("preview_target") == units[2], "몰아치기 뒤 추가 공격 첫 클릭은 미리보기")
