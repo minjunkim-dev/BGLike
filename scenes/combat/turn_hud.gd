@@ -33,7 +33,7 @@ var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 
 @onready var round_label: Label = $Round
 @onready var progress_label: Label = $Progress
-@onready var order_bar: HBoxContainer = $OrderBar
+@onready var order_bar: HBoxContainer = $OrderScroll/OrderBar
 @onready var unit_label: Label = $UnitDetails/UnitPanel/Info/CurrentUnit
 @onready var actor_label: Label = $UnitDetails/UnitPanel/Info/Actor
 @onready var resource_label: Label = $UnitDetails/UnitPanel/Info/Resources
@@ -284,8 +284,11 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 			unit.get_display_name().trim_prefix("아군 ")]
 		if unit.is_boss():
 			button.text = unit.get_display_name().replace("-", "\n")
-		button.tooltip_text = "%s: d20 %d + 민첩 %d = %d" % [
-			unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()]
+		if unit.initiative_roll == 0:
+			button.tooltip_text = "%s: 엄마 거미 바로 앞 순서\n생성한 라운드에는 행동하지 않습니다." % unit.get_display_name()
+		else:
+			button.tooltip_text = "%s: d20 %d + 민첩 %d = %d" % [
+				unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()]
 		var in_group: bool = unit in turns.get_current_group()
 		button.disabled = false
 		var color: Color = CombatUnit.ALLY_COLOR if unit.is_ally else CombatUnit.ENEMY_COLOR

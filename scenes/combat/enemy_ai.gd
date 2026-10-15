@@ -8,6 +8,9 @@ func play_turn(actor: CombatUnit, actions: CombatActions, pause: Callable = Call
 		return
 	if actor.is_boss():
 		await _boss_turn(actor, actions, pause)
+	elif actor.kind == CombatUnit.Kind.MOTHER_SPIDER and actions.spawn_spiderling(actor):
+		await _pause(pause)
+		return
 	elif actor.kind == CombatUnit.Kind.ARCHER:
 		await _archer_turn(actor, actions, pause)
 	else:

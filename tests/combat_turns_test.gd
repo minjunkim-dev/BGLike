@@ -21,6 +21,7 @@ func _on_timeout() -> void:
 
 func _run() -> void:
 	_test_initiative()
+	_test_spawned_turn_insertion()
 	_test_resources_and_groups()
 	_test_available_actions()
 	_test_removal()
@@ -101,6 +102,54 @@ func _test_initiative() -> void:
 	var empty: CombatTurns = CombatTurns.new()
 	empty.start([], dice)
 	_check(empty.current_unit == null and not empty.end_turn(), "빈 전투에서 턴 종료 불가")
+
+
+func _test_spawned_turn_insertion() -> void:
+	var units: Array[CombatUnit] = _make_units()
+	units[2].kind = CombatUnit.Kind.MOTHER_SPIDER
+	var turns: CombatTurns = _ordered_fixture(units, [0, 1, 2, 3])
+	turns.end_turn()
+	turns.end_turn()
+	var first: CombatUnit = CombatUnit.new()
+	first.kind = CombatUnit.Kind.SPIDERLING
+	first.is_ally = false
+	first.action_left = 0
+	first.movement_left = 0
+	_created_units.append(first)
+	_check(turns.insert_before(first, units[2])
+		and turns.ordered_units == [units[0], units[1], first, units[2], units[3]],
+		"새로 생성한 새끼는 엄마 바로 앞에 삽입")
+	_check(turns.current_unit == units[2] and turns.is_turn_finished(first)
+		and turns.get_current_group() == [first, units[2], units[3]]
+		and first.action_left == 0 and first.movement_left == 0,
+		"삽입은 현재 엄마 턴을 보존하고 생성 라운드의 새끼를 대기시킴")
+	_check(not turns.insert_before(first, units[2])
+		and turns.ordered_units.size() == 5, "같은 새끼를 중복 삽입하지 않음")
+	turns.end_turn()
+	_check(turns.current_unit == units[3] and turns.round_number == 1,
+		"생성 라운드에는 새끼를 건너뛰고 다음 적으로 진행")
+	for step: int in range(3):
+		turns.end_turn()
+	_check(turns.round_number == 2 and turns.current_unit == first
+		and first.action_left == 1 and first.movement_left == 6,
+		"다음 라운드부터 새끼는 엄마 직전에 자기 자원으로 행동")
+	turns.end_turn()
+	var second: CombatUnit = CombatUnit.new()
+	second.kind = CombatUnit.Kind.SPIDERLING
+	second.is_ally = false
+	_created_units.append(second)
+	_check(turns.insert_before(second, units[2])
+		and turns.ordered_units == [units[0], units[1], first, second, units[2], units[3]]
+		and turns.is_turn_finished(first) and turns.is_turn_finished(second),
+		"여러 새끼는 먼저 생성한 순서이며 새로 생성한 새끼는 그 라운드 대기")
+	turns.remove_unit(units[2])
+	_check(first in turns.ordered_units and second in turns.ordered_units
+		and turns.current_unit == units[3], "엄마가 탈락해도 새끼의 순서와 생성 라운드 대기 유지")
+	for step: int in range(3):
+		turns.end_turn()
+	_check(turns.current_unit == first and turns.round_number == 3, "엄마 탈락 뒤에도 오래된 새끼가 먼저 행동")
+	turns.end_turn()
+	_check(turns.current_unit == second, "엄마 탈락 뒤에도 새 새끼가 이어서 행동")
 
 
 func _test_resources_and_groups() -> void:

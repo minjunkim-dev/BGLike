@@ -64,6 +64,23 @@ func is_turn_finished(unit: CombatUnit) -> bool:
 	return unit in _finished_units
 
 
+## 현재 유닛이 만든 동료를 바로 앞에 넣고 생성 라운드에는 대기시킨다.
+func insert_before(unit: CombatUnit, anchor: CombatUnit) -> bool:
+	if (unit == null or anchor == null or anchor != current_unit
+		or unit in ordered_units or unit.is_ally != anchor.is_ally
+		or unit.hit_points <= 0 or anchor.hit_points <= 0):
+		return false
+	var index: int = ordered_units.find(anchor)
+	if index < 0:
+		return false
+	ordered_units.insert(index, unit)
+	_group_end += 1
+	_finished_units.append(unit)
+	_started_units.append(unit)
+	changed.emit()
+	return true
+
+
 func select_unit(unit: CombatUnit) -> bool:
 	if not unit.is_ally or unit.is_stunned or unit not in get_current_group() or is_turn_finished(unit):
 		return false

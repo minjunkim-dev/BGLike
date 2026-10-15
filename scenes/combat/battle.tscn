@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scenes/combat/battle.gd" id="1_battle"]
 [ext_resource type="PackedScene" path="res://scenes/combat/unit.tscn" id="2_unit"]
@@ -13,13 +13,15 @@
 [ext_resource type="Resource" path="res://scenes/combat/stages/act1_stage3.tres" id="11_stage3"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act1_stage1.tres" id="11_stage1"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act2_stage3.tres" id="12_stage3"]
+[ext_resource type="Resource" path="res://scenes/combat/stages/act2_stage1.tres" id="12_stage1"]
+[ext_resource type="Resource" path="res://scenes/combat/stages/act3_stage1.tres" id="13_stage1"]
 
 [sub_resource type="Theme" id="Theme_legend"]
 default_font_size = 12
 
 [node name="Battle" type="Node2D"]
 script = ExtResource("1_battle")
-stages = Array[ExtResource("6_stage_script")]([ExtResource("11_stage1"), ExtResource("8_stage2"), ExtResource("11_stage3"), ExtResource("5_stage"), ExtResource("9_stage2"), ExtResource("12_stage3"), ExtResource("5_stage"), ExtResource("10_stage2"), ExtResource("5_stage")])
+stages = Array[ExtResource("6_stage_script")]([ExtResource("11_stage1"), ExtResource("8_stage2"), ExtResource("11_stage3"), ExtResource("12_stage1"), ExtResource("9_stage2"), ExtResource("12_stage3"), ExtResource("13_stage1"), ExtResource("10_stage2"), ExtResource("5_stage")])
 
 [node name="HitSound" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("7_hit")
@@ -65,12 +67,20 @@ offset_bottom = 22.0
 theme_override_font_sizes/font_size = 10
 mouse_filter = 2
 
-[node name="OrderBar" type="HBoxContainer" parent="UI/TurnHud"]
+[node name="OrderScroll" type="ScrollContainer" parent="UI/TurnHud"]
 mouse_filter = 0
+anchor_right = 1.0
 offset_left = 8.0
 offset_top = 25.0
-offset_right = 300.0
-offset_bottom = 74.0
+offset_right = -220.0
+offset_bottom = 86.0
+vertical_scroll_mode = 0
+
+[node name="OrderBar" type="HBoxContainer" parent="UI/TurnHud/OrderScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+mouse_filter = 0
 theme_override_constants/separation = 6
 
 [node name="Progress" type="Label" parent="UI/TurnHud"]

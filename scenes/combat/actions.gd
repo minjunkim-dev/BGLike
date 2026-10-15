@@ -163,6 +163,9 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 	if not _can_act(actor):
 		return false
 	match action:
+		"spawn":
+			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
+				and actor in turns.ordered_units and not _spawn_cells(actor).is_empty())
 		"move":
 			for neighbor: Vector2i in CombatHexGrid.neighbors(actor.cell):
 				if can_move(actor, neighbor):
@@ -266,6 +269,39 @@ func attack(actor: CombatUnit, target: CombatUnit, shock: bool = false) -> bool:
 		CombatActionRules.spend_use(actor, action)
 	changed.emit()
 	await _perform_attack(actor, target, shock)
+	_finish()
+	return true
+
+
+func _spawn_cells(actor: CombatUnit) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	for cell: Vector2i in CombatHexGrid.neighbors(actor.cell):
+		if is_inside(cell) and unit_at(cell) == null:
+			cells.append(cell)
+	return cells
+
+
+func spawn_spiderling(actor: CombatUnit) -> bool:
+	if not can_use(actor, "spawn"):
+		return false
+	var cells: Array[Vector2i] = _spawn_cells(actor)
+	var child: CombatUnit = (preload("res://scenes/combat/unit.tscn") as PackedScene).instantiate() as CombatUnit
+	child.kind = CombatUnit.Kind.SPIDERLING
+	child.is_ally = false
+	child.start_cell = cells[dice.roll(cells.size()) - 1]
+	child.cell = child.start_cell
+	child.hit_points = child.get_max_hit_points()
+	busy = true
+	if actor.get_parent() != null:
+		actor.get_parent().add_child(child)
+	units.append(child)
+	if not turns.insert_before(child, actor):
+		units.erase(child)
+		child.free()
+		busy = false
+		return false
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	logged.emit("%s 새끼 낳기: %s" % [actor.get_display_name(), child.cell])
 	_finish()
 	return true
 
