@@ -5,7 +5,7 @@
 > - 기준일: 2026-10-14 (2026-10-14 기획 논의 반영)
 > - 관련 문서: [몬스터 디자인 기획서](README.md) · [새끼 거미](spiderling.md) · [전투 시스템 기획서](../COMBAT_DESIGN.md) · [게임 구조 기획서](../GAME_STRUCTURE.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
-> - [Issue #109](https://github.com/minjunkim-dev/BGLike/issues/109)에서 새끼 생성과 2·3막 1스테이지를 구현합니다.
+> - [Issue #109](https://github.com/minjunkim-dev/BGLike/issues/109)에서 새끼 생성과 2·3막 1스테이지를 구현했습니다. 생성 수의 직접 관측 결과는 [M5 통합 검수](../M5_VERIFICATION.md)에서 별도로 기록합니다.
 
 ---
 
