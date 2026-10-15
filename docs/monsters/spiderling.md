@@ -5,7 +5,7 @@
 > - 기준일: 2026-10-15 (2026-10-14~15 기획 논의 반영)
 > - 관련 문서: [몬스터 디자인 기획서](README.md) · [엄마 거미](mother-spider.md) · [전투 시스템 기획서](../COMBAT_DESIGN.md) · [게임 구조 기획서](../GAME_STRUCTURE.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
-> - 처음 배치한 새끼와 1막 1스테이지는 [Issue #108](https://github.com/minjunkim-dev/BGLike/issues/108)에서 구현합니다. 엄마 거미의 생성은 [Issue #109](https://github.com/minjunkim-dev/BGLike/issues/109)에서 구현합니다.
+> - 처음 배치한 새끼와 1막 1스테이지는 [Issue #108](https://github.com/minjunkim-dev/BGLike/issues/108)에서 구현했습니다. 엄마 거미의 생성은 [Issue #109](https://github.com/minjunkim-dev/BGLike/issues/109)에서 구현했습니다.
 
 ---
 

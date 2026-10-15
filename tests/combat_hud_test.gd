@@ -67,6 +67,7 @@ func _run() -> void:
 	await create_timer(0.08).timeout
 	current_scene.queue_free()
 	await process_frame
+	await _test_spawned_portrait_input()
 	var dice_problems: Array[String] = ScriptedDice.finish()
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat HUD: %d checks, %d failures" % [checks, failures])
@@ -785,6 +786,59 @@ func _test_order_bar_input() -> void:
 		"제거한 설명 패널 자리는 월드 입력을 가로막지 않음")
 	camera.position = original
 	camera.force_update_scroll()
+
+
+func _test_spawned_portrait_input() -> void:
+	root.size = Vector2i(640, 360)
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	battle = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	(battle.get("progress") as CombatActProgress).stage_index = 6
+	battle.call("_start_stage", true)
+	units = battle.get("units")
+	turns = battle.get("turns") as CombatTurns
+	actions = battle.get("actions") as CombatActions
+	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	actions.movement_animation = Callable()
+	actions.attack_animation = Callable()
+	actions.dice.seed = 109
+	units[0].hit_points = 1000
+	units[1].hit_points = 1000
+	turns.start(units, ScriptedDice.new([1, 1, 20, 20, 20, 20, 20]))
+	var ai: CombatEnemyAi = battle.get("enemy_ai") as CombatEnemyAi
+	for step: int in range(200):
+		var actor: CombatUnit = turns.current_unit
+		if actor.is_ally and units.size() >= 13:
+			break
+		if not actor.is_ally:
+			units[0].reaction_left = 0
+			units[1].reaction_left = 0
+			await ai.play_turn(actor, actions)
+		if turns.current_unit == actor:
+			turns.end_turn()
+	for frame: int in range(4):
+		await process_frame
+	_check(units.size() == 13 and turns.round_number == 3 and turns.current_unit == units[1],
+		"실제3-1 AI가 새끼6마리를 생성한 뒤 궁수 턴에서 누적 초상 입력 검사")
+	var portraits: Dictionary = hud.get("_portraits")
+	# 포인터로 오른쪽 끝까지 이동한 뒤 가려졌던 아군 초상을 선택한다.
+	for step: int in range(16):
+		await _click(Vector2(80, 50), MOUSE_BUTTON_WHEEL_RIGHT)
+	await _click((portraits[units[0]] as Button).get_global_rect().get_center())
+	_check(turns.current_unit == units[0] and hud.unit_label.text == "아군 전사",
+		"새끼가 누적되어도 오른쪽 아군 초상을 스크롤하고 실제 클릭으로 조작 전환")
+	for step: int in range(16):
+		await _click(Vector2(80, 50), MOUSE_BUTTON_WHEEL_LEFT)
+	var enemy: CombatUnit = turns.ordered_units.front()
+	await _click((portraits[enemy] as Button).get_global_rect().get_center())
+	_check(turns.current_unit == units[0] and hud.unit_label.text == enemy.get_display_name(),
+		"반대쪽 끝의 적 초상도 스크롤하고 조회하며 아군 조작 유지")
+	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	await create_timer(0.08).timeout
+	main.queue_free()
+	await process_frame
 
 
 func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> void:

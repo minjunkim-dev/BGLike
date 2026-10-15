@@ -1,9 +1,10 @@
 extends SceneTree
 ## 실제 메인 장면과 결과 버튼에서 막 진행과 자원 유지 규칙을 검사한다.
 
+const ScriptedDice = preload("res://tests/scripted_dice.gd")
+
 var checks: int = 0
 var failures: int = 0
-const ScriptedDice = preload("res://tests/scripted_dice.gd")
 
 
 func _initialize() -> void:
@@ -20,7 +21,11 @@ func _check(condition: bool, message: String) -> void:
 func _run() -> void:
 	_test_act_progress()
 	await _test_spiderling_placement_and_turns()
+	await _test_mother_stages()
 	await _test_novice_placements()
+	await _test_scrap_robot_stage()
+	await _test_scrap_robot_2000_stage()
+	await _test_scrap_robot_3000_stage()
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
@@ -94,7 +99,14 @@ func _test_spiderling_placement_and_turns() -> void:
 
 
 func _check_enemy_values(battle: Node2D, act: int) -> void:
-	var expected: Array = [[12, 5, 12, 1], [14, 5, 11, 1], [1, 4, 6, 1]]
+	var expected: Dictionary = {
+		CombatUnit.Kind.WARRIOR: [12, 5, 12, 1], CombatUnit.Kind.ARCHER: [14, 5, 11, 1],
+		CombatUnit.Kind.SPIDERLING: [1, 4, 6, 1],
+		CombatUnit.Kind.MOTHER_SPIDER: [20, 4, 13, 2],
+		CombatUnit.Kind.SCRAP_ROBOT_1000: [40, 5, 14, 2],
+		CombatUnit.Kind.SCRAP_ROBOT_2000: [45, 5, 15, 2],
+		CombatUnit.Kind.SCRAP_ROBOT_3000: [50, 5, 16, 2]
+	}
 	for unit: CombatUnit in battle.get("units"):
 		if unit.is_ally:
 			_check(unit.get_attack_bonus() == 5
@@ -105,6 +117,76 @@ func _check_enemy_values(battle: Node2D, act: int) -> void:
 		_check(unit.get_max_hit_points() == values[0] and unit.hit_points == values[0]
 			and unit.get_attack_bonus() == values[1] and unit.get_armor_class() == values[2]
 			and unit.get_damage_bonus() == values[3], "%d막 실제 적의 HP·명중·AC·피해" % act)
+
+
+func _test_mother_stages() -> void:
+	var placements: Dictionary = {
+		3: [Vector2i(6, 1), Vector2i(7, 3), Vector2i(7, 6), Vector2i(6, 8), Vector2i(9, 4)],
+		6: [Vector2i(7, 2), Vector2i(7, 4), Vector2i(7, 7), Vector2i(9, 2), Vector2i(9, 7)]
+	}
+	for stage: int in [3, 6]:
+		var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+		root.add_child(main)
+		var battle: Node2D = main.get_node("Battle") as Node2D
+		battle.set_process(false)
+		var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+		progress.stage_index = stage
+		battle.call("_start_stage", true)
+		var units: Array[CombatUnit] = battle.get("units")
+		_check(units.size() == 7, "%d막 1스테이지의 처음 배치한 적5마리" % progress.act_number())
+		if units.size() != 7:
+			main.queue_free()
+			await process_frame
+			continue
+		var mothers: Array[CombatUnit] = []
+		for index: int in range(5):
+			var unit: CombatUnit = units[index + 2]
+			var is_mother: bool = index >= (4 if stage == 3 else 3)
+			_check(unit.cell == placements[stage][index]
+				and unit.kind == (CombatUnit.Kind.MOTHER_SPIDER if is_mother else CombatUnit.Kind.SPIDERLING),
+				"엄마·새끼의 종류·수·시작 좌표를 실제 스테이지에 연결")
+			if is_mother:
+				mothers.append(unit)
+				_check(unit.movement_left == 4 and unit.hit_points == 20, "실제 엄마는 이동력4·HP20에서 시작")
+		var turns: CombatTurns = battle.get("turns") as CombatTurns
+		var rolls: Array[int] = [20, 17, 1, 1, 1, 1, 18]
+		if stage == 6:
+			rolls = [20, 17, 1, 1, 1, 18, 17]
+		turns.start(units, ScriptedDice.new(rolls))
+		turns.end_turn()
+		turns.end_turn()
+		var actions: CombatActions = battle.get("actions") as CombatActions
+		actions.dice = ScriptedDice.new([1], [5])
+		await (battle.get("enemy_ai") as CombatEnemyAi).play_turn(mothers[0], actions)
+		var child: CombatUnit = units.back()
+		_check(units.size() == 8 and child.kind == CombatUnit.Kind.SPIDERLING
+			and child.get_parent() == battle.get_node("Units") and child.is_inside_tree()
+			and actions.unit_at(child.cell) == child and turns.is_turn_finished(child),
+			"실제 AI가 만든 새끼를 장면·점유 칸·대기 중 턴에 함께 연결")
+		var portraits: Dictionary = (battle.get_node("UI/TurnHud") as CombatTurnHud).get("_portraits")
+		var tooltip: String = (portraits[child] as Button).tooltip_text
+		_check("d20" not in tooltip and "엄마 거미 바로 앞" in tooltip
+			and "생성한 라운드" in tooltip, "생성한 새끼의 초상은 가짜 주사위 대신 생성 턴 규칙을 표시")
+		var loot: CombatLoot = battle.get("loot") as CombatLoot
+		loot.data["extra_drop_chance"] = 1.0
+		loot.data["items"] = [{"kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}]
+		for mother: CombatUnit in mothers:
+			actions.incapacitate(mother)
+		actions.changed.emit()
+		_check(child.hit_points == 1 and child.visible and child in turns.ordered_units
+			and not actions.is_victory() and progress.rewards.is_empty(),
+			"엄마가 모두 탈락해도 생성한 새끼를 보존하고 전투 지속")
+		for unit: CombatUnit in units:
+			if not unit.is_ally and unit != child and unit.kind == CombatUnit.Kind.SPIDERLING:
+				actions.incapacitate(unit)
+		actions.changed.emit()
+		_check(not actions.is_victory() and progress.rewards.is_empty(), "생성한 새끼까지 처치해야 승리")
+		actions.incapacitate(child)
+		actions.changed.emit()
+		_check(actions.is_victory() and progress.rewards.size() == (2 if stage == 3 else 3),
+			"보장1개에 엄마1마리·2마리분만 추가 드랍하고 처음·생성 새끼는 모두 제외")
+		main.queue_free()
+		await process_frame
 
 
 func _test_novice_placements() -> void:
@@ -140,6 +222,124 @@ func _test_novice_placements() -> void:
 		for enemy: int in range(mini(enemies.size(), expected[index].size())):
 			_check(enemies[enemy].kind == expected[index][enemy][0]
 				and enemies[enemy].cell == expected[index][enemy][1], "2스테이지 풋내기 종류와 좌표")
+	main.queue_free()
+	await process_frame
+
+
+func _test_scrap_robot_stage() -> void:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+	progress.stage_index = 2
+	battle.call("_start_stage", true)
+	var units: Array[CombatUnit] = battle.get("units")
+	_check(units.size() == 3 and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_1000
+		and units[2].cell == Vector2i(8, 4), "1막 3스테이지에 고철로봇-1000 한 마리 배치")
+	var boss: CombatUnit = units[2]
+	boss.hit_points = 2
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	turns.start(units, ScriptedDice.new([19, 14, 2], [20, 20, 20]))
+	turns.end_turn()
+	turns.end_turn()
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	_check(boss.hit_points == 0 and boss not in turns.ordered_units
+		and hud.result_label.text == "승리", "실제 보스 자기 피해 전투 불능이 승리 UI로 연결")
+	_check(progress.rewards.size() >= 1 and progress.rewards.size() <= 2,
+		"보스 승리도 보장 아이템 1개와 한 마리분 추가 드랍 적용")
+	hud.restart_button.pressed.emit()
+	var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
+	_check(preparation.visible, "보스 자기 피해 승리 뒤 정비 단계 진입")
+	_finish_rewards(battle)
+	_check(progress.stage_index == 3 and hud.progress_label.text == "2막 · 1스테이지",
+		"보스 정비를 마치면 다음 막으로 진행")
+	main.queue_free()
+	await process_frame
+
+
+func _test_scrap_robot_2000_stage() -> void:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+	progress.stage_index = 5
+	battle.call("_start_stage", true)
+	var units: Array[CombatUnit] = battle.get("units")
+	_check(units.size() == 3 and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_2000
+		and units[2].cell == Vector2i(8, 4) and units[2].hit_points == 45,
+		"2막 3스테이지에 HP45 고철로봇-2000 한 마리 배치")
+	if units.size() != 3 or units[2].kind != CombatUnit.Kind.SCRAP_ROBOT_2000:
+		main.queue_free()
+		await process_frame
+		return
+	var boss: CombatUnit = units[2]
+	boss.cell = Vector2i(4, 4)
+	units[0].cell = Vector2i(1, 1)
+	units[1].cell = Vector2i(7, 4)
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	turns.start(units, ScriptedDice.new([5, 4, 20], [20, 20, 20]))
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	actions.dice = ScriptedDice.new([12, 10], [20, 20])
+	_check(actions.pull(boss, units[1]) and units[1].cell == Vector2i(5, 4),
+		"실제 2000 보스 전투의 만능팔이 대상 위치와 화면 상태를 갱신")
+	boss.hit_points = 2
+	for turn: int in range(3):
+		turns.end_turn()
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	_check(boss.hit_points == 0 and hud.result_label.text == "승리"
+		and progress.rewards.size() >= 1 and progress.rewards.size() <= 2,
+		"2000도 자기 피해 승리와 보장1개·일반 추가 드랍을 계승")
+	hud.restart_button.pressed.emit()
+	_finish_rewards(battle)
+	_check(progress.stage_index == 6 and hud.progress_label.text == "3막 · 1스테이지",
+		"2000 보스 정비 뒤 3막 진행")
+	main.queue_free()
+	await process_frame
+
+
+func _test_scrap_robot_3000_stage() -> void:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+	progress.stage_index = 8
+	battle.call("_start_stage", true)
+	var units: Array[CombatUnit] = battle.get("units")
+	_check(units.size() == 3 and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_3000
+		and units[2].cell == Vector2i(8, 4) and units[2].hit_points == 50,
+		"3막 3스테이지에 HP50 고철로봇-3000 한 마리 배치")
+	if units.size() != 3 or units[2].kind != CombatUnit.Kind.SCRAP_ROBOT_3000:
+		main.queue_free()
+		await process_frame
+		return
+	var boss: CombatUnit = units[2]
+	boss.hit_points = 25
+	units[0].cell = Vector2i(7, 4)
+	units[0].parry_left = 0
+	units[1].cell = Vector2i(8, 5)
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	turns.start(units, ScriptedDice.new([5, 4, 20], [20, 20, 20]))
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	actions.dice = ScriptedDice.new([15, 3, 15, 3], [20, 8, 20, 8])
+	_check(await actions.spin(boss) and units[0].hit_points == 7 and units[1].hit_points == 9
+		and boss.action_left == 1 and boss.hit_points == 23,
+		"실제 3000 과부하 턴 시작 자기 피해 뒤 회전회오리가 두 아군과 화면을 갱신")
+	boss.hit_points = 2
+	for turn: int in range(3):
+		turns.end_turn()
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	_check(boss.hit_points == 0 and hud.result_label.text == "승리"
+		and progress.rewards.size() >= 1 and progress.rewards.size() <= 2,
+		"최종 보스 자기 피해 전투 불능도 승리·보장1개·일반 추가 드랍으로 연결")
+	hud.restart_button.pressed.emit()
+	_check((battle.get_node("UI/Preparation") as CombatPreparation).visible,
+		"최종 보스 승리 뒤 정비 단계 진입")
+	_finish_rewards(battle)
+	_check(progress.graduated and hud.result_label.text == "3막 졸업",
+		"최종 보스 정비를 마치면 3막 졸업")
 	main.queue_free()
 	await process_frame
 
@@ -309,7 +509,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	await process_frame
 	_check(hud.progress_label.text == "2막 · 1스테이지", "1-3 승리 뒤2-1 진행")
 	_check_enemy_values(battle, 2)
-	_check((battle.get("turns") as CombatTurns).ordered_units.size() == 4,
+	_check((battle.get("turns") as CombatTurns).ordered_units.size() == 7,
 		"새 막에서 전투 불능 아군 부활과 적 재배치")
 	var party: Array[CombatUnit] = battle.get("party")
 	for unit: CombatUnit in party:

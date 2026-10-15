@@ -14,15 +14,47 @@ const NOVICE_ARCHER: Dictionary = {
 	"attack_bonus": 5, "damage_bonus": 1, "damage_sides": 4, "attack_range": 6, "save_dc": 11,
 	"actions": ["attack", "disengage"]
 }
+const SCRAP_ROBOT_1000: Dictionary = {
+	"name": "고철로봇-1000", "boss": true, "max_hit_points": 40, "armor_class": 14,
+	"strength": 3, "dexterity": -1, "constitution": 3, "mental": 0, "movement": 4,
+	"attack_bonus": 5, "damage_bonus": 2, "damage_sides": 8, "attack_range": 1, "save_dc": 13,
+	"actions": ["attack", "opportunity"]
+}
+const SCRAP_ROBOT_2000: Dictionary = {
+	"name": "고철로봇-2000", "boss": true, "max_hit_points": 45, "armor_class": 15,
+	"strength": 3, "dexterity": -1, "constitution": 3, "mental": 0, "movement": 4,
+	"attack_bonus": 5, "damage_bonus": 2, "damage_sides": 8, "attack_range": 1, "save_dc": 13,
+	"actions": ["attack", "opportunity", "pull"]
+}
+const SCRAP_ROBOT_3000: Dictionary = {
+	"name": "고철로봇-3000", "boss": true, "max_hit_points": 50, "armor_class": 16,
+	"strength": 3, "dexterity": -1, "constitution": 3, "mental": 0, "movement": 4,
+	"attack_bonus": 5, "damage_bonus": 2, "damage_sides": 8, "attack_range": 1, "save_dc": 13,
+	"actions": ["attack", "opportunity", "pull", "spin"]
+}
 const SPIDERLING: Dictionary = {
 	"name": "새끼 거미", "max_hit_points": 1, "armor_class": 6,
 	"strength": 0, "dexterity": 2, "constitution": -2, "mental": -2,
 	"attack_bonus": 4, "damage_bonus": 1, "damage_sides": 0, "attack_range": 1, "save_dc": 10,
 	"actions": ["attack"]
 }
+const MOTHER_SPIDER: Dictionary = {
+	"name": "엄마 거미", "max_hit_points": 20, "armor_class": 13,
+	"strength": 2, "dexterity": 0, "constitution": 2, "mental": 1, "movement": 4,
+	"attack_bonus": 4, "damage_bonus": 2, "damage_sides": 6, "attack_range": 1, "save_dc": 12,
+	"actions": ["attack", "spawn", "opportunity"]
+}
 
 
 static func for_kind(kind: CombatUnit.Kind) -> Dictionary:
+	if kind == CombatUnit.Kind.SCRAP_ROBOT_3000:
+		return SCRAP_ROBOT_3000
+	if kind == CombatUnit.Kind.SCRAP_ROBOT_2000:
+		return SCRAP_ROBOT_2000
+	if kind == CombatUnit.Kind.SCRAP_ROBOT_1000:
+		return SCRAP_ROBOT_1000
+	if kind == CombatUnit.Kind.MOTHER_SPIDER:
+		return MOTHER_SPIDER
 	if kind == CombatUnit.Kind.SPIDERLING:
 		return SPIDERLING
 	return NOVICE_BARBARIAN if kind == CombatUnit.Kind.WARRIOR else NOVICE_ARCHER

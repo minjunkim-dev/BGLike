@@ -24,9 +24,21 @@ var attack_animation: Callable
 
 
 func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> void:
+	if turns != null and turns.turn_started.is_connected(_on_turn_started):
+		turns.turn_started.disconnect(_on_turn_started)
 	units = combat_units
 	turns = combat_turns
+	turns.turn_started.connect(_on_turn_started)
 	dice.randomize()
+
+
+func _on_turn_started(unit: CombatUnit) -> void:
+	if not unit.overloaded or unit.hit_points <= 0 or is_over():
+		return
+	_damage(unit, 2)
+	logged.emit("%s 과부하: 자기 피해 2 · HP %d" % [unit.get_display_name(), unit.hit_points])
+	feedback.emit(unit, "과부하 -2")
+	changed.emit()
 
 
 func unit_at(cell: Vector2i) -> CombatUnit:
@@ -141,6 +153,9 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 				and separation >= 1 and separation <= CombatActionRules.SKILL_RANGE)
 		"shove":
 			return actor.bonus_action_left > 0 and separation == 1 and can_shove(actor, target)
+		"pull":
+			return (actor.action_left > 0 and actor.pull_cooldown == 0 and separation >= 2 and separation <= 3
+				and not pull_cells(actor, target, origin).is_empty())
 	return false
 
 
@@ -148,11 +163,17 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 	if not _can_act(actor):
 		return false
 	match action:
+		"spin":
+			return (CombatActionRules.belongs_to(actor, action) and actor.action_left > 0
+				and not spin_targets(actor).is_empty())
+		"spawn":
+			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
+				and actor in turns.ordered_units and not _spawn_cells(actor).is_empty())
 		"move":
 			for neighbor: Vector2i in CombatHexGrid.neighbors(actor.cell):
 				if can_move(actor, neighbor):
 					return true
-		"attack", "shock", "mark", "shove":
+		"attack", "shock", "mark", "shove", "pull":
 			for target: CombatUnit in units:
 				if can_target(actor, target, action):
 					return true
@@ -255,6 +276,65 @@ func attack(actor: CombatUnit, target: CombatUnit, shock: bool = false) -> bool:
 	return true
 
 
+func spin_targets(actor: CombatUnit) -> Array[CombatUnit]:
+	var targets: Array[CombatUnit] = []
+	for unit: CombatUnit in units:
+		if (unit.hit_points > 0 and unit.is_ally != actor.is_ally
+			and CombatHexGrid.distance(actor.cell, unit.cell) == 1):
+			targets.append(unit)
+	return targets
+
+
+func spin(actor: CombatUnit) -> bool:
+	if not can_use(actor, "spin"):
+		return false
+	var targets: Array[CombatUnit] = spin_targets(actor)
+	busy = true
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	logged.emit("%s 회전회오리: 인접 대상 %d명" % [actor.get_display_name(), targets.size()])
+	changed.emit()
+	for target: CombatUnit in targets:
+		if actor.hit_points <= 0 or actor.is_stunned or actor != turns.current_unit or is_over():
+			break
+		if target.hit_points > 0 and CombatHexGrid.distance(actor.cell, target.cell) == 1:
+			await _perform_attack(actor, target, false)
+	_finish()
+	return true
+
+
+func _spawn_cells(actor: CombatUnit) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	for cell: Vector2i in CombatHexGrid.neighbors(actor.cell):
+		if is_inside(cell) and unit_at(cell) == null:
+			cells.append(cell)
+	return cells
+
+
+func spawn_spiderling(actor: CombatUnit) -> bool:
+	if not can_use(actor, "spawn"):
+		return false
+	var cells: Array[Vector2i] = _spawn_cells(actor)
+	var child: CombatUnit = (preload("res://scenes/combat/unit.tscn") as PackedScene).instantiate() as CombatUnit
+	child.kind = CombatUnit.Kind.SPIDERLING
+	child.is_ally = false
+	child.start_cell = cells[dice.roll(cells.size()) - 1]
+	child.cell = child.start_cell
+	child.hit_points = child.get_max_hit_points()
+	busy = true
+	if actor.get_parent() != null:
+		actor.get_parent().add_child(child)
+	units.append(child)
+	if not turns.insert_before(child, actor):
+		units.erase(child)
+		child.free()
+		busy = false
+		return false
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	logged.emit("%s 새끼 낳기: %s" % [actor.get_display_name(), child.cell])
+	_finish()
+	return true
+
+
 func use_self(actor: CombatUnit, action: String) -> bool:
 	if not can_use(actor, action) or action not in CombatActionRules.SELF_TARGET:
 		return false
@@ -282,6 +362,45 @@ func mark(actor: CombatUnit, target: CombatUnit) -> bool:
 	CombatActionRules.spend_use(actor, "mark")
 	actor.marked_target = target
 	logged.emit("%s 표식: %s" % [actor.get_display_name(), target.get_display_name()])
+	changed.emit()
+	return true
+
+
+func pull_cells(actor: CombatUnit, target: CombatUnit,
+	from_cell: Vector2i = Vector2i(-1, -1)) -> Array[Vector2i]:
+	var origin: Vector2i = actor.cell if from_cell == Vector2i(-1, -1) else from_cell
+	var cells: Array[Vector2i] = []
+	var nearest: int = map_size.x + map_size.y
+	for cell: Vector2i in CombatHexGrid.neighbors(origin):
+		var occupant: CombatUnit = unit_at(cell)
+		if not is_inside(cell) or (occupant != null and occupant != actor):
+			continue
+		var separation: int = CombatHexGrid.distance(cell, target.cell)
+		if separation < nearest:
+			nearest = separation
+			cells.clear()
+		if separation == nearest:
+			cells.append(cell)
+	return cells
+
+
+func pull(actor: CombatUnit, target: CombatUnit) -> bool:
+	if not _can_act(actor) or not can_target(actor, target, "pull"):
+		return false
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	actor.pull_cooldown = 2
+	var result: CombatChecks.ContestResult = CombatChecks.contest(
+		actor.get_attribute(CombatUnit.Attribute.STRENGTH),
+		maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), dice)
+	if result.attacker_wins:
+		var cells: Array[Vector2i] = pull_cells(actor, target)
+		target.cell = cells[0] if cells.size() == 1 else cells[dice.roll(cells.size()) - 1]
+	logged.emit("%s 만능팔: %d + %d = %d / %d + %d = %d · %s" % [
+		actor.get_display_name(), result.attacker_roll,
+		actor.get_attribute(CombatUnit.Attribute.STRENGTH), result.attacker_total,
+		result.defender_roll, maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()),
+		result.defender_total, "성공" if result.attacker_wins else "실패"])
+	feedback.emit(target, "끌어옴" if result.attacker_wins else "만능팔 저항")
 	changed.emit()
 	return true
 
@@ -355,6 +474,8 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	var save_dc: int = actor.get_save_dc()
 	if attack_animation.is_valid():
 		await attack_animation.call(actor, target)
+	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
+		return
 	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(actor, target, units)
 	last_attack = CombatChecks.attack(actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
 	last_damage = 0
@@ -402,6 +523,10 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 		" (표식 추가)" if has_mark_damage else "",
 		str(last_damage_rolls), damage_bonus, last_damage, target.hit_points])
 	feedback.emit(target, "-%d" % last_damage)
+	if shock and target.hit_points > 0 and target.is_boss():
+		logged.emit("%s 기절 면역" % target.get_display_name())
+		feedback.emit(target, "기절 면역")
+		return
 	if shock and target.hit_points > 0:
 		var saved: CombatChecks.RollResult = CombatChecks.saving_throw(
 			target.get_attribute(CombatUnit.Attribute.MENTAL), save_dc, dice)

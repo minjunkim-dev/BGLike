@@ -3,6 +3,7 @@ extends RefCounted
 ## 한 라운드의 이니셔티브 순서와 연속한 같은 편의 턴 묶음.
 
 signal changed
+signal turn_started(unit: CombatUnit)
 
 var ordered_units: Array[CombatUnit] = []
 var current_unit: CombatUnit
@@ -12,6 +13,7 @@ var _group_start: int = 0
 var _group_end: int = -1
 var _finished_units: Array[CombatUnit] = []
 var _started_units: Array[CombatUnit] = []
+var _activated_units: Array[CombatUnit] = []
 var _stunned_turns: Array[CombatUnit] = []
 
 
@@ -33,6 +35,7 @@ func start(combat_units: Array[CombatUnit], dice: CombatDice) -> void:
 	round_number = 1 if not ordered_units.is_empty() else 0
 	_finished_units.clear()
 	_started_units.clear()
+	_activated_units.clear()
 	_stunned_turns.clear()
 	current_unit = null
 	_group_start = 0
@@ -61,10 +64,28 @@ func is_turn_finished(unit: CombatUnit) -> bool:
 	return unit in _finished_units
 
 
+## 현재 유닛이 만든 동료를 바로 앞에 넣고 생성 라운드에는 대기시킨다.
+func insert_before(unit: CombatUnit, anchor: CombatUnit) -> bool:
+	if (unit == null or anchor == null or anchor != current_unit
+		or unit in ordered_units or unit.is_ally != anchor.is_ally
+		or unit.hit_points <= 0 or anchor.hit_points <= 0):
+		return false
+	var index: int = ordered_units.find(anchor)
+	if index < 0:
+		return false
+	ordered_units.insert(index, unit)
+	_group_end += 1
+	_finished_units.append(unit)
+	_started_units.append(unit)
+	changed.emit()
+	return true
+
+
 func select_unit(unit: CombatUnit) -> bool:
 	if not unit.is_ally or unit.is_stunned or unit not in get_current_group() or is_turn_finished(unit):
 		return false
 	current_unit = unit
+	_activate_current_unit()
 	changed.emit()
 	return true
 
@@ -85,6 +106,7 @@ func remove_unit(unit: CombatUnit) -> void:
 	ordered_units.remove_at(index)
 	_finished_units.erase(unit)
 	_started_units.erase(unit)
+	_activated_units.erase(unit)
 	_stunned_turns.erase(unit)
 	var previous_current: CombatUnit = current_unit
 	if current_unit == unit:
@@ -115,8 +137,16 @@ func _select_next_or_advance() -> void:
 			_stunned_turns.erase(unit)
 		if not is_turn_finished(unit):
 			current_unit = unit
+			_activate_current_unit()
 			return
 	_start_group_at(_group_end + 1)
+
+
+func _activate_current_unit() -> void:
+	if current_unit not in _activated_units:
+		_activated_units.append(current_unit)
+		# 처리 중 전투 불능이 되면 remove_unit이 다음 유닛을 선택할 수 있다.
+		turn_started.emit(current_unit)
 
 
 func _start_group_at(index: int) -> void:
@@ -125,6 +155,7 @@ func _start_group_at(index: int) -> void:
 		round_number += 1
 		_finished_units.clear()
 		_started_units.clear()
+		_activated_units.clear()
 		_stunned_turns.clear()
 	_group_start = index
 	while (_group_start > 0
