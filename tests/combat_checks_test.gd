@@ -17,6 +17,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_test_scripted_dice_leftovers()
 	_test_modes()
 	_test_attacks()
 	_test_saves_and_contests()
@@ -25,7 +26,8 @@ func _run() -> void:
 	await _test_scene_input()
 	for unit: CombatUnit in _created_units:
 		unit.free()
-	_check(ScriptedDice.mismatches.is_empty(), "준비한 주사위 값과 실제 굴림 요청 일치 " + str(ScriptedDice.mismatches))
+	var dice_problems: Array[String] = ScriptedDice.finish()
+	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat checks: %d checks, %d failures" % [_checks, _failures])
 	quit(0 if _failures == 0 else 1)
 
@@ -35,6 +37,14 @@ func _check(condition: bool, message: String) -> void:
 	if not condition:
 		_failures += 1
 		push_error(message)
+
+
+func _test_scripted_dice_leftovers() -> void:
+	var dice: ScriptedDice = ScriptedDice.new([3, 4], [6, 6])
+	dice.roll(6)
+	_check(dice.unused() == [4], "굴리지 않은 준비값을 남은 값으로 보고")
+	dice.roll(6)
+	_check(dice.unused().is_empty(), "모두 굴리면 남은 준비값 없음")
 
 
 func _dice_for(expected: Array[int]) -> CombatDice:
@@ -78,7 +88,7 @@ func _test_attacks() -> void:
 	_check(result.rolls == [1, 20] and result.total == 25, "주사위 두 개와 선택값 합계 보존")
 	result = CombatChecks.attack(100, 1, CombatChecks.RollMode.DISADVANTAGE, _dice_for([20, 1]))
 	_check(not result.success and not result.critical and result.selected_roll == 1, "불리는 선택된1으로 실패")
-	result = CombatChecks.attack(5, 16, CombatChecks.roll_mode(2, 1), _dice_for([11, 1]))
+	result = CombatChecks.attack(5, 16, CombatChecks.roll_mode(2, 1), _dice_for([11]))
 	_check(result.rolls == [11], "상쇄되면 주사위를 하나만 굴림")
 
 
