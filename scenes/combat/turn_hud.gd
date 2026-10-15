@@ -33,7 +33,7 @@ var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 
 @onready var round_label: Label = $Round
 @onready var progress_label: Label = $Progress
-@onready var order_bar: HBoxContainer = $OrderBar
+@onready var order_bar: HBoxContainer = $OrderScroll/OrderBar
 @onready var unit_label: Label = $UnitDetails/UnitPanel/Info/CurrentUnit
 @onready var actor_label: Label = $UnitDetails/UnitPanel/Info/Actor
 @onready var resource_label: Label = $UnitDetails/UnitPanel/Info/Resources
