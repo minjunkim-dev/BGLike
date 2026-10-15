@@ -55,6 +55,9 @@ func _dice_for(expected: Array[int], sides: Array[int]) -> ScriptedDice:
 
 
 func _run() -> void:
+	_test_novice_stats()
+	_test_novice_uses()
+	await _test_novice_damage()
 	await _test_movement()
 	await _test_hex_rules()
 	await _test_attacks()
@@ -76,6 +79,82 @@ func _run() -> void:
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat actions: %d checks, %d failures" % [_checks, _failures])
 	quit(0 if _failures == 0 else 1)
+
+
+func _test_novice_stats() -> void:
+	var f: Fixture = _fixture()
+	for act: int in range(1, 4):
+		for index: int in [2, 3]:
+			var enemy: CombatUnit = f.units[index]
+			enemy.act_number = act
+			_check(enemy.get_max_hit_points() == (12 if index == 2 else 14)
+				and enemy.get_armor_class() == (12 if index == 2 else 11)
+				and enemy.get_attack_bonus() == 5 and enemy.get_damage_bonus() == 1,
+				"풋내기 HP·AC·명중·피해는 모든 막에서 고정")
+			_check(enemy.get_attribute(CombatUnit.Attribute.STRENGTH) == (3 if index == 2 else 0)
+				and enemy.get_dexterity() == (1 if index == 2 else 3)
+				and enemy.get_attribute(CombatUnit.Attribute.CONSTITUTION) == (2 if index == 2 else 1)
+				and enemy.get_attribute(CombatUnit.Attribute.MENTAL) == (-2 if index == 2 else 0)
+				and enemy.get_attack_range() == (1 if index == 2 else 6)
+				and enemy.movement_left == 6, "풋내기 능력치·이동력·사거리")
+	_check(CombatActionRules.belongs_to(f.units[2], "second_wind")
+		and CombatActionRules.belongs_to(f.units[2], "opportunity")
+		and not CombatActionRules.belongs_to(f.units[2], "parry")
+		and not CombatActionRules.belongs_to(f.units[2], "surge"), "야만인은 숨 고르기와 기회 공격만 사용")
+	_check(CombatActionRules.belongs_to(f.units[3], "disengage")
+		and not CombatActionRules.belongs_to(f.units[3], "opportunity")
+		and not CombatActionRules.belongs_to(f.units[3], "mark")
+		and not CombatActionRules.belongs_to(f.units[3], "shock"), "풋내기 궁수는 물러서며 쏘기만 사용")
+	_check(f.units[0].get_armor_class() == 16 and f.units[0].get_damage_bonus() == 3
+		and f.units[0].get_attribute(CombatUnit.Attribute.MENTAL) == -1
+		and f.units[1].get_armor_class() == 14 and f.units[1].get_damage_bonus() == 1
+		and f.units[1].get_attribute(CombatUnit.Attribute.MENTAL) == 1,
+		"아군 전사·궁수의 기존 수치 보존")
+
+
+func _test_novice_damage() -> void:
+	for index: int in [2, 3]:
+		for critical: bool in [false, true]:
+			var f: Fixture = _fixture()
+			var actor: CombatUnit = f.units[index]
+			var target: CombatUnit = f.units[0]
+			f.turns.end_turn()
+			f.turns.end_turn()
+			if index == 3:
+				f.turns.end_turn()
+			target.reaction_left = 0
+			f.actions.dice = (_dice_for([20, 4, 2], [20, 4, 4]) if critical
+				else _dice_for([11, 4], [20, 4]))
+			_check(await f.actions.attack(actor, target), "풋내기 기본 공격 실행")
+			_check(f.actions.last_damage == (7 if critical else 5)
+				and target.hit_points == (5 if critical else 7),
+				"풋내기 피해는 일반1d4+1·치명타2d4+1")
+
+
+func _test_novice_uses() -> void:
+	var f: Fixture = _fixture()
+	f.turns.end_turn()
+	f.turns.end_turn()
+	var barbarian: CombatUnit = f.units[2]
+	barbarian.hit_points = 6
+	f.actions.dice = _dice_for([10], [10])
+	_check(f.actions.use_self(barbarian, "second_wind") and barbarian.hit_points == 12
+		and barbarian.bonus_action_left == 0 and barbarian.second_wind_left == 0,
+		"야만인 숨 고르기는1d10+1 회복을 최대 HP에 제한하고 보조 행동·횟수 소비")
+	barbarian.begin_turn()
+	barbarian.hit_points = 6
+	_check(not f.actions.can_use(barbarian, "second_wind"), "야만인은 다음 턴에도 숨 고르기 재사용 불가")
+	f.turns.end_turn()
+	var archer: CombatUnit = f.units[3]
+	for use: int in range(2):
+		archer.begin_turn()
+		_check(f.actions.use_self(archer, "disengage") and archer.disengage_left == 1 - use
+			and archer.bonus_action_left == 0 and archer.action_left == 1
+			and archer.movement_left == 6 and f.actions.last_attack == null,
+			"풋내기 궁수 물러서며 쏘기는2회이며 공격·이동을 실행하지 않음")
+	archer.begin_turn()
+	_check(not archer.disengaged and not f.actions.can_use(archer, "disengage"),
+		"궁수는 다음 턴에 면제를 해제하고 소진한2회를 회복하지 않음")
 
 
 func _test_movement() -> void:
@@ -236,6 +315,8 @@ func _test_attacks() -> void:
 func _test_archer_balance() -> void:
 	for actor_index: int in [1, 3]:
 		for marked: bool in [false, true]:
+			if actor_index == 3 and marked:
+				continue
 			for attack_roll: int in [11, 20]:
 				var f: Fixture = _fixture()
 				var actor: CombatUnit = f.units[actor_index]
@@ -251,7 +332,8 @@ func _test_archer_balance() -> void:
 					_check(actor.hit_points == 14 and actor.get_max_hit_points() == 14,
 						"아군과 적 궁수의 시작·최대 HP는14")
 					_check(actor.get_dexterity() == 3 and actor.get_attack_bonus() == 5
-						and f.actions.save_dc == 13, "궁수 피해 고정값은 능력치·명중·DC와 별개")
+						and actor.get_save_dc() == (13 if actor.is_ally else 11),
+						"아군 DC13·풋내기 DC11은 피해 고정값과 별개")
 				if marked:
 					_check(f.actions.mark(actor, target), "궁수 피해 검사에서 표식 사용")
 				var logs: Array[String] = []
@@ -346,7 +428,7 @@ func _test_mark_and_stun() -> void:
 	await f.actions.attack(actor, target)
 	_check(f.actions.last_damage_rolls.size() == 4, "표식 치명타는 무기와 표식 각각2개")
 	var shock: Fixture = _fixture()
-	_check(shock.actions.save_dc == 13, "제품 기본 내성 DC는13")
+	_check(shock.units[1].get_save_dc() == 13, "아군 궁수 내성 DC는13")
 	shock.turns.select_unit(shock.units[1])
 	shock.units[2].reaction_left = 0
 	shock.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
@@ -359,15 +441,15 @@ func _test_mark_and_stun() -> void:
 	_check(shock.turns.current_unit == shock.units[3] and shock.turns.is_turn_finished(shock.units[2]),
 		"기절한 다음 턴은 자동으로 건너뜀")
 	_check(not shock.units[2].is_stunned, "건너뛴 턴 끝에서 기절 해제")
-	for roll: int in [13, 14]:
+	for roll: int in [14, 15]:
 		var boundary: Fixture = _fixture()
 		boundary.turns.select_unit(boundary.units[1])
 		boundary.units[2].reaction_left = 0
 		boundary.actions.dice = _dice_for([11, 4, roll], [20, 6, 20])
 		await boundary.actions.attack(boundary.units[1], boundary.units[2], true)
 		_check(boundary.units[2].hit_points == 7, "내성 성공 여부와 관계없이 충격 화살 피해 적용")
-		_check(boundary.units[2].is_stunned == (roll == 13),
-			"정신-1의 DC13 경계: d20의13은 기절,14는 버팀")
+		_check(boundary.units[2].is_stunned == (roll == 14),
+			"풋내기 정신-2의 DC13 경계: d20의14는 기절,15는 버팀")
 	var waiting: Fixture = _fixture()
 	waiting.units[1].is_stunned = true
 	var start_dice: CombatDice = CombatDice.new()
@@ -392,10 +474,8 @@ func _test_mark_and_stun() -> void:
 	_check(not missed.actions.can_use(missed.units[1], "shock"), "빗나간 충격 화살 재사용 거부")
 	missed.units[1].action_left = 1
 	_check(not missed.actions.can_use(missed.units[1], "shock"), "행동만 회복해도 사용 횟수는 돌아오지 않음")
-	missed.units[1].action_left = 1
-	missed.units[1].shock_left = 1
-	missed.actions.save_dc = 0
-	_check(not missed.actions.can_use(missed.units[1], "shock"), "유효하지 않은 DC 효과 실행 거부")
+	_check(not missed.actions.can_target(missed.units[3], missed.units[0], "shock"),
+		"풋내기 궁수의 충격 화살 실행 거부")
 
 
 func _enemy_archer(f: Fixture) -> void:
@@ -457,10 +537,10 @@ func _test_reactions() -> void:
 	parry.turns.end_turn()
 	parry.actions.reaction_requested.connect(func(kind: String, prompt: String) -> void:
 		_check(kind == "parry" and parry.actions.last_damage_rolls.is_empty(), "피해 굴림 전에 흘려내기 확인")
-		_check("45.0%" in prompt, "DC13 흘려내기 확인은 성공률45%")
+		_check("55.0%" in prompt, "풋내기 DC11 흘려내기 확인은 성공률55%")
 		parry.actions.resolve_reaction(true)
 	)
-	parry.actions.dice = _dice_for([20, 12], [20, 20])
+	parry.actions.dice = _dice_for([20, 10], [20, 20])
 	await parry.actions.attack(parry.units[2], parry.units[0])
 	_check(parry.units[0].hit_points == 12 and parry.actions.last_damage == 0, "흘려내기 성공은 치명타도 무효")
 	_check(parry.hits.is_empty(), "성공한 흘려내기는 타격음을 요청하지 않음")
@@ -468,27 +548,27 @@ func _test_reactions() -> void:
 	_check(parry.units[2].action_left == 0, "흘려내기 성공해도 공격자 행동 소비")
 	parry.units[2].action_left = 1
 	parry.units[0].reaction_left = 1
-	parry.actions.dice = _dice_for([20, 11], [20, 20]).then_seeded()
+	parry.actions.dice = _dice_for([20, 9], [20, 20]).then_seeded()
 	await parry.actions.attack(parry.units[2], parry.units[0])
 	_check(parry.actions.last_damage > 0 and parry.actions.last_damage_rolls.size() == 2,
-		"민첩+1의 d20의11은 DC13 미달로 치명타 피해 적용")
+		"민첩+1의 d20의9는 DC11 미달로 치명타 피해 적용")
 	_check(parry.hits.size() == 1, "실패한 흘려내기는 실제 피해 타격음 한 번")
 	_check(parry.units[0].reaction_left == 0 and parry.units[0].parry_left == 0,
 		"흘려내기 내성 실패도 반응과 횟수 소비")
 	var automatic: Fixture = _fixture()
-	automatic.actions.dice = _dice_for([11, 12], [20, 20])
+	automatic.actions.dice = _dice_for([11, 4], [20, 8])
 	await automatic.actions.attack(automatic.units[0], automatic.units[2])
-	_check(automatic.units[2].parry_left == 1 and automatic.units[2].reaction_left == 0
-		and automatic.units[2].hit_points == 12, "적 흘려내기는 자동 반응")
+	_check(automatic.units[2].parry_left == 2 and automatic.units[2].reaction_left == 1
+		and automatic.units[2].hit_points == 5, "야만인은 흘려내기 없이 아군 피해를 받음")
 	var parried_shock: Fixture = _fixture()
 	_enemy_archer(parried_shock)
 	parried_shock.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
 		parried_shock.actions.resolve_reaction(true)
 	)
-	parried_shock.actions.dice = _dice_for([11, 12, 12], [20, 20, 20])
-	await parried_shock.actions.attack(parried_shock.units[3], parried_shock.units[0], true)
+	_check(not await parried_shock.actions.attack(parried_shock.units[3], parried_shock.units[0], true),
+		"풋내기 궁수는 충격 화살로 공격하지 못함")
 	_check(parried_shock.units[0].hit_points == 12 and not parried_shock.units[0].is_stunned
-		and parried_shock.units[3].shock_left == 0, "흘려낸 충격 화살은 피해와 기절도 없음")
+		and parried_shock.units[3].shock_left == 1, "불가능한 스킬은 피해·기절·횟수를 바꾸지 않음")
 
 
 func _test_own_turn_parry() -> void:
@@ -519,23 +599,23 @@ func _test_own_turn_parry() -> void:
 				and actions.pending_reactor == units[0], "자기 턴 기회 공격 명중에도 흘려내기 요청")
 			_check(hud.reaction_dialog.visible and hud.end_button.disabled
 				and actions.busy, "자기 턴 흘려내기 창과 입력 잠금")
-			_check("45.0%" in prompt and actions.last_damage_rolls.is_empty(),
-				"자기 턴에도 피해 굴림 전에 DC13·45% 표시")
+			_check("55.0%" in prompt and actions.last_damage_rolls.is_empty(),
+				"자기 턴에도 피해 굴림 전에 풋내기 DC11·55% 표시")
 			if choice == 2:
 				hud.reaction_dialog.get_cancel_button().pressed.emit()
 			else:
 				hud.reaction_dialog.get_ok_button().pressed.emit()
 		actions.reaction_requested.connect(respond)
 		if choice == 0:
-			actions.dice = _dice_for([11, 12], [20, 20])
+			actions.dice = _dice_for([11, 10], [20, 20])
 		elif choice == 1:
-			actions.dice = _dice_for([11, 11, 4], [20, 20, 8])
+			actions.dice = _dice_for([11, 9, 4], [20, 20, 4])
 		else:
-			actions.dice = _dice_for([11, 4], [20, 8])
+			actions.dice = _dice_for([11, 4], [20, 4])
 		_check(await actions.move_to(units[0], Vector2i(3, 4)), "자기 턴 기회 공격 후 이동 완료")
 		await process_frame
 		_check(asked == ["parry"] and units[2].reaction_left == 0, "적 기회 공격은 자동이며 반응 소비")
-		_check(units[0].hit_points == (12 if choice == 0 else 5),
+		_check(units[0].hit_points == (12 if choice == 0 else 7),
 			"흘려내기 성공은 피해 무효, 실패·넘기기는 피해 적용")
 		var reaction: int = 1 if choice == 2 else 0
 		var uses: int = 2 if choice == 2 else 1
@@ -577,13 +657,13 @@ func _test_scene_input() -> void:
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
-	var destination: Vector2i = Vector2i(4, 7)
+	var destination: Vector2i = Vector2i(1, 6)
 	var screen: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(destination)
 	await _click(screen, MOUSE_BUTTON_RIGHT)
-	_check(units[0].cell == Vector2i(4, 9) and not (battle.get("preview_path") as Array).is_empty(), "이동 첫 클릭은 미리보기")
+	_check(units[0].cell == Vector2i(1, 4) and not (battle.get("preview_path") as Array).is_empty(), "이동 첫 클릭은 미리보기")
 	await _click(screen, MOUSE_BUTTON_RIGHT)
 	_check(units[0].cell == destination and units[0].movement_left == 4, "이동 두 번째 클릭 실행")
-	units[2].cell = Vector2i(5, 7)
+	units[2].cell = Vector2i(2, 6)
 	units[2].parry_left = 0
 	battle.call("_update_turn_ui")
 	actions.dice = _dice_for([1], [20])
@@ -607,7 +687,8 @@ func _test_scene_input() -> void:
 		"아군은 같은 턴에 몰아치기 뒤 두 번째 클릭으로 추가 공격")
 	turns.end_turn()
 	turns.end_turn()
-	_check(actions.save_dc == 13, "실제 장면도 DC13을 연결")
+	_check(units[0].get_save_dc() == 13 and units[2].get_save_dc() == 11,
+		"실제 장면도 아군 DC13과 풋내기 DC11을 분리")
 	actions.dice = _dice_for([20, 12], [20, 20])
 	actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
 		_check(kind == "parry" and hud.reaction_dialog.visible and hud.end_button.disabled,
@@ -662,7 +743,7 @@ func _test_scene_shock() -> void:
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
-	units[3].cell = Vector2i(7, 9)
+	units[3].cell = Vector2i(3, 5)
 	turns.select_unit(units[1])
 	var buttons: Dictionary = hud.get("_actions")
 	var shock_button: Button = buttons["shock"] as Button

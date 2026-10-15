@@ -4,5 +4,5 @@ extends Resource
 
 @export var map_size: Vector2i = Vector2i(10, 10)
 @export var tile_set: TileSet
-@export var ally_cells: Array[Vector2i] = [Vector2i(4, 9), Vector2i(5, 9)]
+@export var ally_cells: Array[Vector2i] = [Vector2i(1, 4), Vector2i(0, 5)]
 @export var enemies: PackedScene

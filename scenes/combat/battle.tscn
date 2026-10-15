@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scenes/combat/battle.gd" id="1_battle"]
 [ext_resource type="PackedScene" path="res://scenes/combat/unit.tscn" id="2_unit"]
@@ -7,13 +7,16 @@
 [ext_resource type="Resource" path="res://scenes/combat/stage.tres" id="5_stage"]
 [ext_resource type="Script" path="res://scenes/combat/stage.gd" id="6_stage_script"]
 [ext_resource type="AudioStream" path="res://scenes/combat/audio/hit.ogg" id="7_hit"]
+[ext_resource type="Resource" path="res://scenes/combat/stages/act1_stage2.tres" id="8_stage2"]
+[ext_resource type="Resource" path="res://scenes/combat/stages/act2_stage2.tres" id="9_stage2"]
+[ext_resource type="Resource" path="res://scenes/combat/stages/act3_stage2.tres" id="10_stage2"]
 
 [sub_resource type="Theme" id="Theme_legend"]
 default_font_size = 12
 
 [node name="Battle" type="Node2D"]
 script = ExtResource("1_battle")
-stages = Array[ExtResource("6_stage_script")]([ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("5_stage")])
+stages = Array[ExtResource("6_stage_script")]([ExtResource("5_stage"), ExtResource("8_stage2"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("9_stage2"), ExtResource("5_stage"), ExtResource("5_stage"), ExtResource("10_stage2"), ExtResource("5_stage")])
 
 [node name="HitSound" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("7_hit")
@@ -28,11 +31,11 @@ tile_set = ExtResource("3_floor")
 y_sort_enabled = true
 
 [node name="AllyWarrior" parent="Units" instance=ExtResource("2_unit")]
-start_cell = Vector2i(4, 9)
+start_cell = Vector2i(1, 4)
 
 [node name="AllyArcher" parent="Units" instance=ExtResource("2_unit")]
 kind = 1
-start_cell = Vector2i(5, 9)
+start_cell = Vector2i(0, 5)
 
 [node name="Camera" type="Camera2D" parent="."]
 position_smoothing_enabled = false

@@ -149,7 +149,7 @@ func _test_preview_conditions() -> void:
 	var units: Array[CombatUnit] = [archer, target, nearby]
 	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(archer, target, units)
 	_check(preview.in_range and preview.mode == CombatChecks.RollMode.DISADVANTAGE
-		and is_equal_approx(preview.chance, 0.36) and "옆에 적" in preview.reasons, "헥사 인접 적도 원거리 불리")
+		and is_equal_approx(preview.chance, 0.5625) and "옆에 적" in preview.reasons, "헥사 인접 적도 원거리 불리")
 	nearby.cell = Vector2i(5, 5)
 	preview = CombatChecks.attack_preview(archer, target, units)
 	_check(preview.mode == CombatChecks.RollMode.NORMAL, "사각 대각선의 헥사 거리2는 불리를 주지 않음")
@@ -167,10 +167,10 @@ func _test_preview_conditions() -> void:
 	_check(preview.mode == CombatChecks.RollMode.NORMAL, "인접한 아군은 불리 아님")
 	target.is_stunned = true
 	preview = CombatChecks.attack_preview(archer, target, units)
-	_check(preview.mode == CombatChecks.RollMode.ADVANTAGE and is_equal_approx(preview.chance, 0.84), "기절 대상은 유리")
+	_check(preview.mode == CombatChecks.RollMode.ADVANTAGE and is_equal_approx(preview.chance, 0.9375), "기절 대상은 유리")
 	nearby.is_ally = false
 	preview = CombatChecks.attack_preview(archer, target, units)
-	_check(preview.mode == CombatChecks.RollMode.NORMAL and is_equal_approx(preview.chance, 0.6)
+	_check(preview.mode == CombatChecks.RollMode.NORMAL and is_equal_approx(preview.chance, 0.75)
 		and preview.reasons.size() == 2, "기절 대상과 인접 적이 함께 있으면 상쇄")
 	archer.is_stunned = true
 	preview = CombatChecks.attack_preview(archer, target, units)
@@ -198,7 +198,7 @@ func _test_preview_conditions() -> void:
 	target.hit_points = 0
 	_check(not CombatChecks.attack_preview(archer, target, units).valid_target, "전투 불능 대상 거부")
 	_check(archer.get_attribute(CombatUnit.Attribute.MENTAL) == -1, "전사 정신 -1")
-	_check(target.get_attribute(CombatUnit.Attribute.MENTAL) == 1, "궁수 정신 +1")
+	_check(target.get_attribute(CombatUnit.Attribute.MENTAL) == 0, "풋내기 궁수 정신0")
 
 
 func _test_scene_input() -> void:
@@ -209,6 +209,9 @@ func _test_scene_input() -> void:
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var units: Array[CombatUnit] = battle.get("units")
+	# 확률·입력 fixture는 이전과 같은 거리에서 비교한다.
+	units[0].cell = Vector2i(4, 9)
+	units[1].cell = Vector2i(5, 9)
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
@@ -218,7 +221,7 @@ func _test_scene_input() -> void:
 	var action_before: int = units[0].action_left
 	await _click_unit(units[2])
 	_check(battle.get("preview_target") == units[2], "실제 입력 경로로 적 도형 선택")
-	_check(hud.unit_label.text == "적 전사" and "AC 16" in hud.resource_label.text, "클릭하면 적 HP/AC/상태 표시")
+	_check(hud.unit_label.text == "풋내기 야만인" and "AC 12" in hud.resource_label.text, "클릭하면 적 HP/AC/상태 표시")
 	_check("사거리 밖" in hud.preview_label.text and "0.0%" in hud.preview_label.text, "기본 배치의 사거리 밖 안내")
 	await _click_unit(units[2])
 	_check(units[2].hit_points == hp_before and units[0].movement_left == movement_before
@@ -238,23 +241,23 @@ func _test_scene_input() -> void:
 	units[3].position = map.map_to_local(units[3].cell)
 	battle.call("_clear_preview")
 	await _click_unit(units[3])
-	_check("60.0%" in hud.preview_label.text and "AC 14" in hud.resource_label.text
+	_check("75.0%" in hud.preview_label.text and "AC 11" in hud.resource_label.text
 		and "HP 14 / 14" in hud.resource_label.text, "사거리 안 대상의 명중률과 능력치 표시")
 	units[3].is_stunned = true
 	battle.call("_clear_preview")
 	await _click_unit(units[3])
-	_check("84.0% · 유리" in hud.preview_label.text and "기절한 대상" in hud.preview_label.text,
+	_check("93.8% · 유리" in hud.preview_label.text and "기절한 대상" in hud.preview_label.text,
 		"기절 대상의 유리 확률과 이유 표시")
 	units[2].cell = Vector2i(6, 9)
 	units[2].position = map.map_to_local(units[2].cell)
 	battle.call("_clear_preview")
 	await _click_unit(units[3])
-	_check("60.0% · 유리/불리 상쇄" in hud.preview_label.text
+	_check("75.0% · 유리/불리 상쇄" in hud.preview_label.text
 		and "기절한 대상, 옆에 적" in hud.preview_label.text, "상쇄 확률과 양쪽 이유 표시")
 	units[3].is_stunned = false
 	battle.call("_clear_preview")
 	await _click_unit(units[3])
-	_check("36.0% · 불리" in hud.preview_label.text and "옆에 적" in hud.preview_label.text,
+	_check("56.2% · 불리" in hud.preview_label.text and "옆에 적" in hud.preview_label.text,
 		"인접 적에 따른 불리 확률과 이유 표시")
 	hud.end_button.pressed.emit()
 	_check(battle.get("preview_target") == null and hud.unit_label.text == "아군 전사", "턴 종료 후 미리보기 해제")

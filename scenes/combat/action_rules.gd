@@ -52,6 +52,8 @@ static func resource_of(action: String) -> CombatUnit.TurnResource:
 
 
 static func belongs_to(actor: CombatUnit, action: String) -> bool:
+	if not actor.is_ally:
+		return action in CombatEnemyDefinitions.for_kind(actor.kind)["actions"]
 	return action not in CLASS_ONLY or actor.kind == CLASS_ONLY[action]
 
 

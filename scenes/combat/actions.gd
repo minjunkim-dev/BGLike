@@ -13,8 +13,6 @@ var units: Array[CombatUnit] = []
 var turns: CombatTurns
 var dice: CombatDice = CombatDice.new()
 var map_size: Vector2i = Vector2i(10, 10)
-# M1 전사·궁수 내성 DC: 8 + 숙련2 + 공격 능력치3.
-var save_dc: int = 13
 var busy: bool = false
 var pending_reactor: CombatUnit
 var pending_kind: String = ""
@@ -127,7 +125,8 @@ func can_move(actor: CombatUnit, destination: Vector2i) -> bool:
 
 func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	from_cell: Vector2i = Vector2i(-1, -1)) -> bool:
-	if actor == null or target == null or target.hit_points <= 0 or actor.is_ally == target.is_ally:
+	if (actor == null or target == null or target.hit_points <= 0 or actor.is_ally == target.is_ally
+		or not CombatActionRules.belongs_to(actor, action)):
 		return false
 	var origin: Vector2i = actor.cell if from_cell == Vector2i(-1, -1) else from_cell
 	var separation: int = CombatHexGrid.distance(origin, target.cell)
@@ -136,7 +135,7 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 			return actor.action_left > 0 and separation >= 1 and separation <= actor.get_attack_range()
 		"shock":
 			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
-				and save_dc > 0 and separation >= 1 and separation <= CombatActionRules.SKILL_RANGE)
+				and actor.get_save_dc() > 0 and separation >= 1 and separation <= CombatActionRules.SKILL_RANGE)
 		"mark":
 			return (CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
 				and separation >= 1 and separation <= CombatActionRules.SKILL_RANGE)
@@ -353,6 +352,7 @@ func _emit_reaction(kind: String, prompt: String) -> void:
 
 
 func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void:
+	var save_dc: int = actor.get_save_dc()
 	if attack_animation.is_valid():
 		await attack_animation.call(actor, target)
 	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(actor, target, units)
@@ -385,7 +385,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 				feedback.emit(target, "흘려내기")
 				return
 	var count: int = 2 if last_attack.critical else 1
-	var sides: int = 8 if actor.kind == CombatUnit.Kind.WARRIOR else 6
+	var sides: int = actor.get_damage_sides()
 	for index: int in range(count):
 		last_damage_rolls.append(dice.roll(sides))
 	var has_mark_damage: bool = actor.marked_target == target

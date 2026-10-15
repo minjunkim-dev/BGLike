@@ -36,6 +36,9 @@ func _run() -> void:
 	turns = battle.get("turns") as CombatTurns
 	actions = battle.get("actions") as CombatActions
 	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	# HUD fixture의 사거리와 입력 조건을 고정한다.
+	units[0].cell = Vector2i(4, 9)
+	units[1].cell = Vector2i(5, 9)
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
@@ -158,7 +161,7 @@ func _test_archer_and_enemy() -> void:
 	_check((buttons["shock"] as Button).visible and not (buttons["surge"] as Button).visible,
 		"궁수 스킬만 표시")
 	_check(battle.call("preview_enemy", units[2]), "적 미리보기 연결")
-	_check(hud.unit_label.text == "적 전사" and "AC 16" in hud.resource_label.text,
+	_check(hud.unit_label.text == "풋내기 야만인" and "AC 12" in hud.resource_label.text,
 		"미리보기는 유닛 정보 자리를 사용")
 	_check((buttons["shock"] as Button).visible, "미리보기에도 현재 아군의 스킬 유지")
 	hud.unit_selected.emit(units[0])
@@ -214,7 +217,7 @@ func _test_log_and_status() -> void:
 	turns.select_unit(units[1])
 	units[1].marked_target = units[2]
 	units[2].cell = Vector2i(5, 8)
-	actions.dice = ScriptedDice.new([10, 10], [20, 20])
+	actions.dice = ScriptedDice.new([6, 6], [20, 20])
 	await actions.attack(units[1], units[2])
 	_check(not hit_sound.playing, "실제 장면의 빗나감은 타격음 무음")
 	_check(_has_two_dice_log("불리"),
@@ -312,17 +315,23 @@ func _test_roll_popups() -> void:
 	var save_total: String = hud.message_label.text.get_slice("정신 내성: ", 1).get_slice(" = ", 1).get_slice(" /", 0)
 	_check(save_total.is_valid_int() and _has_feedback(target, "정신 내성 %s" % save_total),
 		"정신 내성 팝업은 실제 로그의 합계와 일치")
-	# 적 전사의 자동 흘려내기도 실제 내성 합계를 표시한다.
-	turns.select_unit(warrior)
-	warrior.action_left = 1
-	warrior.cell = Vector2i(4, 4)
-	target.cell = Vector2i(5, 4)
+	# 아군 전사의 흘려내기는 실제 내성 합계를 표시한다.
+	target = warrior
+	target.cell = Vector2i(4, 4)
+	units[3].cell = Vector2i(1, 4)
+	units[2].cell = Vector2i(9, 9)
+	while turns.current_unit != units[3]:
+		turns.end_turn()
 	target.is_stunned = false
 	target.hit_points = target.get_max_hit_points()
 	target.reaction_left = 1
 	target.parry_left = 2
-	actions.dice = ScriptedDice.new([11], [20]).then_seeded()
-	await actions.attack(warrior, target)
+	var respond: Callable = func(_kind: String, _prompt: String) -> void:
+		hud.reaction_dialog.get_ok_button().pressed.emit()
+	actions.reaction_requested.connect(respond)
+	actions.dice = ScriptedDice.new([11, 10], [20, 20])
+	await actions.attack(units[3], target)
+	actions.reaction_requested.disconnect(respond)
 	var parry_text: String = ""
 	for text: String in emitted:
 		if text.begins_with("흘려내기 ") and text.get_slice(" ", 1).is_valid_int():
@@ -349,7 +358,7 @@ func _has_two_dice_log(mode: String) -> bool:
 
 
 func _dice_for_miss() -> CombatDice:
-	return ScriptedDice.new([10], [20])
+	return ScriptedDice.new([1], [20])
 
 
 func _test_layout() -> void:
@@ -615,7 +624,7 @@ func _test_results_and_restart() -> void:
 	units = battle.get("units")
 	turns = battle.get("turns") as CombatTurns
 	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	_check(units.size() == 4 and turns.ordered_units.size() == 4
+	_check(units.size() == 3 and turns.ordered_units.size() == 3
 		and not hud.get_node("Result").visible and hud.progress_label.text == "1막 · 2스테이지",
 		"승리 뒤 보상·정비 종료로 다음 스테이지 진입")
 	for index: int in range(2):
@@ -685,16 +694,16 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check(turns.current_unit == units[0] and units[0].action_left == 1
 		and units[2].hit_points == 12 and battle.get("preview_target") == null,
 		"적 초상을 반복 클릭해도 공격 준비·실행·조작 전환 없음")
-	_check(hud.unit_label.text == "적 전사" and hud.actor_label.text == "조작: 아군 전사"
+	_check(hud.unit_label.text == "풋내기 야만인" and hud.actor_label.text == "조작: 아군 전사"
 		and "힘 +3" in hud.resource_label.text and "민첩 +1" in hud.resource_label.text
-		and "체력 +2" in hud.resource_label.text and "정신 -1" in hud.resource_label.text
+		and "체력 +2" in hud.resource_label.text and "정신 -2" in hud.resource_label.text
 		and "명중 +5" in hud.resource_label.text and "사거리 1칸" in hud.resource_label.text,
 		"정보 대상·조작 유닛을 구분하고 실제 능력치·공격 수치 표시")
 	_check("행동" not in hud.resource_label.text and "반응" not in hud.resource_label.text
 		and (hud.get("_titles") as Array)[0].text == "행동 ●"
 		and (hud.get("_actions") as Dictionary).has("surge"), "적 정보에도 현재 아군 자원 마크 유지")
 	battle.call("_update_turn_ui")
-	_check(hud.unit_label.text == "적 전사", "UI 갱신은 초상 정보 조회 유지")
+	_check(hud.unit_label.text == "풋내기 야만인", "UI 갱신은 초상 정보 조회 유지")
 	await _click(enemy_point)
 	_check(units[0].action_left == 1 and battle.get("preview_target") == units[2],
 		"초상 조회 뒤 필드 적 클릭은 새 공격의 첫 미리보기")
@@ -829,6 +838,8 @@ func _test_action_animations() -> void:
 		"두 헥사 칸 이동은 도착 후 자원 갱신과 몸통·입력 복구")
 	for side: bool in [true, false]:
 		for shock: bool in [false, true]:
+			if not side and shock:
+				continue
 			_reset_units()
 			var actor: CombatUnit = units[1] if side else units[3]
 			var target: CombatUnit = units[2] if side else units[0]
