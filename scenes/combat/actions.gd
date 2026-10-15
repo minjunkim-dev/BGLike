@@ -24,9 +24,21 @@ var attack_animation: Callable
 
 
 func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> void:
+	if turns != null and turns.turn_started.is_connected(_on_turn_started):
+		turns.turn_started.disconnect(_on_turn_started)
 	units = combat_units
 	turns = combat_turns
+	turns.turn_started.connect(_on_turn_started)
 	dice.randomize()
+
+
+func _on_turn_started(unit: CombatUnit) -> void:
+	if not unit.overloaded or unit.hit_points <= 0 or is_over():
+		return
+	_damage(unit, 2)
+	logged.emit("%s 과부하: 자기 피해 2 · HP %d" % [unit.get_display_name(), unit.hit_points])
+	feedback.emit(unit, "과부하 -2")
+	changed.emit()
 
 
 func unit_at(cell: Vector2i) -> CombatUnit:
@@ -401,6 +413,10 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 		" (표식 추가)" if has_mark_damage else "",
 		str(last_damage_rolls), damage_bonus, last_damage, target.hit_points])
 	feedback.emit(target, "-%d" % last_damage)
+	if shock and target.hit_points > 0 and target.is_boss():
+		logged.emit("%s 기절 면역" % target.get_display_name())
+		feedback.emit(target, "기절 면역")
+		return
 	if shock and target.hit_points > 0:
 		var saved: CombatChecks.RollResult = CombatChecks.saving_throw(
 			target.get_attribute(CombatUnit.Attribute.MENTAL), save_dc, dice)

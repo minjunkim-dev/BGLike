@@ -282,6 +282,8 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 		var button: Button = _portraits[unit]
 		button.text = "%s\n%s" % ["아군" if unit.is_ally else "적",
 			"전사" if unit.kind == CombatUnit.Kind.WARRIOR else "궁수"]
+		if unit.is_boss():
+			button.text = unit.get_display_name().replace("-", "\n")
 		button.tooltip_text = "%s: d20 %d + 민첩 %d = %d" % [
 			unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()]
 		var in_group: bool = unit in turns.get_current_group()
@@ -305,6 +307,10 @@ func show_unit(unit: CombatUnit) -> void:
 	var states: Array[String] = []
 	if unit.is_stunned:
 		states.append("기절")
+	if unit.overloaded:
+		states.append("과부하")
+	if unit.is_boss():
+		states.append("기절 면역")
 	if unit.has_mark:
 		states.append("◎ 표식")
 	if unit.disengaged:

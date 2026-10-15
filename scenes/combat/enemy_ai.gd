@@ -6,10 +6,28 @@ extends RefCounted
 func play_turn(actor: CombatUnit, actions: CombatActions, pause: Callable = Callable()) -> void:
 	if not _active(actor, actions):
 		return
-	if actor.kind == CombatUnit.Kind.WARRIOR:
+	if actor.is_boss():
+		await _boss_turn(actor, actions, pause)
+	elif actor.kind == CombatUnit.Kind.WARRIOR:
 		await _warrior_turn(actor, actions, pause)
 	else:
 		await _archer_turn(actor, actions, pause)
+
+
+func _boss_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:
+	while _active(actor, actions) and actor.action_left > 0:
+		var target: CombatUnit = _attack_target(actor, actions)
+		if target == null:
+			var destination: Vector2i = approach_cell(actor, actions)
+			if destination != actor.cell:
+				await actions.move_to(actor, destination)
+				await _pause(pause)
+		if not _active(actor, actions):
+			return
+		target = _attack_target(actor, actions)
+		if target == null or not await actions.attack(actor, target):
+			return
+		await _pause(pause)
 
 
 func _active(actor: CombatUnit, actions: CombatActions) -> bool:

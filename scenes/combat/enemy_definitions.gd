@@ -1,6 +1,6 @@
 class_name CombatEnemyDefinitions
 extends RefCounted
-## 풋내기의 고정 수치와 사용 동작. 아군 직업 수치와 따로 관리한다.
+## 몬스터의 고정 수치와 사용 동작. 아군 직업 수치와 따로 관리한다.
 
 const NOVICE_BARBARIAN: Dictionary = {
 	"name": "풋내기 야만인", "max_hit_points": 12, "armor_class": 12,
@@ -14,7 +14,15 @@ const NOVICE_ARCHER: Dictionary = {
 	"attack_bonus": 5, "damage_bonus": 1, "damage_sides": 4, "attack_range": 6, "save_dc": 11,
 	"actions": ["attack", "disengage"]
 }
+const SCRAP_ROBOT_1000: Dictionary = {
+	"name": "고철로봇-1000", "boss": true, "max_hit_points": 40, "armor_class": 14,
+	"strength": 3, "dexterity": -1, "constitution": 3, "mental": 0, "movement": 4,
+	"attack_bonus": 5, "damage_bonus": 2, "damage_sides": 8, "attack_range": 1, "save_dc": 13,
+	"actions": ["attack", "opportunity"]
+}
 
 
 static func for_kind(kind: CombatUnit.Kind) -> Dictionary:
+	if kind == CombatUnit.Kind.SCRAP_ROBOT_1000:
+		return SCRAP_ROBOT_1000
 	return NOVICE_BARBARIAN if kind == CombatUnit.Kind.WARRIOR else NOVICE_ARCHER

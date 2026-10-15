@@ -2,7 +2,7 @@ class_name CombatUnit
 extends Node2D
 ## 팀과 직업, 격자 위치와 유닛별 턴 자원을 가진 임시 유닛.
 
-enum Kind { WARRIOR, ARCHER }
+enum Kind { WARRIOR, ARCHER, SCRAP_ROBOT_1000 = 4 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 
@@ -33,12 +33,17 @@ var action_left: int = 1
 var bonus_action_left: int = 1
 var reaction_left: int = 1
 var act_number: int = 1
+var overloaded: bool = false
 var _lost_hit_points: int = 0
 var hit_points: int = 12:
 	set(value):
 		if value != hit_points:
 			_lost_hit_points = maxi(0, get_max_hit_points() - value)
 		hit_points = value
+		if (is_boss() and not overloaded
+			and hit_points <= get_max_hit_points() / 2):
+			overloaded = true
+			action_left += 1
 var is_stunned: bool = false
 var has_mark: bool = false
 var disengaged: bool = false
@@ -147,15 +152,21 @@ func get_display_name() -> String:
 	return "아군 " + ("전사" if kind == Kind.WARRIOR else "궁수")
 
 
+func is_boss() -> bool:
+	return not is_ally and bool(CombatEnemyDefinitions.for_kind(kind).get("boss", false))
+
+
 func begin_turn() -> void:
 	disengaged = false
-	movement_left = MOVEMENT_PER_TURN
-	action_left = action_capacity
+	movement_left = (MOVEMENT_PER_TURN if is_ally
+		else int(CombatEnemyDefinitions.for_kind(kind).get("movement", MOVEMENT_PER_TURN)))
+	action_left = action_capacity + (1 if overloaded else 0)
 	bonus_action_left = bonus_action_capacity
 	reaction_left = reaction_capacity
 
 
 func begin_stage(restore_act: bool) -> void:
+	overloaded = false
 	if restore_act:
 		hit_points = get_max_hit_points()
 		CombatActionRules.restore_uses(self)
@@ -233,7 +244,12 @@ func _draw() -> void:
 	draw_rect(Rect2(-6, -19, 12, 18), OUTLINE_COLOR)
 	draw_rect(Rect2(-5, -18, 10, 16), body_color)
 
-	if kind == Kind.WARRIOR:
+	if is_boss():
+		draw_rect(Rect2(-4, -16, 8, 5), WEAPON_COLOR)
+		draw_rect(Rect2(-3, -15, 2, 2), OUTLINE_COLOR)
+		draw_rect(Rect2(1, -15, 2, 2), OUTLINE_COLOR)
+		draw_line(Vector2(-3, -7), Vector2(3, -7), WEAPON_COLOR)
+	elif kind == Kind.WARRIOR:
 		# 검: 직선 칼날과 가로 손잡이.
 		draw_rect(Rect2(-1, -16, 2, 9), WEAPON_COLOR)
 		draw_rect(Rect2(-3, -8, 6, 2), WEAPON_COLOR)
