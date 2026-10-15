@@ -16,6 +16,10 @@ func play_turn(actor: CombatUnit, actions: CombatActions, pause: Callable = Call
 
 func _boss_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:
 	while _active(actor, actions) and actor.action_left > 0:
+		if await _try_pull(actor, actions, pause):
+			continue
+		if not _active(actor, actions):
+			return
 		var target: CombatUnit = _attack_target(actor, actions)
 		if target == null:
 			var destination: Vector2i = approach_cell(actor, actions)
@@ -28,6 +32,54 @@ func _boss_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> v
 		if target == null or not await actions.attack(actor, target):
 			return
 		await _pause(pause)
+
+
+func _pull_target(actor: CombatUnit, actions: CombatActions, targets: Array[CombatUnit],
+	from_cell: Vector2i = Vector2i(-1, -1)) -> CombatUnit:
+	var origin: Vector2i = actor.cell if from_cell == Vector2i(-1, -1) else from_cell
+	var farthest: CombatUnit
+	var farthest_distance: int = 0
+	for target: CombatUnit in targets:
+		var separation: int = CombatHexGrid.distance(origin, target.cell)
+		if actions.can_target(actor, target, "pull", origin) and separation > farthest_distance:
+			farthest = target
+			farthest_distance = separation
+	return farthest
+
+
+func _pull_approach_cell(actor: CombatUnit, actions: CombatActions,
+	targets: Array[CombatUnit]) -> Vector2i:
+	var best: Vector2i = actor.cell
+	var best_cost: int = actor.movement_left + 1
+	var reachable: Dictionary[Vector2i, int] = actions.reachable_cells(actor)
+	for cell: Vector2i in reachable:
+		if reachable[cell] < best_cost and _pull_target(actor, actions, targets, cell) != null:
+			best = cell
+			best_cost = reachable[cell]
+	return best
+
+
+func _try_pull(actor: CombatUnit, actions: CombatActions, pause: Callable) -> bool:
+	if (not CombatActionRules.belongs_to(actor, "pull") or actor.pull_cooldown > 0
+		or actor.action_left == 0):
+		return false
+	var targets: Array[CombatUnit] = []
+	for candidate: CombatUnit in _targets(actor, actions):
+		if CombatHexGrid.distance(actor.cell, candidate.cell) > 1:
+			targets.append(candidate)
+	var target: CombatUnit = _pull_target(actor, actions, targets)
+	if target == null:
+		var destination: Vector2i = _pull_approach_cell(actor, actions, targets)
+		if destination != actor.cell:
+			await actions.move_to(actor, destination)
+			await _pause(pause)
+	if not _active(actor, actions):
+		return false
+	target = _pull_target(actor, actions, targets)
+	if target == null or not actions.pull(actor, target):
+		return false
+	await _pause(pause)
+	return true
 
 
 func _active(actor: CombatUnit, actions: CombatActions) -> bool:

@@ -57,6 +57,8 @@ func _fixture(archer: bool = false) -> Fixture:
 
 func _run() -> void:
 	await _test_scrap_robot()
+	await _test_scrap_robot_pull_priority()
+	await _test_scrap_robot_pull_movement_and_combo()
 	await _test_spiderling()
 	await _test_warrior()
 	await _test_archer()
@@ -117,6 +119,73 @@ func _test_scrap_robot() -> void:
 	_check(boss.movement_left == 0 and boss.action_left == 1
 		and CombatHexGrid.distance(boss.cell, distant.units[0].cell) == 3,
 		"사거리 밖의 보스는 가장 가까운 아군에게 4칸만 접근")
+
+
+func _test_scrap_robot_pull_priority() -> void:
+	for nearby: Vector2i in [Vector2i(3, 4), Vector2i(6, 4)]:
+		var f: Fixture = _fixture()
+		var boss: CombatUnit = f.units[2]
+		boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+		boss.hit_points = 45
+		boss.begin_turn()
+		f.units[0].cell = nearby
+		f.units[1].cell = Vector2i(7, 4)
+		f.actions.dice = ScriptedDice.new([12, 10], [20, 20])
+		await ai.play_turn(boss, f.actions)
+		_check(f.units[1].cell == Vector2i(5, 4) and f.units[0].cell == nearby
+			and f.units[0].hit_points == 12 and f.units[1].hit_points == 14,
+			"2000은 인접 아군 공격과 거리2 대상보다 거리3 대상 만능팔을 우선")
+		_check(boss.action_left == 0 and boss.movement_left == 4,
+			"사거리 안 만능팔에 이동과 추가 공격을 쓰지 않음")
+
+
+func _test_scrap_robot_pull_movement_and_combo() -> void:
+	var moving: Fixture = _fixture()
+	var boss: CombatUnit = moving.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 45
+	boss.begin_turn()
+	moving.units[0].cell = Vector2i(3, 4)
+	moving.units[0].reaction_left = 1
+	moving.units[1].cell = Vector2i(9, 4)
+	moving.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
+		moving.actions.resolve_reaction(true)
+	)
+	moving.actions.dice = ScriptedDice.new([12, 1, 12, 10], [20, 8, 20, 20])
+	await ai.play_turn(boss, moving.actions)
+	_check(boss.cell == Vector2i(6, 4) and boss.movement_left == 2
+		and moving.units[1].cell == Vector2i(7, 4), "인접 아군이 있어도 이동해서 사거리3의 만능팔 실행")
+	_check(boss.hit_points == 41 and moving.units[0].reaction_left == 0
+		and moving.units[0].hit_points == 12, "만능팔을 위한 로봇 일반 이동은 아군 기회 공격을 받음")
+	var combo: Fixture = _fixture()
+	boss = combo.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 22
+	boss.begin_turn()
+	combo.units[0].cell = Vector2i(1, 1)
+	combo.units[1].cell = Vector2i(7, 4)
+	combo.actions.dice = ScriptedDice.new([12, 10, 10, 8], [20, 20, 20, 8])
+	await ai.play_turn(boss, combo.actions)
+	_check(combo.units[1].cell == Vector2i(5, 4) and combo.units[1].hit_points == 4
+		and boss.action_left == 0, "과부하 첫 행동 만능팔 뒤 두 번째 행동으로 끌려온 아군 기본 공격")
+	boss.begin_turn()
+	combo.units[0].cell = Vector2i(9, 9)
+	combo.actions.dice = ScriptedDice.new([10, 2], [20, 8])
+	await ai.play_turn(boss, combo.actions)
+	_check(combo.units[1].hit_points == 0 and combo.units[0].hit_points == 12
+		and boss.pull_cooldown == 1, "만능팔 쉬는 턴에는 기본 공격과 접근을 수행")
+	var unreachable: Fixture = _fixture()
+	boss = unreachable.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 45
+	boss.begin_turn()
+	unreachable.units[0].cell = Vector2i(3, 4)
+	unreachable.units[1].cell = Vector2i(9, 9)
+	unreachable.actions.dice = ScriptedDice.new([12, 1], [20, 8])
+	await ai.play_turn(boss, unreachable.actions)
+	_check(boss.cell == Vector2i(4, 4) and boss.movement_left == 4
+		and unreachable.units[0].hit_points == 9,
+		"이번 턴 이동으로 만능팔 사거리에 못 들면 인접 아군을 기본 공격")
 
 
 func _test_spiderling() -> void:
