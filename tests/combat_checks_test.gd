@@ -39,12 +39,17 @@ func _check(condition: bool, message: String) -> void:
 		push_error(message)
 
 
+## 다른 ScriptedDice보다 먼저 실행해야 finish()가 이 검사의 인스턴스만 본다.
 func _test_scripted_dice_leftovers() -> void:
-	var dice: ScriptedDice = ScriptedDice.new([3, 4], [6, 6])
+	var dice: ScriptedDice = ScriptedDice.new([3, 4], [6, 6], [0.5])
 	dice.roll(6)
-	_check(dice.unused() == [4], "굴리지 않은 준비값을 남은 값으로 보고")
-	dice.roll(6)
-	_check(dice.unused().is_empty(), "모두 굴리면 남은 준비값 없음")
+	_check(dice.unused() == [4, 0.5], "굴리지 않은 정수·확률 준비값을 남은 값으로 보고")
+	ScriptedDice.new([7], [6]).roll(6)
+	ScriptedDice.new([], [], [1.0]).chance()
+	var problems: Array[String] = ScriptedDice.finish()
+	_check(problems == ["7는 1~6 밖", "확률 1.0은 0 이상 1 미만 밖", "굴리지 않은 준비값 [4, 0.5]"],
+		"finish()가 범위 밖 정수·확률과 남은 준비값을 보고 " + str(problems))
+	_check(ScriptedDice.finish().is_empty(), "finish()는 보고한 문제와 인스턴스를 비움")
 
 
 func _dice_for(expected: Array[int]) -> CombatDice:
