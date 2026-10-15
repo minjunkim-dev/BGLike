@@ -20,6 +20,12 @@ const SCRAP_ROBOT_1000: Dictionary = {
 	"attack_bonus": 5, "damage_bonus": 2, "damage_sides": 8, "attack_range": 1, "save_dc": 13,
 	"actions": ["attack", "opportunity"]
 }
+const SCRAP_ROBOT_2000: Dictionary = {
+	"name": "고철로봇-2000", "boss": true, "max_hit_points": 45, "armor_class": 15,
+	"strength": 3, "dexterity": -1, "constitution": 3, "mental": 0, "movement": 4,
+	"attack_bonus": 5, "damage_bonus": 2, "damage_sides": 8, "attack_range": 1, "save_dc": 13,
+	"actions": ["attack", "opportunity", "pull"]
+}
 const SPIDERLING: Dictionary = {
 	"name": "새끼 거미", "max_hit_points": 1, "armor_class": 6,
 	"strength": 0, "dexterity": 2, "constitution": -2, "mental": -2,
@@ -35,6 +41,8 @@ const MOTHER_SPIDER: Dictionary = {
 
 
 static func for_kind(kind: CombatUnit.Kind) -> Dictionary:
+	if kind == CombatUnit.Kind.SCRAP_ROBOT_2000:
+		return SCRAP_ROBOT_2000
 	if kind == CombatUnit.Kind.SCRAP_ROBOT_1000:
 		return SCRAP_ROBOT_1000
 	if kind == CombatUnit.Kind.MOTHER_SPIDER:

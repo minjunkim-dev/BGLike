@@ -153,6 +153,9 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 				and separation >= 1 and separation <= CombatActionRules.SKILL_RANGE)
 		"shove":
 			return actor.bonus_action_left > 0 and separation == 1 and can_shove(actor, target)
+		"pull":
+			return (actor.action_left > 0 and actor.pull_cooldown == 0 and separation >= 2 and separation <= 3
+				and not pull_cells(actor, target, origin).is_empty())
 	return false
 
 
@@ -167,7 +170,7 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 			for neighbor: Vector2i in CombatHexGrid.neighbors(actor.cell):
 				if can_move(actor, neighbor):
 					return true
-		"attack", "shock", "mark", "shove":
+		"attack", "shock", "mark", "shove", "pull":
 			for target: CombatUnit in units:
 				if can_target(actor, target, action):
 					return true
@@ -330,6 +333,45 @@ func mark(actor: CombatUnit, target: CombatUnit) -> bool:
 	CombatActionRules.spend_use(actor, "mark")
 	actor.marked_target = target
 	logged.emit("%s 표식: %s" % [actor.get_display_name(), target.get_display_name()])
+	changed.emit()
+	return true
+
+
+func pull_cells(actor: CombatUnit, target: CombatUnit,
+	from_cell: Vector2i = Vector2i(-1, -1)) -> Array[Vector2i]:
+	var origin: Vector2i = actor.cell if from_cell == Vector2i(-1, -1) else from_cell
+	var cells: Array[Vector2i] = []
+	var nearest: int = map_size.x + map_size.y
+	for cell: Vector2i in CombatHexGrid.neighbors(origin):
+		var occupant: CombatUnit = unit_at(cell)
+		if not is_inside(cell) or (occupant != null and occupant != actor):
+			continue
+		var separation: int = CombatHexGrid.distance(cell, target.cell)
+		if separation < nearest:
+			nearest = separation
+			cells.clear()
+		if separation == nearest:
+			cells.append(cell)
+	return cells
+
+
+func pull(actor: CombatUnit, target: CombatUnit) -> bool:
+	if not _can_act(actor) or not can_target(actor, target, "pull"):
+		return false
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	actor.pull_cooldown = 2
+	var result: CombatChecks.ContestResult = CombatChecks.contest(
+		actor.get_attribute(CombatUnit.Attribute.STRENGTH),
+		maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), dice)
+	if result.attacker_wins:
+		var cells: Array[Vector2i] = pull_cells(actor, target)
+		target.cell = cells[0] if cells.size() == 1 else cells[dice.roll(cells.size()) - 1]
+	logged.emit("%s 만능팔: %d + %d = %d / %d + %d = %d · %s" % [
+		actor.get_display_name(), result.attacker_roll,
+		actor.get_attribute(CombatUnit.Attribute.STRENGTH), result.attacker_total,
+		result.defender_roll, maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()),
+		result.defender_total, "성공" if result.attacker_wins else "실패"])
+	feedback.emit(target, "끌어옴" if result.attacker_wins else "만능팔 저항")
 	changed.emit()
 	return true
 

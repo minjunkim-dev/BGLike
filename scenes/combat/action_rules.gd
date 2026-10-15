@@ -4,14 +4,14 @@ extends RefCounted
 
 ## 비용 자원(행동, 보조 행동, 반응) 순서의 묶음. HUD의 배치 순서이기도 하다.
 const GROUPS: Array[Array] = [
-	["attack", "shock", "spawn"], ["second_wind", "surge", "mark", "disengage", "shove", "potion"],
+	["attack", "shock", "spawn", "pull"], ["second_wind", "surge", "mark", "disengage", "shove", "potion"],
 	["opportunity", "parry"]
 ]
 const NAMES: Dictionary[String, String] = {
 	"attack": "공격", "second_wind": "숨 고르기", "surge": "몰아치기",
 	"mark": "표식", "shock": "충격 화살", "disengage": "물러서며 쏘기",
 	"shove": "밀치기", "potion": "물약", "opportunity": "기회 공격", "parry": "흘려내기",
-	"spawn": "새끼 낳기"
+	"spawn": "새끼 낳기", "pull": "만능팔"
 }
 const EFFECTS: Dictionary[String, String] = {
 	"spawn": "인접한 빈 칸에 새끼 거미1마리를 만듭니다.",
@@ -19,6 +19,7 @@ const EFFECTS: Dictionary[String, String] = {
 	"surge": "이미 쓴 행동을 다시 채워\n한 번 더 공격할 수 있습니다.",
 	"mark": "1~6칸 적에게 표식.\n이 궁수가 맞히면 피해 +1d6.\n전투 중 유지됩니다.",
 	"shock": "1~6칸 공격.\n명중 후 정신 내성 실패 시 기절.",
+	"pull": "2~3칸 대상을 힘 대 힘/민첩 대결로 끌어옵니다.\n피해와 기회 공격 없음. 다음 턴에는 쓸 수 없습니다.",
 	"disengage": "이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\n공격을 실행하지 않습니다.",
 	"shove": "내 힘 대 상대의 힘/민첩\n중 높은 값으로 대결.\n성공: 1칸 밀기, 동점: 실패.\n기절 대상은 대결 없이 성공.",
 	"potion": "HP 2d4+2 회복.\n최대 HP를 넘지 않습니다.",
@@ -33,7 +34,8 @@ const CLASS_ONLY: Dictionary[String, CombatUnit.Kind] = {
 	"second_wind": CombatUnit.Kind.WARRIOR, "surge": CombatUnit.Kind.WARRIOR,
 	"opportunity": CombatUnit.Kind.WARRIOR, "parry": CombatUnit.Kind.WARRIOR,
 	"mark": CombatUnit.Kind.ARCHER, "shock": CombatUnit.Kind.ARCHER,
-	"disengage": CombatUnit.Kind.ARCHER, "spawn": CombatUnit.Kind.MOTHER_SPIDER
+	"disengage": CombatUnit.Kind.ARCHER, "spawn": CombatUnit.Kind.MOTHER_SPIDER,
+	"pull": CombatUnit.Kind.SCRAP_ROBOT_2000
 }
 const USE_COUNTERS: Dictionary[String, StringName] = {
 	"second_wind": &"second_wind_left", "surge": &"surge_left", "mark": &"mark_left",

@@ -2,7 +2,7 @@ class_name CombatUnit
 extends Node2D
 ## 팀과 직업, 격자 위치와 유닛별 턴 자원을 가진 임시 유닛.
 
-enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4 }
+enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 
@@ -34,6 +34,7 @@ var bonus_action_left: int = 1
 var reaction_left: int = 1
 var act_number: int = 1
 var overloaded: bool = false
+var pull_cooldown: int = 0
 var _lost_hit_points: int = 0
 var hit_points: int = 12:
 	set(value):
@@ -162,6 +163,7 @@ func can_drop_extra_reward() -> bool:
 
 func begin_turn() -> void:
 	disengaged = false
+	pull_cooldown = maxi(0, pull_cooldown - 1)
 	movement_left = (MOVEMENT_PER_TURN if is_ally
 		else int(CombatEnemyDefinitions.for_kind(kind).get("movement", MOVEMENT_PER_TURN)))
 	action_left = action_capacity + (1 if overloaded else 0)
@@ -171,6 +173,7 @@ func begin_turn() -> void:
 
 func begin_stage(restore_act: bool) -> void:
 	overloaded = false
+	pull_cooldown = 0
 	if restore_act:
 		hit_points = get_max_hit_points()
 		CombatActionRules.restore_uses(self)

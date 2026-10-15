@@ -57,6 +57,10 @@ func _dice_for(expected: Array[int], sides: Array[int]) -> ScriptedDice:
 func _run() -> void:
 	_test_novice_stats()
 	_test_scrap_robot_stats()
+	_test_scrap_robot_2000_stats()
+	_test_pull_success()
+	_test_pull_contest_and_cooldown()
+	_test_pull_destinations()
 	_test_scrap_robot_overload()
 	_test_scrap_robot_turn_damage()
 	await _test_spiderling_stats_and_damage()
@@ -110,6 +114,136 @@ func _test_scrap_robot_stats() -> void:
 		and CombatActionRules.belongs_to(boss, "opportunity")
 		and not CombatActionRules.belongs_to(boss, "second_wind")
 		and not CombatActionRules.belongs_to(boss, "surge"), "보스는 기본 공격과 기회 공격만 사용")
+
+
+func _test_scrap_robot_2000_stats() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	for act: int in range(1, 4):
+		boss.act_number = act
+		boss.hit_points = boss.get_max_hit_points()
+		boss.begin_turn()
+		_check(boss.is_boss() and boss.get_display_name() == "고철로봇-2000"
+			and boss.get_max_hit_points() == 45 and boss.get_armor_class() == 15
+			and boss.get_attack_bonus() == 5 and boss.get_damage_sides() == 8
+			and boss.get_damage_bonus() == 2 and boss.get_attack_range() == 1
+			and boss.get_save_dc() == 13 and boss.movement_left == 4
+			and boss.can_drop_extra_reward(), "고철로봇-2000은 모든 막에서 HP45·AC15와 공통 보스 수치")
+	boss.hit_points = 23
+	boss.begin_turn()
+	_check(not boss.overloaded and boss.action_left == 1, "2000은 HP23에서 과부하 없음")
+	boss.hit_points = 22
+	boss.begin_turn()
+	_check(boss.overloaded and boss.action_left == 2, "2000은 HP22에서 과부하와 행동2개")
+	_check(CombatActionRules.belongs_to(boss, "pull")
+		and CombatActionRules.belongs_to(boss, "opportunity")
+		and not CombatActionRules.belongs_to(f.units[0], "pull")
+		and not CombatActionRules.belongs_to(f.units[1], "pull"), "만능팔은 아군 스킬로 노출하지 않음")
+
+
+func _test_pull_success() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 45
+	boss.cell = Vector2i(4, 4)
+	boss.begin_turn()
+	f.turns.current_unit = boss
+	f.units[0].cell = Vector2i(1, 1)
+	var target: CombatUnit = f.units[1]
+	target.cell = Vector2i(7, 4)
+	var reactor: CombatUnit = f.units[3]
+	reactor.kind = CombatUnit.Kind.WARRIOR
+	reactor.cell = Vector2i(6, 3)
+	_check(CombatHexGrid.distance(reactor.cell, target.cell) == 1,
+		"만능팔 검사 대상은 다른 적의 기회 공격 위협 칸에서 시작")
+	f.actions.dice = _dice_for([12, 10], [20, 20])
+	_check(f.actions.pull(boss, target), "거리3 만능팔 실행")
+	_check(target.cell == Vector2i(5, 4) and target.hit_points == 14
+		and target.movement_left == 6 and reactor.reaction_left == 1,
+		"성공 시 대상에게 가장 가까운 인접 빈 칸으로 피해·이동력 소비·기회 공격 없이 끌어옴")
+	_check(boss.action_left == 0 and boss.bonus_action_left == 1,
+		"만능팔은 행동 하나만 소비")
+
+
+func _test_pull_contest_and_cooldown() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 22
+	boss.cell = Vector2i(4, 4)
+	f.units[0].cell = Vector2i(1, 1)
+	var target: CombatUnit = f.units[1]
+	target.cell = Vector2i(7, 4)
+	f.units[3].cell = Vector2i(9, 9)
+	f.turns.start(f.units, _dice_for([5, 4, 20, 1], [20, 20, 20, 20]))
+	f.actions.dice = _dice_for([10, 10], [20, 20])
+	_check(f.actions.pull(boss, target) and target.cell == Vector2i(7, 4),
+		"만능팔은 대상 민첩을 사용하며 대결 동점은 방어자 승리")
+	_check(boss.action_left == 1 and not f.actions.can_use(boss, "pull")
+		and not f.actions.pull(boss, target), "실패해도 과부하 두 번째 행동으로 만능팔 재사용 불가")
+	for turn: int in range(4):
+		f.turns.end_turn()
+	_check(f.turns.current_unit == boss and boss.action_left == 2
+		and not f.actions.can_use(boss, "pull") and not f.actions.pull(boss, target),
+		"다음 실제 보스 턴에는 만능팔을 쉬고 행동을 소비하지 않음")
+	for turn: int in range(4):
+		f.turns.end_turn()
+	_check(f.turns.current_unit == boss and f.actions.can_use(boss, "pull"),
+		"그다음 실제 보스 턴부터 만능팔 재사용 가능")
+	target.kind = CombatUnit.Kind.WARRIOR
+	target.hit_points = 12
+	f.actions.dice = _dice_for([10, 11], [20, 20])
+	_check(f.actions.pull(boss, target) and target.cell == Vector2i(7, 4)
+		and target.hit_points == 12, "대상의 힘이 민첩보다 높으면 힘으로 저항하고 실패 시 위치·HP 유지")
+
+
+func _test_pull_destinations() -> void:
+	for choice: int in [1, 2]:
+		var f: Fixture = _fixture()
+		var boss: CombatUnit = f.units[2]
+		boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+		boss.hit_points = 45
+		boss.cell = Vector2i(4, 4)
+		f.turns.current_unit = boss
+		f.units[0].cell = Vector2i(1, 1)
+		f.units[1].cell = Vector2i(6, 5)
+		f.units[3].cell = Vector2i(9, 9)
+		f.actions.dice = _dice_for([12, 10, choice], [20, 20, 2])
+		_check(f.actions.pull(boss, f.units[1])
+			and f.units[1].cell == [Vector2i(5, 4), Vector2i(4, 5)][choice - 1],
+			"대상에게 같은 거리인 인접 빈 칸 두 곳을 d2로 선택")
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 45
+	boss.cell = Vector2i(4, 4)
+	f.turns.current_unit = boss
+	f.units[0].cell = Vector2i(1, 1)
+	f.units[3].cell = Vector2i(9, 9)
+	for distance: int in range(5):
+		f.units[1].cell = Vector2i(4 + distance, 4)
+		_check(f.actions.can_target(boss, f.units[1], "pull") == (distance in [2, 3]),
+			"만능팔은 거리2~3만 대상")
+	f.units[1].cell = Vector2i(6, 5)
+	f.units[3].cell = Vector2i(5, 4)
+	f.actions.dice = _dice_for([12, 10], [20, 20])
+	_check(f.actions.pull(boss, f.units[1]) and f.units[1].cell == Vector2i(4, 5),
+		"가장 가까운 한 칸이 차 있으면 남은 가까운 빈 칸을 선택")
+	boss.begin_stage(false)
+	f.units[1].cell = Vector2i(7, 4)
+	for cell: Vector2i in CombatHexGrid.neighbors(boss.cell):
+		if f.actions.unit_at(cell) != null:
+			continue
+		var blocker: CombatUnit = CombatUnit.new()
+		blocker.is_ally = false
+		blocker.cell = cell
+		f.units.append(blocker)
+		_created.append(blocker)
+	f.actions.dice = _dice_for([], [])
+	_check(not f.actions.can_use(boss, "pull") and not f.actions.pull(boss, f.units[1])
+		and boss.action_left == 1, "인접 빈 칸이 없으면 판정·행동 소비 없이 만능팔 거부")
 
 
 func _test_scrap_robot_overload() -> void:

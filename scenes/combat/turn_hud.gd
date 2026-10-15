@@ -314,6 +314,8 @@ func show_unit(unit: CombatUnit) -> void:
 		states.append("과부하")
 	if unit.is_boss():
 		states.append("기절 면역")
+	if unit.pull_cooldown > 0:
+		states.append("만능팔 대기")
 	if unit.has_mark:
 		states.append("◎ 표식")
 	if unit.disengaged:
