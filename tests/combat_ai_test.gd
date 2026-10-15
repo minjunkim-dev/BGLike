@@ -59,6 +59,8 @@ func _run() -> void:
 	await _test_scrap_robot()
 	await _test_scrap_robot_pull_priority()
 	await _test_scrap_robot_pull_movement_and_combo()
+	await _test_scrap_robot_spin_combos()
+	await _test_scrap_robot_spin_reevaluation()
 	await _test_mother()
 	await _test_spiderling()
 	await _test_warrior()
@@ -187,6 +189,72 @@ func _test_scrap_robot_pull_movement_and_combo() -> void:
 	_check(boss.cell == Vector2i(4, 4) and boss.movement_left == 4
 		and unreachable.units[0].hit_points == 9,
 		"이번 턴 이동으로 만능팔 사거리에 못 들면 인접 아군을 기본 공격")
+
+
+func _test_scrap_robot_spin_combos() -> void:
+	var pull_basic: Fixture = _fixture()
+	var boss: CombatUnit = pull_basic.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 25
+	boss.begin_turn()
+	pull_basic.units[0].cell = Vector2i(1, 1)
+	pull_basic.units[1].cell = Vector2i(7, 4)
+	pull_basic.actions.dice = ScriptedDice.new([12, 10, 10, 8], [20, 20, 20, 8])
+	await ai.play_turn(boss, pull_basic.actions)
+	_check(pull_basic.units[1].cell == Vector2i(5, 4) and pull_basic.units[1].hit_points == 4
+		and boss.action_left == 0, "3000 비인접 과부하는 만능팔 뒤 끌려온 대상 기본 공격")
+	var pull_spin: Fixture = _fixture()
+	boss = pull_spin.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 25
+	boss.begin_turn()
+	pull_spin.units[0].cell = Vector2i(3, 4)
+	pull_spin.units[1].cell = Vector2i(7, 4)
+	pull_spin.actions.dice = ScriptedDice.new([12, 10, 11, 1, 10, 2], [20, 20, 20, 8, 20, 8])
+	await ai.play_turn(boss, pull_spin.actions)
+	_check(pull_spin.units[0].hit_points == 9 and pull_spin.units[1].hit_points == 10
+		and pull_spin.units[1].cell == Vector2i(5, 4) and boss.action_left == 0,
+		"3000 한 명 인접 과부하는 만능팔 뒤 두 명에게 회전회오리")
+	var spin_twice: Fixture = _fixture()
+	boss = spin_twice.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 25
+	boss.begin_turn()
+	spin_twice.units[0].cell = Vector2i(3, 4)
+	spin_twice.units[1].cell = Vector2i(5, 4)
+	spin_twice.actions.dice = ScriptedDice.new([11, 1, 10, 1, 11, 1, 10, 1], [20, 8, 20, 8, 20, 8, 20, 8])
+	await ai.play_turn(boss, spin_twice.actions)
+	_check(spin_twice.units[0].hit_points == 6 and spin_twice.units[1].hit_points == 8
+		and boss.action_left == 0 and boss.pull_cooldown == 0,
+		"3000 두 명 인접 과부하는 만능팔 대신 회전회오리 두 번")
+	_check(spin_twice.logs.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 2
+		and boss.cell == Vector2i(4, 4) and boss.movement_left == 4,
+		"회전회오리 두 번에 이동과 만능팔 쉬는 턴을 쓰지 않음")
+
+
+func _test_scrap_robot_spin_reevaluation() -> void:
+	for survivors: int in [1, 0]:
+		var f: Fixture = _fixture()
+		var boss: CombatUnit = f.units[2]
+		boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+		boss.hit_points = 25
+		boss.begin_turn()
+		f.units[0].cell = Vector2i(3, 4)
+		f.units[0].hit_points = 3
+		f.units[1].cell = Vector2i(5, 4)
+		f.units[1].hit_points = 14 if survivors == 1 else 3
+		if survivors == 1:
+			f.actions.dice = ScriptedDice.new([11, 1, 10, 1, 10, 1], [20, 8, 20, 8, 20, 8])
+		else:
+			f.actions.dice = ScriptedDice.new([11, 1, 10, 1], [20, 8, 20, 8])
+		await ai.play_turn(boss, f.actions)
+		_check(f.units[0].hit_points == 0 and f.units[1].hit_points == (8 if survivors == 1 else 0),
+			"첫 회전회오리 전투 불능 후 살아 있는 대상을 기준으로 다음 행동 선택")
+		_check(f.logs.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 1
+			and boss.action_left == (0 if survivors == 1 else 1),
+			"인접 한 명이면 기본 공격, 아군이 없으면 두 번째 행동을 중단")
+		_check(f.actions.is_over() == (survivors == 0) and not f.actions.busy,
+			"다중 대상 처리 후 전투 종료와 대기 상태를 갱신")
 
 
 func _test_mother() -> void:
