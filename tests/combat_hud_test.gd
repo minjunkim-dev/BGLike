@@ -61,6 +61,7 @@ func _run() -> void:
 	await _test_mouse_controls_and_inspection()
 	await _test_order_bar_input()
 	await _test_reaction_flow()
+	await _test_reaction_focus()
 	await _test_action_animations()
 	await _test_results_and_restart()
 	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
@@ -1032,3 +1033,49 @@ func _test_reaction_flow() -> void:
 	hud.reaction_dialog.hide()
 	actions.logged.disconnect(on_log)
 	actions.reaction_requested.disconnect(on_reaction)
+
+
+func _test_reaction_focus() -> void:
+	var choices: Array[bool] = []
+	var stale_focus_requests: Array[int] = [0]
+	var on_choice: Callable = func(use_reaction: bool) -> void: choices.append(use_reaction)
+	# Headless는 접근성을 지원하지 않는다. 엔진의 부모→exclusive child 포커스 전달을 모형화한다.
+	var on_parent_focus: Callable = func() -> void:
+		if hud.reaction_dialog.exclusive:
+			stale_focus_requests[0] += 1
+			hud.reaction_dialog.grab_focus()
+	root.focus_entered.connect(on_parent_focus)
+	hud.reaction_selected.connect(on_choice)
+	for choice: String in ["cancel", "ok", "close", "escape", "stage", "result"]:
+		hud.show_reaction("parry", "접근성 포커스 회귀")
+		await process_frame
+		_check(hud.reaction_dialog.visible and hud.reaction_dialog.exclusive,
+			"반응 선택 중 모달 입력 유지: " + choice)
+		var before: int = choices.size()
+		match choice:
+			"cancel":
+				hud.reaction_dialog.get_cancel_button().pressed.emit()
+			"ok":
+				hud.reaction_dialog.get_ok_button().pressed.emit()
+			"close":
+				hud.reaction_dialog.notification(Window.NOTIFICATION_WM_CLOSE_REQUEST)
+			"escape":
+				var key: InputEventKey = InputEventKey.new()
+				key.keycode = KEY_ESCAPE
+				key.pressed = true
+				Input.parse_input_event(key)
+			"stage":
+				hud.begin_stage(1, 1)
+			"result":
+				hud.show_result(true)
+		await process_frame
+		await process_frame
+		_check(not hud.reaction_dialog.visible, "반응 창 닫힘: " + choice)
+		var is_choice: bool = choice in ["cancel", "ok", "close", "escape"]
+		_check(choices.size() == before + int(is_choice), "반응 결정 정확히 한 번 또는 화면 전환 시 미결정: " + choice)
+		if is_choice:
+			_check(choices.back() == (choice == "ok"), "확인만 반응 사용: " + choice)
+	_check(stale_focus_requests[0] == 0, "제거된 반응 창에 접근성 포커스를 전달하지 않음")
+	hud.reaction_selected.disconnect(on_choice)
+	root.focus_entered.disconnect(on_parent_focus)
+	hud.begin_stage(1, 1)

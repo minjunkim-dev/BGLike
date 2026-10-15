@@ -119,8 +119,9 @@ func _ready() -> void:
 	add_child(reaction_dialog)
 	reaction_dialog.title = "반응"
 	reaction_dialog.dialog_autowrap = true
-	reaction_dialog.confirmed.connect(func() -> void: reaction_selected.emit(true))
-	reaction_dialog.canceled.connect(func() -> void: reaction_selected.emit(false))
+	reaction_dialog.dialog_hide_on_ok = false
+	reaction_dialog.confirmed.connect(_finish_reaction.bind(true))
+	reaction_dialog.canceled.connect(_finish_reaction.bind(false))
 
 
 func _connect_tooltip(control: Control) -> void:
@@ -222,20 +223,32 @@ func show_reaction(kind: String, prompt: String) -> void:
 	reaction_dialog.dialog_text = prompt
 	reaction_dialog.get_ok_button().text = "공격" if kind == "opportunity" else "흘려내기"
 	reaction_dialog.get_cancel_button().text = "넘기기"
+	reaction_dialog.exclusive = true
 	reaction_dialog.popup_centered(Vector2i(360, 110))
+
+
+func _hide_reaction() -> void:
+	# Godot 4.7.2 접근성은 창 제거 중에도 exclusive child에 포커스를 전달한다.
+	reaction_dialog.exclusive = false
+	reaction_dialog.hide()
+
+
+func _finish_reaction(use_reaction: bool) -> void:
+	_hide_reaction()
+	reaction_selected.emit(use_reaction)
 
 
 func begin_stage(act: int, stage: int) -> void:
 	progress_label.text = "%d막 · %d스테이지" % [act, stage]
 	$Result.hide()
-	reaction_dialog.hide()
+	_hide_reaction()
 	_log_lines.clear()
 	message_label.text = ""
 	restart_button.show()
 
 
 func show_result(victory: bool, graduated: bool = false, locked: bool = false) -> void:
-	reaction_dialog.hide()
+	_hide_reaction()
 	var complete: bool = victory and graduated
 	result_label.text = "3막 졸업" if complete else "승리" if victory else "패배"
 	restart_button.visible = not complete
