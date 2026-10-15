@@ -28,7 +28,8 @@ func _run() -> void:
 	await _test_scene()
 	for unit: CombatUnit in _created_units:
 		unit.free()
-	_check(ScriptedDice.mismatches.is_empty(), "준비한 주사위 값과 실제 굴림 요청 일치 " + str(ScriptedDice.mismatches))
+	var dice_problems: Array[String] = ScriptedDice.finish()
+	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat turns: %d checks, %d failures" % [_checks, _failures])
 	quit(0 if _failures == 0 else 1)
 

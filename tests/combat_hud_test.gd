@@ -62,7 +62,8 @@ func _run() -> void:
 	await create_timer(0.08).timeout
 	current_scene.queue_free()
 	await process_frame
-	_check(ScriptedDice.mismatches.is_empty(), "준비한 주사위 값과 실제 굴림 요청 일치 " + str(ScriptedDice.mismatches))
+	var dice_problems: Array[String] = ScriptedDice.finish()
+	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat HUD: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
 
@@ -213,7 +214,7 @@ func _test_log_and_status() -> void:
 	turns.select_unit(units[1])
 	units[1].marked_target = units[2]
 	units[2].cell = Vector2i(5, 8)
-	actions.dice = _dice_for_miss()
+	actions.dice = ScriptedDice.new([10, 10], [20, 20])
 	await actions.attack(units[1], units[2])
 	_check(not hit_sound.playing, "실제 장면의 빗나감은 타격음 무음")
 	_check(_has_two_dice_log("불리"),
@@ -347,7 +348,7 @@ func _has_two_dice_log(mode: String) -> bool:
 
 
 func _dice_for_miss() -> CombatDice:
-	return ScriptedDice.new([10, 10], [20, 20])
+	return ScriptedDice.new([10], [20])
 
 
 func _test_layout() -> void:
