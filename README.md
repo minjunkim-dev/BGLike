@@ -38,7 +38,7 @@ make check
 - 처음이라면 [참여 안내](CONTRIBUTING.md)를 읽습니다. Issue, 브랜치, 커밋, 문서, 개발 규칙을 한 장으로 요약했습니다.
 - 작업은 GitHub Issue에 목표와 완료 조건을 적고 시작합니다. 작은 브랜치에서 PR을 열고 필수 CI와 리뷰 지적을 처리한 뒤 squash merge합니다. 동료 승인은 필수가 아닙니다.
 - [협업 절차](docs/WORKFLOW.md)와 [AI 에이전트 지침](AGENTS.md)을 따릅니다. Claude Code와 Codex는 `AGENTS.md`의 공통 지침을 사용합니다.
-- 비공개 저장소의 현재 GitHub 요금제로는 `main` 보호 규칙을 켤 수 없습니다. 자세한 상태와 대신 지키는 운영 규칙은 협업 절차에 있습니다.
+- `main`에는 보호 규칙이 있습니다. 필수 검사(정책, smoke, CI)를 통과해야 병합할 수 있습니다. 자세한 운영 규칙은 협업 절차에 있습니다.
 - `.godot/` 캐시는 커밋하지 않습니다. 장면과 스크립트 등 원본 파일은 커밋합니다. `.gitattributes`에 지정된 바이너리는 Git LFS로 관리합니다.
 
 PR의 실행 검증은 GitHub Actions가 수행합니다. [Godot 캐시 설명](docs/CI_CACHE.md)은 CI 검사 서버와 Codex 원격 구현 환경의 역할을 구분합니다.
