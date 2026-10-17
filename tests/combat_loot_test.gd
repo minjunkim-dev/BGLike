@@ -3,6 +3,12 @@ extends SceneTree
 
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
 
+class ScriptedLoot extends CombatLoot:
+	var scripted_dice: CombatDice
+
+	func roll_rewards(monster_count: int, _dice: CombatDice, act_number: int) -> Array[Dictionary]:
+		return super.roll_rewards(monster_count, scripted_dice, act_number)
+
 var checks: int = 0
 var failures: int = 0
 
@@ -32,20 +38,83 @@ func _run() -> void:
 		loot.data["extra_drop_chance"] = 1.0
 		_check(loot.roll_rewards(2, dice, 1).size() == 3, "확률1이면 보장1개와 몬스터당1개")
 		loot.data["extra_drop_chance"] = 0.35
-		_check(loot.roll_rewards(1, ScriptedDice.new([], [], [0.349]), 1).size() == 2,
+		_check(loot.roll_rewards(1, ScriptedDice.new([], [], [0.349]).then_seeded(), 1).size() == 2,
 			"추가 드랍 굴림 0.349는 35% 성공")
-		_check(loot.roll_rewards(1, ScriptedDice.new([], [], [0.35]), 1).size() == 1,
+		_check(loot.roll_rewards(1, ScriptedDice.new([], [], [0.35]).then_seeded(), 1).size() == 1,
 			"추가 드랍 굴림 0.35는 35% 실패")
 		_test_items(loot, dice)
 	await _test_reward_flow()
 	await _test_accidental_advance()
 	await _test_scaled_combat()
+	await _test_spiderling_rewards()
+	await _test_boss_reward_boundary()
 	# 완료된 검사 코루틴의 참조를 해제한 뒤 종료한다.
 	await process_frame
 	var dice_problems: Array[String] = ScriptedDice.finish()
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat loot: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_spiderling_rewards() -> void:
+	for mixed: bool in [false, true]:
+		var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+		root.add_child(main)
+		var battle: Node2D = main.get_node("Battle") as Node2D
+		battle.set_process(false)
+		var units: Array[CombatUnit] = battle.get("units")
+		var actions: CombatActions = battle.get("actions") as CombatActions
+		var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+		var loot: CombatLoot = battle.get("loot") as CombatLoot
+		# 추가 추첨을 모두 성공시켜도 새끼는 보상 수를 늘리지 않아야 한다.
+		loot.data["extra_drop_chance"] = 1.0
+		loot.data["items"] = [{"kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}]
+		if mixed:
+			units[2].kind = CombatUnit.Kind.WARRIOR
+			units[2].hit_points = units[2].get_max_hit_points()
+		for index: int in range(2, units.size()):
+			actions.incapacitate(units[index])
+			actions.changed.emit()
+			if index < units.size() - 1:
+				_check(not actions.is_victory() and progress.rewards.is_empty(),
+					"새끼 거미가 한 마리라도 남으면 승리·보상 없음")
+		_check(actions.is_victory() and progress.rewards.size() == (2 if mixed else 1),
+			"새끼만 처치하면 보장1개이고 혼합 전투는 풋내기1마리분만 추가 드랍")
+		main.queue_free()
+		await process_frame
+
+
+func _test_boss_reward_boundary() -> void:
+	for stage: int in [2, 5, 8]:
+		for extra: bool in [false, true]:
+			var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+			root.add_child(main)
+			var battle: Node2D = main.get_node("Battle") as Node2D
+			battle.set_process(false)
+			var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+			progress.stage_index = stage
+			battle.call("_start_stage", true)
+			var units: Array[CombatUnit] = battle.get("units")
+			_check(units.size() == 3 and units[2].is_boss(), "각 막의 실제3스테이지는 보스1마리")
+			if units.size() != 3 or not units[2].is_boss():
+				main.queue_free()
+				await process_frame
+				continue
+			var loot: ScriptedLoot = ScriptedLoot.new()
+			_check(is_equal_approx(float(loot.data["extra_drop_chance"]), 0.35),
+				"각 보스의 실제 보상 연결도 제품 데이터의35% 사용")
+			# 승리 연결이 만든 주사위만 교체한다. 추첨과 드랍 대상 수는 실제 코드를 실행한다.
+			loot.scripted_dice = (ScriptedDice.new([1, 1], [1, 1], [0.349]) if extra
+				else ScriptedDice.new([1], [1], [0.35]))
+			loot.data["items"] = [{"kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}]
+			battle.set("loot", loot)
+			var actions: CombatActions = battle.get("actions") as CombatActions
+			actions.incapacitate(units[2])
+			actions.changed.emit()
+			_check(actions.is_victory() and progress.rewards.size() == (2 if extra else 1),
+				"%d막 보스 승리는 보장1개와0.349성공·0.35실패 경계를 적용" % progress.act_number())
+			main.queue_free()
+			await process_frame
 
 
 func _test_armor_hit_points(loot: CombatLoot) -> void:
@@ -196,6 +265,7 @@ func _test_act_values(loot: CombatLoot, dice: CombatDice) -> void:
 
 func _test_reward_flow() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(main)
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
@@ -291,6 +361,7 @@ func _test_reward_flow() -> void:
 
 func _test_scaled_combat() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	(main.get_node("Battle") as Node2D).stages[6] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(main)
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
@@ -309,19 +380,19 @@ func _test_scaled_combat() -> void:
 	turns.start(units, ScriptedDice.new(initiative))
 	_check(turns.current_unit == actor, "이니셔티브 d20 20으로 3막 적이 먼저 행동")
 	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(actor, target, units)
-	_check(is_equal_approx(preview.chance, 0.75), "3막 적 명중+10 대 아군 AC16 미리보기")
+	_check(is_equal_approx(preview.chance, 0.5), "3막 풋내기 명중+5 대 아군 AC16 미리보기")
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.save_dc = 0
-	actions.dice = ScriptedDice.new([15], [20])
+	target.reaction_left = 0
+	actions.dice = ScriptedDice.new([15], [20]).then_seeded()
 	var used: bool = await actions.attack(actor, target)
 	_check(used and actions.last_attack.success
-		and actions.last_attack.total == actions.last_attack.selected_roll + 10,
-		"3막 실제 적 공격에 명중+5 강화 적용")
+		and actions.last_attack.total == actions.last_attack.selected_roll + 5,
+		"3막 풋내기 공격도 명중+5 고정")
 	var rolled_damage: int = 0
 	for rolled: int in actions.last_damage_rolls:
 		rolled_damage += rolled
-	_check(actions.last_damage == rolled_damage + 7, "3막 실제 적 피해에+4 강화 한 번 적용")
-	# 적 강화와 별개로 방어구 최대 HP를 실제 물약 회복 상한에 적용한다.
+	_check(actions.last_damage == rolled_damage + 1, "3막 풋내기 피해도 고정값1 적용")
+	# 방어구 최대 HP를 실제 물약 회복 상한에 적용한다.
 	var loot: CombatLoot = battle.get("loot") as CombatLoot
 	loot.receive(units[1], {"kind": "armor", "name": "검사 방어구",
 		"stats": {"armor_class": 7, "max_hit_points": 14}})
@@ -366,8 +437,8 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	turns.start(units, dice)
 	turns.select_unit(party[0])
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.save_dc = 0
-	actions.dice = ScriptedDice.new([19], [20])
+	target.reaction_left = 0
+	actions.dice = ScriptedDice.new([19], [20]).then_seeded()
 	await actions.attack(party[0], target)
 	_check(actions.last_attack.success and actions.last_attack.total == actions.last_attack.selected_roll + 7,
 		"실제 공격 판정은 무기 명중+2 포함")
@@ -378,7 +449,7 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	party[0].cell = Vector2i(4, 1)
 	units[3].cell = Vector2i(4, 0)
 	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(party[0], units[3], units)
-	_check(is_equal_approx(preview.chance, 0.7), "명중 미리보기도 장비 포함+7 대 AC14")
+	_check(is_equal_approx(preview.chance, 0.85), "명중 미리보기도 장비 포함+7 대 AC11")
 
 
 func _click(button: Button) -> void:
@@ -399,6 +470,7 @@ func _click(button: Button) -> void:
 
 func _test_accidental_advance() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(main)
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
@@ -416,6 +488,16 @@ func _test_accidental_advance() -> void:
 		"정비 진입 버튼 연속 클릭은 미수령 보상을 바로 폐기하지 않음")
 	if preparation.has_node("Discard"):
 		var dialog: ConfirmationDialog = preparation.get_node("Discard") as ConfirmationDialog
+		var stale_focus_requests: Array[int] = [0]
+		var finishes: Array[int] = [0]
+		# Headless 접근성 분기 모형. 제거된 exclusive child에 보내는 포커스를 검출한다.
+		var on_parent_focus: Callable = func() -> void:
+			if dialog.exclusive:
+				stale_focus_requests[0] += 1
+				dialog.grab_focus()
+		var on_finished: Callable = func() -> void: finishes[0] += 1
+		root.focus_entered.connect(on_parent_focus)
+		preparation.finished.connect(on_finished)
 		_check(dialog.visible and dialog.get_cancel_button().has_focus(), "폐기 확인 기본 포커스는 돌아가기")
 		var key: InputEventKey = InputEventKey.new()
 		key.keycode = KEY_ENTER
@@ -428,6 +510,31 @@ func _test_accidental_advance() -> void:
 		await process_frame
 		_check(not dialog.visible and preparation.visible and preparation.rewards.size() == count,
 			"확인 창의 Enter 입력은 돌아가기와 보상 유지")
+		for choice: String in ["cancel", "close", "escape"]:
+			preparation.continue_button.pressed.emit()
+			await process_frame
+			await process_frame
+			_check(dialog.visible and dialog.exclusive and dialog.get_cancel_button().has_focus(),
+				"폐기 재확인은 모달과 돌아가기 포커스를 복원: " + choice)
+			match choice:
+				"cancel":
+					dialog.get_cancel_button().pressed.emit()
+				"close":
+					dialog.notification(Window.NOTIFICATION_WM_CLOSE_REQUEST)
+				"escape":
+					var escape_event: InputEventKey = InputEventKey.new()
+					escape_event.keycode = KEY_ESCAPE
+					escape_event.physical_keycode = KEY_ESCAPE
+					escape_event.pressed = true
+					Input.parse_input_event(escape_event)
+					await process_frame
+					escape_event.pressed = false
+					Input.parse_input_event(escape_event)
+			await process_frame
+			await process_frame
+			_check(not dialog.visible and preparation.visible and preparation.rewards.size() == count
+				and finishes[0] == 0 and (battle.get("progress") as CombatActProgress).stage_index == 0,
+				"폐기 취소는 보상과 스테이지를 유지: " + choice)
 		preparation.continue_button.pressed.emit()
 		await process_frame
 		await process_frame
@@ -438,6 +545,10 @@ func _test_accidental_advance() -> void:
 		key.pressed = false
 		dialog.push_input(key)
 		await process_frame
-		_check((battle.get("progress") as CombatActProgress).stage_index == 1 and preparation.rewards.is_empty(), "명시적 폐기 확인 후 진행")
+		_check((battle.get("progress") as CombatActProgress).stage_index == 1
+			and preparation.rewards.is_empty() and finishes[0] == 1, "명시적 폐기 확인 후 한 번 진행")
+		_check(stale_focus_requests[0] == 0, "제거된 폐기 확인 창에 접근성 포커스를 전달하지 않음")
+		root.focus_entered.disconnect(on_parent_focus)
+		preparation.finished.disconnect(on_finished)
 	main.queue_free()
 	await process_frame

@@ -48,7 +48,9 @@ func _ready() -> void:
 	discard_dialog.title = "남은 보상 버리기"
 	discard_dialog.ok_button_text = "보상 버리고 진행"
 	discard_dialog.cancel_button_text = "돌아가기"
+	discard_dialog.dialog_hide_on_ok = false
 	discard_dialog.confirmed.connect(_finish)
+	discard_dialog.canceled.connect(_hide_discard)
 	add_child(discard_dialog)
 	hide()
 
@@ -82,15 +84,22 @@ func _continue() -> void:
 			_finish()
 		else:
 			discard_dialog.dialog_text = "받지 않은 보상 %d개를 버리고 진행할까요?" % rewards.size()
+			discard_dialog.exclusive = true
 			discard_dialog.popup_centered(Vector2i(360, 120))
 			# 연속 Enter 입력으로도 보상을 버리지 않게 돌아가기를 기본 선택한다.
 			discard_dialog.get_cancel_button().grab_focus()
 
 
+func _hide_discard() -> void:
+	# Godot 4.7.2 접근성이 제거 중인 exclusive child에 포커스를 보내지 않게 한다.
+	discard_dialog.exclusive = false
+	discard_dialog.hide()
+
+
 func _finish() -> void:
 	if not visible or not maintaining:
 		return
-	discard_dialog.hide()
+	_hide_discard()
 	rewards.clear()
 	hide()
 	finished.emit()

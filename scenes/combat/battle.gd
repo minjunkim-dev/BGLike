@@ -86,6 +86,7 @@ func _start_stage(restore_act: bool) -> void:
 			map.set_cell(Vector2i(x, y), 0, Vector2i((x + y) % 2, 0))
 	for index: int in range(party.size()):
 		party[index].cell = stage.ally_cells[index]
+		party[index].facing_left = false
 	var enemies: Node = stage.enemies.instantiate()
 	for child: Node in enemies.get_children():
 		(child as CombatUnit).act_number = progress.act_number()
@@ -265,7 +266,11 @@ func _on_actions_changed() -> void:
 	if actions.is_over() and actions.is_victory():
 		var dice: CombatDice = CombatDice.new()
 		dice.randomize()
-		progress.record_victory(loot, units.size() - party.size(), dice)
+		var monster_count: int = 0
+		for unit: CombatUnit in units:
+			if unit.can_drop_extra_reward():
+				monster_count += 1
+		progress.record_victory(loot, monster_count, dice)
 	_update_turn_ui()
 
 

@@ -33,7 +33,7 @@ var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 
 @onready var round_label: Label = $Round
 @onready var progress_label: Label = $Progress
-@onready var order_bar: HBoxContainer = $OrderBar
+@onready var order_bar: HBoxContainer = $OrderScroll/OrderBar
 @onready var unit_label: Label = $UnitDetails/UnitPanel/Info/CurrentUnit
 @onready var actor_label: Label = $UnitDetails/UnitPanel/Info/Actor
 @onready var resource_label: Label = $UnitDetails/UnitPanel/Info/Resources
@@ -119,8 +119,9 @@ func _ready() -> void:
 	add_child(reaction_dialog)
 	reaction_dialog.title = "반응"
 	reaction_dialog.dialog_autowrap = true
-	reaction_dialog.confirmed.connect(func() -> void: reaction_selected.emit(true))
-	reaction_dialog.canceled.connect(func() -> void: reaction_selected.emit(false))
+	reaction_dialog.dialog_hide_on_ok = false
+	reaction_dialog.confirmed.connect(_finish_reaction.bind(true))
+	reaction_dialog.canceled.connect(_finish_reaction.bind(false))
 
 
 func _connect_tooltip(control: Control) -> void:
@@ -222,20 +223,32 @@ func show_reaction(kind: String, prompt: String) -> void:
 	reaction_dialog.dialog_text = prompt
 	reaction_dialog.get_ok_button().text = "공격" if kind == "opportunity" else "흘려내기"
 	reaction_dialog.get_cancel_button().text = "넘기기"
+	reaction_dialog.exclusive = true
 	reaction_dialog.popup_centered(Vector2i(360, 110))
+
+
+func _hide_reaction() -> void:
+	# Godot 4.7.2 접근성은 창 제거 중에도 exclusive child에 포커스를 전달한다.
+	reaction_dialog.exclusive = false
+	reaction_dialog.hide()
+
+
+func _finish_reaction(use_reaction: bool) -> void:
+	_hide_reaction()
+	reaction_selected.emit(use_reaction)
 
 
 func begin_stage(act: int, stage: int) -> void:
 	progress_label.text = "%d막 · %d스테이지" % [act, stage]
 	$Result.hide()
-	reaction_dialog.hide()
+	_hide_reaction()
 	_log_lines.clear()
 	message_label.text = ""
 	restart_button.show()
 
 
 func show_result(victory: bool, graduated: bool = false, locked: bool = false) -> void:
-	reaction_dialog.hide()
+	_hide_reaction()
 	var complete: bool = victory and graduated
 	result_label.text = "3막 졸업" if complete else "승리" if victory else "패배"
 	restart_button.visible = not complete
@@ -281,9 +294,14 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 	for unit: CombatUnit in _portraits:
 		var button: Button = _portraits[unit]
 		button.text = "%s\n%s" % ["아군" if unit.is_ally else "적",
-			"전사" if unit.kind == CombatUnit.Kind.WARRIOR else "궁수"]
-		button.tooltip_text = "%s: d20 %d + 민첩 %d = %d" % [
-			unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()]
+			unit.get_display_name().trim_prefix("아군 ")]
+		if unit.is_boss():
+			button.text = unit.get_display_name().replace("-", "\n")
+		if unit.initiative_roll == 0:
+			button.tooltip_text = "%s: 엄마 거미 바로 앞 순서\n생성한 라운드에는 행동하지 않습니다." % unit.get_display_name()
+		else:
+			button.tooltip_text = "%s: d20 %d + 민첩 %d = %d" % [
+				unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()]
 		var in_group: bool = unit in turns.get_current_group()
 		button.disabled = false
 		var color: Color = CombatUnit.ALLY_COLOR if unit.is_ally else CombatUnit.ENEMY_COLOR
@@ -305,6 +323,12 @@ func show_unit(unit: CombatUnit) -> void:
 	var states: Array[String] = []
 	if unit.is_stunned:
 		states.append("기절")
+	if unit.overloaded:
+		states.append("과부하")
+	if unit.is_boss():
+		states.append("기절 면역")
+	if unit.pull_cooldown > 0:
+		states.append("만능팔 대기")
 	if unit.has_mark:
 		states.append("◎ 표식")
 	if unit.disengaged:

@@ -26,6 +26,8 @@ func _check(condition: bool, message: String) -> void:
 func _run() -> void:
 	var scene: PackedScene = load("res://scenes/main.tscn") as PackedScene
 	var main: Node = scene.instantiate()
+	# 전사·궁수 UI 회귀는 기존 풋내기 배치를 fixture로 유지한다.
+	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	# 화면 fixture는 턴을 직접 고정한다. 자동 실행은 AI 장면 검사에서 확인한다.
 	root.add_child(main)
 	main.get_node("Battle").set_process(false)
@@ -36,6 +38,9 @@ func _run() -> void:
 	turns = battle.get("turns") as CombatTurns
 	actions = battle.get("actions") as CombatActions
 	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	# HUD fixture의 사거리와 입력 조건을 고정한다.
+	units[0].cell = Vector2i(4, 9)
+	units[1].cell = Vector2i(5, 9)
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	turns.start(units, dice)
@@ -56,12 +61,14 @@ func _run() -> void:
 	await _test_mouse_controls_and_inspection()
 	await _test_order_bar_input()
 	await _test_reaction_flow()
+	await _test_reaction_focus()
 	await _test_action_animations()
 	await _test_results_and_restart()
 	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
 	await create_timer(0.08).timeout
 	current_scene.queue_free()
 	await process_frame
+	await _test_spawned_portrait_input()
 	var dice_problems: Array[String] = ScriptedDice.finish()
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat HUD: %d checks, %d failures" % [checks, failures])
@@ -158,7 +165,7 @@ func _test_archer_and_enemy() -> void:
 	_check((buttons["shock"] as Button).visible and not (buttons["surge"] as Button).visible,
 		"궁수 스킬만 표시")
 	_check(battle.call("preview_enemy", units[2]), "적 미리보기 연결")
-	_check(hud.unit_label.text == "적 전사" and "AC 16" in hud.resource_label.text,
+	_check(hud.unit_label.text == "풋내기 야만인" and "AC 12" in hud.resource_label.text,
 		"미리보기는 유닛 정보 자리를 사용")
 	_check((buttons["shock"] as Button).visible, "미리보기에도 현재 아군의 스킬 유지")
 	hud.unit_selected.emit(units[0])
@@ -214,7 +221,7 @@ func _test_log_and_status() -> void:
 	turns.select_unit(units[1])
 	units[1].marked_target = units[2]
 	units[2].cell = Vector2i(5, 8)
-	actions.dice = ScriptedDice.new([10, 10], [20, 20])
+	actions.dice = ScriptedDice.new([6, 6], [20, 20])
 	await actions.attack(units[1], units[2])
 	_check(not hit_sound.playing, "실제 장면의 빗나감은 타격음 무음")
 	_check(_has_two_dice_log("불리"),
@@ -229,6 +236,7 @@ func _test_log_and_status() -> void:
 		"불리 공격의 실제 판정 합계를 숫자 팝업으로 표시")
 	units[1].action_left = 1
 	units[2].is_stunned = true
+	actions.dice = CombatDice.new()
 	actions.dice.seed = 100
 	await actions.attack(units[1], units[2])
 	await process_frame
@@ -306,22 +314,28 @@ func _test_roll_popups() -> void:
 	units[1].action_left = 1
 	units[1].shock_left = 1
 	units[1].marked_target = null
-	actions.dice = ScriptedDice.new([15], [20])
+	actions.dice = ScriptedDice.new([15], [20]).then_seeded()
 	await actions.attack(units[1], target, true)
 	var save_total: String = hud.message_label.text.get_slice("정신 내성: ", 1).get_slice(" = ", 1).get_slice(" /", 0)
 	_check(save_total.is_valid_int() and _has_feedback(target, "정신 내성 %s" % save_total),
 		"정신 내성 팝업은 실제 로그의 합계와 일치")
-	# 적 전사의 자동 흘려내기도 실제 내성 합계를 표시한다.
-	turns.select_unit(warrior)
-	warrior.action_left = 1
-	warrior.cell = Vector2i(4, 4)
-	target.cell = Vector2i(5, 4)
+	# 아군 전사의 흘려내기는 실제 내성 합계를 표시한다.
+	target = warrior
+	target.cell = Vector2i(4, 4)
+	units[3].cell = Vector2i(1, 4)
+	units[2].cell = Vector2i(9, 9)
+	while turns.current_unit != units[3]:
+		turns.end_turn()
 	target.is_stunned = false
 	target.hit_points = target.get_max_hit_points()
 	target.reaction_left = 1
 	target.parry_left = 2
-	actions.dice = ScriptedDice.new([11], [20])
-	await actions.attack(warrior, target)
+	var respond: Callable = func(_kind: String, _prompt: String) -> void:
+		hud.reaction_dialog.get_ok_button().pressed.emit()
+	actions.reaction_requested.connect(respond)
+	actions.dice = ScriptedDice.new([11, 10], [20, 20])
+	await actions.attack(units[3], target)
+	actions.reaction_requested.disconnect(respond)
 	var parry_text: String = ""
 	for text: String in emitted:
 		if text.begins_with("흘려내기 ") and text.get_slice(" ", 1).is_valid_int():
@@ -348,7 +362,7 @@ func _has_two_dice_log(mode: String) -> bool:
 
 
 func _dice_for_miss() -> CombatDice:
-	return ScriptedDice.new([10], [20])
+	return ScriptedDice.new([1], [20])
 
 
 func _test_layout() -> void:
@@ -614,7 +628,7 @@ func _test_results_and_restart() -> void:
 	units = battle.get("units")
 	turns = battle.get("turns") as CombatTurns
 	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	_check(units.size() == 4 and turns.ordered_units.size() == 4
+	_check(units.size() == 3 and turns.ordered_units.size() == 3
 		and not hud.get_node("Result").visible and hud.progress_label.text == "1막 · 2스테이지",
 		"승리 뒤 보상·정비 종료로 다음 스테이지 진입")
 	for index: int in range(2):
@@ -684,16 +698,16 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check(turns.current_unit == units[0] and units[0].action_left == 1
 		and units[2].hit_points == 12 and battle.get("preview_target") == null,
 		"적 초상을 반복 클릭해도 공격 준비·실행·조작 전환 없음")
-	_check(hud.unit_label.text == "적 전사" and hud.actor_label.text == "조작: 아군 전사"
+	_check(hud.unit_label.text == "풋내기 야만인" and hud.actor_label.text == "조작: 아군 전사"
 		and "힘 +3" in hud.resource_label.text and "민첩 +1" in hud.resource_label.text
-		and "체력 +2" in hud.resource_label.text and "정신 -1" in hud.resource_label.text
+		and "체력 +2" in hud.resource_label.text and "정신 -2" in hud.resource_label.text
 		and "명중 +5" in hud.resource_label.text and "사거리 1칸" in hud.resource_label.text,
 		"정보 대상·조작 유닛을 구분하고 실제 능력치·공격 수치 표시")
 	_check("행동" not in hud.resource_label.text and "반응" not in hud.resource_label.text
 		and (hud.get("_titles") as Array)[0].text == "행동 ●"
 		and (hud.get("_actions") as Dictionary).has("surge"), "적 정보에도 현재 아군 자원 마크 유지")
 	battle.call("_update_turn_ui")
-	_check(hud.unit_label.text == "적 전사", "UI 갱신은 초상 정보 조회 유지")
+	_check(hud.unit_label.text == "풋내기 야만인", "UI 갱신은 초상 정보 조회 유지")
 	await _click(enemy_point)
 	_check(units[0].action_left == 1 and battle.get("preview_target") == units[2],
 		"초상 조회 뒤 필드 적 클릭은 새 공격의 첫 미리보기")
@@ -775,6 +789,59 @@ func _test_order_bar_input() -> void:
 	camera.force_update_scroll()
 
 
+func _test_spawned_portrait_input() -> void:
+	root.size = Vector2i(640, 360)
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	battle = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	(battle.get("progress") as CombatActProgress).stage_index = 6
+	battle.call("_start_stage", true)
+	units = battle.get("units")
+	turns = battle.get("turns") as CombatTurns
+	actions = battle.get("actions") as CombatActions
+	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	actions.movement_animation = Callable()
+	actions.attack_animation = Callable()
+	actions.dice.seed = 109
+	units[0].hit_points = 1000
+	units[1].hit_points = 1000
+	turns.start(units, ScriptedDice.new([1, 1, 20, 20, 20, 20, 20]))
+	var ai: CombatEnemyAi = battle.get("enemy_ai") as CombatEnemyAi
+	for step: int in range(200):
+		var actor: CombatUnit = turns.current_unit
+		if actor.is_ally and units.size() >= 13:
+			break
+		if not actor.is_ally:
+			units[0].reaction_left = 0
+			units[1].reaction_left = 0
+			await ai.play_turn(actor, actions)
+		if turns.current_unit == actor:
+			turns.end_turn()
+	for frame: int in range(4):
+		await process_frame
+	_check(units.size() == 13 and turns.round_number == 3 and turns.current_unit == units[1],
+		"실제3-1 AI가 새끼6마리를 생성한 뒤 궁수 턴에서 누적 초상 입력 검사")
+	var portraits: Dictionary = hud.get("_portraits")
+	# 포인터로 오른쪽 끝까지 이동한 뒤 가려졌던 아군 초상을 선택한다.
+	for step: int in range(16):
+		await _click(Vector2(80, 50), MOUSE_BUTTON_WHEEL_RIGHT)
+	await _click((portraits[units[0]] as Button).get_global_rect().get_center())
+	_check(turns.current_unit == units[0] and hud.unit_label.text == "아군 전사",
+		"새끼가 누적되어도 오른쪽 아군 초상을 스크롤하고 실제 클릭으로 조작 전환")
+	for step: int in range(16):
+		await _click(Vector2(80, 50), MOUSE_BUTTON_WHEEL_LEFT)
+	var enemy: CombatUnit = turns.ordered_units.front()
+	await _click((portraits[enemy] as Button).get_global_rect().get_center())
+	_check(turns.current_unit == units[0] and hud.unit_label.text == enemy.get_display_name(),
+		"반대쪽 끝의 적 초상도 스크롤하고 조회하며 아군 조작 유지")
+	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	await create_timer(0.08).timeout
+	main.queue_free()
+	await process_frame
+
+
 func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> void:
 	var event: InputEventMouseButton = InputEventMouseButton.new()
 	event.position = root.get_final_transform() * point
@@ -828,6 +895,8 @@ func _test_action_animations() -> void:
 		"두 헥사 칸 이동은 도착 후 자원 갱신과 몸통·입력 복구")
 	for side: bool in [true, false]:
 		for shock: bool in [false, true]:
+			if not side and shock:
+				continue
 			_reset_units()
 			var actor: CombatUnit = units[1] if side else units[3]
 			var target: CombatUnit = units[2] if side else units[0]
@@ -843,7 +912,7 @@ func _test_action_animations() -> void:
 				while turns.current_unit != actor:
 					turns.end_turn()
 			battle.call("_update_turn_ui")
-			actions.dice = ScriptedDice.new([20], [20])
+			actions.dice = ScriptedDice.new([20], [20]).then_seeded()
 			var hp: int = target.hit_points
 			finished[0] = false
 			_animated_attack(actor, target, shock, finished)
@@ -878,7 +947,7 @@ func _test_action_animations() -> void:
 	while turns.current_unit != units[3]:
 		turns.end_turn()
 	battle.call("_update_turn_ui")
-	actions.dice = ScriptedDice.new([20], [20])
+	actions.dice = ScriptedDice.new([20], [20]).then_seeded()
 	var reactions: Array[int] = [0]
 	var on_reaction: Callable = func(kind: String, _prompt: String) -> void:
 		var arrow: Node = battle.get_node_or_null("Arrow")
@@ -964,3 +1033,49 @@ func _test_reaction_flow() -> void:
 	hud.reaction_dialog.hide()
 	actions.logged.disconnect(on_log)
 	actions.reaction_requested.disconnect(on_reaction)
+
+
+func _test_reaction_focus() -> void:
+	var choices: Array[bool] = []
+	var stale_focus_requests: Array[int] = [0]
+	var on_choice: Callable = func(use_reaction: bool) -> void: choices.append(use_reaction)
+	# Headless는 접근성을 지원하지 않는다. 엔진의 부모→exclusive child 포커스 전달을 모형화한다.
+	var on_parent_focus: Callable = func() -> void:
+		if hud.reaction_dialog.exclusive:
+			stale_focus_requests[0] += 1
+			hud.reaction_dialog.grab_focus()
+	root.focus_entered.connect(on_parent_focus)
+	hud.reaction_selected.connect(on_choice)
+	for choice: String in ["cancel", "ok", "close", "escape", "stage", "result"]:
+		hud.show_reaction("parry", "접근성 포커스 회귀")
+		await process_frame
+		_check(hud.reaction_dialog.visible and hud.reaction_dialog.exclusive,
+			"반응 선택 중 모달 입력 유지: " + choice)
+		var before: int = choices.size()
+		match choice:
+			"cancel":
+				hud.reaction_dialog.get_cancel_button().pressed.emit()
+			"ok":
+				hud.reaction_dialog.get_ok_button().pressed.emit()
+			"close":
+				hud.reaction_dialog.notification(Window.NOTIFICATION_WM_CLOSE_REQUEST)
+			"escape":
+				var key: InputEventKey = InputEventKey.new()
+				key.keycode = KEY_ESCAPE
+				key.pressed = true
+				Input.parse_input_event(key)
+			"stage":
+				hud.begin_stage(1, 1)
+			"result":
+				hud.show_result(true)
+		await process_frame
+		await process_frame
+		_check(not hud.reaction_dialog.visible, "반응 창 닫힘: " + choice)
+		var is_choice: bool = choice in ["cancel", "ok", "close", "escape"]
+		_check(choices.size() == before + int(is_choice), "반응 결정 정확히 한 번 또는 화면 전환 시 미결정: " + choice)
+		if is_choice:
+			_check(choices.back() == (choice == "ok"), "확인만 반응 사용: " + choice)
+	_check(stale_focus_requests[0] == 0, "제거된 반응 창에 접근성 포커스를 전달하지 않음")
+	hud.reaction_selected.disconnect(on_choice)
+	root.focus_entered.disconnect(on_parent_focus)
+	hud.begin_stage(1, 1)

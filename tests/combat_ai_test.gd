@@ -11,6 +11,7 @@ var checks: int = 0
 var failures: int = 0
 var fixtures: Array[Fixture] = []
 var ai: CombatEnemyAi = CombatEnemyAi.new()
+const ScriptedDice = preload("res://tests/scripted_dice.gd")
 
 
 func _initialize() -> void:
@@ -55,6 +56,13 @@ func _fixture(archer: bool = false) -> Fixture:
 
 
 func _run() -> void:
+	await _test_scrap_robot()
+	await _test_scrap_robot_pull_priority()
+	await _test_scrap_robot_pull_movement_and_combo()
+	await _test_scrap_robot_spin_combos()
+	await _test_scrap_robot_spin_reevaluation()
+	await _test_mother()
+	await _test_spiderling()
 	await _test_warrior()
 	await _test_archer()
 	await _test_reaction_pause()
@@ -70,8 +78,279 @@ func _run() -> void:
 		for unit: CombatUnit in f.units:
 			unit.free()
 	fixtures.clear()
+	var dice_problems: Array[String] = ScriptedDice.finish()
+	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat AI: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_scrap_robot() -> void:
+	var normal: Fixture = _fixture()
+	var boss: CombatUnit = normal.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = 40
+	boss.begin_turn()
+	normal.actions.dice = ScriptedDice.new([11, 8], [20, 8])
+	await ai.play_turn(boss, normal.actions)
+	_check(normal.units[0].hit_points == 2 and boss.action_left == 0
+		and boss.bonus_action_left == 1 and boss.movement_left == 4,
+		"일반 보스는 인접 아군에게 1d8+2 기본 공격 한 번")
+	var overloaded: Fixture = _fixture()
+	boss = overloaded.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = 20
+	boss.begin_turn()
+	overloaded.units[0].hit_points = 3
+	overloaded.units[1].cell = Vector2i(6, 4)
+	overloaded.actions.dice = ScriptedDice.new([11, 1, 10, 8], [20, 8, 20, 8])
+	await ai.play_turn(boss, overloaded.actions)
+	_check(overloaded.units[0].hit_points == 0 and overloaded.units[1].hit_points == 4,
+		"과부하 첫 행동으로 전투 불능 뒤 두 번째 행동 대상을 다시 선택")
+	_check(boss.cell == Vector2i(5, 4) and boss.movement_left == 3
+		and boss.action_left == 0 and boss.bonus_action_left == 1,
+		"두 번째 행동에 인접 대상이 없으면 남은 이동으로 접근 후 공격")
+	var distant: Fixture = _fixture()
+	boss = distant.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = 40
+	boss.cell = Vector2i(8, 4)
+	distant.units[0].cell = Vector2i(1, 4)
+	distant.units[1].cell = Vector2i(0, 5)
+	boss.begin_turn()
+	distant.actions.dice = ScriptedDice.new([], [])
+	await ai.play_turn(boss, distant.actions)
+	_check(boss.movement_left == 0 and boss.action_left == 1
+		and CombatHexGrid.distance(boss.cell, distant.units[0].cell) == 3,
+		"사거리 밖의 보스는 가장 가까운 아군에게 4칸만 접근")
+
+
+func _test_scrap_robot_pull_priority() -> void:
+	for nearby: Vector2i in [Vector2i(3, 4), Vector2i(6, 4)]:
+		var f: Fixture = _fixture()
+		var boss: CombatUnit = f.units[2]
+		boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+		boss.hit_points = 45
+		boss.begin_turn()
+		f.units[0].cell = nearby
+		f.units[1].cell = Vector2i(7, 4)
+		f.actions.dice = ScriptedDice.new([12, 10], [20, 20])
+		await ai.play_turn(boss, f.actions)
+		_check(f.units[1].cell == Vector2i(5, 4) and f.units[0].cell == nearby
+			and f.units[0].hit_points == 12 and f.units[1].hit_points == 14,
+			"2000은 인접 아군 공격과 거리2 대상보다 거리3 대상 만능팔을 우선")
+		_check(boss.action_left == 0 and boss.movement_left == 4,
+			"사거리 안 만능팔에 이동과 추가 공격을 쓰지 않음")
+
+
+func _test_scrap_robot_pull_movement_and_combo() -> void:
+	var moving: Fixture = _fixture()
+	var boss: CombatUnit = moving.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 45
+	boss.begin_turn()
+	moving.units[0].cell = Vector2i(3, 4)
+	moving.units[0].reaction_left = 1
+	moving.units[1].cell = Vector2i(9, 4)
+	moving.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
+		moving.actions.resolve_reaction(true)
+	)
+	moving.actions.dice = ScriptedDice.new([12, 1, 12, 10], [20, 8, 20, 20])
+	await ai.play_turn(boss, moving.actions)
+	_check(boss.cell == Vector2i(6, 4) and boss.movement_left == 2
+		and moving.units[1].cell == Vector2i(7, 4), "인접 아군이 있어도 이동해서 사거리3의 만능팔 실행")
+	_check(boss.hit_points == 41 and moving.units[0].reaction_left == 0
+		and moving.units[0].hit_points == 12, "만능팔을 위한 로봇 일반 이동은 아군 기회 공격을 받음")
+	var combo: Fixture = _fixture()
+	boss = combo.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 22
+	boss.begin_turn()
+	combo.units[0].cell = Vector2i(1, 1)
+	combo.units[1].cell = Vector2i(7, 4)
+	combo.actions.dice = ScriptedDice.new([12, 10, 10, 8], [20, 20, 20, 8])
+	await ai.play_turn(boss, combo.actions)
+	_check(combo.units[1].cell == Vector2i(5, 4) and combo.units[1].hit_points == 4
+		and boss.action_left == 0, "과부하 첫 행동 만능팔 뒤 두 번째 행동으로 끌려온 아군 기본 공격")
+	boss.begin_turn()
+	combo.units[0].cell = Vector2i(9, 9)
+	combo.actions.dice = ScriptedDice.new([10, 2], [20, 8])
+	await ai.play_turn(boss, combo.actions)
+	_check(combo.units[1].hit_points == 0 and combo.units[0].hit_points == 12
+		and boss.pull_cooldown == 1, "만능팔 쉬는 턴에는 기본 공격과 접근을 수행")
+	var unreachable: Fixture = _fixture()
+	boss = unreachable.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 45
+	boss.begin_turn()
+	unreachable.units[0].cell = Vector2i(3, 4)
+	unreachable.units[1].cell = Vector2i(9, 9)
+	unreachable.actions.dice = ScriptedDice.new([12, 1], [20, 8])
+	await ai.play_turn(boss, unreachable.actions)
+	_check(boss.cell == Vector2i(4, 4) and boss.movement_left == 4
+		and unreachable.units[0].hit_points == 9,
+		"이번 턴 이동으로 만능팔 사거리에 못 들면 인접 아군을 기본 공격")
+
+
+func _test_scrap_robot_spin_combos() -> void:
+	var pull_basic: Fixture = _fixture()
+	var boss: CombatUnit = pull_basic.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 25
+	boss.begin_turn()
+	pull_basic.units[0].cell = Vector2i(1, 1)
+	pull_basic.units[1].cell = Vector2i(7, 4)
+	pull_basic.actions.dice = ScriptedDice.new([12, 10, 10, 8], [20, 20, 20, 8])
+	await ai.play_turn(boss, pull_basic.actions)
+	_check(pull_basic.units[1].cell == Vector2i(5, 4) and pull_basic.units[1].hit_points == 4
+		and boss.action_left == 0, "3000 비인접 과부하는 만능팔 뒤 끌려온 대상 기본 공격")
+	var pull_spin: Fixture = _fixture()
+	boss = pull_spin.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 25
+	boss.begin_turn()
+	pull_spin.units[0].cell = Vector2i(3, 4)
+	pull_spin.units[1].cell = Vector2i(7, 4)
+	pull_spin.actions.dice = ScriptedDice.new([12, 10, 11, 1, 10, 2], [20, 20, 20, 8, 20, 8])
+	await ai.play_turn(boss, pull_spin.actions)
+	_check(pull_spin.units[0].hit_points == 9 and pull_spin.units[1].hit_points == 10
+		and pull_spin.units[1].cell == Vector2i(5, 4) and boss.action_left == 0,
+		"3000 한 명 인접 과부하는 만능팔 뒤 두 명에게 회전회오리")
+	var spin_twice: Fixture = _fixture()
+	boss = spin_twice.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 25
+	boss.begin_turn()
+	spin_twice.units[0].cell = Vector2i(3, 4)
+	spin_twice.units[1].cell = Vector2i(5, 4)
+	spin_twice.actions.dice = ScriptedDice.new([11, 1, 10, 1, 11, 1, 10, 1], [20, 8, 20, 8, 20, 8, 20, 8])
+	await ai.play_turn(boss, spin_twice.actions)
+	_check(spin_twice.units[0].hit_points == 6 and spin_twice.units[1].hit_points == 8
+		and boss.action_left == 0 and boss.pull_cooldown == 0,
+		"3000 두 명 인접 과부하는 만능팔 대신 회전회오리 두 번")
+	_check(spin_twice.logs.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 2
+		and boss.cell == Vector2i(4, 4) and boss.movement_left == 4,
+		"회전회오리 두 번에 이동과 만능팔 쉬는 턴을 쓰지 않음")
+
+
+func _test_scrap_robot_spin_reevaluation() -> void:
+	for survivors: int in [1, 0]:
+		var f: Fixture = _fixture()
+		var boss: CombatUnit = f.units[2]
+		boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+		boss.hit_points = 25
+		boss.begin_turn()
+		f.units[0].cell = Vector2i(3, 4)
+		f.units[0].hit_points = 3
+		f.units[1].cell = Vector2i(5, 4)
+		f.units[1].hit_points = 14 if survivors == 1 else 3
+		if survivors == 1:
+			f.actions.dice = ScriptedDice.new([11, 1, 10, 1, 10, 1], [20, 8, 20, 8, 20, 8])
+		else:
+			f.actions.dice = ScriptedDice.new([11, 1, 10, 1], [20, 8, 20, 8])
+		await ai.play_turn(boss, f.actions)
+		_check(f.units[0].hit_points == 0 and f.units[1].hit_points == (8 if survivors == 1 else 0),
+			"첫 회전회오리 전투 불능 후 살아 있는 대상을 기준으로 다음 행동 선택")
+		_check(f.logs.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 1
+			and boss.action_left == (0 if survivors == 1 else 1),
+			"인접 한 명이면 기본 공격, 아군이 없으면 두 번째 행동을 중단")
+		_check(f.actions.is_over() == (survivors == 0) and not f.actions.busy,
+			"다중 대상 처리 후 전투 종료와 대기 상태를 갱신")
+
+
+func _test_mother() -> void:
+	var spawning: Fixture = _fixture()
+	var mother: CombatUnit = spawning.units[2]
+	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
+	mother.hit_points = 20
+	mother.begin_turn()
+	spawning.actions.dice = ScriptedDice.new([1], [5])
+	await ai.play_turn(mother, spawning.actions)
+	_check(spawning.units.size() == 5 and mother.cell == Vector2i(4, 4)
+		and mother.movement_left == 4 and mother.action_left == 0
+		and mother.bonus_action_left == 1 and spawning.units[0].hit_points == 12,
+		"아군이 인접해도 빈 칸이 있는 엄마는 이동·공격 없이 새끼 낳기 우선")
+	_check(spawning.turns.current_unit == mother
+		and spawning.turns.is_turn_finished(spawning.units.back()), "새끼를 낳은 엄마 턴에 새끼가 끼어들지 않음")
+	var blocked: Fixture = _fixture()
+	mother = blocked.units[2]
+	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
+	mother.hit_points = 20
+	mother.cell = Vector2i.ZERO
+	mother.begin_turn()
+	blocked.actions.map_size = Vector2i(2, 2)
+	blocked.units[0].cell = Vector2i(1, 0)
+	blocked.units[1].cell = Vector2i(0, 1)
+	blocked.units[1].hit_points = 5
+	blocked.units[3].cell = Vector2i(9, 9)
+	blocked.actions.dice = ScriptedDice.new([10, 1], [20, 6])
+	await ai.play_turn(mother, blocked.actions)
+	_check(blocked.units.size() == 4 and blocked.units[1].hit_points == 2
+		and blocked.units[0].hit_points == 12 and mother.action_left == 0,
+		"빈 칸이 없는 엄마는 가장 가까운 대상 중 HP가 낮은 아군을 기본 공격")
+	blocked.turns.end_turn()
+	while blocked.turns.current_unit != mother:
+		blocked.turns.end_turn()
+	blocked.units[1].cell = Vector2i(1, 1)
+	blocked.actions.dice = ScriptedDice.new([1], [1])
+	await ai.play_turn(mother, blocked.actions)
+	_check(blocked.units.size() == 5 and mother.movement_left == 4
+		and blocked.units[0].hit_points == 12 and blocked.units[1].hit_points == 2,
+		"다음 턴에 빈 칸이 생긴 엄마는 공격 대신 새끼 낳기로 복귀")
+	var stunned: Fixture = _fixture()
+	mother = stunned.units[2]
+	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
+	mother.begin_turn()
+	mother.is_stunned = true
+	stunned.actions.dice = ScriptedDice.new([])
+	await ai.play_turn(mother, stunned.actions)
+	_check(stunned.units.size() == 4 and mother.action_left == 1 and stunned.logs.is_empty(),
+		"기절한 엄마의 AI는 새끼 낳기·이동·공격을 실행하지 않음")
+
+
+func _test_spiderling() -> void:
+	var close: Fixture = _fixture()
+	var spiderling: CombatUnit = close.units[2]
+	spiderling.kind = CombatUnit.Kind.SPIDERLING
+	spiderling.hit_points = 1
+	close.actions.dice = ScriptedDice.new([12], [20])
+	await ai.play_turn(spiderling, close.actions)
+	_check(spiderling.cell == Vector2i(4, 4) and spiderling.movement_left == 6
+		and spiderling.action_left == 0 and close.units[0].hit_points == 11,
+		"인접한 새끼 거미는 후퇴 없이 기본 공격만 실행")
+	var approach: Fixture = _fixture()
+	spiderling = approach.units[2]
+	spiderling.kind = CombatUnit.Kind.SPIDERLING
+	spiderling.hit_points = 1
+	spiderling.cell = Vector2i(0, 0)
+	approach.units[0].cell = Vector2i(4, 4)
+	approach.units[1].cell = Vector2i(9, 9)
+	approach.units[1].hit_points = 1
+	approach.actions.dice = ScriptedDice.new([12], [20])
+	await ai.play_turn(spiderling, approach.actions)
+	_check(CombatHexGrid.distance(spiderling.cell, approach.units[0].cell) == 1
+		and spiderling.movement_left == 1 and approach.units[0].hit_points == 11,
+		"새끼 거미는 낮은 HP의 먼 아군보다 가장 가까운 아군에 접근해 공격")
+	var opportunity: Fixture = _fixture()
+	spiderling = opportunity.units[2]
+	spiderling.kind = CombatUnit.Kind.SPIDERLING
+	spiderling.hit_points = 1
+	opportunity.units[0].reaction_left = 1
+	opportunity.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
+		opportunity.actions.resolve_reaction(true)
+	)
+	opportunity.actions.dice = ScriptedDice.new([20, 1, 1], [20, 8, 8])
+	_check(await opportunity.actions.move_to(spiderling, Vector2i(3, 4))
+		and spiderling.hit_points == 0 and spiderling.cell == Vector2i(4, 4)
+		and spiderling.movement_left == 6 and opportunity.units[0].reaction_left == 0,
+		"이동하는 새끼 거미는 아군 기회 공격을 받고 벗어나기 전에 전투 불능")
+	var no_opportunity: Fixture = _fixture()
+	no_opportunity.units[2].kind = CombatUnit.Kind.SPIDERLING
+	no_opportunity.turns.end_turn()
+	no_opportunity.turns.end_turn()
+	no_opportunity.actions.dice = ScriptedDice.new([])
+	_check(await no_opportunity.actions.move_to(no_opportunity.units[0], Vector2i(6, 4))
+		and no_opportunity.units[0].hit_points == 12
+		and no_opportunity.units[2].reaction_left == 1, "새끼 거미는 아군 이동에 기회 공격을 하지 않음")
 
 
 func _test_warrior() -> void:
@@ -88,10 +367,10 @@ func _test_warrior() -> void:
 	healthy.units[2].hit_points = 7
 	healthy.units[0].hit_points = 100
 	await ai.play_turn(healthy.units[2], healthy.actions)
-	_check(healthy.units[2].second_wind_left == 1 and healthy.units[2].surge_left == 0,
-		"절반 초과는 회복 없이 몰아치기")
-	_check(healthy.units[2].action_left == 0 and healthy.units[2].bonus_action_left == 0,
-		"몰아치기 후 두 번째 공격의 행동 소비")
+	_check(healthy.units[2].second_wind_left == 1 and healthy.units[2].surge_left == 1,
+		"절반 초과는 회복하지 않고 몰아치기도 사용하지 않음")
+	_check(healthy.units[2].action_left == 0 and healthy.units[2].bonus_action_left == 1,
+		"기본 공격 한 번은 행동만 소비")
 	var approach: Fixture = _fixture()
 	approach.units[2].cell = Vector2i(0, 0)
 	approach.units[3].cell = Vector2i(9, 0)
@@ -109,8 +388,9 @@ func _test_warrior() -> void:
 	retarget.actions.dice.seed = 2
 	await ai.play_turn(retarget.units[2], retarget.actions)
 	_check(retarget.units[1].hit_points == 0, "인접한 대상 중 낮은 HP부터 공격")
-	_check(retarget.units[2].surge_left == 0 and retarget.units[2].action_left == 0,
-		"첫 대상 탈락 후 남은 인접 대상에게 몰아치기 공격")
+	_check(retarget.units[2].surge_left == 1 and retarget.units[2].action_left == 0
+		and retarget.units[0].hit_points == 12,
+		"첫 대상 탈락 뒤 두 번째 대상을 추가 공격하지 않음")
 	var last: Fixture = _fixture()
 	last.units[0].hit_points = 1
 	last.actions.incapacitate(last.units[1])
@@ -127,10 +407,10 @@ func _test_archer() -> void:
 	ranged.units[1].cell = Vector2i(7, 2)
 	ranged.units[1].hit_points = 5
 	await ai.play_turn(ranged.units[3], ranged.actions)
-	_check(ranged.units[3].mark_left == 0 and ranged.units[3].marked_target == ranged.units[1],
-		"사거리 안에서 HP가 낮은 대상에게 표식을 먼저 사용")
-	_check("표식" in ranged.logs[0] and ranged.units[3].shock_left == 0,
-		"첫 공격 전 표식, 충격 화살 우선 사용")
+	_check(ranged.units[3].mark_left == 1 and ranged.units[3].marked_target == null,
+		"풋내기 궁수는 표식을 사용하지 않음")
+	_check("공격" in ranged.logs[0] and ranged.units[3].shock_left == 1
+		and not ranged.units[1].is_stunned, "풋내기 궁수는 충격 화살 없이 기본 공격")
 	_check(ranged.units[3].movement_left == 6 and ranged.units[3].disengage_left == 2,
 		"인접 위협이 없으면 불필요한 후퇴 없음")
 	var retreat: Fixture = _fixture(true)
@@ -149,8 +429,9 @@ func _test_archer() -> void:
 		and retreat.units[3].movement_left == 5, "인접 위협에서 벗어나는 최단 후퇴")
 	_check(prompts[0] == 0 and retreat.units[0].reaction_left == 1,
 		"물러서며 쏘기 이동은 아군 기회 공격을 일으키지 않음")
-	_check(retreat.units[3].mark_left == 1 and retreat.units[3].shock_left == 0,
-		"후퇴 스킬이 보조 행동을 써서 표식은 남고 충격 화살은 실행")
+	_check(retreat.units[3].mark_left == 1 and retreat.units[3].shock_left == 1
+		and retreat.units[3].action_left == 0,
+		"후퇴 뒤 표식·충격 화살 없이 기본 공격")
 	_check(retreat.actions.last_attack.mode == CombatChecks.RollMode.NORMAL,
 		"후퇴 후 공격의 인접 불리 제거")
 	var approach: Fixture = _fixture(true)
@@ -174,6 +455,8 @@ func _test_archer() -> void:
 	await ai.play_turn(edge.units[3], edge.actions)
 	_check(edge.units[3].movement_left == 6 and edge.units[3].disengage_left == 2
 		and edge.units[3].action_left == 0, "후퇴 칸이 없으면 헛이동·후퇴 스킬 없이 공격")
+	_check(edge.actions.last_attack.mode == CombatChecks.RollMode.DISADVANTAGE,
+		"후퇴할 수 없는 풋내기 궁수는 인접 위협의 불리 유지")
 
 
 func _test_reaction_pause() -> void:
@@ -232,8 +515,8 @@ func _test_enemy_reactions() -> void:
 	reactor.reaction_left = 1
 	f.actions.dice.seed = 2
 	_check(await f.actions.attack(actor, reactor), "적 전사에게 아군 공격 실행")
-	_check(reactor.parry_left == 1 and reactor.reaction_left == 0 and prompts[0] == 0,
-		"적 흘려내기는 확인 창 없이 반응과 횟수를 자동 소비")
+	_check(reactor.parry_left == 2 and reactor.reaction_left == 1 and prompts[0] == 0,
+		"야만인은 흘려내기 반응을 하지 않음")
 
 
 func _test_guards() -> void:
@@ -255,6 +538,7 @@ func _test_guards() -> void:
 
 func _test_scene() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	root.add_child(main)
 	battle.set_process(false)

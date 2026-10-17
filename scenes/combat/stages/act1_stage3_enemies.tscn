@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/combat/unit.tscn" id="1_unit"]
+
+[node name="Enemies" type="Node2D"]
+
+[node name="ScrapRobot1000" parent="." instance=ExtResource("1_unit")]
+kind = 4
+is_ally = false
+start_cell = Vector2i(8, 4)

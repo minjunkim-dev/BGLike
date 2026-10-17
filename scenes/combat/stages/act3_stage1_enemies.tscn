@@ -1,0 +1,30 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/combat/unit.tscn" id="1_unit"]
+
+[node name="Enemies" type="Node2D"]
+
+[node name="Spiderling1" parent="." instance=ExtResource("1_unit")]
+kind = 2
+is_ally = false
+start_cell = Vector2i(7, 2)
+
+[node name="Spiderling2" parent="." instance=ExtResource("1_unit")]
+kind = 2
+is_ally = false
+start_cell = Vector2i(7, 4)
+
+[node name="Spiderling3" parent="." instance=ExtResource("1_unit")]
+kind = 2
+is_ally = false
+start_cell = Vector2i(7, 7)
+
+[node name="MotherSpider1" parent="." instance=ExtResource("1_unit")]
+kind = 3
+is_ally = false
+start_cell = Vector2i(9, 2)
+
+[node name="MotherSpider2" parent="." instance=ExtResource("1_unit")]
+kind = 3
+is_ally = false
+start_cell = Vector2i(9, 7)

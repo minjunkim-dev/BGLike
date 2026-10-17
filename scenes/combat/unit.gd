@@ -2,14 +2,11 @@ class_name CombatUnit
 extends Node2D
 ## 팀과 직업, 격자 위치와 유닛별 턴 자원을 가진 임시 유닛.
 
-enum Kind { WARRIOR, ARCHER }
+enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 
 const MOVEMENT_PER_TURN: int = 6
-const ENEMY_COMBAT_BONUSES: Array[int] = [0, 2, 5]
-const ENEMY_DAMAGE_BONUSES: Array[int] = [0, 2, 4]
-const ENEMY_HP_MULTIPLIERS: Array[float] = [1.0, 1.5, 2.0]
 
 const ALLY_COLOR: Color = Color("509be0")
 const ENEMY_COLOR: Color = Color("df6256")
@@ -36,12 +33,18 @@ var action_left: int = 1
 var bonus_action_left: int = 1
 var reaction_left: int = 1
 var act_number: int = 1
+var overloaded: bool = false
+var pull_cooldown: int = 0
 var _lost_hit_points: int = 0
 var hit_points: int = 12:
 	set(value):
 		if value != hit_points:
 			_lost_hit_points = maxi(0, get_max_hit_points() - value)
 		hit_points = value
+		if (is_boss() and not overloaded
+			and hit_points <= get_max_hit_points() / 2):
+			overloaded = true
+			action_left += 1
 var is_stunned: bool = false
 var has_mark: bool = false
 var disengaged: bool = false
@@ -74,10 +77,15 @@ var is_selected: bool = false:
 
 
 func get_dexterity() -> int:
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["dexterity"])
 	return 1 if kind == Kind.WARRIOR else 3
 
 
 func get_attribute(attribute: Attribute) -> int:
+	if not is_ally:
+		var key: String = ["strength", "dexterity", "constitution", "mental"][attribute]
+		return int(CombatEnemyDefinitions.for_kind(kind)[key])
 	match attribute:
 		Attribute.STRENGTH:
 			return 3 if kind == Kind.WARRIOR else 0
@@ -92,23 +100,37 @@ func get_attribute(attribute: Attribute) -> int:
 
 func get_max_hit_points() -> int:
 	var base: int = 12 if kind == Kind.WARRIOR else 14
-	return int(base * (1.0 if is_ally else ENEMY_HP_MULTIPLIERS[act_number - 1])) \
-		+ _equipment_stat("max_hit_points")
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["max_hit_points"])
+	return base + _equipment_stat("max_hit_points")
 
 
 func get_armor_class() -> int:
-	return (16 if kind == Kind.WARRIOR else 14) + _equipment_stat("armor_class") \
-		+ (0 if is_ally else ENEMY_COMBAT_BONUSES[act_number - 1])
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["armor_class"])
+	return (16 if kind == Kind.WARRIOR else 14) + _equipment_stat("armor_class")
 
 
 func get_attack_bonus() -> int:
-	return 5 + _equipment_stat("attack_bonus") \
-		+ (0 if is_ally else ENEMY_COMBAT_BONUSES[act_number - 1])
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["attack_bonus"])
+	return 5 + _equipment_stat("attack_bonus")
 
 
 func get_damage_bonus() -> int:
-	return (3 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus") \
-		+ (0 if is_ally else ENEMY_DAMAGE_BONUSES[act_number - 1])
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["damage_bonus"])
+	return (3 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus")
+
+
+func get_damage_sides() -> int:
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["damage_sides"])
+	return 8 if kind == Kind.WARRIOR else 6
+
+
+func get_save_dc() -> int:
+	return 13 if is_ally else int(CombatEnemyDefinitions.for_kind(kind)["save_dc"])
 
 
 func _equipment_stat(stat: String) -> int:
@@ -116,6 +138,8 @@ func _equipment_stat(stat: String) -> int:
 
 
 func get_attack_range() -> int:
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["attack_range"])
 	return 1 if kind == Kind.WARRIOR else 6
 
 
@@ -124,18 +148,32 @@ func get_initiative() -> int:
 
 
 func get_display_name() -> String:
-	return ("아군 " if is_ally else "적 ") + ("전사" if kind == Kind.WARRIOR else "궁수")
+	if not is_ally:
+		return CombatEnemyDefinitions.for_kind(kind)["name"]
+	return "아군 " + ("전사" if kind == Kind.WARRIOR else "궁수")
+
+
+func is_boss() -> bool:
+	return not is_ally and bool(CombatEnemyDefinitions.for_kind(kind).get("boss", false))
+
+
+func can_drop_extra_reward() -> bool:
+	return not is_ally and kind != Kind.SPIDERLING
 
 
 func begin_turn() -> void:
 	disengaged = false
-	movement_left = MOVEMENT_PER_TURN
-	action_left = action_capacity
+	pull_cooldown = maxi(0, pull_cooldown - 1)
+	movement_left = (MOVEMENT_PER_TURN if is_ally
+		else int(CombatEnemyDefinitions.for_kind(kind).get("movement", MOVEMENT_PER_TURN)))
+	action_left = action_capacity + (1 if overloaded else 0)
 	bonus_action_left = bonus_action_capacity
 	reaction_left = reaction_capacity
 
 
 func begin_stage(restore_act: bool) -> void:
+	overloaded = false
+	pull_cooldown = 0
 	if restore_act:
 		hit_points = get_max_hit_points()
 		CombatActionRules.restore_uses(self)
@@ -186,6 +224,7 @@ func has_available_turn_action(
 func _ready() -> void:
 	cell = start_cell
 	hit_points = get_max_hit_points()
+	begin_turn()
 	queue_redraw()
 
 
@@ -213,7 +252,12 @@ func _draw() -> void:
 	draw_rect(Rect2(-6, -19, 12, 18), OUTLINE_COLOR)
 	draw_rect(Rect2(-5, -18, 10, 16), body_color)
 
-	if kind == Kind.WARRIOR:
+	if is_boss():
+		draw_rect(Rect2(-4, -16, 8, 5), WEAPON_COLOR)
+		draw_rect(Rect2(-3, -15, 2, 2), OUTLINE_COLOR)
+		draw_rect(Rect2(1, -15, 2, 2), OUTLINE_COLOR)
+		draw_line(Vector2(-3, -7), Vector2(3, -7), WEAPON_COLOR)
+	elif kind != Kind.ARCHER:
 		# 검: 직선 칼날과 가로 손잡이.
 		draw_rect(Rect2(-1, -16, 2, 9), WEAPON_COLOR)
 		draw_rect(Rect2(-3, -8, 6, 2), WEAPON_COLOR)
