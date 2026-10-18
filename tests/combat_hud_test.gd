@@ -24,6 +24,7 @@ func _check(condition: bool, message: String) -> void:
 
 
 func _run() -> void:
+	_test_selection()
 	var scene: PackedScene = load("res://scenes/main.tscn") as PackedScene
 	var main: Node = scene.instantiate()
 	# 전사·궁수 UI 회귀는 기존 풋내기 배치를 fixture로 유지한다.
@@ -73,6 +74,51 @@ func _run() -> void:
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat HUD: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_selection() -> void:
+	var selected: CombatSelection = CombatSelection.new()
+	var target: CombatUnit = CombatUnit.new()
+	var inspected: CombatUnit = CombatUnit.new()
+	var path: Array[Vector2i] = [Vector2i(1, 0), Vector2i(1, 1)]
+	_check(not selected.select_move(Vector2i(1, 1), path)
+		and selected.selected_action == "move" and selected.preview_path == path,
+		"선택 module: 첫 목적지 선택은 이동 미리보기")
+	_check(selected.select_move(Vector2i(1, 1), path)
+		and selected.preview_path.is_empty() and selected.preview_cell == Vector2i(-1, -1)
+		and not path.is_empty(), "선택 module: 같은 목적지는 한 번 확정하고 호출자의 경로는 보존")
+	selected.select_move(Vector2i(1, 1), path)
+	selected.select_move(Vector2i(2, 2), [])
+	_check(selected.selected_action == "move" and selected.preview_path.is_empty(),
+		"선택 module: 유효하지 않은 목적지는 경로만 취소")
+	selected.begin_field_input(true)
+	_check(selected.selected_action == "attack", "선택 module: 좌클릭은 이동 확정 대신 공격 선택으로 복귀")
+	selected.inspect(inspected)
+	_check(not selected.select_action("second_wind") and selected.inspected_unit == null,
+		"선택 module: 첫 보조 행동 선택은 조회만 해제")
+	_check(selected.select_action("second_wind") and selected.begin_execution() == "second_wind",
+		"선택 module: 같은 보조 행동의 두 번째 선택만 실행")
+	selected.finish_execution()
+	_check(selected.selected_action == "attack", "선택 module: 실행 뒤 기본 공격으로 복귀")
+	_check(not selected.select_target(target, true) and selected.preview_target == target
+		and not selected.select_target(target, false) and selected.select_target(target, true),
+		"선택 module: 대상 재선택은 실행 가능할 때만 확정")
+	selected.select_move(Vector2i(1, 1), path)
+	selected.inspect(inspected)
+	_check(selected.selected_action == "attack" and selected.preview_target == null
+		and selected.preview_path.is_empty() and selected.inspected_unit == inspected,
+		"선택 module: 초상 조회는 이동·대상 미리보기를 함께 취소")
+	inspected.hit_points = 0
+	selected.discard_incapacitated_inspection()
+	_check(selected.inspected_unit == null, "선택 module: 전투 불능 조회 해제")
+	selected.select_action("shock")
+	selected.preview_enemy(target)
+	selected.reset()
+	_check(selected.selected_action == "attack" and selected.preview_target == null
+		and selected.preview_path.is_empty() and selected.inspected_unit == null,
+		"선택 module: 턴·스테이지 전환은 선택 전체 초기화")
+	target.free()
+	inspected.free()
 
 
 func _test_hex_map() -> void:
@@ -125,7 +171,7 @@ func _test_warrior() -> void:
 	var before: int = units[0].reaction_left
 	(buttons["opportunity"] as Button).pressed.emit()
 	(buttons["parry"] as Button).pressed.emit()
-	_check(units[0].reaction_left == before and battle.get("selected_action") == "attack",
+	_check(units[0].reaction_left == before and (battle.get("selection") as CombatSelection).selected_action == "attack",
 		"자기 턴의 반응 항목은 아무 동작도 실행하지 않음")
 
 
@@ -492,17 +538,17 @@ func _test_guidance() -> void:
 	var move_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(Vector2i(2, 1))
 	await _click(move_point)
 	await _click(move_point, MOUSE_BUTTON_RIGHT)
-	_check(battle.get("preview_cell") == Vector2i(2, 1) and units[0].cell == Vector2i(1, 1),
+	_check((battle.get("selection") as CombatSelection).preview_cell == Vector2i(2, 1) and units[0].cell == Vector2i(1, 1),
 		"실제 첫 우클릭은 이동 모드와 경로 확인만 실행")
 	await _click(move_point, MOUSE_BUTTON_RIGHT)
 	_check(units[0].cell == Vector2i(2, 1) and units[0].movement_left == 1
 		and units[0].action_left == 1 and not (buttons["attack"] as Button).disabled
-		and battle.get("selected_action") == "attack",
+		and (battle.get("selection") as CombatSelection).selected_action == "attack",
 		"실제 이동 후 행동과 공격 버튼 유지")
 	_check((battle.get("movement_cells") as Array).is_empty(), "이동 선택을 해제하면 범위 표시 제거")
 	var point: Vector2 = units[2].get_global_transform_with_canvas() * Vector2(0, -10)
 	await _click(point)
-	_check(battle.get("preview_target") == units[2] and units[0].action_left == 1,
+	_check((battle.get("selection") as CombatSelection).preview_target == units[2] and units[0].action_left == 1,
 		"이동 후 적 클릭으로 공격 미리보기")
 	actions.dice = ScriptedDice.new([1], [20])
 	await _click(point)
@@ -665,18 +711,18 @@ func _test_mouse_controls_and_inspection() -> void:
 	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(destination)
 	await _click(point)
 	await _click(point)
-	_check(units[0].cell == Vector2i(4, 4) and (battle.get("preview_path") as Array).is_empty(),
+	_check(units[0].cell == Vector2i(4, 4) and ((battle.get("selection") as CombatSelection).preview_path as Array).is_empty(),
 		"빈 칸 좌클릭은 이동을 준비하거나 실행하지 않음")
 	await _click(point, MOUSE_BUTTON_RIGHT)
-	_check(battle.get("preview_cell") == destination and units[0].movement_left == 6
+	_check((battle.get("selection") as CombatSelection).preview_cell == destination and units[0].movement_left == 6
 		and not (battle.get("movement_cells") as Array).is_empty(), "첫 우클릭만으로 이동 범위·경로 표시")
 	var other: Vector2i = Vector2i(4, 3)
 	var other_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(other)
 	await _click(other_point, MOUSE_BUTTON_RIGHT)
-	_check(battle.get("preview_cell") == other and units[0].cell == Vector2i(4, 4),
+	_check((battle.get("selection") as CombatSelection).preview_cell == other and units[0].cell == Vector2i(4, 4),
 		"다른 칸 우클릭은 이동하지 않고 목적지 변경")
 	await _click(other_point)
-	_check(units[0].movement_left == 6 and (battle.get("preview_path") as Array).is_empty(),
+	_check(units[0].movement_left == 6 and ((battle.get("selection") as CombatSelection).preview_path as Array).is_empty(),
 		"이동 미리보기의 좌클릭은 이동 확정으로 처리하지 않음")
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	await _click(point, MOUSE_BUTTON_RIGHT)
@@ -686,17 +732,17 @@ func _test_mouse_controls_and_inspection() -> void:
 	battle.call("_update_turn_ui")
 	var enemy_point: Vector2 = units[2].get_global_transform_with_canvas() * Vector2(0, -10)
 	await _click(enemy_point)
-	_check(battle.get("preview_target") == units[2] and units[0].action_left == 1
+	_check((battle.get("selection") as CombatSelection).preview_target == units[2] and units[0].action_left == 1
 		and hud.unit_label.text == units[2].get_display_name(), "필드 적 첫 좌클릭은 공격 미리보기와 적 정보")
 	await _click(map.get_global_transform_with_canvas() * map.map_to_local(units[2].cell), MOUSE_BUTTON_RIGHT)
-	_check(battle.get("preview_target") == null and units[0].action_left == 1
+	_check((battle.get("selection") as CombatSelection).preview_target == null and units[0].action_left == 1
 		and units[2].hit_points == 12, "적 점유 칸 우클릭은 공격하지 않음")
 	await _click(enemy_point)
 	var portraits: Dictionary = hud.get("_portraits")
 	await _click((portraits[units[2]] as Button).get_global_rect().get_center())
 	await _click((portraits[units[2]] as Button).get_global_rect().get_center())
 	_check(turns.current_unit == units[0] and units[0].action_left == 1
-		and units[2].hit_points == 12 and battle.get("preview_target") == null,
+		and units[2].hit_points == 12 and (battle.get("selection") as CombatSelection).preview_target == null,
 		"적 초상을 반복 클릭해도 공격 준비·실행·조작 전환 없음")
 	_check(hud.unit_label.text == "풋내기 야만인" and hud.actor_label.text == "조작: 아군 전사"
 		and "힘 +3" in hud.resource_label.text and "민첩 +1" in hud.resource_label.text
@@ -709,7 +755,7 @@ func _test_mouse_controls_and_inspection() -> void:
 	battle.call("_update_turn_ui")
 	_check(hud.unit_label.text == "풋내기 야만인", "UI 갱신은 초상 정보 조회 유지")
 	await _click(enemy_point)
-	_check(units[0].action_left == 1 and battle.get("preview_target") == units[2],
+	_check(units[0].action_left == 1 and (battle.get("selection") as CombatSelection).preview_target == units[2],
 		"초상 조회 뒤 필드 적 클릭은 새 공격의 첫 미리보기")
 	actions.dice = _dice_for_miss()
 	await _click(enemy_point)
@@ -743,7 +789,7 @@ func _test_mouse_controls_and_inspection() -> void:
 	battle.call("_update_turn_ui")
 	await _click((portraits[units[2]] as Button).get_global_rect().get_center())
 	await _click(point, MOUSE_BUTTON_RIGHT)
-	_check(hud.unit_label.text == "아군 궁수" and (battle.get("preview_path") as Array).is_empty(),
+	_check(hud.unit_label.text == "아군 궁수" and ((battle.get("selection") as CombatSelection).preview_path as Array).is_empty(),
 		"반응 대기 중 초상·우클릭은 기존 잠금을 유지")
 	actions.busy = false
 	_reset_units()
@@ -768,7 +814,7 @@ func _test_order_bar_input() -> void:
 	_check(hud.order_bar.get_global_rect().has_point(point), "클릭 통과 재현 조건: 턴 순서 바 아래 빈 칸")
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	await _click(point, MOUSE_BUTTON_RIGHT)
-	_check(battle.get("preview_cell") == Vector2i(-1, -1) and units[0].cell == Vector2i(4, 4),
+	_check((battle.get("selection") as CombatSelection).preview_cell == Vector2i(-1, -1) and units[0].cell == Vector2i(4, 4),
 		"턴 순서 바의 빈 영역 클릭은 이동 미리보기·확정으로 통과하지 않음")
 	var portraits: Dictionary = hud.get("_portraits")
 	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
@@ -783,7 +829,7 @@ func _test_order_bar_input() -> void:
 		and actions.can_move(units[1], destination), "설명 패널 입력 검사: 아래에 이동 가능한 칸을 배치")
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	await _click(point, MOUSE_BUTTON_RIGHT)
-	_check(battle.get("preview_cell") == Vector2i(-1, -1) and units[1].cell == destination,
+	_check((battle.get("selection") as CombatSelection).preview_cell == Vector2i(-1, -1) and units[1].cell == destination,
 		"제거한 설명 패널 자리는 월드 입력을 가로막지 않음")
 	camera.position = original
 	camera.force_update_scroll()

@@ -277,7 +277,7 @@ func _test_mother() -> void:
 	mother.hit_points = 20
 	mother.cell = Vector2i.ZERO
 	mother.begin_turn()
-	blocked.actions.map_size = Vector2i(2, 2)
+	blocked.actions.grid.map_size = Vector2i(2, 2)
 	blocked.units[0].cell = Vector2i(1, 0)
 	blocked.units[1].cell = Vector2i(0, 1)
 	blocked.units[1].hit_points = 5
@@ -449,7 +449,7 @@ func _test_archer() -> void:
 	_check(exhausted.units[3].action_left == 0 and exhausted.units[3].bonus_action_left == 1,
 		"횟수 소진 후 기본 공격만 실행하며 횟수 회복 없음")
 	var edge: Fixture = _fixture(true)
-	edge.actions.map_size = Vector2i(2, 1)
+	edge.actions.grid.map_size = Vector2i(2, 1)
 	edge.units[3].cell = Vector2i(0, 0)
 	edge.units[0].cell = Vector2i(1, 0)
 	await ai.play_turn(edge.units[3], edge.actions)

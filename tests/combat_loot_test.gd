@@ -379,7 +379,7 @@ func _test_scaled_combat() -> void:
 		initiative.append(20 if unit == actor else 1)
 	turns.start(units, ScriptedDice.new(initiative))
 	_check(turns.current_unit == actor, "이니셔티브 d20 20으로 3막 적이 먼저 행동")
-	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(actor, target, units)
+	var preview: CombatChecks.AttackPreview = (battle.get("actions") as CombatActions).grid.attack_preview(actor, target)
 	_check(is_equal_approx(preview.chance, 0.5), "3막 풋내기 명중+5 대 아군 AC16 미리보기")
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	target.reaction_left = 0
@@ -448,7 +448,7 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	_check(actions.last_damage == damage_dice + 6, "실제 피해 판정은 무기 피해+3을 한 번 포함")
 	party[0].cell = Vector2i(4, 1)
 	units[3].cell = Vector2i(4, 0)
-	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(party[0], units[3], units)
+	var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(party[0], units[3])
 	_check(is_equal_approx(preview.chance, 0.85), "명중 미리보기도 장비 포함+7 대 AC11")
 
 

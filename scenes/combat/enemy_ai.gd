@@ -19,7 +19,7 @@ func play_turn(actor: CombatUnit, actions: CombatActions, pause: Callable = Call
 
 func _boss_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:
 	while _active(actor, actions) and actor.action_left > 0:
-		if (CombatActionRules.belongs_to(actor, "spin") and actions.spin_targets(actor).size() >= 2
+		if (CombatActionRules.belongs_to(actor, "spin") and actions.grid.opponents_in_range(actor, 1).size() >= 2
 			and await actions.spin(actor)):
 			await _pause(pause)
 			continue
@@ -72,7 +72,7 @@ func _try_pull(actor: CombatUnit, actions: CombatActions, pause: Callable) -> bo
 		return false
 	var targets: Array[CombatUnit] = []
 	for candidate: CombatUnit in _targets(actor, actions):
-		if CombatHexGrid.distance(actor.cell, candidate.cell) > 1:
+		if not actions.grid.in_range(actor.cell, candidate.cell, 1, 0):
 			targets.append(candidate)
 	var target: CombatUnit = _pull_target(actor, actions, targets)
 	if target == null:
@@ -124,7 +124,7 @@ func _warrior_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -
 	# 공격 뒤 탈락한 대상은 제외한다. 행동 회복 전이므로 거리로 확인한다.
 	var remaining: Array[CombatUnit] = _targets(actor, actions)
 	for candidate: CombatUnit in remaining:
-		if CombatHexGrid.distance(actor.cell, candidate.cell) == 1:
+		if actions.grid.can_target(actor, candidate, "attack"):
 			actions.use_self(actor, "surge")
 			await _pause(pause)
 			if _active(actor, actions):
@@ -136,7 +136,7 @@ func _warrior_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -
 
 
 func _archer_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:
-	if _nearest_distance(actor.cell, _targets(actor, actions), actions) == 1:
+	if actions.grid.nearest_distance(actor.cell, _targets(actor, actions)) == 1:
 		var destination: Vector2i = _retreat(actor, actions)
 		if destination != actor.cell:
 			if actions.can_use(actor, "disengage"):
@@ -188,13 +188,6 @@ func _attack_target(actor: CombatUnit, actions: CombatActions) -> CombatUnit:
 	return null
 
 
-func _nearest_distance(cell: Vector2i, targets: Array[CombatUnit], actions: CombatActions) -> int:
-	var nearest: int = actions.map_size.x + actions.map_size.y
-	for target: CombatUnit in targets:
-		nearest = mini(nearest, CombatHexGrid.distance(cell, target.cell))
-	return nearest
-
-
 ## 공격 사거리까지 가장 짧게 가는 칸. 못 닿으면 가장 가까운 대상에 가장 가까운 칸이다.
 func approach_cell(actor: CombatUnit, actions: CombatActions) -> Vector2i:
 	var targets: Array[CombatUnit] = _targets(actor, actions)
@@ -208,16 +201,16 @@ func approach_cell(actor: CombatUnit, actions: CombatActions) -> Vector2i:
 	var best_distance: int = CombatHexGrid.distance(best, target.cell)
 	var best_cost: int = 0
 	var reachable: Dictionary[Vector2i, int] = actions.reachable_cells(actor)
-	for x: int in range(actions.map_size.x):
-		for y: int in range(actions.map_size.y):
+	for x: int in range(actions.grid.map_size.x):
+		for y: int in range(actions.grid.map_size.y):
 			var cell: Vector2i = Vector2i(x, y)
 			if not reachable.has(cell):
 				continue
 			var separation: int = CombatHexGrid.distance(cell, target.cell)
 			var cost: int = reachable[cell]
 			# 사거리까지 가장 짧게 이동한다. 못 닿으면 가장 가까운 칸을 쓴다.
-			var reaches: bool = separation <= actor.get_attack_range()
-			var best_reaches: bool = best_distance <= actor.get_attack_range()
+			var reaches: bool = actions.grid.can_target(actor, target, "attack", cell)
+			var best_reaches: bool = actions.grid.can_target(actor, target, "attack", best)
 			if ((reaches and not best_reaches)
 				or (reaches and best_reaches and cost < best_cost)
 				or (not reaches and not best_reaches and (separation < best_distance
@@ -234,10 +227,10 @@ func _retreat(actor: CombatUnit, actions: CombatActions) -> Vector2i:
 	var best_cost: int = actor.movement_left + 1
 	var reachable: Dictionary[Vector2i, int] = actions.reachable_cells(actor)
 	# 모든 인접 위협에서 벗어나는 가장 짧은 이동. 같은 비용이면 맵 순서상 앞 칸이다.
-	for x: int in range(actions.map_size.x):
-		for y: int in range(actions.map_size.y):
+	for x: int in range(actions.grid.map_size.x):
+		for y: int in range(actions.grid.map_size.y):
 			var cell: Vector2i = Vector2i(x, y)
-			if _nearest_distance(cell, targets, actions) <= 1 or not reachable.has(cell):
+			if actions.grid.nearest_distance(cell, targets) <= 1 or not reachable.has(cell):
 				continue
 			var cost: int = reachable[cell]
 			if cost < best_cost:
