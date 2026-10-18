@@ -17,7 +17,7 @@ GitHub 약관에서 허용하는 열람·fork와 적용 법률의 예외는 유�
 
 - Godot 4.7.2 Standard와 Git LFS가 필요합니다. 이미 설치돼 있으면 그대로 씁니다.
 - `git lfs install`을 한 번 실행하고 저장소를 복제합니다.
-- 저장소 안에서 `git config core.hooksPath .githooks`를 한 번 실행합니다. 커밋 제목 형식 검사와 Git LFS hook이 함께 켜집니다.
+- 저장소 안에서 `git config core.hooksPath .githooks`를 한 번 실행합니다. 커밋 제목 검사·push 대상 브랜치 이름 검사·Git LFS hook이 함께 켜집니다.
 - `project.godot`을 Godot에서 엽니다.
 - F6으로 현재 장면을, F5로 메인 장면을 실행합니다.
 
