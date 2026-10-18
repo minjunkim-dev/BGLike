@@ -11,6 +11,7 @@ python3 scripts/check_github_settings.py
 ```
 
 GET으로 ID·자료형·체크/App·main blob을 확인한다. exit 0은 일치, 1은 drift, 2는 미확인이다. 누락 기준선은 중단한다. PR과 main을 구분한다. 회귀 검사는 repository-check에 있다.
+PR의 unittest는 codeql.yml blob과 `codeql_main_source.sha`를 비교한다. Dependabot이 codeql.yml만 바꾸면 이 검사가 실패한다. 기준선 SHA를 `git hash-object .github/workflows/codeql.yml` 값으로 갱신한다.
 
 ## 공통 정책
 
