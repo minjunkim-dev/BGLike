@@ -1,4 +1,4 @@
-"""Validate PR branch names or the destination refs received by a pre-push hook."""
+"""Validate BGLike PR branches and pre-push destination refs with one policy."""
 import re
 import sys
 

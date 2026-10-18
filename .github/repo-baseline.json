@@ -1,13 +1,5 @@
 {
   "files": {
-    "scripts/check_branch_name.py": {
-      "source": "scripts/check_branch_name.py",
-      "sha256": "b757eabb6d1a7b3c6f138e18b4b2611dfcb98531ae96542301d839dcfa1ae83f"
-    },
-    "scripts/test_branch_name.py": {
-      "source": "scripts/test_branch_name.py",
-      "sha256": "6b3ef76f548ba87d777ad12007594e0cf147dc1845413d805f0128775da45643"
-    },
     "scripts/check_repo_baseline.py": {
       "source": "scripts/check_repo_baseline.py",
       "sha256": "640c1a1c3f0f51184be6b6f415b5f34f8684533ac4289febf054b75d9d9e9f97"
@@ -47,5 +39,5 @@
     "tests/.cursor/BUGBOT.md"
   ],
   "source": "minjunkim-dev/repo-baseline",
-  "source_commit": "6e88d36c79bd7fa68d08bdadcf05875bbdd177d9"
+  "source_commit": "9e695b8f5b3cc94588b6174da37a66dab8bdc9bc"
 }
