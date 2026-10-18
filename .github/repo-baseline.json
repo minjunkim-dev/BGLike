@@ -23,6 +23,11 @@
     "scripts/test_bugbot_rules.py": {
       "source": "scripts/test_bugbot_rules.py",
       "sha256": "8716cbbd3de9e8762716930e6302aa647d2e15dd2f1cacae84b6fa32e6df7003"
+    },
+    ".github/dependabot.yml": {
+      "source": "templates/dependabot.yml",
+      "ecosystems": [],
+      "sha256": "e1b6c7b540b054d03ccb37472c7d0799c54fae3b6b4276b4a371b002e393b7e7"
     }
   },
   "bugbot_rules": [
@@ -34,5 +39,5 @@
     "tests/.cursor/BUGBOT.md"
   ],
   "source": "minjunkim-dev/repo-baseline",
-  "source_commit": "9c3934bf4c5e51791f1f5c70cd2b1f7e267c8f38"
+  "source_commit": "9e695b8f5b3cc94588b6174da37a66dab8bdc9bc"
 }
