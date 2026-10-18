@@ -98,16 +98,4 @@ jobs:
           case "$TITLE" in *.) echo "::error::PR 제목 끝에 마침표를 찍지 않습니다."; exit 1;; esac
       - name: Branch name
         if: github.event_name == 'pull_request'
-        run: |
-          types='feat|fix|refactor|perf|test|docs|build|ci|chore|revert'
-          if printf '%s' "$BRANCH" | grep -Eq '^(claude|codex|dependabot)/'; then
-            echo "에이전트 브랜치는 이름을 검사하지 않습니다: $BRANCH"
-            exit 0
-          fi
-          # 코드 브랜치(feat, fix, ...)는 <issue번호>-<설명> 필수. 문서·설정 브랜치(docs, build, ci, chore)는 Issue 없이 <설명>만 허용.
-          desc='[a-z0-9]+(-[a-z0-9]+)*'
-          if ! printf '%s' "$BRANCH" | grep -Eq "^(($types)/[0-9]+-$desc|(docs|build|ci|chore)/[a-z]$desc)$"; then
-            echo "::error::브랜치 이름이 '<type>/<issue번호>-<짧은-설명>' 형식이 아닙니다: '$BRANCH'"
-            echo "소문자, 숫자, '-'만 씁니다. feat, fix 등 코드 브랜치는 Issue 번호가 필요하고, docs, build, ci, chore는 Issue 없이 설명만 써도 됩니다. 예: feat/12-combat-base, docs/issue-flow. 규칙: docs/GIT_CONVENTIONS.md"
-            exit 1
-          fi
+        run: python3 scripts/check_branch_name.py "$BRANCH"
