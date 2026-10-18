@@ -47,7 +47,7 @@ PR의 실행 검증은 GitHub Actions가 수행합니다. [Godot 캐시 설명](
 
 Issue #12의 M1 전투 프로토타입을 기반으로 Issue #53의 헥사 격자, Issue #54의 3막 진행과 Issue #55의 드랍·장착을 구현합니다. 640×360 기준 화면, 정수 배율과 픽셀 필터를 유지합니다. 맵은 뾰족한 위(pointy-top) 헥사 100칸의 직사각형 배치이며 타일은 20×20px입니다. 2026-10-08 기획자가 이 시안을 승인했습니다([Issue #53 기록](https://github.com/minjunkim-dev/BGLike/issues/53#issuecomment-6052407365)). 규칙은 [게임 구조 기획서](docs/GAME_STRUCTURE.md)를 따릅니다.
 
-[헥사 격자 시안](docs/HEX_GRID_PREVIEW.md)에서 기본 배치·이동 미리보기 스크린샷과 기획 확인 항목을 확인합니다.
+[헥사 격자 시안](docs/HEX_GRID_PREVIEW.md)은 사각 높이 격자로 대체된 기록입니다([Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136)). 현재 게임은 아직 헥사 격자로 동작하며, 새 기준은 [게임 구조 기획서 6장](docs/GAME_STRUCTURE.md#6-사각-높이-격자)입니다.
 
 1-1부터 3-3까지 9번의 전투를 순서대로 진행합니다. 화면 위에 현재 막과 스테이지를 표시합니다. 승리 창에서 보상을 확인하고 정비한 뒤 다음 전투에 진입합니다. 3-3도 보상·정비를 마친 뒤 3막 졸업을 표시합니다. 전멸하면 현재 막의 첫 전투부터 다시 시작합니다.
 
