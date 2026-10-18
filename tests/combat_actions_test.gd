@@ -75,6 +75,7 @@ func _run() -> void:
 	await _test_scrap_robot_stun_immunity()
 	await _test_scrap_robot_opportunity()
 	await _test_movement()
+	_test_grid_queries()
 	await _test_hex_rules()
 	await _test_attacks()
 	await _test_archer_balance()
@@ -344,7 +345,7 @@ func _test_pull_destinations() -> void:
 	boss.begin_stage(false)
 	f.units[1].cell = Vector2i(7, 4)
 	for cell: Vector2i in CombatHexGrid.neighbors(boss.cell):
-		if f.actions.unit_at(cell) != null:
+		if f.actions.grid.unit_at(cell) != null:
 			continue
 		var blocker: CombatUnit = CombatUnit.new()
 		blocker.is_ally = false
@@ -577,7 +578,7 @@ func _test_spawn_spiderling() -> void:
 		_check(mother.action_left == 0 and mother.bonus_action_left == 1
 			and mother.movement_left == 4 and f.turns.current_unit == mother
 			and f.turns.is_turn_finished(child), "새끼 낳기는 행동만 쓰고 새끼는 생성 라운드 대기")
-		_check(f.actions.unit_at(child.cell) == child and not f.actions.can_move(mother, child.cell)
+		_check(f.actions.grid.unit_at(child.cell) == child and not f.actions.can_move(mother, child.cell)
 			and f.actions.can_target(f.units[1], child, "attack"),
 			"생성한 새끼를 기존 점유 칸·공격 대상 검사에 반영")
 		_check(not f.actions.spawn_spiderling(mother) and f.units.size() == 5,
@@ -586,7 +587,7 @@ func _test_spawn_spiderling() -> void:
 	var mother: CombatUnit = edge.units[2]
 	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
 	mother.cell = Vector2i.ZERO
-	edge.actions.map_size = Vector2i(2, 2)
+	edge.actions.grid.map_size = Vector2i(2, 2)
 	edge.units[0].cell = Vector2i(1, 0)
 	edge.units[1].cell = Vector2i(0, 1)
 	edge.units[3].cell = Vector2i(9, 9)
@@ -645,14 +646,14 @@ func _test_movement() -> void:
 	var reachable: Dictionary[Vector2i, int] = f.actions.reachable_cells(actor)
 	var costs_match: bool = not reachable.is_empty()
 	for cell: Vector2i in reachable:
-		costs_match = costs_match and reachable[cell] == f.actions.path_to(actor, cell).size() \
+		costs_match = costs_match and reachable[cell] == f.actions.grid.path_to(actor, cell).size() \
 			and reachable[cell] <= actor.movement_left
 	_check(costs_match and not reachable.has(actor.cell) and not reachable.has(f.units[2].cell),
 		"도달 칸 비용은 최단 경로 길이이고 남은 이동 안")
 	var all_listed: bool = true
-	for x: int in range(f.actions.map_size.x):
-		for y: int in range(f.actions.map_size.y):
-			var path: Array[Vector2i] = f.actions.path_to(actor, Vector2i(x, y))
+	for x: int in range(f.actions.grid.map_size.x):
+		for y: int in range(f.actions.grid.map_size.y):
+			var path: Array[Vector2i] = f.actions.grid.path_to(actor, Vector2i(x, y))
 			if not path.is_empty() and path.size() <= actor.movement_left:
 				all_listed = all_listed and reachable.has(Vector2i(x, y))
 	_check(all_listed, "남은 이동 안의 경로가 있는 칸은 모두 도달 칸")
@@ -660,9 +661,9 @@ func _test_movement() -> void:
 		"짝수 행 오른쪽 아래 대각선은 헥사 거리2")
 	_check(CombatHexGrid.distance(Vector2i(4, 5), Vector2i(5, 6)) == 1,
 		"홀수 행 오른쪽 아래 대각선은 헥사 인접")
-	_check(f.actions.path_to(actor, Vector2i(5, 5)).size() == 2,
+	_check(f.actions.grid.path_to(actor, Vector2i(5, 5)).size() == 2,
 		"사각 격자 대각선으로 헥사 경로를 단축하지 않음")
-	_check(f.actions.path_to(actor, Vector2i(4, 6)).size() == 2, "6방향 이동 경로와 비용")
+	_check(f.actions.grid.path_to(actor, Vector2i(4, 6)).size() == 2, "6방향 이동 경로와 비용")
 	_check(await f.actions.move_to(actor, Vector2i(4, 6)), "첫 이동 실행")
 	_check(actor.cell == Vector2i(4, 6) and actor.movement_left == 4, "이동2 소비와 위치 갱신")
 	_check(await f.actions.move_to(actor, Vector2i(4, 7)), "이동을 나눠서 실행")
@@ -670,12 +671,46 @@ func _test_movement() -> void:
 		"나눈 이동은 누적 비용만 쓰며 행동 자원은 유지")
 	_check(not f.actions.can_move(actor, Vector2i(0, 0)), "남은 이동을 넘는 경로 거부")
 	f.units[1].cell = Vector2i(2, 2)
-	_check(f.actions.path_to(actor, Vector2i(2, 2)).is_empty(), "아군 점유 칸도 거부")
+	_check(f.actions.grid.path_to(actor, Vector2i(2, 2)).is_empty(), "아군 점유 칸도 거부")
 	actor.is_stunned = true
 	_check(not f.actions.can_move(actor, Vector2i(4, 8)), "기절한 유닛 이동 거부")
 	actor.is_stunned = false
 	f.turns.select_unit(f.units[1])
 	_check(not f.actions.can_move(actor, Vector2i(4, 8)), "현재 유닛이 아닌 이동 거부")
+
+
+func _test_grid_queries() -> void:
+	var f: Fixture = _fixture()
+	var grid: CombatHexGrid = f.actions.grid
+	grid.map_size = Vector2i(3, 3)
+	var actor: CombatUnit = f.units[0]
+	actor.cell = Vector2i.ZERO
+	f.units[1].cell = Vector2i(2, 2)
+	f.units[2].cell = Vector2i(2, 1)
+	f.units[3].cell = Vector2i(2, 0)
+	var destination: Vector2i = Vector2i(1, 1)
+	var first_path: Array[Vector2i] = [Vector2i(1, 0), destination]
+	_check(grid.path_to(actor, destination) == first_path, "동률 경로는 기존 이웃 탐색 순서를 유지")
+	var blocker: CombatUnit = CombatUnit.new()
+	blocker.cell = Vector2i(1, 0)
+	_created.append(blocker)
+	f.units.append(blocker)
+	_check(grid.unit_at(blocker.cell) == blocker, "초기화 뒤 추가한 유닛도 같은 전투판에서 조회")
+	var detour: Array[Vector2i] = [Vector2i(0, 1), destination]
+	_check(grid.path_to(actor, destination) == detour
+		and grid.reachable_cells(actor)[destination] == 2, "실시간 점유 변경을 경로·도달 비용에 함께 반영")
+	blocker.hit_points = 0
+	_check(grid.path_to(actor, destination) == first_path, "전투 불능은 점유 캐시 갱신 없이 경로에 반영")
+	f.units.erase(blocker)
+	var replacement: Array[CombatUnit] = [actor]
+	f.actions.initialize(replacement, f.turns)
+	_check(grid.unit_at(f.units[2].cell) == null and is_same(f.actions.units, replacement),
+		"스테이지 교체는 새 유닛 배열 하나를 실행·전투판이 공유")
+	actor.movement_left = 0
+	_check(grid.reachable_cells(actor).is_empty() and not f.actions.can_move(actor, destination),
+		"이동력이 없으면 도달 칸과 실행 모두 거부")
+	_check(grid.path_to(null, destination).is_empty() and grid.reachable_cells(null).is_empty(),
+		"유닛 없는 공간 질의는 빈 결과")
 
 
 func _test_hex_rules() -> void:
@@ -699,15 +734,15 @@ func _test_hex_rules() -> void:
 			var neighbor: Vector2i = adjacent_rows[row][index]
 			var pushed: Vector2i = pushed_rows[row][index]
 			target.cell = Vector2i(9, 0)
-			_check(f.actions.path_to(actor, neighbor).size() == 1,
+			_check(f.actions.grid.path_to(actor, neighbor).size() == 1,
 				"두 행의6방향 이웃은 이동 비용1")
 			target.cell = neighbor
 			_check(f.actions.can_target(actor, target, "attack"), "6방향 근접 공격 가능")
 			actor.kind = CombatUnit.Kind.ARCHER
-			_check(CombatChecks.attack_preview(actor, target, f.units).mode == CombatChecks.RollMode.DISADVANTAGE,
+			_check(f.actions.grid.attack_preview(actor, target).mode == CombatChecks.RollMode.DISADVANTAGE,
 				"6방향 적은 원거리 불리")
 			actor.kind = CombatUnit.Kind.WARRIOR
-			_check(f.actions.shove_destination(actor, target) == pushed, "행이 바뀌어도 같은 헥사 방향으로 밀치기")
+			_check(f.actions.grid.push_destination(actor.cell, target.cell) == pushed, "행이 바뀌어도 같은 헥사 방향으로 밀치기")
 			f.units[3].cell = pushed
 			_check(not f.actions.can_target(actor, target, "shove"), "밀려날 칸 점유 시 선택 불가")
 			f.units[3].cell = Vector2i(9, 9)
@@ -741,7 +776,7 @@ func _test_hex_rules() -> void:
 	_check(ranged.actions.can_target(ranged.units[0], ranged.units[2], "attack"), "헥사 거리6 공격 가능")
 	ranged.units[2].cell = Vector2i(5, 4)
 	_check(not ranged.actions.can_target(ranged.units[0], ranged.units[2], "attack"), "헥사 거리7 공격 불가")
-	_check(ranged.actions.path_to(ranged.units[0], Vector2i(4, 4)).size() == 6
+	_check(ranged.actions.grid.path_to(ranged.units[0], Vector2i(4, 4)).size() == 6
 		and ranged.actions.can_move(ranged.units[0], Vector2i(4, 4))
 		and not ranged.actions.can_move(ranged.units[0], Vector2i(5, 4)), "이동력6 경계도 헥사 최단 경로 기준")
 
@@ -1137,7 +1172,7 @@ func _test_scene_input() -> void:
 	var destination: Vector2i = Vector2i(1, 6)
 	var screen: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(destination)
 	await _click(screen, MOUSE_BUTTON_RIGHT)
-	_check(units[0].cell == Vector2i(1, 4) and not (battle.get("preview_path") as Array).is_empty(), "이동 첫 클릭은 미리보기")
+	_check(units[0].cell == Vector2i(1, 4) and not ((battle.get("selection") as CombatSelection).preview_path as Array).is_empty(), "이동 첫 클릭은 미리보기")
 	await _click(screen, MOUSE_BUTTON_RIGHT)
 	_check(units[0].cell == destination and units[0].movement_left == 4, "이동 두 번째 클릭 실행")
 	units[2].cell = Vector2i(2, 6)
@@ -1146,7 +1181,7 @@ func _test_scene_input() -> void:
 	actions.dice = _dice_for([1], [20])
 	var point: Vector2 = units[2].get_global_transform_with_canvas() * Vector2(0, -10)
 	await _click(point)
-	_check(units[0].action_left == 1 and battle.get("preview_target") == units[2], "공격 첫 클릭은 피해·자원 소비 없음")
+	_check(units[0].action_left == 1 and (battle.get("selection") as CombatSelection).preview_target == units[2], "공격 첫 클릭은 피해·자원 소비 없음")
 	await _click(point)
 	_check(units[0].action_left == 0 and units[2].hit_points == 12, "공격 두 번째 클릭과 빗나감 처리")
 	hud.action_selected.emit("surge")
@@ -1157,7 +1192,7 @@ func _test_scene_input() -> void:
 	actions.dice = _dice_for([11], [20]).then_seeded()
 	await _click(point)
 	_check(units[0].action_left == 1 and units[2].hit_points == 12
-		and battle.get("preview_target") == units[2], "몰아치기 뒤 추가 공격 첫 클릭은 미리보기")
+		and (battle.get("selection") as CombatSelection).preview_target == units[2], "몰아치기 뒤 추가 공격 첫 클릭은 미리보기")
 	await _click(point)
 	_check(turns.current_unit == units[0] and units[0].action_left == 0
 		and units[0].bonus_action_left == 0 and units[2].hit_points < 12,
@@ -1194,7 +1229,7 @@ func _test_scene_input() -> void:
 	var hidden_screen: Vector2 = overlap_map.get_global_transform_with_canvas() * (
 		overlap_map.map_to_local(hidden_cell) + Vector2(5, 0))
 	await _click(hidden_screen, MOUSE_BUTTON_RIGHT)
-	_check(overlap.get("preview_cell") == hidden_cell, "이동 모드에서 몸통 뒤 빈 헥사 칸 선택")
+	_check((overlap.get("selection") as CombatSelection).preview_cell == hidden_cell, "이동 모드에서 몸통 뒤 빈 헥사 칸 선택")
 	await _click(hidden_screen, MOUSE_BUTTON_RIGHT)
 	_check(overlap_units[0].cell == hidden_cell, "몸통에 가린 빈 칸 이동 실행")
 	overlap_hud.action_selected.emit("attack")
@@ -1203,7 +1238,7 @@ func _test_scene_input() -> void:
 	overlap.call("_update_turn_ui")
 	var overlap_point: Vector2 = overlap_units[2].get_global_transform_with_canvas() * Vector2(-5, -1)
 	await _click(overlap_point)
-	_check(overlap.get("preview_target") == overlap_units[3], "겹친 몸통은 y-sort 앞쪽 유닛 선택")
+	_check((overlap.get("selection") as CombatSelection).preview_target == overlap_units[3], "겹친 몸통은 y-sort 앞쪽 유닛 선택")
 	overlap.queue_free()
 	await process_frame
 

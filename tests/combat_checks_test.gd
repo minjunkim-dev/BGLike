@@ -147,56 +147,58 @@ func _test_preview_conditions() -> void:
 	var target: CombatUnit = _unit(CombatUnit.Kind.ARCHER, false, Vector2i(7, 4))
 	var nearby: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(4, 5))
 	var units: Array[CombatUnit] = [archer, target, nearby]
-	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(archer, target, units)
+	var grid: CombatHexGrid = CombatHexGrid.new()
+	grid.units = units
+	var preview: CombatChecks.AttackPreview = grid.attack_preview(archer, target)
 	_check(preview.in_range and preview.mode == CombatChecks.RollMode.DISADVANTAGE
 		and is_equal_approx(preview.chance, 0.5625) and "옆에 적" in preview.reasons, "헥사 인접 적도 원거리 불리")
 	nearby.cell = Vector2i(5, 5)
-	preview = CombatChecks.attack_preview(archer, target, units)
+	preview = grid.attack_preview(archer, target)
 	_check(preview.mode == CombatChecks.RollMode.NORMAL, "사각 대각선의 헥사 거리2는 불리를 주지 않음")
 	nearby.cell = Vector2i(4, 5)
 	nearby.is_stunned = true
-	preview = CombatChecks.attack_preview(archer, target, units)
+	preview = grid.attack_preview(archer, target)
 	_check(preview.mode == CombatChecks.RollMode.NORMAL, "기절한 인접 적은 불리를 주지 않음")
 	nearby.is_stunned = false
 	nearby.hit_points = 0
-	preview = CombatChecks.attack_preview(archer, target, units)
+	preview = grid.attack_preview(archer, target)
 	_check(preview.mode == CombatChecks.RollMode.NORMAL, "전투 불능인 인접 적도 제외")
 	nearby.hit_points = 12
 	nearby.is_ally = true
-	preview = CombatChecks.attack_preview(archer, target, units)
+	preview = grid.attack_preview(archer, target)
 	_check(preview.mode == CombatChecks.RollMode.NORMAL, "인접한 아군은 불리 아님")
 	target.is_stunned = true
-	preview = CombatChecks.attack_preview(archer, target, units)
+	preview = grid.attack_preview(archer, target)
 	_check(preview.mode == CombatChecks.RollMode.ADVANTAGE and is_equal_approx(preview.chance, 0.9375), "기절 대상은 유리")
 	nearby.is_ally = false
-	preview = CombatChecks.attack_preview(archer, target, units)
+	preview = grid.attack_preview(archer, target)
 	_check(preview.mode == CombatChecks.RollMode.NORMAL and is_equal_approx(preview.chance, 0.75)
 		and preview.reasons.size() == 2, "기절 대상과 인접 적이 함께 있으면 상쇄")
 	archer.is_stunned = true
-	preview = CombatChecks.attack_preview(archer, target, units)
+	preview = grid.attack_preview(archer, target)
 	_check(preview.chance == 0.0 and not preview.blocked_reason.is_empty(), "기절한 공격자는 공격 불가")
 	archer.is_stunned = false
 	target.is_stunned = false
 	nearby.cell = Vector2i(0, 0)
 	target.cell = Vector2i(4, 10)
-	preview = CombatChecks.attack_preview(archer, target, units)
+	preview = grid.attack_preview(archer, target)
 	_check(preview.in_range, "궁수 사거리6 경계 포함")
 	target.cell = Vector2i(4, 11)
-	preview = CombatChecks.attack_preview(archer, target, units)
+	preview = grid.attack_preview(archer, target)
 	_check(not preview.in_range and preview.chance == 0.0, "궁수 사거리7 밖이면0%")
 	archer.kind = CombatUnit.Kind.WARRIOR
 	target.cell = Vector2i(4, 5)
-	preview = CombatChecks.attack_preview(archer, target, units)
+	preview = grid.attack_preview(archer, target)
 	_check(preview.in_range and preview.mode == CombatChecks.RollMode.NORMAL, "근접은 헥사 인접1 가능, 옆 적 때문에 불리 없음")
 	target.cell = Vector2i(5, 5)
-	_check(not CombatChecks.attack_preview(archer, target, units).in_range, "근접은 헥사 거리2 공격 불가")
+	_check(not grid.attack_preview(archer, target).in_range, "근접은 헥사 거리2 공격 불가")
 	target.cell = archer.cell
-	_check(not CombatChecks.attack_preview(archer, target, units).in_range, "같은 칸은 공격 사거리가 아님")
+	_check(not grid.attack_preview(archer, target).in_range, "같은 칸은 공격 사거리가 아님")
 	target.is_ally = true
-	_check(not CombatChecks.attack_preview(archer, target, units).valid_target, "아군 공격 대상 거부")
+	_check(not grid.attack_preview(archer, target).valid_target, "아군 공격 대상 거부")
 	target.is_ally = false
 	target.hit_points = 0
-	_check(not CombatChecks.attack_preview(archer, target, units).valid_target, "전투 불능 대상 거부")
+	_check(not grid.attack_preview(archer, target).valid_target, "전투 불능 대상 거부")
 	_check(archer.get_attribute(CombatUnit.Attribute.MENTAL) == -1, "전사 정신 -1")
 	_check(target.get_attribute(CombatUnit.Attribute.MENTAL) == 0, "풋내기 궁수 정신0")
 
@@ -221,7 +223,7 @@ func _test_scene_input() -> void:
 	var movement_before: int = units[0].movement_left
 	var action_before: int = units[0].action_left
 	await _click_unit(units[2])
-	_check(battle.get("preview_target") == units[2], "실제 입력 경로로 적 도형 선택")
+	_check((battle.get("selection") as CombatSelection).preview_target == units[2], "실제 입력 경로로 적 도형 선택")
 	_check(hud.unit_label.text == "풋내기 야만인" and "AC 12" in hud.resource_label.text, "클릭하면 적 HP/AC/상태 표시")
 	_check("사거리 밖" in hud.preview_label.text and "0.0%" in hud.preview_label.text, "기본 배치의 사거리 밖 안내")
 	await _click_unit(units[2])
@@ -230,40 +232,40 @@ func _test_scene_input() -> void:
 	_check(units[0].is_selected and units[2].is_previewed, "조작 유닛과 미리보기 대상 표시 구분")
 	# 왼쪽 설명 패널 밖의 실제 빈 영역을 누른다.
 	await _click_point(Vector2(4, 120))
-	_check(battle.get("preview_target") == null and hud.unit_label.text == "아군 전사",
+	_check((battle.get("selection") as CombatSelection).preview_target == null and hud.unit_label.text == "아군 전사",
 		"빈 곳 클릭은 미리보기를 해제하고 현재 유닛을 표시")
 	await _click_unit(units[2])
 	turns.select_unit(units[1])
-	_check(battle.get("preview_target") == null and hud.preview_label.text.is_empty()
+	_check((battle.get("selection") as CombatSelection).preview_target == null and hud.preview_label.text.is_empty()
 		and hud.unit_label.text == "아군 궁수", "초상 전환 후 미리보기 해제")
 	_check(battle.call("preview_enemy", units[3]), "새 조작 유닛으로 미리보기")
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	units[3].cell = Vector2i(5, 5)
 	units[3].position = map.map_to_local(units[3].cell)
-	battle.call("_clear_preview")
+	(battle.get("selection") as CombatSelection).clear_preview()
 	await _click_unit(units[3])
 	_check("75.0%" in hud.preview_label.text and "AC 11" in hud.resource_label.text
 		and "HP 14 / 14" in hud.resource_label.text, "사거리 안 대상의 명중률과 능력치 표시")
 	units[3].is_stunned = true
-	battle.call("_clear_preview")
+	(battle.get("selection") as CombatSelection).clear_preview()
 	await _click_unit(units[3])
 	_check("93.8% · 유리" in hud.preview_label.text and "기절한 대상" in hud.preview_label.text,
 		"기절 대상의 유리 확률과 이유 표시")
 	units[2].cell = Vector2i(6, 9)
 	units[2].position = map.map_to_local(units[2].cell)
-	battle.call("_clear_preview")
+	(battle.get("selection") as CombatSelection).clear_preview()
 	await _click_unit(units[3])
 	_check("75.0% · 유리/불리 상쇄" in hud.preview_label.text
 		and "기절한 대상, 옆에 적" in hud.preview_label.text, "상쇄 확률과 양쪽 이유 표시")
 	units[3].is_stunned = false
-	battle.call("_clear_preview")
+	(battle.get("selection") as CombatSelection).clear_preview()
 	await _click_unit(units[3])
 	_check("56.2% · 불리" in hud.preview_label.text and "옆에 적" in hud.preview_label.text,
 		"인접 적에 따른 불리 확률과 이유 표시")
 	hud.end_button.pressed.emit()
-	_check(battle.get("preview_target") == null and hud.unit_label.text == "아군 전사", "턴 종료 후 미리보기 해제")
+	_check((battle.get("selection") as CombatSelection).preview_target == null and hud.unit_label.text == "아군 전사", "턴 종료 후 미리보기 해제")
 	await _click_unit(units[0])
-	_check(battle.get("preview_target") == null, "아군 도형 클릭은 공격 미리보기 대상 아님")
+	_check((battle.get("selection") as CombatSelection).preview_target == null, "아군 도형 클릭은 공격 미리보기 대상 아님")
 	turns.end_turn()
 	_check(not battle.call("preview_enemy", units[0]), "적 턴에는 아군 조작 미리보기 불가")
 	battle.queue_free()

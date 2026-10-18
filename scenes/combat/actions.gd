@@ -9,10 +9,12 @@ signal hit_landed
 signal reaction_requested(kind: String, prompt: String)
 signal reaction_decided(use_reaction: bool)
 
-var units: Array[CombatUnit] = []
+var grid: CombatHexGrid = CombatHexGrid.new()
+var units: Array[CombatUnit]:
+	get:
+		return grid.units
 var turns: CombatTurns
 var dice: CombatDice = CombatDice.new()
-var map_size: Vector2i = Vector2i(10, 10)
 var busy: bool = false
 var pending_reactor: CombatUnit
 var pending_kind: String = ""
@@ -26,7 +28,8 @@ var attack_animation: Callable
 func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> void:
 	if turns != null and turns.turn_started.is_connected(_on_turn_started):
 		turns.turn_started.disconnect(_on_turn_started)
-	units = combat_units
+	# 소환과 전투 불능 이후에도 현재 유닛 배열을 그대로 조회한다.
+	grid.units = combat_units
 	turns = combat_turns
 	turns.turn_started.connect(_on_turn_started)
 	dice.randomize()
@@ -39,17 +42,6 @@ func _on_turn_started(unit: CombatUnit) -> void:
 	logged.emit("%s 과부하: 자기 피해 2 · HP %d" % [unit.get_display_name(), unit.hit_points])
 	feedback.emit(unit, "과부하 -2")
 	changed.emit()
-
-
-func unit_at(cell: Vector2i) -> CombatUnit:
-	for unit: CombatUnit in units:
-		if unit.hit_points > 0 and unit.cell == cell:
-			return unit
-	return null
-
-
-func is_inside(cell: Vector2i) -> bool:
-	return cell.x >= 0 and cell.y >= 0 and cell.x < map_size.x and cell.y < map_size.y
 
 
 ## 살아 있는 유닛이 이 대상을 표식으로 지정했는지.
@@ -88,47 +80,11 @@ func is_over() -> bool:
 	return not ally or not enemy
 
 
-func path_to(actor: CombatUnit, destination: Vector2i) -> Array[Vector2i]:
-	var path: Array[Vector2i] = []
-	if actor == null or not is_inside(destination) or unit_at(destination) != null:
-		return path
-	var parents: Dictionary[Vector2i, Vector2i] = {actor.cell: actor.cell}
-	var frontier: Array[Vector2i] = [actor.cell]
-	var index: int = 0
-	while index < frontier.size() and not parents.has(destination):
-		var here: Vector2i = frontier[index]
-		index += 1
-		for next: Vector2i in CombatHexGrid.neighbors(here):
-			if is_inside(next) and not parents.has(next) and unit_at(next) == null:
-				parents[next] = here
-				frontier.append(next)
-	if not parents.has(destination):
-		return path
-	var cursor: Vector2i = destination
-	while cursor != actor.cell:
-		path.push_front(cursor)
-		cursor = parents[cursor]
-	return path
-
-
 ## 이번 턴에 도착할 수 있는 칸과 이동 비용. 현재 칸과 점유 칸은 빠진다.
 func reachable_cells(actor: CombatUnit) -> Dictionary[Vector2i, int]:
-	var costs: Dictionary[Vector2i, int] = {}
 	if not _can_act(actor):
-		return costs
-	var frontier: Array[Vector2i] = [actor.cell]
-	var index: int = 0
-	while index < frontier.size():
-		var here: Vector2i = frontier[index]
-		index += 1
-		var cost: int = costs.get(here, 0) + 1
-		if cost > actor.movement_left:
-			continue
-		for next: Vector2i in CombatHexGrid.neighbors(here):
-			if next != actor.cell and not costs.has(next) and is_inside(next) and unit_at(next) == null:
-				costs[next] = cost
-				frontier.append(next)
-	return costs
+		return {}
+	return grid.reachable_cells(actor)
 
 
 func can_move(actor: CombatUnit, destination: Vector2i) -> bool:
@@ -138,24 +94,20 @@ func can_move(actor: CombatUnit, destination: Vector2i) -> bool:
 func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	from_cell: Vector2i = Vector2i(-1, -1)) -> bool:
 	if (actor == null or target == null or target.hit_points <= 0 or actor.is_ally == target.is_ally
-		or not CombatActionRules.belongs_to(actor, action)):
+		or not CombatActionRules.belongs_to(actor, action) or not grid.can_target(actor, target, action, from_cell)):
 		return false
-	var origin: Vector2i = actor.cell if from_cell == Vector2i(-1, -1) else from_cell
-	var separation: int = CombatHexGrid.distance(origin, target.cell)
 	match action:
 		"attack":
-			return actor.action_left > 0 and separation >= 1 and separation <= actor.get_attack_range()
+			return actor.action_left > 0
 		"shock":
 			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
-				and actor.get_save_dc() > 0 and separation >= 1 and separation <= CombatActionRules.SKILL_RANGE)
+				and actor.get_save_dc() > 0)
 		"mark":
-			return (CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
-				and separation >= 1 and separation <= CombatActionRules.SKILL_RANGE)
+			return CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
 		"shove":
-			return actor.bonus_action_left > 0 and separation == 1 and can_shove(actor, target)
+			return actor.bonus_action_left > 0
 		"pull":
-			return (actor.action_left > 0 and actor.pull_cooldown == 0 and separation >= 2 and separation <= 3
-				and not pull_cells(actor, target, origin).is_empty())
+			return actor.action_left > 0 and actor.pull_cooldown == 0
 	return false
 
 
@@ -165,14 +117,12 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 	match action:
 		"spin":
 			return (CombatActionRules.belongs_to(actor, action) and actor.action_left > 0
-				and not spin_targets(actor).is_empty())
+				and not grid.opponents_in_range(actor, 1).is_empty())
 		"spawn":
 			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
-				and actor in turns.ordered_units and not _spawn_cells(actor).is_empty())
+				and actor in turns.ordered_units and not grid.empty_neighbors(actor.cell).is_empty())
 		"move":
-			for neighbor: Vector2i in CombatHexGrid.neighbors(actor.cell):
-				if can_move(actor, neighbor):
-					return true
+			return not reachable_cells(actor).is_empty()
 		"attack", "shock", "mark", "shove", "pull":
 			for target: CombatUnit in units:
 				if can_target(actor, target, action):
@@ -192,10 +142,8 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 func has_available_action(actor: CombatUnit) -> bool:
 	if not _can_act(actor):
 		return false
-	if actor.movement_left > 0:
-		for neighbor: Vector2i in CombatHexGrid.neighbors(actor.cell):
-			if can_move(actor, neighbor):
-				return true
+	if actor.movement_left > 0 and not reachable_cells(actor).is_empty():
+		return true
 	for group: Array in CombatActionRules.GROUPS.slice(0, 2):
 		for action: String in group:
 			if can_use(actor, action):
@@ -231,7 +179,7 @@ func unavailable_reason(actor: CombatUnit, action: String) -> String:
 func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	if not can_move(actor, destination):
 		return false
-	var path: Array[Vector2i] = path_to(actor, destination)
+	var path: Array[Vector2i] = grid.path_to(actor, destination)
 	busy = true
 	changed.emit()
 	var moved: int = 0
@@ -240,8 +188,8 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 			for reactor: CombatUnit in units:
 				if (reactor.hit_points > 0 and not reactor.is_stunned and reactor.is_ally != actor.is_ally
 					and CombatActionRules.belongs_to(reactor, "opportunity") and reactor.reaction_left > 0
-					and CombatHexGrid.distance(reactor.cell, actor.cell) == 1 and CombatHexGrid.distance(reactor.cell, step) > 1):
-					var chance: float = CombatChecks.attack_preview(reactor, actor, units).chance
+					and grid.leaves_reach(reactor, actor.cell, step)):
+					var chance: float = grid.attack_preview(reactor, actor).chance
 					if await _ask_reaction(reactor, "opportunity", "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)" % [actor.get_display_name(), chance * 100.0]):
 						reactor.spend_resource(CombatUnit.TurnResource.REACTION)
 						if not reactor.is_ally:
@@ -276,19 +224,10 @@ func attack(actor: CombatUnit, target: CombatUnit, shock: bool = false) -> bool:
 	return true
 
 
-func spin_targets(actor: CombatUnit) -> Array[CombatUnit]:
-	var targets: Array[CombatUnit] = []
-	for unit: CombatUnit in units:
-		if (unit.hit_points > 0 and unit.is_ally != actor.is_ally
-			and CombatHexGrid.distance(actor.cell, unit.cell) == 1):
-			targets.append(unit)
-	return targets
-
-
 func spin(actor: CombatUnit) -> bool:
 	if not can_use(actor, "spin"):
 		return false
-	var targets: Array[CombatUnit] = spin_targets(actor)
+	var targets: Array[CombatUnit] = grid.opponents_in_range(actor, 1)
 	busy = true
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	logged.emit("%s 회전회오리: 인접 대상 %d명" % [actor.get_display_name(), targets.size()])
@@ -296,24 +235,16 @@ func spin(actor: CombatUnit) -> bool:
 	for target: CombatUnit in targets:
 		if actor.hit_points <= 0 or actor.is_stunned or actor != turns.current_unit or is_over():
 			break
-		if target.hit_points > 0 and CombatHexGrid.distance(actor.cell, target.cell) == 1:
+		if target.hit_points > 0 and grid.in_range(actor.cell, target.cell, 1):
 			await _perform_attack(actor, target, false)
 	_finish()
 	return true
 
 
-func _spawn_cells(actor: CombatUnit) -> Array[Vector2i]:
-	var cells: Array[Vector2i] = []
-	for cell: Vector2i in CombatHexGrid.neighbors(actor.cell):
-		if is_inside(cell) and unit_at(cell) == null:
-			cells.append(cell)
-	return cells
-
-
 func spawn_spiderling(actor: CombatUnit) -> bool:
 	if not can_use(actor, "spawn"):
 		return false
-	var cells: Array[Vector2i] = _spawn_cells(actor)
+	var cells: Array[Vector2i] = grid.empty_neighbors(actor.cell)
 	var child: CombatUnit = (preload("res://scenes/combat/unit.tscn") as PackedScene).instantiate() as CombatUnit
 	child.kind = CombatUnit.Kind.SPIDERLING
 	child.is_ally = false
@@ -366,24 +297,6 @@ func mark(actor: CombatUnit, target: CombatUnit) -> bool:
 	return true
 
 
-func pull_cells(actor: CombatUnit, target: CombatUnit,
-	from_cell: Vector2i = Vector2i(-1, -1)) -> Array[Vector2i]:
-	var origin: Vector2i = actor.cell if from_cell == Vector2i(-1, -1) else from_cell
-	var cells: Array[Vector2i] = []
-	var nearest: int = map_size.x + map_size.y
-	for cell: Vector2i in CombatHexGrid.neighbors(origin):
-		var occupant: CombatUnit = unit_at(cell)
-		if not is_inside(cell) or (occupant != null and occupant != actor):
-			continue
-		var separation: int = CombatHexGrid.distance(cell, target.cell)
-		if separation < nearest:
-			nearest = separation
-			cells.clear()
-		if separation == nearest:
-			cells.append(cell)
-	return cells
-
-
 func pull(actor: CombatUnit, target: CombatUnit) -> bool:
 	if not _can_act(actor) or not can_target(actor, target, "pull"):
 		return false
@@ -393,7 +306,7 @@ func pull(actor: CombatUnit, target: CombatUnit) -> bool:
 		actor.get_attribute(CombatUnit.Attribute.STRENGTH),
 		maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), dice)
 	if result.attacker_wins:
-		var cells: Array[Vector2i] = pull_cells(actor, target)
+		var cells: Array[Vector2i] = grid.pull_cells(actor, target)
 		target.cell = cells[0] if cells.size() == 1 else cells[dice.roll(cells.size()) - 1]
 	logged.emit("%s 만능팔: %d + %d = %d / %d + %d = %d · %s" % [
 		actor.get_display_name(), result.attacker_roll,
@@ -403,17 +316,6 @@ func pull(actor: CombatUnit, target: CombatUnit) -> bool:
 	feedback.emit(target, "끌어옴" if result.attacker_wins else "만능팔 저항")
 	changed.emit()
 	return true
-
-
-func shove_destination(actor: CombatUnit, target: CombatUnit) -> Vector2i:
-	return CombatHexGrid.push_destination(actor.cell, target.cell)
-
-
-func can_shove(actor: CombatUnit, target: CombatUnit) -> bool:
-	if actor == null or target == null or CombatHexGrid.distance(actor.cell, target.cell) != 1:
-		return false
-	var destination: Vector2i = shove_destination(actor, target)
-	return is_inside(destination) and unit_at(destination) == null
 
 
 func shove(actor: CombatUnit, target: CombatUnit) -> bool:
@@ -432,7 +334,7 @@ func shove(actor: CombatUnit, target: CombatUnit) -> bool:
 			result.attacker_roll, actor.get_attribute(CombatUnit.Attribute.STRENGTH), result.attacker_total,
 			result.defender_roll, maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), result.defender_total])
 	if won:
-		target.cell = shove_destination(actor, target)
+		target.cell = grid.push_destination(actor.cell, target.cell)
 	logged.emit("밀치기 %s" % ("성공" if won else "실패"))
 	changed.emit()
 	return true
@@ -476,7 +378,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 		await attack_animation.call(actor, target)
 	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
 		return
-	var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(actor, target, units)
+	var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
 	last_attack = CombatChecks.attack(actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
 	last_damage = 0
 	last_damage_rolls.clear()

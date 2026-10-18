@@ -161,7 +161,7 @@ func _test_mother_stages() -> void:
 		var child: CombatUnit = units.back()
 		_check(units.size() == 8 and child.kind == CombatUnit.Kind.SPIDERLING
 			and child.get_parent() == battle.get_node("Units") and child.is_inside_tree()
-			and actions.unit_at(child.cell) == child and turns.is_turn_finished(child),
+			and actions.grid.unit_at(child.cell) == child and turns.is_turn_finished(child),
 			"실제 AI가 만든 새끼를 장면·점유 칸·대기 중 턴에 함께 연결")
 		var portraits: Dictionary = (battle.get_node("UI/TurnHud") as CombatTurnHud).get("_portraits")
 		var tooltip: String = (portraits[child] as Button).tooltip_text
@@ -448,7 +448,7 @@ func _test_stage_transition(battle: Node2D) -> void:
 	await process_frame
 	_check((hud.get_node("Progress") as Label).text == "1막 · 2스테이지", "승리 뒤1-2 진행")
 	_check((battle.get_node("Map") as TileMapLayer).get_used_cells().size() == 72
-		and (battle.get("actions") as CombatActions).map_size == Vector2i(8, 9)
+		and (battle.get("actions") as CombatActions).grid.map_size == Vector2i(8, 9)
 		and warrior.cell == Vector2i(1, 8), "다음 스테이지 맵과 배치 데이터를 실제 전투에 적용")
 	_check(warrior.hit_points == 5 and warrior.second_wind_left == 0
 		and warrior.parry_left == 0 and warrior.surge_left == 0, "같은 막의 HP와 전사 스킬 횟수 유지")
