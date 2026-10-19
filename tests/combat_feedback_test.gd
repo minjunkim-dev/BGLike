@@ -1,6 +1,6 @@
 extends SceneTree
 
-## 과부하 회전 공격의 실제 피드백 팝업을 매 프레임 검사한다.
+## 실제 전투 피드백의 이동 경로와 상태 표시 겹침을 매 프레임 검사한다.
 
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
 const CaptureObserver = preload("res://tests/capture_observer.gd")
@@ -79,7 +79,6 @@ func _run() -> void:
 			and not battle.get("_enemy_turn_running")), 10.0), "실제 적 AI 종료와 아군 차례 복귀")
 	# 마지막 팝업이 사라지는 구간까지 검사한다.
 	await create_timer(1.0).timeout
-	monitoring = false
 	_check(popup_samples > 0, "반복 공격에서 실제 팝업을 관찰함")
 	_check(collisions.is_empty(), "반복 공격 팝업 겹침 없음: %s" % str(collisions))
 	_check(messages.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 2,
@@ -87,6 +86,8 @@ func _run() -> void:
 	_check(units[0].hit_points == 5 and units[1].hit_points == 10 and boss.hit_points == 23,
 		"명중·빗나감·치명타 피해와 과부하 자해 유지")
 	_check(_popups().is_empty(), "마지막 피드백 이후 팝업 제거")
+	await _test_shock_feedback()
+	monitoring = false
 	if observer != null:
 		_check(observer.last_error == OK and observer.frame_count > 0, "Forward+ 원본 프레임 저장")
 		observer.stop()
@@ -101,6 +102,32 @@ func _run() -> void:
 	main.queue_free()
 	await process_frame
 	quit(0 if failures == 0 else 1)
+
+
+func _test_shock_feedback() -> void:
+	for marked: bool in [false, true]:
+		(battle.get("progress") as CombatActProgress).stage_index = 1
+		battle.call("_start_stage", true)
+		var units: Array[CombatUnit] = battle.get("units")
+		var archer: CombatUnit = units[1]
+		var target: CombatUnit = units[2]
+		units[0].cell = Vector2i(0, 9)
+		archer.cell = Vector2i(2, 4)
+		target.cell = Vector2i(5, 4)
+		target.reaction_left = 0
+		turns.start(units, ScriptedDice.new([1, 20, 1]))
+		var actions: CombatActions = battle.get("actions") as CombatActions
+		if marked:
+			_check(actions.mark(archer, target), "충격 화살 전 표식 적용")
+		actions.dice = (ScriptedDice.new([15, 2, 1, 1], [20, 6, 6, 20]) if marked
+			else ScriptedDice.new([15, 2, 1], [20, 6, 20]))
+		battle.call("_update_turn_ui")
+		_check(await actions.attack(archer, target, true), "실제 충격 화살 실행")
+		_check(target.is_stunned and target.has_mark == marked, "기절·표식 상태 유지")
+		_check(target.hit_points == (8 if marked else 9), "충격 화살 피해 유지")
+		await create_timer(1.0).timeout
+		_check(collisions.is_empty(), "충격 화살 팝업·상태 표시 겹침 없음: %s" % str(collisions))
+		_check(_popups().is_empty(), "충격 화살 팝업 제거")
 
 
 func _wait_for(predicate: Callable, seconds: float) -> bool:
@@ -136,6 +163,17 @@ func _monitor() -> void:
 			if not root.get_visible_rect().encloses(rect.grow(2)) and outside not in collisions:
 				collisions.append(outside)
 			var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+			for unit: CombatUnit in battle.get("units"):
+				var status: String = ("기절" if unit.is_stunned else "") + (" ◎" if unit.has_mark else "")
+				if status.is_empty():
+					continue
+				var font: Font = ThemeDB.fallback_font
+				var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+				var status_rect: Rect2 = unit.get_global_transform_with_canvas() * Rect2(
+					Vector2(-width / 2.0, -29 - font.get_ascent(10)), Vector2(width, font.get_height(10)))
+				var status_pair: String = "%s / %s %s" % [popup.text, unit.get_display_name(), status]
+				if rect.grow(2).intersects(status_rect) and status_pair not in collisions:
+					collisions.append(status_pair)
 			for panel: String in ["Round", "Progress", "OrderScroll", "UnitDetails", "Skills", "CombatLog", "EndTurn"]:
 				var control: Control = hud.get_node(panel) as Control
 				var blocked: String = "%s / HUD %s" % [popup.text, panel]
