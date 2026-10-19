@@ -1,0 +1,150 @@
+extends SceneTree
+
+## 과부하 회전 공격의 실제 피드백 팝업을 매 프레임 검사한다.
+
+const ScriptedDice = preload("res://tests/scripted_dice.gd")
+const CaptureObserver = preload("res://tests/capture_observer.gd")
+
+var checks: int = 0
+var failures: int = 0
+var battle: Node2D
+var turns: CombatTurns
+var observer: CaptureObserver
+var collisions: Array[String] = []
+var messages: Array[String] = []
+var monitoring: bool = true
+var popup_samples: int = 0
+var manual: bool = "--manual" in OS.get_cmdline_user_args()
+var finished: bool = false
+
+
+func _initialize() -> void:
+	_run.call_deferred()
+
+
+func _check(condition: bool, message: String) -> void:
+	checks += 1
+	if not condition:
+		failures += 1
+		push_error(message)
+
+
+func _run() -> void:
+	create_timer(180.0 if manual else 20.0).timeout.connect(func() -> void:
+		if not finished:
+			push_error("Combat feedback watchdog expired")
+			quit(1))
+	root.size = Vector2i(640, 360)
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	battle = main.get_node("Battle") as Node2D
+	(battle.get("progress") as CombatActProgress).stage_index = 8
+	battle.call("_start_stage", true)
+	var units: Array[CombatUnit] = battle.get("units")
+	var boss: CombatUnit = units[2]
+	units[0].cell = Vector2i(3, 4)
+	units[1].cell = Vector2i(5, 4)
+	boss.cell = Vector2i(4, 4)
+	boss.hit_points = 25
+	turns = battle.get("turns") as CombatTurns
+	turns.start(units, ScriptedDice.new([20, 20, 1]))
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	# 판정·피해·빗나감이 같은 반복 공격에서 발생하는 통제된 재현이다.
+	actions.dice = ScriptedDice.new([15, 1, 1, 20, 1, 1, 15, 2], [20, 8, 20, 20, 8, 8, 20, 8])
+	for unit: CombatUnit in units:
+		if unit.is_ally:
+			unit.reaction_left = 0
+	actions.logged.connect(func(message: String) -> void: messages.append(message))
+	battle.call("_update_turn_ui")
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--capture-dir="):
+			observer = CaptureObserver.new()
+			battle.add_child(observer)
+			_check(observer.start(battle, argument.trim_prefix("--capture-dir=")) == OK,
+				"독립 캡처 관찰 Node 시작")
+	_monitor()
+	await create_timer(0.2).timeout
+	if manual:
+		print("[FEEDBACK_CHECK] READY: 통제된 반복 공격 재현. 아군 두 명의 턴 종료를 누르세요.")
+		_check(await _wait_for(func() -> bool:
+			return turns.current_unit != null and not turns.current_unit.is_ally, 120.0),
+			"직접 입력으로 적 차례 진입")
+	else:
+		var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+		hud.end_turn_requested.emit()
+		hud.end_turn_requested.emit()
+	_check(await _wait_for(func() -> bool:
+		return (turns.round_number == 2 and turns.current_unit.is_ally
+			and not battle.get("_enemy_turn_running")), 10.0), "실제 적 AI 종료와 아군 차례 복귀")
+	# 마지막 팝업이 사라지는 구간까지 검사한다.
+	await create_timer(1.0).timeout
+	monitoring = false
+	_check(popup_samples > 0, "반복 공격에서 실제 팝업을 관찰함")
+	_check(collisions.is_empty(), "반복 공격 팝업 겹침 없음: %s" % str(collisions))
+	_check(messages.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 2,
+		"과부하 중 회전 공격 두 번 유지")
+	_check(units[0].hit_points == 5 and units[1].hit_points == 10 and boss.hit_points == 23,
+		"명중·빗나감·치명타 피해와 과부하 자해 유지")
+	_check(_popups().is_empty(), "마지막 피드백 이후 팝업 제거")
+	if observer != null:
+		_check(observer.last_error == OK and observer.frame_count > 0, "Forward+ 원본 프레임 저장")
+		observer.stop()
+	var problems: Array[String] = ScriptedDice.finish()
+	_check(problems.is_empty(), "준비한 주사위 모두 소비: %s" % str(problems))
+	finished = true
+	print("Combat feedback: %d checks, %d failures; samples=%d; collisions=%s" % [
+		checks, failures, popup_samples, str(collisions)])
+	if manual and failures == 0:
+		print("[FEEDBACK_CHECK] PASS")
+		return
+	main.queue_free()
+	await process_frame
+	quit(0 if failures == 0 else 1)
+
+
+func _wait_for(predicate: Callable, seconds: float) -> bool:
+	var deadline: int = Time.get_ticks_msec() + int(seconds * 1000.0)
+	while Time.get_ticks_msec() < deadline:
+		if predicate.call():
+			return true
+		await create_timer(0.02).timeout
+	return false
+
+
+func _popups() -> Array[Label]:
+	var result: Array[Label] = []
+	for child: Node in battle.get_node("Units").get_children():
+		if child is Label and child.has_meta("feedback_unit"):
+			result.append(child)
+	return result
+
+
+func _monitor() -> void:
+	while monitoring:
+		await process_frame
+		if not monitoring:
+			return
+		var popups: Array[Label] = _popups()
+		popup_samples += popups.size()
+		for index: int in range(popups.size()):
+			var popup: Label = popups[index]
+			if popup.modulate.a < 0.1:
+				continue
+			var rect: Rect2 = popup.get_global_transform_with_canvas() * Rect2(Vector2.ZERO, popup.size)
+			var outside: String = "화면 밖: %s" % popup.text
+			if not root.get_visible_rect().encloses(rect.grow(2)) and outside not in collisions:
+				collisions.append(outside)
+			var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+			for panel: String in ["Round", "Progress", "OrderScroll", "UnitDetails", "Skills", "CombatLog", "EndTurn"]:
+				var control: Control = hud.get_node(panel) as Control
+				var blocked: String = "%s / HUD %s" % [popup.text, panel]
+				if rect.grow(2).intersects(control.get_global_rect()) and blocked not in collisions:
+					collisions.append(blocked)
+			for other_index: int in range(index):
+				var other: Label = popups[other_index]
+				var other_rect: Rect2 = other.get_global_transform_with_canvas() * Rect2(Vector2.ZERO, other.size)
+				var pair: String = "%s / %s" % [other.text, popup.text]
+				if (other.modulate.a >= 0.1 and rect.grow(2).intersects(other_rect.grow(2))
+					and pair not in collisions):
+					collisions.append(pair)

@@ -44,7 +44,8 @@ func _ready() -> void:
 	hud.restart_requested.connect(_restart)
 	actions.changed.connect(_on_actions_changed)
 	actions.logged.connect(hud.add_log)
-	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void: unit.show_feedback(text))
+	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+		unit.show_feedback(text, hud.feedback_obstacles()))
 	actions.hit_landed.connect($HitSound.play)
 	actions.reaction_requested.connect(hud.show_reaction)
 	actions.movement_animation = _animate_movement

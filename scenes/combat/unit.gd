@@ -7,6 +7,7 @@ enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 
 const MOVEMENT_PER_TURN: int = 6
+const FEEDBACK_RISE: float = 12.0
 
 const ALLY_COLOR: Color = Color("509be0")
 const ENEMY_COLOR: Color = Color("df6256")
@@ -270,7 +271,7 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
-func show_feedback(text: String) -> void:
+func show_feedback(text: String, obstacles: Array[Rect2] = []) -> void:
 	var popup: Label = Label.new()
 	popup.z_index = 10
 	popup.text = text
@@ -279,17 +280,51 @@ func show_feedback(text: String) -> void:
 	popup.add_theme_color_override("font_color", WEAPON_COLOR)
 	popup.add_theme_color_override("font_outline_color", OUTLINE_COLOR)
 	popup.add_theme_constant_override("outline_size", 2)
-	popup.position = Vector2(-16, -42)
-	# 같은 유닛의 판정과 피해가 함께 떠도 글자가 겹치지 않는다.
-	for child: Node in get_parent().get_children():
-		if child is Label and child.get_meta("feedback_unit", 0) == get_instance_id():
-			popup.position.y = minf(popup.position.y,
-				child.position.y - position.y - popup.get_combined_minimum_size().y - 16)
 	popup.set_meta("feedback_unit", get_instance_id())
 	# 전투 불능 유닛도 마지막 피해를 표시한다.
 	get_parent().add_child(popup)
-	popup.position += position
+	popup.size = popup.get_combined_minimum_size()
+	popup.position = _feedback_position(popup, obstacles)
 	var tween: Tween = popup.create_tween()
-	tween.tween_property(popup, "position:y", popup.position.y - 12, 0.8)
+	tween.tween_property(popup, "position:y", popup.position.y - FEEDBACK_RISE, 0.8)
 	tween.parallel().tween_property(popup, "modulate:a", 0.0, 0.8)
 	tween.tween_callback(popup.queue_free)
+
+
+func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
+	var canvas: Transform2D = (get_parent() as Node2D).get_global_transform_with_canvas()
+	var popup_size: Vector2 = (canvas * Rect2(Vector2.ZERO, popup.size)).size
+	var rise: float = absf(canvas.basis_xform(Vector2(0, -FEEDBACK_RISE)).y)
+	var padding: float = 2.0 * maxf(absf(canvas.get_scale().x), absf(canvas.get_scale().y))
+	var viewport: Rect2 = get_viewport().get_visible_rect()
+	var origin: Vector2 = canvas * (position + Vector2(-16, -42))
+	var first: Vector2 = viewport.position + Vector2(padding, rise + padding)
+	var best: Vector2 = origin.clamp(first, viewport.end - popup_size - Vector2.ONE * padding)
+	var distance: float = INF
+	var occupied: Array[Rect2] = obstacles.duplicate()
+	for child: Node in get_parent().get_children():
+		if child is Label and child != popup and child.has_meta("feedback_unit"):
+			var area: Rect2 = canvas * child.get_rect()
+			area.position.y -= rise
+			area.size.y += rise
+			occupied.append(area.grow(padding))
+	var candidates: Array[Vector2] = [best]
+	var step: Vector2 = popup_size + Vector2(padding * 2, rise + padding * 2)
+	for row: int in range(ceili(viewport.size.y / step.y)):
+		for column: int in range(ceili(viewport.size.x / step.x)):
+			candidates.append(first + Vector2(column, row) * step)
+	for candidate: Vector2 in candidates:
+		# 위로 뜨는 전체 경로를 예약해 연출 중에도 팝업과 HUD를 피한다.
+		var area: Rect2 = Rect2(candidate - Vector2(0, rise), popup_size + Vector2(0, rise)).grow(padding)
+		if not viewport.encloses(area):
+			continue
+		var available: bool = true
+		for blocked: Rect2 in occupied:
+			if area.intersects(blocked):
+				available = false
+				break
+		var candidate_distance: float = candidate.distance_squared_to(origin)
+		if available and candidate_distance < distance:
+			best = candidate
+			distance = candidate_distance
+	return canvas.affine_inverse() * best

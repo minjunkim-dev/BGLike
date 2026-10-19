@@ -46,6 +46,14 @@ var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 @onready var restart_button: Button = $Result/Panel/Contents/Restart
 
 
+func feedback_obstacles() -> Array[Rect2]:
+	var result: Array[Rect2] = []
+	for panel: Control in [$Round, $Progress, $OrderScroll, $UnitDetails, $Skills, $CombatLog, $EndTurn]:
+		if panel.is_visible_in_tree():
+			result.append(panel.get_global_rect())
+	return result
+
+
 func _ready() -> void:
 	_tooltip_panel.z_index = 10
 	_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
