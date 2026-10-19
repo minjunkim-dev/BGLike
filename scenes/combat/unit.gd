@@ -302,8 +302,15 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 	var best: Vector2 = origin.clamp(first, viewport.end - popup_size - Vector2.ONE * padding)
 	var distance: float = INF
 	var occupied: Array[Rect2] = obstacles.duplicate()
+	# 피해 팝업 뒤에 기절·표식이 생겨도 겹치지 않도록 최대 상태 표시 영역을 예약한다.
+	var font: Font = ThemeDB.fallback_font
+	var status_width: float = font.get_string_size("기절 ◎", HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+	var status_rect: Rect2 = Rect2(Vector2(-status_width / 2.0, -29 - font.get_ascent(10)),
+		Vector2(status_width, font.get_height(10)))
 	for child: Node in get_parent().get_children():
-		if child is Label and child != popup and child.has_meta("feedback_unit"):
+		if child is CombatUnit:
+			occupied.append((child.get_global_transform_with_canvas() * status_rect).grow(padding))
+		elif child is Label and child != popup and child.has_meta("feedback_unit"):
 			var area: Rect2 = canvas * child.get_rect()
 			area.position.y -= rise
 			area.size.y += rise
