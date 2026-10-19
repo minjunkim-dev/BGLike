@@ -37,7 +37,7 @@ import tempfile
 import time
 
 tests = iter(f"tests/combat_{name}_test.gd" for name in
-             ("hud", "ai", "turns", "checks", "actions", "progression", "loot"))
+             ("hud", "ai", "turns", "checks", "actions", "progression", "loot", "capture"))
 active = []
 status = 0
 def cancel(_signal, _frame):
