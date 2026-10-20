@@ -337,6 +337,9 @@ func show_unit(unit: CombatUnit) -> void:
 	var states: Array[String] = []
 	if unit.is_stunned:
 		states.append("기절")
+	var periodic: String = unit.get_periodic_status_text()
+	if not periodic.is_empty():
+		states.append(periodic)
 	if unit.overloaded:
 		states.append("과부하")
 	if unit.is_boss():

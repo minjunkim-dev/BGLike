@@ -11,6 +11,7 @@ var map_size: Vector2i = Vector2i(10, 10)
 var heights: Dictionary[Vector2i, int] = {}
 var pits: Array[Vector2i] = []
 var blocked_cells: Array[Vector2i] = []
+var water_cells: Array[Vector2i] = []
 
 
 class Routes extends RefCounted:
