@@ -64,6 +64,10 @@ func _on_turn_started(unit: CombatUnit) -> void:
 			logged.emit("%s 독 건강 내성: d20 %d + %d = %d / DC %d · %s" % [unit.get_display_name(),
 				saved.selected_roll, constitution, saved.total, effect.save_dc, "성공" if saved.success else "실패"])
 			feedback.emit(unit, "독 내성 %d" % saved.total)
+			if unit.hit_points <= 0 or is_over():
+				break
+			if effect not in unit.status_effects:
+				continue
 			if saved.success:
 				unit.status_effects.erase(effect)
 				continue

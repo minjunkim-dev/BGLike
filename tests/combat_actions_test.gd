@@ -126,6 +126,7 @@ func _run() -> void:
 	_test_deferred_water_shove()
 	_test_self_status_expiry()
 	_test_status_removed_during_tick()
+	_test_poison_removed_during_save()
 	await _test_water_stage()
 	_test_status_application_boundaries()
 	await _test_reactions()
@@ -1786,6 +1787,34 @@ func _test_status_removed_during_tick() -> void:
 	f.turns.end_turn()
 	f.turns.end_turn()
 	_check(target.hit_points == 10, "앞 틱의 피드백 중 시전자가 탈락하면 제거된 뒤 효과를 실행하지 않음")
+
+
+func _test_poison_removed_during_save() -> void:
+	for boundary: int in range(3):
+		var f: Fixture = _fixture()
+		var target: CombatUnit = f.units[2]
+		f.turns.select_unit(f.units[1])
+		f.actions.apply_status(f.units[1] if boundary == 0 else f.units[3], target, "poison")
+		var damage_messages: Array[String] = []
+		f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+			if unit != target:
+				return
+			if text.begins_with("독 내성"):
+				if boundary == 0:
+					f.actions.incapacitate(f.units[1])
+				elif boundary == 1:
+					f.actions.incapacitate(target)
+				else:
+					f.actions.incapacitate(f.units[0])
+					f.actions.incapacitate(f.units[1])
+			elif text.begins_with("독 -"):
+				damage_messages.append(text)
+		)
+		f.actions.dice = _dice_for([1], [20])
+		f.turns.end_turn()
+		f.turns.end_turn()
+		_check(target.hit_points == (0 if boundary == 1 else 12) and damage_messages.is_empty(),
+			"독 내성 피드백 중 시전자·대상 탈락 또는 전투 종료 뒤 독 피해를 실행하지 않음: " + str(boundary))
 
 
 func _test_water_stage() -> void:
