@@ -1,6 +1,6 @@
 class_name CombatLoot
 extends RefCounted
-## 보상은 독립 Dictionary로 보관한다. 수령한 장비만 캐릭터 장착 칸에 남는다.
+## 독립 아이템의 드랍·장착·물약과 파티 공용 가방.
 
 const DATA_PATH: String = "res://scenes/combat/item_data.json"
 const STAT_NAMES: Dictionary = {
@@ -9,12 +9,14 @@ const STAT_NAMES: Dictionary = {
 }
 
 var data: Dictionary
+var bag: Array[Dictionary] = []
 
 
 func _init() -> void:
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(DATA_PATH))
 	assert(parsed is Dictionary, "아이템 데이터 JSON을 읽을 수 없습니다.")
 	data = parsed
+	assert(int(data.get("bag_limit", 0)) > 0, "가방 한도는 양수여야 합니다.")
 	assert(int(data.get("potion_limit", 0)) > 0, "물약 한도는 양수여야 합니다.")
 	assert(float(data.get("extra_drop_chance", -1)) >= 0.0
 		and float(data["extra_drop_chance"]) <= 1.0, "추가 드랍 확률은0~1이어야 합니다.")
@@ -67,18 +69,49 @@ func _roll_item(dice: CombatDice, act_number: int) -> Dictionary:
 	return {}
 
 
-func receive(unit: CombatUnit, item: Dictionary) -> bool:
+func can_receive(unit: CombatUnit, item: Dictionary) -> bool:
 	match str(item.get("kind", "")):
 		"weapon":
+			return unit.weapon.is_empty() or bag.size() < int(data["bag_limit"])
+		"armor":
+			return unit.armor.is_empty() or bag.size() < int(data["bag_limit"])
+		"potion":
+			return unit.potion_left < int(data["potion_limit"])
+	return false
+
+
+func receive(unit: CombatUnit, item: Dictionary) -> bool:
+	if not can_receive(unit, item):
+		return false
+	var previous: Dictionary = {}
+	match str(item.get("kind", "")):
+		"weapon":
+			previous = unit.weapon
 			unit.weapon = item.duplicate(true)
 		"armor":
+			previous = unit.armor
 			unit.armor = item.duplicate(true)
 		"potion":
-			if unit.potion_left >= int(data["potion_limit"]):
-				return false
 			unit.potion_left += 1
 		_:
 			return false
+	if not previous.is_empty():
+		bag.append(previous)
+	return true
+
+
+func receive_from_bag(unit: CombatUnit, index: int) -> bool:
+	if index < 0 or index >= bag.size():
+		return false
+	var count: int = bag.size()
+	var item: Dictionary = bag[index]
+	bag.remove_at(index)
+	if not receive(unit, item):
+		bag.insert(index, item)
+		return false
+	if bag.size() == count:
+		var previous: Dictionary = bag.pop_back()
+		bag.insert(index, previous)
 	return true
 
 
