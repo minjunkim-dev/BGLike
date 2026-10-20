@@ -253,8 +253,9 @@ func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
 			if step.damage > 0:
 				return
 		if step.push:
-			_land(step.target, step.push_cell)
-			if not _can_continue_rock(actor, prop, origin):
+			var target: CombatUnit = step.target
+			_land(target, step.push_cell)
+			if not _can_continue_rock(actor, prop, origin) or not is_instance_valid(target) or target not in units:
 				return
 			if is_over():
 				logged.emit("바위 정지: 전투 종료")
@@ -399,6 +400,7 @@ func is_victory() -> bool:
 
 ## 전투 불능 전환. 표식, 턴 순서와 표시를 함께 정리한다.
 func incapacitate(target: CombatUnit) -> void:
+	var revision: int = _revision
 	target.hit_points = 0
 	target.status_effects.clear()
 	var ground_messages: Array[String] = []
@@ -418,7 +420,13 @@ func incapacitate(target: CombatUnit) -> void:
 				unit.status_effects.erase(effect)
 	for message: String in ground_messages:
 		logged.emit(message)
+		if not _same_combat(target, revision):
+			return
+	if not _same_combat(target, revision):
+		return
 	turns.remove_unit(target)
+	if not _same_combat(target, revision):
+		return
 	target.visible = false
 
 
@@ -907,7 +915,11 @@ func _land(target: CombatUnit, destination: Vector2i) -> void:
 	target.cell = destination
 	if grid.pits.has(destination):
 		incapacitate(target)
+		if not _same_combat(target, revision):
+			return
 		logged.emit("%s 낙사: 전투 불능" % target.get_display_name())
+		if not _same_combat(target, revision):
+			return
 		feedback.emit(target, "낙사")
 		return
 	_clear_burn_in_water(target)

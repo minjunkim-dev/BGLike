@@ -302,6 +302,76 @@ func _test_rock_logs() -> void:
 		"마지막 이동 로그의 초기화 callback 뒤 새 전투에 지난 정지 로그를 추가하지 않는다")
 
 
+func _test_rock_pit_reset_callbacks() -> void:
+	for reset_at: String in ["ground_log", "turn_changed"]:
+		var f: Fixture = _fixture()
+		var target: CombatUnit = f.units[2]
+		target.cell = Vector2i(4, 6)
+		f.actions.grid.pits = [Vector2i(4, 7)]
+		f.actions.create_ground(target, Vector2i(8, 8), "poison")
+		var rock: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "rock")
+		var old_turns: CombatTurns = f.turns
+		var reset_done: Array[bool] = [false]
+		var stale: Array[String] = []
+		var reset: Callable = func() -> void:
+			if reset_done[0]:
+				return
+			reset_done[0] = true
+			target.begin_stage(true)
+			target.cell = Vector2i(8, 8)
+			target.visible = true
+			f.turns = CombatTurns.new()
+			f.actions.initialize(f.units, f.turns)
+			f.turns.start(f.units, _dice_for([20, 1, 1, 1], [20, 20, 20, 20]))
+			f.actions.create_prop(Vector2i(1, 1), "rock")
+		var on_log: Callable = func(message: String) -> void:
+			if reset_at == "ground_log" and "장판 해제" in message:
+				reset.call()
+			elif reset_done[0] and "낙사" in message:
+				stale.append(message)
+		var on_feedback: Callable = func(_unit: CombatUnit, text: String) -> void:
+			if reset_done[0] and text == "낙사":
+				stale.append(text)
+		f.actions.logged.connect(on_log)
+		f.actions.feedback.connect(on_feedback)
+		if reset_at == "turn_changed":
+			old_turns.changed.connect(reset)
+		f.actions.dice = _dice_for([], [])
+		f.actions.attack_prop(f.units[0], rock)
+		f.actions.logged.disconnect(on_log)
+		f.actions.feedback.disconnect(on_feedback)
+		if reset_at == "turn_changed":
+			old_turns.changed.disconnect(reset)
+		_check(reset_done[0] and target in f.turns.ordered_units and target.visible
+			and target.hit_points == 12 and f.actions.grid.prop_at(Vector2i(1, 1)) != null,
+			"낙사 중 초기화 callback 뒤 새 턴 목록/표시/바위를 보존한다: " + reset_at)
+		_check(stale.is_empty() and rock.cell == Vector2i(4, 5),
+			"낙사 중 초기화 callback 뒤 지난 낙사 로그/피드백/굴림을 중단한다: " + reset_at)
+
+
+func _test_rock_landing_removal() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	var other: CombatUnit = f.units[3]
+	target.cell = Vector2i(4, 6)
+	other.cell = Vector2i(4, 8)
+	f.actions.grid.water_cells = [Vector2i(4, 7)]
+	f.actions.apply_status(f.units[0], target, "burn")
+	var rock: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "rock")
+	var removed: Array[bool] = [false]
+	var callback: Callable = func() -> void:
+		if not removed[0] and target.cell == Vector2i(4, 7):
+			removed[0] = true
+			f.units.erase(target)
+	f.actions.changed.connect(callback)
+	f.actions.dice = _dice_for([], [])
+	f.actions.attack_prop(f.units[0], rock)
+	f.actions.changed.disconnect(callback)
+	_check(removed[0] and target.hit_points == 8 and other.hit_points == 14
+		and other.cell == Vector2i(4, 8) and rock.cell == Vector2i(4, 5) and f.hits.size() == 1,
+		"착지의 화상 해제 callback이 대상을 제거하면 남은 굴림과 뒤 유닛 추가 피해를 중단한다")
+
+
 func _test_rock_downhill_and_reentry() -> void:
 	var f: Fixture = _fixture()
 	f.actions.grid.heights[f.units[0].cell] = 2
@@ -655,6 +725,8 @@ func _run() -> void:
 	_test_rock_collisions()
 	_test_rock_interruptions()
 	_test_rock_logs()
+	_test_rock_pit_reset_callbacks()
+	_test_rock_landing_removal()
 	_test_rock_downhill_and_reentry()
 	await _test_rock_scene_input()
 	_test_crate_creation()
