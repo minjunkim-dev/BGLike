@@ -16,7 +16,6 @@ var _finished_units: Array[CombatUnit] = []
 var _pending_finished_units: Array[CombatUnit] = []
 var _started_units: Array[CombatUnit] = []
 var _activated_units: Array[CombatUnit] = []
-var _stunned_turns: Array[CombatUnit] = []
 var _deferred_units: Array[CombatUnit] = []
 
 
@@ -40,7 +39,6 @@ func start(combat_units: Array[CombatUnit], dice: CombatDice) -> void:
 	_pending_finished_units.clear()
 	_started_units.clear()
 	_activated_units.clear()
-	_stunned_turns.clear()
 	_deferred_units.clear()
 	current_unit = null
 	_group_start = 0
@@ -125,7 +123,6 @@ func remove_unit(unit: CombatUnit) -> void:
 	_pending_finished_units.erase(unit)
 	_started_units.erase(unit)
 	_activated_units.erase(unit)
-	_stunned_turns.erase(unit)
 	_deferred_units.erase(unit)
 	var previous_current: CombatUnit = current_unit
 	if current_unit == unit:
@@ -149,17 +146,15 @@ func remove_unit(unit: CombatUnit) -> void:
 
 func _select_next_or_advance() -> void:
 	for unit: CombatUnit in get_current_group():
-		if unit in _deferred_units and unit.is_stunned:
+		if is_turn_finished(unit) or (unit in _deferred_units and unit.is_stunned):
 			continue
-		if unit in _stunned_turns:
-			# 실제로 이 유닛의 순서를 건너뛸 때 턴을 끝내고 기절을 푼다.
-			unit.is_stunned = false
-			_finished_units.append(unit)
-			_stunned_turns.erase(unit)
-		if not is_turn_finished(unit):
-			current_unit = unit
-			_activate_current_unit()
+		current_unit = unit
+		_activate_current_unit()
+		if unit not in ordered_units or current_unit != unit:
 			return
+		if not unit.is_stunned:
+			return
+		_finished_units.append(unit)
 	for unit: CombatUnit in get_current_group():
 		if unit not in _deferred_units or not unit.is_stunned or is_turn_finished(unit):
 			continue
@@ -167,9 +162,9 @@ func _select_next_or_advance() -> void:
 		_activate_current_unit()
 		if unit not in ordered_units or current_unit != unit:
 			return
-		unit.is_stunned = false
+		if not unit.is_stunned:
+			return
 		_finished_units.append(unit)
-		_stunned_turns.erase(unit)
 	_pending_finished_units.clear()
 	_start_group_at(_group_end + 1)
 
@@ -187,8 +182,6 @@ func _begin_unit_turn(unit: CombatUnit) -> void:
 	unit.begin_turn()
 	_started_units.append(unit)
 	_deferred_units.erase(unit)
-	if unit.is_stunned:
-		_stunned_turns.append(unit)
 
 
 func _start_group_at(index: int, defer_new: bool = false) -> void:
@@ -198,7 +191,6 @@ func _start_group_at(index: int, defer_new: bool = false) -> void:
 		_finished_units.clear()
 		_started_units.clear()
 		_activated_units.clear()
-		_stunned_turns.clear()
 		_deferred_units.clear()
 	_group_start = index
 	while (_group_start > 0
@@ -223,7 +215,6 @@ func _start_group_at(index: int, defer_new: bool = false) -> void:
 			_pending_finished_units.erase(unit)
 			_started_units.erase(unit)
 			_activated_units.erase(unit)
-			_stunned_turns.erase(unit)
 			_deferred_units.append(unit)
 		order_rotated.emit(moved)
 	for unit: CombatUnit in get_current_group():

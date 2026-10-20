@@ -51,7 +51,12 @@ var hit_points: int = 12:
 			and hit_points <= get_max_hit_points() / 2):
 			overloaded = true
 			action_left += 1
-var is_stunned: bool = false
+var stun_source: CombatUnit
+var is_stunned: bool = false:
+	set(value):
+		is_stunned = value
+		if not value:
+			stun_source = null
 var has_mark: bool = false
 var disengaged: bool = false
 var marked_target: CombatUnit

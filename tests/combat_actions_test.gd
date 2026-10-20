@@ -100,6 +100,12 @@ func _run() -> void:
 	_test_self_actions()
 	_test_shove()
 	await _test_mark_and_stun()
+	await _test_stun_source_incapacitation()
+	await _test_stunned_caster_expiry()
+	await _test_deferred_stun_caster()
+	await _test_stun_reapplication()
+	await _test_stun_landing_incapacitation()
+	await _test_finished_stun_removal()
 	await _test_reactions()
 	await _test_own_turn_parry()
 	_test_isometric_surface()
@@ -1387,6 +1393,143 @@ func _test_shove() -> void:
 	_check(not f.actions.can_target(actor, target, "shove"), "맵 밖으로 밀어내기 거부")
 
 
+func _test_stun_landing_incapacitation() -> void:
+	for pit: bool in [false, true]:
+		var f: Fixture = _fixture()
+		var source: CombatUnit = f.units[1]
+		var target: CombatUnit = f.units[2]
+		f.turns.select_unit(source)
+		target.reaction_left = 0
+		f.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+		await f.actions.attack(source, target, true)
+		if pit:
+			f.actions.grid.pits.append(Vector2i(2, 4))
+			f.turns.select_unit(f.units[0])
+			_check(f.actions.shove(f.units[0], source), "아군 시전자를 낭떠러지로 밀치기")
+		else:
+			f.actions.grid.heights[source.cell] = 9
+			_check(await f.actions.jump_to(source, Vector2i(3, 5)), "충격 화살 뒤 치명적인 낙하 점프")
+		_check(source.hit_points == 0 and not source.visible and not target.is_stunned,
+			"시전자의 실제 착지 전투 불능은 기절을 즉시 해제: " + str(pit))
+
+
+func _test_finished_stun_removal() -> void:
+	var f: Fixture = _fixture()
+	var source: CombatUnit = f.units[1]
+	var target: CombatUnit = f.units[2]
+	f.turns.select_unit(source)
+	target.reaction_left = 0
+	f.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+	await f.actions.attack(source, target, true)
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(f.turns.is_turn_finished(target) and f.turns.current_unit == f.units[3],
+		"시전자 탈락 전 이미 기절 대상의 차례를 건너뜀")
+	f.actions.incapacitate(source)
+	_check(not target.is_stunned and f.turns.is_turn_finished(target)
+		and f.turns.current_unit == f.units[3], "기절 해제는 이미 완료한 차례를 소급하지 않음")
+
+
+func _test_stun_reapplication() -> void:
+	var f: Fixture = _fixture()
+	var first: CombatUnit = f.units[1]
+	var latest: CombatUnit = f.units[0]
+	var target: CombatUnit = f.units[2]
+	latest.kind = CombatUnit.Kind.ARCHER
+	latest.cell = Vector2i(2, 4)
+	f.turns.select_unit(first)
+	target.reaction_left = 0
+	f.actions.dice = _dice_for([11, 1, 1], [20, 6, 20])
+	_check(await f.actions.attack(first, target, true) and target.is_stunned and target.hit_points > 0,
+		"첫 시전자의 충격 화살")
+	f.turns.select_unit(latest)
+	f.actions.dice = _dice_for([11, 11, 1, 1], [20, 20, 6, 20])
+	_check(await f.actions.attack(latest, target, true) and target.is_stunned and target.hit_points > 0,
+		"기절 대상 재적용은 중첩 없이 최신 시전자로 갱신")
+	f.actions.incapacitate(first)
+	_check(target.is_stunned, "이전 시전자 전투 불능은 갱신된 기절을 해제하지 않음")
+	f.turns.end_turn()
+	_check(target.is_stunned and f.turns.is_turn_finished(target),
+		"갱신된 기절도 대상 차례 종료로 풀리지 않음")
+	f.turns.end_turn()
+	_check(not target.is_stunned and f.turns.current_unit == latest,
+		"최신 시전자의 다음 실제 턴 시작에 갱신된 기절 해제")
+
+
+func _test_deferred_stun_caster() -> void:
+	var f: Fixture = _fixture()
+	var source: CombatUnit = f.units[1]
+	var target: CombatUnit = f.units[3]
+	f.turns.select_unit(source)
+	target.reaction_left = 0
+	f.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+	await f.actions.attack(source, target, true)
+	var order: Array[CombatUnit] = [f.units[0], f.units[2], source, target]
+	var rolls: Array[int] = []
+	for unit: CombatUnit in f.units:
+		rolls.append(20 - 3 * order.find(unit) - unit.get_dexterity())
+	f.turns.start(f.units, _dice_for(rolls, [20, 20, 20, 20]))
+	f.actions.incapacitate(f.units[2])
+	_check(target.is_stunned and not f.turns.is_turn_started(source),
+		"묶음 결합만으로 지연된 시전자의 효과를 만료하지 않음")
+	f.turns.select_unit(f.units[0])
+	_check(target.is_stunned, "동료 선택은 지연된 시전자 턴 시작이 아님")
+	_check(f.turns.select_unit(source) and not target.is_stunned,
+		"지연된 시전자를 처음 조작할 때 기절 만료")
+	source.shock_left = 1
+	target.hit_points = target.get_max_hit_points()
+	f.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+	_check(await f.actions.attack(source, target, true) and target.is_stunned,
+		"시전자 턴 시작 뒤 새 충격 화살의 기절 부여")
+	f.turns.end_turn()
+	_check(target.is_stunned and f.turns.select_unit(source) and target.is_stunned,
+		"턴 종료 취소는 같은 시전자 턴의 기절을 다시 만료하지 않음")
+	f.turns.select_unit(f.units[0])
+	f.turns.select_unit(source)
+	_check(target.is_stunned, "선택 전환을 반복해도 같은 턴 시작은 한 번")
+
+
+func _test_stunned_caster_expiry() -> void:
+	var f: Fixture = _fixture()
+	var source: CombatUnit = f.units[1]
+	var target: CombatUnit = f.units[2]
+	f.turns.select_unit(source)
+	target.reaction_left = 0
+	f.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+	await f.actions.attack(source, target, true)
+	source.is_stunned = true
+	f.turns.end_turn()
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(f.turns.current_unit == f.units[0] and target.is_stunned,
+		"기절한 시전자의 실제 차례 전까지 대상 기절 유지")
+	f.turns.end_turn()
+	_check(not target.is_stunned and f.turns.current_unit == target,
+		"기절한 시전자도 실제 턴 시작에 효과를 만료하고 대상은 정상 차례를 받음")
+	_check(source.is_stunned and f.turns.is_turn_finished(source),
+		"기절한 시전자는 시작 효과 처리 후 자기 차례만 건너뜀")
+
+
+func _test_stun_source_incapacitation() -> void:
+	var f: Fixture = _fixture()
+	var source: CombatUnit = f.units[1]
+	var target: CombatUnit = f.units[3]
+	f.turns.select_unit(source)
+	target.reaction_left = 0
+	f.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+	_check(await f.actions.attack(source, target, true) and target.is_stunned,
+		"시전자 탈락 사례의 충격 화살")
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(f.turns.current_unit == f.units[2] and not f.turns.is_turn_finished(target),
+		"같은 적 묶음의 기절 대상 차례는 아직 남음")
+	f.actions.incapacitate(source)
+	_check(not target.is_stunned, "시전자 전투 불능 시 그 시전자의 기절을 즉시 해제")
+	f.turns.end_turn()
+	_check(f.turns.current_unit == target and f.turns.round_number == 1,
+		"해제된 기절 대상은 오래된 건너뛰기 기록 없이 남은 차례를 받음")
+
+
 func _test_mark_and_stun() -> void:
 	var f: Fixture = _fixture()
 	f.turns.select_unit(f.units[1])
@@ -1413,7 +1556,11 @@ func _test_mark_and_stun() -> void:
 	shock.turns.end_turn()
 	_check(shock.turns.current_unit == shock.units[3] and shock.turns.is_turn_finished(shock.units[2]),
 		"기절한 다음 턴은 자동으로 건너뜀")
-	_check(not shock.units[2].is_stunned, "건너뛴 턴 끝에서 기절 해제")
+	_check(shock.units[2].is_stunned, "대상 차례를 건너뛰어도 시전자 턴 전까지 기절 유지")
+	shock.turns.end_turn()
+	_check(shock.units[2].is_stunned, "다른 아군 턴 시작은 시전자의 기절을 해제하지 않음")
+	shock.turns.select_unit(shock.units[1])
+	_check(not shock.units[2].is_stunned, "충격 화살 시전자의 실제 턴 시작에 기절 해제")
 	for roll: int in [14, 15]:
 		var boundary: Fixture = _fixture()
 		boundary.turns.select_unit(boundary.units[1])
@@ -1434,8 +1581,8 @@ func _test_mark_and_stun() -> void:
 	waiting.turns.remove_unit(waiting.units[3])
 	_check(waiting.units[1].is_stunned, "다른 유닛 탈락의 묶음 재계산은 기절을 풀지 않음")
 	waiting.turns.end_turn()
-	_check(not waiting.units[1].is_stunned and waiting.turns.is_turn_finished(waiting.units[1]),
-		"실제로 두 번째 유닛 순서를 건너뛴 끝에 기절 해제")
+	_check(waiting.units[1].is_stunned and waiting.turns.is_turn_finished(waiting.units[1]),
+		"두 번째 유닛 순서를 건너뛰어도 기절 유지")
 	var missed: Fixture = _fixture()
 	missed.turns.select_unit(missed.units[1])
 	var before_miss: int = missed.units[3].hit_points
