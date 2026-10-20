@@ -2,7 +2,7 @@
   <title id="title">32×32 유닛 프레임 좌표 가이드</title>
   <desc id="desc">왼쪽 위 원점과 16,28 발밑 피벗을 표시한 투명 이미지 캔버스. 타일 바닥이나 유닛 아트 시안이 아니다.</desc>
   <defs>
-    <pattern id="pixels" width="8" height="8" patternUnits="userSpaceOnUse">
+    <pattern id="pixels" x="40" y="70" width="8" height="8" patternUnits="userSpaceOnUse">
       <path d="M8 0H0V8" fill="none" stroke="#cbd5e1" stroke-width="0.5"/>
     </pattern>
   </defs>
