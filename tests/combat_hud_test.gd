@@ -61,6 +61,7 @@ func _run() -> void:
 	await _test_guidance()
 	await _test_mouse_controls_and_inspection()
 	await _test_group_keyboard()
+	await _test_joined_group_hud()
 	await _test_order_bar_input()
 	await _test_transparent_order_input()
 	await _test_reaction_flow()
@@ -845,6 +846,44 @@ func _test_group_keyboard() -> void:
 	var enemy: CombatUnit = turns.current_unit
 	await _tab()
 	_check(turns.current_unit == enemy and not enemy.is_ally, "적 턴 중 Tab 전환 잠금")
+	_reset_units()
+
+
+func _test_joined_group_hud() -> void:
+	_reset_units()
+	var desired: Array[CombatUnit] = [units[0], units[2], units[3], units[1]]
+	var rolls: Array[int] = []
+	for unit: CombatUnit in units:
+		rolls.append(20 - 3 * desired.find(unit) - unit.get_dexterity())
+	turns.start(units, ScriptedDice.new(rolls))
+	units[0].spend_movement(2)
+	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
+	turns.end_turn()
+	turns.end_turn()
+	turns.end_turn()
+	var portraits: Dictionary = hud.get("_portraits")
+	var warrior: Button = portraits[units[0]]
+	var archer: Button = portraits[units[1]]
+	var pending: Control = warrior.get_node_or_null("PendingTurn") as Control
+	_check(pending != null and pending.is_visible_in_tree()
+		and turns.current_unit == units[1] and units[0].action_left == 0,
+		"경계 묶음의 미시작 유닛은 자원을 유지하고 모래시계 표시")
+	await process_frame
+	_check(warrior.global_position.x < archer.global_position.x,
+		"경계의 앞 초상은 기존 위치에서 합쳐지는 중간 위치를 표시")
+	await create_timer(0.4).timeout
+	_check(warrior.global_position.x > archer.global_position.x
+		and not warrior.get_global_rect().intersects(archer.get_global_rect()),
+		"1초 미만에 경계 초상이 묶음 뒤로 이동하고 겹침 없이 종료")
+	await _tab()
+	_check(turns.current_unit == units[0] and units[0].movement_left == 6
+		and units[0].action_left == 1 and pending != null and not pending.visible,
+		"Tab 첫 조작에서 턴을 시작하고 모래시계 제거")
+	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
+	turns.end_turn()
+	await _tab()
+	_check(turns.current_unit == units[0] and units[0].action_left == 0
+		and pending != null and not pending.visible, "결합 묶음의 종료 취소는 턴을 다시 시작하지 않음")
 	_reset_units()
 
 

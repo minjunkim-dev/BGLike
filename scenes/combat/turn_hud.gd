@@ -19,6 +19,8 @@ const RESOURCE_COLORS: Array[Color] = [Color("70c76d"), Color("edaa54"), Color("
 
 var _shown_order: Array[CombatUnit] = []
 var _portraits: Dictionary[CombatUnit, Button] = {}
+var _order_moves: Dictionary[CombatUnit, Vector2] = {}
+var _order_tween: Tween
 var _actions: Dictionary[String, Button] = {}
 var _badges: Dictionary[String, Label] = {}
 var _costs: Dictionary[String, Label] = {}
@@ -311,6 +313,8 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 			button.tooltip_text = "%s: d20 %d + 민첩 %d = %d" % [
 				unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()]
 		var in_group: bool = unit in turns.get_current_group()
+		(button.get_node("PendingTurn") as Control).visible = (
+			in_group and not turns.is_turn_started(unit) and not turns.is_turn_finished(unit))
 		button.disabled = false
 		var color: Color = CombatUnit.ALLY_COLOR if unit.is_ally else CombatUnit.ENEMY_COLOR
 		if turns.is_turn_finished(unit):
@@ -371,7 +375,15 @@ func show_attack_preview(target: CombatUnit, preview: CombatChecks.AttackPreview
 		preview_label.text += "\n" + ", ".join(preview.reasons)
 
 
+func prepare_order_rotation(units: Array[CombatUnit]) -> void:
+	for unit: CombatUnit in units:
+		if unit in _portraits:
+			_order_moves[unit] = _portraits[unit].global_position
+
+
 func _build_portraits(turns: CombatTurns) -> void:
+	if _order_tween != null:
+		_order_tween.kill()
 	for child: Node in order_bar.get_children():
 		child.free()
 	_portraits.clear()
@@ -390,8 +402,38 @@ func _build_portraits(turns: CombatTurns) -> void:
 			button.add_theme_color_override("font_disabled_color", Color("b5bdc4"))
 			button.pressed.connect(func() -> void: unit_selected.emit(unit))
 			box.add_child(button)
+			var pending: Label = Label.new()
+			pending.name = "PendingTurn"
+			pending.text = "⌛"
+			pending.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			pending.add_theme_font_size_override("font_size", 12)
+			button.add_child(pending)
+			pending.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+			pending.offset_left = -15
+			pending.offset_top = -16
+			pending.offset_right = -1
+			pending.offset_bottom = -1
 			_connect_tooltip(button)
 			_portraits[unit] = button
+	if not _order_moves.is_empty():
+		var positions: Dictionary[CombatUnit, Vector2] = _order_moves.duplicate()
+		_order_moves.clear()
+		_animate_order_rotation(positions, _shown_order.duplicate())
+
+
+func _animate_order_rotation(positions: Dictionary[CombatUnit, Vector2], order: Array[CombatUnit]) -> void:
+	await get_tree().process_frame
+	if not is_inside_tree() or order != _shown_order:
+		return
+	_order_tween = create_tween().set_parallel(true)
+	for unit: CombatUnit in positions:
+		if unit not in _portraits:
+			continue
+		var button: Button = _portraits[unit]
+		var destination: Vector2 = button.position
+		button.position += positions[unit] - button.global_position
+		_order_tween.tween_property(button, "position", destination, 0.25).set_trans(
+			Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 func _panel_style() -> StyleBoxFlat:

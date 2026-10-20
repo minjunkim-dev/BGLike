@@ -51,6 +51,7 @@ func _ready() -> void:
 	actions.movement_animation = _animate_movement
 	actions.attack_animation = _animate_attack
 	turns.changed.connect(_on_turn_changed)
+	turns.order_rotated.connect(hud.prepare_order_rotation)
 	_start_stage(true)
 
 
