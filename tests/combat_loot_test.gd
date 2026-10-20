@@ -32,6 +32,9 @@ func _run() -> void:
 		var dice: CombatDice = CombatDice.new()
 		dice.seed = 55
 		_test_armor_hit_points(loot)
+		_test_bag_replacement()
+		_test_bag_capacity()
+		_test_bag_use()
 		_test_act_values(loot, dice)
 		loot.data["extra_drop_chance"] = 0.0
 		_check(loot.roll_rewards(2, dice, 1).size() == 1, "추가 확률0이어도 보장1개")
@@ -44,6 +47,9 @@ func _run() -> void:
 			"추가 드랍 굴림 0.35는 35% 실패")
 		_test_items(loot, dice)
 	await _test_reward_flow()
+	await _test_full_bag_finish()
+	await _test_bag_scene_use()
+	await _test_finish_preference()
 	await _test_accidental_advance()
 	await _test_scaled_combat()
 	await _test_spiderling_rewards()
@@ -115,6 +121,73 @@ func _test_boss_reward_boundary() -> void:
 				"%d막 보스 승리는 보장1개와0.349성공·0.35실패 경계를 적용" % progress.act_number())
 			main.queue_free()
 			await process_frame
+
+
+func _test_bag_use() -> void:
+	var loot: CombatLoot = CombatLoot.new()
+	var unit: CombatUnit = CombatUnit.new()
+	var old: Dictionary = {"kind": "armor", "name": "이전 방어구", "stats": {"max_hit_points": 2}}
+	var next: Dictionary = {"kind": "armor", "name": "다음 방어구", "stats": {"max_hit_points": 5}}
+	var potion: Dictionary = {"kind": "potion", "name": "물약", "stats": {}}
+	unit.armor = old
+	unit.hit_points = 5
+	loot.bag.append(next)
+	for index: int in range(11):
+		loot.bag.append(potion.duplicate(true))
+	_check(loot.receive_from_bag(unit, 0) and unit.armor == next and unit.hit_points == 8
+		and loot.bag.size() == 12 and loot.bag[0] == old,
+		"가득 찬 가방 장비는 같은 칸에 이전 장비를 교환하고 잃은 HP 유지")
+	unit.hit_points = 0
+	_check(loot.receive_from_bag(unit, 0) and unit.hit_points == 0 and loot.bag.size() == 12,
+		"가방 방어구 교체는 전투 불능 캐릭터를 부활시키지 않음")
+	unit.potion_left = 2
+	_check(loot.receive_from_bag(unit, 1) and unit.potion_left == 3 and loot.bag.size() == 11,
+		"가방 물약은 한 개를 분배하고 캐릭터 한도3 적용")
+	var stored: Array[Dictionary] = loot.bag.duplicate(true)
+	_check(not loot.receive_from_bag(unit, 1) and unit.potion_left == 3 and loot.bag == stored,
+		"물약 한도에서 가방 수령 실패는 양쪽 소유권 보존")
+	_check(not loot.receive_from_bag(unit, -1) and not loot.receive_from_bag(unit, 11)
+		and loot.bag == stored, "무효 가방 칸은 소유권을 바꾸지 않음")
+	unit.free()
+
+
+func _test_bag_capacity() -> void:
+	var loot: CombatLoot = CombatLoot.new()
+	_check(int(loot.data.get("bag_limit", 0)) == 12, "공용 가방의 제품 데이터 한도12칸")
+	var potion: Dictionary = {"kind": "potion", "name": "물약", "stats": {}}
+	for index: int in range(12):
+		loot.bag.append(potion.duplicate(true))
+	var stored: Array[Dictionary] = loot.bag.duplicate(true)
+	for kind: String in ["weapon", "armor"]:
+		var unit: CombatUnit = CombatUnit.new()
+		var previous: Dictionary = {"kind": kind, "name": "이전 장비", "stats": {}}
+		var next: Dictionary = {"kind": kind, "name": "다음 장비", "stats": {}}
+		unit.weapon = previous if kind == "weapon" else {}
+		unit.armor = previous if kind == "armor" else {}
+		unit.hit_points = 5
+		loot.bag.assign(stored)
+		_check(not loot.receive(unit, next) and loot.bag == stored and unit.hit_points == 5
+			and (unit.weapon if kind == "weapon" else unit.armor) == previous,
+			"가방이 가득 차면 이전 장비 공간을 요구하고 교체 전체를 보존: " + kind)
+		unit.free()
+	loot.bag.assign(stored)
+	var empty: CombatUnit = CombatUnit.new()
+	_check(loot.receive(empty, {"kind": "weapon", "name": "첫 무기", "stats": {}})
+		and loot.bag == stored, "빈 장착 칸은 가방이 가득 차도 수령 가능")
+	_check(loot.receive(empty, potion) and empty.potion_left == 1 and loot.bag == stored,
+		"물약 캐릭터 분배는 가방이 가득 차도 가능")
+	empty.free()
+
+
+func _test_bag_replacement() -> void:
+	var loot: CombatLoot = CombatLoot.new()
+	var unit: CombatUnit = CombatUnit.new()
+	var first: Dictionary = {"kind": "weapon", "name": "이전 무기", "stats": {"damage_bonus": 1}}
+	var second: Dictionary = {"kind": "weapon", "name": "새 무기", "stats": {"damage_bonus": 2}}
+	_check(loot.receive(unit, first) and loot.bag.is_empty(), "빈 장착 칸 수령은 가방 공간을 쓰지 않음")
+	_check(loot.receive(unit, second) and unit.weapon == second, "새 보상 무기 장착")
+	_check(loot.bag == [first], "교체한 이전 무기는 공용 가방에 보존")
+	unit.free()
 
 
 func _test_armor_hit_points(loot: CombatLoot) -> void:
@@ -263,6 +336,237 @@ func _test_act_values(loot: CombatLoot, dice: CombatDice) -> void:
 			"%d막 두 수치를 독립 추첨" % act)
 
 
+func _test_bag_scene_use() -> void:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	var loot: CombatLoot = battle.loot
+	var party: Array[CombatUnit] = battle.party
+	var old: Dictionary = {"kind": "armor", "name": "이전 방어구", "stats": {"max_hit_points": 2}}
+	var next: Dictionary = {"kind": "armor", "name": "새 방어구", "stats": {"max_hit_points": 5}}
+	party[0].armor = old
+	party[0].hit_points = 5
+	party[1].potion_left = 2
+	battle.actions.incapacitate(party[1])
+	loot.bag.append(next)
+	for index: int in range(11):
+		loot.bag.append({"kind": "potion", "name": "가방 물약", "stats": {}})
+	for unit: CombatUnit in battle.units:
+		if not unit.is_ally:
+			battle.actions.incapacitate(unit)
+	battle.actions.changed.emit()
+	battle.progress.rewards.clear()
+	await _click(battle.hud.restart_button)
+	var preparation: CombatPreparation = battle.preparation
+	await _click(preparation.continue_button)
+	var row: Node = preparation.content.get_node_or_null("BagItem0")
+	_check(row != null, "정비 화면의 공용 가방 아이템 목록")
+	if row != null:
+		await _click(row.get_node("Ally0") as Button)
+		_check(party[0].armor == next and party[0].hit_points == 8
+			and loot.bag.size() == 12 and loot.bag[0] == old,
+			"실제 가방 장착 버튼은 같은 칸 교환과 잃은 HP 유지")
+		await _click(preparation.content.get_node("BagItem1/Ally1") as Button)
+		_check(party[1].potion_left == 3 and party[1].hit_points == 0 and loot.bag.size() == 11,
+			"실제 가방 물약 버튼은 한도·전투 불능을 유지하며 한 개 분배")
+		_check((preparation.content.get_node("BagItem1/Ally1") as Button).disabled,
+			"한도에 도달하면 남은 가방 물약 분배 버튼 잠금")
+	main.queue_free()
+	await process_frame
+
+
+func _test_finish_preference() -> void:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	var preparation: CombatPreparation = battle.preparation
+	var loot: CombatLoot = battle.loot
+	loot.data["extra_drop_chance"] = 0.0
+	for unit: CombatUnit in battle.units:
+		if not unit.is_ally:
+			battle.actions.incapacitate(unit)
+	battle.actions.changed.emit()
+	await _click(battle.hud.restart_button)
+	await _click(preparation.continue_button)
+	await _click(preparation.continue_button)
+	var skip: CheckBox = preparation.discard_dialog.find_child("SkipConfirmation", true, false) as CheckBox
+	_check(skip != null, "정비 종료 확인의 다시 띄우지 않음 체크박스")
+	if skip != null:
+		_check(preparation.discard_dialog.size.y <= root.get_visible_rect().size.y,
+			"정비 확인 창과 확인 버튼은 기준 화면 높이 안에 표시")
+		_check(not skip.button_pressed and skip.text == "더 이상 이 메시지를 띄우지 않음",
+			"종료 확인 생략은 기본 해제")
+		for choice: String in ["cancel", "close", "escape"]:
+			skip.button_pressed = true
+			match choice:
+				"cancel":
+					preparation.discard_dialog.get_cancel_button().pressed.emit()
+				"close":
+					preparation.discard_dialog.notification(Window.NOTIFICATION_WM_CLOSE_REQUEST)
+				"escape":
+					var key: InputEventKey = InputEventKey.new()
+					key.keycode = KEY_ESCAPE
+					key.physical_keycode = KEY_ESCAPE
+					key.pressed = true
+					Input.parse_input_event(key)
+					await process_frame
+					key.pressed = false
+					Input.parse_input_event(key)
+			await process_frame
+			_check(not preparation.discard_dialog.visible and preparation.visible
+				and battle.progress.stage_index == 0 and loot.bag.is_empty(),
+				"생략 체크 후 취소는 보상·스테이지 보존: " + choice)
+			await _click(preparation.continue_button)
+			_check(preparation.discard_dialog.visible and not skip.button_pressed,
+				"취소한 생략 설정은 적용하지 않음: " + choice)
+		for index: int in range(12):
+			loot.bag.append({"kind": "potion", "name": "가방 물약", "stats": {}})
+		skip.button_pressed = true
+		preparation.discard_dialog.get_ok_button().grab_focus()
+		await _enter_dialog(preparation.discard_dialog)
+		_check(preparation.visible and battle.progress.stage_index == 0 and loot.bag.size() == 12,
+			"생략 체크는 가방 용량 검사를 우회하지 않음")
+		loot.bag.remove_at(0)
+		await _click(preparation.continue_button)
+		_check(preparation.discard_dialog.visible and not skip.button_pressed,
+			"용량 부족으로 실패한 종료는 생략 설정을 저장하지 않음")
+		skip.button_pressed = true
+		preparation.discard_dialog.get_ok_button().grab_focus()
+		await _enter_dialog(preparation.discard_dialog)
+		_check(not preparation.visible and battle.progress.stage_index == 1 and loot.bag.size() == 12,
+			"성공한 명시적 확인에서만 생략 설정 적용")
+		for unit: CombatUnit in battle.units:
+			if not unit.is_ally:
+				battle.actions.incapacitate(unit)
+		battle.actions.changed.emit()
+		await _click(battle.hud.restart_button)
+		await _click(preparation.continue_button)
+		await _click(preparation.continue_button)
+		_check(preparation.visible and not preparation.discard_dialog.visible
+			and battle.progress.stage_index == 1 and loot.bag.size() == 12
+			and battle.progress.rewards.size() == 1 and preparation.bag_notice.visible,
+			"확인 생략 중에도 가득 찬 가방은 정비 종료 차단")
+		await _click(preparation.content.get_node("BagItem0/Discard") as Button)
+		_check(preparation.discard_dialog.visible and not skip.visible
+			and preparation.discard_dialog.get_cancel_button().has_focus(),
+			"종료 확인 생략은 아이템 폐기 확인을 생략하지 않음")
+		preparation.discard_dialog.get_ok_button().grab_focus()
+		await _enter_dialog(preparation.discard_dialog)
+		var enable: Button = preparation.find_child("EnableConfirmation", true, false) as Button
+		_check(enable != null and not enable.disabled and enable.text == "정비 종료 확인 다시 켜기",
+			"현재 실행의 확인 생략을 복원하는 정비 버튼")
+		await _click(preparation.continue_button)
+		_check(not preparation.visible and battle.progress.stage_index == 2
+			and loot.bag.size() == 12, "설정한 다음 정비는 확인 없이 전부 보관하고 한 번 진행")
+		for unit: CombatUnit in battle.units:
+			if not unit.is_ally:
+				battle.actions.incapacitate(unit)
+		battle.actions.changed.emit()
+		await _click(battle.hud.restart_button)
+		await _click(preparation.continue_button)
+		enable = preparation.find_child("EnableConfirmation", true, false) as Button
+		if enable != null:
+			await _click(enable)
+			await _click(preparation.continue_button)
+			_check(preparation.discard_dialog.visible and not skip.button_pressed,
+				"다시 켜기 뒤 정비 종료 확인 복원")
+			loot.bag.remove_at(0)
+			skip.button_pressed = true
+			preparation.discard_dialog.get_ok_button().grab_focus()
+			await _enter_dialog(preparation.discard_dialog)
+			_check(not preparation.visible and battle.progress.stage_index == 3,
+				"확인을 다시 생략한 실행을 끝내고 새 실행 기본값 검사")
+	main.queue_free()
+	await process_frame
+	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	battle = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	_check(battle.loot.bag.is_empty(), "새 실행은 공용 가방이 비어 있음")
+	for unit: CombatUnit in battle.units:
+		if not unit.is_ally:
+			battle.actions.incapacitate(unit)
+	battle.actions.changed.emit()
+	await _click(battle.hud.restart_button)
+	preparation = battle.preparation
+	await _click(preparation.continue_button)
+	await _click(preparation.continue_button)
+	_check(preparation.discard_dialog.visible, "새 실행은 종료 확인을 기본 표시")
+	main.queue_free()
+	await process_frame
+
+
+func _test_full_bag_finish() -> void:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	var loot: CombatLoot = battle.loot
+	var progress: CombatActProgress = battle.progress
+	var potion: Dictionary = {"kind": "potion", "name": "보관 물약", "stats": {}}
+	for index: int in range(12):
+		var stored: Dictionary = potion.duplicate(true)
+		stored["name"] = "가방 물약%d" % index
+		loot.bag.append(stored)
+	for unit: CombatUnit in battle.units:
+		if not unit.is_ally:
+			battle.actions.incapacitate(unit)
+	battle.actions.changed.emit()
+	progress.rewards.assign([potion.duplicate(true)])
+	await _click(battle.hud.restart_button)
+	var preparation: CombatPreparation = battle.preparation
+	await _click(preparation.continue_button)
+	await _click(preparation.continue_button)
+	_check(preparation.discard_dialog.visible, "가방이 가득 찬 종료 확인 창 표시")
+	preparation.discard_dialog.get_ok_button().grab_focus()
+	var confirm: InputEventKey = InputEventKey.new()
+	confirm.keycode = KEY_ENTER
+	confirm.physical_keycode = KEY_ENTER
+	confirm.pressed = true
+	preparation.discard_dialog.push_input(confirm)
+	await process_frame
+	confirm.pressed = false
+	preparation.discard_dialog.push_input(confirm)
+	await process_frame
+	_check(preparation.visible and preparation.maintaining and progress.stage_index == 0
+		and progress.rewards == [potion] and loot.bag.size() == 12,
+		"가방이 가득 차면 정비 종료 확인 후에도 보상을 남기고 부분 보관하지 않음")
+	var notice: Label = preparation.find_child("BagNotice", true, false) as Label
+	_check(notice != null and notice.visible and "1칸" in notice.text and "부족" in notice.text,
+		"정비에 남겨 가방 부족 칸 수를 표시")
+	var discard: Button = preparation.content.get_node_or_null("BagItem0/Discard") as Button
+	_check(discard != null, "가방 아이템별 폐기 버튼")
+	if discard != null:
+		await _click(discard)
+		_check(preparation.discard_dialog.visible and preparation.discard_dialog.get_cancel_button().has_focus()
+			and "가방 물약0" in preparation.discard_dialog.dialog_text,
+			"선택한 가방 아이템의 폐기 확인은 돌아가기를 기본 선택")
+		await _enter_dialog(preparation.discard_dialog)
+		_check(loot.bag.size() == 12 and progress.rewards.size() == 1
+			and not preparation.discard_dialog.visible, "폐기 확인 기본 Enter는 취소하고 아이템 보존")
+		await _click(preparation.content.get_node("BagItem0/Discard") as Button)
+		preparation.discard_dialog.get_ok_button().grab_focus()
+		await _enter_dialog(preparation.discard_dialog)
+		preparation.discard_dialog.confirmed.emit()
+		_check(loot.bag.size() == 11 and loot.bag[0]["name"] == "가방 물약1"
+			and progress.stage_index == 0 and preparation.visible,
+			"명시적 폐기는 선택한 한 개만 제거하고 중복 확인은 정비를 끝내지 않음")
+		await _click(preparation.continue_button)
+		preparation.discard_dialog.get_ok_button().grab_focus()
+		await _enter_dialog(preparation.discard_dialog)
+		_check(not preparation.visible and progress.stage_index == 1 and loot.bag.size() == 12
+			and loot.bag.back()["name"] == "보관 물약" and progress.rewards.is_empty(),
+			"공간 확보 후 종료는 남은 보상을 전부 보관하고 한 번 진행")
+	main.queue_free()
+	await process_frame
+
+
 func _test_reward_flow() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
@@ -329,7 +633,9 @@ func _test_reward_flow() -> void:
 		preparation.discard_dialog.confirmed.emit()
 		await process_frame
 		_check((battle.get("progress") as CombatActProgress).stage_index == 1 and actual_rewards.is_empty()
-			and not preparation.visible, "미수령 보상 폐기 뒤 다음 전투")
+			and not preparation.visible and loot.bag.size() == 2
+			and loot.bag[0]["kind"] == "weapon" and loot.bag[1]["kind"] == "potion",
+			"미수령 장비와 물약을 공용 가방에 보관한 뒤 다음 전투")
 		_check(party[1].hit_points == 0 and party[1].get_armor_class() == 16,
 			"같은 막 다음 전투는 전투 불능과 장비 유지")
 		_check(party[0].weapon["name"] != "버릴 무기", "미수령 장비는 자동 장착하지 않음")
@@ -355,6 +661,8 @@ func _test_reward_flow() -> void:
 			and party[1].potion_left == 1 and party[1].get_armor_class() == 16,
 			"막 재시작은 장비·남은 물약 유지, 소비한 물약 복구 없음")
 		_check(party[1].hit_points == 18, "실제 막 재시작에서 방어구 최대 HP 포함 부활")
+		_check(loot.bag.size() == 2 and loot.bag[0]["name"] == "버릴 무기"
+			and loot.bag[1]["kind"] == "potion", "패배 후 실제 막 재시작은 공용 가방 보존")
 	main.queue_free()
 	await process_frame
 
@@ -452,8 +760,26 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	_check(is_equal_approx(preview.chance, 0.85), "명중 미리보기도 장비 포함+7 대 AC11")
 
 
+func _enter_dialog(dialog: ConfirmationDialog) -> void:
+	var key: InputEventKey = InputEventKey.new()
+	key.keycode = KEY_ENTER
+	key.physical_keycode = KEY_ENTER
+	key.pressed = true
+	dialog.push_input(key)
+	await process_frame
+	key.pressed = false
+	dialog.push_input(key)
+	await process_frame
+
+
 func _click(button: Button) -> void:
 	await process_frame
+	var ancestor: Node = button.get_parent()
+	while ancestor != null:
+		if ancestor is ScrollContainer:
+			(ancestor as ScrollContainer).ensure_control_visible(button)
+			await process_frame
+		ancestor = ancestor.get_parent()
 	var point: Vector2 = root.get_final_transform() * button.get_global_rect().get_center()
 	var click: InputEventMouseButton = InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT

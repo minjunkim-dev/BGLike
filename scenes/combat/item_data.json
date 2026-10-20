@@ -1,4 +1,5 @@
 {
+  "bag_limit": 12,
   "potion_limit": 3,
   "extra_drop_chance": 0.35,
   "items": [

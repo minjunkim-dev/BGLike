@@ -418,6 +418,9 @@ func _win(battle: Node2D) -> void:
 
 
 func _test_stage_transition(battle: Node2D) -> void:
+	var loot: CombatLoot = battle.loot
+	var stored: Dictionary = {"kind": "potion", "name": "계속 보관할 물약", "stats": {}}
+	loot.bag.append(stored)
 	var party: Array[CombatUnit] = []
 	for unit: CombatUnit in battle.get("units"):
 		if unit.is_ally:
@@ -449,6 +452,7 @@ func _test_stage_transition(battle: Node2D) -> void:
 	await process_frame
 	await process_frame
 	_check((hud.get_node("Progress") as Label).text == "1막 · 2스테이지", "승리 뒤1-2 진행")
+	_check(loot.bag[0] == stored, "같은 막 다음 전투는 공용 가방 보존")
 	_check((battle.get_node("Map") as TileMapLayer).get_used_cells().size() == 72
 		and (battle.get("actions") as CombatActions).grid.map_size == Vector2i(8, 9)
 		and warrior.cell == Vector2i(1, 8), "다음 스테이지 맵과 배치 데이터를 실제 전투에 적용")
@@ -489,6 +493,11 @@ func _next(battle: Node2D) -> void:
 func _finish_rewards(battle: Node2D) -> void:
 	var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
 	preparation.continue_button.pressed.emit()
+	var missing: int = battle.loot.bag.size() + preparation.rewards.size() - int(battle.loot.data["bag_limit"])
+	# 9전투 진행 검사는 가방이 차면 실제 폐기 버튼과 확인을 거쳐 공간을 확보한다.
+	for index: int in range(maxi(0, missing)):
+		(preparation.content.get_node("BagItem0/Discard") as Button).pressed.emit()
+		preparation.discard_dialog.confirmed.emit()
 	preparation.continue_button.pressed.emit()
 	preparation.discard_dialog.confirmed.emit()
 
@@ -500,6 +509,8 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	_check((battle.get_node("Map") as TileMapLayer).get_used_cells().size() == 100,
 		"다음 스테이지 데이터가 이전 맵 크기를 덮어씀")
 	_win(battle)
+	var expected_bag: Array[Dictionary] = battle.loot.bag.duplicate(true)
+	expected_bag.append_array(battle.progress.rewards)
 	_check(hud.restart_button.text == "보상 확인", "막 마지막 전투도 보상 확인 안내")
 	hud.restart_button.pressed.emit()
 	var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
@@ -510,6 +521,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	preparation.discard_dialog.confirmed.emit()
 	await process_frame
 	_check(hud.progress_label.text == "2막 · 1스테이지", "1-3 승리 뒤2-1 진행")
+	_check(battle.loot.bag == expected_bag, "다음 막 시작은 미수령 보상을 더한 공용 가방 보존")
 	_check_enemy_values(battle, 2)
 	_check((battle.get("turns") as CombatTurns).ordered_units.size() == 7,
 		"새 막에서 전투 불능 아군 부활과 적 재배치")
@@ -533,6 +545,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	hud.restart_button.pressed.emit()
 	_check(hud.progress_label.text == "2막 · 2스테이지", "전투 중 임의 진행 거부")
 	var actions: CombatActions = battle.get("actions") as CombatActions
+	expected_bag = battle.loot.bag.duplicate(true)
 	for unit: CombatUnit in party:
 		(battle.get("actions") as CombatActions).incapacitate(unit)
 	party[0].potion_left = 2
@@ -550,6 +563,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	hud.restart_button.pressed.emit()
 	await process_frame
 	_check(hud.progress_label.text == "2막 · 1스테이지", "패배한 막의1스테이지로 복귀")
+	_check(battle.loot.bag == expected_bag, "전멸한 막 재시작은 공용 가방 전량 보존")
 	_check_enemy_values(battle, 2)
 	for unit: CombatUnit in party:
 		_check(unit.hit_points == unit.get_max_hit_points() and unit.mark_left == 1
