@@ -103,6 +103,7 @@ func _run() -> void:
 	await _test_scene_input()
 	await _test_scene_ally_shove()
 	await _test_height_scene_input()
+	await _test_blocked_scene_input()
 	await _test_scene_fall_feedback()
 	await _test_pit_scene_input()
 	await _test_pit_scene_victory()
@@ -1803,6 +1804,38 @@ func _test_height_scene_input() -> void:
 	battle.call("_start_stage", true)
 	_check(actions.grid.heights.is_empty() and units[0].position == map.map_to_local(units[0].cell),
 		"다음 실제 평면 스테이지는 높이0으로 복귀하고 fixture 높이를 이어받지 않음")
+	battle.queue_free()
+	await process_frame
+
+
+func _test_blocked_scene_input() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	var blocked: Vector2i = Vector2i(2, 4)
+	stage.blocked_cells = [blocked]
+	battle.stages[0] = stage
+	root.add_child(battle)
+	battle.set_process(false)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 33
+	turns.start(units, dice)
+	_check(actions.grid.blocked_cells == [blocked] and actions.grid.is_floor(blocked)
+		and map.get_used_cells().size() == 100, "실제 스테이지의 막힌 칸은 바닥을 유지하고 판정에 연결")
+	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(blocked)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check(units[0].cell == Vector2i(1, 4) and units[0].movement_left == 6
+		and (battle.get("selection") as CombatSelection).preview_path.is_empty(),
+		"막힌 바닥의 두 번 우클릭은 이동·자원을 소비하지 않음")
+	(battle.get("progress") as CombatActProgress).stage_index = 1
+	battle.call("_start_stage", true)
+	_check(actions.grid.blocked_cells.is_empty() and not actions.grid.is_blocked(blocked)
+		and map.get_used_cells().size() == 100, "다음 스테이지는 막힌 칸 fixture를 이어받지 않음")
 	battle.queue_free()
 	await process_frame
 
