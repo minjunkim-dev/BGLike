@@ -6,12 +6,14 @@ var grid: CombatGrid
 var _overlays: Array[Node2D] = []
 var _blocked_markers: Array[Node2D] = []
 var _water_markers: Array[Node2D] = []
+var _ground_markers: Array[Node2D] = []
 
 
 func build_grid(combat_grid: CombatGrid, floors: TileSet) -> void:
 	grid = combat_grid
 	clear()
 	show_movement([], [], [], Vector2i.ZERO)
+	show_grounds([])
 	for marker: Node2D in _blocked_markers:
 		marker.free()
 	_blocked_markers.clear()
@@ -141,6 +143,30 @@ func show_movement(cells: Array[Vector2i], attack_cells: Array[Vector2i],
 		marker.draw.connect(func() -> void: marker.draw_circle(center, 3.0, Color("f4cf69"), false))
 		add_child(marker)
 		_overlays.append(marker)
+
+
+func show_grounds(grounds: Array[CombatActions.Ground]) -> void:
+	for marker: Node2D in _ground_markers:
+		marker.free()
+	_ground_markers.clear()
+	for ground: CombatActions.Ground in grounds:
+		var marker: Node2D = Node2D.new()
+		marker.position = map_to_local(ground.cell)
+		var center: Vector2 = map_to_surface(ground.cell) - marker.position
+		center.x += -7 if ground.kind == "burn" else 7
+		marker.draw.connect(func() -> void:
+			var color: Color = Color("ffb653") if ground.kind == "burn" else Color("b3e86c")
+			if ground.kind == "burn":
+				marker.draw_colored_polygon(PackedVector2Array([
+					center + Vector2(-4, 2), center + Vector2(-2, -3), center + Vector2(0, -1),
+					center + Vector2(2, -5), center + Vector2(4, 2), center + Vector2(0, 4)]), color)
+			else:
+				marker.draw_line(center + Vector2(-3, -3), center + Vector2(3, 3), color, 2.0)
+				marker.draw_line(center + Vector2(3, -3), center + Vector2(-3, 3), color, 2.0)
+			for index: int in range(ground.turns_left):
+				marker.draw_circle(center + Vector2(-3 + index * 2, 6), 0.75, color))
+		add_child(marker)
+		_ground_markers.append(marker)
 
 
 func _add_height_source(height: int) -> int:

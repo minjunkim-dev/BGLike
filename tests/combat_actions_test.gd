@@ -133,6 +133,22 @@ func _run() -> void:
 	_test_poison_removed_during_save()
 	await _test_water_stage()
 	_test_status_application_boundaries()
+	_test_ground_creation()
+	await _test_ground_walk_entry()
+	_test_ground_start_and_expiry()
+	_test_ground_cleanup()
+	_test_ground_cleanup_observers()
+	_test_ground_expiry_observers()
+	await _test_ground_landings()
+	await _test_ground_entry_reset()
+	await _test_ground_rejected_entry()
+	_test_deferred_ground_start()
+	await _test_ground_entry_incapacitation()
+	_test_ground_fifo()
+	_test_self_ground_expiry()
+	_test_ground_fall_and_water()
+	await _test_ground_source_removed_during_entry()
+	_test_ground_refresh_and_boundaries()
 	await _test_reactions()
 	await _test_own_turn_parry()
 	_test_isometric_surface()
@@ -1720,6 +1736,315 @@ func _test_status_lethal_tick() -> void:
 	f.turns.start(f.units, order_dice)
 	_check(target.hit_points == 0 and not target.visible and f.turns.current_unit == f.units[1],
 		"시작 화상으로 전투 불능이면 남은 독 내성/피해 없이 동료로 진행")
+
+
+func _test_ground_creation() -> void:
+	var f: Fixture = _fixture()
+	var cell: Vector2i = f.units[0].cell
+	_check(f.actions.create_ground(f.units[3], cell, "burn"), "점유 바닥에 불 장판 생성")
+	_check(f.actions.create_ground(f.units[2], cell, "poison"), "독 장판은 같은 칸에 함께 생성")
+	var grounds: Array = f.actions.get_grounds()
+	_check(grounds.size() == 2 and grounds[0].kind == "burn" and grounds[0].turns_left == 2
+		and grounds[1].kind == "poison" and grounds[1].turns_left == 4,
+		"장판 조회는 생성 순서와 불2/독4 기간을 표시")
+	_check(f.units[0].status_effects.is_empty(), "장판 생성은 점유 유닛에 즉시 부여하지 않음")
+	_check(f.actions.create_ground(f.units[1], cell, "burn") and f.actions.get_grounds().size() == 2
+		and f.actions.get_grounds()[0].source == f.units[3], "같은 불 장판 갱신은 원 시전자와 순서를 유지")
+	f.actions.grid.blocked_cells = [Vector2i(1, 1)]
+	f.actions.grid.pits = [Vector2i(2, 1)]
+	for invalid: Vector2i in [Vector2i(-1, 0), Vector2i(1, 1), Vector2i(2, 1)]:
+		_check(not f.actions.create_ground(f.units[3], invalid, "burn"), "바닥 없는 칸/막힌 칸은 장판 거부")
+	_check(not f.actions.create_ground(f.units[3], cell, "ice"), "미정 종류는 거부")
+
+
+func _test_ground_walk_entry() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[0]
+	f.units[2].reaction_left = 0
+	f.actions.dice = _dice_for([], [])
+	f.actions.create_ground(f.units[3], Vector2i(4, 5), "burn")
+	f.actions.create_ground(f.units[3], Vector2i(4, 6), "poison")
+	_check(await f.actions.move_to(target, Vector2i(4, 5)) and target.get_status_count("burn") == 1
+		and target.hit_points == 12, "걷기 진입은 화상1개만 부여하고 즉시 피해/주사위 없음")
+	await f.actions.move_to(target, Vector2i(4, 4))
+	f.actions.create_ground(f.units[1], Vector2i(4, 5), "burn")
+	await f.actions.move_to(target, Vector2i(4, 6))
+	_check(target.get_status_count("burn") == 1 and target.get_status_count("poison") == 1
+		and target.movement_left == 2 and target.hit_points == 12,
+		"경로 중간 재진입/다른 시전자 갱신은 진입 제한 유지, 다른 칸 독은 별도 부여")
+
+
+func _test_ground_start_and_expiry() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	f.actions.create_ground(f.units[1], target.cell, "burn")
+	f.actions.create_ground(f.units[1], target.cell, "poison")
+	f.actions.dice = _dice_for([2, 1, 2, 1], [4, 20, 4, 20])
+	f.turns.end_turn()
+	_check(f.actions.get_grounds()[0].turns_left == 1 and f.actions.get_grounds()[1].turns_left == 3,
+		"시전자의 실제 시작에 장판 기간 감소")
+	f.turns.end_turn()
+	_check(target.hit_points == 9 and target.get_status_count("burn") == 1
+		and target.get_status_count("poison") == 1, "대상 실제 시작에 장판 부여 후 새 효과도 FIFO 틱")
+	for index: int in range(4):
+		f.turns.end_turn()
+	_check(f.actions.get_grounds().size() == 1 and f.actions.get_grounds()[0].kind == "poison"
+		and f.actions.get_grounds()[0].turns_left == 2 and target.get_status_count("burn") == 1,
+		"시전자 두 번째 시작에 불 장판 만료, 뒤늦게 부여한 화상 자체의 기간은 보존")
+	_check(target.hit_points == 5 and target.get_status_count("poison") == 2,
+		"다음 실제 시작은 남은 화상/독과 장판의 새 독을 함께 처리")
+
+
+func _test_ground_cleanup() -> void:
+	var f: Fixture = _fixture()
+	f.actions.dice = _dice_for([], [])
+	f.actions.create_ground(f.units[0], f.units[1].cell, "burn")
+	f.actions.create_ground(f.units[3], f.units[2].cell, "poison")
+	var observed: Array[int] = []
+	var observer: Callable = func(_unit: CombatUnit) -> void:
+		observed.append(f.actions.get_grounds().size())
+	f.turns.turn_started.connect(observer)
+	f.actions.incapacitate(f.units[0])
+	f.turns.turn_started.disconnect(observer)
+	_check(observed == [1] and f.actions.get_grounds().size() == 1
+		and f.actions.get_grounds()[0].source == f.units[3],
+		"현재 시전자 전투 불능은 다음 실제 턴 시작 전에 자기 장판만 정리")
+	_check(not f.actions.create_ground(f.units[0], Vector2i(0, 0), "burn"), "전투 불능 시전자는 새 장판 거부")
+	f.actions.initialize(f.units, f.turns)
+	_check(f.actions.get_grounds().is_empty(), "전투 재초기화는 이전 장판/진입 기록 정리")
+
+
+func _test_ground_cleanup_observers() -> void:
+	var f: Fixture = _fixture()
+	f.actions.dice = _dice_for([], [])
+	f.actions.create_ground(f.units[0], f.units[1].cell, "burn")
+	f.actions.create_ground(f.units[0], f.units[1].cell, "poison")
+	f.actions.apply_status(f.units[0], f.units[2], "burn")
+	var observed: Array[Vector2i] = []
+	var observer: Callable = func(message: String) -> void:
+		if "장판 해제" in message:
+			observed.append(Vector2i(f.actions.get_grounds().size(), f.units[2].get_status_count("burn")))
+	f.actions.logged.connect(observer)
+	f.actions.incapacitate(f.units[0])
+	f.actions.logged.disconnect(observer)
+	_check(observed == [Vector2i.ZERO, Vector2i.ZERO],
+		"소멸 로그 콜백도 시전자의 모든 장판과 상태 이상이 정리된 결과만 관측")
+
+
+func _test_ground_expiry_observers() -> void:
+	var f: Fixture = _fixture()
+	f.actions.create_ground(f.units[1], Vector2i.ZERO, "burn")
+	f.actions.apply_status(f.units[1], f.units[0], "burn")
+	f.actions.dice = _dice_for([2], [4])
+	var observed: Array[int] = []
+	var observer: Callable = func(message: String) -> void:
+		if "장판 만료" in message:
+			observed.append(f.units[0].get_status_count("burn"))
+	f.actions.logged.connect(observer)
+	for index: int in range(5):
+		f.turns.end_turn()
+	f.actions.logged.disconnect(observer)
+	_check(observed == [0], "장판 만료 로그 전에 같은 시전자의 만료 상태 이상도 정리")
+
+
+func _test_ground_landings() -> void:
+	var jumping: Fixture = _fixture()
+	jumping.units[2].reaction_left = 0
+	jumping.actions.dice = _dice_for([], [])
+	jumping.actions.create_ground(jumping.units[3], Vector2i(4, 5), "burn")
+	jumping.actions.create_ground(jumping.units[3], Vector2i(4, 6), "poison")
+	_check(await jumping.actions.jump_to(jumping.units[0], Vector2i(4, 6))
+		and jumping.units[0].get_status_count("burn") == 0
+		and jumping.units[0].get_status_count("poison") == 1, "점프는 공중 장판을 건너뛰고 착지 장판만 적용")
+	var pushing: Fixture = _fixture()
+	pushing.actions.dice = _dice_for([], [])
+	pushing.actions.create_ground(pushing.units[3], Vector2i(2, 4), "burn")
+	pushing.actions.create_ground(pushing.units[3], Vector2i(2, 4), "poison")
+	_check(pushing.actions.shove(pushing.units[0], pushing.units[1])
+		and pushing.units[1].get_status_count("burn") == 1
+		and pushing.units[1].get_status_count("poison") == 1, "밀치기는 겹친 착지 장판을 둘 다 적용")
+	var pulling: Fixture = _fixture()
+	pulling.units[0].cell = Vector2i(2, 4)
+	pulling.units[2].kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	pulling.actions.create_ground(pulling.units[3], Vector2i(4, 4), "burn")
+	pulling.turns.end_turn()
+	pulling.turns.end_turn()
+	pulling.actions.dice = _dice_for([20, 1], [20, 20])
+	_check(pulling.actions.pull(pulling.units[2], pulling.units[0])
+		and pulling.units[0].get_status_count("burn") == 1, "끌기 착지도 장판 적용")
+
+
+func _test_ground_entry_reset() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[0]
+	f.units[2].cell = Vector2i(9, 9)
+	f.actions.create_ground(f.units[3], Vector2i(4, 5), "burn")
+	f.actions.dice = _dice_for([2], [4])
+	await f.actions.move_to(target, Vector2i(4, 5))
+	await f.actions.move_to(target, Vector2i(4, 4))
+	for index: int in range(4):
+		f.turns.end_turn()
+	_check(target.hit_points == 10 and target.get_status_count("burn") == 1,
+		"장판 밖 실제 시작은 기존 화상만 틱하고 진입 제한 초기화")
+	f.turns.end_turn()
+	_check(f.turns.select_unit(target) and target.hit_points == 10, "턴 종료 취소는 장판/틱 시작 반복 없음")
+	await f.actions.move_to(target, Vector2i(4, 5))
+	await f.actions.move_to(target, Vector2i(4, 4))
+	await f.actions.move_to(target, Vector2i(4, 5))
+	_check(target.get_status_count("burn") == 2 and target.hit_points == 10,
+		"새 실제 턴의 첫 진입만 허용하고 종료 취소/재진입으로 반복하지 않음")
+
+
+func _test_ground_rejected_entry() -> void:
+	for capped: bool in [false, true]:
+		var f: Fixture = _fixture()
+		var target: CombatUnit = f.units[0]
+		f.units[2].reaction_left = 0
+		f.actions.dice = _dice_for([], [])
+		f.actions.create_ground(f.units[3], Vector2i(4, 5), "burn")
+		if capped:
+			for index: int in range(3):
+				f.actions.apply_status(f.units[1], target, "burn")
+			f.actions.grid.water_cells = [Vector2i(4, 6)]
+		else:
+			f.actions.grid.water_cells = [Vector2i(4, 5)]
+		await f.actions.move_to(target, Vector2i(4, 5))
+		await f.actions.move_to(target, Vector2i(4, 6))
+		f.actions.grid.water_cells.clear()
+		await f.actions.move_to(target, Vector2i(4, 5))
+		_check(target.get_status_count("burn") == 0 and f.actions.get_grounds().size() == 1,
+			"물/상한 거부도 진입 시도 소비, 물은 장판 자체를 없애지 않음: " + str(capped))
+
+
+func _test_deferred_ground_start() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[0]
+	var actor: CombatUnit = f.units[1]
+	target.cell = Vector2i(3, 4)
+	actor.cell = Vector2i(4, 4)
+	var order: Array[CombatUnit] = [target, f.units[2], f.units[3], actor]
+	var rolls: Array[int] = []
+	for unit: CombatUnit in f.units:
+		rolls.append(20 - 3 * order.find(unit) - unit.get_dexterity())
+	f.turns.start(f.units, _dice_for(rolls, [20, 20, 20, 20]))
+	f.actions.create_ground(f.units[2], Vector2i(2, 4), "burn")
+	f.actions.dice = _dice_for([2, 3], [4, 4])
+	for index: int in range(3):
+		f.turns.end_turn()
+	_check(f.turns.current_unit == actor and not f.turns.is_turn_started(target), "장판 사례의 동료는 경계 묶음에서 지연")
+	_check(f.actions.shove(actor, target) and target.get_status_count("burn") == 1
+		and target.hit_points == 12 and not f.turns.is_turn_started(target), "지연된 동료도 진입 시 부여하지만 틱은 대기")
+	_check(f.turns.select_unit(target) and target.hit_points == 7 and target.get_status_count("burn") == 2,
+		"처음 선택할 때 시작 부여와 FIFO 틱, 기존 진입과 시작은 별도")
+	f.turns.select_unit(actor)
+	f.turns.select_unit(target)
+	f.turns.end_turn()
+	_check(f.turns.select_unit(target) and target.hit_points == 7 and target.get_status_count("burn") == 2,
+		"Tab에 쓰는 공개 선택/종료 취소는 지연된 시작의 장판을 반복하지 않음")
+
+
+func _test_ground_entry_incapacitation() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[0]
+	f.units[2].cell = Vector2i(5, 5)
+	f.actions.create_ground(f.units[3], Vector2i(4, 5), "burn")
+	f.actions.create_ground(f.units[3], Vector2i(4, 5), "poison")
+	f.actions.dice = _dice_for([], [])
+	var observer: Callable = func() -> void:
+		if target.hit_points > 0 and target.get_status_count("burn") == 1:
+			f.actions.incapacitate(target)
+	f.actions.changed.connect(observer)
+	await f.actions.move_to(target, Vector2i(4, 6))
+	f.actions.changed.disconnect(observer)
+	_check(target.hit_points == 0 and target.cell == Vector2i(4, 5)
+		and target.status_effects.is_empty() and f.units[2].reaction_left == 1,
+		"진입 부여 콜백의 전투 불능 뒤 남은 장판/이동/기회 공격과 굴림 중단")
+
+
+func _test_ground_fifo() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	f.actions.create_ground(f.units[3], target.cell, "poison")
+	f.actions.create_ground(f.units[1], target.cell, "burn")
+	f.actions.dice = _dice_for([1, 2], [20, 4])
+	var messages: Array[String] = []
+	f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+		if unit == target:
+			messages.append(text))
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(messages == ["독 내성 3", "독 -1", "화상 -2"] and target.hit_points == 9,
+		"겹친 장판은 종류 고정 순서 대신 먼저 생성한 독부터 부여/FIFO 처리")
+
+
+func _test_self_ground_expiry() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[0]
+	f.actions.create_ground(target, target.cell, "burn")
+	f.actions.dice = _dice_for([2, 2], [4, 4])
+	for expected_hp: int in [10, 8, 8]:
+		for index: int in range(4):
+			f.turns.end_turn()
+		_check(target.hit_points == expected_hp, "자기 장판도 만료 먼저, 이미 부여한 화상은 자기 기간 유지: " + str(expected_hp))
+	_check(f.actions.get_grounds().is_empty() and target.status_effects.is_empty(), "자기 장판과 뒤늦게 받은 화상 모두 정상 만료")
+
+
+func _test_ground_fall_and_water() -> void:
+	for hp: int in [3, 4]:
+		var f: Fixture = _fixture()
+		var target: CombatUnit = f.units[1]
+		target.hit_points = hp
+		f.actions.grid.heights = {f.units[0].cell: 3, target.cell: 3}
+		f.actions.create_ground(f.units[3], Vector2i(2, 4), "burn")
+		f.actions.dice = _dice_for([], [])
+		_check(f.actions.shove(f.units[0], target) and target.hit_points == hp - 3
+			and target.get_status_count("burn") == (1 if hp == 4 else 0),
+			"낙하를 먼저 처리하고 살아남은 착지만 장판 부여: " + str(hp))
+	var wet: Fixture = _fixture()
+	var target: CombatUnit = wet.units[2]
+	wet.actions.grid.water_cells = [target.cell]
+	wet.actions.create_ground(wet.units[3], target.cell, "burn")
+	wet.actions.create_ground(wet.units[3], target.cell, "poison")
+	wet.actions.dice = _dice_for([1], [20])
+	wet.turns.end_turn()
+	wet.turns.end_turn()
+	_check(target.hit_points == 11 and target.get_status_count("burn") == 0
+		and target.get_status_count("poison") == 1 and wet.actions.get_grounds().size() == 2,
+		"물 위 겹친 장판 시작은 불 틱 없이 독만 적용하고 장판은 보존")
+
+
+func _test_ground_source_removed_during_entry() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[0]
+	f.units[2].reaction_left = 0
+	f.actions.create_ground(f.units[3], Vector2i(4, 5), "burn")
+	f.actions.create_ground(f.units[3], Vector2i(4, 5), "poison")
+	f.actions.dice = _dice_for([], [])
+	var observer: Callable = func() -> void:
+		if target.get_status_count("burn") == 1:
+			f.actions.incapacitate(f.units[3])
+	f.actions.changed.connect(observer)
+	await f.actions.move_to(target, Vector2i(4, 5))
+	f.actions.changed.disconnect(observer)
+	_check(target.status_effects.is_empty() and f.actions.get_grounds().is_empty(),
+		"첫 장판 부여 콜백에서 시전자가 탈락하면 snapshot에 남은 뒤 장판도 중단")
+
+
+func _test_ground_refresh_and_boundaries() -> void:
+	var f: Fixture = _fixture()
+	f.actions.dice = _dice_for([], [])
+	f.actions.create_ground(f.units[1], Vector2i.ZERO, "burn")
+	f.turns.end_turn()
+	_check(f.actions.get_grounds()[0].turns_left == 1, "갱신 전에 원 시전자 시계로 기간 감소")
+	f.actions.create_ground(f.units[3], Vector2i.ZERO, "burn")
+	_check(f.actions.get_grounds()[0].turns_left == 2 and f.actions.get_grounds()[0].source == f.units[1],
+		"다른 시전자의 갱신은 기간만2로 복원하고 원 시전자 유지")
+	f.actions.create_ground(f.units[1], Vector2i(0, 1), "burn")
+	_check(f.actions.get_grounds().size() == 2, "인접 칸의 같은 종류는 별개 장판")
+	var outsider: CombatUnit = CombatUnit.new()
+	_created.append(outsider)
+	_check(not f.actions.create_ground(outsider, Vector2i.ZERO, "burn")
+		and not f.actions.create_ground(null, Vector2i.ZERO, "burn"), "외부/없는 시전자는 거부")
 
 
 func _test_common_stun_application() -> void:

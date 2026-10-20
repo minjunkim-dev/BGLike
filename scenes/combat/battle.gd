@@ -385,6 +385,7 @@ func _update_turn_ui() -> void:
 			attack_cells.append(cell)
 	map.show_movement(movement_cells, attack_cells, selection.preview_path,
 		turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO)
+	map.show_grounds(actions.get_grounds())
 	if selection.preview_target != null:
 		var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(
 			turns.current_unit, selection.preview_target)
