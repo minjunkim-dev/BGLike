@@ -313,9 +313,11 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 		var in_group: bool = unit in turns.get_current_group()
 		button.disabled = false
 		var color: Color = CombatUnit.ALLY_COLOR if unit.is_ally else CombatUnit.ENEMY_COLOR
-		if not in_group or turns.is_turn_finished(unit):
-			color = color.darkened(0.6)
-		var border: Color = Color("f4cf69") if unit == current else Color("61717e")
+		if turns.is_turn_finished(unit):
+			color = Color("777777")
+		var border: Color = Color.WHITE if in_group else Color("61717e")
+		if unit == current:
+			border = Color("f4cf69")
 		for state: String in ["normal", "disabled", "hover", "pressed", "focus"]:
 			button.add_theme_stylebox_override(state, _button_style(color.darkened(0.3), border))
 	var end_color: Color = DEFAULT_BUTTON_COLOR if has_available_action else END_BUTTON_COLOR

@@ -60,6 +60,7 @@ func _run() -> void:
 	await _test_layout()
 	await _test_guidance()
 	await _test_mouse_controls_and_inspection()
+	await _test_group_keyboard()
 	await _test_order_bar_input()
 	await _test_transparent_order_input()
 	await _test_reaction_flow()
@@ -768,8 +769,10 @@ func _test_mouse_controls_and_inspection() -> void:
 	turns.select_unit(units[0])
 	turns.end_turn()
 	await _click((portraits[units[0]] as Button).get_global_rect().get_center())
-	_check(turns.current_unit == units[1] and hud.unit_label.text == "아군 전사",
-		"턴을 마친 아군 초상도 정보를 표시하며 조작은 전환하지 않음")
+	_check(turns.current_unit == units[0] and not turns.is_turn_finished(units[0])
+		and units[0].action_left == 0 and hud.unit_label.text == "아군 전사",
+		"턴을 마친 아군 초상은 종료를 해제하고 남은 자원으로 조작 전환")
+	turns.end_turn()
 	turns.end_turn()
 	var enemy_actor: CombatUnit = turns.current_unit
 	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
@@ -794,6 +797,68 @@ func _test_mouse_controls_and_inspection() -> void:
 		"반응 대기 중 초상·우클릭은 기존 잠금을 유지")
 	actions.busy = false
 	_reset_units()
+
+
+func _test_group_keyboard() -> void:
+	_reset_units()
+	var portraits: Dictionary = hud.get("_portraits")
+	hud.end_button.grab_focus()
+	await _tab()
+	_check(turns.current_unit == units[1] and hud.end_button.has_focus(),
+		"Tab은 묶음의 다음 아군을 고르고 UI 포커스를 옮기지 않음")
+	await _tab(true)
+	_check(turns.current_unit == units[0], "Shift+Tab은 묶음의 이전 아군으로 순환")
+	units[0].spend_movement(2)
+	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
+	hud.end_button.pressed.emit()
+	var ended: StyleBoxFlat = (portraits[units[0]] as Button).get_theme_stylebox("normal")
+	_check(is_equal_approx(ended.bg_color.r, ended.bg_color.g)
+		and is_equal_approx(ended.bg_color.g, ended.bg_color.b), "턴 종료한 초상은 회색")
+	await _tab()
+	_check(turns.current_unit == units[0] and not turns.is_turn_finished(units[0])
+		and units[0].movement_left == 4 and units[0].action_left == 0,
+		"Tab은 종료한 아군도 포함하며 자원 회복 없이 종료를 해제")
+	var selected: StyleBoxFlat = (portraits[units[0]] as Button).get_theme_stylebox("normal")
+	var grouped: StyleBoxFlat = (portraits[units[1]] as Button).get_theme_stylebox("normal")
+	var outside: StyleBoxFlat = (portraits[units[2]] as Button).get_theme_stylebox("normal")
+	_check(selected.border_color == Color("f4cf69") and grouped.border_color == Color.WHITE,
+		"조작 중 초상은 금색, 현재 묶음의 다른 초상은 흰색 테두리")
+	_check(outside.bg_color == CombatUnit.ENEMY_COLOR.darkened(0.3), "묶음 밖 초상도 원래 색 유지")
+	units[1].is_stunned = true
+	await _tab()
+	_check(turns.current_unit == units[0], "Tab은 기절한 아군을 건너뜀")
+	units[1].is_stunned = false
+	actions.busy = true
+	await _tab()
+	_check(turns.current_unit == units[0], "이동·행동 연출 중 Tab 전환 잠금")
+	actions.busy = false
+	hud.reaction_dialog.popup_centered()
+	await _tab()
+	_check(turns.current_unit == units[0], "반응 확인 창 중 Tab 전환 잠금")
+	hud.reaction_dialog.hide()
+	hud.get_node("Result").show()
+	await _tab()
+	_check(turns.current_unit == units[0], "결과 창 중 Tab 전환 잠금")
+	hud.get_node("Result").hide()
+	turns.end_turn()
+	turns.end_turn()
+	var enemy: CombatUnit = turns.current_unit
+	await _tab()
+	_check(turns.current_unit == enemy and not enemy.is_ally, "적 턴 중 Tab 전환 잠금")
+	_reset_units()
+
+
+func _tab(backwards: bool = false) -> void:
+	var event: InputEventKey = InputEventKey.new()
+	event.keycode = KEY_TAB
+	event.shift_pressed = backwards
+	event.pressed = true
+	Input.parse_input_event(event)
+	await process_frame
+	event = event.duplicate() as InputEventKey
+	event.pressed = false
+	Input.parse_input_event(event)
+	await process_frame
 
 
 func _test_order_bar_input() -> void:

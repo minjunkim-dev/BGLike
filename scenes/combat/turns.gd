@@ -82,8 +82,10 @@ func insert_before(unit: CombatUnit, anchor: CombatUnit) -> bool:
 
 
 func select_unit(unit: CombatUnit) -> bool:
-	if not unit.is_ally or unit.is_stunned or unit not in get_current_group() or is_turn_finished(unit):
+	if (not unit.is_ally or unit.is_stunned or unit not in get_current_group()
+		or (is_turn_finished(unit) and unit not in _activated_units)):
 		return false
+	_finished_units.erase(unit)
 	current_unit = unit
 	_activate_current_unit()
 	changed.emit()
