@@ -9,6 +9,27 @@ signal hit_landed
 signal reaction_requested(kind: String, prompt: String)
 signal reaction_decided(use_reaction: bool)
 
+class RockStep extends RefCounted:
+	var cell: Vector2i
+	var target: CombatUnit
+	var damage: int = 0
+	var push: bool = false
+	var push_cell: Vector2i
+	var advance: bool = true
+	var destroyed: bool = false
+	var reason: String = ""
+
+
+class RockRoll extends RefCounted:
+	var direction: Vector2i = Vector2i.ZERO
+	var cells: Array[Vector2i] = []
+	var steps: Array[RockStep] = []
+	var collisions: Array[CombatUnit] = []
+	var stop_cell: Vector2i
+	var destroyed: bool = false
+	var reason: String = "최대3칸"
+
+
 class Ground extends RefCounted:
 	var source: CombatUnit
 	var cell: Vector2i
@@ -39,9 +60,11 @@ var movement_animation: Callable
 var jump_animation: Callable
 var attack_animation: Callable
 var _grounds: Array[Ground] = []
+var _revision: int = 0
 
 
 func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> void:
+	_revision += 1
 	if turns != null and turns.turn_started.is_connected(_on_turn_started):
 		turns.turn_started.disconnect(_on_turn_started)
 	# 소환과 전투 불능 이후에도 현재 유닛 배열을 그대로 조회한다.
@@ -54,7 +77,7 @@ func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> v
 
 
 func create_prop(cell: Vector2i, kind: String) -> CombatGrid.Prop:
-	if (kind != "crate" or not grid.is_floor(cell) or grid.is_blocked(cell)
+	if (kind not in ["crate", "rock"] or not grid.is_floor(cell) or grid.is_blocked(cell)
 		or grid.unit_at(cell) != null or grid.prop_at(cell) != null):
 		return null
 	var prop: CombatGrid.Prop = CombatGrid.Prop.new(cell, kind)
@@ -83,6 +106,12 @@ func attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
 	busy = true
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	last_damage_rolls.clear()
+	if prop.kind == "rock":
+		last_damage = 0
+		_roll_rock(actor, prop)
+		busy = false
+		changed.emit()
+		return true
 	var sides: int = actor.get_damage_sides()
 	if sides > 0:
 		last_damage_rolls.append(dice.roll(sides))
@@ -106,6 +135,150 @@ func attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
 	busy = false
 	changed.emit()
 	return true
+
+
+func preview_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> RockRoll:
+	var roll: RockRoll = RockRoll.new()
+	if (not is_instance_valid(actor) or prop == null or prop not in grid.props
+		or prop.kind != "rock" or prop.hit_points <= 0):
+		roll.reason = "대상 없음"
+		return roll
+	var offset: Vector2i = prop.cell - actor.cell
+	roll.direction = (Vector2i(signi(offset.x), 0) if absi(offset.x) >= absi(offset.y)
+		else Vector2i(0, signi(offset.y)))
+	if roll.direction == Vector2i.ZERO:
+		roll.reason = "방향 없음"
+		return roll
+	return _trace_rock(prop, roll.direction, 3, [])
+
+
+func _trace_rock(prop: CombatGrid.Prop, direction: Vector2i, limit: int,
+		damaged: Array[CombatUnit]) -> RockRoll:
+	var roll: RockRoll = RockRoll.new()
+	roll.direction = direction
+	var struck: Array[CombatUnit] = damaged.duplicate()
+	var positions: Dictionary[CombatUnit, Vector2i] = {}
+	var health: Dictionary[CombatUnit, int] = {}
+	for unit: CombatUnit in units:
+		if unit.hit_points > 0:
+			positions[unit] = unit.cell
+			health[unit] = unit.hit_points
+	var cell: Vector2i = prop.cell
+	for index: int in range(limit):
+		var step: RockStep = RockStep.new()
+		var next: Vector2i = cell + direction
+		step.cell = next
+		roll.stop_cell = next
+		if not grid.is_inside(next):
+			step.advance = false
+			step.reason = "맵 경계"
+		elif grid.is_blocked(next):
+			step.advance = false
+			step.reason = "물체" if grid.prop_at(next) != null else "장벽"
+		elif grid.height_at(next) > grid.height_at(cell):
+			step.advance = false
+			step.reason = "오르막"
+		elif grid.pits.has(next) or grid.height_at(cell) - grid.height_at(next) >= 2:
+			step.destroyed = true
+			step.reason = "낭떠러지 소멸" if grid.pits.has(next) else "높이 차2 파괴"
+		else:
+			for target: CombatUnit in positions:
+				if positions[target] == next and health[target] > 0:
+					step.target = target
+					break
+			if step.target != null:
+				var target: CombatUnit = step.target
+				if target not in struck:
+					struck.append(target)
+					step.damage = 4
+					health[target] = maxi(0, health[target] - 4)
+				if target not in roll.collisions:
+					roll.collisions.append(target)
+				if health[target] > 0:
+					var destination: Vector2i = next + direction
+					var blocked: bool = (not grid.is_inside(destination) or grid.is_blocked(destination)
+						or grid.height_at(destination) > grid.height_at(next))
+					for other: CombatUnit in positions:
+						if other != target and health[other] > 0 and positions[other] == destination:
+							blocked = true
+					if blocked:
+						step.advance = false
+						step.reason = "밀기 막힘"
+					else:
+						step.push = true
+						step.push_cell = destination
+						positions[target] = destination
+						var fall: int = _fall_damage_from(target, next, destination)
+						health[target] = 0 if grid.pits.has(destination) else maxi(0, health[target] - fall)
+				if health[target] == 0:
+					var side_alive: bool = false
+					for other: CombatUnit in health:
+						if other.is_ally == target.is_ally and health[other] > 0:
+							side_alive = true
+					if not side_alive:
+						step.advance = false
+						step.reason = "전투 종료"
+		roll.steps.append(step)
+		if step.advance:
+			roll.cells.append(next)
+			cell = next
+		if step.destroyed or not step.advance:
+			roll.destroyed = step.destroyed
+			roll.reason = step.reason
+			break
+	return roll
+
+
+func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
+	var direction: Vector2i = preview_rock(actor, prop).direction
+	var struck: Array[CombatUnit] = []
+	for index: int in range(3):
+		var origin: Vector2i = prop.cell
+		if not _can_continue_rock(actor, prop, origin) or is_over():
+			return
+		var step: RockStep = _trace_rock(prop, direction, 1, struck).steps[0]
+		if step.target != null and step.damage > 0:
+			var target: CombatUnit = step.target
+			struck.append(target)
+			_damage(target, step.damage)
+			if not _can_continue_rock(actor, prop, origin) or not is_instance_valid(target) or target not in units:
+				return
+			logged.emit("%s 바위 충돌: 피해4 · HP %d" % [target.get_display_name(), target.hit_points])
+			if not _can_continue_rock(actor, prop, origin) or not is_instance_valid(target) or target not in units:
+				return
+			if is_over():
+				logged.emit("바위 정지: 전투 종료")
+				return
+			step = _trace_rock(prop, direction, 1, struck).steps[0]
+			if step.damage > 0:
+				return
+		if step.push:
+			_land(step.target, step.push_cell)
+			if not _can_continue_rock(actor, prop, origin):
+				return
+			if is_over():
+				logged.emit("바위 정지: 전투 종료")
+				return
+			step = _trace_rock(prop, direction, 1, struck).steps[0]
+			if step.damage > 0:
+				return
+		if step.advance:
+			prop.cell = step.cell
+		if step.destroyed:
+			prop.hit_points = 0
+			grid.props.erase(prop)
+		logged.emit("바위 %s: %d, %d" % [step.reason if not step.reason.is_empty() else "이동",
+			prop.cell.x, prop.cell.y])
+		if step.destroyed or not step.advance:
+			return
+		if not _can_continue_rock(actor, prop, step.cell) or is_over():
+			return
+	logged.emit("바위 정지: 최대3칸")
+
+
+func _can_continue_rock(actor: CombatUnit, prop: CombatGrid.Prop, cell: Vector2i) -> bool:
+	return (prop in grid.props and prop.hit_points > 0 and prop.cell == cell and is_instance_valid(actor)
+		and actor in units and actor.hit_points > 0 and turns.current_unit == actor)
 
 
 func _on_turn_started(unit: CombatUnit) -> void:
@@ -328,7 +501,11 @@ func jump_reactors(actor: CombatUnit, destination: Vector2i) -> Array[CombatUnit
 
 
 func fall_damage(actor: CombatUnit, destination: Vector2i) -> int:
-	var drop: int = grid.height_at(actor.cell) - grid.height_at(destination)
+	return _fall_damage_from(actor, actor.cell, destination)
+
+
+func _fall_damage_from(actor: CombatUnit, origin: Vector2i, destination: Vector2i) -> int:
+	var drop: int = grid.height_at(origin) - grid.height_at(destination)
 	return ceili((drop - 2) * actor.get_max_hit_points() * 0.15) if drop >= 3 else 0
 
 
@@ -711,15 +888,21 @@ func _apply_grounds(unit: CombatUnit, entering: bool) -> void:
 func _clear_burn_in_water(unit: CombatUnit) -> void:
 	if unit.cell not in grid.water_cells or unit.get_status_count("burn") == 0:
 		return
+	var revision: int = _revision
 	for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
 		if effect.kind == "burn":
 			unit.status_effects.erase(effect)
 	changed.emit()
+	if not _same_combat(unit, revision):
+		return
 	logged.emit("%s 물: 화상 해제" % unit.get_display_name())
+	if not _same_combat(unit, revision):
+		return
 	feedback.emit(unit, "물: 화상 해제")
 
 
 func _land(target: CombatUnit, destination: Vector2i) -> void:
+	var revision: int = _revision
 	var amount: int = fall_damage(target, destination)
 	target.cell = destination
 	if grid.pits.has(destination):
@@ -728,22 +911,39 @@ func _land(target: CombatUnit, destination: Vector2i) -> void:
 		feedback.emit(target, "낙사")
 		return
 	_clear_burn_in_water(target)
+	if not _same_combat(target, revision):
+		return
 	if amount > 0:
 		_damage(target, amount)
+		if not _same_combat(target, revision):
+			return
 		# 낙하 피드백 전에 착지 위치와 HP를 화면에 반영한다.
 		changed.emit()
+		if not _same_combat(target, revision):
+			return
 		logged.emit("%s 낙하 피해: %d · HP %d" % [target.get_display_name(), amount, target.hit_points])
+		if not _same_combat(target, revision):
+			return
 		feedback.emit(target, "-%d" % amount)
+	if not _same_combat(target, revision):
+		return
 	_apply_grounds(target, true)
 
 
 func _damage(target: CombatUnit, amount: int) -> void:
+	var revision: int = _revision
 	var before: int = target.hit_points
 	target.hit_points = maxi(0, target.hit_points - amount)
 	if target.hit_points < before:
 		hit_landed.emit()
+	if not _same_combat(target, revision):
+		return
 	if target.hit_points == 0:
 		incapacitate(target)
+
+
+func _same_combat(unit: CombatUnit, revision: int) -> bool:
+	return revision == _revision and is_instance_valid(unit) and unit in units
 
 
 func _heal(actor: CombatUnit, amount: int, name: String) -> void:

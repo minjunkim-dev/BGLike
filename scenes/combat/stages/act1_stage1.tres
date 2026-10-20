@@ -6,6 +6,14 @@
 
 [resource]
 script = ExtResource("1_stage")
+heights = Dictionary[Vector2i, int]({
+Vector2i(3, 0): 1,
+Vector2i(4, 0): 2,
+Vector2i(5, 0): 2
+})
+pits = Array[Vector2i]([Vector2i(6, 1)])
+water_cells = Array[Vector2i]([Vector2i(5, 1)])
 crate_cells = Array[Vector2i]([Vector2i(2, 1)])
+rock_cells = Array[Vector2i]([Vector2i(4, 1)])
 tile_set = ExtResource("2_tiles")
 enemies = ExtResource("3_enemies")
