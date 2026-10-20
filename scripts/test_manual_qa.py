@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import manual_qa as qa
 
@@ -59,6 +59,59 @@ class ManualQATests(unittest.TestCase):
                         qa.run_case(self.app, self.case, self.directory, self.state)
                     launch.assert_not_called()
                 self.assertEqual(self.state["cases"]["compact"]["status"], "failed")
+
+    def test_fixture_runtime_error_with_zero_exit_blocks_native_launch(self):
+        self.case.update(preflight_args=["--fixture-precheck"], preflight_success_marker="FIXTURE_SETUP_PASS")
+        self.binary.write_text('#!/bin/sh\nif [ "$1" = --version ]; then echo 4.7.2.stable.official.fixture; '
+                               'else case "$*" in *--check-only*) ;; *) echo "SCRIPT ERROR: Invalid assignment"; '
+                               'echo FIXTURE_SETUP_PASS ;; esac; fi\n')
+        with patch.object(qa, "launch", side_effect=self.native_fixture("Forward+\n[CAPTURE_CHECK] PASS:\n")) as launch, \
+                patch.object(qa, "stop_native"):
+            with self.assertRaisesRegex(ValueError, "Preflight failed"):
+                qa.run_case(self.app, self.case, self.directory, self.state)
+            launch.assert_not_called()
+        self.assertEqual(self.state["cases"]["compact"]["status"], "failed")
+
+    def test_fixture_missing_marker_and_nonzero_exit_block_native_launch(self):
+        self.case.update(preflight_args=["--fixture-precheck"], preflight_success_marker="FIXTURE_SETUP_PASS")
+        for output, code in (("NO_SETUP_MARKER", 0), ("FIXTURE_SETUP_PASS", 7)):
+            with self.subTest(output=output, code=code):
+                self.binary.write_text('#!/bin/sh\nif [ "$1" = --version ]; then echo 4.7.2.stable.official.fixture; '
+                                       f'else case "$*" in *--check-only*) ;; *) echo {output}; exit {code} ;; esac; fi\n')
+                with patch.object(qa, "launch") as launch:
+                    with self.assertRaisesRegex(ValueError, "Preflight failed"):
+                        qa.run_case(self.app, self.case, self.directory, self.state)
+                    launch.assert_not_called()
+                self.assertEqual(self.state["cases"]["compact"]["status"], "failed")
+
+    def test_fixture_success_still_needs_native_visual_review(self):
+        self.case.update(preflight_args=["--fixture-precheck"], preflight_success_marker="FIXTURE_SETUP_PASS")
+        self.binary.write_text('#!/bin/sh\nif [ "$1" = --version ]; then echo 4.7.2.stable.official.fixture; '
+                               'else case "$*" in *--check-only*) echo PARSE_OK ;; '
+                               '*--fixture-precheck*) echo FIXTURE_SETUP_PASS ;; *) exit 9 ;; esac; fi\n')
+        self.prepare_plan()
+        qa.load_plan(self.plan)
+        launch = self.run_case("Metal - Forward+\n[CAPTURE_CHECK] PASS:\n")
+        launch.assert_called_once()
+        attempt = self.directory / "compact/1"
+        self.assertEqual((attempt / "preflight.log").read_text().strip(), "PARSE_OK")
+        self.assertEqual((attempt / "fixture-preflight.log").read_text().strip(), "FIXTURE_SETUP_PASS")
+        self.assertEqual(self.state["cases"]["compact"]["status"], "awaiting_review")
+
+    def test_fixture_timeout_reaps_owned_group_before_native_launch(self):
+        self.case.update(preflight_args=["--fixture-precheck"], preflight_success_marker="FIXTURE_SETUP_PASS")
+        parse, runtime = Mock(pid=123), Mock(pid=456)
+        parse.wait.return_value, parse.poll.return_value = 0, 0
+        runtime.wait.side_effect = [subprocess.TimeoutExpired("Godot", 30), 0]
+        runtime.poll.return_value = None
+        with patch.object(qa.subprocess, "check_output", return_value="4.7.2.stable.official.fixture"), \
+                patch.object(qa.subprocess, "Popen", side_effect=[parse, runtime]), \
+                patch.object(qa.os, "killpg") as kill, patch.object(qa, "launch") as launch:
+            with self.assertRaises(subprocess.TimeoutExpired):
+                qa.run_case(self.app, self.case, self.directory, self.state)
+            kill.assert_called_once_with(runtime.pid, signal.SIGKILL)
+            launch.assert_not_called()
+        self.assertEqual(self.state["cases"]["compact"]["status"], "failed")
 
     def test_success_needs_visual_review_and_stops_launcher(self):
         self.run_case("Metal - Forward+\n[CAPTURE_CHECK] PASS: review original frames\n")
@@ -157,6 +210,17 @@ class ManualQATests(unittest.TestCase):
     def cli(self, action, *extra):
         with patch.object(sys, "argv", ["manual_qa.py", action, str(self.plan), str(self.directory), *extra]):
             return qa.main()
+
+    def test_fixture_preflight_plan_requires_args_and_marker(self):
+        self.prepare_plan()
+        for fields in ({"preflight_args": []}, {"preflight_success_marker": "PASS"},
+                       {"preflight_args": "--fixture-precheck", "preflight_success_marker": "PASS"},
+                       {"preflight_args": [1], "preflight_success_marker": "PASS"},
+                       {"preflight_args": [], "preflight_success_marker": "  "}):
+            with self.subTest(fields=fields):
+                self.plan.write_text(json.dumps({"source_sha": "a" * 40, "cases": [dict(self.case, **fields)]}))
+                with self.assertRaisesRegex(ValueError, "Fixture preflight"):
+                    qa.load_plan(self.plan)
 
     def test_changed_inputs_refuse_reuse(self):
         self.prepare_plan()

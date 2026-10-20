@@ -52,6 +52,11 @@ def load_plan(path):
             raise ValueError("Case resolution must be [width, height]")
         if not isinstance(case.get("args", []), list) or not all(isinstance(arg, str) for arg in case.get("args", [])):
             raise ValueError("Case args must be strings")
+        if "preflight_args" in case or "preflight_success_marker" in case:
+            args, marker = case.get("preflight_args"), case.get("preflight_success_marker")
+            if (not isinstance(args, list) or not all(isinstance(arg, str) for arg in args)
+                    or not isinstance(marker, str) or not marker.strip()):
+                raise ValueError("Fixture preflight needs string args and a nonempty success marker")
     if not ids:
         raise ValueError("Plan must contain at least one case")
     # Include dirty and untracked source, plus explicitly listed ignored QA helpers.
@@ -96,21 +101,26 @@ def stop_native(app, log):
 
 
 def preflight(binary, case, log):
-    with log.open("x") as output:
-        process = subprocess.Popen([str(binary), "--headless", "--path", str(ROOT),
-                                    "--check-only", "--script", case["script"]],
-                                   stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
-        try:
-            result = process.wait(timeout=30)
-        finally:
-            if process.poll() is None:
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                process.wait()
-    if result or ERROR.search(log.read_text(errors="replace")):
-        raise ValueError(f"Preflight failed; native launch blocked: {log}")
+    base = [str(binary), "--headless", "--path", str(ROOT)]
+    commands = [([*base, "--check-only", "--script", case["script"]], log, None)]
+    if "preflight_args" in case:
+        commands.append(([*base, "--script", case["script"], "--", *case["preflight_args"]],
+                         log.with_name("fixture-preflight.log"), case["preflight_success_marker"]))
+    for command, output_path, marker in commands:
+        with output_path.open("x") as output:
+            process = subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
+            try:
+                result = process.wait(timeout=30)
+            finally:
+                if process.poll() is None:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    process.wait()
+        text = output_path.read_text(errors="replace")
+        if result or ERROR.search(text) or (marker is not None and marker not in text):
+            raise ValueError(f"Preflight failed; native launch blocked: {output_path}")
 
 
 def launch(app, case, log, frames):
