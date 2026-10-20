@@ -414,6 +414,8 @@ func _build_portraits(turns: CombatTurns) -> void:
 		order_bar.add_child(panel)
 		for unit: CombatUnit in group:
 			var button: Button = HoverButton.new()
+			# 이동 중에도 초상이 다른 묶음의 배경 위에 보이게 한다.
+			button.z_index = 1
 			button.custom_minimum_size = Vector2(40, 43)
 			button.add_theme_font_size_override("font_size", 10)
 			button.add_theme_color_override("font_disabled_color", Color("b5bdc4"))
