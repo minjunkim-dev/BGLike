@@ -60,6 +60,10 @@ func _run() -> void:
 	_test_scrap_robot_2000_stats()
 	_test_scrap_robot_3000_stats()
 	await _test_spin_attacks()
+	_test_spin_height_availability()
+	await _test_spin_height_targets()
+	await _test_spin_height_recheck()
+	_test_area_cells()
 	await _test_spin_reactions_and_reuse()
 	await _test_spin_incapacitation()
 	_test_pull_success()
@@ -249,6 +253,83 @@ func _test_spin_attacks() -> void:
 		"회전회오리는 대상을 밀어내지 않음")
 	_check(boss.action_left == 0 and boss.bonus_action_left == 1 and boss.reaction_left == 1
 		and boss.movement_left == 4 and not f.actions.busy, "여러 대상이어도 행동1개만 소비하고 입력 잠금을 해제")
+
+
+func _test_spin_height_availability() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 50
+	boss.begin_turn()
+	f.turns.current_unit = boss
+	f.actions.grid.heights[f.units[0].cell] = 2
+	_check(not f.actions.can_use(boss, "spin") and boss.action_left == 1,
+		"높이 차이2인 대상만 인접하면 회전회오리를 쓸 수 없고 행동을 보존")
+
+
+func _test_spin_height_targets() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 50
+	boss.begin_turn()
+	f.turns.current_unit = boss
+	f.units[0].reaction_left = 0
+	f.units[1].cell = Vector2i(5, 3)
+	f.actions.grid.heights = {f.units[0].cell: 2, f.units[1].cell: 1}
+	var attacked: Array[CombatUnit] = []
+	f.actions.attack_animation = func(_actor: CombatUnit, target: CombatUnit) -> void:
+		attacked.append(target)
+		await process_frame
+	_check(await f.actions.spin(boss) and attacked == [f.units[1]]
+		and f.units[0].hit_points == 12 and boss.action_left == 0,
+		"회전회오리는 높이1 대상만 실제 판정하고 높이2 대상·기존 유닛 순서·행동1 소비를 보존")
+	f.actions.attack_animation = Callable()
+
+
+func _test_spin_height_recheck() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 50
+	boss.begin_turn()
+	f.turns.current_unit = boss
+	f.units[0].reaction_left = 0
+	f.units[1].cell = Vector2i(5, 3)
+	var attacked: Array[CombatUnit] = []
+	f.actions.attack_animation = func(_actor: CombatUnit, target: CombatUnit) -> void:
+		attacked.append(target)
+		f.actions.grid.heights[f.units[1].cell] = 2
+		await process_frame
+	f.actions.dice = _dice_for([11, 1], [20, 8])
+	_check(await f.actions.spin(boss) and attacked == [f.units[0]]
+		and f.units[0].hit_points == 9 and f.units[1].hit_points == 14,
+		"첫 공격 대기 뒤 두 번째 대상의 높이가 바뀌면 주사위·피해 없이 제외")
+	f.actions.attack_animation = Callable()
+
+
+func _test_area_cells() -> void:
+	var grid: CombatGrid = _fixture().actions.grid
+	grid.map_size = Vector2i(3, 3)
+	_check(grid.area_cells(Vector2i.ZERO, 1) == [Vector2i.ZERO, Vector2i(1, 0), Vector2i(0, 1)],
+		"모서리 반경1은 중심과 맵 안 상하좌우만 포함하고 대각선을 제외")
+	grid.heights = {Vector2i(1, 0): 1, Vector2i(0, 1): -1}
+	_check(grid.area_cells(Vector2i.ZERO, 1).size() == 3,
+		"영향 칸은 중심보다 높거나 낮아도 높이 차이1을 포함")
+	grid.blocked_cells = [Vector2i(1, 0)]
+	grid.pits = [Vector2i(0, 1)]
+	_check(grid.area_cells(Vector2i.ZERO, 2) == [Vector2i.ZERO, Vector2i(2, 0), Vector2i(1, 1), Vector2i(0, 2)],
+		"반경2는 막힌 칸과 낭떠러지를 제외하되 중간 칸을 따라 전파하지 않음")
+	grid.heights = {Vector2i(2, 0): 2, Vector2i(0, 2): -2, Vector2i(1, 1): 1}
+	_check(grid.area_cells(Vector2i.ZERO, 2) == [Vector2i.ZERO, Vector2i(1, 1)],
+		"넓은 반경에서도 모든 영향 칸의 높이는 중심과 직접 비교")
+	_check(grid.area_cells(Vector2i.ZERO, 0) == [Vector2i.ZERO]
+		and grid.area_cells(Vector2i.ZERO, -1).is_empty(), "반경0은 중심만 포함하고 음의 반경은 거부")
+	_check(grid.area_cells(Vector2i(-1, 0), 1).is_empty()
+		and grid.area_cells(Vector2i(1, 0), 1).is_empty()
+		and grid.area_cells(Vector2i(0, 1), 1).is_empty(), "맵 밖·막힌 칸·낭떠러지 중심은 빈 범위")
+	_check(grid.in_range(Vector2i.ZERO, Vector2i(2, 0), 2),
+		"일반 사거리는 범위 스킬의 높이 제한을 적용하지 않고 평면 거리를 유지")
 
 
 func _test_spin_reactions_and_reuse() -> void:

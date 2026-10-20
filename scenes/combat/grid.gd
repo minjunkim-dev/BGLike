@@ -148,6 +148,30 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	return false
 
 
+func area_cells(center: Vector2i, radius: int) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	if radius < 0 or not is_floor(center) or is_blocked(center):
+		return cells
+	for y: int in range(maxi(0, center.y - radius), mini(map_size.y, center.y + radius + 1)):
+		for x: int in range(maxi(0, center.x - radius), mini(map_size.x, center.x + radius + 1)):
+			var cell: Vector2i = Vector2i(x, y)
+			if (distance(center, cell) <= radius and is_floor(cell) and not is_blocked(cell)
+				and absi(height_at(center) - height_at(cell)) <= 1):
+				cells.append(cell)
+	return cells
+
+
+func opponents_in_area(actor: CombatUnit, radius: int) -> Array[CombatUnit]:
+	var targets: Array[CombatUnit] = []
+	if actor == null:
+		return targets
+	var cells: Array[Vector2i] = area_cells(actor.cell, radius)
+	for unit: CombatUnit in units:
+		if unit.hit_points > 0 and unit.is_ally != actor.is_ally and unit.cell in cells:
+			targets.append(unit)
+	return targets
+
+
 func opponents_in_range(actor: CombatUnit, maximum: int) -> Array[CombatUnit]:
 	var targets: Array[CombatUnit] = []
 	for unit: CombatUnit in units:
