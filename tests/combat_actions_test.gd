@@ -76,6 +76,9 @@ func _run() -> void:
 	await _test_scrap_robot_opportunity()
 	await _test_movement()
 	await _test_height_movement()
+	_test_jump_path()
+	_test_jump_height_path()
+	_test_blocked_cells()
 	await _test_height_adjacency()
 	await _test_high_ground()
 	_test_fall_damage()
@@ -1706,6 +1709,53 @@ func _test_isometric_unit_occlusion() -> void:
 		"가리는 지형이 없어지면 같은 화면 위치의 유닛을 미리보기")
 	battle.queue_free()
 	await process_frame
+
+
+func _test_jump_path() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	_check(f.actions.grid.jump_path(actor, Vector2i(4, 6)) == [Vector2i(4, 5), Vector2i(4, 6)],
+		"평지 점프는 출발에서2칸 떨어진 착지까지 선택한 경로를 공개 질의로 반환")
+
+
+func _test_jump_height_path() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	var destination: Vector2i = Vector2i(4, 6)
+	var middle: Vector2i = Vector2i(4, 5)
+	f.actions.grid.heights[destination] = 3
+	_check(f.actions.grid.jump_path(actor, destination).is_empty(), "점프 착지 상승3은 금지")
+	f.actions.grid.heights[destination] = 2
+	_check(f.actions.grid.jump_path(actor, destination) == [middle, destination], "점프 착지 상승2는 허용")
+	f.actions.grid.heights[destination] = 0
+	f.actions.grid.heights[middle] = 2
+	_check(f.actions.grid.jump_path(actor, destination).is_empty(), "점프 중간 바닥 상승2는 최종Q12에 따라 금지")
+	f.actions.grid.heights[middle] = 99
+	f.actions.grid.pits = [middle]
+	_check(f.actions.grid.jump_path(actor, destination) == [middle, destination],
+		"중간 낭떠러지는 바닥 높이가 없으므로 가상 높이를 비교하지 않고 통과")
+	f.actions.grid.pits = [destination]
+	_check(f.actions.grid.jump_path(actor, destination).is_empty(), "낭떠러지에는 점프 착지 금지")
+
+
+func _test_blocked_cells() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	var middle: Vector2i = Vector2i(4, 5)
+	var destination: Vector2i = Vector2i(4, 6)
+	f.actions.grid.blocked_cells = [middle]
+	_check(f.actions.grid.jump_path(actor, destination).is_empty(), "명시적 벽·장애물이 있는 중간 칸은 점프 통과 금지")
+	_check(not f.actions.can_move(actor, middle) and middle not in f.actions.grid.empty_neighbors(actor.cell),
+		"막힌 칸은 걷기와 빈 인접 칸 질의에서도 제외")
+	f.actions.grid.blocked_cells = [destination]
+	_check(f.actions.grid.jump_path(actor, destination).is_empty()
+		and f.actions.grid.path_to(actor, destination).is_empty(), "막힌 바닥에는 걷거나 점프 착지 금지")
+	f.actions.grid.blocked_cells = [Vector2i(6, 4)]
+	_check(not f.actions.grid.can_shove(actor, f.units[2]), "막힌 칸으로 밀치기 금지")
+	f.actions.grid.blocked_cells = [Vector2i(4, 5), Vector2i(4, 3)]
+	_check(f.actions.grid.pull_cells(actor, f.units[3]).is_empty(), "막힌 칸으로 끌기 금지")
+	actor.kind = CombatUnit.Kind.MOTHER_SPIDER
+	_check(not f.actions.can_use(actor, "spawn"), "점유 칸과 막힌 칸뿐이면 소환 거부")
 
 
 func _test_height_scene_input() -> void:
