@@ -78,6 +78,7 @@ func _run() -> void:
 	await _test_height_movement()
 	_test_jump_path()
 	_test_jump_height_path()
+	_test_jump_routes()
 	_test_blocked_cells()
 	await _test_jump_cost_and_landing()
 	await _test_jump_opportunity()
@@ -767,6 +768,17 @@ func _test_jump_cost_and_landing() -> void:
 		"기절한 유닛은 점프 거부")
 	_check(CombatActionRules.resource_of("jump") == CombatUnit.TurnResource.BONUS_ACTION
 		and CombatActionRules.belongs_to(denied.units[2], "jump"), "점프는 적도 쓸 수 있는 공용 보조 행동")
+	var killed: Fixture = _fixture()
+	actor = killed.units[0]
+	killed.units[2].cell = Vector2i(9, 0)
+	killed.actions.grid.heights[actor.cell] = 3
+	actor.hit_points = 1
+	killed.actions.dice = _dice_for([], [])
+	_check(await killed.actions.jump_to(actor, Vector2i(4, 6)) and actor.cell == Vector2i(4, 6)
+		and actor.hit_points == 0 and actor.movement_left == 4 and actor.bonus_action_left == 0,
+		"착지 낙하 전투 불능은 목적지에서 발생하고 이미 쓴 점프 비용은 복구하지 않음")
+	_check(actor not in killed.turns.ordered_units and not actor.visible
+		and killed.actions.grid.unit_at(Vector2i(4, 6)) == null, "점프 낙하 전투 불능도 턴·표시·점유 정리")
 
 
 func _test_jump_opportunity() -> void:
@@ -1821,6 +1833,34 @@ func _test_jump_height_path() -> void:
 		"중간 낭떠러지는 바닥 높이가 없으므로 가상 높이를 비교하지 않고 통과")
 	f.actions.grid.pits = [destination]
 	_check(f.actions.grid.jump_path(actor, destination).is_empty(), "낭떠러지에는 점프 착지 금지")
+
+
+func _test_jump_routes() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	var destination: Vector2i = Vector2i(5, 5)
+	f.units[2].cell = Vector2i(9, 0)
+	_check(f.actions.grid.jump_path(actor, destination) == [Vector2i(5, 4), destination],
+		"두 대각선 최단 경로가 열리면 기존4방향 순서의 첫 경로 선택")
+	f.actions.grid.blocked_cells = [Vector2i(5, 4)]
+	_check(f.actions.grid.jump_path(actor, destination) == [Vector2i(4, 5), destination],
+		"대각선 첫 경로가 막히면 두 번째 열린 경로 선택")
+	f.actions.grid.blocked_cells.append(Vector2i(4, 5))
+	_check(f.actions.grid.jump_path(actor, destination).is_empty(), "두 대각선 경로가 모두 막히면 점프 거부")
+	f.actions.grid.blocked_cells.clear()
+	f.units[1].cell = Vector2i(5, 4)
+	_check(f.actions.grid.jump_path(actor, destination) == [Vector2i(4, 5), destination],
+		"아군 점유 중간 칸은 건너뛰지 않고 다른 열린 경로 선택")
+	f.units[1].hit_points = 0
+	_check(f.actions.grid.jump_path(actor, destination) == [Vector2i(5, 4), destination],
+		"전투 불능 유닛은 점프 중간 칸을 점유하지 않음")
+	f.actions.grid.heights[Vector2i(5, 4)] = 2
+	_check(f.actions.grid.jump_path(actor, Vector2i(5, 4)) == [Vector2i(5, 4)]
+		and f.actions.jump_cells(actor).get(Vector2i(5, 4), -1) == 3,
+		"옆 칸 높이2 점프는 중간 칸 없이 이동3 소비")
+	_check(f.actions.grid.jump_path(actor, actor.cell).is_empty()
+		and f.actions.grid.jump_path(actor, Vector2i(7, 4)).is_empty()
+		and f.actions.grid.jump_path(actor, Vector2i(-1, 4)).is_empty(), "같은 칸·거리3·맵 밖 점프 거부")
 
 
 func _test_blocked_cells() -> void:
