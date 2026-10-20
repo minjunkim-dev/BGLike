@@ -21,6 +21,7 @@ var _shown_order: Array[CombatUnit] = []
 var _portraits: Dictionary[CombatUnit, Button] = {}
 var _order_moves: Dictionary[CombatUnit, Vector2] = {}
 var _order_tween: Tween
+var _order_revision: int = 0
 var _actions: Dictionary[String, Button] = {}
 var _badges: Dictionary[String, Label] = {}
 var _costs: Dictionary[String, Label] = {}
@@ -249,6 +250,11 @@ func _finish_reaction(use_reaction: bool) -> void:
 
 
 func begin_stage(act: int, stage: int) -> void:
+	_order_revision += 1
+	if _order_tween != null:
+		_order_tween.kill()
+	_order_moves.clear()
+	_shown_order.clear()
 	progress_label.text = "%d막 · %d스테이지" % [act, stage]
 	$Result.hide()
 	_hide_reaction()
@@ -289,6 +295,10 @@ func show_move_mode(showing_move: bool) -> void:
 func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 	preview_label.text = ""
 	if _shown_order != turns.ordered_units:
+		for unit: CombatUnit in _shown_order:
+			if unit not in turns.ordered_units or (_order_tween != null and _order_tween.is_running()):
+				prepare_order_rotation(_shown_order)
+				break
 		_build_portraits(turns)
 	var current: CombatUnit = turns.current_unit
 	end_button.disabled = current == null
@@ -385,6 +395,7 @@ func prepare_order_rotation(units: Array[CombatUnit]) -> void:
 
 
 func _build_portraits(turns: CombatTurns) -> void:
+	_order_revision += 1
 	if _order_tween != null:
 		_order_tween.kill()
 	for child: Node in order_bar.get_children():
@@ -393,8 +404,11 @@ func _build_portraits(turns: CombatTurns) -> void:
 	_shown_order = turns.ordered_units.duplicate()
 	for group: Array in turns.get_turn_groups():
 		var panel: PanelContainer = PanelContainer.new()
+		# 이동 중 초상을 덮는 다른 묶음의 빈 배경은 클릭을 받지 않는다.
+		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_theme_stylebox_override("panel", _panel_style())
 		var box: HBoxContainer = HBoxContainer.new()
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_theme_constant_override("separation", 3)
 		panel.add_child(box)
 		order_bar.add_child(panel)
@@ -421,12 +435,12 @@ func _build_portraits(turns: CombatTurns) -> void:
 	if not _order_moves.is_empty():
 		var positions: Dictionary[CombatUnit, Vector2] = _order_moves.duplicate()
 		_order_moves.clear()
-		_animate_order_rotation(positions, _shown_order.duplicate())
+		_animate_order_rotation(positions, _order_revision)
 
 
-func _animate_order_rotation(positions: Dictionary[CombatUnit, Vector2], order: Array[CombatUnit]) -> void:
+func _animate_order_rotation(positions: Dictionary[CombatUnit, Vector2], revision: int) -> void:
 	await get_tree().process_frame
-	if not is_inside_tree() or order != _shown_order:
+	if not is_inside_tree() or revision != _order_revision:
 		return
 	_order_tween = create_tween().set_parallel(true)
 	for unit: CombatUnit in positions:
