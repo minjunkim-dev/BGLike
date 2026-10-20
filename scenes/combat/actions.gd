@@ -9,6 +9,20 @@ signal hit_landed
 signal reaction_requested(kind: String, prompt: String)
 signal reaction_decided(use_reaction: bool)
 
+class Ground extends RefCounted:
+	var source: CombatUnit
+	var cell: Vector2i
+	var kind: String
+	var turns_left: int
+	var entered: Array[CombatUnit] = []
+
+	func _init(caster: CombatUnit, position: Vector2i, effect: String) -> void:
+		source = caster
+		cell = position
+		kind = effect
+		turns_left = 2 if kind == "burn" else 4
+
+
 var grid: CombatGrid = CombatGrid.new()
 var units: Array[CombatUnit]:
 	get:
@@ -24,6 +38,7 @@ var last_damage: int = 0
 var movement_animation: Callable
 var jump_animation: Callable
 var attack_animation: Callable
+var _grounds: Array[Ground] = []
 
 
 func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> void:
@@ -31,12 +46,24 @@ func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> v
 		turns.turn_started.disconnect(_on_turn_started)
 	# 소환과 전투 불능 이후에도 현재 유닛 배열을 그대로 조회한다.
 	grid.units = combat_units
+	_grounds.clear()
 	turns = combat_turns
 	turns.turn_started.connect(_on_turn_started)
 	dice.randomize()
 
 
 func _on_turn_started(unit: CombatUnit) -> void:
+	var ground_messages: Array[String] = []
+	for ground: Ground in _grounds.duplicate():
+		if ground not in _grounds:
+			continue
+		ground.entered.erase(unit)
+		if ground.source == unit:
+			ground.turns_left -= 1
+			if ground.turns_left == 0:
+				_grounds.erase(ground)
+				ground_messages.append("%s %s 장판 만료: %d, %d" % [unit.get_display_name(),
+					"불" if ground.kind == "burn" else "독", ground.cell.x, ground.cell.y])
 	for target: CombatUnit in units:
 		if target.stun_source == unit:
 			target.is_stunned = false
@@ -45,11 +72,14 @@ func _on_turn_started(unit: CombatUnit) -> void:
 				effect.turns_left -= 1
 				if effect.turns_left == 0:
 					target.status_effects.erase(effect)
+	for message: String in ground_messages:
+		logged.emit(message)
 	_clear_burn_in_water(unit)
 	if unit.overloaded and unit.hit_points > 0 and not is_over():
 		_damage(unit, 2)
 		logged.emit("%s 과부하: 자기 피해 2 · HP %d" % [unit.get_display_name(), unit.hit_points])
 		feedback.emit(unit, "과부하 -2")
+	_apply_grounds(unit, false)
 	var poison_checked: bool = false
 	for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
 		if unit.hit_points <= 0 or is_over():
@@ -98,6 +128,30 @@ func apply_status(source: CombatUnit, target: CombatUnit, kind: String) -> bool:
 	return true
 
 
+func get_grounds() -> Array[Ground]:
+	return _grounds.duplicate()
+
+
+func create_ground(source: CombatUnit, cell: Vector2i, kind: String) -> bool:
+	if (not is_instance_valid(source) or source not in units or source.hit_points <= 0
+		or kind not in ["burn", "poison"] or not grid.is_floor(cell) or grid.is_blocked(cell)):
+		return false
+	var refreshed: bool = false
+	var owner: CombatUnit = source
+	for ground: Ground in _grounds:
+		if ground.cell == cell and ground.kind == kind:
+			ground.turns_left = 2 if kind == "burn" else 4
+			owner = ground.source
+			refreshed = true
+			break
+	if not refreshed:
+		_grounds.append(Ground.new(source, cell, kind))
+	logged.emit("%s %s 장판 %s: %d, %d" % [owner.get_display_name(),
+		"불" if kind == "burn" else "독", "갱신" if refreshed else "생성", cell.x, cell.y])
+	changed.emit()
+	return true
+
+
 ## 살아 있는 유닛이 이 대상을 표식으로 지정했는지.
 func is_marked(target: CombatUnit) -> bool:
 	for source: CombatUnit in units:
@@ -118,6 +172,13 @@ func is_victory() -> bool:
 func incapacitate(target: CombatUnit) -> void:
 	target.hit_points = 0
 	target.status_effects.clear()
+	var ground_messages: Array[String] = []
+	for ground: Ground in _grounds.duplicate():
+		ground.entered.erase(target)
+		if ground.source == target:
+			_grounds.erase(ground)
+			ground_messages.append("%s %s 장판 해제: %d, %d" % [target.get_display_name(),
+				"불" if ground.kind == "burn" else "독", ground.cell.x, ground.cell.y])
 	for unit: CombatUnit in units:
 		if unit.marked_target == target:
 			unit.marked_target = null
@@ -126,6 +187,8 @@ func incapacitate(target: CombatUnit) -> void:
 		for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
 			if effect.source == target:
 				unit.status_effects.erase(effect)
+	for message: String in ground_messages:
+		logged.emit(message)
 	turns.remove_unit(target)
 	target.visible = false
 
@@ -309,6 +372,8 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	changed.emit()
 	var moved: int = 0
 	for step: Vector2i in path:
+		if actor.hit_points <= 0 or is_over():
+			break
 		if not actor.disengaged:
 			for reactor: CombatUnit in units:
 				if (reactor.hit_points > 0 and not reactor.is_stunned and reactor.is_ally != actor.is_ally
@@ -329,6 +394,7 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 		actor.spend_movement(1)
 		actor.cell = step
 		_clear_burn_in_water(actor)
+		_apply_grounds(actor, true)
 		moved += 1
 		changed.emit()
 	logged.emit("%s 이동: %d칸, 남은 이동 %d" % [actor.get_display_name(), moved, actor.movement_left])
@@ -566,6 +632,22 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 		feedback.emit(target, "정신 내성 %d" % saved.total)
 
 
+func _apply_grounds(unit: CombatUnit, entering: bool) -> void:
+	for ground: Ground in _grounds.duplicate():
+		if not is_instance_valid(unit) or unit.hit_points <= 0 or is_over():
+			break
+		if (ground not in _grounds or ground.cell != unit.cell
+			or not is_instance_valid(ground.source) or ground.source.hit_points <= 0):
+			continue
+		if entering:
+			if unit in ground.entered:
+				continue
+			ground.entered.append(unit)
+		if apply_status(ground.source, unit, ground.kind):
+			logged.emit("%s %s 장판: %s 부여" % [unit.get_display_name(),
+				"불" if ground.kind == "burn" else "독", "화상" if ground.kind == "burn" else "독"])
+
+
 func _clear_burn_in_water(unit: CombatUnit) -> void:
 	if unit.cell not in grid.water_cells or unit.get_status_count("burn") == 0:
 		return
@@ -586,13 +668,13 @@ func _land(target: CombatUnit, destination: Vector2i) -> void:
 		feedback.emit(target, "낙사")
 		return
 	_clear_burn_in_water(target)
-	if amount == 0:
-		return
-	_damage(target, amount)
-	# 낙하 피드백 전에 착지 위치와 HP를 화면에 반영한다.
-	changed.emit()
-	logged.emit("%s 낙하 피해: %d · HP %d" % [target.get_display_name(), amount, target.hit_points])
-	feedback.emit(target, "-%d" % amount)
+	if amount > 0:
+		_damage(target, amount)
+		# 낙하 피드백 전에 착지 위치와 HP를 화면에 반영한다.
+		changed.emit()
+		logged.emit("%s 낙하 피해: %d · HP %d" % [target.get_display_name(), amount, target.hit_points])
+		feedback.emit(target, "-%d" % amount)
+	_apply_grounds(target, true)
 
 
 func _damage(target: CombatUnit, amount: int) -> void:
