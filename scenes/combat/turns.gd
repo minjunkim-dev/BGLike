@@ -12,6 +12,7 @@ var round_number: int = 0
 var _group_start: int = 0
 var _group_end: int = -1
 var _finished_units: Array[CombatUnit] = []
+var _pending_finished_units: Array[CombatUnit] = []
 var _started_units: Array[CombatUnit] = []
 var _activated_units: Array[CombatUnit] = []
 var _stunned_turns: Array[CombatUnit] = []
@@ -34,6 +35,7 @@ func start(combat_units: Array[CombatUnit], dice: CombatDice) -> void:
 	)
 	round_number = 1 if not ordered_units.is_empty() else 0
 	_finished_units.clear()
+	_pending_finished_units.clear()
 	_started_units.clear()
 	_activated_units.clear()
 	_stunned_turns.clear()
@@ -83,9 +85,10 @@ func insert_before(unit: CombatUnit, anchor: CombatUnit) -> bool:
 
 func select_unit(unit: CombatUnit) -> bool:
 	if (not unit.is_ally or unit.is_stunned or unit not in get_current_group()
-		or (is_turn_finished(unit) and unit not in _activated_units)):
+		or (is_turn_finished(unit) and unit not in _pending_finished_units)):
 		return false
 	_finished_units.erase(unit)
+	_pending_finished_units.erase(unit)
 	current_unit = unit
 	_activate_current_unit()
 	changed.emit()
@@ -96,6 +99,7 @@ func end_turn() -> bool:
 	if current_unit == null:
 		return false
 	_finished_units.append(current_unit)
+	_pending_finished_units.append(current_unit)
 	_select_next_or_advance()
 	changed.emit()
 	return true
@@ -107,6 +111,7 @@ func remove_unit(unit: CombatUnit) -> void:
 		return
 	ordered_units.remove_at(index)
 	_finished_units.erase(unit)
+	_pending_finished_units.erase(unit)
 	_started_units.erase(unit)
 	_activated_units.erase(unit)
 	_stunned_turns.erase(unit)
@@ -141,6 +146,7 @@ func _select_next_or_advance() -> void:
 			current_unit = unit
 			_activate_current_unit()
 			return
+	_pending_finished_units.clear()
 	_start_group_at(_group_end + 1)
 
 

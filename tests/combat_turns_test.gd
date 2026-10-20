@@ -239,6 +239,15 @@ func _test_removal() -> void:
 	_check(turns.current_unit == units[3] and units[3].movement_left == 4, "지나간 유닛 탈락은 현재 적 자원 유지")
 	turns.remove_unit(units[3])
 	_check(turns.round_number == 2 and turns.current_unit == units[1], "마지막 묶음 탈락 후 다음 라운드")
+	units = _make_units()
+	turns = _ordered_fixture(units, [0, 2, 1, 3])
+	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
+	turns.end_turn()
+	turns.end_turn()
+	turns.remove_unit(units[2])
+	_check(not turns.select_unit(units[0]) and turns.is_turn_finished(units[0])
+		and turns.current_unit == units[1] and units[0].action_left == 0,
+		"적 탈락으로 같은 묶음에 붙어도 이전에 확정한 턴 종료는 해제하지 않음")
 
 
 func _test_rounds() -> void:
