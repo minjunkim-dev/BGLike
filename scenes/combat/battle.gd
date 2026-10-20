@@ -377,10 +377,7 @@ func _draw() -> void:
 		var color: Color = Color(0.22, 0.56, 0.92, 0.4)
 		if not _attack_targets_from(cell).is_empty():
 			color = Color(0.22, 0.8, 0.5, 0.45)
-		draw_colored_polygon(PackedVector2Array([center + Vector2(0, -half.y),
-			center + Vector2(half.x, -half.y / 2.0), center + Vector2(half.x, half.y / 2.0),
-			center + Vector2(0, half.y), center + Vector2(-half.x, half.y / 2.0),
-			center + Vector2(-half.x, -half.y / 2.0)]), color)
+		draw_rect(Rect2(center - half, half * 2.0), color)
 	if selection.preview_path.is_empty():
 		return
 	var points: PackedVector2Array = [map.map_to_local(turns.current_unit.cell)]

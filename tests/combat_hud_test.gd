@@ -51,7 +51,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	_check("이니셔티브" not in hud.message_label.text, "전투 시작 로그에 이니셔티브 계산식 없음")
-	_test_hex_map()
+	_test_square_map()
 	_test_warrior()
 	await _test_resources()
 	_test_archer_and_enemy()
@@ -124,20 +124,19 @@ func _test_selection() -> void:
 	inspected.free()
 
 
-func _test_hex_map() -> void:
+func _test_square_map() -> void:
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
-	_check(map.get_used_cells().size() == 100, "헥사 시안은100칸")
-	_check(map.tile_set.tile_shape == TileSet.TILE_SHAPE_HEXAGON
-		and map.tile_set.tile_offset_axis == TileSet.TILE_OFFSET_AXIS_HORIZONTAL,
-		"타일은 pointy-top 헥사")
+	_check(map.get_used_cells().size() == 100, "사각 맵은100칸")
+	_check(map.tile_set.tile_shape == TileSet.TILE_SHAPE_SQUARE
+		and map.tile_set.tile_size == Vector2i(16, 16), "타일은16px 사각형")
 	for cell: Vector2i in map.get_used_cells():
-		_check(map.local_to_map(map.map_to_local(cell)) == cell, "헥사 중심 클릭의 좌표 왕복")
+		_check(map.local_to_map(map.map_to_local(cell)) == cell, "사각 중심 클릭의 좌표 왕복")
 		var visual_neighbors: Array[Vector2i] = map.get_surrounding_cells(cell)
-		var neighbors: Array[Vector2i] = CombatHexGrid.neighbors(cell)
-		_check(visual_neighbors.size() == 6 and neighbors.size() == 6,
-			"표시와 전투 판정 모두 인접6칸")
+		var neighbors: Array[Vector2i] = CombatGrid.neighbors(cell)
+		_check(visual_neighbors.size() == 4 and neighbors.size() == 4,
+			"표시와 전투 판정 모두 인접4칸")
 		for neighbor: Vector2i in visual_neighbors:
-			_check(neighbors.has(neighbor) and CombatHexGrid.distance(cell, neighbor) == 1,
+			_check(neighbors.has(neighbor) and CombatGrid.distance(cell, neighbor) == 1,
 				"Godot 타일 이웃과 전투 인접 판정 일치")
 
 
@@ -1132,7 +1131,7 @@ func _test_action_animations() -> void:
 	_check(units[0].cell == Vector2i(4, 2) and units[0].movement_left == 4
 		and units[0].position == (battle.get_node("Map") as TileMapLayer).map_to_local(units[0].cell)
 		and not units[0].is_moving and units[0].body_offset_y == 0.0 and not actions.busy,
-		"두 헥사 칸 이동은 도착 후 자원 갱신과 몸통·입력 복구")
+		"두 사각 칸 이동은 도착 후 자원 갱신과 몸통·입력 복구")
 	for side: bool in [true, false]:
 		for shock: bool in [false, true]:
 			if not side and shock:

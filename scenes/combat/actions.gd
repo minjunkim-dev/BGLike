@@ -9,7 +9,7 @@ signal hit_landed
 signal reaction_requested(kind: String, prompt: String)
 signal reaction_decided(use_reaction: bool)
 
-var grid: CombatHexGrid = CombatHexGrid.new()
+var grid: CombatGrid = CombatGrid.new()
 var units: Array[CombatUnit]:
 	get:
 		return grid.units
