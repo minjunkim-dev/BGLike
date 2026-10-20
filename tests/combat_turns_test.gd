@@ -276,7 +276,7 @@ func _test_deferred_stun() -> void:
 		and units[1].action_left == 0 and units[1] not in starts,
 		"새로 결합한 기절 유닛은 다른 조작 가능한 유닛보다 먼저 시작하지 않음")
 	turns.end_turn()
-	_check(turns.current_unit == units[3] and not units[1].is_stunned
+	_check(turns.current_unit == units[3] and units[1].is_stunned
 		and turns.is_turn_finished(units[1]) and units[1].action_left == 1
 		and starts.count(units[1]) == 1,
 		"다른 유닛 종료 뒤 기절 유닛의 턴 시작 효과를 한 번 처리하고 자동 진행")

@@ -37,6 +37,9 @@ func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> v
 
 
 func _on_turn_started(unit: CombatUnit) -> void:
+	for target: CombatUnit in units:
+		if target.stun_source == unit:
+			target.is_stunned = false
 	if not unit.overloaded or unit.hit_points <= 0 or is_over():
 		return
 	_damage(unit, 2)
@@ -67,6 +70,8 @@ func incapacitate(target: CombatUnit) -> void:
 	for unit: CombatUnit in units:
 		if unit.marked_target == target:
 			unit.marked_target = null
+		if unit.stun_source == target:
+			unit.is_stunned = false
 	turns.remove_unit(target)
 	target.visible = false
 
@@ -500,6 +505,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 			target.get_attribute(CombatUnit.Attribute.MENTAL), save_dc, dice)
 		if not saved.success:
 			target.is_stunned = true
+			target.stun_source = actor
 		logged.emit("정신 내성: d20 %d + %d = %d / DC %d · %s" % [saved.selected_roll,
 			target.get_attribute(CombatUnit.Attribute.MENTAL), saved.total, save_dc,
 			"기절" if not saved.success else "버팀"])
