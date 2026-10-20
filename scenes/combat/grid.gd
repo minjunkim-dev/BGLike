@@ -186,6 +186,9 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 	if target.is_stunned:
 		advantages = 1
 		preview.reasons.append("기절한 대상")
+	if attacker.get_attack_range() > 1 and height_at(attacker.cell) - height_at(target.cell) >= 2:
+		advantages = 1
+		preview.reasons.append("고지대")
 	if attacker.kind == CombatUnit.Kind.ARCHER:
 		for unit: CombatUnit in opponents_in_range(attacker, 1):
 			if not unit.is_stunned and are_adjacent(attacker.cell, unit.cell):

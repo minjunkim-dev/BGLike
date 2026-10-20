@@ -136,7 +136,7 @@
 
 ### 3-3. 제외 ✅
 
-2026-10-18 높이와 고지대, 점프를 제외 목록에서 뺐습니다([Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136)). 고지대 보너스는 [Issue #137](https://github.com/minjunkim-dev/BGLike/issues/137)에서 정합니다.
+2026-10-18 높이와 고지대, 점프를 제외 목록에서 뺐습니다([Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136)). [Issue #137](https://github.com/minjunkim-dev/BGLike/issues/137)의 1차 환경은 고지대 원거리 유리·고정 낙하 피해·낭떠러지의 즉시 전투 불능입니다. 확정 수치는 [게임 구조 기획서](GAME_STRUCTURE.md)의6-6절에 있습니다. 구현은 #165에서 진행합니다. 2차 환경은 별도로 정합니다.
 
 | 항목 | 이유 |
 |---|---|

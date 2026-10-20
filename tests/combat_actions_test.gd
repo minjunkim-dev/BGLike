@@ -77,6 +77,8 @@ func _run() -> void:
 	await _test_movement()
 	await _test_height_movement()
 	await _test_height_adjacency()
+	await _test_high_ground()
+	_test_fall_damage()
 	await _test_height_opportunity()
 	_test_height_shove()
 	_test_height_pull()
@@ -747,6 +749,87 @@ func _test_height_adjacency() -> void:
 	_check(not ranged.actions.can_target(archer, target, "attack")
 		and not ranged.actions.grid.attack_preview(archer, target).in_range,
 		"높이와 무관하게 평면 거리7 원거리 공격 거부")
+
+
+func _test_high_ground() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var target: CombatUnit = f.units[2]
+	archer.kind = CombatUnit.Kind.ARCHER
+	target.cell = Vector2i(7, 4)
+	f.units[3].cell = Vector2i(9, 9)
+	for height: int in [1, 2, 3]:
+		f.actions.grid.heights[archer.cell] = height
+		var preview: CombatChecks.AttackPreview = f.actions.grid.attack_preview(archer, target)
+		_check(preview.mode == (CombatChecks.RollMode.NORMAL if height == 1 else CombatChecks.RollMode.ADVANTAGE)
+			and preview.reasons.has("고지대") == (height >= 2),
+			"고지대 유리는 높이 차2부터 원거리 미리보기에 표시")
+	f.actions.grid.heights[archer.cell] = 2
+	f.actions.dice = _dice_for([3, 15, 1], [20, 20, 6])
+	await f.actions.attack(archer, target)
+	_check(f.actions.last_attack.mode == CombatChecks.RollMode.ADVANTAGE
+		and f.actions.last_attack.rolls == [3, 15] and archer.action_left == 0,
+		"실제 고지대 원거리 공격은 두d20중큰값을 쓰고 행동1 소비")
+	f.units[3].cell = Vector2i(4, 5)
+	f.actions.grid.heights[f.units[3].cell] = 1
+	_check(f.actions.grid.attack_preview(archer, target).mode == CombatChecks.RollMode.NORMAL,
+		"고지대 유리와 높이포함 인접 적 불리는 상쇄")
+	target.is_stunned = true
+	_check(f.actions.grid.attack_preview(archer, target).mode == CombatChecks.RollMode.NORMAL,
+		"고지대와 기절 유리가 함께 있어도 인접 불리와 기존방식으로 상쇄")
+	archer.kind = CombatUnit.Kind.WARRIOR
+	target.is_stunned = false
+	target.cell = Vector2i(5, 4)
+	_check(f.actions.grid.attack_preview(archer, target).mode == CombatChecks.RollMode.NORMAL
+		and not f.actions.grid.attack_preview(archer, target).in_range,
+		"근접에는 고지대 유리를 주지 않고 높이 차2 공격도 계속 거부")
+
+
+func _test_fall_damage() -> void:
+	for scenario: Array in [[2, 7], [3, 5], [4, 3]]:
+		var f: Fixture = _fixture()
+		var actor: CombatUnit = f.units[0]
+		var target: CombatUnit = f.units[2]
+		var drop: int = scenario[0]
+		f.actions.grid.heights = {actor.cell: drop - 1, target.cell: drop}
+		target.is_stunned = true
+		target.hit_points = 7
+		f.actions.dice = _dice_for([], [])
+		_check(f.actions.shove(actor, target) and target.cell == Vector2i(6, 4)
+			and target.hit_points == scenario[1] and actor.bonus_action_left == 0,
+			"밀치기 낙하 차2무피해·차3최대HP12의15%올림2·차4올림4, 주사위 없음")
+		_check(f.hits.size() == (0 if drop == 2 else 1), "실제 낙하 피해만 기존 피해 신호를 보냄")
+	var killed: Fixture = _fixture()
+	var target: CombatUnit = killed.units[2]
+	killed.actions.grid.heights = {killed.units[0].cell: 2, target.cell: 3}
+	target.is_stunned = true
+	target.hit_points = 1
+	killed.units[0].marked_target = target
+	killed.units[1].marked_target = target
+	killed.actions.dice = _dice_for([], [])
+	_check(killed.actions.shove(killed.units[0], target) and target.hit_points == 0,
+		"낙하 피해로 HP0이면 전투 불능")
+	_check(target not in killed.turns.ordered_units and not target.visible
+		and killed.actions.grid.unit_at(Vector2i(6, 4)) == null
+		and killed.units[0].marked_target == null and killed.units[1].marked_target == null,
+		"낙하 전투 불능은 턴·표식·표시·점유를 기존 방식으로 정리")
+	var pulled: Fixture = _fixture()
+	var boss: CombatUnit = pulled.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.cell = Vector2i(4, 4)
+	boss.begin_turn()
+	pulled.turns.current_unit = boss
+	target = pulled.units[0]
+	target.cell = Vector2i(7, 4)
+	target.hit_points = 7
+	pulled.units[3].cell = Vector2i(9, 9)
+	pulled.actions.grid.heights[target.cell] = 3
+	pulled.actions.dice = _dice_for([20, 1], [20, 20])
+	_check(pulled.actions.pull(boss, target)
+		and target.cell == Vector2i(5, 4) and target.hit_points == 5,
+		"끌기 착지에도 같은 최대HP기준 고정 낙하 피해 적용")
+	_check(boss.action_left == 0 and boss.pull_cooldown == 2,
+		"끌기 대결 외 낙하 주사위·내성 없이 기존 행동과 대기턴만 소비")
 
 
 func _test_height_opportunity() -> void:
