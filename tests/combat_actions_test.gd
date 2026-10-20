@@ -279,8 +279,9 @@ func _test_rock_logs() -> void:
 	f.actions.logged.connect(record)
 	f.actions.dice = _dice_for([], [])
 	f.actions.attack_prop(f.units[0], rock)
-	_check("바위 충돌: 피해4" in "\n".join(messages) and "전투 종료" in "\n".join(messages),
-		"마지막 적을 쓰러뜨린 충돌도 피해와 전투 종료 정지 로그를 남긴다")
+	_check("바위 충돌: 피해4" in "\n".join(messages) and "전투 종료" in messages[-1]
+		and "피해4" in messages[-1],
+		"마지막 적을 쓰러뜨린 최종 정지 로그에도 충돌 피해4를 남긴다")
 	f.actions.logged.disconnect(record)
 	f = _fixture()
 	rock = f.actions.create_prop(Vector2i(4, 5), "rock")
@@ -458,8 +459,9 @@ func _test_rock_scene_input() -> void:
 	await _click(point)
 	_check(units[0].action_left == 0 and units[1].hit_points == 10
 		and units[1].cell == Vector2i(1, 0) and rock.cell == Vector2i(1, 1)
-		and selection.preview_prop == null and "바위" in hud.message_label.text,
-		"실제 바위 두번 클릭은 미리보기대로 아군을 두번 밀고 경계 앞에서 멈춘다")
+		and selection.preview_prop == null and "바위" in hud.message_label.text
+		and "피해4" in hud.message_label.text,
+		"실제 바위 두번 클릭은 아군을 두번 밀고 경계 앞에 멈추며 최종HUD로그에 피해4를 보존한다")
 	point = map.get_global_transform_with_canvas() * (map.map_to_surface(rock.cell) + Vector2(0, -7))
 	await _click(point)
 	await _click(point)

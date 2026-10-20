@@ -232,6 +232,7 @@ func _trace_rock(prop: CombatGrid.Prop, direction: Vector2i, limit: int,
 func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
 	var direction: Vector2i = preview_rock(actor, prop).direction
 	var struck: Array[CombatUnit] = []
+	var impact_summary: String = ""
 	for index: int in range(3):
 		var origin: Vector2i = prop.cell
 		if not _can_continue_rock(actor, prop, origin) or is_over():
@@ -243,11 +244,12 @@ func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
 			_damage(target, step.damage)
 			if not _can_continue_rock(actor, prop, origin) or not is_instance_valid(target) or target not in units:
 				return
+			impact_summary += (" · 충돌: " if impact_summary.is_empty() else ", ") + target.get_display_name() + " 피해4"
 			logged.emit("%s 바위 충돌: 피해4 · HP %d" % [target.get_display_name(), target.hit_points])
 			if not _can_continue_rock(actor, prop, origin) or not is_instance_valid(target) or target not in units:
 				return
 			if is_over():
-				logged.emit("바위 정지: 전투 종료")
+				logged.emit("바위 정지: 전투 종료" + impact_summary)
 				return
 			step = _trace_rock(prop, direction, 1, struck).steps[0]
 			if step.damage > 0:
@@ -258,7 +260,7 @@ func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
 			if not _can_continue_rock(actor, prop, origin) or not is_instance_valid(target) or target not in units:
 				return
 			if is_over():
-				logged.emit("바위 정지: 전투 종료")
+				logged.emit("바위 정지: 전투 종료" + impact_summary)
 				return
 			step = _trace_rock(prop, direction, 1, struck).steps[0]
 			if step.damage > 0:
@@ -269,12 +271,12 @@ func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
 			prop.hit_points = 0
 			grid.props.erase(prop)
 		logged.emit("바위 %s: %d, %d" % [step.reason if not step.reason.is_empty() else "이동",
-			prop.cell.x, prop.cell.y])
+			prop.cell.x, prop.cell.y] + (impact_summary if not step.reason.is_empty() else ""))
 		if step.destroyed or not step.advance:
 			return
 		if not _can_continue_rock(actor, prop, step.cell) or is_over():
 			return
-	logged.emit("바위 정지: 최대3칸")
+	logged.emit("바위 정지: 최대3칸" + impact_summary)
 
 
 func _can_continue_rock(actor: CombatUnit, prop: CombatGrid.Prop, cell: Vector2i) -> bool:
