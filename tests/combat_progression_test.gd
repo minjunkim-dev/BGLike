@@ -430,6 +430,7 @@ func _test_stage_transition(battle: Node2D) -> void:
 	warrior.surge_left = 0
 	warrior.potion_left = 3
 	warrior.is_stunned = true
+	warrior.stun_source = (battle.get("units") as Array)[2] as CombatUnit
 	warrior.disengaged = true
 	warrior.marked_target = (battle.get("units") as Array)[2] as CombatUnit
 	(battle.get("actions") as CombatActions).incapacitate(archer)
@@ -440,6 +441,7 @@ func _test_stage_transition(battle: Node2D) -> void:
 	second.ally_cells = [Vector2i(1, 8), Vector2i(2, 8)]
 	stages[1] = second
 	_win(battle)
+	_check(not warrior.is_stunned, "승리 때 기절 시전자 탈락을 먼저 반영")
 	_check(hud.result_label.text == "승리" and hud.restart_button.text == "보상 확인",
 		"스테이지 승리 결과에서 보상 확인 안내")
 	hud.restart_button.pressed.emit()
@@ -456,7 +458,7 @@ func _test_stage_transition(battle: Node2D) -> void:
 		and archer not in (battle.get("turns") as CombatTurns).ordered_units,
 		"전투 불능 아군은 같은 막 다음 전투에 나오지 않음")
 	_check(warrior.potion_left == 3, "스테이지 전환에서 가진 물약 유지")
-	_check(not warrior.is_stunned and not warrior.disengaged
+	_check(not warrior.is_stunned and warrior.stun_source == null and not warrior.disengaged
 		and warrior.marked_target == null and not warrior.has_mark,
 		"기절·표식·이번 턴 효과는 전투 전환에서 해제")
 	_check(not hud.get_node("Result").visible, "다음 전투에서 이전 승리 창 숨김")
