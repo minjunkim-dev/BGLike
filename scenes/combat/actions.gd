@@ -308,7 +308,7 @@ func pull(actor: CombatUnit, target: CombatUnit) -> bool:
 		maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), dice)
 	if result.attacker_wins:
 		var cells: Array[Vector2i] = grid.pull_cells(actor, target)
-		target.cell = cells[0] if cells.size() == 1 else cells[dice.roll(cells.size()) - 1]
+		_land(target, cells[0] if cells.size() == 1 else cells[dice.roll(cells.size()) - 1])
 	logged.emit("%s 만능팔: %d + %d = %d / %d + %d = %d · %s" % [
 		actor.get_display_name(), result.attacker_roll,
 		actor.get_attribute(CombatUnit.Attribute.STRENGTH), result.attacker_total,
@@ -335,7 +335,7 @@ func shove(actor: CombatUnit, target: CombatUnit) -> bool:
 			result.attacker_roll, actor.get_attribute(CombatUnit.Attribute.STRENGTH), result.attacker_total,
 			result.defender_roll, maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), result.defender_total])
 	if won:
-		target.cell = grid.push_destination(actor.cell, target.cell)
+		_land(target, grid.push_destination(actor.cell, target.cell))
 	logged.emit("밀치기 %s" % ("성공" if won else "실패"))
 	changed.emit()
 	return true
@@ -439,6 +439,25 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 			target.get_attribute(CombatUnit.Attribute.MENTAL), saved.total, save_dc,
 			"기절" if not saved.success else "버팀"])
 		feedback.emit(target, "정신 내성 %d" % saved.total)
+
+
+func _land(target: CombatUnit, destination: Vector2i) -> void:
+	var height: int = grid.height_at(target.cell)
+	target.cell = destination
+	if grid.pits.has(destination):
+		incapacitate(target)
+		logged.emit("%s 낙사: 전투 불능" % target.get_display_name())
+		feedback.emit(target, "낙사")
+		return
+	var drop: int = height - grid.height_at(destination)
+	if drop < 3:
+		return
+	var amount: int = ceili((drop - 2) * target.get_max_hit_points() * 0.15)
+	_damage(target, amount)
+	# 낙하 피드백 전에 착지 위치와 HP를 화면에 반영한다.
+	changed.emit()
+	logged.emit("%s 낙하 피해: %d · HP %d" % [target.get_display_name(), amount, target.hit_points])
+	feedback.emit(target, "-%d" % amount)
 
 
 func _damage(target: CombatUnit, amount: int) -> void:

@@ -9,6 +9,7 @@ const DIRECTIONS: Array[Vector2i] = [
 var units: Array[CombatUnit] = []
 var map_size: Vector2i = Vector2i(10, 10)
 var heights: Dictionary[Vector2i, int] = {}
+var pits: Array[Vector2i] = []
 
 
 class Routes extends RefCounted:
@@ -46,13 +47,17 @@ func height_at(cell: Vector2i) -> int:
 	return heights.get(cell, 0)
 
 
+func is_floor(cell: Vector2i) -> bool:
+	return is_inside(cell) and not pits.has(cell)
+
+
 func are_adjacent(a: Vector2i, b: Vector2i) -> bool:
 	return distance(a, b) == 1 and absi(height_at(a) - height_at(b)) <= 1
 
 
 func path_to(actor: CombatUnit, destination: Vector2i) -> Array[Vector2i]:
 	var path: Array[Vector2i] = []
-	if actor == null or not is_inside(destination) or unit_at(destination) != null:
+	if actor == null or not is_floor(destination) or unit_at(destination) != null:
 		return path
 	var routes: Routes = _search(actor.cell, map_size.x * map_size.y, destination)
 	if not routes.parents.has(destination):
@@ -86,7 +91,7 @@ func _search(origin: Vector2i, budget: int, destination: Vector2i = Vector2i(-1,
 			continue
 		# 이웃 순서는 같은 비용의 경로와 AI 선택을 결정한다.
 		for next: Vector2i in neighbors(here):
-			if (is_inside(next) and not routes.parents.has(next) and unit_at(next) == null
+			if (is_floor(next) and not routes.parents.has(next) and unit_at(next) == null
 				and absi(height_at(here) - height_at(next)) <= 1):
 				routes.parents[next] = here
 				routes.costs[next] = cost
@@ -133,7 +138,7 @@ func leaves_reach(reactor: CombatUnit, origin: Vector2i, destination: Vector2i) 
 func empty_neighbors(origin: Vector2i) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	for cell: Vector2i in neighbors(origin):
-		if is_inside(cell) and are_adjacent(origin, cell) and unit_at(cell) == null:
+		if is_floor(cell) and are_adjacent(origin, cell) and unit_at(cell) == null:
 			cells.append(cell)
 	return cells
 
@@ -145,8 +150,9 @@ func pull_cells(actor: CombatUnit, target: CombatUnit,
 	var nearest: int = map_size.x + map_size.y
 	for cell: Vector2i in neighbors(origin):
 		var occupant: CombatUnit = unit_at(cell)
-		if (not is_inside(cell) or not are_adjacent(origin, cell)
-			or height_at(cell) > height_at(target.cell) or (occupant != null and occupant != actor)):
+		if not is_inside(cell) or (occupant != null and occupant != actor):
+			continue
+		if not pits.has(cell) and (not are_adjacent(origin, cell) or height_at(cell) > height_at(target.cell)):
 			continue
 		var separation: int = distance(cell, target.cell)
 		if separation < nearest:
@@ -162,7 +168,7 @@ func can_shove(actor: CombatUnit, target: CombatUnit) -> bool:
 		return false
 	var destination: Vector2i = push_destination(actor.cell, target.cell)
 	return (is_inside(destination) and unit_at(destination) == null
-		and height_at(destination) <= height_at(target.cell))
+		and (pits.has(destination) or height_at(destination) <= height_at(target.cell)))
 
 
 func nearest_distance(cell: Vector2i, targets: Array[CombatUnit]) -> int:
@@ -186,6 +192,9 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 	if target.is_stunned:
 		advantages = 1
 		preview.reasons.append("기절한 대상")
+	if attacker.get_attack_range() > 1 and height_at(attacker.cell) - height_at(target.cell) >= 2:
+		advantages = 1
+		preview.reasons.append("고지대")
 	if attacker.kind == CombatUnit.Kind.ARCHER:
 		for unit: CombatUnit in opponents_in_range(attacker, 1):
 			if not unit.is_stunned and are_adjacent(attacker.cell, unit.cell):

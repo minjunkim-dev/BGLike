@@ -362,7 +362,7 @@ func show_attack_preview(target: CombatUnit, preview: CombatChecks.AttackPreview
 		mode_text = "유리"
 	elif preview.mode == CombatChecks.RollMode.DISADVANTAGE:
 		mode_text = "불리"
-	elif preview.reasons.size() == 2:
+	elif preview.reasons.size() >= 2:
 		mode_text = "유리/불리 상쇄"
 	preview_label.text = "명중률 %.1f%% · %s" % [preview.chance * 100.0, mode_text]
 	if not preview.valid_target:
