@@ -23,6 +23,7 @@
 default_font_size = 12
 
 [node name="Battle" type="Node2D"]
+y_sort_enabled = true
 script = ExtResource("1_battle")
 stages = Array[ExtResource("6_stage_script")]([ExtResource("11_stage1"), ExtResource("8_stage2"), ExtResource("11_stage3"), ExtResource("12_stage1"), ExtResource("9_stage2"), ExtResource("12_stage3"), ExtResource("13_stage1"), ExtResource("10_stage2"), ExtResource("14_stage3")])
 
@@ -32,7 +33,6 @@ volume_db = -12.0
 max_polyphony = 4
 
 [node name="Map" type="TileMapLayer" parent="."]
-z_index = -1
 y_sort_enabled = true
 script = ExtResource("16_map")
 tile_set = ExtResource("3_floor")
@@ -49,7 +49,7 @@ start_cell = Vector2i(0, 5)
 
 [node name="Camera" type="Camera2D" parent="."]
 position_smoothing_enabled = false
-offset = Vector2(0, 12)
+offset = Vector2(100, 12)
 
 [node name="UI" type="CanvasLayer" parent="."]
 

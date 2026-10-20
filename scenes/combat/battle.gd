@@ -220,7 +220,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var candidates: Array[CombatUnit] = []
 	for unit: CombatUnit in units:
-		if unit.hit_points > 0 and Rect2(-7, -20, 14, 22).has_point(unit.to_local(world_position)):
+		var body_point: Vector2 = unit.to_local(world_position) - Vector2(0, unit.floor_offset_y)
+		if unit.hit_points > 0 and Rect2(-7, -20, 14, 22).has_point(body_point):
 			candidates.append(unit)
 	candidates.sort_custom(func(a: CombatUnit, b: CombatUnit) -> bool:
 		if a.position.y != b.position.y:
@@ -292,11 +293,12 @@ func _execute_target(target: CombatUnit) -> void:
 
 
 func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
-	var destination: Vector2 = map.map_to_surface(cell)
+	var destination: Vector2 = map.map_to_local(cell)
 	unit.face_toward(destination)
 	unit.is_moving = true
 	var tween: Tween = create_tween().set_parallel()
 	tween.tween_property(unit, "position", destination, MOVE_STEP_TIME)
+	tween.tween_property(unit, "floor_offset_y", map.map_to_surface(cell).y - destination.y, MOVE_STEP_TIME)
 	tween.tween_property(unit, "body_offset_y", -3.0, MOVE_STEP_TIME / 2.0)
 	tween.tween_property(unit, "body_offset_y", 0.0, MOVE_STEP_TIME / 2.0).from(-3.0).set_delay(MOVE_STEP_TIME / 2.0)
 	await tween.finished
@@ -316,11 +318,12 @@ func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
 	])
 	arrow.color = Color("efe4c8")
 	arrow.z_index = 1
-	arrow.position = actor.position + Vector2(0, -14)
-	arrow.rotation = (target.position - actor.position).angle()
+	arrow.position = actor.position + Vector2(0, actor.floor_offset_y - 14)
+	var destination: Vector2 = target.position + Vector2(0, target.floor_offset_y - 14)
+	arrow.rotation = (destination - arrow.position).angle()
 	add_child(arrow)
 	var tween: Tween = create_tween()
-	tween.tween_property(arrow, "position", target.position + Vector2(0, -14), ARROW_FLIGHT_TIME)
+	tween.tween_property(arrow, "position", destination, ARROW_FLIGHT_TIME)
 	await tween.finished
 	arrow.queue_free()
 
@@ -330,8 +333,11 @@ func _update_turn_ui() -> void:
 	for unit: CombatUnit in units:
 		unit.has_mark = actions.is_marked(unit)
 		if not unit.is_moving:
-			unit.position = map.map_to_surface(unit.cell)
+			unit.position = map.map_to_local(unit.cell)
+			unit.floor_offset_y = map.map_to_surface(unit.cell).y - unit.position.y
 		unit.visible = unit.hit_points > 0
+		unit.is_occluded = map.occludes(unit.cell,
+			map.to_local(unit.to_global(Vector2(0, unit.floor_offset_y - 10))))
 		unit.is_selected = unit == turns.current_unit
 		unit.is_previewed = unit == selection.preview_target or (not selection.preview_path.is_empty()
 			and actions.can_target(turns.current_unit, unit, "attack", selection.preview_cell))
@@ -343,6 +349,12 @@ func _update_turn_ui() -> void:
 	movement_cells.clear()
 	if selection.selected_action == "move" and turns.current_unit != null and turns.current_unit.is_ally:
 		movement_cells.assign(actions.reachable_cells(turns.current_unit).keys())
+	var attack_cells: Array[Vector2i] = []
+	for cell: Vector2i in movement_cells:
+		if not _attack_targets_from(cell).is_empty():
+			attack_cells.append(cell)
+	map.show_movement(movement_cells, attack_cells, selection.preview_path,
+		turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO)
 	if selection.preview_target != null:
 		var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(
 			turns.current_unit, selection.preview_target)
@@ -365,23 +377,6 @@ func _update_turn_ui() -> void:
 		if not preparation.visible:
 			hud.show_result(actions.is_victory(), progress.graduated, _enemy_turn_running or actions.busy)
 	queue_redraw()
-
-
-func _draw() -> void:
-	var half: Vector2 = Vector2(map.tile_set.tile_size) / 2.0
-	for cell: Vector2i in movement_cells:
-		var center: Vector2 = map.map_to_surface(cell)
-		var color: Color = Color(0.22, 0.56, 0.92, 0.4)
-		if not _attack_targets_from(cell).is_empty():
-			color = Color(0.22, 0.8, 0.5, 0.45)
-		draw_rect(Rect2(center - half, half * 2.0), color)
-	if selection.preview_path.is_empty():
-		return
-	var points: PackedVector2Array = [map.map_to_surface(turns.current_unit.cell)]
-	for cell: Vector2i in selection.preview_path:
-		points.append(map.map_to_surface(cell))
-	draw_polyline(points, Color("f4cf69"), 1.0)
-	draw_circle(points[-1], 3.0, Color("f4cf69"), false)
 
 
 func _attack_targets_from(cell: Vector2i) -> Array[CombatUnit]:

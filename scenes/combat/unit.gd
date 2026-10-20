@@ -21,6 +21,11 @@ const WEAPON_COLOR: Color = Color("f4ead1")
 var cell: Vector2i = Vector2i.ZERO
 var is_moving: bool = false
 var facing_left: bool = false
+# 깊이 정렬의 기준점은 높이를 빼기 전 바닥에 두고 그림만 올린다.
+var floor_offset_y: float = 0.0:
+	set(value):
+		floor_offset_y = value
+		queue_redraw()
 var body_offset_y: float = 0.0:
 	set(value):
 		body_offset_y = value
@@ -75,6 +80,8 @@ var is_selected: bool = false:
 	set(value):
 		is_selected = value
 		queue_redraw()
+var is_occluded: bool = false
+var _silhouette: Node2D
 
 
 func get_dexterity() -> int:
@@ -223,6 +230,14 @@ func has_available_turn_action(
 
 
 func _ready() -> void:
+	_silhouette = Node2D.new()
+	_silhouette.z_index = 1
+	_silhouette.visible = false
+	_silhouette.draw.connect(func() -> void:
+		var color: Color = Color("f4cf69") if is_selected else (ALLY_COLOR if is_ally else ENEMY_COLOR)
+		_silhouette.draw_rect(Rect2(-6, -19, 12, 18), color, false)
+	)
+	add_child(_silhouette)
 	cell = start_cell
 	hit_points = get_max_hit_points()
 	begin_turn()
@@ -236,6 +251,10 @@ func face_toward(destination: Vector2) -> void:
 
 
 func _draw() -> void:
+	_silhouette.visible = is_occluded
+	_silhouette.position = Vector2(0, floor_offset_y + body_offset_y)
+	_silhouette.queue_redraw()
+	draw_set_transform(Vector2(0, floor_offset_y))
 	draw_rect(Rect2(-9, -25, 18, 4), OUTLINE_COLOR)
 	draw_rect(Rect2(-8, -24, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
 	var status: String = ("기절" if is_stunned else "") + (" ◎" if has_mark else "")
@@ -249,7 +268,7 @@ func _draw() -> void:
 	elif is_previewed:
 		draw_rect(Rect2(-7, -20, 14, 20), Color("f4ead1"), false)
 	draw_rect(Rect2(-6, -1, 12, 3), OUTLINE_COLOR)
-	draw_set_transform(Vector2(0, body_offset_y), 0.0, Vector2(-1 if facing_left else 1, 1))
+	draw_set_transform(Vector2(0, floor_offset_y + body_offset_y), 0.0, Vector2(-1 if facing_left else 1, 1))
 	draw_rect(Rect2(-6, -19, 12, 18), OUTLINE_COLOR)
 	draw_rect(Rect2(-5, -18, 10, 16), body_color)
 
@@ -297,7 +316,7 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 	var rise: float = absf(canvas.basis_xform(Vector2(0, -FEEDBACK_RISE)).y)
 	var padding: float = 2.0 * maxf(absf(canvas.get_scale().x), absf(canvas.get_scale().y))
 	var viewport: Rect2 = get_viewport().get_visible_rect()
-	var origin: Vector2 = canvas * (position + Vector2(-16, -42))
+	var origin: Vector2 = canvas * (position + Vector2(-16, floor_offset_y - 42))
 	var first: Vector2 = viewport.position + Vector2(padding, rise + padding)
 	var best: Vector2 = origin.clamp(first, viewport.end - popup_size - Vector2.ONE * padding)
 	var distance: float = INF
@@ -309,7 +328,8 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 		Vector2(status_width, font.get_height(10)))
 	for child: Node in get_parent().get_children():
 		if child is CombatUnit:
-			occupied.append((child.get_global_transform_with_canvas() * status_rect).grow(padding))
+			var elevated_status: Rect2 = Rect2(status_rect.position + Vector2(0, child.floor_offset_y), status_rect.size)
+			occupied.append((child.get_global_transform_with_canvas() * elevated_status).grow(padding))
 		elif child is Label and child != popup and child.has_meta("feedback_unit"):
 			var area: Rect2 = canvas * child.get_rect()
 			area.position.y -= rise

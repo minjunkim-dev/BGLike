@@ -3,11 +3,13 @@ extends TileMapLayer
 ## 바닥 높이의 표시 위치와 필드 입력을 같은 좌표로 변환한다.
 
 var grid: CombatGrid
+var _overlays: Array[Node2D] = []
 
 
 func build_grid(combat_grid: CombatGrid, floors: TileSet) -> void:
 	grid = combat_grid
 	clear()
+	show_movement([], [], [], Vector2i.ZERO)
 	tile_set = floors
 	if not grid.heights.is_empty():
 		tile_set = floors.duplicate(true) as TileSet
@@ -23,44 +25,108 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet) -> void:
 
 func map_to_surface(cell: Vector2i) -> Vector2:
 	var height: int = grid.height_at(cell) if grid != null else 0
-	return map_to_local(cell) - Vector2(0, height * tile_set.tile_size.x / 2.0)
+	return map_to_local(cell) - Vector2(0, height * tile_set.tile_size.y / 2.0)
 
 
 func surface_to_map(point: Vector2) -> Vector2i:
 	var cells: Array[Vector2i] = get_used_cells()
-	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.y > b.y)
-	var size: Vector2 = Vector2(tile_set.tile_size)
+	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x + a.y > b.x + b.y)
 	for cell: Vector2i in cells:
-		var surface: Vector2 = map_to_surface(cell)
-		if Rect2(surface - size / 2.0, size).has_point(point):
+		if _contains_surface(cell, point):
 			return cell
-		var ground: Vector2 = map_to_local(cell)
-		var column: Rect2 = Rect2(Vector2(surface.x - size.x / 2.0,
-			minf(surface.y, ground.y) - size.y / 2.0),
-			Vector2(size.x, size.y + absf(surface.y - ground.y)))
 		# 앞 칸의 옆면은 뒤 칸의 바닥 클릭도 가린다.
-		if column.has_point(point):
+		if _contains_sides(cell, point):
 			return Vector2i(-1, -1)
 	return Vector2i(-1, -1)
 
 
+func occludes(unit_cell: Vector2i, point: Vector2) -> bool:
+	for cell: Vector2i in get_used_cells():
+		if cell.x + cell.y > unit_cell.x + unit_cell.y:
+			if _contains_surface(cell, point) or _contains_sides(cell, point):
+				return true
+	return false
+
+
+func _contains_surface(cell: Vector2i, point: Vector2) -> bool:
+	var offset: Vector2 = (point - map_to_surface(cell)).abs() / (Vector2(tile_set.tile_size) / 2.0)
+	return offset.x + offset.y <= 1.0
+
+
+func _contains_sides(cell: Vector2i, point: Vector2) -> bool:
+	var surface: Vector2 = map_to_surface(cell)
+	var ground: Vector2 = map_to_local(cell)
+	if ground == surface:
+		return false
+	var half: Vector2 = Vector2(tile_set.tile_size) / 2.0
+	return Geometry2D.is_point_in_polygon(point, PackedVector2Array([
+		surface + Vector2(-half.x, 0), surface + Vector2(0, half.y),
+		surface + Vector2(half.x, 0), ground + Vector2(half.x, 0),
+		ground + Vector2(0, half.y), ground + Vector2(-half.x, 0)
+	]))
+
+
+func show_movement(cells: Array[Vector2i], attack_cells: Array[Vector2i],
+		path: Array[Vector2i], origin: Vector2i) -> void:
+	for overlay: Node2D in _overlays:
+		overlay.free()
+	_overlays.clear()
+	if cells.is_empty() and path.is_empty():
+		return
+	var half: Vector2 = Vector2(tile_set.tile_size) / 2.0
+	for cell: Vector2i in cells:
+		var overlay: Polygon2D = Polygon2D.new()
+		overlay.position = map_to_local(cell)
+		var center: Vector2 = map_to_surface(cell) - overlay.position
+		overlay.polygon = PackedVector2Array([
+			center + Vector2(0, -half.y), center + Vector2(half.x, 0),
+			center + Vector2(0, half.y), center + Vector2(-half.x, 0)
+		])
+		overlay.color = Color(0.22, 0.8, 0.5, 0.45) if cell in attack_cells else Color(0.22, 0.56, 0.92, 0.4)
+		add_child(overlay)
+		_overlays.append(overlay)
+	var previous: Vector2 = map_to_surface(origin)
+	for cell: Vector2i in path:
+		var line: Line2D = Line2D.new()
+		line.position = map_to_local(cell)
+		var destination: Vector2 = map_to_surface(cell)
+		line.points = PackedVector2Array([previous - line.position, destination - line.position])
+		line.width = 1.0
+		line.default_color = Color("f4cf69")
+		add_child(line)
+		_overlays.append(line)
+		previous = destination
+	if not path.is_empty():
+		var marker: Node2D = Node2D.new()
+		marker.position = map_to_local(path[-1])
+		var center: Vector2 = previous - marker.position
+		marker.draw.connect(func() -> void: marker.draw_circle(center, 3.0, Color("f4cf69"), false))
+		add_child(marker)
+		_overlays.append(marker)
+
+
 func _add_height_source(height: int) -> int:
 	var size: Vector2i = tile_set.tile_size
-	var rise: int = roundi(height * size.x / 2.0)
+	var rise: int = roundi(height * size.y / 2.0)
 	var depth: int = absi(rise)
 	var floor_image: Image = (tile_set.get_source(0) as TileSetAtlasSource).texture.get_image()
 	floor_image.convert(Image.FORMAT_RGBA8)
 	var image: Image = Image.create(size.x * 2, size.y + depth, false, Image.FORMAT_RGBA8)
-	var side_y: int = size.y if rise > 0 else 0
 	for index: int in range(2):
 		var left: int = index * size.x
 		var shade: Color = floor_image.get_pixel(left + size.x / 2, size.y / 2).darkened(0.3)
-		var border: Color = floor_image.get_pixel(left, 0)
-		image.fill_rect(Rect2i(left, side_y, size.x, depth), shade)
-		image.fill_rect(Rect2i(left, side_y, 1, depth), border)
-		image.fill_rect(Rect2i(left + size.x - 1, side_y, 1, depth), border)
-		image.fill_rect(Rect2i(left, side_y + depth - 1, size.x, 1), border)
-	image.blit_rect(floor_image, Rect2i(Vector2i.ZERO, Vector2i(size.x * 2, size.y)),
+		var center: Vector2 = Vector2(size.x / 2.0, size.y / 2.0 + maxi(-rise, 0))
+		var bottom: Vector2 = center + Vector2(0, rise)
+		for direction: int in [-1, 1]:
+			var side: PackedVector2Array = [
+				center + Vector2(direction * size.x / 2.0, 0), center + Vector2(0, size.y / 2.0),
+				bottom + Vector2(0, size.y / 2.0), bottom + Vector2(direction * size.x / 2.0, 0)
+			]
+			for y: int in range(image.get_height()):
+				for x: int in range(size.x):
+					if Geometry2D.is_point_in_polygon(Vector2(x + 0.5, y + 0.5), side):
+						image.set_pixel(left + x, y, shade.darkened(0.2) if direction > 0 else shade)
+	image.blend_rect(floor_image, Rect2i(Vector2i.ZERO, Vector2i(size.x * 2, size.y)),
 		Vector2i(0, maxi(-rise, 0)))
 	var source: TileSetAtlasSource = TileSetAtlasSource.new()
 	source.texture_region_size = Vector2i(size.x, size.y + depth)
@@ -68,4 +134,5 @@ func _add_height_source(height: int) -> int:
 	for index: int in range(2):
 		source.create_tile(Vector2i(index, 0))
 		source.get_tile_data(Vector2i(index, 0), 0).texture_origin = Vector2i(0, roundi(rise / 2.0))
+		source.get_tile_data(Vector2i(index, 0), 0).y_sort_origin = -1
 	return tile_set.add_source(source)
