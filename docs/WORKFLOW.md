@@ -50,6 +50,7 @@ Draft CD의 실행 승인은 [Draft Release 절차](DRAFT_RELEASE.md)를 따릅�
 모든 변경은 `git diff --check`와 `python3 -m unittest discover -s scripts -p 'test_*.py'`를 확인합니다. 워크플로 변경은 `actionlint`도 실행합니다.
 게임 코드·장면·리소스·프로젝트 설정 변경은 Godot headless import, 메인 장면과 기존 전투 회귀 검사를 실행합니다. 명령은 [README](https://github.com/minjunkim-dev/BGLike/blob/main/README.md), 검사 선택과 알 수 없는 변경의 전체 검사 경로는 [CI 구성](CI.md)을 따릅니다.
 플레이 변경은 편집기에서 변경한 입력과 화면 흐름을 직접 확인합니다. CI 성공으로 조작감이나 화면 가독성을 확인했다고 보고하지 않습니다.
+직접 확인을 시작하기 전에 대상 SHA·로컬 변경, 필수 사례·대표 해상도와 합격 기준을 고정합니다. 필수 사례의 입력·화면 증거가 모이면 종료합니다. 같은 입력에서 통과한 증거는 재사용합니다. 새 요청은 추가 범위로 기록하고 기존 사례를 전부 반복하지 않습니다. 임시 스크립트의 사전 검사와 실패·중단·재개는 [직접 확인 실행 기록](CAPTURE_VERIFICATION.md#직접-확인-실행-기록)을 따릅니다.
 문서·설정 변경은 해당 설정을 읽는 도구 또는 GitHub 흐름을 확인합니다. PR에는 실행한 검증과 미확인 범위를 구분합니다. 게임 동작 변경은 사람이 편집기에서 확인할 항목도 적습니다.
 [Issue 양식](../.github/ISSUE_TEMPLATE/task.md)과 [PR 양식](../.github/pull_request_template.md)은 CLI로 작성할 때도 제목 구조를 유지합니다. Issue 없는 문서·설정 작업은 관련 Issue를 "없음"으로 적습니다. 다른 사람의 PR 브랜치에 커밋을 추가하면 PR 코멘트로 알립니다.
 기획 문서의 규칙·수치와 다르게 구현하려면 먼저 Issue에 질문을 남깁니다. 엔진 업그레이드와 외부 애드온 도입은 별도 Issue에서 합의합니다.
