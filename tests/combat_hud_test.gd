@@ -63,6 +63,12 @@ func _run() -> void:
 	await _test_mouse_controls_and_inspection()
 	await _test_group_keyboard()
 	await _test_joined_group_hud()
+	await _test_incapacitated_portrait_join()
+	await _test_portrait_stage_reset()
+	await _test_portrait_join_interrupted_by_order_change(true)
+	await _test_portrait_join_interrupted_by_order_change(false)
+	await _test_portrait_join_interrupted_by_order_change(false, true)
+	await _test_boundary_incapacitated_portrait_join()
 	await _test_order_bar_input()
 	await _test_transparent_order_input()
 	await _test_reaction_flow()
@@ -918,6 +924,152 @@ func _test_joined_group_hud() -> void:
 	await _tab()
 	_check(turns.current_unit == units[0] and units[0].action_left == 0
 		and pending != null and not pending.visible, "결합 묶음의 종료 취소는 턴을 다시 시작하지 않음")
+	_reset_units()
+
+
+func _test_incapacitated_portrait_join() -> void:
+	# 짧은 이동 중 입력 접점을 느린 검사 시계로 고정한다.
+	var time_scale: float = Engine.time_scale
+	Engine.time_scale = 0.1
+	_reset_units()
+	var desired: Array[CombatUnit] = [units[0], units[2], units[1], units[3]]
+	var rolls: Array[int] = []
+	for unit: CombatUnit in units:
+		rolls.append(20 - 3 * desired.find(unit) - unit.get_dexterity())
+	turns.start(units, ScriptedDice.new(rolls, [20, 20, 20, 20]))
+	await process_frame
+	await process_frame
+	var before: float = ((hud.get("_portraits") as Dictionary)[units[1]] as Button).global_position.x
+	units[0].spend_movement(2)
+	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
+	actions.incapacitate(units[2])
+	var portraits: Dictionary = hud.get("_portraits")
+	_check(portraits.size() == 3 and not portraits.has(units[2])
+		and turns.get_current_group() == [units[0], units[1]]
+		and not turns.is_turn_started(units[1]), "전투 불능 초상은 즉시 빠지고 동료는 미시작 묶음에 합류")
+	await process_frame
+	await process_frame
+	var archer: Button = portraits[units[1]]
+	var start: float = archer.global_position.x
+	await create_timer(0.1).timeout
+	var middle: float = archer.global_position.x
+	var first_panel: Control = hud.order_bar.get_child(0) as Control
+	var next_panel: Control = hud.order_bar.get_child(1) as Control
+	var point: Vector2 = Vector2((first_panel.get_global_rect().end.x
+		+ next_panel.global_position.x) / 2.0, archer.get_global_rect().get_center().y)
+	_check(archer.get_global_rect().has_point(point)
+		and not first_panel.get_global_rect().has_point(point)
+		and not next_panel.get_global_rect().has_point(point), "이동 중 초상은 묶음 사이의 빈틈을 지나감")
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = root.get_final_transform() * point
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
+	await process_frame
+	_check(root.gui_get_hovered_control() == archer, "묶음 사이를 지나는 초상의 표시 영역이 포인터 입력을 받음")
+	await _click(point)
+	_check(turns.current_unit == units[1] and turns.is_turn_started(units[1])
+		and units[0].movement_left == 4 and units[0].action_left == 0,
+		"합류 이동 중 초상을 선택해도 첫 턴만 시작하고 동료 자원을 회복하지 않음")
+	await create_timer(0.2).timeout
+	_check(start <= before + 1.0 and start > middle and middle > archer.global_position.x
+		and archer.get_parent() == (portraits[units[0]] as Button).get_parent()
+		and not archer.get_global_rect().intersects((portraits[units[0]] as Button).get_global_rect()),
+		"남은 초상은 즉시 새 위치로 뛰지 않고 0.25초 동안 합쳐져 겹침 없이 종료")
+	units[2].show()
+	Engine.time_scale = time_scale
+	_reset_units()
+
+
+func _test_portrait_stage_reset() -> void:
+	_reset_units()
+	await process_frame
+	await process_frame
+	actions.incapacitate(units[2])
+	hud.begin_stage(2, 1)
+	hud.refresh(turns, actions.has_available_action(turns.current_unit))
+	await process_frame
+	await process_frame
+	var survivor: Button = (hud.get("_portraits") as Dictionary)[units[3]]
+	var initial: Vector2 = survivor.global_position
+	await create_timer(0.35).timeout
+	_check(initial.is_equal_approx(survivor.global_position),
+		"스테이지 초기화는 같은 유닛 순서여도 이전 장면에서 예약한 초상 이동을 재생하지 않음")
+	units[2].show()
+	hud.begin_stage(1, 1)
+	_reset_units()
+
+
+func _test_portrait_join_interrupted_by_order_change(wait_for_start: bool, remove_another: bool = false) -> void:
+	_reset_units()
+	var desired: Array[CombatUnit] = [units[0], units[2], units[1], units[3]]
+	var rolls: Array[int] = []
+	for unit: CombatUnit in units:
+		rolls.append(20 - 3 * desired.find(unit) - unit.get_dexterity())
+	turns.start(units, ScriptedDice.new(rolls, [20, 20, 20, 20]))
+	await process_frame
+	await process_frame
+	var previous: Vector2 = ((hud.get("_portraits") as Dictionary)[units[1]] as Button).global_position
+	actions.incapacitate(units[2])
+	if wait_for_start:
+		await create_timer(0.1).timeout
+		previous = ((hud.get("_portraits") as Dictionary)[units[1]] as Button).global_position
+	var inserted: CombatUnit
+	if remove_another:
+		actions.incapacitate(units[3])
+	else:
+		inserted = CombatUnit.new()
+		inserted.is_ally = true
+		inserted.hit_points = inserted.get_max_hit_points()
+		battle.get_node("Units").add_child(inserted)
+		units.append(inserted)
+		_check(turns.insert_before(inserted, units[0]), "초상 이동 중 새 유닛의 순서 삽입을 즉시 반영")
+	await process_frame
+	await process_frame
+	var archer: Button = (hud.get("_portraits") as Dictionary)[units[1]]
+	var start: Vector2 = archer.global_position
+	await create_timer(0.1).timeout
+	var middle: Vector2 = archer.global_position
+	await create_timer(0.2).timeout
+	var destination: Vector2 = archer.global_position
+	_check(start.distance_to(destination) > middle.distance_to(destination)
+		and middle.distance_to(destination) > 0.0
+		and start.distance_to(previous) <= destination.distance_to(previous),
+		"실행 중이거나 예약된 이동은 순서가 바뀌어도 마지막 표시 위치에서 이어 감: %s/%s" % [wait_for_start, remove_another])
+	if inserted != null:
+		turns.remove_unit(inserted)
+		units.erase(inserted)
+	hud.begin_stage(1, 1)
+	if inserted != null:
+		inserted.free()
+	units[2].show()
+	units[3].show()
+	_reset_units()
+
+
+func _test_boundary_incapacitated_portrait_join() -> void:
+	_reset_units()
+	var desired: Array[CombatUnit] = [units[0], units[2], units[1], units[3]]
+	var rolls: Array[int] = []
+	for unit: CombatUnit in units:
+		rolls.append(20 - 3 * desired.find(unit) - unit.get_dexterity())
+	turns.start(units, ScriptedDice.new(rolls, [20, 20, 20, 20]))
+	turns.end_turn()
+	turns.end_turn()
+	await process_frame
+	await process_frame
+	actions.incapacitate(units[3])
+	_check(turns.current_unit == units[1] and turns.get_current_group() == [units[1], units[0]],
+		"마지막 적의 전투 불능은 라운드 경계의 앞 아군을 현재 묶음 뒤에 즉시 합류시킴")
+	await process_frame
+	await process_frame
+	var archer: Button = (hud.get("_portraits") as Dictionary)[units[1]]
+	var start: float = archer.global_position.x
+	await create_timer(0.1).timeout
+	var middle: float = archer.global_position.x
+	await create_timer(0.2).timeout
+	_check(start > middle and middle > archer.global_position.x,
+		"경계의 앞 아군 위치가 먼저 예약돼도 다른 생존 초상도 기존 표시 위치에서 이동함")
+	units[3].show()
 	_reset_units()
 
 
