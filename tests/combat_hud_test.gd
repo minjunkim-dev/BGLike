@@ -128,8 +128,8 @@ func _test_selection() -> void:
 func _test_square_map() -> void:
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	_check(map.get_used_cells().size() == 100, "사각 맵은100칸")
-	_check(map.tile_set.tile_shape == TileSet.TILE_SHAPE_SQUARE
-		and map.tile_set.tile_size == Vector2i(16, 16), "타일은16px 사각형")
+	_check(map.tile_set.tile_shape == TileSet.TILE_SHAPE_ISOMETRIC
+		and map.tile_set.tile_size == Vector2i(32, 16), "사각 논리 칸을32×16 마름모로 표시")
 	for cell: Vector2i in map.get_used_cells():
 		_check(map.local_to_map(map.map_to_local(cell)) == cell, "사각 중심 클릭의 좌표 왕복")
 		var visual_neighbors: Array[Vector2i] = map.get_surrounding_cells(cell)
