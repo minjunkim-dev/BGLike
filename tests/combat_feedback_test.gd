@@ -42,6 +42,10 @@ func _run() -> void:
 	(battle.get("progress") as CombatActProgress).stage_index = 8
 	battle.call("_start_stage", true)
 	var units: Array[CombatUnit] = battle.get("units")
+	_check(units.size() == 3, "반복 공격 전제조건: 3-3 유닛 3개")
+	if units.size() != 3:
+		await _abort_fixture()
+		return
 	var boss: CombatUnit = units[2]
 	units[0].cell = Vector2i(3, 4)
 	units[1].cell = Vector2i(5, 4)
@@ -57,6 +61,10 @@ func _run() -> void:
 			unit.reaction_left = 0
 	actions.logged.connect(func(message: String) -> void: messages.append(message))
 	battle.call("_update_turn_ui")
+	if not _fixture_ready(units):
+		await _abort_fixture()
+		return
+	print("[FEEDBACK_FIXTURE] 통제된 재현: HP25·배치·주사위 고정, 아군 반응0")
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--capture-dir="):
 			observer = CaptureObserver.new()
@@ -102,6 +110,35 @@ func _run() -> void:
 	main.queue_free()
 	await process_frame
 	quit(0 if failures == 0 else 1)
+
+
+func _fixture_ready(units: Array[CombatUnit]) -> bool:
+	var previous_failures: int = failures
+	var boss: CombatUnit = units[2]
+	_check(units[0].is_ally and units[0].kind == CombatUnit.Kind.WARRIOR
+		and units[1].is_ally and units[1].kind == CombatUnit.Kind.ARCHER
+		and not boss.is_ally and boss.kind == CombatUnit.Kind.SCRAP_ROBOT_3000,
+		"반복 공격 전제조건: 전사·궁수·고철로봇 3000")
+	var portraits: Dictionary = battle.get_node("UI/TurnHud").get("_portraits")
+	_check(portraits.size() == 3 and portraits.has(units[0]) and portraits.has(units[1])
+		and portraits.has(boss), "반복 공격 전제조건: 실제 유닛의 초상 3개")
+	_check(boss.hit_points == 25 and boss.overloaded and boss.action_left == 2,
+		"반복 공격 전제조건: HP25 과부하와 행동2")
+	for ally: CombatUnit in [units[0], units[1]]:
+		_check(CombatHexGrid.distance(ally.cell, boss.cell) == 1
+			and ally.hit_points == ally.get_max_hit_points()
+			and ally.movement_left == CombatUnit.MOVEMENT_PER_TURN
+			and ally.action_left == 1 and ally.bonus_action_left == 1 and ally.reaction_left == 0,
+			"반복 공격 전제조건: 인접 아군의 정상 HP·턴 자원과 반응0")
+	return failures == previous_failures
+
+
+func _abort_fixture() -> void:
+	finished = true
+	monitoring = false
+	current_scene.queue_free()
+	await process_frame
+	quit(1)
 
 
 func _test_shock_feedback() -> void:

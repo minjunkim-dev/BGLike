@@ -887,11 +887,32 @@ func _test_spawned_portrait_input() -> void:
 	turns = battle.get("turns") as CombatTurns
 	actions = battle.get("actions") as CombatActions
 	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var initial_units: Array[CombatUnit] = units.duplicate()
+	var initial_allies: int = units.filter(func(unit: CombatUnit) -> bool: return unit.is_ally).size()
+	var initial_spiderlings: int = units.filter(func(unit: CombatUnit) -> bool:
+		return not unit.is_ally and unit.kind == CombatUnit.Kind.SPIDERLING).size()
+	var initial_mothers: int = units.filter(func(unit: CombatUnit) -> bool:
+		return not unit.is_ally and unit.kind == CombatUnit.Kind.MOTHER_SPIDER).size()
+	var initial_ready: bool = (units.size() == 7 and initial_allies == 2
+		and initial_spiderlings == 3 and initial_mothers == 2
+		and units[0].is_ally and units[0].kind == CombatUnit.Kind.WARRIOR
+		and units[1].is_ally and units[1].kind == CombatUnit.Kind.ARCHER)
+	_check(initial_ready,
+		"소환 전제조건: 3-1 아군2·새끼3·엄마거미2")
+	if not initial_ready:
+		main.queue_free()
+		await process_frame
+		return
+	var spawn_events: Array[int] = [0]
+	actions.logged.connect(func(message: String) -> void:
+		if " 새끼 낳기:" in message:
+			spawn_events[0] += 1)
 	actions.movement_animation = Callable()
 	actions.attack_animation = Callable()
 	actions.dice.seed = 109
 	units[0].hit_points = 1000
 	units[1].hit_points = 1000
+	print("[HUD_FIXTURE] 통제된 소환 검사: 아군HP1000·직접AI호출, native 입력·전투_process 검증 제외")
 	turns.start(units, ScriptedDice.new([1, 1, 20, 20, 20, 20, 20]))
 	var ai: CombatEnemyAi = battle.get("enemy_ai") as CombatEnemyAi
 	for step: int in range(200):
@@ -906,21 +927,51 @@ func _test_spawned_portrait_input() -> void:
 			turns.end_turn()
 	for frame: int in range(4):
 		await process_frame
+	var fixture_failures: int = failures
 	_check(units.size() == 13 and turns.round_number == 3 and turns.current_unit == units[1],
 		"실제3-1 AI가 새끼6마리를 생성한 뒤 궁수 턴에서 누적 초상 입력 검사")
 	var portraits: Dictionary = hud.get("_portraits")
+	var spawned: Array[CombatUnit] = []
+	for unit: CombatUnit in units:
+		if unit not in initial_units:
+			spawned.append(unit)
+	_check(spawn_events[0] == 6 and spawned.size() == 6
+		and spawned.all(func(unit: CombatUnit) -> bool:
+			return not unit.is_ally and unit.kind == CombatUnit.Kind.SPIDERLING),
+		"소환 전제조건: 소환 로그6건과 실제 새 개체6개 일치")
+	_check(portraits.size() == 13 and units.all(func(unit: CombatUnit) -> bool: return portraits.has(unit)),
+		"소환 전제조건: 살아 있는 각 유닛과 초상13개 일치")
+	if failures != fixture_failures:
+		main.queue_free()
+		await process_frame
+		return
+	var resources: Array[int] = [units[0].movement_left, units[0].action_left,
+		units[0].bonus_action_left, units[0].reaction_left, units[1].movement_left,
+		units[1].action_left, units[1].bonus_action_left, units[1].reaction_left]
+	_check(resources == [CombatUnit.MOVEMENT_PER_TURN, 1, 1, 1,
+		CombatUnit.MOVEMENT_PER_TURN, 1, 1, 1], "소환 전제조건: 새 라운드의 두 아군 턴 자원 회복")
+	if failures != fixture_failures:
+		main.queue_free()
+		await process_frame
+		return
 	# 포인터로 오른쪽 끝까지 이동한 뒤 가려졌던 아군 초상을 선택한다.
 	for step: int in range(16):
 		await _click(Vector2(80, 50), MOUSE_BUTTON_WHEEL_RIGHT)
 	await _click((portraits[units[0]] as Button).get_global_rect().get_center())
 	_check(turns.current_unit == units[0] and hud.unit_label.text == "아군 전사",
 		"새끼가 누적되어도 오른쪽 아군 초상을 스크롤하고 실제 클릭으로 조작 전환")
+	_check(resources == [units[0].movement_left, units[0].action_left, units[0].bonus_action_left,
+		units[0].reaction_left, units[1].movement_left, units[1].action_left,
+		units[1].bonus_action_left, units[1].reaction_left], "소환 후 아군 초상 전환은 두 아군 턴 자원 보존")
 	for step: int in range(16):
 		await _click(Vector2(80, 50), MOUSE_BUTTON_WHEEL_LEFT)
 	var enemy: CombatUnit = turns.ordered_units.front()
 	await _click((portraits[enemy] as Button).get_global_rect().get_center())
 	_check(turns.current_unit == units[0] and hud.unit_label.text == enemy.get_display_name(),
 		"반대쪽 끝의 적 초상도 스크롤하고 조회하며 아군 조작 유지")
+	_check(resources == [units[0].movement_left, units[0].action_left, units[0].bonus_action_left,
+		units[0].reaction_left, units[1].movement_left, units[1].action_left,
+		units[1].bonus_action_left, units[1].reaction_left], "소환 후 스크롤·적 조회는 두 아군 턴 자원 보존")
 	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
 	await create_timer(0.08).timeout
 	main.queue_free()
