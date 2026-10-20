@@ -93,7 +93,8 @@ func can_move(actor: CombatUnit, destination: Vector2i) -> bool:
 
 func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	from_cell: Vector2i = Vector2i(-1, -1)) -> bool:
-	if (actor == null or target == null or target.hit_points <= 0 or actor.is_ally == target.is_ally
+	if (actor == null or target == null or target.hit_points <= 0
+		or (actor.is_ally == target.is_ally and action != "shove")
 		or not CombatActionRules.belongs_to(actor, action) or not grid.can_target(actor, target, action, from_cell)):
 		return false
 	match action:
@@ -322,7 +323,7 @@ func shove(actor: CombatUnit, target: CombatUnit) -> bool:
 	if not _can_act(actor) or not can_target(actor, target, "shove"):
 		return false
 	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
-	var won: bool = target.is_stunned
+	var won: bool = target.is_stunned or actor.is_ally == target.is_ally
 	if not won:
 		var result: CombatChecks.ContestResult = CombatChecks.contest(
 			actor.get_attribute(CombatUnit.Attribute.STRENGTH),

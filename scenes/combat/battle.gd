@@ -21,7 +21,7 @@ var _last_ally: CombatUnit
 var loot: CombatLoot = CombatLoot.new()
 var preparation: CombatPreparation
 
-@onready var map: TileMapLayer = $Map
+@onready var map: CombatMap = $Map
 @onready var camera: Camera2D = $Camera
 @onready var hud: CombatTurnHud = $UI/TurnHud
 
@@ -76,12 +76,9 @@ func _start_stage(restore_act: bool) -> void:
 			child.free()
 	units = party.duplicate()
 	map_size = stage.map_size
-	map.clear()
-	map.tile_set = stage.tile_set
 	actions.grid.map_size = map_size
-	for x: int in range(map_size.x):
-		for y: int in range(map_size.y):
-			map.set_cell(Vector2i(x, y), 0, Vector2i((x + y) % 2, 0))
+	actions.grid.heights = stage.heights.duplicate()
+	map.build_grid(actions.grid, stage.tile_set)
 	for index: int in range(party.size()):
 		party[index].cell = stage.ally_cells[index]
 		party[index].facing_left = false
@@ -211,7 +208,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if actions.busy or actions.is_over():
 		return
 	var world_position: Vector2 = get_canvas_transform().affine_inverse() * event.position
-	var cell: Vector2i = map.local_to_map(map.to_local(world_position))
+	var cell: Vector2i = map.surface_to_map(map.to_local(world_position))
 	var actor: CombatUnit = turns.current_unit
 	if actor == null or not actor.is_ally:
 		return
@@ -233,7 +230,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not candidates.is_empty():
 		var unit: CombatUnit = candidates[0]
 		get_viewport().set_input_as_handled()
-		if unit.is_ally:
+		if unit.is_ally and selection.selected_action != "shove":
 			selection.clear_preview()
 		elif selection.select_target(unit, actions.can_target(actor, unit, selection.selected_action)):
 			await _execute_target(unit)
@@ -258,7 +255,7 @@ func preview_enemy(target: CombatUnit) -> bool:
 	if (turns.current_unit == null or not turns.current_unit.is_ally
 		or target not in units or target.is_ally or target.hit_points <= 0):
 		return false
-	selection.preview_enemy(target)
+	selection.preview_unit(target)
 	_update_turn_ui()
 	return true
 
@@ -295,7 +292,7 @@ func _execute_target(target: CombatUnit) -> void:
 
 
 func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
-	var destination: Vector2 = map.map_to_local(cell)
+	var destination: Vector2 = map.map_to_surface(cell)
 	unit.face_toward(destination)
 	unit.is_moving = true
 	var tween: Tween = create_tween().set_parallel()
@@ -333,7 +330,7 @@ func _update_turn_ui() -> void:
 	for unit: CombatUnit in units:
 		unit.has_mark = actions.is_marked(unit)
 		if not unit.is_moving:
-			unit.position = map.map_to_local(unit.cell)
+			unit.position = map.map_to_surface(unit.cell)
 		unit.visible = unit.hit_points > 0
 		unit.is_selected = unit == turns.current_unit
 		unit.is_previewed = unit == selection.preview_target or (not selection.preview_path.is_empty()
@@ -373,16 +370,16 @@ func _update_turn_ui() -> void:
 func _draw() -> void:
 	var half: Vector2 = Vector2(map.tile_set.tile_size) / 2.0
 	for cell: Vector2i in movement_cells:
-		var center: Vector2 = map.map_to_local(cell)
+		var center: Vector2 = map.map_to_surface(cell)
 		var color: Color = Color(0.22, 0.56, 0.92, 0.4)
 		if not _attack_targets_from(cell).is_empty():
 			color = Color(0.22, 0.8, 0.5, 0.45)
 		draw_rect(Rect2(center - half, half * 2.0), color)
 	if selection.preview_path.is_empty():
 		return
-	var points: PackedVector2Array = [map.map_to_local(turns.current_unit.cell)]
+	var points: PackedVector2Array = [map.map_to_surface(turns.current_unit.cell)]
 	for cell: Vector2i in selection.preview_path:
-		points.append(map.map_to_local(cell))
+		points.append(map.map_to_surface(cell))
 	draw_polyline(points, Color("f4cf69"), 1.0)
 	draw_circle(points[-1], 3.0, Color("f4cf69"), false)
 

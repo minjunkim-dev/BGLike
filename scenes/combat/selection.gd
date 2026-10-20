@@ -56,7 +56,7 @@ func select_move(cell: Vector2i, path: Array[Vector2i]) -> bool:
 	return confirmed
 
 
-func preview_enemy(target: CombatUnit) -> void:
+func preview_unit(target: CombatUnit) -> void:
 	clear_preview()
 	preview_target = target
 
@@ -64,7 +64,7 @@ func preview_enemy(target: CombatUnit) -> void:
 func select_target(target: CombatUnit, can_execute: bool) -> bool:
 	if target == preview_target and can_execute:
 		return true
-	preview_enemy(target)
+	preview_unit(target)
 	return false
 
 

@@ -136,7 +136,8 @@ func _warrior_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -
 
 
 func _archer_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:
-	if actions.grid.nearest_distance(actor.cell, _targets(actor, actions)) == 1:
+	if _targets(actor, actions).any(func(target: CombatUnit) -> bool:
+		return actions.grid.are_adjacent(actor.cell, target.cell)):
 		var destination: Vector2i = _retreat(actor, actions)
 		if destination != actor.cell:
 			if actions.can_use(actor, "disengage"):
@@ -230,7 +231,8 @@ func _retreat(actor: CombatUnit, actions: CombatActions) -> Vector2i:
 	for x: int in range(actions.grid.map_size.x):
 		for y: int in range(actions.grid.map_size.y):
 			var cell: Vector2i = Vector2i(x, y)
-			if actions.grid.nearest_distance(cell, targets) <= 1 or not reachable.has(cell):
+			if not reachable.has(cell) or targets.any(func(target: CombatUnit) -> bool:
+				return actions.grid.are_adjacent(cell, target.cell)):
 				continue
 			var cost: int = reachable[cell]
 			if cost < best_cost:

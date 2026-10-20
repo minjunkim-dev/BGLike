@@ -115,7 +115,7 @@ func _test_selection() -> void:
 	selected.discard_incapacitated_inspection()
 	_check(selected.inspected_unit == null, "선택 module: 전투 불능 조회 해제")
 	selected.select_action("shock")
-	selected.preview_enemy(target)
+	selected.preview_unit(target)
 	selected.reset()
 	_check(selected.selected_action == "attack" and selected.preview_target == null
 		and selected.preview_path.is_empty() and selected.inspected_unit == null,

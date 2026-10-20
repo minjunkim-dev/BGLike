@@ -1,6 +1,6 @@
 class_name CombatGrid
 extends RefCounted
-## 상하좌우4방향으로 연결한 사각 격자.
+## 높이를 가진 바닥을 상하좌우4방향으로 연결한 사각 격자.
 
 const DIRECTIONS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)
@@ -8,6 +8,7 @@ const DIRECTIONS: Array[Vector2i] = [
 
 var units: Array[CombatUnit] = []
 var map_size: Vector2i = Vector2i(10, 10)
+var heights: Dictionary[Vector2i, int] = {}
 
 
 class Routes extends RefCounted:
@@ -39,6 +40,14 @@ func unit_at(cell: Vector2i) -> CombatUnit:
 
 func is_inside(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < map_size.x and cell.y < map_size.y
+
+
+func height_at(cell: Vector2i) -> int:
+	return heights.get(cell, 0)
+
+
+func are_adjacent(a: Vector2i, b: Vector2i) -> bool:
+	return distance(a, b) == 1 and absi(height_at(a) - height_at(b)) <= 1
 
 
 func path_to(actor: CombatUnit, destination: Vector2i) -> Array[Vector2i]:
@@ -77,7 +86,8 @@ func _search(origin: Vector2i, budget: int, destination: Vector2i = Vector2i(-1,
 			continue
 		# 이웃 순서는 같은 비용의 경로와 AI 선택을 결정한다.
 		for next: Vector2i in neighbors(here):
-			if is_inside(next) and not routes.parents.has(next) and unit_at(next) == null:
+			if (is_inside(next) and not routes.parents.has(next) and unit_at(next) == null
+				and absi(height_at(here) - height_at(next)) <= 1):
 				routes.parents[next] = here
 				routes.costs[next] = cost
 				frontier.append(next)
@@ -96,7 +106,8 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	var origin: Vector2i = actor.cell if from_cell == Vector2i(-1, -1) else from_cell
 	match action:
 		"attack":
-			return in_range(origin, target.cell, actor.get_attack_range())
+			return (in_range(origin, target.cell, actor.get_attack_range())
+				and (actor.get_attack_range() > 1 or are_adjacent(origin, target.cell)))
 		"shock", "mark":
 			return in_range(origin, target.cell, CombatActionRules.SKILL_RANGE)
 		"shove":
@@ -115,14 +126,14 @@ func opponents_in_range(actor: CombatUnit, maximum: int) -> Array[CombatUnit]:
 	return targets
 
 
-static func leaves_reach(reactor: CombatUnit, origin: Vector2i, destination: Vector2i) -> bool:
-	return in_range(reactor.cell, origin, 1) and distance(reactor.cell, destination) > 1
+func leaves_reach(reactor: CombatUnit, origin: Vector2i, destination: Vector2i) -> bool:
+	return are_adjacent(reactor.cell, origin) and not are_adjacent(reactor.cell, destination)
 
 
 func empty_neighbors(origin: Vector2i) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	for cell: Vector2i in neighbors(origin):
-		if is_inside(cell) and unit_at(cell) == null:
+		if is_inside(cell) and are_adjacent(origin, cell) and unit_at(cell) == null:
 			cells.append(cell)
 	return cells
 
@@ -134,7 +145,8 @@ func pull_cells(actor: CombatUnit, target: CombatUnit,
 	var nearest: int = map_size.x + map_size.y
 	for cell: Vector2i in neighbors(origin):
 		var occupant: CombatUnit = unit_at(cell)
-		if not is_inside(cell) or (occupant != null and occupant != actor):
+		if (not is_inside(cell) or not are_adjacent(origin, cell)
+			or height_at(cell) > height_at(target.cell) or (occupant != null and occupant != actor)):
 			continue
 		var separation: int = distance(cell, target.cell)
 		if separation < nearest:
@@ -146,10 +158,11 @@ func pull_cells(actor: CombatUnit, target: CombatUnit,
 
 
 func can_shove(actor: CombatUnit, target: CombatUnit) -> bool:
-	if actor == null or target == null or not in_range(actor.cell, target.cell, 1):
+	if actor == null or target == null or not are_adjacent(actor.cell, target.cell):
 		return false
 	var destination: Vector2i = push_destination(actor.cell, target.cell)
-	return is_inside(destination) and unit_at(destination) == null
+	return (is_inside(destination) and unit_at(destination) == null
+		and height_at(destination) <= height_at(target.cell))
 
 
 func nearest_distance(cell: Vector2i, targets: Array[CombatUnit]) -> int:
@@ -167,7 +180,7 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 	preview.valid_target = true
 	if attacker.is_stunned:
 		preview.blocked_reason = "기절하여 공격 불가"
-	preview.in_range = in_range(attacker.cell, target.cell, attacker.get_attack_range())
+	preview.in_range = can_target(attacker, target, "attack")
 	var advantages: int = 0
 	var disadvantages: int = 0
 	if target.is_stunned:
@@ -175,7 +188,7 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 		preview.reasons.append("기절한 대상")
 	if attacker.kind == CombatUnit.Kind.ARCHER:
 		for unit: CombatUnit in opponents_in_range(attacker, 1):
-			if not unit.is_stunned:
+			if not unit.is_stunned and are_adjacent(attacker.cell, unit.cell):
 				disadvantages = 1
 				preview.reasons.append("옆에 적")
 				break
