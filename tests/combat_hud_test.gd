@@ -61,6 +61,7 @@ func _run() -> void:
 	await _test_guidance()
 	await _test_mouse_controls_and_inspection()
 	await _test_order_bar_input()
+	await _test_transparent_order_input()
 	await _test_reaction_flow()
 	await _test_reaction_focus()
 	await _test_action_animations()
@@ -802,24 +803,31 @@ func _test_order_bar_input() -> void:
 	units[2].cell = Vector2i(8, 8)
 	units[3].cell = Vector2i(9, 9)
 	battle.call("_update_turn_ui")
+	await process_frame
+	await process_frame
+	var scroll: ScrollContainer = hud.get_node("OrderScroll") as ScrollContainer
+	var last_panel: Control = hud.order_bar.get_child(-1) as Control
+	var panel_end: float = last_panel.get_global_rect().end.x
 	var camera: Camera2D = battle.get_node("Camera") as Camera2D
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	var original: Vector2 = camera.position
 	var destination: Vector2i = Vector2i(4, 3)
-	var point: Vector2 = Vector2(260, 50)
-	# HUD 빈 영역 아래에 이동 가능한 칸을 놓아 클릭 통과를 재현한다.
+	# 플랫폼 글꼴에 따라 초상 너비가 달라지므로 실제 빈 영역을 사용한다.
+	var point: Vector2 = Vector2((panel_end + scroll.get_global_rect().end.x) / 2.0,
+		hud.order_bar.get_global_rect().get_center().y)
 	camera.position = map.map_to_local(destination) + root.get_visible_rect().size / 2.0 - point - camera.offset
 	camera.force_update_scroll()
 	point = map.get_global_transform_with_canvas() * map.map_to_local(destination)
-	_check(hud.order_bar.get_global_rect().has_point(point), "클릭 통과 재현 조건: 턴 순서 바 아래 빈 칸")
+	_check(hud.order_bar.get_global_rect().has_point(point) and point.x > panel_end,
+		"클릭 통과 재현 조건: 실제 초상 영역 밖의 턴 순서 바 아래 빈 칸")
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	await _click(point, MOUSE_BUTTON_RIGHT)
-	_check((battle.get("selection") as CombatSelection).preview_cell == Vector2i(-1, -1) and units[0].cell == Vector2i(4, 4),
-		"턴 순서 바의 빈 영역 클릭은 이동 미리보기·확정으로 통과하지 않음")
+	_check((battle.get("selection") as CombatSelection).preview_cell == Vector2i(-1, -1) and units[0].cell == destination,
+		"턴 순서 바의 빈 영역 우클릭은 이동 미리보기·확정으로 통과")
 	var portraits: Dictionary = hud.get("_portraits")
 	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
-	_check(turns.current_unit == units[1] and units[0].movement_left == 6,
-		"턴 순서 바가 월드 입력을 막아도 자식 초상은 실제 클릭으로 전환")
+	_check(turns.current_unit == units[1] and units[0].movement_left == 5,
+		"빈 영역을 통과시켜도 자식 초상 클릭은 조작 전환만 수행")
 	destination = Vector2i(1, 0)
 	point = Vector2(80, 140)
 	camera.position = map.map_to_local(destination) + root.get_visible_rect().size / 2.0 - point - camera.offset
@@ -833,6 +841,37 @@ func _test_order_bar_input() -> void:
 		"제거한 설명 패널 자리는 월드 입력을 가로막지 않음")
 	camera.position = original
 	camera.force_update_scroll()
+
+
+func _test_transparent_order_input() -> void:
+	for window_size: Vector2i in [Vector2i(640, 360), Vector2i(1280, 800), Vector2i(1920, 1080)]:
+		root.size = window_size
+		_reset_units()
+		units[0].cell = Vector2i(0, 0)
+		units[1].cell = Vector2i(8, 9)
+		units[2].cell = Vector2i(1, 0)
+		units[3].cell = Vector2i(9, 9)
+		units[2].reaction_left = 0
+		battle.call("_update_turn_ui")
+		await process_frame
+		await process_frame
+		var enemy_point: Vector2 = units[2].get_global_transform_with_canvas() * Vector2(0, -10)
+		await _click(enemy_point)
+		_check((battle.get("selection") as CombatSelection).preview_target == units[2]
+			and units[0].action_left == 1, "상단 유닛 몸통 클릭은 공격 미리보기: %s" % window_size)
+		await _click(enemy_point + Vector2(30, 0))
+		_check((battle.get("selection") as CombatSelection).preview_target == null,
+			"빈 영역 좌클릭은 공격 선택 취소: %s" % window_size)
+		await _click(enemy_point)
+		actions.dice = ScriptedDice.new([15, 2], [20, 8])
+		await _click(enemy_point)
+		_check(units[0].action_left == 0 and units[2].hit_points == 7,
+			"상단 유닛 몸통 두 번째 클릭은 공격 확정: %s" % window_size)
+	root.size = Vector2i(640, 360)
+	_reset_units()
+	battle.call("_update_turn_ui")
+	await process_frame
+	await process_frame
 
 
 func _test_spawned_portrait_input() -> void:

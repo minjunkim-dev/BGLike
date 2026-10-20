@@ -1,9 +1,10 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scenes/combat/battle.gd" id="1_battle"]
 [ext_resource type="PackedScene" path="res://scenes/combat/unit.tscn" id="2_unit"]
 [ext_resource type="TileSet" path="res://scenes/combat/floor_tiles.tres" id="3_floor"]
 [ext_resource type="Script" path="res://scenes/combat/turn_hud.gd" id="4_hud"]
+[ext_resource type="Script" path="res://scenes/combat/turn_order_scroll.gd" id="15_order_scroll"]
 [ext_resource type="Resource" path="res://scenes/combat/stage.tres" id="5_stage"]
 [ext_resource type="Script" path="res://scenes/combat/stage.gd" id="6_stage_script"]
 [ext_resource type="AudioStream" path="res://scenes/combat/audio/hit.ogg" id="7_hit"]
@@ -69,6 +70,7 @@ theme_override_font_sizes/font_size = 10
 mouse_filter = 2
 
 [node name="OrderScroll" type="ScrollContainer" parent="UI/TurnHud"]
+script = ExtResource("15_order_scroll")
 mouse_filter = 0
 anchor_right = 1.0
 offset_left = 8.0
@@ -81,7 +83,7 @@ vertical_scroll_mode = 0
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
-mouse_filter = 0
+mouse_filter = 2
 theme_override_constants/separation = 6
 
 [node name="Progress" type="Label" parent="UI/TurnHud"]
