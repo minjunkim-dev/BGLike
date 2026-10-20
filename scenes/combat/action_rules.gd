@@ -14,7 +14,7 @@ const NAMES: Dictionary[String, String] = {
 	"spawn": "새끼 낳기", "pull": "만능팔", "spin": "회전회오리", "jump": "점프"
 }
 const EFFECTS: Dictionary[String, String] = {
-	"jump": "1~2칸의 빈 바닥으로 점프.\n이동 비용은 거리+상승 높이, 보조 행동1.\n상승2까지, 낙하 차3부터 피해.",
+	"jump": "1~2칸의 빈 바닥으로 점프.\n상승2까지, 낙하 차3부터 피해.",
 	"spawn": "인접한 빈 칸에 새끼 거미1마리를 만듭니다.",
 	"spin": "인접한 모든 아군에게 각각 기본 공격.\n밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음.",
 	"second_wind": "HP 1d10+1 회복.\n최대 HP를 넘지 않습니다.",

@@ -22,7 +22,7 @@ func clear_preview() -> void:
 
 
 func inspect(unit: CombatUnit) -> void:
-	if selected_action == "move":
+	if selected_action in ["move", "jump"]:
 		selected_action = "attack"
 	clear_preview()
 	inspected_unit = unit
@@ -40,14 +40,15 @@ func select_action(action: String) -> bool:
 
 func begin_field_input(left_click: bool) -> void:
 	inspected_unit = null
-	if left_click and selected_action == "move":
+	if left_click and selected_action in ["move", "jump"]:
 		selected_action = "attack"
 		clear_preview()
 
 
 ## 유효한 같은 목적지를 다시 선택하면 호출자가 이동을 실행한다.
 func select_move(cell: Vector2i, path: Array[Vector2i]) -> bool:
-	selected_action = "move"
+	if selected_action != "jump":
+		selected_action = "move"
 	var confirmed: bool = not path.is_empty() and cell == preview_cell
 	clear_preview()
 	if not confirmed and not path.is_empty():

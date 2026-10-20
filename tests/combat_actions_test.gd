@@ -106,6 +106,8 @@ func _run() -> void:
 	await _test_scene_ally_shove()
 	await _test_height_scene_input()
 	await _test_blocked_scene_input()
+	await _test_jump_scene_input()
+	await _test_jump_scene_animation()
 	await _test_scene_fall_feedback()
 	await _test_pit_scene_input()
 	await _test_pit_scene_victory()
@@ -1841,6 +1843,114 @@ func _test_blocked_cells() -> void:
 	_check(not f.actions.can_use(actor, "spawn"), "점유 칸과 막힌 칸뿐이면 소환 거부")
 
 
+func _test_jump_scene_input() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	var destination: Vector2i = Vector2i(1, 6)
+	stage.pits = [Vector2i(1, 5)]
+	stage.heights = {destination: 2}
+	stage.blocked_cells = [Vector2i(2, 5)]
+	battle.stages[0] = stage
+	root.add_child(battle)
+	battle.set_process(false)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	turns.start(units, _dice_for([20, 20, 1, 1], [20, 20, 20, 20]))
+	turns.select_unit(units[0])
+	actions.dice = _dice_for([], [])
+	var button: Button = (hud.get("_actions") as Dictionary)["jump"] as Button
+	_check(button.is_visible_in_tree() and not button.disabled, "실제 장면에 공용 점프 버튼 표시")
+	button.pressed.emit()
+	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(Vector2i(2, 5))
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check(selection.selected_action == "jump" and selection.preview_path.is_empty()
+		and units[0].movement_left == 6 and units[0].bonus_action_left == 1, "막힌 착지 클릭은 점프와 자원 보존")
+	button.pressed.emit()
+	point = map.get_global_transform_with_canvas() * map.map_to_surface(destination)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check(selection.selected_action == "jump" and selection.preview_path == [Vector2i(1, 5), destination]
+		and units[0].cell == Vector2i(1, 4) and units[0].movement_left == 6,
+		"첫 우클릭은 낭떠러지를 넘는 선택 경로와 상승2 착지를 미리보기")
+	_check(hud.preview_label.visible and "이동 4" in hud.preview_label.text
+		and "보조 행동1" in hud.preview_label.text and "기회 공격 없음" in hud.preview_label.text
+		and "낙하 없음" in hud.preview_label.text, "점프 미리보기는 비용과 기회 공격·낙하 위험 표시")
+	await _click(map.get_global_transform_with_canvas() * map.map_to_surface(Vector2i.ZERO))
+	_check(selection.selected_action == "attack" and selection.preview_path.is_empty()
+		and units[0].movement_left == 6 and units[0].bonus_action_left == 1, "필드 좌클릭으로 점프 취소, 비용 없음")
+	button.pressed.emit()
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check(units[0].cell == destination and units[0].movement_left == 2 and units[0].bonus_action_left == 0
+		and selection.selected_action == "attack" and selection.preview_path.is_empty(),
+		"같은 착지 두 번째 우클릭은 점프 비용만 쓰고 기본 공격으로 복귀")
+	_check(units[0].position + Vector2(0, units[0].floor_offset_y) == map.map_to_surface(destination),
+		"점프 실행 후 표시한 발 위치는 착지 표면과 일치")
+	battle.queue_free()
+	await process_frame
+
+
+func _test_jump_scene_animation() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	var origin: Vector2i = Vector2i(4, 4)
+	var destination: Vector2i = Vector2i(4, 6)
+	stage.ally_cells = [origin, Vector2i.ZERO]
+	stage.heights = {origin: 3, Vector2i(5, 4): 2}
+	stage.pits = [Vector2i(4, 5)]
+	battle.stages[0] = stage
+	root.add_child(battle)
+	battle.set_process(false)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var actor: CombatUnit = units[0]
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	units[2].cell = Vector2i(5, 4)
+	units[3].cell = Vector2i(9, 9)
+	turns.start(units, _dice_for([20, 20, 1, 1], [20, 20, 20, 20]))
+	turns.select_unit(actor)
+	actions.dice = _dice_for([1], [20])
+	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(destination)
+	((hud.get("_actions") as Dictionary)["jump"] as Button).pressed.emit()
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check("기회 공격 1명" in hud.preview_label.text and "낙하 피해 2" in hud.preview_label.text,
+		"점프 미리보기는 실제 출발 인접 반응과 최대HP12의 낙하 피해2 표시")
+	var before: int = actor.hit_points
+	var finished: Array[bool] = [false]
+	_jump_scene(actions, actor, destination, finished)
+	_check(actions.busy and actor.is_moving and actor.cell == origin
+		and actor.movement_left == 4 and actor.bonus_action_left == 0 and actor.hit_points == before,
+		"기회 공격 생존 후 비용을 먼저 쓰고 논리 원점에서 점프 연출, 착지 피해 대기")
+	hud.end_button.pressed.emit()
+	hud.unit_selected.emit(units[1])
+	_check(turns.current_unit == actor and not actions.can_use(actor, "jump"), "점프 중 턴 종료·아군 전환·중복 실행 잠금")
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(actor.body_offset_y < 0 and actor.cell == origin and actor.hit_points == before,
+		"공중 연출 중 몸은 떠 있고 중간 칸의 낙하·착지 효과 없음")
+	while not finished[0]:
+		await process_frame
+	_check(actor.cell == destination and actor.hit_points == before - 2 and not actions.busy
+		and not actor.is_moving and actor.body_offset_y == 0.0
+		and actor.position + Vector2(0, actor.floor_offset_y) == map.map_to_surface(destination),
+		"착지 후에만 낙하 피해와 논리 칸을 적용하고 표시·잠금 복구")
+	battle.queue_free()
+	await process_frame
+
+
+func _jump_scene(actions: CombatActions, actor: CombatUnit, destination: Vector2i, finished: Array[bool]) -> void:
+	await actions.jump_to(actor, destination)
+	finished[0] = true
+
+
 func _test_height_scene_input() -> void:
 	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
 	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
@@ -1908,6 +2018,8 @@ func _test_blocked_scene_input() -> void:
 	turns.start(units, dice)
 	_check(actions.grid.blocked_cells == [blocked] and actions.grid.is_floor(blocked)
 		and map.get_used_cells().size() == 100, "실제 스테이지의 막힌 칸은 바닥을 유지하고 판정에 연결")
+	_check(map.has_node("BlockedCell") and (map.get_node_or_null("BlockedCell") as Node2D).visible,
+		"막힌 바닥은 낭떠러지와 구분할 수 있는 표시를 유지")
 	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(blocked)
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	await _click(point, MOUSE_BUTTON_RIGHT)
@@ -1918,6 +2030,7 @@ func _test_blocked_scene_input() -> void:
 	battle.call("_start_stage", true)
 	_check(actions.grid.blocked_cells.is_empty() and not actions.grid.is_blocked(blocked)
 		and map.get_used_cells().size() == 100, "다음 스테이지는 막힌 칸 fixture를 이어받지 않음")
+	_check(not map.has_node("BlockedCell"), "다음 스테이지에서 막힌 칸 표시 정리")
 	battle.queue_free()
 	await process_frame
 

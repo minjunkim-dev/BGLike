@@ -4,12 +4,16 @@ extends TileMapLayer
 
 var grid: CombatGrid
 var _overlays: Array[Node2D] = []
+var _blocked_markers: Array[Node2D] = []
 
 
 func build_grid(combat_grid: CombatGrid, floors: TileSet) -> void:
 	grid = combat_grid
 	clear()
 	show_movement([], [], [], Vector2i.ZERO)
+	for marker: Node2D in _blocked_markers:
+		marker.free()
+	_blocked_markers.clear()
 	tile_set = floors
 	if not grid.heights.is_empty():
 		tile_set = floors.duplicate(true) as TileSet
@@ -23,6 +27,21 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet) -> void:
 			if not sources.has(height):
 				sources[height] = _add_height_source(height)
 			set_cell(cell, sources[height], Vector2i((x + y) % 2, 0))
+	for cell: Vector2i in grid.blocked_cells:
+		if not grid.is_floor(cell):
+			continue
+		var marker: Node2D = Node2D.new()
+		marker.name = "BlockedCell"
+		marker.position = map_to_local(cell)
+		var center: Vector2 = map_to_surface(cell) - marker.position
+		marker.draw.connect(func() -> void:
+			marker.draw_colored_polygon(PackedVector2Array([
+				center + Vector2(0, -6), center + Vector2(12, 0),
+				center + Vector2(0, 6), center + Vector2(-12, 0)]), Color("35414a"))
+			marker.draw_line(center + Vector2(-4, -3), center + Vector2(4, 3), Color("edaa54"), 2.0)
+			marker.draw_line(center + Vector2(4, -3), center + Vector2(-4, 3), Color("edaa54"), 2.0))
+		add_child(marker)
+		_blocked_markers.append(marker)
 
 
 func map_to_surface(cell: Vector2i) -> Vector2:

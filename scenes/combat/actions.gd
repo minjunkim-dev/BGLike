@@ -22,6 +22,7 @@ var last_attack: CombatChecks.RollResult
 var last_damage_rolls: Array[int] = []
 var last_damage: int = 0
 var movement_animation: Callable
+var jump_animation: Callable
 var attack_animation: Callable
 
 
@@ -113,29 +114,44 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 		return false
 	busy = true
 	changed.emit()
-	if not actor.disengaged:
-		for reactor: CombatUnit in units:
-			if (reactor.hit_points > 0 and not reactor.is_stunned and reactor.is_ally != actor.is_ally
-				and CombatActionRules.belongs_to(reactor, "opportunity") and reactor.reaction_left > 0
-				and grid.leaves_reach(reactor, actor.cell, destination)):
-				var chance: float = grid.attack_preview(reactor, actor).chance
-				if await _ask_reaction(reactor, "opportunity", "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)" % [actor.get_display_name(), chance * 100.0]):
-					reactor.spend_resource(CombatUnit.TurnResource.REACTION)
-					if not reactor.is_ally:
-						logged.emit("%s 기회 공격: 반응 사용" % reactor.get_display_name())
-					await _perform_attack(reactor, actor, false)
-				if actor.hit_points <= 0:
-					break
+	for reactor: CombatUnit in jump_reactors(actor, destination):
+		var chance: float = grid.attack_preview(reactor, actor).chance
+		if await _ask_reaction(reactor, "opportunity", "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)" % [actor.get_display_name(), chance * 100.0]):
+			reactor.spend_resource(CombatUnit.TurnResource.REACTION)
+			if not reactor.is_ally:
+				logged.emit("%s 기회 공격: 반응 사용" % reactor.get_display_name())
+			await _perform_attack(reactor, actor, false)
+		if actor.hit_points <= 0:
+			break
 	if actor.hit_points <= 0:
 		_finish()
 		return true
 	actor.spend_movement(cells[destination])
 	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
+	if jump_animation.is_valid():
+		await jump_animation.call(actor, destination)
 	_land(actor, destination)
 	logged.emit("%s 점프: 이동 %d, 보조 행동1 · 남은 이동 %d" % [
 		actor.get_display_name(), cells[destination], actor.movement_left])
 	_finish()
 	return true
+
+
+func jump_reactors(actor: CombatUnit, destination: Vector2i) -> Array[CombatUnit]:
+	var reactors: Array[CombatUnit] = []
+	if actor == null or actor.disengaged:
+		return reactors
+	for reactor: CombatUnit in units:
+		if (reactor.hit_points > 0 and not reactor.is_stunned and reactor.is_ally != actor.is_ally
+			and CombatActionRules.belongs_to(reactor, "opportunity") and reactor.reaction_left > 0
+			and grid.leaves_reach(reactor, actor.cell, destination)):
+			reactors.append(reactor)
+	return reactors
+
+
+func fall_damage(actor: CombatUnit, destination: Vector2i) -> int:
+	var drop: int = grid.height_at(actor.cell) - grid.height_at(destination)
+	return ceili((drop - 2) * actor.get_max_hit_points() * 0.15) if drop >= 3 else 0
 
 
 func can_target(actor: CombatUnit, target: CombatUnit, action: String,
@@ -491,17 +507,15 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 
 
 func _land(target: CombatUnit, destination: Vector2i) -> void:
-	var height: int = grid.height_at(target.cell)
+	var amount: int = fall_damage(target, destination)
 	target.cell = destination
 	if grid.pits.has(destination):
 		incapacitate(target)
 		logged.emit("%s 낙사: 전투 불능" % target.get_display_name())
 		feedback.emit(target, "낙사")
 		return
-	var drop: int = height - grid.height_at(destination)
-	if drop < 3:
+	if amount == 0:
 		return
-	var amount: int = ceili((drop - 2) * target.get_max_hit_points() * 0.15)
 	_damage(target, amount)
 	# 낙하 피드백 전에 착지 위치와 HP를 화면에 반영한다.
 	changed.emit()
