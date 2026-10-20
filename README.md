@@ -34,7 +34,7 @@ make check
 
 문서·관리 파일만 바뀌면 공백과 Python 검사를 수행합니다. CI의 엔진 선택과 알림 조건은 [CI 구성](docs/CI.md)을 따릅니다.
 
-전투 코드에서 공간 판단은 [CombatHexGrid](scenes/combat/hex_grid.gd)가 맡습니다. 경로·도달 비용·점유·사거리와 공격 미리보기를 같은 유닛 배열에서 계산합니다.
+전투 코드에서 공간 판단은 [CombatGrid](scenes/combat/grid.gd)가 맡습니다. 경로·도달 비용·점유·사거리와 공격 미리보기를 같은 유닛 배열에서 계산합니다.
 [CombatSelection](scenes/combat/selection.gd)은 동작·대상·이동 미리보기의 선택·취소·확정을 맡습니다. [battle.gd](scenes/combat/battle.gd)는 입력 좌표·화면·연출을 연결합니다.
 턴 자원·반응·피해 실행은 [CombatActions](scenes/combat/actions.gd), 적의 선택 우선순위는 [CombatEnemyAi](scenes/combat/enemy_ai.gd)에 둡니다.
 

@@ -47,7 +47,7 @@ func _pull_target(actor: CombatUnit, actions: CombatActions, targets: Array[Comb
 	var farthest: CombatUnit
 	var farthest_distance: int = 0
 	for target: CombatUnit in targets:
-		var separation: int = CombatHexGrid.distance(origin, target.cell)
+		var separation: int = CombatGrid.distance(origin, target.cell)
 		if actions.can_target(actor, target, "pull", origin) and separation > farthest_distance:
 			farthest = target
 			farthest_distance = separation
@@ -195,10 +195,10 @@ func approach_cell(actor: CombatUnit, actions: CombatActions) -> Vector2i:
 		return actor.cell
 	var target: CombatUnit = targets[0]
 	for candidate: CombatUnit in targets:
-		if CombatHexGrid.distance(actor.cell, candidate.cell) < CombatHexGrid.distance(actor.cell, target.cell):
+		if CombatGrid.distance(actor.cell, candidate.cell) < CombatGrid.distance(actor.cell, target.cell):
 			target = candidate
 	var best: Vector2i = actor.cell
-	var best_distance: int = CombatHexGrid.distance(best, target.cell)
+	var best_distance: int = CombatGrid.distance(best, target.cell)
 	var best_cost: int = 0
 	var reachable: Dictionary[Vector2i, int] = actions.reachable_cells(actor)
 	for x: int in range(actions.grid.map_size.x):
@@ -206,7 +206,7 @@ func approach_cell(actor: CombatUnit, actions: CombatActions) -> Vector2i:
 			var cell: Vector2i = Vector2i(x, y)
 			if not reachable.has(cell):
 				continue
-			var separation: int = CombatHexGrid.distance(cell, target.cell)
+			var separation: int = CombatGrid.distance(cell, target.cell)
 			var cost: int = reachable[cell]
 			# 사거리까지 가장 짧게 이동한다. 못 닿으면 가장 가까운 칸을 쓴다.
 			var reaches: bool = actions.grid.can_target(actor, target, "attack", cell)

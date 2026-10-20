@@ -120,7 +120,7 @@ func _test_scrap_robot() -> void:
 	distant.actions.dice = ScriptedDice.new([], [])
 	await ai.play_turn(boss, distant.actions)
 	_check(boss.movement_left == 0 and boss.action_left == 1
-		and CombatHexGrid.distance(boss.cell, distant.units[0].cell) == 3,
+		and CombatGrid.distance(boss.cell, distant.units[0].cell) == 3,
 		"사거리 밖의 보스는 가장 가까운 아군에게 4칸만 접근")
 
 
@@ -263,7 +263,7 @@ func _test_mother() -> void:
 	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
 	mother.hit_points = 20
 	mother.begin_turn()
-	spawning.actions.dice = ScriptedDice.new([1], [5])
+	spawning.actions.dice = ScriptedDice.new([1], [3])
 	await ai.play_turn(mother, spawning.actions)
 	_check(spawning.units.size() == 5 and mother.cell == Vector2i(4, 4)
 		and mother.movement_left == 4 and mother.action_left == 0
@@ -322,12 +322,12 @@ func _test_spiderling() -> void:
 	spiderling.kind = CombatUnit.Kind.SPIDERLING
 	spiderling.hit_points = 1
 	spiderling.cell = Vector2i(0, 0)
-	approach.units[0].cell = Vector2i(4, 4)
+	approach.units[0].cell = Vector2i(3, 3)
 	approach.units[1].cell = Vector2i(9, 9)
 	approach.units[1].hit_points = 1
 	approach.actions.dice = ScriptedDice.new([12], [20])
 	await ai.play_turn(spiderling, approach.actions)
-	_check(CombatHexGrid.distance(spiderling.cell, approach.units[0].cell) == 1
+	_check(CombatGrid.distance(spiderling.cell, approach.units[0].cell) == 1
 		and spiderling.movement_left == 1 and approach.units[0].hit_points == 11,
 		"새끼 거미는 낮은 HP의 먼 아군보다 가장 가까운 아군에 접근해 공격")
 	var opportunity: Fixture = _fixture()
@@ -374,14 +374,14 @@ func _test_warrior() -> void:
 	var approach: Fixture = _fixture()
 	approach.units[2].cell = Vector2i(0, 0)
 	approach.units[3].cell = Vector2i(9, 0)
-	approach.units[0].cell = Vector2i(4, 4)
+	approach.units[0].cell = Vector2i(3, 3)
 	approach.units[1].cell = Vector2i(9, 9)
 	approach.units[1].hit_points = 1
 	await ai.play_turn(approach.units[2], approach.actions)
-	_check(CombatHexGrid.distance(approach.units[2].cell, approach.units[0].cell) == 1,
+	_check(CombatGrid.distance(approach.units[2].cell, approach.units[0].cell) == 1,
 		"사거리 밖에서는 낮은 HP의 먼 대상보다 가장 가까운 대상에게 접근")
 	_check(approach.units[2].movement_left == 1 and approach.units[2].action_left == 0,
-		"헥사 거리6에서5칸 접근 후 공격, 이동과 행동 별도 소비")
+		"평면 거리6에서5칸 접근 후 공격, 이동과 행동 별도 소비")
 	var retarget: Fixture = _fixture()
 	retarget.units[1].cell = Vector2i(4, 5)
 	retarget.units[1].hit_points = 1
@@ -425,7 +425,7 @@ func _test_archer() -> void:
 	await ai.play_turn(retreat.units[3], retreat.actions)
 	_check(retreat.units[3].disengage_left == 1 and retreat.units[3].disengaged,
 		"인접 적이 있으면 물러서며 쏘기를 먼저 사용")
-	_check(CombatHexGrid.distance(retreat.units[3].cell, retreat.units[0].cell) > 1
+	_check(CombatGrid.distance(retreat.units[3].cell, retreat.units[0].cell) > 1
 		and retreat.units[3].movement_left == 5, "인접 위협에서 벗어나는 최단 후퇴")
 	_check(prompts[0] == 0 and retreat.units[0].reaction_left == 1,
 		"물러서며 쏘기 이동은 아군 기회 공격을 일으키지 않음")
@@ -436,11 +436,11 @@ func _test_archer() -> void:
 		"후퇴 후 공격의 인접 불리 제거")
 	var approach: Fixture = _fixture(true)
 	approach.units[3].cell = Vector2i(0, 0)
-	approach.units[0].cell = Vector2i(8, 8)
+	approach.units[0].cell = Vector2i(6, 6)
 	approach.units[1].cell = Vector2i(9, 9)
 	await ai.play_turn(approach.units[3], approach.actions)
 	_check(approach.units[3].movement_left == 0 and approach.units[3].action_left == 0,
-		"헥사 거리12에서 사거리6까지6칸 이동 후 공격")
+		"평면 거리12에서 사거리6까지6칸 이동 후 공격")
 	var exhausted: Fixture = _fixture(true)
 	exhausted.units[3].cell = Vector2i(2, 2)
 	exhausted.units[3].mark_left = 0

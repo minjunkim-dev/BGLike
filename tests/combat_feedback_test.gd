@@ -125,7 +125,7 @@ func _fixture_ready(units: Array[CombatUnit]) -> bool:
 	_check(boss.hit_points == 25 and boss.overloaded and boss.action_left == 2,
 		"반복 공격 전제조건: HP25 과부하와 행동2")
 	for ally: CombatUnit in [units[0], units[1]]:
-		_check(CombatHexGrid.distance(ally.cell, boss.cell) == 1
+		_check(CombatGrid.distance(ally.cell, boss.cell) == 1
 			and ally.hit_points == ally.get_max_hit_points()
 			and ally.movement_left == CombatUnit.MOVEMENT_PER_TURN
 			and ally.action_left == 1 and ally.bonus_action_left == 1 and ally.reaction_left == 0,

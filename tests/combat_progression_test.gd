@@ -156,7 +156,7 @@ func _test_mother_stages() -> void:
 		turns.end_turn()
 		turns.end_turn()
 		var actions: CombatActions = battle.get("actions") as CombatActions
-		actions.dice = ScriptedDice.new([1], [5])
+		actions.dice = ScriptedDice.new([1], [3])
 		await (battle.get("enemy_ai") as CombatEnemyAi).play_turn(mothers[0], actions)
 		var child: CombatUnit = units.back()
 		_check(units.size() == 8 and child.kind == CombatUnit.Kind.SPIDERLING
@@ -210,7 +210,7 @@ func _test_novice_placements() -> void:
 		_check(party[0].cell == Vector2i(1, 4) and party[1].cell == Vector2i(0, 5)
 			and not party[0].facing_left and not party[1].facing_left,
 			"모든 스테이지에서 아군이 왼쪽 두 칸에서 오른쪽을 보고 시작")
-		_check(battle.get("map_size") == Vector2i(10, 10), "모든 스테이지의 기존 10×10 헥사 맵 유지")
+		_check(battle.get("map_size") == Vector2i(10, 10), "모든 스테이지의 기존 10×10 크기를 사각 맵으로 유지")
 		_check_enemy_values(battle, progress.act_number())
 		if not expected.has(index):
 			continue
