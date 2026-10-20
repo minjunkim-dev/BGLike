@@ -76,6 +76,12 @@ func _run() -> void:
 	await _test_scrap_robot_opportunity()
 	await _test_movement()
 	await _test_height_movement()
+	_test_jump_path()
+	_test_jump_height_path()
+	_test_jump_routes()
+	_test_blocked_cells()
+	await _test_jump_cost_and_landing()
+	await _test_jump_opportunity()
 	await _test_height_adjacency()
 	await _test_high_ground()
 	_test_fall_damage()
@@ -100,6 +106,9 @@ func _run() -> void:
 	await _test_scene_input()
 	await _test_scene_ally_shove()
 	await _test_height_scene_input()
+	await _test_blocked_scene_input()
+	await _test_jump_scene_input()
+	await _test_jump_scene_animation()
 	await _test_scene_fall_feedback()
 	await _test_pit_scene_input()
 	await _test_pit_scene_victory()
@@ -536,8 +545,8 @@ func _test_spiderling_stats_and_damage() -> void:
 				and spiderling.get_attribute(CombatUnit.Attribute.MENTAL) == -2
 				and spiderling.movement_left == 6, "새끼 거미의 능력치·이동력")
 		for action: String in CombatActionRules.NAMES:
-			_check(CombatActionRules.belongs_to(spiderling, action) == (action == "attack"),
-				"새끼 거미는 스킬·기회 공격 없이 기본 공격만 사용: " + action)
+			_check(CombatActionRules.belongs_to(spiderling, action) == (action in ["attack", "jump"]),
+				"새끼 거미는 기본 공격과 공용 점프만 사용: " + action)
 		f.turns.end_turn()
 		f.turns.end_turn()
 		f.units[0].reaction_left = 0
@@ -719,6 +728,97 @@ func _test_height_movement() -> void:
 		"높이1 내려가기도 이동1만 소비")
 	_check(actor.action_left == 1 and actor.bonus_action_left == 1,
 		"오르내리기는 행동과 보조 행동을 보존")
+
+
+func _test_jump_cost_and_landing() -> void:
+	for scenario: Array in [[0, 0, 2, true, 2, 0], [0, 2, 4, true, 4, 0],
+		[0, 2, 3, false, 4, 0], [3, 0, 2, true, 2, 2]]:
+		var f: Fixture = _fixture()
+		var actor: CombatUnit = f.units[0]
+		var origin: Vector2i = actor.cell
+		var destination: Vector2i = origin + Vector2i(0, 2)
+		f.units[2].cell = Vector2i(9, 0)
+		f.actions.grid.heights = {origin: scenario[0], destination: scenario[1]}
+		actor.movement_left = scenario[2]
+		var before: int = actor.hit_points
+		var expected_cost: int = scenario[4]
+		var cells: Dictionary[Vector2i, int] = f.actions.jump_cells(actor)
+		_check(cells.has(destination) == scenario[3], "점프 도달 칸은 평면 거리와 상승 비용을 남은 이동과 비교")
+		if scenario[3]:
+			_check(cells.get(destination, -1) == expected_cost, "점프 미리보기 비용은 거리2와 양수 상승분의 합")
+		f.actions.dice = _dice_for([], [])
+		_check(await f.actions.jump_to(actor, destination) == scenario[3], "점프 실행도 같은 비용 조건 적용")
+		_check(actor.cell == (destination if scenario[3] else origin)
+			and actor.movement_left == (scenario[2] - expected_cost if scenario[3] else scenario[2])
+			and actor.bonus_action_left == (0 if scenario[3] else 1) and actor.action_left == 1,
+			"점프 성공만 이동과 보조 행동1을 쓰고 행동은 보존")
+		_check(actor.hit_points == before - scenario[5] and not f.actions.busy,
+			"착지 차3부터 기존 고정 낙하 피해를 주사위 없이 적용하고 잠금 해제")
+		_check(not await f.actions.jump_to(actor, origin) and actor.bonus_action_left == (0 if scenario[3] else 1),
+			"보조 행동 소진 또는 같은 칸 점프 거부는 자원 보존")
+	var denied: Fixture = _fixture()
+	var actor: CombatUnit = denied.units[0]
+	actor.bonus_action_left = 0
+	_check(denied.actions.jump_cells(actor).is_empty() and not denied.actions.can_use(actor, "jump"),
+		"보조 행동이 없으면 점프 버튼과 착지 후보 사용 불가")
+	actor.bonus_action_left = 1
+	_check(denied.actions.can_use(actor, "jump"), "빈 착지 칸과 자원이 있으면 점프 가능")
+	actor.is_stunned = true
+	_check(denied.actions.jump_cells(actor).is_empty() and not await denied.actions.jump_to(actor, Vector2i(4, 6)),
+		"기절한 유닛은 점프 거부")
+	_check(CombatActionRules.resource_of("jump") == CombatUnit.TurnResource.BONUS_ACTION
+		and CombatActionRules.belongs_to(denied.units[2], "jump"), "점프는 적도 쓸 수 있는 공용 보조 행동")
+	var killed: Fixture = _fixture()
+	actor = killed.units[0]
+	killed.units[2].cell = Vector2i(9, 0)
+	killed.actions.grid.heights[actor.cell] = 3
+	actor.hit_points = 1
+	killed.actions.dice = _dice_for([], [])
+	_check(await killed.actions.jump_to(actor, Vector2i(4, 6)) and actor.cell == Vector2i(4, 6)
+		and actor.hit_points == 0 and actor.movement_left == 4 and actor.bonus_action_left == 0,
+		"착지 낙하 전투 불능은 목적지에서 발생하고 이미 쓴 점프 비용은 복구하지 않음")
+	_check(actor not in killed.turns.ordered_units and not actor.visible
+		and killed.actions.grid.unit_at(Vector2i(4, 6)) == null, "점프 낙하 전투 불능도 턴·표시·점유 정리")
+
+
+func _test_jump_opportunity() -> void:
+	for scenario: Array in [[false, false], [true, false], [true, true]]:
+		var f: Fixture = _fixture()
+		_enemy_archer(f)
+		var actor: CombatUnit = f.units[3]
+		var origin: Vector2i = actor.cell
+		var destination: Vector2i = Vector2i(6, 5)
+		var asked: Array[String] = []
+		if scenario[1]:
+			actor.hit_points = 1
+		f.actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
+			asked.append(kind)
+			_check(actor.cell == origin and actor.movement_left == 6 and actor.bonus_action_left == 1,
+				"점프 기회 공격은 출발과 비용 소비 전에 확인")
+			_check(f.actions.busy and f.actions.jump_cells(actor).is_empty(), "점프 반응 대기 중 입력 잠금")
+			f.actions.resolve_reaction(scenario[0])
+		)
+		f.actions.dice = (_dice_for([20], [20]).then_seeded() if scenario[1]
+			else _dice_for([1], [20]) if scenario[0] else _dice_for([], []))
+		_check(await f.actions.jump_to(actor, destination), "기회 공격을 포함한 점프 시도 처리")
+		_check(asked == ["opportunity"]
+			and (scenario[1] or f.units[0].reaction_left == (0 if scenario[0] else 1)),
+			"출발에서 인접하고 착지에서 벗어나는 적에게 한 번만 기회 공격")
+		_check(actor.cell == (origin if scenario[1] else destination)
+			and actor.movement_left == (6 if scenario[1] else 4)
+			and actor.bonus_action_left == (1 if scenario[1] else 0),
+			"기회 공격 전투 불능은 원점·이동·보조 행동 보존, 생존은 착지·비용 소비")
+		_check(not f.actions.busy and f.actions.pending_reactor == null, "점프 반응 종료 후 잠금 해제")
+	for reactor_cell: Vector2i in [Vector2i(5, 5), Vector2i(4, 5)]:
+		var f: Fixture = _fixture()
+		var actor: CombatUnit = f.units[0]
+		f.units[1].cell = Vector2i.ZERO
+		f.units[2].cell = reactor_cell
+		f.units[3].cell = Vector2i(9, 9)
+		f.actions.dice = _dice_for([], [])
+		var destination: Vector2i = Vector2i(6, 4) if reactor_cell.x == 5 else Vector2i(5, 5)
+		_check(await f.actions.jump_to(actor, destination) and f.units[2].reaction_left == 1,
+			"공중 경로에만 인접하거나 착지에도 인접하면 기회 공격 없음")
 
 
 func _test_height_adjacency() -> void:
@@ -1708,6 +1808,189 @@ func _test_isometric_unit_occlusion() -> void:
 	await process_frame
 
 
+func _test_jump_path() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	_check(f.actions.grid.jump_path(actor, Vector2i(4, 6)) == [Vector2i(4, 5), Vector2i(4, 6)],
+		"평지 점프는 출발에서2칸 떨어진 착지까지 선택한 경로를 공개 질의로 반환")
+
+
+func _test_jump_height_path() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	var destination: Vector2i = Vector2i(4, 6)
+	var middle: Vector2i = Vector2i(4, 5)
+	f.actions.grid.heights[destination] = 3
+	_check(f.actions.grid.jump_path(actor, destination).is_empty(), "점프 착지 상승3은 금지")
+	f.actions.grid.heights[destination] = 2
+	_check(f.actions.grid.jump_path(actor, destination) == [middle, destination], "점프 착지 상승2는 허용")
+	f.actions.grid.heights[destination] = 0
+	f.actions.grid.heights[middle] = 2
+	_check(f.actions.grid.jump_path(actor, destination).is_empty(), "점프 중간 바닥 상승2는 최종Q12에 따라 금지")
+	f.actions.grid.heights[middle] = 99
+	f.actions.grid.pits = [middle]
+	_check(f.actions.grid.jump_path(actor, destination) == [middle, destination],
+		"중간 낭떠러지는 바닥 높이가 없으므로 가상 높이를 비교하지 않고 통과")
+	f.actions.grid.pits = [destination]
+	_check(f.actions.grid.jump_path(actor, destination).is_empty(), "낭떠러지에는 점프 착지 금지")
+
+
+func _test_jump_routes() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	var destination: Vector2i = Vector2i(5, 5)
+	f.units[2].cell = Vector2i(9, 0)
+	_check(f.actions.grid.jump_path(actor, destination) == [Vector2i(5, 4), destination],
+		"두 대각선 최단 경로가 열리면 기존4방향 순서의 첫 경로 선택")
+	f.actions.grid.blocked_cells = [Vector2i(5, 4)]
+	_check(f.actions.grid.jump_path(actor, destination) == [Vector2i(4, 5), destination],
+		"대각선 첫 경로가 막히면 두 번째 열린 경로 선택")
+	f.actions.grid.blocked_cells.append(Vector2i(4, 5))
+	_check(f.actions.grid.jump_path(actor, destination).is_empty(), "두 대각선 경로가 모두 막히면 점프 거부")
+	f.actions.grid.blocked_cells.clear()
+	f.units[1].cell = Vector2i(5, 4)
+	_check(f.actions.grid.jump_path(actor, destination) == [Vector2i(4, 5), destination],
+		"아군 점유 중간 칸은 건너뛰지 않고 다른 열린 경로 선택")
+	f.units[1].hit_points = 0
+	_check(f.actions.grid.jump_path(actor, destination) == [Vector2i(5, 4), destination],
+		"전투 불능 유닛은 점프 중간 칸을 점유하지 않음")
+	f.actions.grid.heights[Vector2i(5, 4)] = 2
+	_check(f.actions.grid.jump_path(actor, Vector2i(5, 4)) == [Vector2i(5, 4)]
+		and f.actions.jump_cells(actor).get(Vector2i(5, 4), -1) == 3,
+		"옆 칸 높이2 점프는 중간 칸 없이 이동3 소비")
+	_check(f.actions.grid.jump_path(actor, actor.cell).is_empty()
+		and f.actions.grid.jump_path(actor, Vector2i(7, 4)).is_empty()
+		and f.actions.grid.jump_path(actor, Vector2i(-1, 4)).is_empty(), "같은 칸·거리3·맵 밖 점프 거부")
+
+
+func _test_blocked_cells() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	var middle: Vector2i = Vector2i(4, 5)
+	var destination: Vector2i = Vector2i(4, 6)
+	f.actions.grid.blocked_cells = [middle]
+	_check(f.actions.grid.jump_path(actor, destination).is_empty(), "명시적 벽·장애물이 있는 중간 칸은 점프 통과 금지")
+	_check(not f.actions.can_move(actor, middle) and middle not in f.actions.grid.empty_neighbors(actor.cell),
+		"막힌 칸은 걷기와 빈 인접 칸 질의에서도 제외")
+	f.actions.grid.blocked_cells = [destination]
+	_check(f.actions.grid.jump_path(actor, destination).is_empty()
+		and f.actions.grid.path_to(actor, destination).is_empty(), "막힌 바닥에는 걷거나 점프 착지 금지")
+	f.actions.grid.blocked_cells = [Vector2i(6, 4)]
+	_check(not f.actions.grid.can_shove(actor, f.units[2]), "막힌 칸으로 밀치기 금지")
+	f.actions.grid.blocked_cells = [Vector2i(4, 5), Vector2i(4, 3)]
+	_check(f.actions.grid.pull_cells(actor, f.units[3]).is_empty(), "막힌 칸으로 끌기 금지")
+	actor.kind = CombatUnit.Kind.MOTHER_SPIDER
+	_check(not f.actions.can_use(actor, "spawn"), "점유 칸과 막힌 칸뿐이면 소환 거부")
+
+
+func _test_jump_scene_input() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	var destination: Vector2i = Vector2i(1, 6)
+	stage.pits = [Vector2i(1, 5)]
+	stage.heights = {destination: 2}
+	stage.blocked_cells = [Vector2i(2, 5)]
+	battle.stages[0] = stage
+	root.add_child(battle)
+	battle.set_process(false)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	turns.start(units, _dice_for([20, 20, 1, 1], [20, 20, 20, 20]))
+	turns.select_unit(units[0])
+	actions.dice = _dice_for([], [])
+	var button: Button = (hud.get("_actions") as Dictionary)["jump"] as Button
+	_check(button.is_visible_in_tree() and not button.disabled, "실제 장면에 공용 점프 버튼 표시")
+	button.pressed.emit()
+	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(Vector2i(2, 5))
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check(selection.selected_action == "jump" and selection.preview_path.is_empty()
+		and units[0].movement_left == 6 and units[0].bonus_action_left == 1, "막힌 착지 클릭은 점프와 자원 보존")
+	button.pressed.emit()
+	point = map.get_global_transform_with_canvas() * map.map_to_surface(destination)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check(selection.selected_action == "jump" and selection.preview_path == [Vector2i(1, 5), destination]
+		and units[0].cell == Vector2i(1, 4) and units[0].movement_left == 6,
+		"첫 우클릭은 낭떠러지를 넘는 선택 경로와 상승2 착지를 미리보기")
+	_check(hud.preview_label.visible and "이동 4" in hud.preview_label.text
+		and "보조 행동1" in hud.preview_label.text and "기회 공격 없음" in hud.preview_label.text
+		and "낙하 없음" in hud.preview_label.text, "점프 미리보기는 비용과 기회 공격·낙하 위험 표시")
+	await _click(map.get_global_transform_with_canvas() * map.map_to_surface(Vector2i.ZERO))
+	_check(selection.selected_action == "attack" and selection.preview_path.is_empty()
+		and units[0].movement_left == 6 and units[0].bonus_action_left == 1, "필드 좌클릭으로 점프 취소, 비용 없음")
+	button.pressed.emit()
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check(units[0].cell == destination and units[0].movement_left == 2 and units[0].bonus_action_left == 0
+		and selection.selected_action == "attack" and selection.preview_path.is_empty(),
+		"같은 착지 두 번째 우클릭은 점프 비용만 쓰고 기본 공격으로 복귀")
+	_check(units[0].position + Vector2(0, units[0].floor_offset_y) == map.map_to_surface(destination),
+		"점프 실행 후 표시한 발 위치는 착지 표면과 일치")
+	battle.queue_free()
+	await process_frame
+
+
+func _test_jump_scene_animation() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	var origin: Vector2i = Vector2i(4, 4)
+	var destination: Vector2i = Vector2i(4, 6)
+	stage.ally_cells = [origin, Vector2i.ZERO]
+	stage.heights = {origin: 3, Vector2i(5, 4): 2}
+	stage.pits = [Vector2i(4, 5)]
+	battle.stages[0] = stage
+	root.add_child(battle)
+	battle.set_process(false)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var actor: CombatUnit = units[0]
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	units[2].cell = Vector2i(5, 4)
+	units[3].cell = Vector2i(9, 9)
+	turns.start(units, _dice_for([20, 20, 1, 1], [20, 20, 20, 20]))
+	turns.select_unit(actor)
+	actions.dice = _dice_for([1], [20])
+	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(destination)
+	((hud.get("_actions") as Dictionary)["jump"] as Button).pressed.emit()
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check("기회 공격 1명" in hud.preview_label.text and "낙하 피해 2" in hud.preview_label.text,
+		"점프 미리보기는 실제 출발 인접 반응과 최대HP12의 낙하 피해2 표시")
+	var before: int = actor.hit_points
+	var finished: Array[bool] = [false]
+	_jump_scene(actions, actor, destination, finished)
+	_check(actions.busy and actor.is_moving and actor.cell == origin
+		and actor.movement_left == 4 and actor.bonus_action_left == 0 and actor.hit_points == before,
+		"기회 공격 생존 후 비용을 먼저 쓰고 논리 원점에서 점프 연출, 착지 피해 대기")
+	hud.end_button.pressed.emit()
+	hud.unit_selected.emit(units[1])
+	_check(turns.current_unit == actor and not actions.can_use(actor, "jump"), "점프 중 턴 종료·아군 전환·중복 실행 잠금")
+	await process_frame
+	await process_frame
+	await process_frame
+	_check(actor.body_offset_y < 0 and actor.cell == origin and actor.hit_points == before,
+		"공중 연출 중 몸은 떠 있고 중간 칸의 낙하·착지 효과 없음")
+	while not finished[0]:
+		await process_frame
+	_check(actor.cell == destination and actor.hit_points == before - 2 and not actions.busy
+		and not actor.is_moving and actor.body_offset_y == 0.0
+		and actor.position + Vector2(0, actor.floor_offset_y) == map.map_to_surface(destination),
+		"착지 후에만 낙하 피해와 논리 칸을 적용하고 표시·잠금 복구")
+	battle.queue_free()
+	await process_frame
+
+
+func _jump_scene(actions: CombatActions, actor: CombatUnit, destination: Vector2i, finished: Array[bool]) -> void:
+	await actions.jump_to(actor, destination)
+	finished[0] = true
+
+
 func _test_height_scene_input() -> void:
 	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
 	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
@@ -1753,6 +2036,41 @@ func _test_height_scene_input() -> void:
 	battle.call("_start_stage", true)
 	_check(actions.grid.heights.is_empty() and units[0].position == map.map_to_local(units[0].cell),
 		"다음 실제 평면 스테이지는 높이0으로 복귀하고 fixture 높이를 이어받지 않음")
+	battle.queue_free()
+	await process_frame
+
+
+func _test_blocked_scene_input() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	var blocked: Vector2i = Vector2i(2, 4)
+	stage.blocked_cells = [blocked]
+	battle.stages[0] = stage
+	root.add_child(battle)
+	battle.set_process(false)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 33
+	turns.start(units, dice)
+	_check(actions.grid.blocked_cells == [blocked] and actions.grid.is_floor(blocked)
+		and map.get_used_cells().size() == 100, "실제 스테이지의 막힌 칸은 바닥을 유지하고 판정에 연결")
+	_check(map.has_node("BlockedCell") and (map.get_node_or_null("BlockedCell") as Node2D).visible,
+		"막힌 바닥은 낭떠러지와 구분할 수 있는 표시를 유지")
+	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(blocked)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check(units[0].cell == Vector2i(1, 4) and units[0].movement_left == 6
+		and (battle.get("selection") as CombatSelection).preview_path.is_empty(),
+		"막힌 바닥의 두 번 우클릭은 이동·자원을 소비하지 않음")
+	(battle.get("progress") as CombatActProgress).stage_index = 1
+	battle.call("_start_stage", true)
+	_check(actions.grid.blocked_cells.is_empty() and not actions.grid.is_blocked(blocked)
+		and map.get_used_cells().size() == 100, "다음 스테이지는 막힌 칸 fixture를 이어받지 않음")
+	_check(not map.has_node("BlockedCell"), "다음 스테이지에서 막힌 칸 표시 정리")
 	battle.queue_free()
 	await process_frame
 

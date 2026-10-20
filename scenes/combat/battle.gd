@@ -49,6 +49,7 @@ func _ready() -> void:
 	actions.hit_landed.connect($HitSound.play)
 	actions.reaction_requested.connect(hud.show_reaction)
 	actions.movement_animation = _animate_movement
+	actions.jump_animation = _animate_jump
 	actions.attack_animation = _animate_attack
 	turns.changed.connect(_on_turn_changed)
 	turns.order_rotated.connect(hud.prepare_order_rotation)
@@ -57,6 +58,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	actions.movement_animation = Callable()
+	actions.jump_animation = Callable()
 	actions.attack_animation = Callable()
 
 
@@ -79,6 +81,7 @@ func _start_stage(restore_act: bool) -> void:
 	actions.grid.map_size = map_size
 	actions.grid.heights = stage.heights.duplicate()
 	actions.grid.pits = stage.pits.duplicate()
+	actions.grid.blocked_cells = stage.blocked_cells.duplicate()
 	map.build_grid(actions.grid, stage.tile_set)
 	for index: int in range(party.size()):
 		party[index].cell = stage.ally_cells[index]
@@ -245,10 +248,15 @@ func _unhandled_input(event: InputEvent) -> void:
 func _select_move_cell(cell: Vector2i) -> void:
 	var actor: CombatUnit = turns.current_unit
 	var path: Array[Vector2i] = []
-	if actor != null and actor.is_ally and actions.can_move(actor, cell):
-		path = actions.grid.path_to(actor, cell)
+	var jumping: bool = selection.selected_action == "jump"
+	if actor != null and actor.is_ally:
+		if jumping and actions.jump_cells(actor).has(cell):
+			path = actions.grid.jump_path(actor, cell)
+		elif not jumping and actions.can_move(actor, cell):
+			path = actions.grid.path_to(actor, cell)
 	if selection.select_move(cell, path):
-		if await actions.move_to(actor, cell):
+		var executed: bool = await actions.jump_to(actor, cell) if jumping else await actions.move_to(actor, cell)
+		if executed:
 			selection.finish_execution()
 	_update_turn_ui()
 
@@ -308,6 +316,23 @@ func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
 	unit.is_moving = false
 
 
+func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
+	var destination: Vector2 = map.map_to_local(cell)
+	var duration: float = MOVE_STEP_TIME * 2.0
+	var apex: float = -float(map.tile_set.tile_size.y)
+	unit.face_toward(destination)
+	unit.is_moving = true
+	var tween: Tween = create_tween().set_parallel()
+	tween.tween_property(unit, "position", destination, duration)
+	tween.tween_property(unit, "floor_offset_y", map.map_to_surface(cell).y - destination.y, duration)
+	tween.tween_property(unit, "body_offset_y", apex, duration / 2.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(unit, "body_offset_y", 0.0, duration / 2.0).from(apex).set_delay(duration / 2.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await tween.finished
+	unit.position = destination
+	unit.body_offset_y = 0.0
+	unit.is_moving = false
+
+
 func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
 	actor.face_toward(target.position)
 	if actor.kind != CombatUnit.Kind.ARCHER:
@@ -348,8 +373,11 @@ func _update_turn_ui() -> void:
 	var can_act: bool = actions.has_available_action(turns.current_unit)
 	hud.refresh(turns, can_act)
 	movement_cells.clear()
-	if selection.selected_action == "move" and turns.current_unit != null and turns.current_unit.is_ally:
-		movement_cells.assign(actions.reachable_cells(turns.current_unit).keys())
+	if turns.current_unit != null and turns.current_unit.is_ally:
+		if selection.selected_action == "move":
+			movement_cells.assign(actions.reachable_cells(turns.current_unit).keys())
+		elif selection.selected_action == "jump":
+			movement_cells.assign(actions.jump_cells(turns.current_unit).keys())
 	var attack_cells: Array[Vector2i] = []
 	for cell: Vector2i in movement_cells:
 		if not _attack_targets_from(cell).is_empty():
@@ -373,6 +401,18 @@ func _update_turn_ui() -> void:
 	var showing_move: bool = selection.selected_action == "move" or not selection.preview_path.is_empty()
 	hud.refresh_actions(actions, selection.selected_action, _last_ally)
 	hud.show_move_mode(showing_move)
+	if selection.selected_action == "jump":
+		hud.show_move_mode(false)
+		var note: String = "점프 · 착지 칸 우클릭\n같은 칸 재클릭으로 확정"
+		if not selection.preview_path.is_empty():
+			var actor: CombatUnit = turns.current_unit
+			var cell: Vector2i = selection.preview_cell
+			var reactors: int = actions.jump_reactors(actor, cell).size()
+			var fall: int = actions.fall_damage(actor, cell)
+			note = "점프 · 이동 %d · 보조 행동1\n%s · %s" % [actions.jump_cells(actor).get(cell, 0),
+				"기회 공격 %d명" % reactors if reactors > 0 else "기회 공격 없음",
+				"낙하 피해 %d" % fall if fall > 0 else "낙하 없음"]
+		hud.show_target_note(note)
 	if actions.is_over():
 		hud.show_outcome(actions.is_victory())
 		if not preparation.visible:
