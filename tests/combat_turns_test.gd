@@ -173,9 +173,16 @@ func _test_resources_and_groups() -> void:
 		and units[0].bonus_action_left == 0 and units[0].reaction_left == 0, "선택 전환으로 자원 회복 없음")
 	_check(not turns.select_unit(units[2]), "다른 묶음 선택 거부")
 	turns.select_unit(units[1])
+	units[1].spend_movement(2)
+	units[1].spend_resource(CombatUnit.TurnResource.ACTION)
 	turns.end_turn()
 	_check(turns.current_unit == units[0], "현재 유닛만 종료하고 남은 아군으로 전환")
-	_check(not turns.select_unit(units[1]), "이미 끝낸 유닛은 다시 조작하지 못함")
+	_check(turns.select_unit(units[1]) and not turns.is_turn_finished(units[1]),
+		"묶음 확정 전에는 종료한 아군을 다시 골라 종료 해제")
+	_check(units[1].movement_left == 4 and units[1].action_left == 0
+		and units[1].bonus_action_left == 1 and units[1].reaction_left == 1,
+		"턴 종료 취소로 이미 쓴 자원을 회복하지 않음")
+	turns.end_turn()
 	units[2].spend_resource(CombatUnit.TurnResource.REACTION)
 	turns.end_turn()
 	_check(turns.current_unit == units[2], "묶음 전원이 종료한 뒤 적으로 진행")
@@ -232,6 +239,15 @@ func _test_removal() -> void:
 	_check(turns.current_unit == units[3] and units[3].movement_left == 4, "지나간 유닛 탈락은 현재 적 자원 유지")
 	turns.remove_unit(units[3])
 	_check(turns.round_number == 2 and turns.current_unit == units[1], "마지막 묶음 탈락 후 다음 라운드")
+	units = _make_units()
+	turns = _ordered_fixture(units, [0, 2, 1, 3])
+	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
+	turns.end_turn()
+	turns.end_turn()
+	turns.remove_unit(units[2])
+	_check(not turns.select_unit(units[0]) and turns.is_turn_finished(units[0])
+		and turns.current_unit == units[1] and units[0].action_left == 0,
+		"적 탈락으로 같은 묶음에 붙어도 이전에 확정한 턴 종료는 해제하지 않음")
 
 
 func _test_rounds() -> void:
@@ -276,8 +292,9 @@ func _test_scene() -> void:
 	hud.end_button.pressed.emit()
 	var current: CombatUnit = turns.current_unit
 	archer_button.pressed.emit()
-	_check(not archer_button.disabled and turns.current_unit == current
-		and hud.unit_label.text == "아군 궁수", "턴을 끝낸 초상은 정보만 조회하며 조작 전환 없음")
+	_check(not archer_button.disabled and turns.current_unit == scene_units[1]
+		and not turns.is_turn_finished(scene_units[1]) and hud.unit_label.text == "아군 궁수",
+		"턴을 끝낸 초상을 누르면 조작을 전환하고 턴 종료 해제")
 	hud.unit_selected.emit(current)
 	var old_round: int = turns.round_number
 	_check(hud.unit_label.text == current.get_display_name(), "장면 연결: 현재 유닛 표시")

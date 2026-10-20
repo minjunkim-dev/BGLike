@@ -181,6 +181,28 @@ func _on_action_selected(action: String) -> void:
 	_update_turn_ui()
 
 
+func _input(event: InputEvent) -> void:
+	if event is not InputEventKey or event.keycode != KEY_TAB or preparation.visible:
+		return
+	# GUI보다 먼저 소비해 전투 중 기본 Tab 포커스 이동을 막는다.
+	get_viewport().set_input_as_handled()
+	if (not event.pressed or event.echo or actions.busy or actions.is_over()
+		or hud.reaction_dialog.visible or hud.get_node("Result").visible):
+		return
+	var actor: CombatUnit = turns.current_unit
+	if actor == null or not actor.is_ally:
+		return
+	var group: Array[CombatUnit] = turns.get_current_group()
+	var index: int = group.find(actor)
+	var direction: int = -1 if event.shift_pressed else 1
+	for step: int in range(1, group.size() + 1):
+		var unit: CombatUnit = group[wrapi(index + step * direction, 0, group.size())]
+		if turns.select_unit(unit):
+			selection.inspect(unit)
+			_update_turn_ui()
+			return
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if (event is not InputEventMouseButton or not event.pressed
 		or event.button_index not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]):
