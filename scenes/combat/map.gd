@@ -7,6 +7,7 @@ var _overlays: Array[Node2D] = []
 var _blocked_markers: Array[Node2D] = []
 var _water_markers: Array[Node2D] = []
 var _ground_markers: Array[Node2D] = []
+var _prop_markers: Array[Node2D] = []
 
 
 func build_grid(combat_grid: CombatGrid, floors: TileSet) -> void:
@@ -14,6 +15,7 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet) -> void:
 	clear()
 	show_movement([], [], [], Vector2i.ZERO)
 	show_grounds([])
+	show_props([])
 	for marker: Node2D in _blocked_markers:
 		marker.free()
 	_blocked_markers.clear()
@@ -34,7 +36,7 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet) -> void:
 				sources[height] = _add_height_source(height)
 			set_cell(cell, sources[height], Vector2i((x + y) % 2, 0))
 	for cell: Vector2i in grid.water_cells:
-		if not grid.is_floor(cell) or grid.is_blocked(cell):
+		if not grid.is_floor(cell) or grid.blocked_cells.has(cell):
 			continue
 		var marker: Polygon2D = Polygon2D.new()
 		marker.position = map_to_local(cell)
@@ -167,6 +169,47 @@ func show_grounds(grounds: Array[CombatActions.Ground]) -> void:
 				marker.draw_circle(center + Vector2(-3 + index * 2, 6), 0.75, color))
 		add_child(marker)
 		_ground_markers.append(marker)
+
+
+func prop_at_point(point: Vector2) -> CombatGrid.Prop:
+	var props: Array[CombatGrid.Prop] = grid.props.duplicate()
+	props.sort_custom(func(a: CombatGrid.Prop, b: CombatGrid.Prop) -> bool:
+		return a.cell.x + a.cell.y > b.cell.x + b.cell.y)
+	for prop: CombatGrid.Prop in props:
+		if (Rect2(map_to_surface(prop.cell) + Vector2(-10, -14), Vector2(20, 20)).has_point(point)
+			and not occludes(prop.cell, point)):
+			return prop
+	return null
+
+
+func show_props(props: Array[CombatGrid.Prop], preview: CombatGrid.Prop = null) -> void:
+	for marker: Node2D in _prop_markers:
+		marker.free()
+	_prop_markers.clear()
+	for prop: CombatGrid.Prop in props:
+		var marker: Node2D = Node2D.new()
+		marker.position = map_to_local(prop.cell)
+		var center: Vector2 = map_to_surface(prop.cell) - marker.position
+		marker.draw.connect(func() -> void:
+			marker.draw_colored_polygon(PackedVector2Array([
+				center + Vector2(-8, -9), center + Vector2(0, -5),
+				center + Vector2(0, 3), center + Vector2(-8, -1)]), Color("a27643"))
+			marker.draw_colored_polygon(PackedVector2Array([
+				center + Vector2(0, -5), center + Vector2(8, -9),
+				center + Vector2(8, -1), center + Vector2(0, 3)]), Color("68442b"))
+			marker.draw_colored_polygon(PackedVector2Array([
+				center + Vector2(-8, -9), center + Vector2(0, -13),
+				center + Vector2(8, -9), center + Vector2(0, -5)]), Color("c99b5c"))
+			var edge: Color = Color("f4cf69") if prop == preview else Color("382c21")
+			marker.draw_polyline(PackedVector2Array([
+				center + Vector2(-8, -1), center + Vector2(-8, -9), center + Vector2(0, -13),
+				center + Vector2(8, -9), center + Vector2(8, -1), center + Vector2(0, 3),
+				center + Vector2(-8, -1)]), edge)
+			marker.draw_line(center + Vector2(-6, -15), center + Vector2(6, -15), Color("382c21"), 2.0)
+			marker.draw_line(center + Vector2(-6, -15), center + Vector2(-6 + prop.hit_points * 2, -15),
+				Color("e7bf6d"), 2.0))
+		add_child(marker)
+		_prop_markers.append(marker)
 
 
 func _add_height_source(height: int) -> int:

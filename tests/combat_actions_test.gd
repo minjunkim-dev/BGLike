@@ -54,7 +54,252 @@ func _dice_for(expected: Array[int], sides: Array[int]) -> ScriptedDice:
 	return ScriptedDice.new(expected, sides)
 
 
+func _test_crate_creation() -> void:
+	var f: Fixture = _fixture()
+	var crate: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "crate")
+	_check(crate != null and crate.cell == Vector2i(4, 5) and crate.hit_points == 6,
+		"빈 바닥에 내구도6 나무 상자를 생성한다")
+	_check(f.actions.get_props() == [crate] and f.units.size() == 4,
+		"환경 오브젝트는 유닛 배열에 들어가지 않는다")
+	var copy: Array = f.actions.get_props()
+	copy.clear()
+	_check(f.actions.get_props().size() == 1, "조회 배열 변경으로 상자가 사라지지 않는다")
+
+
+func _test_crate_blocks_routes() -> void:
+	var f: Fixture = _fixture()
+	f.actions.create_prop(Vector2i(4, 5), "crate")
+	_check(f.actions.grid.is_blocked(Vector2i(4, 5))
+		and f.actions.grid.path_to(f.units[0], Vector2i(4, 5)).is_empty(),
+		"나무 상자 칸은 걷기 목적지가 아니다")
+	_check(f.actions.grid.jump_path(f.units[0], Vector2i(4, 5)).is_empty()
+		and f.actions.grid.jump_path(f.units[0], Vector2i(4, 6)).is_empty(),
+		"나무 상자 칸은 점프 통과와 착지를 막는다")
+	f.actions.create_prop(Vector2i(6, 4), "crate")
+	_check(not f.actions.grid.can_shove(f.units[0], f.units[2])
+		and Vector2i(4, 5) not in f.actions.grid.pull_cells(f.units[0], f.units[3]),
+		"상자 칸으로 밀치거나 끌지 않는다")
+
+
+func _test_crate_attack() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	var crate: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "crate")
+	f.actions.dice = _dice_for([1], [8])
+	_check(f.actions.can_attack_prop(actor, crate) and f.actions.attack_prop(actor, crate),
+		"기본 공격으로 인접 나무 상자를 자동 명중한다")
+	_check(crate.hit_points == 2 and actor.action_left == 0 and actor.bonus_action_left == 1
+		and actor.reaction_left == 1 and actor.movement_left == 6 and f.hits.size() == 1,
+		"상자는 d8의1+힘3 피해를 받고 행동1만 소비한다")
+	_check(not f.actions.attack_prop(actor, crate) and crate.hit_points == 2,
+		"행동이 없으면 상자를 다시 공격하거나 주사위를 굴리지 않는다")
+	actor.begin_turn()
+	f.actions.dice = _dice_for([1], [8])
+	_check(f.actions.attack_prop(actor, crate) and crate.hit_points == 0
+		and f.actions.get_props().is_empty() and f.actions.can_move(actor, Vector2i(4, 5)),
+		"상자를 부수면 즉시 빈 칸이 되어 기존 이동 경로가 열린다")
+	_check(not f.actions.attack_prop(actor, crate) and f.units.size() == 4,
+		"파괴한 상자는 재공격/드랍/유닛 변경을 만들지 않는다")
+
+
+func _test_crate_action_availability() -> void:
+	var f: Fixture = _fixture()
+	f.units[2].cell = Vector2i(9, 9)
+	f.units[3].cell = Vector2i(8, 9)
+	f.units[0].movement_left = 0
+	f.actions.create_prop(Vector2i(4, 5), "crate")
+	_check(f.actions.can_use(f.units[0], "attack") and f.actions.has_available_action(f.units[0]),
+		"유닛 대상이 없어도 상자가 사거리 안이면 기본 공격을 사용할 수 있다")
+	_check(not f.actions.can_use(f.units[0], "shock") and not f.actions.can_use(f.units[0], "mark"),
+		"상자는 유닛 전용 스킬의 사용 가능 대상을 늘리지 않는다")
+
+
+func _test_crate_stage() -> void:
+	var scene: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var battle: Node2D = scene.get_node("Battle") as Node2D
+	battle.set_process(false)
+	root.add_child(scene)
+	await process_frame
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var units: Array[CombatUnit] = battle.get("units")
+	var crate: CombatGrid.Prop = actions.grid.prop_at(Vector2i(2, 1))
+	_check(crate != null and crate.hit_points == 6 and actions.get_props().size() == 1
+		and units.size() == 6, "실제1막1스테이지는 기존6유닛과(2,1)의 상자1개로 시작한다")
+	if crate != null:
+		actions.incapacitate(units[0])
+		actions.incapacitate(units[1])
+		(battle.get("hud") as CombatTurnHud).restart_requested.emit()
+		var restored: CombatGrid.Prop = actions.grid.prop_at(Vector2i(2, 1))
+		_check(restored != null and restored != crate and restored.hit_points == 6
+			and actions.get_props().size() == 1, "막 재시작은 상자 초기 위치와 내구도를 새로 복원한다")
+	scene.free()
+	await process_frame
+
+
+func _test_crate_scene_input() -> void:
+	var scene: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var battle: Node2D = scene.get_node("Battle") as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	stage.crate_cells = [Vector2i(1, 3)]
+	battle.stages[0] = stage
+	battle.set_process(false)
+	root.add_child(scene)
+	await process_frame
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var units: Array[CombatUnit] = battle.get("units")
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	var map: CombatMap = battle.get("map") as CombatMap
+	var hud: CombatTurnHud = battle.get("hud") as CombatTurnHud
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 33
+	turns.start(units, dice)
+	var crate: CombatGrid.Prop = actions.grid.prop_at(Vector2i(1, 3))
+	var point: Vector2 = map.get_global_transform_with_canvas() * (map.map_to_surface(crate.cell) + Vector2(0, -7))
+	await _click(point)
+	_check(selection.preview_prop == crate and crate.hit_points == 6 and units[0].action_left == 1,
+		"상자 몸통의 첫 좌클릭은 기본 공격 미리보기이며 피해와 비용이 없다")
+	_check("내구도 6/6" in hud.preview_label.text and "4~11" in hud.preview_label.text,
+		"상자 안내는 내구도와 현재 무기 피해 범위를 표시한다")
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check(selection.preview_prop == null and crate.hit_points == 6,
+		"우클릭으로 상자 미리보기를 취소하며 막힌 칸으로 이동하지 않는다")
+	units[2].cell = Vector2i(2, 4)
+	actions.changed.emit()
+	hud.action_selected.emit("shove")
+	await _click(point)
+	await _click(point)
+	_check(crate.hit_points == 6 and units[0].action_left == 1 and "기본 공격만" in hud.preview_label.text,
+		"유닛 스킬 선택 상태로 상자를 재클릭해도 실행하지 않는다")
+	hud.action_selected.emit("attack")
+	actions.dice = _dice_for([1], [8])
+	await _click(point)
+	await _click(point)
+	_check(crate.hit_points == 2 and units[0].action_left == 0 and "내구도 2/6" in hud.message_label.text,
+		"실제 상자 두번 클릭은 무기 피해와 행동 소비를 로그에 반영한다")
+	await _click(point)
+	await _click(point)
+	_check(crate.hit_points == 2 and "행동 없음" in hud.preview_label.text,
+		"행동이 없으면 상자 안내에서 사유를 표시하고 반복 실행을 막는다")
+	units[0].begin_turn()
+	hud.action_selected.emit("attack")
+	actions.dice = _dice_for([1], [8])
+	await _click(point)
+	await _click(point)
+	_check(actions.get_props().is_empty() and selection.preview_prop == null
+		and "파괴" in hud.message_label.text and actions.can_move(units[0], Vector2i(1, 3)),
+		"상자 파괴 후 대상 표시를 지우고 열린 길과 파괴 로그를 갱신한다")
+	actions.create_prop(Vector2i(1, 3), "crate")
+	await _click(point)
+	actions.initialize(units, turns)
+	actions.changed.emit()
+	_check(selection.preview_prop == null and hud.preview_label.text.is_empty(),
+		"외부 전투 초기화로 사라진 상자의 미리보기와 안내를 즉시 지운다")
+	scene.free()
+	await process_frame
+
+
+func _test_crate_boundaries() -> void:
+	var f: Fixture = _fixture()
+	f.actions.grid.pits = [Vector2i(2, 2)]
+	f.actions.grid.blocked_cells = [Vector2i(2, 3)]
+	for cell: Vector2i in [Vector2i(-1, 0), Vector2i(10, 0), Vector2i(2, 2), Vector2i(2, 3), f.units[0].cell]:
+		_check(f.actions.create_prop(cell, "crate") == null, "유효하지 않은 상자 시작 칸 거부: " + str(cell))
+	_check(f.actions.create_prop(Vector2i(4, 5), "unknown") == null, "알 수 없는 환경 오브젝트 종류 거부")
+	f.actions.grid.water_cells = [Vector2i(2, 4)]
+	f.actions.create_ground(f.units[0], Vector2i(2, 4), "burn")
+	var crate: CombatGrid.Prop = f.actions.create_prop(Vector2i(2, 4), "crate")
+	_check(crate != null and f.actions.get_grounds().size() == 1
+		and f.actions.create_prop(Vector2i(2, 4), "crate") == null,
+		"물과 기존 장판 위에 상자를 만들되 다른 물체와 겹치지 않는다")
+	f.actions.initialize(f.units, f.turns)
+	_check(f.actions.get_props().is_empty() and f.actions.get_grounds().is_empty(),
+		"전투 초기화는 지난 물체와 장판을 남기지 않는다")
+	var target: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "crate")
+	var actor: CombatUnit = f.units[0]
+	f.actions.dice = _dice_for([], [])
+	actor.is_stunned = true
+	_check(not f.actions.attack_prop(actor, target) and actor.action_left == 1, "기절한 유닛은 상자 공격 비용을 쓰지 않는다")
+	actor.is_stunned = false
+	f.actions.busy = true
+	_check(not f.actions.attack_prop(actor, target), "바쁜 동안 상자 공격 거부")
+	f.actions.busy = false
+	_check(not f.actions.attack_prop(f.units[1], target), "현재 조작하지 않는 유닛의 상자 공격 거부")
+	f.actions.grid.heights[target.cell] = 2
+	_check(not f.actions.attack_prop(actor, target) and target.hit_points == 6,
+		"근접 공격은 높이 차2의 상자를 공격하지 않는다")
+	actor.kind = CombatUnit.Kind.ARCHER
+	f.actions.dice = _dice_for([2], [6])
+	_check(f.actions.attack_prop(actor, target) and target.hit_points == 3,
+		"원거리 공격은 높이 차2에서도 d6의2+현재 피해 보정1을 준다")
+	actor.begin_turn()
+	f.actions.initialize(f.units, f.turns)
+	var replacement: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "crate")
+	f.actions.dice = _dice_for([], [])
+	_check(not f.actions.attack_prop(actor, target) and replacement.hit_points == 6 and actor.action_left == 1,
+		"같은 칸에 새 상자가 있어도 지난 전투의 대상을 재사용하지 않는다")
+	var far: CombatGrid.Prop = f.actions.create_prop(Vector2i(9, 9), "crate")
+	_check(not f.actions.attack_prop(actor, far) and far.hit_points == 6 and actor.action_left == 1,
+		"원거리 기본 공격도 현재 사거리 밖의 상자를 공격하지 않는다")
+	_check(not f.actions.attack_prop(null, replacement) and not f.actions.attack_prop(actor, null),
+		"유효하지 않은 행위자나 환경 오브젝트를 거부한다")
+
+
+func _test_crate_ai_path() -> void:
+	var f: Fixture = _fixture()
+	var ally: CombatUnit = f.units[0]
+	var enemy: CombatUnit = f.units[2]
+	ally.cell = Vector2i(0, 0)
+	enemy.cell = Vector2i(4, 0)
+	enemy.kind = CombatUnit.Kind.SPIDERLING
+	enemy.hit_points = 1
+	f.units[1].hit_points = 0
+	f.units[3].hit_points = 0
+	f.actions.grid.map_size = Vector2i(5, 1)
+	var crate: CombatGrid.Prop = f.actions.create_prop(Vector2i(2, 0), "crate")
+	f.turns.start([enemy, ally], _dice_for([20, 1], [20, 20]))
+	f.actions.dice = _dice_for([], [])
+	var ai: CombatEnemyAi = CombatEnemyAi.new()
+	await ai.play_turn(enemy, f.actions)
+	_check(enemy.cell == Vector2i(3, 0) and enemy.action_left == 1 and crate.hit_points == 6,
+		"기존 적 AI는 상자로 막힌 길을 통과하거나 상자를 공격하지 않는다")
+	f.turns.end_turn()
+	await f.actions.move_to(ally, Vector2i(1, 0))
+	f.actions.dice = _dice_for([3], [8])
+	_check(f.actions.attack_prop(ally, crate), "아군의 기본 공격으로 좁은 길의 상자를 부순다")
+	f.turns.end_turn()
+	f.actions.dice = _dice_for([1], [20])
+	await ai.play_turn(enemy, f.actions)
+	_check(enemy.cell == Vector2i(2, 0) and enemy.action_left == 0 and ally.hit_points == 12,
+		"기존 적 AI는 파괴 후 열린 상자 칸으로 이동하고 기존 유닛 공격을 실행한다")
+
+
+func _test_crate_callback_reset() -> void:
+	var f: Fixture = _fixture()
+	var crate: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "crate")
+	var reset: Callable = func() -> void:
+		f.actions.initialize(f.units, f.turns)
+		f.actions.create_prop(Vector2i(4, 5), "crate")
+	f.actions.hit_landed.connect(reset)
+	f.actions.dice = _dice_for([3], [8])
+	var executed: bool = f.actions.attack_prop(f.units[0], crate)
+	f.actions.hit_landed.disconnect(reset)
+	var replacement: CombatGrid.Prop = f.actions.grid.prop_at(Vector2i(4, 5))
+	_check(executed and crate.hit_points == 0 and replacement != null and replacement != crate
+		and replacement.hit_points == 6 and not f.actions.busy and f.units[0].action_left == 0,
+		"명중 callback의 전투 초기화는 새 상자에 지난 피해를 다시 적용하지 않는다")
+
+
 func _run() -> void:
+	_test_crate_creation()
+	_test_crate_blocks_routes()
+	_test_crate_attack()
+	_test_crate_action_availability()
+	_test_crate_boundaries()
+	await _test_crate_ai_path()
+	_test_crate_callback_reset()
+	await _test_crate_stage()
+	await _test_crate_scene_input()
 	_test_novice_stats()
 	_test_scrap_robot_stats()
 	_test_scrap_robot_2000_stats()

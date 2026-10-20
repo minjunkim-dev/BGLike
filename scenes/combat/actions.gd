@@ -46,10 +46,66 @@ func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> v
 		turns.turn_started.disconnect(_on_turn_started)
 	# 소환과 전투 불능 이후에도 현재 유닛 배열을 그대로 조회한다.
 	grid.units = combat_units
+	grid.props.clear()
 	_grounds.clear()
 	turns = combat_turns
 	turns.turn_started.connect(_on_turn_started)
 	dice.randomize()
+
+
+func create_prop(cell: Vector2i, kind: String) -> CombatGrid.Prop:
+	if (kind != "crate" or not grid.is_floor(cell) or grid.is_blocked(cell)
+		or grid.unit_at(cell) != null or grid.prop_at(cell) != null):
+		return null
+	var prop: CombatGrid.Prop = CombatGrid.Prop.new(cell, kind)
+	grid.props.append(prop)
+	changed.emit()
+	return prop
+
+
+func get_props() -> Array[CombatGrid.Prop]:
+	return grid.props.duplicate()
+
+
+func can_attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
+	if (not is_instance_valid(actor) or turns == null or actor not in units
+		or not _can_act(actor) or turns.is_turn_finished(actor) or actor.action_left <= 0
+		or not CombatActionRules.belongs_to(actor, "attack")
+		or prop == null or prop not in grid.props or prop.hit_points <= 0):
+		return false
+	return (grid.in_range(actor.cell, prop.cell, actor.get_attack_range())
+		and (actor.get_attack_range() > 1 or grid.are_adjacent(actor.cell, prop.cell)))
+
+
+func attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
+	if not can_attack_prop(actor, prop):
+		return false
+	busy = true
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	last_damage_rolls.clear()
+	var sides: int = actor.get_damage_sides()
+	if sides > 0:
+		last_damage_rolls.append(dice.roll(sides))
+	if (prop not in grid.props or not is_instance_valid(actor) or actor not in units
+		or actor.hit_points <= 0 or is_over()):
+		busy = false
+		changed.emit()
+		return false
+	last_damage = actor.get_damage_bonus()
+	for rolled: int in last_damage_rolls:
+		last_damage += rolled
+	last_damage = maxi(1, last_damage)
+	prop.hit_points = maxi(0, prop.hit_points - last_damage)
+	if prop.hit_points == 0:
+		grid.props.erase(prop)
+	var message: String = "%s 나무 상자 공격: %d, %d · 피해 %d · 내구도 %d/6%s" % [
+		actor.get_display_name(), prop.cell.x, prop.cell.y, last_damage, prop.hit_points,
+		" · 파괴" if prop.hit_points == 0 else ""]
+	hit_landed.emit()
+	logged.emit(message)
+	busy = false
+	changed.emit()
+	return true
 
 
 func _on_turn_started(unit: CombatUnit) -> void:
@@ -315,6 +371,10 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 			for target: CombatUnit in units:
 				if can_target(actor, target, action):
 					return true
+			if action == "attack":
+				for prop: CombatGrid.Prop in grid.props:
+					if can_attack_prop(actor, prop):
+						return true
 		"second_wind", "potion":
 			return (CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
 				and actor.hit_points < actor.get_max_hit_points())

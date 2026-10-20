@@ -4,6 +4,7 @@ extends RefCounted
 
 var selected_action: String = "attack"
 var preview_target: CombatUnit
+var preview_prop: CombatGrid.Prop
 var preview_cell: Vector2i = Vector2i(-1, -1)
 var preview_path: Array[Vector2i] = []
 var inspected_unit: CombatUnit
@@ -17,6 +18,7 @@ func reset() -> void:
 
 func clear_preview() -> void:
 	preview_target = null
+	preview_prop = null
 	preview_cell = Vector2i(-1, -1)
 	preview_path.clear()
 
@@ -66,6 +68,14 @@ func select_target(target: CombatUnit, can_execute: bool) -> bool:
 	if target == preview_target and can_execute:
 		return true
 	preview_unit(target)
+	return false
+
+
+func select_prop(prop: CombatGrid.Prop, can_execute: bool) -> bool:
+	if prop == preview_prop and can_execute:
+		return true
+	clear_preview()
+	preview_prop = prop
 	return false
 
 

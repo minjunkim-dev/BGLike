@@ -109,6 +109,9 @@ func _start_stage(restore_act: bool) -> void:
 			living.append(unit)
 	_last_ally = living[0]
 	turns.start(living, dice)
+	for cell: Vector2i in stage.crate_cells:
+		var prop: CombatGrid.Prop = actions.create_prop(cell, "crate")
+		assert(prop != null, "나무 상자 시작 칸이 유효하지 않습니다: %s %s" % [stage.resource_path, cell])
 
 
 func _restart() -> void:
@@ -233,6 +236,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			return a.position.y > b.position.y
 		return a.get_index() > b.get_index()
 	)
+	var prop: CombatGrid.Prop = map.prop_at_point(map.to_local(world_position))
+	if prop != null and (candidates.is_empty() or map.map_to_local(prop.cell).y >= candidates[0].position.y):
+		get_viewport().set_input_as_handled()
+		if selection.select_prop(prop, selection.selected_action == "attack" and actions.can_attack_prop(actor, prop)):
+			selection.begin_execution()
+			actions.attack_prop(actor, prop)
+			selection.finish_execution()
+		_update_turn_ui()
+		return
 	if not candidates.is_empty():
 		var unit: CombatUnit = candidates[0]
 		get_viewport().set_input_as_handled()
@@ -357,6 +369,8 @@ func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
 
 func _update_turn_ui() -> void:
 	selection.discard_incapacitated_inspection()
+	if selection.preview_prop != null and selection.preview_prop not in actions.get_props():
+		selection.clear_preview()
 	for unit: CombatUnit in units:
 		unit.has_mark = actions.is_marked(unit)
 		if not unit.is_moving:
@@ -386,6 +400,7 @@ func _update_turn_ui() -> void:
 	map.show_movement(movement_cells, attack_cells, selection.preview_path,
 		turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO)
 	map.show_grounds(actions.get_grounds())
+	map.show_props(actions.get_props(), selection.preview_prop)
 	if selection.preview_target != null:
 		var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(
 			turns.current_unit, selection.preview_target)
@@ -398,6 +413,25 @@ func _update_turn_ui() -> void:
 				hud.show_target_note("밀려날 칸: %d, %d" % [cell.x, cell.y])
 			else:
 				hud.show_target_note("밀치기를 사용할 수 없음")
+	elif selection.preview_prop != null:
+		var actor: CombatUnit = turns.current_unit
+		var prop: CombatGrid.Prop = selection.preview_prop
+		var note: String = "기본 공격만 가능"
+		if selection.selected_action == "attack" and actor != null:
+			var sides: int = actor.get_damage_sides()
+			var minimum: int = maxi(1, actor.get_damage_bonus() + (1 if sides > 0 else 0))
+			var maximum: int = maxi(1, actor.get_damage_bonus() + sides)
+			note = "피해 %d~%d · 행동1 · 자동 명중\n같은 상자 재클릭" % [minimum, maximum]
+			if not actions.can_attack_prop(actor, prop):
+				if actor.action_left <= 0:
+					note = "행동 없음"
+				elif actor.is_stunned:
+					note = "기절하여 공격 불가"
+				else:
+					note = actions.unavailable_reason(actor, "attack")
+					if note.is_empty():
+						note = "사거리 또는 높이 조건을 확인"
+		hud.show_target_note("나무 상자 · 내구도 %d/6\n%s" % [prop.hit_points, note])
 	elif selection.inspected_unit != null:
 		hud.show_unit(selection.inspected_unit)
 	var showing_move: bool = selection.selected_action == "move" or not selection.preview_path.is_empty()
