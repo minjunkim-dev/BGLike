@@ -396,6 +396,8 @@ func _test_finish_preference() -> void:
 	var skip: CheckBox = preparation.discard_dialog.find_child("SkipConfirmation", true, false) as CheckBox
 	_check(skip != null, "정비 종료 확인의 다시 띄우지 않음 체크박스")
 	if skip != null:
+		_check(preparation.discard_dialog.size.y <= root.get_visible_rect().size.y,
+			"정비 확인 창과 확인 버튼은 기준 화면 높이 안에 표시")
 		_check(not skip.button_pressed and skip.text == "더 이상 이 메시지를 띄우지 않음",
 			"종료 확인 생략은 기본 해제")
 		for choice: String in ["cancel", "close", "escape"]:

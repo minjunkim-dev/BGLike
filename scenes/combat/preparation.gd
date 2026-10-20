@@ -63,6 +63,7 @@ func _ready() -> void:
 	var confirmation_content: VBoxContainer = VBoxContainer.new()
 	discard_dialog.add_child(confirmation_content)
 	confirmation_text = _label(confirmation_content, "")
+	confirmation_text.autowrap_mode = TextServer.AUTOWRAP_OFF
 	skip_confirmation = CheckBox.new()
 	skip_confirmation.name = "SkipConfirmation"
 	skip_confirmation.text = "더 이상 이 메시지를 띄우지 않음"
