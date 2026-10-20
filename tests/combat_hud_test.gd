@@ -803,16 +803,23 @@ func _test_order_bar_input() -> void:
 	units[2].cell = Vector2i(8, 8)
 	units[3].cell = Vector2i(9, 9)
 	battle.call("_update_turn_ui")
+	await process_frame
+	await process_frame
+	var scroll: ScrollContainer = hud.get_node("OrderScroll") as ScrollContainer
+	var last_panel: Control = hud.order_bar.get_child(-1) as Control
+	var panel_end: float = last_panel.get_global_rect().end.x
 	var camera: Camera2D = battle.get_node("Camera") as Camera2D
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	var original: Vector2 = camera.position
 	var destination: Vector2i = Vector2i(4, 3)
-	var point: Vector2 = Vector2(260, 50)
-	# HUD 빈 영역 아래에 이동 가능한 칸을 놓아 클릭 통과를 재현한다.
+	# 플랫폼 글꼴에 따라 초상 너비가 달라지므로 실제 빈 영역을 사용한다.
+	var point: Vector2 = Vector2((panel_end + scroll.get_global_rect().end.x) / 2.0,
+		hud.order_bar.get_global_rect().get_center().y)
 	camera.position = map.map_to_local(destination) + root.get_visible_rect().size / 2.0 - point - camera.offset
 	camera.force_update_scroll()
 	point = map.get_global_transform_with_canvas() * map.map_to_local(destination)
-	_check(hud.order_bar.get_global_rect().has_point(point), "클릭 통과 재현 조건: 턴 순서 바 아래 빈 칸")
+	_check(hud.order_bar.get_global_rect().has_point(point) and point.x > panel_end,
+		"클릭 통과 재현 조건: 실제 초상 영역 밖의 턴 순서 바 아래 빈 칸")
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	_check((battle.get("selection") as CombatSelection).preview_cell == Vector2i(-1, -1) and units[0].cell == destination,
