@@ -928,6 +928,9 @@ func _test_joined_group_hud() -> void:
 
 
 func _test_incapacitated_portrait_join() -> void:
+	# 짧은 이동 중 입력 접점을 느린 검사 시계로 고정한다.
+	var time_scale: float = Engine.time_scale
+	Engine.time_scale = 0.1
 	_reset_units()
 	var desired: Array[CombatUnit] = [units[0], units[2], units[1], units[3]]
 	var rolls: Array[int] = []
@@ -973,6 +976,7 @@ func _test_incapacitated_portrait_join() -> void:
 		and not archer.get_global_rect().intersects((portraits[units[0]] as Button).get_global_rect()),
 		"남은 초상은 즉시 새 위치로 뛰지 않고 0.25초 동안 합쳐져 겹침 없이 종료")
 	units[2].show()
+	Engine.time_scale = time_scale
 	_reset_units()
 
 

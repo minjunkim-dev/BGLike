@@ -404,6 +404,8 @@ func _build_portraits(turns: CombatTurns) -> void:
 	_shown_order = turns.ordered_units.duplicate()
 	for group: Array in turns.get_turn_groups():
 		var panel: PanelContainer = PanelContainer.new()
+		# 묶음 배경만 낮춰 결과·정비 화면의 기존 표시 순서를 유지한다.
+		panel.z_index = -1
 		# 이동 중 초상을 덮는 다른 묶음의 빈 배경은 클릭을 받지 않는다.
 		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_theme_stylebox_override("panel", _panel_style())
