@@ -104,7 +104,10 @@ def preflight(binary, case, log):
             result = process.wait(timeout=30)
         finally:
             if process.poll() is None:
-                os.killpg(process.pid, signal.SIGKILL)
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
                 process.wait()
     if result or ERROR.search(log.read_text(errors="replace")):
         raise ValueError(f"Preflight failed; native launch blocked: {log}")
@@ -164,18 +167,30 @@ def run_case(app, case, directory, state):
     finally:
         try:
             if launcher is not None:
-                stop_native(app, log)
-                if launcher.poll() is None:
-                    os.killpg(launcher.pid, signal.SIGTERM)
                 try:
-                    launcher.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    os.killpg(launcher.pid, signal.SIGKILL)
-                    launcher.wait()
+                    stop_native(app, log)
+                finally:
+                    if launcher.poll() is None:
+                        try:
+                            os.killpg(launcher.pid, signal.SIGTERM)
+                        except ProcessLookupError:
+                            pass
+                    try:
+                        launcher.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        try:
+                            os.killpg(launcher.pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                        launcher.wait()
                 # Errors flushed during shutdown still invalidate a success marker.
                 if entry["status"] == "awaiting_review" and ERROR.search(log.read_text(errors="replace")):
                     entry["status"] = "failed"
                     raise ValueError(f"Godot error at shutdown: {log}")
+        except KeyboardInterrupt:
+            entry["status"] = "interrupted"
+            record["reason"] = "Interrupted during process cleanup"
+            raise
         except Exception as error:
             entry["status"] = "failed"
             record["reason"] = str(error)
@@ -223,10 +238,11 @@ def main():
                 raise ValueError("QA controller is still running; inspect its existing game/state") from None
             plan, state = session(args.plan.resolve(), directory)
             for entry in state["cases"].values():
+                for previous in entry["attempts"]:
+                    if native_pids(Path(previous["app"]), Path(previous["directory"]) / "game.log"):
+                        raise ValueError("Previous game is still alive; inspect it before restarting or reviewing")
                 if entry["status"] == "running":
                     previous = entry["attempts"][-1]
-                    if native_pids(Path(previous["app"]), Path(previous["directory"]) / "game.log"):
-                        raise ValueError("Previous game is still alive; inspect it before restarting")
                     entry["status"] = "interrupted"
                     previous["status"] = "interrupted"
                     previous["reason"] = "Controller stopped before a terminal state"
@@ -254,7 +270,7 @@ def main():
     except KeyboardInterrupt:
         print("QA interrupted; evidence preserved", file=sys.stderr)
         return 130
-    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError) as error:
         print(f"QA stopped: {error}", file=sys.stderr)
         return 1
 

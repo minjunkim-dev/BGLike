@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import tempfile
@@ -32,9 +33,16 @@ class ManualQATests(unittest.TestCase):
     def native_fixture(self, text, wait=True):
         def launch(_app, _case, log, _frames):
             log.write_text(text)
-            return subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)" if wait else ""],
-                                    start_new_session=True)
+            process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)" if wait else ""],
+                                       start_new_session=True)
+            self.addCleanup(self.reap, process)
+            return process
         return launch
+
+    def reap(self, process):
+        if process.poll() is None:
+            os.killpg(process.pid, signal.SIGKILL)
+        process.wait()
 
     def run_case(self, text):
         with patch.object(qa, "launch", side_effect=self.native_fixture(text)) as launch, \
@@ -106,6 +114,23 @@ class ManualQATests(unittest.TestCase):
                 qa.run_case(self.app, self.case, self.directory, self.state)
         self.assertEqual(self.state["cases"]["compact"]["status"], "failed")
 
+    def test_interruption_during_cleanup_is_not_reviewable(self):
+        with patch.object(qa, "launch", side_effect=self.native_fixture("Forward+\n[CAPTURE_CHECK] PASS:\n")), \
+                patch.object(qa, "stop_native", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                qa.run_case(self.app, self.case, self.directory, self.state)
+        self.assertEqual(self.state["cases"]["compact"]["status"], "interrupted")
+
+    def test_cleanup_failure_still_reaps_launcher(self):
+        with patch.object(qa, "launch", side_effect=self.native_fixture("Forward+\n[CAPTURE_CHECK] PASS:\n")), \
+                patch.object(qa, "stop_native", side_effect=RuntimeError("Owned Godot instance did not stop")):
+            with self.assertRaisesRegex(RuntimeError, "did not stop"):
+                qa.run_case(self.app, self.case, self.directory, self.state)
+        entry = self.state["cases"]["compact"]
+        self.assertEqual(entry["status"], "failed")
+        with self.assertRaises(ProcessLookupError):
+            os.kill(entry["attempts"][-1]["launcher_pid"], 0)
+
     def test_native_command_never_activates_game(self):
         with patch.object(qa.subprocess, "Popen") as launch:
             qa.launch(self.app, self.case, self.root / "game.log", self.root / "frames")
@@ -166,7 +191,7 @@ class ManualQATests(unittest.TestCase):
             self.assertEqual(run.call_count, 1)
         _, state = qa.session(self.plan, self.directory)
         state["cases"]["compact"]["status"] = "awaiting_review"
-        state["cases"]["compact"]["attempts"] = [{}]
+        state["cases"]["compact"]["attempts"] = [{"app": str(self.app), "directory": str(self.root)}]
         qa.save(self.directory, state)
         with patch.object(qa, "run_case") as run:
             self.assertEqual(self.cli("run"), 1)
@@ -191,13 +216,30 @@ class ManualQATests(unittest.TestCase):
             self.assertEqual(self.cli("run"), 0)
             self.assertEqual(run.call_args.args[-1]["cases"]["compact"]["status"], "interrupted")
 
+    def test_cleanup_failure_and_pending_review_cannot_bypass_live_game_check(self):
+        self.prepare_plan()
+        _, state = qa.session(self.plan, self.directory)
+        evidence = self.root / "review.md"
+        evidence.write_text("Review must not bypass the live instance check")
+        for status in ("failed", "interrupted", "awaiting_review", "passed"):
+            with self.subTest(status=status):
+                state["cases"]["compact"].update(status=status, attempts=[
+                    {"app": str(self.app), "directory": str(self.root / "older-attempt")},
+                    {"app": str(self.app), "directory": str(self.root / "newer-attempt")}])
+                qa.save(self.directory, state)
+                with patch.object(qa, "native_pids", return_value=[10]), patch.object(qa, "run_case") as run:
+                    self.assertEqual(self.cli("run"), 1)
+                    run.assert_not_called()
+                    self.assertEqual(self.cli("accept", "--case", "compact", "--evidence", str(evidence)), 1)
+
     def test_failure_stops_before_next_case(self):
         self.prepare_plan()
         second = dict(self.case, id="full", resolution=[1920, 1080])
         self.plan.write_text(json.dumps({"source_sha": "a" * 40, "cases": [self.case, second]}))
-        with patch.object(qa, "run_case", side_effect=ValueError("step failed")) as run:
-            self.assertEqual(self.cli("run"), 1)
-            self.assertEqual(run.call_count, 1)
+        for error in (ValueError("step failed"), RuntimeError("cleanup failed")):
+            with self.subTest(error=error), patch.object(qa, "run_case", side_effect=error) as run:
+                self.assertEqual(self.cli("run"), 1)
+                self.assertEqual(run.call_count, 1)
 
 
 if __name__ == "__main__":
