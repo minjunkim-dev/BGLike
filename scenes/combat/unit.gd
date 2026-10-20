@@ -80,6 +80,8 @@ var is_selected: bool = false:
 	set(value):
 		is_selected = value
 		queue_redraw()
+var is_occluded: bool = false
+var _silhouette: Node2D
 
 
 func get_dexterity() -> int:
@@ -228,6 +230,14 @@ func has_available_turn_action(
 
 
 func _ready() -> void:
+	_silhouette = Node2D.new()
+	_silhouette.z_index = 1
+	_silhouette.visible = false
+	_silhouette.draw.connect(func() -> void:
+		var color: Color = Color("f4cf69") if is_selected else (ALLY_COLOR if is_ally else ENEMY_COLOR)
+		_silhouette.draw_rect(Rect2(-6, -19, 12, 18), color, false)
+	)
+	add_child(_silhouette)
 	cell = start_cell
 	hit_points = get_max_hit_points()
 	begin_turn()
@@ -241,6 +251,9 @@ func face_toward(destination: Vector2) -> void:
 
 
 func _draw() -> void:
+	_silhouette.visible = is_occluded
+	_silhouette.position = Vector2(0, floor_offset_y + body_offset_y)
+	_silhouette.queue_redraw()
 	draw_set_transform(Vector2(0, floor_offset_y))
 	draw_rect(Rect2(-9, -25, 18, 4), OUTLINE_COLOR)
 	draw_rect(Rect2(-8, -24, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))

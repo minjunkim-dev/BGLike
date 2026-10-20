@@ -1508,11 +1508,18 @@ func _test_isometric_unit_occlusion() -> void:
 	var point: Vector2 = map.get_global_transform_with_canvas() * (
 		map.map_to_surface(units[2].cell) + Vector2(0, -10))
 	await _click(point)
-	_check((battle.get("selection") as CombatSelection).preview_target == null
+	_check((battle.get("selection") as CombatSelection).preview_target == units[2]
 		and units[1].action_left == 1 and units[2].hit_points == 12,
-		"앞의 높은 지형을 눌러 그 뒤에 완전히 가린 유닛을 선택하지 않음")
+		"높은 지형에 몸통이 가려져도 사거리 안 적의 윤곽을 눌러 공격 미리보기")
+	(battle.get("actions") as CombatActions).dice = _dice_for([1], [20])
+	await _click(point)
+	_check(units[1].action_left == 0 and units[2].hit_points == 12,
+		"가린 적의 두 번째 클릭도 원거리 공격을 실행하고 행동1 소비")
 	(battle.get("actions") as CombatActions).grid.heights.clear()
 	map.build_grid((battle.get("actions") as CombatActions).grid, stage.tile_set)
+	dice.seed = 33
+	turns.start(units, dice)
+	turns.select_unit(units[1])
 	(battle.get("selection") as CombatSelection).clear_preview()
 	battle.call("_update_turn_ui")
 	await _click(point)

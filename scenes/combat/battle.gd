@@ -221,8 +221,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var candidates: Array[CombatUnit] = []
 	for unit: CombatUnit in units:
 		var body_point: Vector2 = unit.to_local(world_position) - Vector2(0, unit.floor_offset_y)
-		if (unit.hit_points > 0 and Rect2(-7, -20, 14, 22).has_point(body_point)
-			and not map.occludes(unit.cell, map.to_local(world_position))):
+		if unit.hit_points > 0 and Rect2(-7, -20, 14, 22).has_point(body_point):
 			candidates.append(unit)
 	candidates.sort_custom(func(a: CombatUnit, b: CombatUnit) -> bool:
 		if a.position.y != b.position.y:
@@ -337,6 +336,8 @@ func _update_turn_ui() -> void:
 			unit.position = map.map_to_local(unit.cell)
 			unit.floor_offset_y = map.map_to_surface(unit.cell).y - unit.position.y
 		unit.visible = unit.hit_points > 0
+		unit.is_occluded = map.occludes(unit.cell,
+			map.to_local(unit.to_global(Vector2(0, unit.floor_offset_y - 10))))
 		unit.is_selected = unit == turns.current_unit
 		unit.is_previewed = unit == selection.preview_target or (not selection.preview_path.is_empty()
 			and actions.can_target(turns.current_unit, unit, "attack", selection.preview_cell))
