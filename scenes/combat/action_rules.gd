@@ -4,16 +4,17 @@ extends RefCounted
 
 ## 비용 자원(행동, 보조 행동, 반응) 순서의 묶음. HUD의 배치 순서이기도 하다.
 const GROUPS: Array[Array] = [
-	["attack", "shock", "spawn", "pull", "spin"], ["second_wind", "surge", "mark", "disengage", "shove", "potion"],
+	["attack", "shock", "spawn", "pull", "spin"], ["second_wind", "surge", "mark", "disengage", "shove", "jump", "potion"],
 	["opportunity", "parry"]
 ]
 const NAMES: Dictionary[String, String] = {
 	"attack": "공격", "second_wind": "숨 고르기", "surge": "몰아치기",
 	"mark": "표식", "shock": "충격 화살", "disengage": "물러서며 쏘기",
 	"shove": "밀치기", "potion": "물약", "opportunity": "기회 공격", "parry": "흘려내기",
-	"spawn": "새끼 낳기", "pull": "만능팔", "spin": "회전회오리"
+	"spawn": "새끼 낳기", "pull": "만능팔", "spin": "회전회오리", "jump": "점프"
 }
 const EFFECTS: Dictionary[String, String] = {
+	"jump": "1~2칸의 빈 바닥으로 점프.\n이동 비용은 거리+상승 높이, 보조 행동1.\n상승2까지, 낙하 차3부터 피해.",
 	"spawn": "인접한 빈 칸에 새끼 거미1마리를 만듭니다.",
 	"spin": "인접한 모든 아군에게 각각 기본 공격.\n밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음.",
 	"second_wind": "HP 1d10+1 회복.\n최대 HP를 넘지 않습니다.",
@@ -57,6 +58,8 @@ static func resource_of(action: String) -> CombatUnit.TurnResource:
 
 
 static func belongs_to(actor: CombatUnit, action: String) -> bool:
+	if action == "jump":
+		return true
 	if not actor.is_ally:
 		return action in CombatEnemyDefinitions.for_kind(actor.kind)["actions"]
 	return action not in CLASS_ONLY or actor.kind == CLASS_ONLY[action]

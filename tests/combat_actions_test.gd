@@ -79,6 +79,8 @@ func _run() -> void:
 	_test_jump_path()
 	_test_jump_height_path()
 	_test_blocked_cells()
+	await _test_jump_cost_and_landing()
+	await _test_jump_opportunity()
 	await _test_height_adjacency()
 	await _test_high_ground()
 	_test_fall_damage()
@@ -540,8 +542,8 @@ func _test_spiderling_stats_and_damage() -> void:
 				and spiderling.get_attribute(CombatUnit.Attribute.MENTAL) == -2
 				and spiderling.movement_left == 6, "새끼 거미의 능력치·이동력")
 		for action: String in CombatActionRules.NAMES:
-			_check(CombatActionRules.belongs_to(spiderling, action) == (action == "attack"),
-				"새끼 거미는 스킬·기회 공격 없이 기본 공격만 사용: " + action)
+			_check(CombatActionRules.belongs_to(spiderling, action) == (action in ["attack", "jump"]),
+				"새끼 거미는 기본 공격과 공용 점프만 사용: " + action)
 		f.turns.end_turn()
 		f.turns.end_turn()
 		f.units[0].reaction_left = 0
@@ -723,6 +725,86 @@ func _test_height_movement() -> void:
 		"높이1 내려가기도 이동1만 소비")
 	_check(actor.action_left == 1 and actor.bonus_action_left == 1,
 		"오르내리기는 행동과 보조 행동을 보존")
+
+
+func _test_jump_cost_and_landing() -> void:
+	for scenario: Array in [[0, 0, 2, true, 2, 0], [0, 2, 4, true, 4, 0],
+		[0, 2, 3, false, 4, 0], [3, 0, 2, true, 2, 2]]:
+		var f: Fixture = _fixture()
+		var actor: CombatUnit = f.units[0]
+		var origin: Vector2i = actor.cell
+		var destination: Vector2i = origin + Vector2i(0, 2)
+		f.units[2].cell = Vector2i(9, 0)
+		f.actions.grid.heights = {origin: scenario[0], destination: scenario[1]}
+		actor.movement_left = scenario[2]
+		var before: int = actor.hit_points
+		var expected_cost: int = scenario[4]
+		var cells: Dictionary[Vector2i, int] = f.actions.jump_cells(actor)
+		_check(cells.has(destination) == scenario[3], "점프 도달 칸은 평면 거리와 상승 비용을 남은 이동과 비교")
+		if scenario[3]:
+			_check(cells.get(destination, -1) == expected_cost, "점프 미리보기 비용은 거리2와 양수 상승분의 합")
+		f.actions.dice = _dice_for([], [])
+		_check(await f.actions.jump_to(actor, destination) == scenario[3], "점프 실행도 같은 비용 조건 적용")
+		_check(actor.cell == (destination if scenario[3] else origin)
+			and actor.movement_left == (scenario[2] - expected_cost if scenario[3] else scenario[2])
+			and actor.bonus_action_left == (0 if scenario[3] else 1) and actor.action_left == 1,
+			"점프 성공만 이동과 보조 행동1을 쓰고 행동은 보존")
+		_check(actor.hit_points == before - scenario[5] and not f.actions.busy,
+			"착지 차3부터 기존 고정 낙하 피해를 주사위 없이 적용하고 잠금 해제")
+		_check(not await f.actions.jump_to(actor, origin) and actor.bonus_action_left == (0 if scenario[3] else 1),
+			"보조 행동 소진 또는 같은 칸 점프 거부는 자원 보존")
+	var denied: Fixture = _fixture()
+	var actor: CombatUnit = denied.units[0]
+	actor.bonus_action_left = 0
+	_check(denied.actions.jump_cells(actor).is_empty() and not denied.actions.can_use(actor, "jump"),
+		"보조 행동이 없으면 점프 버튼과 착지 후보 사용 불가")
+	actor.bonus_action_left = 1
+	_check(denied.actions.can_use(actor, "jump"), "빈 착지 칸과 자원이 있으면 점프 가능")
+	actor.is_stunned = true
+	_check(denied.actions.jump_cells(actor).is_empty() and not await denied.actions.jump_to(actor, Vector2i(4, 6)),
+		"기절한 유닛은 점프 거부")
+	_check(CombatActionRules.resource_of("jump") == CombatUnit.TurnResource.BONUS_ACTION
+		and CombatActionRules.belongs_to(denied.units[2], "jump"), "점프는 적도 쓸 수 있는 공용 보조 행동")
+
+
+func _test_jump_opportunity() -> void:
+	for scenario: Array in [[false, false], [true, false], [true, true]]:
+		var f: Fixture = _fixture()
+		_enemy_archer(f)
+		var actor: CombatUnit = f.units[3]
+		var origin: Vector2i = actor.cell
+		var destination: Vector2i = Vector2i(6, 5)
+		var asked: Array[String] = []
+		if scenario[1]:
+			actor.hit_points = 1
+		f.actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
+			asked.append(kind)
+			_check(actor.cell == origin and actor.movement_left == 6 and actor.bonus_action_left == 1,
+				"점프 기회 공격은 출발과 비용 소비 전에 확인")
+			_check(f.actions.busy and f.actions.jump_cells(actor).is_empty(), "점프 반응 대기 중 입력 잠금")
+			f.actions.resolve_reaction(scenario[0])
+		)
+		f.actions.dice = (_dice_for([20], [20]).then_seeded() if scenario[1]
+			else _dice_for([1], [20]) if scenario[0] else _dice_for([], []))
+		_check(await f.actions.jump_to(actor, destination), "기회 공격을 포함한 점프 시도 처리")
+		_check(asked == ["opportunity"]
+			and (scenario[1] or f.units[0].reaction_left == (0 if scenario[0] else 1)),
+			"출발에서 인접하고 착지에서 벗어나는 적에게 한 번만 기회 공격")
+		_check(actor.cell == (origin if scenario[1] else destination)
+			and actor.movement_left == (6 if scenario[1] else 4)
+			and actor.bonus_action_left == (1 if scenario[1] else 0),
+			"기회 공격 전투 불능은 원점·이동·보조 행동 보존, 생존은 착지·비용 소비")
+		_check(not f.actions.busy and f.actions.pending_reactor == null, "점프 반응 종료 후 잠금 해제")
+	for reactor_cell: Vector2i in [Vector2i(5, 5), Vector2i(4, 5)]:
+		var f: Fixture = _fixture()
+		var actor: CombatUnit = f.units[0]
+		f.units[1].cell = Vector2i.ZERO
+		f.units[2].cell = reactor_cell
+		f.units[3].cell = Vector2i(9, 9)
+		f.actions.dice = _dice_for([], [])
+		var destination: Vector2i = Vector2i(6, 4) if reactor_cell.x == 5 else Vector2i(5, 5)
+		_check(await f.actions.jump_to(actor, destination) and f.units[2].reaction_left == 1,
+			"공중 경로에만 인접하거나 착지에도 인접하면 기회 공격 없음")
 
 
 func _test_height_adjacency() -> void:
