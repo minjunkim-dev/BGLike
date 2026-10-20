@@ -389,6 +389,8 @@ func show_attack_preview(target: CombatUnit, preview: CombatChecks.AttackPreview
 
 
 func prepare_order_rotation(units: Array[CombatUnit]) -> void:
+	if not _order_moves.is_empty():
+		return
 	for unit: CombatUnit in units:
 		if unit in _portraits:
 			_order_moves[unit] = _portraits[unit].global_position
@@ -434,7 +436,6 @@ func _build_portraits(turns: CombatTurns) -> void:
 			_portraits[unit] = button
 	if not _order_moves.is_empty():
 		var positions: Dictionary[CombatUnit, Vector2] = _order_moves.duplicate()
-		_order_moves.clear()
 		_animate_order_rotation(positions, _order_revision)
 
 
@@ -442,6 +443,7 @@ func _animate_order_rotation(positions: Dictionary[CombatUnit, Vector2], revisio
 	await get_tree().process_frame
 	if not is_inside_tree() or revision != _order_revision:
 		return
+	_order_moves.clear()
 	_order_tween = create_tween().set_parallel(true)
 	for unit: CombatUnit in positions:
 		if unit not in _portraits:

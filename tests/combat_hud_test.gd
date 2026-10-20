@@ -65,7 +65,9 @@ func _run() -> void:
 	await _test_joined_group_hud()
 	await _test_incapacitated_portrait_join()
 	await _test_portrait_stage_reset()
-	await _test_portrait_join_interrupted_by_insert()
+	await _test_portrait_join_interrupted_by_order_change(true)
+	await _test_portrait_join_interrupted_by_order_change(false)
+	await _test_portrait_join_interrupted_by_order_change(false, true)
 	await _test_order_bar_input()
 	await _test_transparent_order_input()
 	await _test_reaction_flow()
@@ -947,11 +949,20 @@ func _test_incapacitated_portrait_join() -> void:
 	var start: float = archer.global_position.x
 	await create_timer(0.1).timeout
 	var middle: float = archer.global_position.x
+	var first_panel: Control = hud.order_bar.get_child(0) as Control
+	var next_panel: Control = hud.order_bar.get_child(1) as Control
+	var point: Vector2 = Vector2((first_panel.get_global_rect().end.x
+		+ next_panel.global_position.x) / 2.0, archer.get_global_rect().get_center().y)
+	_check(archer.get_global_rect().has_point(point)
+		and not first_panel.get_global_rect().has_point(point)
+		and not next_panel.get_global_rect().has_point(point), "이동 중 초상은 묶음 사이의 빈틈을 지나감")
 	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
-	motion.position = root.get_final_transform() * archer.get_global_rect().get_center()
+	motion.position = root.get_final_transform() * point
 	motion.global_position = motion.position
 	Input.parse_input_event(motion)
-	await _click(archer.get_global_rect().get_center())
+	await process_frame
+	_check(root.gui_get_hovered_control() == archer, "묶음 사이를 지나는 초상의 표시 영역이 포인터 입력을 받음")
+	await _click(point)
 	_check(turns.current_unit == units[1] and turns.is_turn_started(units[1])
 		and units[0].movement_left == 4 and units[0].action_left == 0,
 		"합류 이동 중 초상을 선택해도 첫 턴만 시작하고 동료 자원을 회복하지 않음")
@@ -983,7 +994,7 @@ func _test_portrait_stage_reset() -> void:
 	_reset_units()
 
 
-func _test_portrait_join_interrupted_by_insert() -> void:
+func _test_portrait_join_interrupted_by_order_change(wait_for_start: bool, remove_another: bool = false) -> void:
 	_reset_units()
 	var desired: Array[CombatUnit] = [units[0], units[2], units[1], units[3]]
 	var rolls: Array[int] = []
@@ -992,15 +1003,21 @@ func _test_portrait_join_interrupted_by_insert() -> void:
 	turns.start(units, ScriptedDice.new(rolls, [20, 20, 20, 20]))
 	await process_frame
 	await process_frame
-	actions.incapacitate(units[2])
-	await create_timer(0.1).timeout
 	var previous: Vector2 = ((hud.get("_portraits") as Dictionary)[units[1]] as Button).global_position
-	var inserted: CombatUnit = CombatUnit.new()
-	inserted.is_ally = true
-	inserted.hit_points = inserted.get_max_hit_points()
-	battle.get_node("Units").add_child(inserted)
-	units.append(inserted)
-	_check(turns.insert_before(inserted, units[0]), "이동 중 새 유닛의 순서 삽입을 즉시 반영")
+	actions.incapacitate(units[2])
+	if wait_for_start:
+		await create_timer(0.1).timeout
+		previous = ((hud.get("_portraits") as Dictionary)[units[1]] as Button).global_position
+	var inserted: CombatUnit
+	if remove_another:
+		actions.incapacitate(units[3])
+	else:
+		inserted = CombatUnit.new()
+		inserted.is_ally = true
+		inserted.hit_points = inserted.get_max_hit_points()
+		battle.get_node("Units").add_child(inserted)
+		units.append(inserted)
+		_check(turns.insert_before(inserted, units[0]), "초상 이동 중 새 유닛의 순서 삽입을 즉시 반영")
 	await process_frame
 	await process_frame
 	var archer: Button = (hud.get("_portraits") as Dictionary)[units[1]]
@@ -1012,12 +1029,15 @@ func _test_portrait_join_interrupted_by_insert() -> void:
 	_check(start.distance_to(destination) > middle.distance_to(destination)
 		and middle.distance_to(destination) > 0.0
 		and start.distance_to(previous) <= destination.distance_to(previous),
-		"이동 중 삽입은 현재 표시 위치에서 최신 묶음 배치로 이어 가며 순간 이동하지 않음")
-	turns.remove_unit(inserted)
-	units.erase(inserted)
+		"실행 중이거나 예약된 이동은 순서가 바뀌어도 마지막 표시 위치에서 이어 감: %s/%s" % [wait_for_start, remove_another])
+	if inserted != null:
+		turns.remove_unit(inserted)
+		units.erase(inserted)
 	hud.begin_stage(1, 1)
-	inserted.free()
+	if inserted != null:
+		inserted.free()
 	units[2].show()
+	units[3].show()
 	_reset_units()
 
 
