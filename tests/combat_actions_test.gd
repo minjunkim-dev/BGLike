@@ -75,6 +75,13 @@ func _run() -> void:
 	await _test_scrap_robot_stun_immunity()
 	await _test_scrap_robot_opportunity()
 	await _test_movement()
+	await _test_height_movement()
+	await _test_height_adjacency()
+	await _test_height_opportunity()
+	_test_height_shove()
+	_test_height_pull()
+	_test_height_spawn()
+	_test_ally_shove()
 	_test_grid_queries()
 	await _test_square_rules()
 	await _test_attacks()
@@ -85,6 +92,8 @@ func _run() -> void:
 	await _test_reactions()
 	await _test_own_turn_parry()
 	await _test_scene_input()
+	await _test_scene_ally_shove()
+	await _test_height_scene_input()
 	await _test_scene_shock()
 	for f: Fixture in _fixtures:
 		for connection: Dictionary in f.actions.reaction_requested.get_connections():
@@ -679,6 +688,180 @@ func _test_movement() -> void:
 	_check(not f.actions.can_move(actor, Vector2i(4, 8)), "현재 유닛이 아닌 이동 거부")
 
 
+func _test_height_movement() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	actor.cell = Vector2i.ZERO
+	f.actions.grid.map_size = Vector2i(3, 1)
+	f.actions.grid.heights = {Vector2i(1, 0): 1, Vector2i(2, 0): 3}
+	_check(f.actions.can_move(actor, Vector2i(1, 0)), "높이 차1의 인접 바닥으로 걷기 가능")
+	_check(await f.actions.move_to(actor, Vector2i(1, 0)), "높이1 오르기 실행")
+	_check(actor.cell == Vector2i(1, 0) and actor.movement_left == 5,
+		"높이1 오르기는 이동1만 소비")
+	_check(f.actions.grid.path_to(actor, Vector2i(2, 0)).is_empty()
+		and not f.actions.can_move(actor, Vector2i(2, 0)), "높이 차2는 경로와 도달 칸에서 제외")
+	_check(not await f.actions.move_to(actor, Vector2i(2, 0))
+		and actor.cell == Vector2i(1, 0) and actor.movement_left == 5,
+		"높이 차2 걷기 거부는 위치와 자원을 보존")
+	f.actions.grid.heights[Vector2i(2, 0)] = 0
+	_check(await f.actions.move_to(actor, Vector2i(2, 0))
+		and actor.cell == Vector2i(2, 0) and actor.movement_left == 4,
+		"높이1 내려가기도 이동1만 소비")
+	_check(actor.action_left == 1 and actor.bonus_action_left == 1,
+		"오르내리기는 행동과 보조 행동을 보존")
+
+
+func _test_height_adjacency() -> void:
+	for scenario: Array in [[1, true, CombatChecks.RollMode.DISADVANTAGE],
+		[2, false, CombatChecks.RollMode.NORMAL]]:
+		var f: Fixture = _fixture()
+		var actor: CombatUnit = f.units[0]
+		var target: CombatUnit = f.units[2]
+		f.actions.grid.heights[target.cell] = scenario[0]
+		_check(f.actions.can_target(actor, target, "attack") == scenario[1]
+			and f.actions.grid.attack_preview(actor, target).in_range == scenario[1],
+			"근접 공격과 미리보기는 높이 차1까지만 인접")
+		actor.kind = CombatUnit.Kind.ARCHER
+		_check(f.actions.can_target(actor, target, "attack"),
+			"원거리 공격 사거리는 높이 차를 제외한 평면 거리")
+		_check(f.actions.grid.attack_preview(actor, target).mode == scenario[2],
+			"원거리 인접 불리도 높이 차1까지만 적용")
+		actor.kind = CombatUnit.Kind.WARRIOR
+		if not scenario[1]:
+			var hit_points: int = target.hit_points
+			f.actions.dice = _dice_for([], [])
+			_check(not await f.actions.attack(actor, target)
+				and actor.action_left == 1 and target.hit_points == hit_points,
+				"높이 차2 근접 공격 거부는 주사위·행동·대상HP를 보존")
+	var ranged: Fixture = _fixture()
+	var archer: CombatUnit = ranged.units[0]
+	var target: CombatUnit = ranged.units[2]
+	archer.kind = CombatUnit.Kind.ARCHER
+	archer.cell = Vector2i(0, 0)
+	target.cell = Vector2i(6, 0)
+	ranged.actions.grid.heights = {Vector2i(3, 0): 20, target.cell: 10}
+	_check(ranged.actions.can_target(archer, target, "attack")
+		and ranged.actions.grid.attack_preview(archer, target).in_range,
+		"높은 대상과 더 높은 중간 바닥이 있어도 평면 거리6 원거리 공격 허용")
+	target.cell = Vector2i(7, 0)
+	_check(not ranged.actions.can_target(archer, target, "attack")
+		and not ranged.actions.grid.attack_preview(archer, target).in_range,
+		"높이와 무관하게 평면 거리7 원거리 공격 거부")
+
+
+func _test_height_opportunity() -> void:
+	for scenario: Array in [[1, 1], [2, 0]]:
+		var f: Fixture = _fixture()
+		_enemy_archer(f)
+		var reactor: CombatUnit = f.units[0]
+		var actor: CombatUnit = f.units[3]
+		f.actions.grid.heights[reactor.cell] = scenario[0]
+		f.actions.dice = _dice_for([], [])
+		var prompts: Array[int] = [0]
+		f.actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
+			if kind == "opportunity":
+				prompts[0] += 1
+			f.actions.resolve_reaction(false)
+		)
+		_check(await f.actions.move_to(actor, Vector2i(6, 4)), "높이가 다른 적 옆에서 실제 걷기")
+		_check(prompts[0] == scenario[1], "기회 공격도 출발 높이 차1까지만 인접")
+		_check(actor.cell == Vector2i(6, 4) and actor.movement_left == 5
+			and reactor.reaction_left == 1, "기회 공격을 넘기거나 안 물으면 반응을 보존하고 이동1 소비")
+
+
+func _test_height_shove() -> void:
+	for scenario: Array in [[2, false, Vector2i(5, 4), 1],
+		[1, true, Vector2i(6, 4), 0], [0, true, Vector2i(6, 4), 0]]:
+		var f: Fixture = _fixture()
+		var actor: CombatUnit = f.units[0]
+		var target: CombatUnit = f.units[2]
+		target.is_stunned = true
+		f.actions.grid.heights = {actor.cell: 1, target.cell: 1, Vector2i(6, 4): scenario[0]}
+		f.actions.dice = _dice_for([], [])
+		_check(f.actions.can_target(actor, target, "shove") == scenario[1],
+			"밀치기는 대상보다 같은 높이나 낮은 착지 칸만 선택")
+		_check(f.actions.shove(actor, target) == scenario[1], "높이를 확인한 밀치기 실제 실행")
+		_check(target.cell == scenario[2] and actor.bonus_action_left == scenario[3],
+			"밀치기 성공만 이동·보조 행동을 소비하고 거부는 보존")
+	var separated: Fixture = _fixture()
+	separated.actions.grid.heights[separated.units[2].cell] = 2
+	_check(not separated.actions.can_target(separated.units[0], separated.units[2], "shove"),
+		"밀치기 대상도 높이 차2이면 인접하지 않음")
+
+
+func _test_height_pull() -> void:
+	for available: bool in [true, false]:
+		var f: Fixture = _fixture()
+		var boss: CombatUnit = f.units[2]
+		boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+		boss.hit_points = 45
+		boss.cell = Vector2i(4, 4)
+		boss.begin_turn()
+		f.turns.current_unit = boss
+		f.units[0].cell = Vector2i(1, 1)
+		var target: CombatUnit = f.units[1]
+		target.cell = Vector2i(7, 4)
+		f.units[3].cell = Vector2i(9, 9)
+		f.actions.grid.heights = {boss.cell: 3, target.cell: 2,
+			Vector2i(5, 4): 1, Vector2i(4, 5): 2 if available else 3,
+			Vector2i(3, 4): 4, Vector2i(4, 3): 3}
+		var expected: Array[Vector2i] = []
+		if available:
+			expected.append(Vector2i(4, 5))
+		_check(f.actions.grid.pull_cells(boss, target) == expected
+			and f.actions.can_target(boss, target, "pull") == available,
+			"끌기는 보스에 높이 포함 인접하고 대상보다 높지 않은 칸만 선택")
+		f.actions.dice = _dice_for([12, 10], [20, 20]) if available else _dice_for([], [])
+		_check(f.actions.pull(boss, target) == available, "높이 착지 조건에 따른 실제 만능팔 실행")
+		_check(target.cell == (Vector2i(4, 5) if available else Vector2i(7, 4))
+			and boss.action_left == (0 if available else 1)
+			and boss.pull_cooldown == (2 if available else 0) and target.hit_points == 14,
+			"끌기 성공만 행동·재사용 대기를 소비하고 거부는 보존")
+
+
+func _test_height_spawn() -> void:
+	for available: bool in [true, false]:
+		var f: Fixture = _fixture()
+		var mother: CombatUnit = f.units[2]
+		mother.kind = CombatUnit.Kind.MOTHER_SPIDER
+		mother.cell = Vector2i.ZERO
+		f.units[0].cell = Vector2i(9, 9)
+		f.units[1].cell = Vector2i(9, 8)
+		f.units[3].cell = Vector2i(8, 8)
+		f.actions.grid.map_size = Vector2i(2, 2)
+		f.actions.grid.heights = {Vector2i(1, 0): 2, Vector2i(0, 1): 1 if available else 2}
+		f.turns.end_turn()
+		f.turns.end_turn()
+		f.actions.dice = _dice_for([1], [1]) if available else _dice_for([], [])
+		_check(f.actions.can_use(mother, "spawn") == available,
+			"엄마 높이 차1의 빈 인접 바닥이 있을 때만 새끼 낳기 가능")
+		_check(f.actions.spawn_spiderling(mother) == available, "높이 인접 조건에 따른 실제 새끼 낳기")
+		if f.units.size() > 4:
+			_created.append(f.units.back())
+		_check(f.units.size() == (5 if available else 4)
+			and mother.action_left == (0 if available else 1),
+			"출생 칸이 없으면 생성과 행동 소비를 모두 거부")
+		if available:
+			_check(f.units.back().cell == Vector2i(0, 1) and f.turns.is_turn_finished(f.units.back()),
+				"높이1 인접 칸에서 태어난 새끼는 생성 라운드에 대기")
+
+
+func _test_ally_shove() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	var target: CombatUnit = f.units[1]
+	target.cell = Vector2i(5, 4)
+	f.units[2].cell = Vector2i(9, 0)
+	f.actions.grid.heights = {actor.cell: 1, target.cell: 1}
+	f.actions.dice = _dice_for([], [])
+	_check(f.actions.can_target(actor, target, "shove"), "인접 아군도 밀치기 대상으로 선택 가능")
+	_check(f.actions.shove(actor, target), "기절하지 않은 아군을 대결 없이 밀치기")
+	_check(target.cell == Vector2i(6, 4) and actor.bonus_action_left == 0
+		and actor.action_left == 1 and target.hit_points == 14 and target.movement_left == 6
+		and target.bonus_action_left == 1 and target.reaction_left == 1,
+		"아군 밀치기는 밀친 유닛의 보조 행동만 쓰고 대상 자원을 보존")
+
+
 func _test_grid_queries() -> void:
 	var f: Fixture = _fixture()
 	var grid: CombatGrid = f.actions.grid
@@ -1240,6 +1423,91 @@ func _test_scene_input() -> void:
 	await _click(overlap_point)
 	_check((overlap.get("selection") as CombatSelection).preview_target == overlap_units[3], "겹친 몸통은 y-sort 앞쪽 유닛 선택")
 	overlap.queue_free()
+	await process_frame
+
+
+func _test_scene_ally_shove() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	battle.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
+	root.add_child(battle)
+	battle.set_process(false)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 33
+	turns.start(units, dice)
+	units[1].cell = Vector2i(2, 4)
+	battle.call("_update_turn_ui")
+	actions.dice = _dice_for([], [])
+	hud.action_selected.emit("shove")
+	var point: Vector2 = units[1].get_global_transform_with_canvas() * Vector2(0, -10)
+	await _click(point)
+	_check((battle.get("selection") as CombatSelection).preview_target == units[1]
+		and units[0].bonus_action_left == 1 and turns.current_unit == units[0],
+		"실제 아군 몸통 첫 클릭은 조작 유닛을 바꾸지 않고 밀치기 미리보기")
+	_check("밀려날 칸: 3, 4" in hud.preview_label.text, "아군 밀치기도 같은 착지 칸 안내")
+	await _click(point)
+	_check(units[1].cell == Vector2i(3, 4) and units[0].bonus_action_left == 0
+		and units[1].movement_left == 6 and turns.current_unit == units[0],
+		"실제 아군 몸통 두 번째 클릭은 무대결 밀치기를 실행")
+	point = units[1].get_global_transform_with_canvas() * Vector2(0, -10)
+	await _click(point)
+	_check((battle.get("selection") as CombatSelection).preview_target == null
+		and units[0].action_left == 1 and units[1].hit_points == 14,
+		"기본 공격에서 아군 몸통 클릭은 계속 공격을 취소")
+	battle.queue_free()
+	await process_frame
+
+
+func _test_height_scene_input() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	stage.heights = {Vector2i(1, 4): 1, Vector2i(1, 5): 2, Vector2i(2, 5): 4}
+	battle.stages[0] = stage
+	root.add_child(battle)
+	battle.set_process(false)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 33
+	turns.start(units, dice)
+	_check(actions.grid.height_at(Vector2i(1, 4)) == 1
+		and not actions.can_move(units[0], Vector2i(2, 5)), "실제 스테이지 높이가 걷기 판정에 연결")
+	_check(units[0].position == map.map_to_local(Vector2i(1, 4)) - Vector2(0, 8),
+		"높이1 유닛의 발은16px 바닥의 절반인8px 위에 표시")
+	var destination: Vector2i = Vector2i(1, 5)
+	var point: Vector2 = map.get_global_transform_with_canvas() * (map.map_to_local(destination) - Vector2(0, 16))
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check((battle.get("selection") as CombatSelection).preview_cell == destination
+		and units[0].cell == Vector2i(1, 4) and units[0].movement_left == 6,
+		"높이2 바닥의 실제 표면 첫 클릭은 올바른 칸을 미리보기")
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check(units[0].cell == destination and units[0].movement_left == 5
+		and units[0].position == map.map_to_local(destination) - Vector2(0, 16),
+		"높이 표면 두 번째 클릭은 이동1과 도착 표시 높이를 일치")
+	point = map.get_global_transform_with_canvas() * (map.map_to_local(Vector2i(2, 5)) - Vector2(0, 32))
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check((battle.get("selection") as CombatSelection).preview_path.is_empty()
+		and units[0].cell == destination and units[0].movement_left == 5,
+		"높이 차2의 바닥 표면 클릭도 이동·자원 소비 거부")
+	point = map.get_global_transform_with_canvas() * (map.map_to_local(Vector2i(2, 4)) - Vector2(0, 4))
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check((battle.get("selection") as CombatSelection).preview_path.is_empty()
+		and units[0].cell == destination and units[0].movement_left == 5,
+		"앞 칸의 높은 옆면을 눌러도 가려진 뒤 칸을 선택하거나 이동하지 않음")
+	(battle.get("progress") as CombatActProgress).stage_index = 1
+	battle.call("_start_stage", true)
+	_check(actions.grid.heights.is_empty() and units[0].position == map.map_to_local(units[0].cell),
+		"다음 실제 평면 스테이지는 높이0으로 복귀하고 fixture 높이를 이어받지 않음")
+	battle.queue_free()
 	await process_frame
 
 

@@ -115,7 +115,7 @@ func _test_selection() -> void:
 	selected.discard_incapacitated_inspection()
 	_check(selected.inspected_unit == null, "선택 module: 전투 불능 조회 해제")
 	selected.select_action("shock")
-	selected.preview_enemy(target)
+	selected.preview_unit(target)
 	selected.reset()
 	_check(selected.selected_action == "attack" and selected.preview_target == null
 		and selected.preview_path.is_empty() and selected.inspected_unit == null,
@@ -260,6 +260,10 @@ func _test_log_and_status() -> void:
 	_check(not hit_sound.autoplay and hit_sound.volume_db == -12.0
 		and hit_sound.max_polyphony == 4, "타격음 자동 재생 없음·음량-12dB·동시4개 제한")
 	hit_sound.stop()
+	# 짧은 타격음이 다음 프레임 전에 끝날 수 있어 피해 신호 시점의 재생을 관찰한다.
+	var hit_played: Array[bool] = []
+	var record_hit: Callable = func() -> void: hit_played.append(hit_sound.playing)
+	actions.hit_landed.connect(record_hit)
 	units[2].is_stunned = false
 	units[2].reaction_left = 0
 	units[2].hit_points = 12
@@ -271,7 +275,7 @@ func _test_log_and_status() -> void:
 	units[2].cell = Vector2i(5, 8)
 	actions.dice = ScriptedDice.new([6, 6], [20, 20])
 	await actions.attack(units[1], units[2])
-	_check(not hit_sound.playing, "실제 장면의 빗나감은 타격음 무음")
+	_check(not hit_sound.playing and hit_played.is_empty(), "실제 장면의 빗나감은 타격음 무음")
 	_check(_has_two_dice_log("불리"),
 		"불리 판정은 로그에 주사위 두 값을 모두 표시")
 	var parent: Node = units[2].get_parent()
@@ -287,8 +291,8 @@ func _test_log_and_status() -> void:
 	actions.dice = CombatDice.new()
 	actions.dice.seed = 100
 	await actions.attack(units[1], units[2])
-	await process_frame
-	_check(hit_sound.playing, "실제 피해 신호가 장면의 타격음 재생으로 연결됨")
+	_check(hit_played == [true], "실제 피해 신호가 장면의 타격음 재생으로 연결됨")
+	actions.hit_landed.disconnect(record_hit)
 	_check(_has_two_dice_log("유리"),
 		"유리 판정은 로그에 주사위 두 값을 모두 표시")
 	_check("표식 추가" in hud.message_label.text, "표식 추가 피해를 로그에 명시")

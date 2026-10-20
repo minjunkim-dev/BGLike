@@ -413,6 +413,18 @@ func _test_archer() -> void:
 		and not ranged.units[1].is_stunned, "풋내기 궁수는 충격 화살 없이 기본 공격")
 	_check(ranged.units[3].movement_left == 6 and ranged.units[3].disengage_left == 2,
 		"인접 위협이 없으면 불필요한 후퇴 없음")
+	var separated: Fixture = _fixture(true)
+	var archer: CombatUnit = separated.units[3]
+	archer.cell = Vector2i(4, 4)
+	separated.units[2].cell = Vector2i(9, 0)
+	separated.actions.grid.heights[separated.units[0].cell] = 2
+	await ai.play_turn(archer, separated.actions)
+	_check(archer.cell == Vector2i(4, 4) and archer.movement_left == 6
+		and archer.bonus_action_left == 1 and archer.disengage_left == 2,
+		"평면 옆 칸이어도 높이 차2면 인접 위협이 없어 후퇴 자원을 보존")
+	_check(archer.action_left == 0
+		and separated.actions.last_attack.mode == CombatChecks.RollMode.NORMAL,
+		"높이 차2인 옆 칸에 인접 불리 없이 원거리 기본 공격")
 	var retreat: Fixture = _fixture(true)
 	retreat.units[3].cell = Vector2i(4, 4)
 	retreat.units[2].cell = Vector2i(9, 0)

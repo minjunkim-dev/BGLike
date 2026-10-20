@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scenes/combat/battle.gd" id="1_battle"]
 [ext_resource type="PackedScene" path="res://scenes/combat/unit.tscn" id="2_unit"]
@@ -17,6 +17,7 @@
 [ext_resource type="Resource" path="res://scenes/combat/stages/act2_stage1.tres" id="12_stage1"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act3_stage1.tres" id="13_stage1"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act3_stage3.tres" id="14_stage3"]
+[ext_resource type="Script" path="res://scenes/combat/map.gd" id="16_map"]
 
 [sub_resource type="Theme" id="Theme_legend"]
 default_font_size = 12
@@ -32,6 +33,8 @@ max_polyphony = 4
 
 [node name="Map" type="TileMapLayer" parent="."]
 z_index = -1
+y_sort_enabled = true
+script = ExtResource("16_map")
 tile_set = ExtResource("3_floor")
 
 [node name="Units" type="Node2D" parent="."]
