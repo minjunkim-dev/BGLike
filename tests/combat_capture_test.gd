@@ -60,6 +60,9 @@ func _run() -> void:
 		for unit: CombatUnit in units:
 			if unit.is_ally:
 				unit.reaction_left = 0
+	if not _fixture_ready(units):
+		await _finish()
+		return
 	observer = CaptureObserver.new()
 	battle.add_child(observer)
 	var result: Error = observer.start(battle, directory)
@@ -110,6 +113,27 @@ func _run() -> void:
 	var problems: Array[String] = ScriptedDice.finish()
 	_check(problems.is_empty(), "이니셔티브 준비값 모두 소비: %s" % str(problems))
 	_finish()
+
+
+func _fixture_ready(units: Array[CombatUnit]) -> bool:
+	var previous_failures: int = failures
+	_check(units.size() == 3, "캡처 전제조건: 3-3 유닛 3개")
+	if units.size() != 3:
+		return false
+	_check(units[0].is_ally and units[0].kind == CombatUnit.Kind.WARRIOR
+		and units[1].is_ally and units[1].kind == CombatUnit.Kind.ARCHER
+		and not units[2].is_ally and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_3000,
+		"캡처 전제조건: 전사·궁수·고철로봇 3000")
+	var portraits: Dictionary = battle.get_node("UI/TurnHud").get("_portraits")
+	_check(portraits.size() == units.size(), "캡처 전제조건: 초상 3개")
+	for unit: CombatUnit in units:
+		_check(portraits.has(unit) and unit.hit_points == unit.get_max_hit_points(),
+			"캡처 전제조건: 각 유닛의 초상과 정상 HP")
+		if unit.is_ally:
+			_check(unit.movement_left == CombatUnit.MOVEMENT_PER_TURN and unit.action_left == 1
+				and unit.bonus_action_left == 1 and unit.reaction_left == (1 if manual else 0),
+				"캡처 전제조건: 아군 턴 자원과 모드별 반응 횟수")
+	return failures == previous_failures
 
 
 func _returned_to_ally() -> bool:
