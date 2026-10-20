@@ -6,6 +6,17 @@ const DIRECTIONS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)
 ]
 
+class Prop extends RefCounted:
+	var cell: Vector2i
+	var kind: String
+	var hit_points: int = 6
+
+	func _init(position: Vector2i, object_kind: String) -> void:
+		cell = position
+		kind = object_kind
+
+
+var props: Array[Prop] = []
 var units: Array[CombatUnit] = []
 var map_size: Vector2i = Vector2i(10, 10)
 var heights: Dictionary[Vector2i, int] = {}
@@ -41,6 +52,13 @@ func unit_at(cell: Vector2i) -> CombatUnit:
 	return null
 
 
+func prop_at(cell: Vector2i) -> Prop:
+	for prop: Prop in props:
+		if prop.hit_points > 0 and prop.cell == cell:
+			return prop
+	return null
+
+
 func is_inside(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < map_size.x and cell.y < map_size.y
 
@@ -54,7 +72,7 @@ func is_floor(cell: Vector2i) -> bool:
 
 
 func is_blocked(cell: Vector2i) -> bool:
-	return not is_inside(cell) or blocked_cells.has(cell)
+	return not is_inside(cell) or blocked_cells.has(cell) or prop_at(cell) != null
 
 
 func are_adjacent(a: Vector2i, b: Vector2i) -> bool:
