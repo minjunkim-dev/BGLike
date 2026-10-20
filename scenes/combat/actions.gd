@@ -40,12 +40,62 @@ func _on_turn_started(unit: CombatUnit) -> void:
 	for target: CombatUnit in units:
 		if target.stun_source == unit:
 			target.is_stunned = false
-	if not unit.overloaded or unit.hit_points <= 0 or is_over():
-		return
-	_damage(unit, 2)
-	logged.emit("%s 과부하: 자기 피해 2 · HP %d" % [unit.get_display_name(), unit.hit_points])
-	feedback.emit(unit, "과부하 -2")
+		for effect: CombatUnit.StatusEffect in target.status_effects.duplicate():
+			if effect.source == unit:
+				effect.turns_left -= 1
+				if effect.turns_left == 0:
+					target.status_effects.erase(effect)
+	_clear_burn_in_water(unit)
+	if unit.overloaded and unit.hit_points > 0 and not is_over():
+		_damage(unit, 2)
+		logged.emit("%s 과부하: 자기 피해 2 · HP %d" % [unit.get_display_name(), unit.hit_points])
+		feedback.emit(unit, "과부하 -2")
+	var poison_checked: bool = false
+	for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
+		if unit.hit_points <= 0 or is_over():
+			break
+		if effect not in unit.status_effects:
+			continue
+		var name: String = "화상" if effect.kind == "burn" else "독"
+		if effect.kind == "poison" and not poison_checked:
+			poison_checked = true
+			var constitution: int = unit.get_attribute(CombatUnit.Attribute.CONSTITUTION)
+			var saved: CombatChecks.RollResult = CombatChecks.saving_throw(constitution, effect.save_dc, dice)
+			logged.emit("%s 독 건강 내성: d20 %d + %d = %d / DC %d · %s" % [unit.get_display_name(),
+				saved.selected_roll, constitution, saved.total, effect.save_dc, "성공" if saved.success else "실패"])
+			feedback.emit(unit, "독 내성 %d" % saved.total)
+			if unit.hit_points <= 0 or is_over():
+				break
+			if effect not in unit.status_effects:
+				continue
+			if saved.success:
+				unit.status_effects.erase(effect)
+				continue
+		var amount: int = dice.roll(4) if effect.kind == "burn" else 1
+		_damage(unit, amount)
+		logged.emit("%s %s: %d · HP %d" % [unit.get_display_name(), name, amount, unit.hit_points])
+		feedback.emit(unit, "%s -%d" % [name, amount])
 	changed.emit()
+
+
+func apply_status(source: CombatUnit, target: CombatUnit, kind: String) -> bool:
+	if (not is_instance_valid(source) or not is_instance_valid(target)
+		or source not in units or target not in units or source.hit_points <= 0 or target.hit_points <= 0
+		or kind not in ["stun", "burn", "poison"]):
+		return false
+	if kind == "burn" and target.cell in grid.water_cells:
+		return false
+	if kind == "stun":
+		if target.is_boss():
+			return false
+		target.is_stunned = true
+		target.stun_source = source
+	else:
+		if target.get_status_count(kind) >= 3:
+			return false
+		target.status_effects.append(CombatUnit.StatusEffect.new(kind, source, 2 if kind == "burn" else 4))
+	changed.emit()
+	return true
 
 
 ## 살아 있는 유닛이 이 대상을 표식으로 지정했는지.
@@ -67,11 +117,15 @@ func is_victory() -> bool:
 ## 전투 불능 전환. 표식, 턴 순서와 표시를 함께 정리한다.
 func incapacitate(target: CombatUnit) -> void:
 	target.hit_points = 0
+	target.status_effects.clear()
 	for unit: CombatUnit in units:
 		if unit.marked_target == target:
 			unit.marked_target = null
 		if unit.stun_source == target:
 			unit.is_stunned = false
+		for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
+			if effect.source == target:
+				unit.status_effects.erase(effect)
 	turns.remove_unit(target)
 	target.visible = false
 
@@ -274,6 +328,7 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 			await movement_animation.call(actor, step)
 		actor.spend_movement(1)
 		actor.cell = step
+		_clear_burn_in_water(actor)
 		moved += 1
 		changed.emit()
 	logged.emit("%s 이동: %d칸, 남은 이동 %d" % [actor.get_display_name(), moved, actor.movement_left])
@@ -504,12 +559,22 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 		var saved: CombatChecks.RollResult = CombatChecks.saving_throw(
 			target.get_attribute(CombatUnit.Attribute.MENTAL), save_dc, dice)
 		if not saved.success:
-			target.is_stunned = true
-			target.stun_source = actor
+			apply_status(actor, target, "stun")
 		logged.emit("정신 내성: d20 %d + %d = %d / DC %d · %s" % [saved.selected_roll,
 			target.get_attribute(CombatUnit.Attribute.MENTAL), saved.total, save_dc,
 			"기절" if not saved.success else "버팀"])
 		feedback.emit(target, "정신 내성 %d" % saved.total)
+
+
+func _clear_burn_in_water(unit: CombatUnit) -> void:
+	if unit.cell not in grid.water_cells or unit.get_status_count("burn") == 0:
+		return
+	for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
+		if effect.kind == "burn":
+			unit.status_effects.erase(effect)
+	changed.emit()
+	logged.emit("%s 물: 화상 해제" % unit.get_display_name())
+	feedback.emit(unit, "물: 화상 해제")
 
 
 func _land(target: CombatUnit, destination: Vector2i) -> void:
@@ -520,6 +585,7 @@ func _land(target: CombatUnit, destination: Vector2i) -> void:
 		logged.emit("%s 낙사: 전투 불능" % target.get_display_name())
 		feedback.emit(target, "낙사")
 		return
+	_clear_burn_in_water(target)
 	if amount == 0:
 		return
 	_damage(target, amount)

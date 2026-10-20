@@ -106,6 +106,29 @@ func _run() -> void:
 	await _test_stun_reapplication()
 	await _test_stun_landing_incapacitation()
 	await _test_finished_stun_removal()
+	_test_burn_turn_start()
+	_test_burn_caster_duration()
+	_test_burn_stack_limit()
+	_test_poison_tick()
+	_test_status_fifo()
+	_test_poison_save_oldest()
+	_test_status_caster_incapacitation()
+	_test_status_stage_reset()
+	_test_poison_caster_duration()
+	_test_status_lethal_tick()
+	_test_common_stun_application()
+	await _test_water_walk()
+	_test_water_shove()
+	_test_water_immunity()
+	_test_water_turn_start()
+	await _test_water_jump()
+	_test_water_pull()
+	_test_deferred_water_shove()
+	_test_self_status_expiry()
+	_test_status_removed_during_tick()
+	_test_poison_removed_during_save()
+	await _test_water_stage()
+	_test_status_application_boundaries()
 	await _test_reactions()
 	await _test_own_turn_parry()
 	_test_isometric_surface()
@@ -123,6 +146,8 @@ func _run() -> void:
 	for f: Fixture in _fixtures:
 		for connection: Dictionary in f.actions.reaction_requested.get_connections():
 			f.actions.reaction_requested.disconnect(connection["callable"] as Callable)
+		for connection: Dictionary in f.actions.feedback.get_connections():
+			f.actions.feedback.disconnect(connection["callable"] as Callable)
 	_fixtures.clear()
 	for unit: CombatUnit in _created:
 		unit.free()
@@ -1454,6 +1479,377 @@ func _test_stun_reapplication() -> void:
 	f.turns.end_turn()
 	_check(not target.is_stunned and f.turns.current_unit == latest,
 		"최신 시전자의 다음 실제 턴 시작에 갱신된 기절 해제")
+
+
+func _test_burn_turn_start() -> void:
+	var f: Fixture = _fixture()
+	var source: CombatUnit = f.units[1]
+	var target: CombatUnit = f.units[2]
+	_check(f.actions.apply_status(source, target, "burn"), "살아 있는 전투 유닛에게 화상 부여")
+	_check(target.hit_points == 12, "화상 부여 순간에는 피해 없음")
+	f.actions.dice = _dice_for([3], [4])
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(f.turns.current_unit == target and target.hit_points == 9,
+		"대상 실제 턴 시작에 화상1중첩은 d4 피해 한 번")
+	f.turns.select_unit(f.units[3])
+	f.turns.select_unit(target)
+	_check(target.hit_points == 9, "묶음 재선택은 화상 틱을 반복하지 않음")
+
+
+func _test_burn_caster_duration() -> void:
+	var f: Fixture = _fixture()
+	var source: CombatUnit = f.units[1]
+	var target: CombatUnit = f.units[2]
+	f.turns.select_unit(source)
+	f.actions.apply_status(source, target, "burn")
+	f.actions.dice = _dice_for([3, 2], [4, 4])
+	for expected_hp: int in [9, 7, 7]:
+		f.turns.end_turn()
+		f.turns.end_turn()
+		_check(f.turns.current_unit == target and target.hit_points == expected_hp,
+			"화상은 대상 차례가 아니라 시전자 두 번째 시작에 만료: HP" + str(expected_hp))
+		f.turns.end_turn()
+		f.turns.end_turn()
+		f.turns.select_unit(source)
+
+
+func _test_burn_stack_limit() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	f.turns.select_unit(f.units[1])
+	_check(f.actions.apply_status(f.units[1], target, "burn"), "첫 화상 중첩")
+	_check(f.actions.apply_status(f.units[0], target, "burn"), "다른 시전자의 화상도 같은 상한에 포함")
+	_check(f.actions.apply_status(f.units[1], target, "burn"), "세 번째 화상 중첩")
+	_check(not f.actions.apply_status(f.units[0], target, "burn"), "화상 상한3 이후 부여 거부")
+	var messages: Array[String] = []
+	f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+		if unit == target:
+			messages.append(text)
+	)
+	f.actions.dice = _dice_for([1, 2, 3], [4, 4, 4])
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(target.hit_points == 6 and messages == ["화상 -1", "화상 -2", "화상 -3"],
+		"서로 다른 시전자의 화상3중첩은 각각 한 번씩 부여 순서로 피해")
+
+
+func _test_poison_tick() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	f.turns.select_unit(f.units[1])
+	_check(f.actions.apply_status(f.units[1], target, "poison"), "독 부여")
+	f.actions.dice = _dice_for([10], [20])
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(target.hit_points == 11, "건강 내성10+2는 DC13 실패 후 독 고정1 피해")
+
+
+func _test_status_fifo() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	f.turns.select_unit(f.units[1])
+	f.actions.apply_status(f.units[0], target, "burn")
+	f.actions.apply_status(f.units[1], target, "poison")
+	f.actions.apply_status(f.units[0], target, "burn")
+	f.actions.apply_status(f.units[3], target, "poison")
+	var messages: Array[String] = []
+	f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+		if unit == target:
+			messages.append(text)
+	)
+	f.actions.dice = _dice_for([2, 10, 3], [4, 20, 4])
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(target.hit_points == 5 and messages == ["화상 -2", "독 내성 12", "독 -1", "화상 -3", "독 -1"],
+		"다른 상태도 전체 FIFO: 첫 독DC13으로 내성 한 번만 굴리고 각 중첩 피해")
+
+
+func _test_poison_save_oldest() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	f.turns.select_unit(f.units[1])
+	f.actions.apply_status(f.units[3], target, "poison")
+	f.actions.apply_status(f.units[1], target, "poison")
+	f.actions.apply_status(f.units[1], target, "poison")
+	_check(not f.actions.apply_status(f.units[1], target, "poison"), "독도 상한3 이후 거부")
+	f.units[3].kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	f.actions.dice = _dice_for([9], [20])
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(target.hit_points == 10, "독 내성9+2는 부여 때DC11 성공: 가장 오래된 하나만 제거 후 두 틱")
+	# 내성으로 없어진 시전자를 제거해도 남은 두 독은 그대로다.
+	f.actions.incapacitate(f.units[3])
+	f.actions.dice = _dice_for([10], [20])
+	f.turns.end_turn()
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(target.hit_points == 8, "제거한 독의 다음 내성은 새 가장 오래된DC13으로 한 번만 판정")
+
+
+func _test_status_caster_incapacitation() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	f.actions.apply_status(f.units[1], target, "burn")
+	f.actions.apply_status(f.units[0], target, "poison")
+	f.actions.incapacitate(f.units[1])
+	_check(not f.actions.apply_status(f.units[1], target, "burn"), "전투 불능 시전자의 새 부여 거부")
+	f.actions.dice = _dice_for([1], [20])
+	f.turns.end_turn()
+	_check(f.turns.current_unit == target and target.hit_points == 11,
+		"시전자 전투 불능은 자기 화상만 즉시 제거하고 다른 시전자의 독은 유지")
+
+
+func _test_status_stage_reset() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	f.actions.apply_status(f.units[1], target, "burn")
+	target.begin_stage(false)
+	f.actions.dice = _dice_for([], [])
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(target.hit_points == 12, "다음 스테이지는 지난 화상을 제거하고 틱 주사위를 굴리지 않음")
+
+
+func _test_poison_caster_duration() -> void:
+	var f: Fixture = _fixture()
+	var source: CombatUnit = f.units[1]
+	var target: CombatUnit = f.units[2]
+	f.turns.select_unit(source)
+	f.actions.apply_status(source, target, "poison")
+	f.actions.dice = _dice_for([1, 1, 1, 1], [20, 20, 20, 20])
+	for expected_hp: int in [11, 10, 9, 8, 8]:
+		f.turns.end_turn()
+		f.turns.end_turn()
+		_check(target.hit_points == expected_hp, "독은 네 번째 시전자 시작에 만료: HP" + str(expected_hp))
+		f.turns.end_turn()
+		f.turns.end_turn()
+		f.turns.select_unit(source)
+
+
+func _test_status_lethal_tick() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[0]
+	target.hit_points = 2
+	f.actions.apply_status(f.units[3], target, "burn")
+	f.actions.apply_status(f.units[2], target, "poison")
+	f.actions.dice = _dice_for([2], [4])
+	var order_dice: CombatDice = CombatDice.new()
+	order_dice.seed = 33
+	f.turns.start(f.units, order_dice)
+	_check(target.hit_points == 0 and not target.visible and f.turns.current_unit == f.units[1],
+		"시작 화상으로 전투 불능이면 남은 독 내성/피해 없이 동료로 진행")
+
+
+func _test_common_stun_application() -> void:
+	var f: Fixture = _fixture()
+	_check(f.actions.apply_status(f.units[1], f.units[2], "stun") and f.units[2].is_stunned,
+		"공통 부여는 기존 기절도 지원")
+	f.actions.incapacitate(f.units[1])
+	_check(not f.units[2].is_stunned, "공통 기절 부여도 시전자 전투 불능에 즉시 해제")
+	f.units[3].kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	_check(not f.actions.apply_status(f.units[0], f.units[3], "stun") and not f.units[3].is_stunned,
+		"공통 기절 부여도 기존 보스 면역 보존")
+
+
+func _test_water_walk() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[0]
+	f.units[2].reaction_left = 0
+	f.actions.grid.water_cells = [Vector2i(4, 5)]
+	f.actions.apply_status(f.units[3], target, "burn")
+	_check(await f.actions.move_to(target, Vector2i(4, 6)), "물 칸을 지나 마른 땅까지 걷기")
+	_check(target.get_status_count("burn") == 0 and target.hit_points == 12
+		and target.movement_left == 4 and target.cell == Vector2i(4, 6),
+		"걷는 중간 물 칸에서 화상 즉시 해제, 물의 추가 이동 비용/피해 없음")
+
+
+func _test_water_shove() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[1]
+	f.actions.grid.water_cells = [Vector2i(2, 4)]
+	f.actions.apply_status(f.units[3], target, "burn")
+	f.actions.apply_status(f.units[2], target, "poison")
+	f.actions.dice = _dice_for([1], [20])
+	_check(f.actions.shove(f.units[0], target), "동료를 물로 밀치기")
+	_check(target.cell == Vector2i(2, 4) and target.get_status_count("burn") == 0
+		and target.get_status_count("poison") == 1 and target.hit_points == 14,
+		"물로 밀치기는 화상만 즉시 해제, 독/HP/대상 실제 턴 시작은 유지")
+	_check(f.turns.select_unit(target) and target.hit_points == 13,
+		"물에 밀린 동료를 처음 조작할 때 화상 없이 남은 독만 처리")
+
+
+func _test_water_immunity() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[0]
+	f.actions.grid.water_cells = [target.cell]
+	_check(not f.actions.apply_status(f.units[3], target, "burn")
+		and target.get_status_count("burn") == 0, "물 위 새 화상 부여 거부")
+	_check(f.actions.apply_status(f.units[3], target, "poison")
+		and target.get_status_count("poison") == 1, "물은 독 부여를 막지 않음")
+
+
+func _test_water_turn_start() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	f.actions.apply_status(f.units[1], target, "burn")
+	f.actions.grid.water_cells = [target.cell]
+	f.actions.apply_status(f.units[3], target, "poison")
+	f.actions.dice = _dice_for([1], [20])
+	var messages: Array[String] = []
+	f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+		if unit == target:
+			messages.append(text)
+	)
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(target.hit_points == 11 and messages == ["물: 화상 해제", "독 내성 3", "독 -1"],
+		"물 위 실제 시작은 화상 틱 전에 해제하고 독만 유지")
+
+
+func _test_water_jump() -> void:
+	var cases: Array[Dictionary] = [
+		{"water": Vector2i(4, 5), "burns": 1}, {"water": Vector2i(4, 6), "burns": 0}]
+	for example: Dictionary in cases:
+		var f: Fixture = _fixture()
+		var target: CombatUnit = f.units[0]
+		f.units[2].reaction_left = 0
+		f.actions.apply_status(f.units[3], target, "burn")
+		f.actions.grid.water_cells = [example["water"]]
+		f.actions.dice = _dice_for([], [])
+		_check(await f.actions.jump_to(target, Vector2i(4, 6)), "물 통과/착지 점프 실행")
+		_check(target.get_status_count("burn") == example["burns"] and target.hit_points == 12,
+			"점프는 물 착지에서만 해제하고 공중 통과에는 적용하지 않음: " + str(example["water"]))
+
+
+func _test_water_pull() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[0]
+	var robot: CombatUnit = f.units[2]
+	robot.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	target.cell = Vector2i(2, 4)
+	f.actions.apply_status(f.units[1], target, "burn")
+	f.actions.grid.water_cells = [Vector2i(4, 4)]
+	f.turns.end_turn()
+	f.turns.end_turn()
+	f.actions.dice = _dice_for([20, 1], [20, 20])
+	_check(f.actions.pull(robot, target) and target.cell == Vector2i(4, 4)
+		and target.get_status_count("burn") == 0, "로봇의 실제 끌기 도착 물에서 화상 해제")
+
+
+func _test_deferred_water_shove() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[0]
+	var actor: CombatUnit = f.units[1]
+	target.cell = Vector2i(3, 4)
+	actor.cell = Vector2i(4, 4)
+	var order: Array[CombatUnit] = [target, f.units[2], f.units[3], actor]
+	var rolls: Array[int] = []
+	for unit: CombatUnit in f.units:
+		rolls.append(20 - 3 * order.find(unit) - unit.get_dexterity())
+	f.turns.start(f.units, _dice_for(rolls, [20, 20, 20, 20]))
+	f.turns.end_turn()
+	f.actions.apply_status(f.units[2], target, "burn")
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(f.turns.current_unit == actor and not f.turns.is_turn_started(target),
+		"라운드 경계로 합친 동료는 실제 턴 시작을 기다림")
+	f.actions.grid.water_cells = [Vector2i(2, 4)]
+	f.actions.dice = _dice_for([], [])
+	_check(f.actions.shove(actor, target) and not f.turns.is_turn_started(target)
+		and target.get_status_count("burn") == 0, "지연된 동료의 시작 전에 물로 밀어 화상 해제")
+	_check(f.turns.select_unit(target) and target.hit_points == 12,
+		"동료를 처음 조작해도 제거한 화상의 틱을 굴리지 않음")
+
+
+func _test_self_status_expiry() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[0]
+	f.actions.apply_status(target, target, "burn")
+	f.actions.dice = _dice_for([2], [4])
+	for expected_hp: int in [10, 10]:
+		for index: int in range(4):
+			f.turns.end_turn()
+		_check(target.hit_points == expected_hp, "자기 시전자도 만료를 대상 틱보다 먼저 처리: " + str(expected_hp))
+
+
+func _test_status_removed_during_tick() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	f.turns.select_unit(f.units[1])
+	f.actions.apply_status(f.units[1], target, "burn")
+	f.actions.apply_status(f.units[3], target, "burn")
+	f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+		if unit == target and text == "화상 -2":
+			f.actions.incapacitate(f.units[3])
+	)
+	f.actions.dice = _dice_for([2], [4])
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(target.hit_points == 10, "앞 틱의 피드백 중 시전자가 탈락하면 제거된 뒤 효과를 실행하지 않음")
+
+
+func _test_poison_removed_during_save() -> void:
+	for boundary: int in range(3):
+		var f: Fixture = _fixture()
+		var target: CombatUnit = f.units[2]
+		f.turns.select_unit(f.units[1])
+		f.actions.apply_status(f.units[1] if boundary == 0 else f.units[3], target, "poison")
+		var damage_messages: Array[String] = []
+		f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+			if unit != target:
+				return
+			if text.begins_with("독 내성"):
+				if boundary == 0:
+					f.actions.incapacitate(f.units[1])
+				elif boundary == 1:
+					f.actions.incapacitate(target)
+				else:
+					f.actions.incapacitate(f.units[0])
+					f.actions.incapacitate(f.units[1])
+			elif text.begins_with("독 -"):
+				damage_messages.append(text)
+		)
+		f.actions.dice = _dice_for([1], [20])
+		f.turns.end_turn()
+		f.turns.end_turn()
+		_check(target.hit_points == (0 if boundary == 1 else 12) and damage_messages.is_empty(),
+			"독 내성 피드백 중 시전자·대상 탈락 또는 전투 종료 뒤 독 피해를 실행하지 않음: " + str(boundary))
+
+
+func _test_water_stage() -> void:
+	var scene: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var battle_scene: Node2D = scene.get_node("Battle") as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	stage.water_cells = [Vector2i(4, 5), Vector2i(3, 4)]
+	battle_scene.stages[0] = stage
+	root.add_child(scene)
+	battle_scene.set_process(false)
+	await process_frame
+	var scene_actions: CombatActions = battle_scene.get("actions") as CombatActions
+	var map: CombatMap = battle_scene.get("map") as CombatMap
+	_check(scene_actions.grid.water_cells == [Vector2i(4, 5), Vector2i(3, 4)],
+		"스테이지의 물 칸을 실제 전투 격자에 전달")
+	_check(map.surface_to_map(map.map_to_surface(Vector2i(4, 5))) == Vector2i(4, 5),
+		"물 표시도 기존 아이소메트릭 바닥 좌표로 선택")
+	stage.water_cells.append(Vector2i(9, 9))
+	_check(scene_actions.grid.water_cells.size() == 2, "원본 스테이지 데이터 변경은 실행 중 격자를 바꾸지 않음")
+	scene.free()
+	await process_frame
+
+
+func _test_status_application_boundaries() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	var outsider: CombatUnit = CombatUnit.new()
+	_created.append(outsider)
+	_check(not f.actions.apply_status(null, target, "burn"), "없는 시전자의 효과 거부")
+	_check(not f.actions.apply_status(outsider, target, "burn")
+		and not f.actions.apply_status(f.units[0], outsider, "burn"), "전투 밖 시전자/대상 거부")
+	_check(not f.actions.apply_status(f.units[0], target, "unknown")
+		and target.get_status_count("burn") == 0, "알려지지 않은 상태는 대상 상태를 바꾸지 않음")
+	f.actions.incapacitate(target)
+	_check(not f.actions.apply_status(f.units[0], target, "poison"), "전투 불능 대상의 효과 거부")
 
 
 func _test_deferred_stun_caster() -> void:

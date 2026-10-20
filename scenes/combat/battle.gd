@@ -82,6 +82,7 @@ func _start_stage(restore_act: bool) -> void:
 	actions.grid.heights = stage.heights.duplicate()
 	actions.grid.pits = stage.pits.duplicate()
 	actions.grid.blocked_cells = stage.blocked_cells.duplicate()
+	actions.grid.water_cells = stage.water_cells.duplicate()
 	map.build_grid(actions.grid, stage.tile_set)
 	for index: int in range(party.size()):
 		party[index].cell = stage.ally_cells[index]

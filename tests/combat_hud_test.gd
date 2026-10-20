@@ -249,6 +249,17 @@ func _test_log_and_status() -> void:
 	_check(units[2].has_mark and "기절" in hud.resource_label.text and "◎ 표식" in hud.resource_label.text,
 		"기절과 표식은 유닛 표시와 정보에 함께 반영")
 	_check(hud.health_bar.value == 5, "대상 HP 갱신")
+	actions.apply_status(units[1], units[2], "burn")
+	actions.apply_status(units[1], units[2], "burn")
+	actions.apply_status(units[0], units[2], "poison")
+	hud.show_unit(units[2])
+	_check("화상2" in hud.resource_label.text and "독1" in hud.resource_label.text
+		and "기절" in hud.resource_label.text and "◎ 표식" in hud.resource_label.text,
+		"기존 상태 정보에 화상/독 중첩 수를 함께 표시")
+	await process_frame
+	_check(hud.get_viewport_rect().encloses(hud.resource_label.get_global_rect()),
+		"기절/표식/화상/독의 상태 정보를 함께 표시해도 화면 안에 배치")
+	units[2].begin_stage(false)
 	units[1].marked_target = null
 	battle.call("_update_turn_ui")
 	_check(not units[2].has_mark, "표식 해제 표시")

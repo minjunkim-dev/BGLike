@@ -14,6 +14,19 @@ const ENEMY_COLOR: Color = Color("df6256")
 const OUTLINE_COLOR: Color = Color("202b35")
 const WEAPON_COLOR: Color = Color("f4ead1")
 
+class StatusEffect extends RefCounted:
+	var kind: String
+	var source: CombatUnit
+	var turns_left: int
+	var save_dc: int
+
+	func _init(effect_kind: String, caster: CombatUnit, duration: int) -> void:
+		kind = effect_kind
+		source = caster
+		turns_left = duration
+		save_dc = caster.get_save_dc()
+
+
 @export var kind: Kind = Kind.WARRIOR
 @export var is_ally: bool = true
 @export var start_cell: Vector2i = Vector2i.ZERO
@@ -52,6 +65,7 @@ var hit_points: int = 12:
 			overloaded = true
 			action_left += 1
 var stun_source: CombatUnit
+var status_effects: Array[StatusEffect] = []
 var is_stunned: bool = false:
 	set(value):
 		is_stunned = value
@@ -166,6 +180,23 @@ func get_display_name() -> String:
 	return "아군 " + ("전사" if kind == Kind.WARRIOR else "궁수")
 
 
+func get_status_count(kind_name: String) -> int:
+	var count: int = 0
+	for effect: StatusEffect in status_effects:
+		if effect.kind == kind_name:
+			count += 1
+	return count
+
+
+func get_periodic_status_text() -> String:
+	var states: Array[String] = []
+	for kind_name: String in ["burn", "poison"]:
+		var count: int = get_status_count(kind_name)
+		if count > 0:
+			states.append("%s%d" % ["화상" if kind_name == "burn" else "독", count])
+	return " ".join(states)
+
+
 func is_boss() -> bool:
 	return not is_ally and bool(CombatEnemyDefinitions.for_kind(kind).get("boss", false))
 
@@ -192,6 +223,7 @@ func begin_stage(restore_act: bool) -> void:
 		CombatActionRules.restore_uses(self)
 	# 물약은 막 시작과 재시작에서도 현재 개수를 유지한다.
 	is_stunned = false
+	status_effects.clear()
 	has_mark = false
 	marked_target = null
 	is_selected = false
@@ -262,7 +294,11 @@ func _draw() -> void:
 	draw_set_transform(Vector2(0, floor_offset_y))
 	draw_rect(Rect2(-9, -25, 18, 4), OUTLINE_COLOR)
 	draw_rect(Rect2(-8, -24, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
-	var status: String = ("기절" if is_stunned else "") + (" ◎" if has_mark else "")
+	var status: String = get_periodic_status_text()
+	if is_stunned:
+		status = "기절" + (" " + status if not status.is_empty() else "")
+	if has_mark:
+		status += " ◎"
 	if not status.is_empty():
 		var font: Font = ThemeDB.fallback_font
 		var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
@@ -326,13 +362,15 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 	var best: Vector2 = origin.clamp(first, viewport.end - popup_size - Vector2.ONE * padding)
 	var distance: float = INF
 	var occupied: Array[Rect2] = obstacles.duplicate()
-	# 피해 팝업 뒤에 기절·표식이 생겨도 겹치지 않도록 최대 상태 표시 영역을 예약한다.
+	# 새 기절·표식과 현재 화상·독을 함께 읽을 수 있는 상태 표시 영역을 예약한다.
 	var font: Font = ThemeDB.fallback_font
-	var status_width: float = font.get_string_size("기절 ◎", HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-	var status_rect: Rect2 = Rect2(Vector2(-status_width / 2.0, -29 - font.get_ascent(10)),
-		Vector2(status_width, font.get_height(10)))
 	for child: Node in get_parent().get_children():
 		if child is CombatUnit:
+			var periodic: String = child.get_periodic_status_text()
+			var status: String = "기절 %s ◎" % periodic if not periodic.is_empty() else "기절 ◎"
+			var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+			var status_rect: Rect2 = Rect2(Vector2(-width / 2.0, -29 - font.get_ascent(10)),
+				Vector2(width, font.get_height(10)))
 			var elevated_status: Rect2 = Rect2(status_rect.position + Vector2(0, child.floor_offset_y), status_rect.size)
 			occupied.append((child.get_global_transform_with_canvas() * elevated_status).grow(padding))
 		elif child is Label and child != popup and child.has_meta("feedback_unit"):

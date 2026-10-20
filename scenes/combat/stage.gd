@@ -6,6 +6,7 @@ extends Resource
 @export var heights: Dictionary[Vector2i, int] = {}
 @export var pits: Array[Vector2i] = []
 @export var blocked_cells: Array[Vector2i] = []
+@export var water_cells: Array[Vector2i] = []
 @export var tile_set: TileSet
 @export var ally_cells: Array[Vector2i] = [Vector2i(1, 4), Vector2i(0, 5)]
 @export var enemies: PackedScene
