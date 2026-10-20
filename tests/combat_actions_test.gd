@@ -91,9 +91,11 @@ func _run() -> void:
 	await _test_mark_and_stun()
 	await _test_reactions()
 	await _test_own_turn_parry()
+	_test_isometric_surface()
 	await _test_scene_input()
 	await _test_scene_ally_shove()
 	await _test_height_scene_input()
+	await _test_isometric_unit_occlusion()
 	await _test_scene_shock()
 	for f: Fixture in _fixtures:
 		for connection: Dictionary in f.actions.reaction_requested.get_connections():
@@ -1337,6 +1339,29 @@ func _test_own_turn_parry() -> void:
 		await process_frame
 
 
+func _test_isometric_surface() -> void:
+	var map: CombatMap = CombatMap.new()
+	var grid: CombatGrid = CombatGrid.new()
+	map.build_grid(grid, load("res://scenes/combat/floor_tiles.tres") as TileSet)
+	var origin: Vector2 = map.map_to_surface(Vector2i.ZERO)
+	_check(map.map_to_surface(Vector2i(1, 0)) - origin == Vector2(16, 8)
+		and map.map_to_surface(Vector2i(0, 1)) - origin == Vector2(-16, 8),
+		"사각 논리 격자의 두 축은 화면에서32×16 마름모의 대각 방향")
+	var cell: Vector2i = Vector2i(4, 4)
+	var center: Vector2 = map.map_to_surface(cell)
+	_check(map.surface_to_map(center) == cell
+		and map.surface_to_map(center + Vector2(12, 6)) != cell,
+		"마름모 중심은 해당 칸이고 바깥 모서리는 같은 칸으로 선택하지 않음")
+	var matched: int = 0
+	for y: int in range(10):
+		for x: int in range(10):
+			var target: Vector2i = Vector2i(x, y)
+			if map.surface_to_map(map.map_to_surface(target)) == target:
+				matched += 1
+	_check(matched == 100, "평면100칸의 마름모 중심을 모두 올바른 논리 칸으로 선택")
+	map.free()
+
+
 func _test_scene_input() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	var battle: Node2D = scene.instantiate() as Node2D
@@ -1417,7 +1442,7 @@ func _test_scene_input() -> void:
 	_check(overlap_units[0].cell == hidden_cell, "몸통에 가린 빈 칸 이동 실행")
 	overlap_hud.action_selected.emit("attack")
 	overlap_units[2].cell = Vector2i(4, 4)
-	overlap_units[3].cell = Vector2i(4, 5)
+	overlap_units[3].cell = Vector2i(5, 5)
 	overlap.call("_update_turn_ui")
 	var overlap_point: Vector2 = overlap_units[2].get_global_transform_with_canvas() * Vector2(0, -1)
 	await _click(overlap_point)
@@ -1462,10 +1487,46 @@ func _test_scene_ally_shove() -> void:
 	await process_frame
 
 
+func _test_isometric_unit_occlusion() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	stage.heights = {Vector2i(5, 5): 4}
+	battle.stages[0] = stage
+	root.add_child(battle)
+	battle.set_process(false)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	units[1].cell = Vector2i(1, 4)
+	units[2].cell = Vector2i(4, 4)
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 33
+	turns.start(units, dice)
+	turns.select_unit(units[1])
+	battle.call("_update_turn_ui")
+	var point: Vector2 = map.get_global_transform_with_canvas() * (
+		map.map_to_surface(units[2].cell) + Vector2(0, -10))
+	await _click(point)
+	_check((battle.get("selection") as CombatSelection).preview_target == null
+		and units[1].action_left == 1 and units[2].hit_points == 12,
+		"앞의 높은 지형을 눌러 그 뒤에 완전히 가린 유닛을 선택하지 않음")
+	(battle.get("actions") as CombatActions).grid.heights.clear()
+	map.build_grid((battle.get("actions") as CombatActions).grid, stage.tile_set)
+	(battle.get("selection") as CombatSelection).clear_preview()
+	battle.call("_update_turn_ui")
+	await _click(point)
+	_check((battle.get("selection") as CombatSelection).preview_target == units[2]
+		and units[1].action_left == 1 and units[2].hit_points == 12,
+		"가리는 지형이 없어지면 같은 화면 위치의 유닛을 미리보기")
+	battle.queue_free()
+	await process_frame
+
+
 func _test_height_scene_input() -> void:
 	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
 	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
-	stage.heights = {Vector2i(1, 4): 1, Vector2i(1, 5): 2, Vector2i(2, 5): 4}
+	stage.heights = {Vector2i(1, 4): 1, Vector2i(1, 5): 2, Vector2i(3, 5): 4}
 	battle.stages[0] = stage
 	root.add_child(battle)
 	battle.set_process(false)
@@ -1478,8 +1539,8 @@ func _test_height_scene_input() -> void:
 	dice.seed = 33
 	turns.start(units, dice)
 	_check(actions.grid.height_at(Vector2i(1, 4)) == 1
-		and not actions.can_move(units[0], Vector2i(2, 5)), "실제 스테이지 높이가 걷기 판정에 연결")
-	_check(units[0].position == map.map_to_local(Vector2i(1, 4)) - Vector2(0, 8),
+		and not actions.can_move(units[0], Vector2i(3, 5)), "실제 스테이지 높이가 걷기 판정에 연결")
+	_check(units[0].position + Vector2(0, units[0].floor_offset_y) == map.map_to_local(Vector2i(1, 4)) - Vector2(0, 8),
 		"높이1 유닛의 발은16px 바닥의 절반인8px 위에 표시")
 	var destination: Vector2i = Vector2i(1, 5)
 	var point: Vector2 = map.get_global_transform_with_canvas() * (map.map_to_local(destination) - Vector2(0, 16))
@@ -1489,9 +1550,9 @@ func _test_height_scene_input() -> void:
 		"높이2 바닥의 실제 표면 첫 클릭은 올바른 칸을 미리보기")
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	_check(units[0].cell == destination and units[0].movement_left == 5
-		and units[0].position == map.map_to_local(destination) - Vector2(0, 16),
+		and units[0].position + Vector2(0, units[0].floor_offset_y) == map.map_to_local(destination) - Vector2(0, 16),
 		"높이 표면 두 번째 클릭은 이동1과 도착 표시 높이를 일치")
-	point = map.get_global_transform_with_canvas() * (map.map_to_local(Vector2i(2, 5)) - Vector2(0, 32))
+	point = map.get_global_transform_with_canvas() * (map.map_to_local(Vector2i(3, 5)) - Vector2(0, 32))
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	_check((battle.get("selection") as CombatSelection).preview_path.is_empty()
