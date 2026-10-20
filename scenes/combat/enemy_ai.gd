@@ -19,7 +19,7 @@ func play_turn(actor: CombatUnit, actions: CombatActions, pause: Callable = Call
 
 func _boss_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:
 	while _active(actor, actions) and actor.action_left > 0:
-		if (CombatActionRules.belongs_to(actor, "spin") and actions.grid.opponents_in_range(actor, 1).size() >= 2
+		if (CombatActionRules.belongs_to(actor, "spin") and actions.grid.opponents_in_area(actor, 1).size() >= 2
 			and await actions.spin(actor)):
 			await _pause(pause)
 			continue

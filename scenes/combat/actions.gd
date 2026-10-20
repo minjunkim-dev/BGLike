@@ -240,7 +240,7 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 	match action:
 		"spin":
 			return (CombatActionRules.belongs_to(actor, action) and actor.action_left > 0
-				and not grid.opponents_in_range(actor, 1).is_empty())
+				and not grid.opponents_in_area(actor, 1).is_empty())
 		"spawn":
 			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
 				and actor in turns.ordered_units and not grid.empty_neighbors(actor.cell).is_empty())
@@ -353,7 +353,7 @@ func attack(actor: CombatUnit, target: CombatUnit, shock: bool = false) -> bool:
 func spin(actor: CombatUnit) -> bool:
 	if not can_use(actor, "spin"):
 		return false
-	var targets: Array[CombatUnit] = grid.opponents_in_range(actor, 1)
+	var targets: Array[CombatUnit] = grid.opponents_in_area(actor, 1)
 	busy = true
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	logged.emit("%s 회전회오리: 인접 대상 %d명" % [actor.get_display_name(), targets.size()])
@@ -361,7 +361,7 @@ func spin(actor: CombatUnit) -> bool:
 	for target: CombatUnit in targets:
 		if actor.hit_points <= 0 or actor.is_stunned or actor != turns.current_unit or is_over():
 			break
-		if target.hit_points > 0 and grid.in_range(actor.cell, target.cell, 1):
+		if target.hit_points > 0 and target.cell in grid.area_cells(actor.cell, 1):
 			await _perform_attack(actor, target, false)
 	_finish()
 	return true

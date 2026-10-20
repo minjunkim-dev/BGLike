@@ -60,6 +60,7 @@ func _run() -> void:
 	await _test_scrap_robot_pull_priority()
 	await _test_scrap_robot_pull_movement_and_combo()
 	await _test_scrap_robot_spin_combos()
+	await _test_scrap_robot_spin_height()
 	await _test_scrap_robot_spin_reevaluation()
 	await _test_mother()
 	await _test_spiderling()
@@ -338,6 +339,24 @@ func _test_scrap_robot_spin_combos() -> void:
 	_check(spin_twice.logs.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 2
 		and boss.cell == Vector2i(4, 4) and boss.movement_left == 4,
 		"회전회오리 두 번에 이동과 만능팔 쉬는 턴을 쓰지 않음")
+
+
+func _test_scrap_robot_spin_height() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 50
+	boss.begin_turn()
+	f.units[0].cell = Vector2i(3, 4)
+	f.units[1].cell = Vector2i(5, 4)
+	f.actions.grid.heights[f.units[1].cell] = 2
+	f.actions.dice = ScriptedDice.new([11, 1], [20, 8])
+	await ai.play_turn(boss, f.actions)
+	_check(f.units[0].hit_points == 9 and f.units[1].hit_points == 14
+		and boss.action_left == 0 and boss.movement_left == 4,
+		"높이2 대상을 제외한 로봇AI는 유효 대상 하나를 기본 공격하고 이동·제외 대상HP를 보존")
+	_check(f.logs.filter(func(line: String) -> bool: return "회전회오리:" in line).is_empty(),
+		"평면 인접2명이어도 높이 제한 뒤 대상1명이면 AI는 회전회오리를 고르지 않음")
 
 
 func _test_scrap_robot_spin_reevaluation() -> void:
