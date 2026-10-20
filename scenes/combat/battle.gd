@@ -112,6 +112,9 @@ func _start_stage(restore_act: bool) -> void:
 	for cell: Vector2i in stage.crate_cells:
 		var prop: CombatGrid.Prop = actions.create_prop(cell, "crate")
 		assert(prop != null, "나무 상자 시작 칸이 유효하지 않습니다: %s %s" % [stage.resource_path, cell])
+	for cell: Vector2i in stage.rock_cells:
+		var prop: CombatGrid.Prop = actions.create_prop(cell, "rock")
+		assert(prop != null, "바위 시작 칸이 유효하지 않습니다: %s %s" % [stage.resource_path, cell])
 
 
 func _restart() -> void:
@@ -417,11 +420,22 @@ func _update_turn_ui() -> void:
 		var actor: CombatUnit = turns.current_unit
 		var prop: CombatGrid.Prop = selection.preview_prop
 		var note: String = "기본 공격만 가능"
+		var title: String = "바위" if prop.kind == "rock" else "나무 상자 · 내구도 %d/6" % prop.hit_points
 		if selection.selected_action == "attack" and actor != null:
-			var sides: int = actor.get_damage_sides()
-			var minimum: int = maxi(1, actor.get_damage_bonus() + (1 if sides > 0 else 0))
-			var maximum: int = maxi(1, actor.get_damage_bonus() + sides)
-			note = "피해 %d~%d · 행동1 · 자동 명중\n같은 상자 재클릭" % [minimum, maximum]
+			if prop.kind == "rock":
+				var roll: CombatActions.RockRoll = actions.preview_rock(actor, prop)
+				map.show_rock_roll(prop.cell, roll)
+				var collisions: Array[String] = []
+				for unit: CombatUnit in roll.collisions:
+					collisions.append(("아군 피해4: " if unit.is_ally else "적 피해4: ") + unit.get_display_name())
+				note = "행동1 · 주사위 없음 · 재클릭\n방향 %d,%d · %d칸 · %s\n%s" % [
+					roll.direction.x, roll.direction.y, roll.cells.size(), roll.reason,
+					", ".join(collisions) if not collisions.is_empty() else "충돌 없음"]
+			else:
+				var sides: int = actor.get_damage_sides()
+				var minimum: int = maxi(1, actor.get_damage_bonus() + (1 if sides > 0 else 0))
+				var maximum: int = maxi(1, actor.get_damage_bonus() + sides)
+				note = "피해 %d~%d · 행동1 · 자동 명중\n같은 상자 재클릭" % [minimum, maximum]
 			if not actions.can_attack_prop(actor, prop):
 				if actor.action_left <= 0:
 					note = "행동 없음"
@@ -431,7 +445,7 @@ func _update_turn_ui() -> void:
 					note = actions.unavailable_reason(actor, "attack")
 					if note.is_empty():
 						note = "사거리 또는 높이 조건을 확인"
-		hud.show_target_note("나무 상자 · 내구도 %d/6\n%s" % [prop.hit_points, note])
+		hud.show_target_note(title + "\n" + note)
 	elif selection.inspected_unit != null:
 		hud.show_unit(selection.inspected_unit)
 	var showing_move: bool = selection.selected_action == "move" or not selection.preview_path.is_empty()

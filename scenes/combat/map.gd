@@ -147,6 +147,38 @@ func show_movement(cells: Array[Vector2i], attack_cells: Array[Vector2i],
 		_overlays.append(marker)
 
 
+func show_rock_roll(origin: Vector2i, roll: CombatActions.RockRoll) -> void:
+	var previous: Vector2 = map_to_surface(origin)
+	for cell: Vector2i in roll.cells:
+		var marker: Node2D = Node2D.new()
+		marker.position = map_to_local(cell)
+		var start: Vector2 = previous - marker.position
+		var end: Vector2 = map_to_surface(cell) - marker.position
+		var forward: Vector2 = (end - start).normalized()
+		marker.draw.connect(func() -> void:
+			var color: Color = Color("f5a35c")
+			marker.draw_line(start, end, color)
+			marker.draw_line(end, end - forward * 4 + forward.orthogonal() * 2, color)
+			marker.draw_line(end, end - forward * 4 - forward.orthogonal() * 2, color))
+		add_child(marker)
+		_overlays.append(marker)
+		previous = map_to_surface(cell)
+	for unit: CombatUnit in roll.collisions:
+		var marker: Node2D = Node2D.new()
+		marker.position = map_to_local(unit.cell)
+		var center: Vector2 = map_to_surface(unit.cell) - marker.position
+		marker.draw.connect(func() -> void: marker.draw_circle(center, 5.0, Color("f07b73"), false))
+		add_child(marker)
+		_overlays.append(marker)
+	if not roll.reason.is_empty():
+		var marker: Node2D = Node2D.new()
+		marker.position = map_to_local(roll.stop_cell)
+		var center: Vector2 = map_to_surface(roll.stop_cell) - marker.position
+		marker.draw.connect(func() -> void: marker.draw_circle(center, 2.0, Color("f07b73"), false))
+		add_child(marker)
+		_overlays.append(marker)
+
+
 func show_grounds(grounds: Array[CombatActions.Ground]) -> void:
 	for marker: Node2D in _ground_markers:
 		marker.free()
@@ -191,6 +223,18 @@ func show_props(props: Array[CombatGrid.Prop], preview: CombatGrid.Prop = null) 
 		marker.position = map_to_local(prop.cell)
 		var center: Vector2 = map_to_surface(prop.cell) - marker.position
 		marker.draw.connect(func() -> void:
+			if prop.kind == "rock":
+				var outline: PackedVector2Array = [
+					center + Vector2(-9, -4), center + Vector2(-7, -10), center + Vector2(-2, -13),
+					center + Vector2(6, -11), center + Vector2(10, -5), center + Vector2(7, 2),
+					center + Vector2(-6, 4), center + Vector2(-9, -4)]
+				marker.draw_colored_polygon(outline, Color("77858c"))
+				marker.draw_colored_polygon(PackedVector2Array([
+					center + Vector2(-9, -4), center + Vector2(1, -1), center + Vector2(10, -5),
+					center + Vector2(7, 2), center + Vector2(-6, 4)]), Color("4c5962"))
+				marker.draw_polyline(outline, Color("f4cf69") if prop == preview else Color("303b42"))
+				marker.draw_line(center + Vector2(-3, -9), center + Vector2(3, -5), Color("b2c1c6"))
+				return
 			marker.draw_colored_polygon(PackedVector2Array([
 				center + Vector2(-8, -9), center + Vector2(0, -5),
 				center + Vector2(0, 3), center + Vector2(-8, -1)]), Color("a27643"))
