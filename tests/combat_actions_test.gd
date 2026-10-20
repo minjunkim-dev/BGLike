@@ -100,6 +100,7 @@ func _run() -> void:
 	await _test_scene_input()
 	await _test_scene_ally_shove()
 	await _test_height_scene_input()
+	await _test_scene_fall_feedback()
 	await _test_pit_scene_input()
 	await _test_pit_scene_victory()
 	await _test_isometric_unit_occlusion()
@@ -1752,6 +1753,35 @@ func _test_height_scene_input() -> void:
 	battle.call("_start_stage", true)
 	_check(actions.grid.heights.is_empty() and units[0].position == map.map_to_local(units[0].cell),
 		"다음 실제 평면 스테이지는 높이0으로 복귀하고 fixture 높이를 이어받지 않음")
+	battle.queue_free()
+	await process_frame
+
+
+func _test_scene_fall_feedback() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	stage.ally_cells = [Vector2i(1, 4), Vector2i(2, 4)]
+	stage.heights = {Vector2i(1, 4): 2, Vector2i(2, 4): 3}
+	battle.stages[0] = stage
+	root.add_child(battle)
+	battle.set_process(false)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	turns.start(units, _dice_for([20, 20, 1, 1], [20, 20, 20, 20]))
+	turns.select_unit(units[0])
+	actions.dice = _dice_for([], [])
+	var feedback_feet: Array[Vector2] = []
+	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+		if unit == units[1] and text == "-3":
+			feedback_feet.append(unit.position + Vector2(0, unit.floor_offset_y)))
+	_check(actions.shove(units[0], units[1]) and units[1].cell == Vector2i(3, 4)
+		and units[1].hit_points == 11 and units[0].bonus_action_left == 0,
+		"실제 장면의3칸 낙하는 고정 피해3과 밀치기 비용을 적용")
+	_check(feedback_feet == [map.map_to_surface(Vector2i(3, 4))],
+		"실제 낙하 피해 피드백은 착지 바닥의 유닛 위치에서 발생")
 	battle.queue_free()
 	await process_frame
 

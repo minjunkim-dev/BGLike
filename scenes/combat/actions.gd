@@ -454,6 +454,8 @@ func _land(target: CombatUnit, destination: Vector2i) -> void:
 		return
 	var amount: int = ceili((drop - 2) * target.get_max_hit_points() * 0.15)
 	_damage(target, amount)
+	# 낙하 피드백 전에 착지 위치와 HP를 화면에 반영한다.
+	changed.emit()
 	logged.emit("%s 낙하 피해: %d · HP %d" % [target.get_display_name(), amount, target.hit_points])
 	feedback.emit(target, "-%d" % amount)
 
