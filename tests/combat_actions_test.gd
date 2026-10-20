@@ -1497,6 +1497,12 @@ func _test_height_scene_input() -> void:
 	_check((battle.get("selection") as CombatSelection).preview_path.is_empty()
 		and units[0].cell == destination and units[0].movement_left == 5,
 		"높이 차2의 바닥 표면 클릭도 이동·자원 소비 거부")
+	point = map.get_global_transform_with_canvas() * (map.map_to_local(Vector2i(2, 4)) - Vector2(0, 4))
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check((battle.get("selection") as CombatSelection).preview_path.is_empty()
+		and units[0].cell == destination and units[0].movement_left == 5,
+		"앞 칸의 높은 옆면을 눌러도 가려진 뒤 칸을 선택하거나 이동하지 않음")
 	(battle.get("progress") as CombatActProgress).stage_index = 1
 	battle.call("_start_stage", true)
 	_check(actions.grid.heights.is_empty() and units[0].position == map.map_to_local(units[0].cell),

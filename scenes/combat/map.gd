@@ -31,8 +31,16 @@ func surface_to_map(point: Vector2) -> Vector2i:
 	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.y > b.y)
 	var size: Vector2 = Vector2(tile_set.tile_size)
 	for cell: Vector2i in cells:
-		if Rect2(map_to_surface(cell) - size / 2.0, size).has_point(point):
+		var surface: Vector2 = map_to_surface(cell)
+		if Rect2(surface - size / 2.0, size).has_point(point):
 			return cell
+		var ground: Vector2 = map_to_local(cell)
+		var column: Rect2 = Rect2(Vector2(surface.x - size.x / 2.0,
+			minf(surface.y, ground.y) - size.y / 2.0),
+			Vector2(size.x, size.y + absf(surface.y - ground.y)))
+		# 앞 칸의 옆면은 뒤 칸의 바닥 클릭도 가린다.
+		if column.has_point(point):
+			return Vector2i(-1, -1)
 	return Vector2i(-1, -1)
 
 
