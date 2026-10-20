@@ -389,10 +389,8 @@ func show_attack_preview(target: CombatUnit, preview: CombatChecks.AttackPreview
 
 
 func prepare_order_rotation(units: Array[CombatUnit]) -> void:
-	if not _order_moves.is_empty():
-		return
 	for unit: CombatUnit in units:
-		if unit in _portraits:
+		if unit in _portraits and unit not in _order_moves:
 			_order_moves[unit] = _portraits[unit].global_position
 
 

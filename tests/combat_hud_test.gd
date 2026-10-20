@@ -68,6 +68,7 @@ func _run() -> void:
 	await _test_portrait_join_interrupted_by_order_change(true)
 	await _test_portrait_join_interrupted_by_order_change(false)
 	await _test_portrait_join_interrupted_by_order_change(false, true)
+	await _test_boundary_incapacitated_portrait_join()
 	await _test_order_bar_input()
 	await _test_transparent_order_input()
 	await _test_reaction_flow()
@@ -1037,6 +1038,33 @@ func _test_portrait_join_interrupted_by_order_change(wait_for_start: bool, remov
 	if inserted != null:
 		inserted.free()
 	units[2].show()
+	units[3].show()
+	_reset_units()
+
+
+func _test_boundary_incapacitated_portrait_join() -> void:
+	_reset_units()
+	var desired: Array[CombatUnit] = [units[0], units[2], units[1], units[3]]
+	var rolls: Array[int] = []
+	for unit: CombatUnit in units:
+		rolls.append(20 - 3 * desired.find(unit) - unit.get_dexterity())
+	turns.start(units, ScriptedDice.new(rolls, [20, 20, 20, 20]))
+	turns.end_turn()
+	turns.end_turn()
+	await process_frame
+	await process_frame
+	actions.incapacitate(units[3])
+	_check(turns.current_unit == units[1] and turns.get_current_group() == [units[1], units[0]],
+		"마지막 적의 전투 불능은 라운드 경계의 앞 아군을 현재 묶음 뒤에 즉시 합류시킴")
+	await process_frame
+	await process_frame
+	var archer: Button = (hud.get("_portraits") as Dictionary)[units[1]]
+	var start: float = archer.global_position.x
+	await create_timer(0.1).timeout
+	var middle: float = archer.global_position.x
+	await create_timer(0.2).timeout
+	_check(start > middle and middle > archer.global_position.x,
+		"경계의 앞 아군 위치가 먼저 예약돼도 다른 생존 초상도 기존 표시 위치에서 이동함")
 	units[3].show()
 	_reset_units()
 
