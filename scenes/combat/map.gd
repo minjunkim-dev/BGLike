@@ -15,6 +15,8 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet) -> void:
 	for y: int in range(grid.map_size.y):
 		for x: int in range(grid.map_size.x):
 			var cell: Vector2i = Vector2i(x, y)
+			if not grid.is_floor(cell):
+				continue
 			var height: int = grid.height_at(cell)
 			if not sources.has(height):
 				sources[height] = _add_height_source(height)

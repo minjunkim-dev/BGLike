@@ -79,6 +79,9 @@ func _run() -> void:
 	await _test_height_adjacency()
 	await _test_high_ground()
 	_test_fall_damage()
+	await _test_pit_movement()
+	_test_pit_spawn()
+	_test_pit_forced_movement()
 	await _test_height_opportunity()
 	_test_height_shove()
 	_test_height_pull()
@@ -96,6 +99,8 @@ func _run() -> void:
 	await _test_scene_input()
 	await _test_scene_ally_shove()
 	await _test_height_scene_input()
+	await _test_pit_scene_input()
+	await _test_pit_scene_victory()
 	await _test_scene_shock()
 	for f: Fixture in _fixtures:
 		for connection: Dictionary in f.actions.reaction_requested.get_connections():
@@ -830,6 +835,95 @@ func _test_fall_damage() -> void:
 		"끌기 착지에도 같은 최대HP기준 고정 낙하 피해 적용")
 	_check(boss.action_left == 0 and boss.pull_cooldown == 2,
 		"끌기 대결 외 낙하 주사위·내성 없이 기존 행동과 대기턴만 소비")
+
+
+func _test_pit_movement() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	actor.cell = Vector2i.ZERO
+	f.actions.grid.map_size = Vector2i(3, 1)
+	f.actions.grid.pits = [Vector2i(1, 0)]
+	f.actions.dice = _dice_for([], [])
+	_check(not f.actions.can_move(actor, Vector2i(1, 0))
+		and not f.actions.can_move(actor, Vector2i(2, 0))
+		and f.actions.reachable_cells(actor).is_empty(),
+		"낭떠러지는 걷기 목적지나 통과 경로가 될 수 없음")
+	_check(not await f.actions.move_to(actor, Vector2i(1, 0))
+		and actor.cell == Vector2i.ZERO and actor.movement_left == 6,
+		"낭떠러지 걷기 거부는 위치·이동력·주사위를 보존")
+
+
+func _test_pit_spawn() -> void:
+	for available: bool in [false, true]:
+		var f: Fixture = _fixture()
+		var mother: CombatUnit = f.units[2]
+		mother.kind = CombatUnit.Kind.MOTHER_SPIDER
+		mother.cell = Vector2i.ZERO
+		f.units[0].cell = Vector2i(9, 9)
+		f.units[1].cell = Vector2i(9, 8)
+		f.units[3].cell = Vector2i(8, 8)
+		f.actions.grid.map_size = Vector2i(2, 2)
+		f.actions.grid.pits = [Vector2i(1, 0)]
+		if not available:
+			f.actions.grid.pits.append(Vector2i(0, 1))
+		f.turns.end_turn()
+		f.turns.end_turn()
+		f.actions.dice = _dice_for([1], [1]) if available else _dice_for([], [])
+		_check(f.actions.can_use(mother, "spawn") == available
+			and f.actions.spawn_spiderling(mother) == available,
+			"소환 후보에서 낭떠러지를 제외하고 빈 바닥이 없으면 실행 거부")
+		if f.units.size() > 4:
+			_created.append(f.units.back())
+		_check(f.units.size() == (5 if available else 4)
+			and mother.action_left == (0 if available else 1),
+			"낭떠러지뿐이면 소환·행동·주사위를 보존")
+		if available:
+			_check(f.units.back().cell == Vector2i(0, 1), "낭떠러지 옆의 유일한 빈 바닥에만 소환")
+
+
+func _test_pit_forced_movement() -> void:
+	for ally: bool in [false, true]:
+		for height: int in [0, -2]:
+			var f: Fixture = _fixture()
+			var actor: CombatUnit = f.units[0]
+			var target: CombatUnit = f.units[1 if ally else 2]
+			if ally:
+				f.units[2].cell = Vector2i(9, 9)
+			target.cell = Vector2i(5, 4)
+			target.is_stunned = not ally
+			f.actions.grid.heights = {actor.cell: height, target.cell: height + 1}
+			f.actions.grid.pits = [Vector2i(6, 4)]
+			f.units[3].marked_target = target
+			f.actions.dice = _dice_for([], [])
+			_check(f.actions.shove(actor, target) and target.hit_points == 0
+				and target.cell == Vector2i(6, 4) and actor.bonus_action_left == 0,
+				"아군·적 모두 낭떠러지에 밀리면 바닥 높이 비교·낙하 주사위 없이 즉시 전투 불능")
+			_check(target not in f.turns.ordered_units and not target.visible
+				and f.actions.grid.unit_at(Vector2i(6, 4)) == null and f.units[3].marked_target == null,
+				"낙사도 턴·점유·표식·표시를 함께 정리")
+	var pulled: Fixture = _fixture()
+	var boss: CombatUnit = pulled.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.cell = Vector2i(4, 4)
+	boss.begin_turn()
+	pulled.turns.current_unit = boss
+	var target: CombatUnit = pulled.units[0]
+	target.cell = Vector2i(7, 4)
+	pulled.units[3].cell = Vector2i(9, 9)
+	pulled.actions.grid.heights = {boss.cell: -2, Vector2i(4, 5): -1}
+	pulled.actions.grid.pits = [Vector2i(5, 4)]
+	pulled.actions.dice = _dice_for([20, 1], [20, 20])
+	_check(pulled.actions.grid.pull_cells(boss, target) == [Vector2i(5, 4)]
+		and pulled.actions.pull(boss, target) and target.hit_points == 0,
+		"끌기도 시전자 옆 낭떠러지의 없는 바닥 높이와 비교하지 않고 즉시 낙사")
+	var last: Fixture = _fixture()
+	last.actions.incapacitate(last.units[3])
+	last.units[2].is_stunned = true
+	last.actions.grid.pits = [Vector2i(6, 4)]
+	last.actions.dice = _dice_for([], [])
+	_check(last.actions.shove(last.units[0], last.units[2])
+		and last.actions.is_over() and last.actions.is_victory(),
+		"마지막 적의 낙사는 기존 전투 승리 결과로 연결")
 
 
 func _test_height_opportunity() -> void:
@@ -1590,6 +1684,71 @@ func _test_height_scene_input() -> void:
 	battle.call("_start_stage", true)
 	_check(actions.grid.heights.is_empty() and units[0].position == map.map_to_local(units[0].cell),
 		"다음 실제 평면 스테이지는 높이0으로 복귀하고 fixture 높이를 이어받지 않음")
+	battle.queue_free()
+	await process_frame
+
+
+func _test_pit_scene_input() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	var pit: Vector2i = Vector2i(2, 4)
+	stage.pits = [pit]
+	battle.stages[0] = stage
+	root.add_child(battle)
+	battle.set_process(false)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 33
+	turns.start(units, dice)
+	_check(actions.grid.pits == [pit] and not actions.can_move(units[0], pit)
+		and map.get_used_cells().size() == 99 and pit not in map.get_used_cells(),
+		"실제 낭떠러지 스테이지는 바닥을 그리지 않고 걷기도 금지")
+	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(pit)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	await _click(point, MOUSE_BUTTON_RIGHT)
+	_check(units[0].cell == Vector2i(1, 4) and units[0].movement_left == 6
+		and (battle.get("selection") as CombatSelection).preview_path.is_empty(),
+		"보이는 낭떠러지의 두 번 우클릭은 이동·자원을 소비하지 않음")
+	(battle.get("progress") as CombatActProgress).stage_index = 1
+	battle.call("_start_stage", true)
+	_check(actions.grid.pits.is_empty() and map.get_used_cells().size() == 100,
+		"다음 실제 스테이지는 낭떠러지 fixture를 이어받지 않고 평면100칸 복귀")
+	battle.queue_free()
+	await process_frame
+
+
+func _test_pit_scene_victory() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	stage.ally_cells = [Vector2i(4, 4), Vector2i(3, 4)]
+	stage.pits = [Vector2i(6, 4)]
+	battle.stages[0] = stage
+	root.add_child(battle)
+	battle.set_process(false)
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 33
+	turns.start(units, dice)
+	units[2].cell = Vector2i(5, 4)
+	units[2].is_stunned = true
+	actions.incapacitate(units[3])
+	battle.call("_update_turn_ui")
+	actions.dice = _dice_for([], [])
+	hud.action_selected.emit("shove")
+	var point: Vector2 = units[2].get_global_transform_with_canvas() * Vector2(0, -10)
+	await _click(point)
+	await _click(point)
+	_check(actions.is_victory() and units[2].hit_points == 0 and not units[2].visible
+		and hud.get_node("Result").visible and "낙사" in hud.message_label.text,
+		"기절시킨 마지막 적을 실제 HUD·몸통 입력으로 밀면 낙사 로그와 승리 결과 표시")
 	battle.queue_free()
 	await process_frame
 

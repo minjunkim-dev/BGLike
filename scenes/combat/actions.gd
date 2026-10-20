@@ -442,8 +442,14 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 
 
 func _land(target: CombatUnit, destination: Vector2i) -> void:
-	var drop: int = grid.height_at(target.cell) - grid.height_at(destination)
+	var height: int = grid.height_at(target.cell)
 	target.cell = destination
+	if grid.pits.has(destination):
+		incapacitate(target)
+		logged.emit("%s 낙사: 전투 불능" % target.get_display_name())
+		feedback.emit(target, "낙사")
+		return
+	var drop: int = height - grid.height_at(destination)
 	if drop < 3:
 		return
 	var amount: int = ceili((drop - 2) * target.get_max_hit_points() * 0.15)

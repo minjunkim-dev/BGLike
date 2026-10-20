@@ -36,7 +36,7 @@ make check
 
 전투 코드에서 공간 판단은 [CombatGrid](scenes/combat/grid.gd)가 맡습니다. 경로·도달 비용·점유·사거리와 공격 미리보기를 같은 유닛 배열에서 계산합니다.
 [CombatSelection](scenes/combat/selection.gd)은 동작·대상·이동 미리보기의 선택·취소·확정을 맡습니다. [battle.gd](scenes/combat/battle.gd)는 입력 좌표·화면·연출을 연결합니다.
-[CombatMap](scenes/combat/map.gd)은 바닥 높이의 표시와 입력 좌표를 맞춥니다. `CombatStage.heights`에 없는 칸의 높이는 0입니다.
+[CombatMap](scenes/combat/map.gd)은 바닥 높이의 표시와 입력 좌표를 맞춥니다. `CombatStage.heights`에 없는 칸의 높이는 0입니다. `CombatStage.pits`는 바닥이 없는 낭떠러지 칸입니다.
 턴 자원·반응·피해 실행은 [CombatActions](scenes/combat/actions.gd), 적의 선택 우선순위는 [CombatEnemyAi](scenes/combat/enemy_ai.gd)에 둡니다.
 
 ## 협업 규칙
@@ -53,7 +53,7 @@ PR의 실행 검증은 GitHub Actions가 수행합니다. [Godot 캐시 설명](
 
 Issue #12의 M1 전투 프로토타입을 기반으로 3막 진행과 드랍·장착을 구현합니다. [Issue #163](https://github.com/minjunkim-dev/BGLike/issues/163)에서 평면 사각 격자로 전환했습니다. 640×360 기준 화면, 정수 배율과 픽셀 필터를 유지합니다. 맵은 10×10 사각 칸이며 타일은 16×16px입니다. 기존 9개 스테이지의 좌표와 몬스터 구성을 유지합니다. 현재 모든 칸은 높이0입니다. 규칙은 [게임 구조 기획서](docs/GAME_STRUCTURE.md)를 따릅니다.
 
-[헥사 격자 시안](docs/HEX_GRID_PREVIEW.md)은 사각 높이 격자로 대체된 과거 기록입니다([Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136)). 높이 차1까지 걷기·인접 판정과 같거나 낮은 칸의 강제 이동을 구현했습니다. 원거리 사거리는 높이와 중간 바닥을 무시한 평면 거리입니다. 아군 밀치기는 대결하지 않습니다. 기존 스테이지의 새 높이 배치는 정하지 않았습니다. 고지대 유리·낙하·낭떠러지와 점프는 후속 티켓 #165·#166에서 구현합니다. 기준은 [게임 구조 기획서 6장](docs/GAME_STRUCTURE.md#6-사각-높이-격자)입니다. 16px 바닥·높이당8px는 검증용 V1 권장값이며 기획자의 최종 시안 승인과 구분합니다.
+[헥사 격자 시안](docs/HEX_GRID_PREVIEW.md)은 사각 높이 격자로 대체된 과거 기록입니다([Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136)). 높이 차1까지 걷기·인접 판정과 같거나 낮은 바닥의 강제 이동을 구현했습니다. 원거리 사거리는 높이와 중간 바닥을 무시한 평면 거리입니다. 아군 밀치기는 대결하지 않습니다. 공격자가 높이 차2 이상 높은 원거리 공격은 유리입니다. 높이 차3부터 최대 HP 기준 고정 낙하 피해를 적용합니다. 낭떠러지는 걷거나 소환할 수 없으며 강제 이동으로 떨어지면 즉시 전투 불능입니다. 기존9개 스테이지는 높이0·낭떠러지 없음으로 유지합니다. 새 높이·위험 배치는 정하지 않았습니다. 점프는 후속 티켓 #166에서 구현합니다. 기준과 낙하식은 [게임 구조 기획서 6장](docs/GAME_STRUCTURE.md#6-사각-높이-격자)입니다. 16px 바닥·높이당8px는 검증용 V1 권장값이며 기획자의 최종 시안 승인과 구분합니다.
 
 1-1부터 3-3까지 9번의 전투를 순서대로 진행합니다. 화면 위에 현재 막과 스테이지를 표시합니다. 승리 창에서 보상을 확인하고 정비한 뒤 다음 전투에 진입합니다. 3-3도 보상·정비를 마친 뒤 3막 졸업을 표시합니다. 전멸하면 현재 막의 첫 전투부터 다시 시작합니다.
 
