@@ -886,9 +886,12 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	for rolled: int in last_damage_rolls:
 		last_damage += rolled
 	_damage(target, last_damage)
-	logged.emit(tr("%s 피해%s: %s + %d = %d · HP %d") % [target.get_display_name(),
-		tr(" (표식 추가)") if has_mark_damage else "",
-		str(last_damage_rolls), damage_bonus, last_damage, target.hit_points])
+	if last_damage_rolls.is_empty():
+		logged.emit(tr("%s 피해: %d · HP %d") % [target.get_display_name(), last_damage, target.hit_points])
+	else:
+		logged.emit(tr("%s 피해%s: %s + %d = %d · HP %d") % [target.get_display_name(),
+			tr(" (표식 추가)") if has_mark_damage else "",
+			str(last_damage_rolls), damage_bonus, last_damage, target.hit_points])
 	feedback.emit(target, "-%d" % last_damage)
 	if shock and target.hit_points > 0 and target.is_boss():
 		logged.emit(tr("%s 기절 면역") % target.get_display_name())

@@ -1363,9 +1363,13 @@ func _test_spiderling_stats_and_damage() -> void:
 		f.turns.end_turn()
 		f.units[0].reaction_left = 0
 		f.actions.dice = _dice_for([20 if critical else 12], [20])
+		var logs: Array[String] = []
+		f.actions.logged.connect(func(line: String) -> void: logs.append(line))
 		_check(await f.actions.attack(spiderling, f.units[0]), "새끼 거미 기본 공격 실행")
 		_check(f.actions.last_damage == 1 and f.units[0].hit_points == 11
 			and f.actions.last_damage_rolls.is_empty(), "새끼 거미는 치명타도 피해1이며 피해 주사위를 굴리지 않음")
+		_check(logs[-1] == "%s 피해: 1 · HP 11" % f.units[0].get_display_name(),
+			"주사위 없는 고정 피해 로그는 빈 괄호 없이 고정값만 표시: " + logs[-1])
 
 
 func _test_mother_stats_and_damage() -> void:
