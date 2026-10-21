@@ -446,12 +446,15 @@ func _test_armor_unequip_scene() -> void:
 			and loot.bag.back() == warrior_armor and preparation.continue_button.has_focus(),
 			"실제 해제 버튼은 잃은 HP를 유지하고 방어구를 가방 빈 칸에 보관")
 		unequip = preparation.content.find_child("UnequipArmor0", true, false) as Button
-		_check(unequip.disabled and not unequip.tooltip_text.is_empty(),
+		_check(unequip != null and unequip.disabled and not unequip.tooltip_text.is_empty(),
 			"방어구가 없으면 해제 버튼 비활성과 이유 표시")
 		var blocked: Button = preparation.content.find_child("UnequipArmor1", true, false) as Button
-		_check(blocked.disabled and "빈 칸" in blocked.tooltip_text,
+		_check(blocked != null and blocked.disabled and "빈 칸" in blocked.tooltip_text,
 			"가방이 가득 차면 해제 버튼 비활성과 호버 설명에 이유 표시")
-		await _click(blocked)
+		if blocked != null:
+			await _click(blocked)
+		# 비활성 버튼은 pressed를 내지 않으므로 화면 처리기의 거절도 직접 확인한다.
+		preparation._unequip_armor(1)
 		_check(party[1].armor == archer_armor and party[1].hit_points == archer_hit_points
 			and loot.bag.size() == 12, "가득 찬 가방에서 해제 입력은 방어구·HP·가방 보존")
 		await _click(preparation.continue_button)
