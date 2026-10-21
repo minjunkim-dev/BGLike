@@ -1440,8 +1440,6 @@ func _test_order_bar_input() -> void:
 	var scroll: ScrollContainer = hud.get_node("OrderScroll") as ScrollContainer
 	var last_panel: Control = hud.order_bar.get_child(-1) as Control
 	var panel_end: float = last_panel.get_global_rect().end.x
-	_check(panel_end < scroll.get_global_rect().end.x and not (hud.get_node("OrderFade") as Control).visible,
-		"초상이 넘치지 않으면 턴 순서 바 끝을 흐리게 하지 않음")
 	var camera: Camera2D = battle.get_node("Camera") as Camera2D
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	var original: Vector2 = camera.position
@@ -1547,22 +1545,12 @@ func _test_spawned_portrait_input() -> void:
 			and scroll.get_h_scroll_bar().is_visible_in_tree() and visible_bar.has_area()
 			and not visible_bar.intersects((hud.get_node("UnitDetails") as Control).get_global_rect()),
 			"%s: 3-1 시작 초상7개가 넘쳐도 보이는 턴 순서 바는 정보 패널과 겹치지 않고 가로 스크롤" % size)
-		# #255: 넘친 쪽 끝은 흐림, 바와 정보 패널 사이는 구분선으로 표시한다.
-		var fade: Control = hud.get_node("OrderFade") as Control
+		# #255: 바와 정보 패널 사이 구분선. 넘친 쪽 끝의 흐림은 엔진 스크롤 힌트가 그린다.
 		var divider: Control = hud.get_node("OrderDivider") as Control
-		var details_left: float = (hud.get_node("UnitDetails") as Control).get_global_rect().position.x
-		_check(fade.visible and fade.mouse_filter == Control.MOUSE_FILTER_IGNORE
-			and is_equal_approx(fade.get_global_rect().end.x, scroll.get_global_rect().end.x)
-			and scroll.get_global_rect().encloses(fade.get_global_rect())
+		_check(scroll.scroll_hint_mode == ScrollContainer.SCROLL_HINT_MODE_BOTTOM_AND_RIGHT
 			and divider.get_global_rect().position.x >= scroll.get_global_rect().end.x
-			and divider.get_global_rect().end.x <= details_left,
-			"%s: 넘친 턴 순서 바 끝의 흐림과 정보 패널 앞 구분선" % size)
-		scroll.scroll_horizontal = int(scroll.get_h_scroll_bar().max_value)
-		await process_frame
-		_check(not fade.visible, "%s: 끝까지 스크롤하면 흐림을 숨김" % size)
-		scroll.scroll_horizontal = 0
-		await process_frame
-		_check(fade.visible, "%s: 처음으로 돌아오면 흐림을 다시 표시" % size)
+			and divider.get_global_rect().end.x <= (hud.get_node("UnitDetails") as Control).get_global_rect().position.x,
+			"%s: 턴 순서 바 오른쪽 끝 흐림과 정보 패널 앞 구분선" % size)
 	# 고철로봇의 긴 상태 줄도 정보 패널을 왼쪽으로 넓히지 않고 줄을 바꾼다.
 	var status_unit: CombatUnit = units[2]
 	var status_kind: CombatUnit.Kind = status_unit.kind

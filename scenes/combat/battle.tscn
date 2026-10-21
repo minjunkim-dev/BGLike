@@ -23,7 +23,7 @@
 default_font_size = 12
 
 [sub_resource type="Gradient" id="Gradient_order_fade"]
-colors = PackedColorArray(0.08, 0.11, 0.15, 0, 0.08, 0.11, 0.15, 1)
+colors = PackedColorArray(0.08, 0.11, 0.15, 1, 0.08, 0.11, 0.15, 0)
 
 [sub_resource type="GradientTexture2D" id="GradientTexture2D_order_fade"]
 gradient = SubResource("Gradient_order_fade")
@@ -88,7 +88,9 @@ offset_left = 8.0
 offset_top = 25.0
 offset_right = -220.0
 offset_bottom = 86.0
+theme_override_icons/scroll_hint_horizontal = SubResource("GradientTexture2D_order_fade")
 vertical_scroll_mode = 0
+scroll_hint_mode = 3
 
 [node name="OrderBar" type="HBoxContainer" parent="UI/TurnHud/OrderScroll"]
 layout_mode = 2
@@ -96,18 +98,6 @@ size_flags_horizontal = 3
 size_flags_vertical = 0
 mouse_filter = 2
 theme_override_constants/separation = 6
-
-[node name="OrderFade" type="TextureRect" parent="UI/TurnHud"]
-visible = false
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -244.0
-offset_top = 25.0
-offset_right = -220.0
-offset_bottom = 86.0
-mouse_filter = 2
-texture = SubResource("GradientTexture2D_order_fade")
-expand_mode = 1
 
 [node name="OrderDivider" type="ColorRect" parent="UI/TurnHud"]
 anchor_left = 1.0
