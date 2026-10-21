@@ -25,6 +25,7 @@ func _check(condition: bool, message: String) -> void:
 
 func _run() -> void:
 	_test_selection()
+	_test_skill_icons()
 	var scene: PackedScene = load("res://scenes/main.tscn") as PackedScene
 	var main: Node = scene.instantiate()
 	# 전사·궁수 UI 회귀는 기존 풋내기 배치를 fixture로 유지한다.
@@ -85,6 +86,15 @@ func _run() -> void:
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat HUD: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_skill_icons() -> void:
+	for action: String in ["attack", "second_wind", "surge", "parry", "opportunity", "mark", "shock",
+			"disengage", "shove", "jump", "potion"]:
+		var icon: Texture2D = CombatActionRules.icon_of(action)
+		_check(icon != null and icon.get_size() == Vector2(64, 64), "스킬 아이콘 64px 원본: " + action)
+	for action: String in ["spawn", "pull", "spin"]:
+		_check(CombatActionRules.icon_of(action) == null, "적 전용 스킬은 아이콘 범위 밖: " + action)
 
 
 func _test_selection() -> void:
