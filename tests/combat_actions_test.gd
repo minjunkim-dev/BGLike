@@ -447,6 +447,12 @@ func _test_rock_scene_input() -> void:
 		and "주사위 없음" in hud.preview_label.text and "방향 0,-1" in hud.preview_label.text
 		and "밀기 막힘" in hud.preview_label.text,
 		"바위 안내는 같은 충돌규칙의 방향/경로/정지와 아군 피해4/무굴림을 표시한다")
+	actions.grid.pits.append(Vector2i(1, 1))
+	battle.call("_update_turn_ui")
+	_check("아군 피해4: %s · 낙사" % units[1].get_display_name() in hud.preview_label.text,
+		"바위 안내의 충돌 대상 뒤에 밀려서 받는 낙사를 붙인다")
+	actions.grid.pits.erase(Vector2i(1, 1))
+	battle.call("_update_turn_ui")
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	_check(selection.preview_prop == null and rock.cell == Vector2i(1, 3), "바위 미리보기를 우클릭으로 취소한다")
 	hud.action_selected.emit("shove")
@@ -1868,6 +1874,16 @@ func _test_forced_move_landing_preview() -> void:
 	_check(f.actions.rock_landing(roll, target) == "낙사"
 		and f.actions.attack_prop(f.units[0], rock) and target.hit_points == 0,
 		"바위가 대상을 낭떠러지로 밀면 미리보기에 실제와 같은 낙사를 보인다")
+	f = _fixture()
+	target = f.units[2]
+	target.cell = Vector2i(4, 6)
+	f.actions.grid.pits = [Vector2i(4, 8)]
+	rock = f.actions.create_prop(Vector2i(4, 5), "rock")
+	roll = f.actions.preview_rock(f.units[0], rock)
+	f.actions.dice = _dice_for([], [])
+	_check(f.actions.rock_landing(roll, target) == "낙사"
+		and f.actions.attack_prop(f.units[0], rock) and target.hit_points == 0 and target.cell == Vector2i(4, 8),
+		"바위의 두 번째 밀기가 낭떠러지로 떨어뜨려도 미리보기에 낙사를 보인다")
 	f = _fixture()
 	target = f.units[2]
 	target.cell = Vector2i(4, 6)
