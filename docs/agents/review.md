@@ -53,6 +53,9 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 `one-way/broad`는 사람이 최종 head SHA와 영향 범위를 승인해야 한다.
 
 병합 직전에 GitHub API로 head·base와 검사 결과를 다시 확인한다.
+CodeQL 경고 수정 PR은 workflow 성공이 아니라 code scanning API로 판정한다.
+`refs/pull/<PR>/merge`의 Actions·Python 분석은 최종 base와 최종 head를 부모로 둔 merge 커밋에서 끝나야 한다. 각 분석의 `error`·`warning` 필드는 비어 있어야 한다. 그 ref의 열린 경고는 0건이어야 한다.
+code scanning API는 분석이 없는 ref에도 열린 경고 0건을 반환한다. 경고 수만 보고 판정하지 않는다.
 head나 base가 바뀌면 최종 독립 리뷰와 영향받는 검증을 갱신한다.
 `gh pr merge <PR> --repo <OWNER/REPO> --squash --match-head-commit <FINAL_HEAD_SHA>`로 병합한다.
 `--admin`으로 보호를 우회하지 않는다. 사용자가 병합을 금지한 PR은 열어 둔다.
