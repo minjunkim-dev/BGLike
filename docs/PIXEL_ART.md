@@ -26,6 +26,14 @@ HP·상태·피해 팝업은 그 유닛의 실제 그림 높이를 기준으로 
 
 제작 원본과 프롬프트는 `scenes/combat/art/sources/`에 보존한다. 이 폴더는 Godot 리소스 가져오기에서 제외한다. `unit_generation.json`은 원본·프롬프트·가공 규격을 기록한다. `normalize_units.py`는 Pillow가 있는 Python에서 시트를 추출한다. 시스템 Python에 Pillow가 없으면 기존 Codex 번들 Python을 사용한다. 프로젝트의 실행 의존성을 추가하지 않는다. 런타임에는 개별 PNG 프레임을 연결한다. 생성 도구와 원본·가공 기록은 [자산 고지](../THIRD_PARTY_NOTICES.md)에 기록한다.
 
+## 스킬 아이콘
+
+[#225](https://github.com/minjunkim-dev/BGLike/issues/225)의 임시 스킬 아이콘은 아군 스킬과 공용 동작11종이다. 런타임 파일은 `scenes/combat/art/icons/skills/<동작 id>.png`다. 동작 id는 `CombatActionRules.NAMES`의 키다. `CombatActionRules.icon_of(id)`로 찾는다. 적 전용 스킬은 아이콘이 없어 null을 돌려준다. HUD 배치는 [#226](https://github.com/minjunkim-dev/BGLike/issues/226)에서 한다.
+
+개발 결정: 64×64 RGBA 원본을 scale 0.5로 표시해32×32 논리px로 쓴다. 유닛과 같은 2배 원본 규칙이다. 테두리에 비용 자원 색을 넣지 않는다. 배경은 투명하다. 기획자가 나중에 바꿀 수 있다.
+
+이 런타임에는 유닛 제작에 쓴 내장 `image_gen`이 없다. 그래서 `scenes/combat/art/sources/icons/draw_skill_icons.py`가 Pillow 도형을64px 격자에 직접 배치한다. 안티앨리어싱·축소 없이 그리고, 모든 도형 바깥에2px 어두운 윤곽을 더한다. 640×360 표시에서 윤곽이1px로 남는다. 색은 유닛의 강철·나무·금색·인디고·청록·적색 계열을 쓴다. 아이콘별 설명은 `skill_icon_generation.json`에 기록한다. 실제 생성 모델로 교체하면 같은 경로와 규격을 유지한다.
+
 ## 검증과 현재 상태
 
 #194의 유닛9종과108개 프레임·애니메이션·초상 연결을 포함한다. #195의 [실제 도트 지형과9개 맵](TERRAIN_MAPS.md)을 함께 통합한다. 각 티켓의 최종 Evidence가 직접 확인·독립 리뷰·CI·병합의 근거다. 파일 존재만으로 그 절차를 완료했다고 판단하지 않는다.
