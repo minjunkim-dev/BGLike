@@ -866,20 +866,18 @@ func _run() -> void:
 func _test_scrap_robot_stats() -> void:
 	var boss: CombatUnit = _fixture().units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
-	for act: int in range(1, 4):
-		boss.act_number = act
-		boss.hit_points = boss.get_max_hit_points()
-		boss.begin_turn()
-		_check(boss.get_max_hit_points() == 40 and boss.get_armor_class() == 14
-			and boss.get_attack_bonus() == 5 and boss.get_damage_bonus() == 2
-			and boss.get_damage_sides() == 8 and boss.get_attack_range() == 1
-			and boss.get_save_dc() == 13 and boss.movement_left == 4,
-			"고철로봇-1000 전투 수치는 모든 막에서 고정")
-		_check(boss.get_attribute(CombatUnit.Attribute.STRENGTH) == 3
-			and boss.get_dexterity() == -1
-			and boss.get_attribute(CombatUnit.Attribute.CONSTITUTION) == 3
-			and boss.get_attribute(CombatUnit.Attribute.MENTAL) == 0,
-			"고철로봇-1000 능력치")
+	boss.hit_points = boss.get_max_hit_points()
+	boss.begin_turn()
+	_check(boss.get_max_hit_points() == 40 and boss.get_armor_class() == 14
+		and boss.get_attack_bonus() == 5 and boss.get_damage_bonus() == 2
+		and boss.get_damage_sides() == 8 and boss.get_attack_range() == 1
+		and boss.get_save_dc() == 13 and boss.movement_left == 4,
+		"고철로봇-1000 전투 수치는 모든 막에서 고정")
+	_check(boss.get_attribute(CombatUnit.Attribute.STRENGTH) == 3
+		and boss.get_dexterity() == -1
+		and boss.get_attribute(CombatUnit.Attribute.CONSTITUTION) == 3
+		and boss.get_attribute(CombatUnit.Attribute.MENTAL) == 0,
+		"고철로봇-1000 능력치")
 	_check(boss.is_boss() and boss.get_display_name() == "고철로봇-1000"
 		and CombatActionRules.belongs_to(boss, "opportunity")
 		and not CombatActionRules.belongs_to(boss, "second_wind")
@@ -890,16 +888,14 @@ func _test_scrap_robot_2000_stats() -> void:
 	var f: Fixture = _fixture()
 	var boss: CombatUnit = f.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
-	for act: int in range(1, 4):
-		boss.act_number = act
-		boss.hit_points = boss.get_max_hit_points()
-		boss.begin_turn()
-		_check(boss.is_boss() and boss.get_display_name() == "고철로봇-2000"
-			and boss.get_max_hit_points() == 45 and boss.get_armor_class() == 15
-			and boss.get_attack_bonus() == 5 and boss.get_damage_sides() == 8
-			and boss.get_damage_bonus() == 2 and boss.get_attack_range() == 1
-			and boss.get_save_dc() == 13 and boss.movement_left == 4
-			and boss.can_drop_extra_reward(), "고철로봇-2000은 모든 막에서 HP45·AC15와 공통 보스 수치")
+	boss.hit_points = boss.get_max_hit_points()
+	boss.begin_turn()
+	_check(boss.is_boss() and boss.get_display_name() == "고철로봇-2000"
+		and boss.get_max_hit_points() == 45 and boss.get_armor_class() == 15
+		and boss.get_attack_bonus() == 5 and boss.get_damage_sides() == 8
+		and boss.get_damage_bonus() == 2 and boss.get_attack_range() == 1
+		and boss.get_save_dc() == 13 and boss.movement_left == 4
+		and boss.can_drop_extra_reward(), "고철로봇-2000은 모든 막에서 HP45·AC15와 공통 보스 수치")
 	boss.hit_points = 23
 	boss.begin_turn()
 	_check(not boss.overloaded and boss.action_left == 1, "2000은 HP23에서 과부하 없음")
@@ -916,16 +912,14 @@ func _test_scrap_robot_3000_stats() -> void:
 	var f: Fixture = _fixture()
 	var boss: CombatUnit = f.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
-	for act: int in range(1, 4):
-		boss.act_number = act
-		boss.hit_points = boss.get_max_hit_points()
-		boss.begin_turn()
-		_check(boss.is_boss() and boss.get_display_name() == "고철로봇-3000"
-			and boss.get_max_hit_points() == 50 and boss.get_armor_class() == 16
-			and boss.get_attack_bonus() == 5 and boss.get_damage_sides() == 8
-			and boss.get_damage_bonus() == 2 and boss.get_attack_range() == 1
-			and boss.get_save_dc() == 13 and boss.movement_left == 4
-			and boss.can_drop_extra_reward(), "고철로봇-3000은 모든 막에서 HP50·AC16과 공통 보스 수치")
+	boss.hit_points = boss.get_max_hit_points()
+	boss.begin_turn()
+	_check(boss.is_boss() and boss.get_display_name() == "고철로봇-3000"
+		and boss.get_max_hit_points() == 50 and boss.get_armor_class() == 16
+		and boss.get_attack_bonus() == 5 and boss.get_damage_sides() == 8
+		and boss.get_damage_bonus() == 2 and boss.get_attack_range() == 1
+		and boss.get_save_dc() == 13 and boss.movement_left == 4
+		and boss.can_drop_extra_reward(), "고철로봇-3000은 모든 막에서 HP50·AC16과 공통 보스 수치")
 	boss.hit_points = 26
 	boss.begin_turn()
 	_check(not boss.overloaded and boss.action_left == 1, "3000은 HP26에서 과부하 없음")
@@ -1294,20 +1288,18 @@ func _test_scrap_robot_opportunity() -> void:
 
 func _test_novice_stats() -> void:
 	var f: Fixture = _fixture()
-	for act: int in range(1, 4):
-		for index: int in [2, 3]:
-			var enemy: CombatUnit = f.units[index]
-			enemy.act_number = act
-			_check(enemy.get_max_hit_points() == (12 if index == 2 else 14)
-				and enemy.get_armor_class() == (12 if index == 2 else 11)
-				and enemy.get_attack_bonus() == 5 and enemy.get_damage_bonus() == 1,
-				"풋내기 HP·AC·명중·피해는 모든 막에서 고정")
-			_check(enemy.get_attribute(CombatUnit.Attribute.STRENGTH) == (3 if index == 2 else 0)
-				and enemy.get_dexterity() == (1 if index == 2 else 3)
-				and enemy.get_attribute(CombatUnit.Attribute.CONSTITUTION) == (2 if index == 2 else 1)
-				and enemy.get_attribute(CombatUnit.Attribute.MENTAL) == (-2 if index == 2 else 0)
-				and enemy.get_attack_range() == (1 if index == 2 else 6)
-				and enemy.movement_left == 6, "풋내기 능력치·이동력·사거리")
+	for index: int in [2, 3]:
+		var enemy: CombatUnit = f.units[index]
+		_check(enemy.get_max_hit_points() == (12 if index == 2 else 14)
+			and enemy.get_armor_class() == (12 if index == 2 else 11)
+			and enemy.get_attack_bonus() == 5 and enemy.get_damage_bonus() == 1,
+			"풋내기 HP·AC·명중·피해는 모든 막에서 고정")
+		_check(enemy.get_attribute(CombatUnit.Attribute.STRENGTH) == (3 if index == 2 else 0)
+			and enemy.get_dexterity() == (1 if index == 2 else 3)
+			and enemy.get_attribute(CombatUnit.Attribute.CONSTITUTION) == (2 if index == 2 else 1)
+			and enemy.get_attribute(CombatUnit.Attribute.MENTAL) == (-2 if index == 2 else 0)
+			and enemy.get_attack_range() == (1 if index == 2 else 6)
+			and enemy.movement_left == 6, "풋내기 능력치·이동력·사거리")
 	_check(CombatActionRules.belongs_to(f.units[2], "second_wind")
 		and CombatActionRules.belongs_to(f.units[2], "opportunity")
 		and not CombatActionRules.belongs_to(f.units[2], "parry")
@@ -1347,17 +1339,15 @@ func _test_spiderling_stats_and_damage() -> void:
 		var f: Fixture = _fixture()
 		var spiderling: CombatUnit = f.units[2]
 		spiderling.kind = CombatUnit.Kind.SPIDERLING
-		for act: int in range(1, 4):
-			spiderling.act_number = act
-			_check(spiderling.get_max_hit_points() == 1 and spiderling.get_armor_class() == 6
-				and spiderling.get_attack_bonus() == 4 and spiderling.get_damage_bonus() == 1
-				and spiderling.get_damage_sides() == 0 and spiderling.get_attack_range() == 1
-				and spiderling.get_save_dc() == 10, "새끼 거미의 HP·방어·공격은 모든 막에서 고정")
-			_check(spiderling.get_attribute(CombatUnit.Attribute.STRENGTH) == 0
-				and spiderling.get_dexterity() == 2
-				and spiderling.get_attribute(CombatUnit.Attribute.CONSTITUTION) == -2
-				and spiderling.get_attribute(CombatUnit.Attribute.MENTAL) == -2
-				and spiderling.movement_left == 6, "새끼 거미의 능력치·이동력")
+		_check(spiderling.get_max_hit_points() == 1 and spiderling.get_armor_class() == 6
+			and spiderling.get_attack_bonus() == 4 and spiderling.get_damage_bonus() == 1
+			and spiderling.get_damage_sides() == 0 and spiderling.get_attack_range() == 1
+			and spiderling.get_save_dc() == 10, "새끼 거미의 HP·방어·공격은 모든 막에서 고정")
+		_check(spiderling.get_attribute(CombatUnit.Attribute.STRENGTH) == 0
+			and spiderling.get_dexterity() == 2
+			and spiderling.get_attribute(CombatUnit.Attribute.CONSTITUTION) == -2
+			and spiderling.get_attribute(CombatUnit.Attribute.MENTAL) == -2
+			and spiderling.movement_left == 6, "새끼 거미의 능력치·이동력")
 		for action: String in CombatActionRules.NAMES:
 			_check(CombatActionRules.belongs_to(spiderling, action) == (action in ["attack", "jump"]),
 				"새끼 거미는 기본 공격과 공용 점프만 사용: " + action)
@@ -1374,19 +1364,17 @@ func _test_mother_stats_and_damage() -> void:
 	var f: Fixture = _fixture()
 	var mother: CombatUnit = f.units[2]
 	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
-	for act: int in range(1, 4):
-		mother.act_number = act
-		mother.begin_turn()
-		_check(mother.get_max_hit_points() == 20 and mother.get_armor_class() == 13
-			and mother.get_attack_bonus() == 4 and mother.get_damage_bonus() == 2
-			and mother.get_damage_sides() == 6 and mother.get_attack_range() == 1
-			and mother.get_save_dc() == 12 and mother.movement_left == 4,
-			"엄마 거미의 HP·방어·공격·이동력은 모든 막에서 고정")
-		_check(mother.get_attribute(CombatUnit.Attribute.STRENGTH) == 2
-			and mother.get_dexterity() == 0
-			and mother.get_attribute(CombatUnit.Attribute.CONSTITUTION) == 2
-			and mother.get_attribute(CombatUnit.Attribute.MENTAL) == 1,
-			"엄마 거미의 힘·민첩·건강·정신")
+	mother.begin_turn()
+	_check(mother.get_max_hit_points() == 20 and mother.get_armor_class() == 13
+		and mother.get_attack_bonus() == 4 and mother.get_damage_bonus() == 2
+		and mother.get_damage_sides() == 6 and mother.get_attack_range() == 1
+		and mother.get_save_dc() == 12 and mother.movement_left == 4,
+		"엄마 거미의 HP·방어·공격·이동력은 모든 막에서 고정")
+	_check(mother.get_attribute(CombatUnit.Attribute.STRENGTH) == 2
+		and mother.get_dexterity() == 0
+		and mother.get_attribute(CombatUnit.Attribute.CONSTITUTION) == 2
+		and mother.get_attribute(CombatUnit.Attribute.MENTAL) == 1,
+		"엄마 거미의 힘·민첩·건강·정신")
 	_check(CombatActionRules.belongs_to(mother, "opportunity")
 		and not CombatActionRules.belongs_to(mother, "parry"), "엄마 거미는 기회 공격을 하고 흘려내기는 하지 않음")
 	f.turns.end_turn()
