@@ -23,7 +23,7 @@ for row in range(3):
         if bounds is None:
             raise ValueError(f"Empty frame {row}/{column}")
         contents.append(slot.crop(bounds))
-width, height = (24, 15) if args.unit_id == "spiderling" else (30, 28)
+width, height = (48, 30) if args.unit_id == "spiderling" else (60, 56)
 scale = min(width / max(frame.width for frame in contents),
             height / max(frame.height for frame in contents))
 for index, content in enumerate(contents):
@@ -32,11 +32,11 @@ for index, content in enumerate(contents):
     direction = "right" if column < 2 else "left"
     resized = content.resize((max(1, round(content.width * scale)), max(1, round(content.height * scale))),
                              Image.Resampling.NEAREST)
-    frame = Image.new("RGBA", (32, 32))
-    frame.alpha_composite(resized, ((32 - resized.width) // 2, 28 - resized.height))
+    frame = Image.new("RGBA", (64, 64))
+    frame.alpha_composite(resized, ((64 - resized.width) // 2, 56 - resized.height))
     path = args.destination / args.unit_id / state / direction / f"{column % 2:03}.png"
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.save(path)
-    assert frame.getbbox() and frame.getbbox()[3] <= 28
+    assert frame.getbbox() and frame.getbbox()[3] <= 56
 print(json.dumps({"unit_id": args.unit_id, "source_size": sheet.size, "frames": 12,
-                  "scale": scale, "canvas": [32, 32], "pivot": [16, 28]}))
+                  "scale": scale, "canvas": [64, 64], "pivot": [32, 56]}))

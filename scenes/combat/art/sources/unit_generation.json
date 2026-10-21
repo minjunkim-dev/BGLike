@@ -22,23 +22,23 @@
       "left001"
     ],
     "canvas": [
-      32,
-      32
+      64,
+      64
     ],
     "pivot": [
-      16,
-      28
+      32,
+      56
     ],
     "resampling": "nearest",
     "alpha_threshold": 128,
     "shared_scale": "per character",
     "max_content": [
-      30,
-      28
+      60,
+      56
     ],
     "spiderling_max_content": [
-      24,
-      15
+      48,
+      30
     ]
   },
   "units": [

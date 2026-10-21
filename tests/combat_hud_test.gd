@@ -162,10 +162,14 @@ func _test_unit_art() -> void:
 						continue
 					var texture: Texture2D = load(path) as Texture2D
 					var image: Image = texture.get_image()
-					_check(image.get_size() == Vector2i(32, 32) and image.is_invisible() == false
-						and image.get_pixel(0, 0).a == 0.0, "32×32 투명 프레임: " + path)
-					_check(image.get_used_rect().end.y <= 28,
-						"발밑 피벗28 아래는 투명 여백: " + path)
+					_check(image.get_size() == Vector2i(64, 64) and image.is_invisible() == false
+						and image.get_pixel(0, 0).a == 0.0, "64×64 투명 프레임: " + path)
+					_check(image.get_used_rect().end.y <= 56,
+						"발밑 피벗56 아래는 투명 여백: " + path)
+					var enlarged: Image = image.duplicate()
+					enlarged.resize(32, 32, Image.INTERPOLATE_NEAREST)
+					enlarged.resize(64, 64, Image.INTERPOLATE_NEAREST)
+					_check(enlarged.get_data() != image.get_data(), "32px 단순 확대가 아닌 고밀도 원본: " + path)
 					images.append(image)
 				if images.size() == 2:
 					_check(images[0].get_data() != images[1].get_data(),
@@ -175,10 +179,15 @@ func _test_unit_art() -> void:
 		for child: Node in unit.get_children():
 			if child is AnimatedSprite2D and child.visible and child.sprite_frames != null:
 				visible_sprites += 1
+				var current: Texture2D = child.sprite_frames.get_frame_texture(child.animation, child.frame)
+				_check(current.get_size() * child.scale == Vector2(32, 32)
+					and child.offset * child.scale == Vector2(-16, -28),
+					"고밀도 프레임도 기존 표시 크기와 발밑 유지")
 		_check(visible_sprites == 1, "실제 전투 유닛은 도트 애니메이션1개로 표시: " + unit.get_display_name())
 		var portrait: Button = (hud.get("_portraits") as Dictionary)[unit] as Button
-		_check(portrait.icon != null and portrait.icon.get_size() == Vector2(32, 32),
-			"턴 순서의 초상도 같은32×32 도트 이미지 표시: " + unit.get_display_name())
+		_check(portrait.icon != null and portrait.icon.get_size() == Vector2(64, 64)
+			and portrait.get_theme_constant("icon_max_width") == 32,
+			"고밀도 초상의 논리 표시 폭32 유지: " + unit.get_display_name())
 
 
 func _test_warrior() -> void:

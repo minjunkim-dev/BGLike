@@ -421,6 +421,7 @@ func _build_portraits(turns: CombatTurns) -> void:
 			button.custom_minimum_size = Vector2(40, 43)
 			button.icon = load("res://scenes/combat/art/units/%s/idle/%s/000.png" % [
 				unit.get_art_id(), "right" if unit.is_ally else "left"]) as Texture2D
+			button.add_theme_constant_override("icon_max_width", 32)
 			button.add_theme_font_size_override("font_size", 10)
 			button.add_theme_color_override("font_disabled_color", Color("b5bdc4"))
 			button.pressed.connect(func() -> void: unit_selected.emit(unit))

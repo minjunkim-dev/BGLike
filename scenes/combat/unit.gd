@@ -291,7 +291,8 @@ func _ready() -> void:
 	_sprite = AnimatedSprite2D.new()
 	_sprite.name = "Sprite"
 	_sprite.centered = false
-	_sprite.offset = Vector2(-16, -28)
+	_sprite.offset = Vector2(-32, -56)
+	_sprite.scale = Vector2.ONE * 0.5
 	_sprite.sprite_frames = SpriteFrames.new()
 	_sprite.sprite_frames.remove_animation("default")
 	var unit_id: String = get_art_id()
@@ -307,11 +308,12 @@ func _ready() -> void:
 				var texture: Texture2D = load("res://scenes/combat/art/units/%s/%s/%s/%03d.png" % [
 					unit_id, state, direction, frame]) as Texture2D
 				_sprite.sprite_frames.add_frame(animation, texture)
-				_art_top_y = minf(_art_top_y, texture.get_image().get_used_rect().position.y - 28.0)
+				_art_top_y = minf(_art_top_y, (texture.get_image().get_used_rect().position.y - 56.0) * 0.5)
 	add_child(_sprite)
 	_silhouette = Sprite2D.new()
 	_silhouette.centered = false
 	_silhouette.offset = _sprite.offset
+	_silhouette.scale = _sprite.scale
 	_silhouette.z_index = 1
 	_silhouette.visible = false
 	var outline: ShaderMaterial = ShaderMaterial.new()
@@ -350,9 +352,9 @@ func play_attack() -> void:
 
 
 func contains_body_point(point: Vector2) -> bool:
-	var pixel: Vector2i = Vector2i((point - Vector2(0, floor_offset_y + body_offset_y)
-		- _sprite.offset).floor())
-	if not Rect2i(Vector2i.ZERO, Vector2i(32, 32)).has_point(pixel):
+	var pixel: Vector2i = Vector2i(((point - Vector2(0, floor_offset_y + body_offset_y))
+		/ _sprite.scale - _sprite.offset).floor())
+	if not Rect2i(Vector2i.ZERO, Vector2i(64, 64)).has_point(pixel):
 		return false
 	var texture: Texture2D = _sprite.sprite_frames.get_frame_texture(_sprite.animation, _sprite.frame)
 	return texture.get_image().get_pixelv(pixel).a > 0.0
