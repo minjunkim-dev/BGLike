@@ -466,6 +466,12 @@ func _test_armor_unequip_scene() -> void:
 	await _action("ui_right")
 	_check((preparation.find_child("Armor0", true, false) as Control).has_focus(), "방향키로 이웃 칸 이동")
 	var unequip: Button = await _pick(preparation, "Armor0", "UnequipArmor0")
+	# 고른 칸에서 방향키로 상세 패널의 동작 버튼까지 내려간다.
+	for step: int in range(6):
+		if unequip == null or unequip.has_focus():
+			break
+		await _action("ui_down")
+	_check(unequip != null and unequip.has_focus(), "방향키로 상세 패널의 동작 버튼에 도달")
 	_check(unequip != null and not unequip.disabled and unequip.tooltip_text.is_empty(),
 		"정비 화면의 장착 방어구 해제 버튼")
 	if unequip != null:
@@ -730,6 +736,7 @@ func _test_reward_flow() -> void:
 		_check(preparation.visible and not preparation.maintaining, "승리 뒤 보상 화면 진입")
 		_check((battle.get("progress") as CombatActProgress).stage_index == 0, "보상 확인은 다음 전투를 시작하지 않음")
 		_check(await _pick(preparation, "Item0", "Ally1") == null
+			and preparation.detail.find_children("*", "Button", true, false).is_empty()
 			and preparation.detail.find_children("*", "Label", true, false).any(
 				func(label: Label) -> bool: return "검사 방어구 · AC+2" in label.text),
 			"보상 확인 단계는 수치를 보여 주고 정비에서만 분배")

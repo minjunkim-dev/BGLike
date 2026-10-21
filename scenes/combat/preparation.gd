@@ -271,13 +271,13 @@ func _render_card(index: int) -> void:
 	if unit.hit_points <= 0:
 		portrait.modulate = Color(0.35, 0.35, 0.35)
 	area.add_child(portrait)
-	_place(_label(area, unit.get_display_name(), TEXT_COLOR, false), Vector2(76, 1))
+	_label(area, unit.get_display_name(), TEXT_COLOR, false).position = Vector2(76, 1)
 	var hit_points: Label = _label(area, tr("HP %d / %d") % [unit.hit_points, unit.get_max_hit_points()],
 		TEXT_COLOR, false)
 	if unit.hit_points <= 0:
-		hit_points.text = tr("%s · 전투 불능") % hit_points.text
+		hit_points.text = tr("HP %d / %d · 전투 불능") % [unit.hit_points, unit.get_max_hit_points()]
 		hit_points.add_theme_color_override("font_color", DOWN_COLOR)
-	_place(hit_points, Vector2(76, 18))
+	hit_points.position = Vector2(76, 18)
 	var bar: ColorRect = ColorRect.new()
 	bar.color = Color("2a1513")
 	bar.position = Vector2(76, 36)
@@ -290,7 +290,7 @@ func _render_card(index: int) -> void:
 	var stats: Label = _label(area, _equipment_text(unit.weapon, tr("무기 없음")) + "\n"
 		+ _equipment_text(unit.armor, tr("방어구 없음")), DIM_COLOR, false)
 	stats.add_theme_constant_override("line_spacing", -4)
-	_place(stats, Vector2(76, 42))
+	stats.position = Vector2(76, 42)
 	for slot: int in range(2):
 		var x: float = 214.0 + slot * 42.0
 		var item: Dictionary = unit.armor if slot == 1 else unit.weapon
@@ -301,7 +301,7 @@ func _render_card(index: int) -> void:
 		var caption: Label = _label(area, tr("방어구") if slot == 1 else tr("무기"), DIM_COLOR, false)
 		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		caption.size.x = 44
-		_place(caption, Vector2(x - 4, 37))
+		caption.position = Vector2(x - 4, 37)
 	var potions: HBoxContainer = HBoxContainer.new()
 	potions.position = Vector2(6, 74)
 	potions.add_theme_constant_override("separation", 2)
@@ -373,7 +373,7 @@ func _render_detail() -> void:
 				else tr("정비하기를 누른 뒤 캐릭터에게 나눠 줍니다."), DIM_COLOR)
 			if maintaining:
 				for ally: int in range(party.size()):
-					_receive_button(actions, item, ally, from_bag)
+					_receive_button(actions, item, _selected_index, ally, from_bag)
 				if from_bag:
 					var discard: Button = _button(actions, tr("폐기"), "DiscardItem")
 					var index: int = _selected_index
@@ -381,8 +381,8 @@ func _render_detail() -> void:
 		"weapon":
 			_label(info, tr("%s의 무기 · 무기는 해제할 수 없습니다.") % _short_name(owner_unit), DIM_COLOR)
 		"armor":
-			_label(info, tr("%s의 방어구 · 해제하면 공용 가방 빈 칸에 보관합니다.") % _short_name(owner_unit),
-				DIM_COLOR)
+			_label(info, (tr("%s의 방어구 · 해제하면 공용 가방 빈 칸에 보관합니다.") if maintaining
+				else tr("%s의 방어구 · 정비에서 해제할 수 있습니다.")) % _short_name(owner_unit), DIM_COLOR)
 			var ally: int = _selected_index
 			if maintaining:
 				var unequip: Button = _button(actions, tr("방어구 해제"), "UnequipArmor%d" % ally)
@@ -395,9 +395,8 @@ func _render_detail() -> void:
 		actions.free()
 
 
-
 ## 상세 패널의 장착·물약 받기 버튼과 지금 장비 비교.
-func _receive_button(parent: Node, item: Dictionary, ally: int, from_bag: bool) -> void:
+func _receive_button(parent: Node, item: Dictionary, index: int, ally: int, from_bag: bool) -> void:
 	var unit: CombatUnit = party[ally]
 	var potion: bool = item["kind"] == "potion"
 	var button: Button = _button(parent, (tr("%s에게 주기") if potion else tr("%s에게 장착")) % _short_name(unit),
@@ -407,7 +406,6 @@ func _receive_button(parent: Node, item: Dictionary, ally: int, from_bag: bool) 
 	button.tooltip_text = "" if not full else (tr("물약을 더 가질 수 없습니다.") if potion
 		else tr("공용 가방에 빈 칸이 없어 지금 장비를 보관할 수 없습니다."))
 	button.disabled = full
-	var index: int = _selected_index
 	if from_bag:
 		button.pressed.connect(func() -> void: _receive_bag(index, ally))
 	else:
@@ -480,6 +478,9 @@ func _cell(parent: Node, item: Dictionary, unit_id: String, node_name: String, b
 			_style(border.lightened(0.25) if state == "hover" else border, 0, 1, CELL_COLOR))
 	for state: String in ["pressed", "hover_pressed"]:
 		cell.add_theme_stylebox_override(state, _style(SELECT_COLOR, 0, 2, CELL_COLOR))
+	var focus: StyleBoxFlat = _style(TEXT_COLOR, 0)
+	focus.draw_center = false
+	cell.add_theme_stylebox_override("focus", focus)
 	parent.add_child(cell)
 	return cell
 
@@ -508,10 +509,6 @@ func _style(border: Color, padding: int, width: int = 1, background: Color = PAN
 	style.set_corner_radius_all(3)
 	style.set_content_margin_all(padding)
 	return style
-
-
-func _place(label: Label, at: Vector2) -> void:
-	label.position = at
 
 
 ## wrap이 거짓이면 한 줄 글자다. 고정 배치 카드 안에서는 줄바꿈 폭이 없어 한 줄로 쓴다.

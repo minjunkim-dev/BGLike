@@ -938,8 +938,8 @@ msgid "HP %d / %d"
 msgstr "HP %d / %d"
 
 #: scenes/combat/preparation.gd:278
-msgid "%s · 전투 불능"
-msgstr "%s · 전투 불능"
+msgid "HP %d / %d · 전투 불능"
+msgstr "HP %d / %d · 전투 불능"
 
 #: scenes/combat/preparation.gd:290 scenes/combat/preparation.gd:365
 msgid "무기 없음"
@@ -957,7 +957,7 @@ msgstr "방어구"
 msgid "무기"
 msgstr "무기"
 
-#: scenes/combat/preparation.gd:319 scenes/combat/preparation.gd:415
+#: scenes/combat/preparation.gd:319 scenes/combat/preparation.gd:413
 msgid "물약 %d/%d"
 msgstr "물약 %d/%d"
 
@@ -1001,31 +1001,35 @@ msgstr "%s의 무기 · 무기는 해제할 수 없습니다."
 msgid "%s의 방어구 · 해제하면 공용 가방 빈 칸에 보관합니다."
 msgstr "%s의 방어구 · 해제하면 공용 가방 빈 칸에 보관합니다."
 
+#: scenes/combat/preparation.gd:385
+msgid "%s의 방어구 · 정비에서 해제할 수 있습니다."
+msgstr "%s의 방어구 · 정비에서 해제할 수 있습니다."
+
 #: scenes/combat/preparation.gd:388
 msgid "방어구 해제"
 msgstr "방어구 해제"
 
-#: scenes/combat/preparation.gd:403
+#: scenes/combat/preparation.gd:402
 msgid "%s에게 주기"
 msgstr "%s에게 주기"
 
-#: scenes/combat/preparation.gd:403
+#: scenes/combat/preparation.gd:402
 msgid "%s에게 장착"
 msgstr "%s에게 장착"
 
-#: scenes/combat/preparation.gd:407
+#: scenes/combat/preparation.gd:406
 msgid "물약을 더 가질 수 없습니다."
 msgstr "물약을 더 가질 수 없습니다."
 
-#: scenes/combat/preparation.gd:408
+#: scenes/combat/preparation.gd:407
 msgid "공용 가방에 빈 칸이 없어 지금 장비를 보관할 수 없습니다."
 msgstr "공용 가방에 빈 칸이 없어 지금 장비를 보관할 수 없습니다."
 
-#: scenes/combat/preparation.gd:454 scenes/combat/turn_hud.gd:365
+#: scenes/combat/preparation.gd:452 scenes/combat/turn_hud.gd:365
 msgid "전사"
 msgstr "전사"
 
-#: scenes/combat/preparation.gd:454 scenes/combat/turn_hud.gd:365
+#: scenes/combat/preparation.gd:452 scenes/combat/turn_hud.gd:365
 msgid "궁수"
 msgstr "궁수"
 
