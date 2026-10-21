@@ -1545,6 +1545,12 @@ func _test_spawned_portrait_input() -> void:
 			and scroll.get_h_scroll_bar().is_visible_in_tree() and visible_bar.has_area()
 			and not visible_bar.intersects((hud.get_node("UnitDetails") as Control).get_global_rect()),
 			"%s: 3-1 시작 초상7개가 넘쳐도 보이는 턴 순서 바는 정보 패널과 겹치지 않고 가로 스크롤" % size)
+		# #255: 바와 정보 패널 사이 구분선. 넘친 쪽 끝의 흐림은 엔진 스크롤 힌트가 그린다.
+		var divider: Control = hud.get_node("OrderDivider") as Control
+		_check(scroll.scroll_hint_mode == ScrollContainer.SCROLL_HINT_MODE_BOTTOM_AND_RIGHT
+			and divider.get_global_rect().position.x >= scroll.get_global_rect().end.x
+			and divider.get_global_rect().end.x <= (hud.get_node("UnitDetails") as Control).get_global_rect().position.x,
+			"%s: 턴 순서 바 오른쪽 끝 흐림과 정보 패널 앞 구분선" % size)
 	# 고철로봇의 긴 상태 줄도 정보 패널을 왼쪽으로 넓히지 않고 줄을 바꾼다.
 	var status_unit: CombatUnit = units[2]
 	var status_kind: CombatUnit.Kind = status_unit.kind
