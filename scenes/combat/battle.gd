@@ -237,7 +237,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		return a.get_index() > b.get_index()
 	)
 	var prop: CombatGrid.Prop = map.prop_at_point(map.to_local(world_position))
-	if prop != null and (candidates.is_empty() or map.map_to_local(prop.cell).y >= candidates[0].position.y):
+	# 윤곽이 보이는 가린 유닛은 몸통 클릭이 동작할 때만 앞 사물보다 우선한다.
+	var unit_first: bool = not candidates.is_empty() and candidates[0].is_occluded and (
+		not candidates[0].is_ally or selection.selected_action == "shove")
+	if prop != null and not unit_first and (candidates.is_empty()
+			or map.map_to_local(prop.cell).y >= candidates[0].position.y):
 		get_viewport().set_input_as_handled()
 		if selection.select_prop(prop, selection.selected_action == "attack" and actions.can_attack_prop(actor, prop)):
 			selection.begin_execution()
@@ -385,8 +389,6 @@ func _update_turn_ui() -> void:
 			unit.position = map.map_to_local(unit.cell)
 			unit.floor_offset_y = map.map_to_surface(unit.cell).y - unit.position.y
 		unit.visible = unit.hit_points > 0
-		unit.is_occluded = map.occludes(unit.cell,
-			map.to_local(unit.to_global(Vector2(0, unit.floor_offset_y - 10))))
 		unit.is_selected = unit == turns.current_unit
 		unit.is_previewed = unit == selection.preview_target or (not selection.preview_path.is_empty()
 			and actions.can_target(turns.current_unit, unit, "attack", selection.preview_cell))
@@ -409,6 +411,10 @@ func _update_turn_ui() -> void:
 		turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO)
 	map.show_grounds(actions.get_grounds())
 	map.show_props(actions.get_props(), selection.preview_prop)
+	# 가림 판정은 방금 그린 사물 위치를 사용한다.
+	for unit: CombatUnit in units:
+		unit.is_occluded = map.occludes(unit.cell,
+			map.to_local(unit.to_global(Vector2(0, unit.floor_offset_y - 10))))
 	if selection.preview_target != null:
 		var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(
 			turns.current_unit, selection.preview_target)

@@ -79,7 +79,7 @@ func surface_to_map(point: Vector2) -> Vector2i:
 
 
 func occludes(unit_cell: Vector2i, point: Vector2) -> bool:
-	for marker: Node2D in _blocked_markers:
+	for marker: Node2D in _blocked_markers + _prop_markers:
 		if marker.position.y > map_to_local(unit_cell).y and _art_contains(marker, point):
 			return true
 	for cell: Vector2i in get_used_cells():
