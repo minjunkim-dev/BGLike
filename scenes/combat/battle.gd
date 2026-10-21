@@ -243,6 +243,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		if selection.select_prop(prop, selection.selected_action == "attack" and actions.can_attack_prop(actor, prop)):
 			selection.begin_execution()
+			actions.busy = true
+			await _animate_attack_at(actor, map.map_to_surface(prop.cell) + Vector2(0, -8))
+			actions.busy = false
 			actions.attack_prop(actor, prop)
 			selection.finish_execution()
 		_update_turn_ui()
@@ -349,7 +352,11 @@ func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
 
 
 func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
-	actor.face_toward(target.position)
+	await _animate_attack_at(actor, target.position + Vector2(0, target.floor_offset_y - 14))
+
+
+func _animate_attack_at(actor: CombatUnit, destination: Vector2) -> void:
+	actor.face_toward(destination)
 	actor.play_attack()
 	if actor.kind != CombatUnit.Kind.ARCHER:
 		await get_tree().create_timer(1.0 / 6.0).timeout
@@ -362,7 +369,6 @@ func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
 	arrow.color = Color("efe4c8")
 	arrow.z_index = 1
 	arrow.position = actor.position + Vector2(-8 if actor.facing_left else 8, actor.floor_offset_y - 16)
-	var destination: Vector2 = target.position + Vector2(0, target.floor_offset_y - 14)
 	arrow.rotation = (destination - arrow.position).angle()
 	add_child(arrow)
 	var tween: Tween = create_tween()

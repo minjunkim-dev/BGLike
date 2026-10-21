@@ -197,7 +197,7 @@ func get_art_id() -> String:
 
 
 func get_status_label_y() -> float:
-	return _art_top_y - 9.0
+	return _art_top_y + body_offset_y - 9.0
 
 
 func get_status_count(kind_name: String) -> int:

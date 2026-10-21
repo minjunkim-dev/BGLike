@@ -184,6 +184,11 @@ func _test_unit_art() -> void:
 					and child.offset * child.scale == Vector2(-16, -28),
 					"고밀도 프레임도 기존 표시 크기와 발밑 유지")
 		_check(visible_sprites == 1, "실제 전투 유닛은 도트 애니메이션1개로 표시: " + unit.get_display_name())
+		var resting_status_y: float = unit.get_status_label_y()
+		unit.body_offset_y = -16.0
+		_check(unit.get_status_label_y() == resting_status_y - 16.0,
+			"점프 정점에서도 HP·상태·팝업 기준이 실제 그림을 따라간다")
+		unit.body_offset_y = 0.0
 		var portrait: Button = (hud.get("_portraits") as Dictionary)[unit] as Button
 		_check(portrait.icon != null and portrait.icon.get_size() == Vector2(64, 64)
 			and portrait.get_theme_constant("icon_max_width") == 32,
@@ -1435,6 +1440,36 @@ func _test_action_animations() -> void:
 	_check(reactions[0] == 1 and not actions.busy and not hud.reaction_dialog.visible,
 		"화살 도착 뒤 반응 넘기기는 전투를 정상 재개")
 	actions.reaction_requested.disconnect(on_reaction)
+	_reset_units()
+	for actor: CombatUnit in [units[0], units[1]]:
+		_reset_units()
+		actions.grid.props.clear()
+		actor.cell = Vector2i(5, 5)
+		(units[1] if actor == units[0] else units[0]).cell = Vector2i(0, 0)
+		units[2].cell = Vector2i(8, 8)
+		units[3].cell = Vector2i(9, 9)
+		turns.select_unit(actor)
+		actor.facing_left = false
+		var crate: CombatGrid.Prop = actions.create_prop(Vector2i(4, 5), "crate")
+		battle.call("_update_turn_ui")
+		var event: InputEventMouseButton = InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = true
+		event.position = battle.map.get_global_transform_with_canvas() * (
+			battle.map.map_to_surface(crate.cell) + Vector2(0, -8))
+		battle.call("_unhandled_input", event)
+		battle.call("_unhandled_input", event)
+		var sprite: AnimatedSprite2D = actor.get_node("Sprite") as AnimatedSprite2D
+		_check(actions.busy and actor.facing_left and sprite.animation == &"attack_left"
+			and crate.hit_points == 6, "상자 공격은 방향·공격 자세를 먼저 표시하고 입력을 잠근다")
+		if actor.kind == CombatUnit.Kind.ARCHER:
+			_check(battle.has_node("Arrow"), "궁수의 상자 공격에도 실제 화살이 비행한다")
+		while actions.busy:
+			await process_frame
+		await process_frame
+		_check(actor.action_left == 0 and crate.hit_points < 6 and not battle.has_node("Arrow"),
+			"상자 공격 연출 뒤 기존 피해·행동 비용과 화살 정리를 유지한다")
+	actions.grid.props.clear()
 	_reset_units()
 
 
