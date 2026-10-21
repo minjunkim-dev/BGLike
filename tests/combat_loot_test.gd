@@ -537,7 +537,9 @@ func _test_finish_preference() -> void:
 		var shared: Theme = load("res://scenes/ui_theme.tres")
 		_check(preparation.discard_dialog.get_theme_stylebox("embedded_border") == shared.get_stylebox("embedded_border", "Window")
 			and preparation.discard_dialog.get_cancel_button().get_theme_stylebox("focus") == shared.get_stylebox("focus", "Button")
-			and skip.get_theme_stylebox("normal") == shared.get_stylebox("normal", "CheckBox"),
+			and skip.get_theme_stylebox("normal") == shared.get_stylebox("normal", "CheckBox")
+			and skip.get_theme_icon("unchecked") == shared.get_icon("unchecked", "CheckBox")
+			and skip.get_theme_icon("unchecked").get_width() > 0,
 			"정비 확인 창은 공용 테마의 틀·버튼·체크박스 모양")
 		_check(not skip.button_pressed and skip.text == "더 이상 이 메시지를 띄우지 않음",
 			"종료 확인 생략은 기본 해제")
