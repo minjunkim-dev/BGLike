@@ -19,15 +19,6 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = n
 		marker.free()
 	_blocked_markers.clear()
 	tile_set = floors.duplicate(true) as TileSet
-	var atlas: TileSetAtlasSource = tile_set.get_source(0) as TileSetAtlasSource
-	var art: Image = preload("res://scenes/combat/art/terrain/floor_tiles.png").get_image()
-	var texture: ImageTexture = ImageTexture.create_from_image(art)
-	texture.set_size_override(art.get_size() / 2)
-	atlas.texture = texture
-	atlas.texture_region_size = tile_set.tile_size
-	for index: int in range(8):
-		if not atlas.has_tile(Vector2i(index, 0)):
-			atlas.create_tile(Vector2i(index, 0))
 	var sources: Dictionary[int, int] = {}
 	for y: int in range(grid.map_size.y):
 		for x: int in range(grid.map_size.x):
@@ -290,13 +281,17 @@ func _add_height_source(height: int) -> int:
 						var color: Color = wall.get_pixel(x % wall.get_width(), y % wall.get_height())
 						image.set_pixel(left + x, y, color.darkened(0.28 if direction > 0 else 0.12))
 	image.blend_rect(floor_image, Rect2i(Vector2i.ZERO, Vector2i(size.x * 8, size.y)), Vector2i(0, maxi(-rise, 0)))
-	var texture: ImageTexture = ImageTexture.create_from_image(image)
-	texture.set_size_override(image.get_size() / 2)
+	var detail: ShaderMaterial = ShaderMaterial.new()
+	detail.shader = preload("res://scenes/combat/art/terrain_detail.gdshader")
+	detail.set_shader_parameter("detail_texture", ImageTexture.create_from_image(image))
+	var proxy: Image = image.duplicate()
+	proxy.resize(image.get_width() / 2, image.get_height() / 2, Image.INTERPOLATE_NEAREST)
 	var source: TileSetAtlasSource = TileSetAtlasSource.new()
 	source.texture_region_size = Vector2i(size.x, image.get_height()) / 2
-	source.texture = texture
+	source.texture = ImageTexture.create_from_image(proxy)
 	for index: int in range(8):
 		source.create_tile(Vector2i(index, 0))
+		source.get_tile_data(Vector2i(index, 0), 0).material = detail
 		source.get_tile_data(Vector2i(index, 0), 0).texture_origin = Vector2i(0, roundi((rise - foundation) / 4.0))
 		source.get_tile_data(Vector2i(index, 0), 0).y_sort_origin = -1
 	return tile_set.add_source(source)

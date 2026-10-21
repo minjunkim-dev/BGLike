@@ -136,10 +136,15 @@ func _test_square_map() -> void:
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	_check(map.get_used_cells().size() == 100, "사각 맵은100칸")
 	var source: TileSetAtlasSource = map.tile_set.get_source(map.get_cell_source_id(Vector2i.ZERO)) as TileSetAtlasSource
-	_check(source.texture.get_image().get_width() == source.texture.get_width() * 2,
+	var material: ShaderMaterial = source.get_tile_data(map.get_cell_atlas_coords(Vector2i.ZERO), 0).material as ShaderMaterial
+	_check(material != null, "지형 타일에 실제 고밀도 원본 렌더를 연결한다")
+	if material == null:
+		return
+	var detail: Texture2D = material.get_shader_parameter("detail_texture") as Texture2D
+	_check(detail.get_width() == source.texture.get_width() * 2,
 		"지형도 논리 크기 두 배의 실제 도트 디테일을 보존한다")
 	var colors: Dictionary[int, bool] = {}
-	var floor_image: Image = source.texture.get_image()
+	var floor_image: Image = detail.get_image()
 	for y: int in range(floor_image.get_height()):
 		for x: int in range(floor_image.get_width()):
 			var color: Color = floor_image.get_pixel(x, y)
