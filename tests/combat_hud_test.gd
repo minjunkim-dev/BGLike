@@ -135,6 +135,26 @@ func _test_selection() -> void:
 func _test_square_map() -> void:
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	_check(map.get_used_cells().size() == 100, "사각 맵은100칸")
+	var source: TileSetAtlasSource = map.tile_set.get_source(map.get_cell_source_id(Vector2i.ZERO)) as TileSetAtlasSource
+	_check(source.texture.get_image().get_width() == source.texture.get_width() * 2,
+		"지형도 논리 크기 두 배의 실제 도트 디테일을 보존한다")
+	var colors: Dictionary[int, bool] = {}
+	var floor_image: Image = source.texture.get_image()
+	for y: int in range(floor_image.get_height()):
+		for x: int in range(floor_image.get_width()):
+			var color: Color = floor_image.get_pixel(x, y)
+			if color.a > 0.0:
+				colors[color.to_rgba32()] = true
+	_check(colors.size() > 16, "평면 색 도형 대신 실제 바닥·벽 도트 텍스처를 사용한다")
+	for id: String in ["crate", "rock", "tree", "ruin_wall", "cottage"]:
+		var path: String = "res://scenes/combat/art/props/%s.png" % id
+		_check(ResourceLoader.exists(path), "실제 지형 오브젝트 PNG: " + id)
+		if ResourceLoader.exists(path):
+			var image: Image = (load(path) as Texture2D).get_image()
+			var size: Vector2i = Vector2i(128, 128) if id == "cottage" else (
+				Vector2i(64, 96) if id == "tree" else Vector2i(64, 64))
+			_check(image.get_size() == size and image.get_pixel(0, 0).a == 0.0,
+				"지형 오브젝트의 고밀도 캔버스와 투명 배경: " + id)
 	_check(map.tile_set.tile_shape == TileSet.TILE_SHAPE_ISOMETRIC
 		and map.tile_set.tile_size == Vector2i(32, 16), "사각 논리 칸을32×16 마름모로 표시")
 	for cell: Vector2i in map.get_used_cells():

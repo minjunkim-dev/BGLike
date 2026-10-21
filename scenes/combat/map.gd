@@ -5,12 +5,11 @@ extends TileMapLayer
 var grid: CombatGrid
 var _overlays: Array[Node2D] = []
 var _blocked_markers: Array[Node2D] = []
-var _water_markers: Array[Node2D] = []
 var _ground_markers: Array[Node2D] = []
 var _prop_markers: Array[Node2D] = []
 
 
-func build_grid(combat_grid: CombatGrid, floors: TileSet) -> void:
+func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = null) -> void:
 	grid = combat_grid
 	clear()
 	show_movement([], [], [], Vector2i.ZERO)
@@ -19,13 +18,17 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet) -> void:
 	for marker: Node2D in _blocked_markers:
 		marker.free()
 	_blocked_markers.clear()
-	for marker: Node2D in _water_markers:
-		marker.free()
-	_water_markers.clear()
-	tile_set = floors
-	if not grid.heights.is_empty():
-		tile_set = floors.duplicate(true) as TileSet
-	var sources: Dictionary[int, int] = {0: 0}
+	tile_set = floors.duplicate(true) as TileSet
+	var atlas: TileSetAtlasSource = tile_set.get_source(0) as TileSetAtlasSource
+	var art: Image = preload("res://scenes/combat/art/terrain/floor_tiles.png").get_image()
+	var texture: ImageTexture = ImageTexture.create_from_image(art)
+	texture.set_size_override(art.get_size() / 2)
+	atlas.texture = texture
+	atlas.texture_region_size = tile_set.tile_size
+	for index: int in range(8):
+		if not atlas.has_tile(Vector2i(index, 0)):
+			atlas.create_tile(Vector2i(index, 0))
+	var sources: Dictionary[int, int] = {}
 	for y: int in range(grid.map_size.y):
 		for x: int in range(grid.map_size.x):
 			var cell: Vector2i = Vector2i(x, y)
@@ -34,36 +37,34 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet) -> void:
 			var height: int = grid.height_at(cell)
 			if not sources.has(height):
 				sources[height] = _add_height_source(height)
-			set_cell(cell, sources[height], Vector2i((x + y) % 2, 0))
-	for cell: Vector2i in grid.water_cells:
-		if not grid.is_floor(cell) or grid.blocked_cells.has(cell):
-			continue
-		var marker: Polygon2D = Polygon2D.new()
-		marker.position = map_to_local(cell)
-		var center: Vector2 = map_to_surface(cell) - marker.position
-		var half: Vector2 = Vector2(tile_set.tile_size) / 2.0 - Vector2(2, 1)
-		marker.polygon = PackedVector2Array([
-			center + Vector2(0, -half.y), center + Vector2(half.x, 0),
-			center + Vector2(0, half.y), center + Vector2(-half.x, 0)])
-		marker.color = Color("287f92")
-		add_child(marker)
-		_water_markers.append(marker)
+			var material: int = 0
+			if stage != null:
+				if stage.path_cells.has(cell):
+					material = 2
+				if stage.stone_cells.has(cell):
+					material = 4
+			if grid.water_cells.has(cell):
+				material = 6
+			set_cell(cell, sources[height], Vector2i(material + (x + y) % 2, 0))
+	var occupied: Array[Vector2i] = []
+	if stage != null:
+		for anchor: Vector2i in stage.scenery:
+			var id: String = stage.scenery[anchor]
+			var size: Vector2i = CombatStage.SCENERY_SIZE[id]
+			var front: Vector2i = anchor + size - Vector2i.ONE
+			var marker: Node2D = _art_marker(front, id, 8.0 if id == "cottage" else 4.0)
+			marker.set_meta("cell", front)
+			add_child(marker)
+			_blocked_markers.append(marker)
+			for y: int in range(size.y):
+				for x: int in range(size.x):
+					occupied.append(anchor + Vector2i(x, y))
 	for cell: Vector2i in grid.blocked_cells:
-		if not grid.is_floor(cell):
-			continue
-		var marker: Node2D = Node2D.new()
-		marker.name = "BlockedCell"
-		marker.position = map_to_local(cell)
-		var center: Vector2 = map_to_surface(cell) - marker.position
-		marker.draw.connect(func() -> void:
-			marker.draw_colored_polygon(PackedVector2Array([
-				center + Vector2(0, -6), center + Vector2(12, 0),
-				center + Vector2(0, 6), center + Vector2(-12, 0)]), Color("35414a"))
-			marker.draw_line(center + Vector2(-4, -3), center + Vector2(4, 3), Color("edaa54"), 2.0)
-			marker.draw_line(center + Vector2(4, -3), center + Vector2(-4, 3), Color("edaa54"), 2.0))
-		add_child(marker)
-		_blocked_markers.append(marker)
-
+		if grid.is_floor(cell) and not occupied.has(cell):
+			var marker: Node2D = _art_marker(cell, "ruin_wall", 4.0)
+			marker.set_meta("cell", cell)
+			add_child(marker)
+			_blocked_markers.append(marker)
 
 func map_to_surface(cell: Vector2i) -> Vector2:
 	var height: int = grid.height_at(cell) if grid != null else 0
@@ -71,24 +72,29 @@ func map_to_surface(cell: Vector2i) -> Vector2:
 
 
 func surface_to_map(point: Vector2) -> Vector2i:
+	var scenery: Node2D
+	for marker: Node2D in _blocked_markers:
+		if _art_contains(marker, point) and (scenery == null or marker.position.y > scenery.position.y):
+			scenery = marker
 	var cells: Array[Vector2i] = get_used_cells()
 	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x + a.y > b.x + b.y)
 	for cell: Vector2i in cells:
-		if _contains_surface(cell, point):
-			return cell
-		# 앞 칸의 옆면은 뒤 칸의 바닥 클릭도 가린다.
-		if _contains_sides(cell, point):
-			return Vector2i(-1, -1)
-	return Vector2i(-1, -1)
+		if _contains_surface(cell, point) or _contains_sides(cell, point):
+			if scenery != null and scenery.position.y >= map_to_local(cell).y:
+				return scenery.get_meta("cell") as Vector2i
+			return cell if _contains_surface(cell, point) else Vector2i(-1, -1)
+	return scenery.get_meta("cell") as Vector2i if scenery != null else Vector2i(-1, -1)
 
 
 func occludes(unit_cell: Vector2i, point: Vector2) -> bool:
+	for marker: Node2D in _blocked_markers:
+		if marker.position.y > map_to_local(unit_cell).y and _art_contains(marker, point):
+			return true
 	for cell: Vector2i in get_used_cells():
 		if cell.x + cell.y > unit_cell.x + unit_cell.y:
 			if _contains_surface(cell, point) or _contains_sides(cell, point):
 				return true
 	return false
-
 
 func _contains_surface(cell: Vector2i, point: Vector2) -> bool:
 	var offset: Vector2 = (point - map_to_surface(cell)).abs() / (Vector2(tile_set.tile_size) / 2.0)
@@ -97,7 +103,7 @@ func _contains_surface(cell: Vector2i, point: Vector2) -> bool:
 
 func _contains_sides(cell: Vector2i, point: Vector2) -> bool:
 	var surface: Vector2 = map_to_surface(cell)
-	var ground: Vector2 = map_to_local(cell)
+	var ground: Vector2 = map_to_local(cell) + Vector2(0, 8 if grid.height_at(cell) >= 0 else 0)
 	if ground == surface:
 		return false
 	var half: Vector2 = Vector2(tile_set.tile_size) / 2.0
@@ -204,14 +210,34 @@ func show_grounds(grounds: Array[CombatActions.Ground]) -> void:
 
 
 func prop_at_point(point: Vector2) -> CombatGrid.Prop:
-	var props: Array[CombatGrid.Prop] = grid.props.duplicate()
-	props.sort_custom(func(a: CombatGrid.Prop, b: CombatGrid.Prop) -> bool:
-		return a.cell.x + a.cell.y > b.cell.x + b.cell.y)
-	for prop: CombatGrid.Prop in props:
-		if (Rect2(map_to_surface(prop.cell) + Vector2(-10, -14), Vector2(20, 20)).has_point(point)
-			and not occludes(prop.cell, point)):
+	var markers: Array[Node2D] = _prop_markers.duplicate()
+	markers.sort_custom(func(a: Node2D, b: Node2D) -> bool: return a.position.y > b.position.y)
+	for marker: Node2D in markers:
+		var prop: CombatGrid.Prop = marker.get_meta("prop") as CombatGrid.Prop
+		if _art_contains(marker, point) and not occludes(prop.cell, point):
 			return prop
 	return null
+
+
+func _art_marker(cell: Vector2i, id: String, foot: float) -> Node2D:
+	var marker: Node2D = Node2D.new()
+	marker.position = map_to_local(cell)
+	var sprite: Sprite2D = Sprite2D.new()
+	sprite.name = "Sprite"
+	sprite.texture = load("res://scenes/combat/art/props/%s.png" % id) as Texture2D
+	sprite.centered = false
+	sprite.offset = Vector2(-sprite.texture.get_width() / 2.0, -sprite.texture.get_height() + 8)
+	sprite.scale = Vector2.ONE * 0.5
+	sprite.position = map_to_surface(cell) - marker.position + Vector2(0, foot)
+	marker.add_child(sprite)
+	return marker
+
+
+func _art_contains(marker: Node2D, point: Vector2) -> bool:
+	var sprite: Sprite2D = marker.get_node("Sprite") as Sprite2D
+	var pixel: Vector2i = Vector2i((sprite.to_local(to_global(point)) - sprite.offset).floor())
+	var image: Image = sprite.texture.get_image()
+	return Rect2i(Vector2i.ZERO, image.get_size()).has_point(pixel) and image.get_pixelv(pixel).a > 0.0
 
 
 func show_props(props: Array[CombatGrid.Prop], preview: CombatGrid.Prop = null) -> void:
@@ -219,71 +245,57 @@ func show_props(props: Array[CombatGrid.Prop], preview: CombatGrid.Prop = null) 
 		marker.free()
 	_prop_markers.clear()
 	for prop: CombatGrid.Prop in props:
-		var marker: Node2D = Node2D.new()
-		marker.position = map_to_local(prop.cell)
-		var center: Vector2 = map_to_surface(prop.cell) - marker.position
-		marker.draw.connect(func() -> void:
-			if prop.kind == "rock":
-				var outline: PackedVector2Array = [
-					center + Vector2(-9, -4), center + Vector2(-7, -10), center + Vector2(-2, -13),
-					center + Vector2(6, -11), center + Vector2(10, -5), center + Vector2(7, 2),
-					center + Vector2(-6, 4), center + Vector2(-9, -4)]
-				marker.draw_colored_polygon(outline, Color("77858c"))
-				marker.draw_colored_polygon(PackedVector2Array([
-					center + Vector2(-9, -4), center + Vector2(1, -1), center + Vector2(10, -5),
-					center + Vector2(7, 2), center + Vector2(-6, 4)]), Color("4c5962"))
-				marker.draw_polyline(outline, Color("f4cf69") if prop == preview else Color("303b42"))
-				marker.draw_line(center + Vector2(-3, -9), center + Vector2(3, -5), Color("b2c1c6"))
-				return
-			marker.draw_colored_polygon(PackedVector2Array([
-				center + Vector2(-8, -9), center + Vector2(0, -5),
-				center + Vector2(0, 3), center + Vector2(-8, -1)]), Color("a27643"))
-			marker.draw_colored_polygon(PackedVector2Array([
-				center + Vector2(0, -5), center + Vector2(8, -9),
-				center + Vector2(8, -1), center + Vector2(0, 3)]), Color("68442b"))
-			marker.draw_colored_polygon(PackedVector2Array([
-				center + Vector2(-8, -9), center + Vector2(0, -13),
-				center + Vector2(8, -9), center + Vector2(0, -5)]), Color("c99b5c"))
-			var edge: Color = Color("f4cf69") if prop == preview else Color("382c21")
-			marker.draw_polyline(PackedVector2Array([
-				center + Vector2(-8, -1), center + Vector2(-8, -9), center + Vector2(0, -13),
-				center + Vector2(8, -9), center + Vector2(8, -1), center + Vector2(0, 3),
-				center + Vector2(-8, -1)]), edge)
-			marker.draw_line(center + Vector2(-6, -15), center + Vector2(6, -15), Color("382c21"), 2.0)
-			marker.draw_line(center + Vector2(-6, -15), center + Vector2(-6 + prop.hit_points * 2, -15),
-				Color("e7bf6d"), 2.0))
+		var marker: Node2D = _art_marker(prop.cell, prop.kind, 4.0)
+		marker.set_meta("prop", prop)
+		var sprite: Sprite2D = marker.get_node("Sprite") as Sprite2D
+		if prop == preview:
+			var outline: Sprite2D = sprite.duplicate() as Sprite2D
+			outline.name = "Outline"
+			outline.z_index = 1
+			var material: ShaderMaterial = ShaderMaterial.new()
+			material.shader = preload("res://scenes/combat/art/unit_outline.gdshader")
+			material.set_shader_parameter("outline_color", Color("f4cf69"))
+			outline.material = material
+			marker.add_child(outline)
+		if prop.kind == "crate":
+			var top: float = sprite.position.y + (sprite.texture.get_image().get_used_rect().position.y
+				+ sprite.offset.y) * 0.5 - 3.0
+			marker.draw.connect(func() -> void:
+				marker.draw_line(Vector2(-6, top), Vector2(6, top), Color("382c21"), 2.0)
+				marker.draw_line(Vector2(-6, top), Vector2(-6 + prop.hit_points * 2, top), Color("e7bf6d"), 2.0))
 		add_child(marker)
 		_prop_markers.append(marker)
 
 
 func _add_height_source(height: int) -> int:
-	var size: Vector2i = tile_set.tile_size
-	var rise: int = roundi(height * size.y / 2.0)
-	var depth: int = absi(rise)
+	var size: Vector2i = tile_set.tile_size * 2
+	var rise: int = height * size.y / 2
+	var foundation: int = 16 if height >= 0 else 0
 	var floor_image: Image = (tile_set.get_source(0) as TileSetAtlasSource).texture.get_image()
 	floor_image.convert(Image.FORMAT_RGBA8)
-	var image: Image = Image.create(size.x * 2, size.y + depth, false, Image.FORMAT_RGBA8)
-	for index: int in range(2):
+	var wall: Image = preload("res://scenes/combat/art/terrain/wall.png").get_image()
+	var image: Image = Image.create(size.x * 8, size.y + absi(rise) + foundation, false, Image.FORMAT_RGBA8)
+	for index: int in range(8):
 		var left: int = index * size.x
-		var shade: Color = floor_image.get_pixel(left + size.x / 2, size.y / 2).darkened(0.3)
 		var center: Vector2 = Vector2(size.x / 2.0, size.y / 2.0 + maxi(-rise, 0))
-		var bottom: Vector2 = center + Vector2(0, rise)
+		var bottom: Vector2 = center + Vector2(0, rise + foundation)
 		for direction: int in [-1, 1]:
 			var side: PackedVector2Array = [
 				center + Vector2(direction * size.x / 2.0, 0), center + Vector2(0, size.y / 2.0),
-				bottom + Vector2(0, size.y / 2.0), bottom + Vector2(direction * size.x / 2.0, 0)
-			]
+				bottom + Vector2(0, size.y / 2.0), bottom + Vector2(direction * size.x / 2.0, 0)]
 			for y: int in range(image.get_height()):
 				for x: int in range(size.x):
 					if Geometry2D.is_point_in_polygon(Vector2(x + 0.5, y + 0.5), side):
-						image.set_pixel(left + x, y, shade.darkened(0.2) if direction > 0 else shade)
-	image.blend_rect(floor_image, Rect2i(Vector2i.ZERO, Vector2i(size.x * 2, size.y)),
-		Vector2i(0, maxi(-rise, 0)))
+						var color: Color = wall.get_pixel(x % wall.get_width(), y % wall.get_height())
+						image.set_pixel(left + x, y, color.darkened(0.28 if direction > 0 else 0.12))
+	image.blend_rect(floor_image, Rect2i(Vector2i.ZERO, Vector2i(size.x * 8, size.y)), Vector2i(0, maxi(-rise, 0)))
+	var texture: ImageTexture = ImageTexture.create_from_image(image)
+	texture.set_size_override(image.get_size() / 2)
 	var source: TileSetAtlasSource = TileSetAtlasSource.new()
-	source.texture_region_size = Vector2i(size.x, size.y + depth)
-	source.texture = ImageTexture.create_from_image(image)
-	for index: int in range(2):
+	source.texture_region_size = Vector2i(size.x, image.get_height()) / 2
+	source.texture = texture
+	for index: int in range(8):
 		source.create_tile(Vector2i(index, 0))
-		source.get_tile_data(Vector2i(index, 0), 0).texture_origin = Vector2i(0, roundi(rise / 2.0))
+		source.get_tile_data(Vector2i(index, 0), 0).texture_origin = Vector2i(0, roundi((rise - foundation) / 4.0))
 		source.get_tile_data(Vector2i(index, 0), 0).y_sort_origin = -1
 	return tile_set.add_source(source)

@@ -20,6 +20,7 @@ Godot의 MIT 조건은 BGLike 자체 코드에 MIT를 부여하는 의미가 아
 | 파일 | 확인된 기여 기록·용도 | 권리 확인 기준 |
 | --- | --- | --- |
 | `scenes/combat/art/floor_tiles.svg` | 프로토타입의 도형 타일. `ba2fd4e`의 전투 기반 구현에 포함 | 프로젝트 기여 기록을 확인했습니다. 별도의 외부 원본 출처는 기록돼 있지 않습니다. |
+| `scenes/combat/art/terrain/*.png`, `scenes/combat/art/props/*.png`, `scenes/combat/art/sources/terrain/*.png` | 2026-10-21 사용자 위임으로 내장 `image_gen`에서 독자 생성한 재질5종·오브젝트5종. 실제64px 도트와 원본10개·나무 첫 원본/투명도 교정 기록을 보존 | 정확한 프롬프트·원본·가공 규격은 `scenes/combat/art/sources/world_generation.json`, `normalize_terrain.py`와 [맵 제작 기준](docs/TERRAIN_MAPS.md)에 기록했습니다. 레퍼런스 게임 이미지를 입력·복제하지 않았습니다. 생성 도구의 별도 조건을 적용합니다. 제3자의 원저작권 부재나 독점권을 확정하는 기록은 아닙니다. |
 | `scenes/combat/art/units/**/*.png`, `scenes/combat/art/sources/units/*.png` | 2026-10-21 사용자 요청으로 내장 `image_gen`에서 독자 생성한 유닛9종. 생성 기준 시안과 전체 상태·방향 시트를 보존. 런타임108프레임은 시트를 자르고 nearest-neighbor 축소·투명도 정규화 | 원본과 프롬프트·도구 모드는 `scenes/combat/art/sources/unit_generation.json`에 기록했습니다. 레퍼런스 게임 이미지를 입력·복제하지 않았습니다. 생성 도구의 별도 조건을 함께 적용합니다. 생성 결과에 대한 제3자의 원저작권 부재나 독점권을 확정하는 기록은 아닙니다. |
 | `docs/images/combat_ui_archer_turn.png` | `e89cf19`의 전투 기획 문서에 포함된 화면 참고 이미지 | 정이건의 기여 기록을 확인했습니다. 별도의 외부 원본 출처는 기록돼 있지 않습니다. |
 | `docs/images/combat_ui_reaction.png` | 같은 기획 문서의 화면 참고 이미지 | 같은 기준을 적용합니다. |
