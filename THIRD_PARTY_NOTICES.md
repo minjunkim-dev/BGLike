@@ -15,6 +15,17 @@
 Godot의 MIT 조건은 BGLike 자체 코드에 MIT를 부여하는 의미가 아닙니다.
 엔진과 엔진의 외부 라이브러리를 포함한 게임 배포물에는 원래 요구되는 고지를 포함합니다.
 
+## 게임 규칙
+
+전투 규칙은 SRD 5.1을 근거로 하며 게임에 맞게 수정해 사용합니다.
+SRD 5.1은 CC-BY-4.0과 OGL 1.0a 중 하나를 고를 수 있습니다. BGLike는 CC-BY-4.0을 따르며, SRD 5.1 머리말의 Legal Information이 요구하는 표기를 그대로 옮깁니다.
+
+> This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+버전 근거: [전투 기획서](docs/COMBAT_DESIGN.md)의 밀치기는 양쪽이 d20을 굴리는 대결입니다. SRD 5.1의 방식이며, SRD 5.2는 대상의 내성 굴림으로 바꿨습니다.
+표기 원문: [SRD 5.1 CC PDF](https://media.dndbeyond.com/compendium-images/srd/5.1/SRD_CC_v5.1.pdf) 1쪽. 2026-10-21 확인.
+게임 안 표기는 타이틀 화면의 `출처` 화면에 넣습니다. 이 문서와 Draft 배포 묶음의 이 파일은 저장소·배포물 고지입니다.
+
 ## 현재 추적된 이미지
 
 | 파일 | 확인된 기여 기록·용도 | 권리 확인 기준 |

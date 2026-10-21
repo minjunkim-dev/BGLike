@@ -60,6 +60,7 @@ PCK에서 메인 장면과 타격음을 읽습니다.
 `--headless --main-pack --quit-after 3`으로 메인 장면을 실행합니다.
 명령 실패와 Godot `ERROR:`·`WARNING:`는 패키지 실패입니다.
 ZIP에는 PCK, metadata, 실행 안내와 COPYRIGHT·THIRD_PARTY·Kenney 고지가 있습니다.
+THIRD_PARTY 고지는 SRD 5.1의 CC-BY-4.0 출처 표기를 담습니다. `scripts/test_package_pck.py`가 그 문구를 확인합니다.
 metadata는 버전, 실제 checkout SHA, 엔진 버전·archive hash, preset hash, LFS 근거와 파일 hash를 기록합니다.
 `SHA256SUMS`는 ZIP의 SHA-256을 제공합니다.
 

@@ -20,6 +20,15 @@ class PackageTests(unittest.TestCase):
                     command(["python3", "-c", code], root)
             self.assertEqual(command(["python3", "-c", "print('valid')"], root), "valid")
 
+    def test_bundled_notices_keep_srd_attribution(self):
+        # The Draft ZIP ships this file verbatim, so the SRD 5.1 wording must survive edits.
+        notices = (Path(__file__).resolve().parents[1] / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+        self.assertIn(
+            "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of "
+            "the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The "
+            "SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at "
+            "https://creativecommons.org/licenses/by/4.0/legalcode.", notices)
+
     def test_real_git_checkout_rejects_wrong_source_before_export(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
