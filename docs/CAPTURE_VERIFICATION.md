@@ -12,6 +12,8 @@ GODOT=/Applications/Godot.app/Contents/MacOS/Godot make check
 
 기존 Godot 검사에 `tests/combat_capture_test.gd`를 포함한다. 실제 `scenes/main.tscn`을 불러온다. 3-3 스테이지로 진입한다. 이니셔티브만 아군 먼저로 고정한다. 자동 검사는 주사위 seed를 고정한다. 자동 검사는 아군의 반응 횟수를 소진해 선택 창 대기를 피한다. 실제 AI와 이동·공격 연출을 유지한다.
 
+이동·공격 연출을 바꾸면 [HUD 장면 검사](../tests/combat_hud_test.gd)와 [동작 장면 검사](../tests/combat_actions_test.gd)를 함께 확인한다. 두 파일은 서로 다른 장면 진입점과 입력 잠금 fixture를 가진다. 새로 시작한 연출은 완료까지 기다린다. 이미 잠근 fixture와 반응 창은 다음 입력을 기다리는 상태로 구분한다. 기회 공격 뒤 점프 검사는 공격 연출이 끝난 뒤 비용 소비·공중 상태를 확인한다. 최종 검사는 `make check`로 수행한다.
+
 검사는 HUD의 차례 종료 신호를 보낸다. 전투의 `_process`가 적 AI를 시작해야 한다. 적 차례가 끝난 뒤 아군 차례로 돌아와야 한다. 제한 시간 안에 복귀하지 못하면 실패한다. 별도 watchdog도 검증 프로세스를 종료한다.
 
 headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless 실행은 PNG 검사를 제외했다고 출력한다. 이 성공을 Forward+ 화면 검증으로 사용하지 않는다.

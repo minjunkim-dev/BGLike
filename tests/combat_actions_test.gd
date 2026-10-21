@@ -436,7 +436,8 @@ func _test_rock_scene_input() -> void:
 	dice.seed = 33
 	turns.start(units, dice)
 	units[1].cell = Vector2i(1, 2)
-	units[2].cell = Vector2i(2, 4)
+	# 밀치기를 허용하는 인접 적은 바위 그림을 가리지 않는 쪽에 둔다.
+	units[2].cell = Vector2i(1, 5)
 	var rock: CombatGrid.Prop = actions.create_prop(Vector2i(1, 3), "rock")
 	var point: Vector2 = map.get_global_transform_with_canvas() * (map.map_to_surface(rock.cell) + Vector2(0, -7))
 	await _click(point)
@@ -595,7 +596,7 @@ func _test_crate_scene_input() -> void:
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	_check(selection.preview_prop == null and crate.hit_points == 6,
 		"우클릭으로 상자 미리보기를 취소하며 막힌 칸으로 이동하지 않는다")
-	units[2].cell = Vector2i(2, 4)
+	units[2].cell = Vector2i(1, 5)
 	actions.changed.emit()
 	hud.action_selected.emit("shove")
 	await _click(point)
@@ -3599,6 +3600,13 @@ func _test_jump_scene_animation() -> void:
 	var before: int = actor.hit_points
 	var finished: Array[bool] = [false]
 	_jump_scene(actions, actor, destination, finished)
+	_check(actions.busy and not actor.is_moving and actor.cell == origin
+		and actor.movement_left == 6 and actor.bonus_action_left == 1,
+		"기회 공격 연출 중에는 점프 비용과 논리 원점을 유지한다")
+	for frame: int in range(600):
+		if actor.is_moving or finished[0]:
+			break
+		await process_frame
 	_check(actions.busy and actor.is_moving and actor.cell == origin
 		and actor.movement_left == 4 and actor.bonus_action_left == 0 and actor.hit_points == before,
 		"기회 공격 생존 후 비용을 먼저 쓰고 논리 원점에서 점프 연출, 착지 피해 대기")
@@ -3840,6 +3848,10 @@ func _test_scene_shock() -> void:
 
 
 func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> void:
+	var battle: Node2D = root.get_node_or_null("Battle") as Node2D
+	if battle == null:
+		battle = root.get_node_or_null("Main/Battle") as Node2D
+	var already_busy: bool = battle != null and (battle.get("actions") as CombatActions).busy
 	var event: InputEventMouseButton = InputEventMouseButton.new()
 	event.position = root.get_final_transform() * point
 	event.global_position = event.position
@@ -3850,14 +3862,15 @@ func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> vo
 	event.pressed = false
 	Input.parse_input_event(event)
 	await process_frame
-	var battle: Node2D = root.get_node_or_null("Battle") as Node2D
 	if battle == null:
 		return
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var hud: CombatTurnHud = battle.get("hud") as CombatTurnHud
 	for frame: int in range(600):
 		var moving: bool = false
 		for unit: CombatUnit in battle.get("units"):
 			moving = moving or unit.is_moving
-		if not moving and not battle.has_node("Arrow"):
+		if not moving and not battle.has_node("Arrow") and (not actions.busy or already_busy or hud.reaction_dialog.visible):
 			return
 		await process_frame
 	_check(false, "포인터 입력 후 연출이 제한 시간 안에 끝나지 않음")
