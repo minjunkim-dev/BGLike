@@ -22,7 +22,7 @@ HP·상태·피해 팝업은 그 유닛의 실제 그림 높이를 기준으로 
 
 시트를 자르고 공통 배율로 nearest-neighbor 축소한다. 픽셀을 새로 그리는 후처리는 하지 않는다. 최종 프레임은64×64 RGBA다. 발밑 기준점은(32,56)이다. 새끼 거미는 최대48×30, 다른 유닛은 최대60×56 안에 들어간다. 같은 유닛은 모든 프레임에 같은 축소 배율을 쓴다. 개별 캔버스를 잘라내서 납품하지 않는다.
 
-사용자는2026-10-21에32px 결과의 가독성과 선명도 개선을 요청했다. [#194 결정](https://github.com/minjunkim-dev/BGLike/issues/194#issuecomment-6305982882)에 따라 원본에서64px로 재추출한다. 32px를 두 배로 확대한 파일을 납품하지 않는다. Sprite scale0.5로 기존 논리 표시 크기와 피벗(16,28)을 유지한다. 기본 레이아웃640×360, 창1280×720, Nearest와 정수 배율을 유지한다. `canvas_items`는2D와 글꼴을 실제 창 해상도에서 렌더한다. 따라서1280×720에서64px 이미지의 세부를 보존한다. 640×360의 축소 화면에서는 같은 세부를 모두 구분할 수 없다. 그래서 최소 창은1280×720이다([해상도 ADR](adr/0002-resolution.md)). [Godot 공식 렌더 설명](https://docs.godotengine.org/en/stable/tutorials/rendering/multiple_resolutions.html)을 따른다.
+사용자는2026-10-21에32px 결과의 가독성과 선명도 개선을 요청했다. [#194 결정](https://github.com/minjunkim-dev/BGLike/issues/194#issuecomment-6305982882)에 따라 원본에서64px로 재추출한다. 32px를 두 배로 확대한 파일을 납품하지 않는다. Sprite scale0.5로 기존 논리 표시 크기와 피벗(16,28)을 유지한다. 기본 레이아웃640×360, 창1280×720, Nearest와 정수 배율을 유지한다. `canvas_items`는2D와 글꼴을 실제 창 해상도에서 렌더한다. 따라서1280×720에서64px 이미지의 세부를 보존한다. 640×360의 축소 화면에서는 같은 세부를 모두 구분할 수 없다. 그래서 `개발 결정`([#263](https://github.com/minjunkim-dev/BGLike/issues/263))으로 최소 창은1280×720이다([해상도 ADR](adr/0002-resolution.md)). [Godot 공식 렌더 설명](https://docs.godotengine.org/en/stable/tutorials/rendering/multiple_resolutions.html)을 따른다.
 
 `개발 결정`([#256](https://github.com/minjunkim-dev/BGLike/issues/256)): 유닛 윤곽 셰이더(`unit_outline.gdshader`)는 이웃 픽셀을 1텍셀과 1화면 픽셀 중 큰 간격으로 샘플한다. 640×360에서는 1텍셀이 0.5화면 픽셀이라 1텍셀 윤곽이 픽셀 사이로 빠져 끊긴 점으로 보였다. 이제 윤곽은 2텍셀(1화면 픽셀) 두께로 이어진다. 1280×720 이상에서는 1텍셀이 1화면 픽셀 이상이라 모양이 그대로다. 가림·선택·미리보기 윤곽과 사물 미리보기 윤곽이 같은 셰이더를 쓴다. 팀색과 윤곽 클릭 규칙은 바꾸지 않는다. 표시 두께만 화면 배율에 맞춘다. 기획자가 나중에 바꿀 수 있다.
 
