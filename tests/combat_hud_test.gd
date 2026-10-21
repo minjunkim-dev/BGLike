@@ -52,6 +52,7 @@ func _run() -> void:
 	await process_frame
 	_check("이니셔티브" not in hud.message_label.text, "전투 시작 로그에 이니셔티브 계산식 없음")
 	_test_square_map()
+	_test_unit_art()
 	_test_warrior()
 	await _test_resources()
 	_test_archer_and_enemy()
@@ -145,6 +146,39 @@ func _test_square_map() -> void:
 		for neighbor: Vector2i in visual_neighbors:
 			_check(neighbors.has(neighbor) and CombatGrid.distance(cell, neighbor) == 1,
 				"Godot 타일 이웃과 전투 인접 판정 일치")
+
+
+func _test_unit_art() -> void:
+	for unit_id: String in ["warrior", "archer", "spiderling", "mother_spider",
+		"novice_barbarian", "novice_archer", "scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000"]:
+		for state: String in ["idle", "move", "attack"]:
+			for direction: String in ["left", "right"]:
+				var images: Array[Image] = []
+				for frame: int in range(2):
+					var path: String = "res://scenes/combat/art/units/%s/%s/%s/%03d.png" % [
+						unit_id, state, direction, frame]
+					_check(ResourceLoader.exists(path), "실제 유닛 프레임 납품: " + path)
+					if not ResourceLoader.exists(path):
+						continue
+					var texture: Texture2D = load(path) as Texture2D
+					var image: Image = texture.get_image()
+					_check(image.get_size() == Vector2i(32, 32) and image.is_invisible() == false
+						and image.get_pixel(0, 0).a == 0.0, "32×32 투명 프레임: " + path)
+					_check(image.get_used_rect().end.y <= 28,
+						"발밑 피벗28 아래는 투명 여백: " + path)
+					images.append(image)
+				if images.size() == 2:
+					_check(images[0].get_data() != images[1].get_data(),
+						"상태마다 실제로 다른 애니메이션 프레임: %s/%s/%s" % [unit_id, state, direction])
+	for unit: CombatUnit in units:
+		var visible_sprites: int = 0
+		for child: Node in unit.get_children():
+			if child is AnimatedSprite2D and child.visible and child.sprite_frames != null:
+				visible_sprites += 1
+		_check(visible_sprites == 1, "실제 전투 유닛은 도트 애니메이션1개로 표시: " + unit.get_display_name())
+		var portrait: Button = (hud.get("_portraits") as Dictionary)[unit] as Button
+		_check(portrait.icon != null and portrait.icon.get_size() == Vector2(32, 32),
+			"턴 순서의 초상도 같은32×32 도트 이미지 표시: " + unit.get_display_name())
 
 
 func _test_warrior() -> void:
@@ -1269,6 +1303,7 @@ func _test_spawned_portrait_input() -> void:
 
 
 func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> void:
+	var already_busy: bool = actions.busy
 	var event: InputEventMouseButton = InputEventMouseButton.new()
 	event.position = root.get_final_transform() * point
 	event.global_position = event.position
@@ -1283,7 +1318,7 @@ func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> vo
 		var moving: bool = false
 		for unit: CombatUnit in units:
 			moving = moving or unit.is_moving
-		if not moving and not battle.has_node("Arrow"):
+		if not moving and not battle.has_node("Arrow") and (not actions.busy or already_busy or hud.reaction_dialog.visible):
 			return
 		await process_frame
 	_check(false, "포인터 입력 후 연출이 제한 시간 안에 끝나지 않음")

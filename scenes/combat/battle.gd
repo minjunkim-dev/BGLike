@@ -231,8 +231,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var candidates: Array[CombatUnit] = []
 	for unit: CombatUnit in units:
-		var body_point: Vector2 = unit.to_local(world_position) - Vector2(0, unit.floor_offset_y)
-		if unit.hit_points > 0 and Rect2(-7, -20, 14, 22).has_point(body_point):
+		if unit.hit_points > 0 and unit.contains_body_point(unit.to_local(world_position)):
 			candidates.append(unit)
 	candidates.sort_custom(func(a: CombatUnit, b: CombatUnit) -> bool:
 		if a.position.y != b.position.y:
@@ -351,7 +350,9 @@ func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
 
 func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
 	actor.face_toward(target.position)
+	actor.play_attack()
 	if actor.kind != CombatUnit.Kind.ARCHER:
+		await get_tree().create_timer(1.0 / 6.0).timeout
 		return
 	var arrow: Polygon2D = Polygon2D.new()
 	arrow.name = "Arrow"
