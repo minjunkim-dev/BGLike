@@ -37,6 +37,7 @@ func _run() -> void:
 		_test_bag_use()
 		_test_armor_unequip()
 		_test_act_values(loot, dice)
+		_test_icons(loot)
 		loot.data["extra_drop_chance"] = 0.0
 		_check(loot.roll_rewards(2, dice, 1).size() == 1, "추가 확률0이어도 보장1개")
 		loot.data["extra_drop_chance"] = 1.0
@@ -266,6 +267,27 @@ func _test_armor_hit_points(loot: CombatLoot) -> void:
 	_check(unit.hit_points == 17, "막 복구 뒤 과거 HP 하한 손실 제거")
 	_check("최대 HP+5" in CombatLoot.describe(armor), "보상에 최대 HP 수치 표시")
 	unit.free()
+
+
+func _test_icons(loot: CombatLoot) -> void:
+	var expected: Dictionary = {"weapon": "sword", "armor": "armor", "potion": "potion"}
+	for item: Dictionary in loot.data["items"]:
+		var texture: Texture2D = load(CombatLoot.icon_path(item)) as Texture2D
+		_check(texture != null and texture.get_size() == Vector2(64, 64)
+			and CombatLoot.icon_path(item).get_file() == expected[item["kind"]] + ".png",
+			"실제 아이템 데이터의 64px 아이콘: " + str(item["id"]))
+		_check(CombatLoot.icon_path(item, "warrior") == CombatLoot.icon_path(item),
+			"전사는 공용 아이콘: " + str(item["id"]))
+		var archer_path: String = CombatLoot.icon_path(item, "archer")
+		_check(archer_path.get_file() == ("bow.png" if item["kind"] == "weapon" else expected[item["kind"]] + ".png")
+			and load(archer_path) is Texture2D, "궁수 무기는 활, 나머지는 공용 아이콘: " + str(item["id"]))
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 224
+	var rolled: Array[Dictionary] = loot.roll_rewards(4, dice, 1)
+	for item: Dictionary in rolled:
+		_check(CombatLoot.icon_path(item, "warrior") == CombatLoot.ICON_PATH % expected[item["kind"]],
+			"추첨한 아이템도 아이콘을 유지")
+	_check(CombatLoot.icon_path({"kind": "potion"}).is_empty(), "아이콘이 없는 검사 데이터는 빈 경로")
 
 
 func _test_items(loot: CombatLoot, dice: CombatDice) -> void:

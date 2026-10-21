@@ -34,6 +34,20 @@ HP·상태·피해 팝업은 그 유닛의 실제 그림 높이를 기준으로 
 
 이 런타임에는 유닛 제작에 쓴 내장 `image_gen`이 없다. 그래서 `scenes/combat/art/sources/icons/draw_skill_icons.py`가 Pillow 도형을64px 격자에 직접 배치한다. 안티앨리어싱·축소 없이 그리고, 모든 도형 바깥에2px 어두운 윤곽을 더한다. 640×360 표시에서 윤곽이1px로 남는다. 색은 유닛의 강철·나무·금색·인디고·청록·적색 계열을 쓴다. 아이콘별 설명은 `skill_icon_generation.json`에 기록한다. 실제 생성 모델로 교체하면 같은 경로와 규격을 유지한다.
 
+## 아이템 아이콘
+
+`개발 결정`([#224](https://github.com/minjunkim-dev/BGLike/issues/224)): 임시 아이템 아이콘은64×64 RGBA 원본을 scale0.5로 표시한다. 논리 크기는32×32px다. 유닛 프레임과 같은 팔레트·어두운2px(논리1px) 윤곽·왼쪽 위 광원을 쓴다. 그림은 가운데60×60 안에 둔다. 기획자가 나중에 바꿀 수 있다.
+
+`개발 결정`([#224](https://github.com/minjunkim-dev/BGLike/issues/224)): 무기 아이템은 하나이고 직업 제한은 보류다. 그래서 같은 무기에 공용·전사 `sword`와 궁수 `bow`를 연결한다. 대안인 직업 전용 무기 아이템은 아이템 규칙을 바꾸므로 택하지 않았다. 제작은 생성 모델 대신 코드로 픽셀을 찍는다. 같은 결과를 다시 만들 수 있고 외부 권리 조건이 없다. 대안인 내장 `image_gen`은 이 작업 환경에 없었다.
+
+아이콘은 `scenes/combat/art/icons/items/<icon_id>.png`에 둔다. 무기는 `sword`(공용·전사)와 `bow`(궁수), 방어구는 `armor`, 회복 물약은 `potion`이다. `item_data.json`의 `icon`과 `unit_icons`가 파일을 정한다. `CombatLoot.icon_path(item, unit_id)`로 경로를 얻는다. 화면 배치는 정비 화면 구현([#227](https://github.com/minjunkim-dev/BGLike/issues/227))에서 한다.
+
+생성 모델 대신 `sources/icons/draw_item_icons.py`가 설명문대로 픽셀을 찍는다. 같은 명령은 같은 파일을 만든다. 설명문·팔레트·규격은 `sources/icons/item_icon_generation.json`에 기록한다. 유닛 시트처럼 축소하지 않으므로 별도 정규화 단계가 없다. 원본 폴더는 Godot 가져오기에서 제외한다.
+
+![아이템 아이콘4종: 4배 확대, 1280×720의64 화면px, 640×360의32 화면px](assets/item_icons.png)
+
+2026-10-21 실제 1-1 전투 위에 아이콘을 놓고 원본 Viewport를 저장했다. [1280×720](assets/item_icons_capture_1280x720.png)에서는 네 아이콘이 윤곽과 색으로 구분된다. [640×360](assets/item_icons_capture_640x360.png)에서도 구분되지만 활시위와 1px 하이라이트 일부가 사라진다. 캡처의 글자 행은 검수용 배치다. 제품 화면 배치가 아니다.
+
 ## 검증과 현재 상태
 
 #194의 유닛9종과108개 프레임·애니메이션·초상 연결을 포함한다. #195의 [실제 도트 지형과9개 맵](TERRAIN_MAPS.md)을 함께 통합한다. 각 티켓의 최종 Evidence가 직접 확인·독립 리뷰·CI·병합의 근거다. 파일 존재만으로 그 절차를 완료했다고 판단하지 않는다.

@@ -3,6 +3,7 @@ extends RefCounted
 ## 독립 아이템의 드랍·장착·물약과 파티 공용 가방.
 
 const DATA_PATH: String = "res://scenes/combat/item_data.json"
+const ICON_PATH: String = "res://scenes/combat/art/icons/items/%s.png"
 const STAT_NAMES: Dictionary = {
 	"attack_bonus": "명중", "damage_bonus": "피해", "armor_class": "AC",
 	"max_hit_points": "최대 HP"
@@ -28,6 +29,10 @@ func _init() -> void:
 		assert(item.get("kind", "") in ["weapon", "armor", "potion"], "알 수 없는 아이템 종류")
 		assert(not str(item.get("name", "")).is_empty(), "아이템 이름이 필요합니다.")
 		assert(int(item.get("weight", 0)) > 0, "아이템 추첨 비중은 양수여야 합니다.")
+		assert(item.get("unit_icons", {}) is Dictionary, "unit_icons는 객체여야 합니다.")
+		assert(ResourceLoader.exists(icon_path(item)), "아이템 아이콘이 필요합니다.")
+		for unit_id: String in item.get("unit_icons", {}):
+			assert(ResourceLoader.exists(icon_path(item, unit_id)), "직업별 아이콘이 없습니다.")
 		total_weight += int(item["weight"])
 		assert(item.get("stats", null) is Dictionary, "stats가 필요합니다. 물약은 빈 객체를 둡니다.")
 		for stat: String in item["stats"]:
@@ -138,6 +143,12 @@ func transfer_potion(source: CombatUnit, target: CombatUnit) -> bool:
 	source.potion_left -= 1
 	target.potion_left += 1
 	return true
+
+
+## 아이템 아이콘 경로. 장착한 직업의 `unit_icons`가 있으면 그 아이콘을 쓴다.
+static func icon_path(item: Dictionary, unit_id: String = "") -> String:
+	var icon: String = str(item.get("unit_icons", {}).get(unit_id, item.get("icon", "")))
+	return "" if icon.is_empty() else ICON_PATH % icon
 
 
 static func describe(item: Dictionary) -> String:
