@@ -45,7 +45,10 @@ func _ready() -> void:
 	actions.changed.connect(_on_actions_changed)
 	actions.logged.connect(hud.add_log)
 	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
-		unit.show_feedback(text, hud.feedback_obstacles()))
+		# 공격 판정 팝업만 실제 d20 굴림을 받아 유리·불리 주사위를 보인다.
+		var roll: CombatChecks.RollResult = actions.last_attack if (actions.last_attack != null
+			and text == "공격 %d" % actions.last_attack.total) else null
+		unit.show_feedback(text, hud.feedback_obstacles(), roll))
 	actions.hit_landed.connect($HitSound.play)
 	actions.reaction_requested.connect(hud.show_reaction)
 	actions.movement_animation = _animate_movement
