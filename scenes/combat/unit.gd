@@ -109,6 +109,7 @@ var is_occluded: bool = false
 var _silhouette: Sprite2D
 var _sprite: AnimatedSprite2D
 var _attacking: bool = false
+var _art_top_y: float = -28.0
 
 
 func get_dexterity() -> int:
@@ -193,6 +194,10 @@ func get_art_id() -> String:
 		return "novice_barbarian" if kind == Kind.WARRIOR else "novice_archer"
 	return ["warrior", "archer", "spiderling", "mother_spider",
 		"scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000"][kind]
+
+
+func get_status_label_y() -> float:
+	return _art_top_y - 9.0
 
 
 func get_status_count(kind_name: String) -> int:
@@ -289,6 +294,7 @@ func _ready() -> void:
 	_sprite.sprite_frames = SpriteFrames.new()
 	_sprite.sprite_frames.remove_animation("default")
 	var unit_id: String = get_art_id()
+	_art_top_y = 0.0
 	for state: String in ["idle", "move", "attack"]:
 		for direction: String in ["left", "right"]:
 			var animation: StringName = state + "_" + direction
@@ -300,6 +306,7 @@ func _ready() -> void:
 				var texture: Texture2D = load("res://scenes/combat/art/units/%s/%s/%s/%03d.png" % [
 					unit_id, state, direction, frame]) as Texture2D
 				_sprite.sprite_frames.add_frame(animation, texture)
+				_art_top_y = minf(_art_top_y, texture.get_image().get_used_rect().position.y - 28.0)
 	add_child(_sprite)
 	_silhouette = Sprite2D.new()
 	_silhouette.centered = false
@@ -364,8 +371,9 @@ func _draw() -> void:
 	_silhouette.position = Vector2(0, floor_offset_y + body_offset_y)
 	_sprite.position = _silhouette.position
 	draw_set_transform(Vector2(0, floor_offset_y))
-	draw_rect(Rect2(-9, -33, 18, 4), OUTLINE_COLOR)
-	draw_rect(Rect2(-8, -32, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
+	var status_y: float = get_status_label_y()
+	draw_rect(Rect2(-9, status_y + 4, 18, 4), OUTLINE_COLOR)
+	draw_rect(Rect2(-8, status_y + 5, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
 	var status: String = get_periodic_status_text()
 	if is_stunned:
 		status = "기절" + (" " + status if not status.is_empty() else "")
@@ -374,7 +382,7 @@ func _draw() -> void:
 	if not status.is_empty():
 		var font: Font = ThemeDB.fallback_font
 		var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-		draw_string(font, Vector2(-width / 2.0, -37), status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, WEAPON_COLOR)
+		draw_string(font, Vector2(-width / 2.0, status_y), status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, WEAPON_COLOR)
 	draw_polyline(PackedVector2Array([Vector2(-9, 0), Vector2(0, 4), Vector2(9, 0)]),
 		ALLY_COLOR if is_ally else ENEMY_COLOR)
 	draw_set_transform(Vector2.ZERO)
@@ -406,7 +414,7 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 	var rise: float = absf(canvas.basis_xform(Vector2(0, -FEEDBACK_RISE)).y)
 	var padding: float = 2.0 * maxf(absf(canvas.get_scale().x), absf(canvas.get_scale().y))
 	var viewport: Rect2 = get_viewport().get_visible_rect()
-	var origin: Vector2 = canvas * (position + Vector2(-16, floor_offset_y - 42))
+	var origin: Vector2 = canvas * (position + Vector2(-16, floor_offset_y + get_status_label_y() - 5))
 	var first: Vector2 = viewport.position + Vector2(padding, rise + padding)
 	var best: Vector2 = origin.clamp(first, viewport.end - popup_size - Vector2.ONE * padding)
 	var distance: float = INF
@@ -418,7 +426,7 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 			var periodic: String = child.get_periodic_status_text()
 			var status: String = "기절 %s ◎" % periodic if not periodic.is_empty() else "기절 ◎"
 			var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-			var status_rect: Rect2 = Rect2(Vector2(-width / 2.0, -37 - font.get_ascent(10)),
+			var status_rect: Rect2 = Rect2(Vector2(-width / 2.0, child.get_status_label_y() - font.get_ascent(10)),
 				Vector2(width, font.get_height(10)))
 			var elevated_status: Rect2 = Rect2(status_rect.position + Vector2(0, child.floor_offset_y), status_rect.size)
 			occupied.append((child.get_global_transform_with_canvas() * elevated_status).grow(padding))
