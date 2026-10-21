@@ -40,7 +40,7 @@ HP·상태·피해 팝업은 그 유닛의 실제 그림 높이를 기준으로 
 
 `개발 결정`([#224](https://github.com/minjunkim-dev/BGLike/issues/224)): 무기 아이템은 하나이고 직업 제한은 보류다. 그래서 같은 무기에 공용·전사 `sword`와 궁수 `bow`를 연결한다. 대안인 직업 전용 무기 아이템은 아이템 규칙을 바꾸므로 택하지 않았다. 제작은 생성 모델 대신 코드로 픽셀을 찍는다. 같은 결과를 다시 만들 수 있고 외부 권리 조건이 없다. 대안인 내장 `image_gen`은 이 작업 환경에 없었다.
 
-아이콘은 `scenes/combat/art/icons/items/<icon_id>.png`에 둔다. 무기는 `sword`(공용·전사)와 `bow`(궁수), 방어구는 `armor`, 회복 물약은 `potion`이다. `item_data.json`의 `icon`과 `unit_icons`가 파일을 정한다. `CombatLoot.icon_path(item, unit_id)`로 경로를 얻는다. 화면 배치는 정비 화면 구현([#227](https://github.com/minjunkim-dev/BGLike/issues/227))에서 한다.
+아이콘은 `scenes/combat/art/icons/items/<icon_id>.png`에 둔다. 무기는 `sword`(공용·전사)와 `bow`(궁수), 방어구는 `armor`, 회복 물약은 `potion`이다. `item_data.json`의 `icon`과 `unit_icons`가 파일을 정한다. `CombatLoot.icon_path(item, unit_id)`로 경로를 얻는다. 정비 화면은 장착 칸에 `unit.get_art_id()`를 넘기고 보상·가방 칸은 소유자 없이 부른다([정비 화면 배치](ITEM_LOOT.md#정비-화면-배치)).
 
 생성 모델 대신 `sources/icons/draw_item_icons.py`가 설명문대로 픽셀을 찍는다. 같은 명령은 같은 파일을 만든다. 설명문·팔레트·규격은 `sources/icons/item_icon_generation.json`에 기록한다. 유닛 시트처럼 축소하지 않으므로 별도 정규화 단계가 없다. 원본 폴더는 Godot 가져오기에서 제외한다.
 

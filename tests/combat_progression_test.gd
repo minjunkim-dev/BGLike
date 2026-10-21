@@ -674,7 +674,8 @@ func _finish_rewards(battle: Node2D) -> void:
 	var missing: int = battle.loot.bag.size() + preparation.rewards.size() - int(battle.loot.data["bag_limit"])
 	# 9전투 진행 검사는 가방이 차면 실제 폐기 버튼과 확인을 거쳐 공간을 확보한다.
 	for index: int in range(maxi(0, missing)):
-		(preparation.content.get_node("BagItem0/Discard") as Button).pressed.emit()
+		(preparation.find_child("BagItem0", true, false) as Button).pressed.emit()
+		(preparation.detail.find_child("DiscardItem", true, false) as Button).pressed.emit()
 		preparation.discard_dialog.confirmed.emit()
 	preparation.continue_button.pressed.emit()
 	preparation.discard_dialog.confirmed.emit()
