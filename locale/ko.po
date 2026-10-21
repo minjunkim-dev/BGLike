@@ -360,13 +360,13 @@ msgid "%s %s 장판 만료: %d, %d"
 msgstr "%s %s 장판 만료: %d, %d"
 
 #: scenes/combat/actions.gd:298 scenes/combat/actions.gd:382
-#: scenes/combat/actions.gd:414 scenes/combat/actions.gd:921
+#: scenes/combat/actions.gd:414 scenes/combat/actions.gd:924
 msgid "불"
 msgstr "불"
 
 #: scenes/combat/actions.gd:298 scenes/combat/actions.gd:321
 #: scenes/combat/actions.gd:382 scenes/combat/actions.gd:414
-#: scenes/combat/actions.gd:921 scenes/combat/unit.gd:217
+#: scenes/combat/actions.gd:924 scenes/combat/unit.gd:217
 msgid "독"
 msgstr "독"
 
@@ -378,7 +378,7 @@ msgstr "%s 과부하: 자기 피해 2 · HP %d"
 msgid "과부하 -2"
 msgstr "과부하 -2"
 
-#: scenes/combat/actions.gd:321 scenes/combat/actions.gd:921
+#: scenes/combat/actions.gd:321 scenes/combat/actions.gd:924
 #: scenes/combat/unit.gd:217
 msgid "화상"
 msgstr "화상"
@@ -434,11 +434,11 @@ msgid "%s 점프: 이동 %d, 보조 행동1 · 남은 이동 %d"
 msgstr "%s 점프: 이동 %d, 보조 행동1 · 남은 이동 %d"
 
 #: scenes/combat/actions.gd:525 scenes/combat/actions.gd:541
-#: scenes/combat/actions.gd:951
+#: scenes/combat/actions.gd:954
 msgid "낙사"
 msgstr "낙사"
 
-#: scenes/combat/actions.gd:528 scenes/combat/actions.gd:937
+#: scenes/combat/actions.gd:528 scenes/combat/actions.gd:940
 msgid "물: 화상 해제"
 msgstr "물: 화상 해제"
 
@@ -606,56 +606,60 @@ msgstr "흘려내기: d20 %d + %d = %d / DC %d · %s"
 msgid "흘려내기 %d"
 msgstr "흘려내기 %d"
 
-#: scenes/combat/actions.gd:889
+#: scenes/combat/actions.gd:890
+msgid "%s 피해: %d · HP %d"
+msgstr "%s 피해: %d · HP %d"
+
+#: scenes/combat/actions.gd:892
 msgid "%s 피해%s: %s + %d = %d · HP %d"
 msgstr "%s 피해%s: %s + %d = %d · HP %d"
 
-#: scenes/combat/actions.gd:890
+#: scenes/combat/actions.gd:893
 msgid " (표식 추가)"
 msgstr " (표식 추가)"
 
-#: scenes/combat/actions.gd:894
+#: scenes/combat/actions.gd:897
 msgid "%s 기절 면역"
 msgstr "%s 기절 면역"
 
-#: scenes/combat/actions.gd:895 scenes/combat/turn_hud.gd:404
+#: scenes/combat/actions.gd:898 scenes/combat/turn_hud.gd:404
 msgid "기절 면역"
 msgstr "기절 면역"
 
-#: scenes/combat/actions.gd:902
+#: scenes/combat/actions.gd:905
 msgid "정신 내성: d20 %d + %d = %d / DC %d · %s"
 msgstr "정신 내성: d20 %d + %d = %d / DC %d · %s"
 
-#: scenes/combat/actions.gd:904 scenes/combat/turn_hud.gd:397
+#: scenes/combat/actions.gd:907 scenes/combat/turn_hud.gd:397
 #: scenes/combat/unit.gd:383 scenes/combat/unit.gd:452
 msgid "기절"
 msgstr "기절"
 
-#: scenes/combat/actions.gd:904
+#: scenes/combat/actions.gd:907
 msgid "버팀"
 msgstr "버팀"
 
-#: scenes/combat/actions.gd:905
+#: scenes/combat/actions.gd:908
 msgid "정신 내성 %d"
 msgstr "정신 내성 %d"
 
-#: scenes/combat/actions.gd:920
+#: scenes/combat/actions.gd:923
 msgid "%s %s 장판: %s 부여"
 msgstr "%s %s 장판: %s 부여"
 
-#: scenes/combat/actions.gd:934
+#: scenes/combat/actions.gd:937
 msgid "%s 물: 화상 해제"
 msgstr "%s 물: 화상 해제"
 
-#: scenes/combat/actions.gd:948
+#: scenes/combat/actions.gd:951
 msgid "%s 낙사: 전투 불능"
 msgstr "%s 낙사: 전투 불능"
 
-#: scenes/combat/actions.gd:964
+#: scenes/combat/actions.gd:967
 msgid "%s 낙하 피해: %d · HP %d"
 msgstr "%s 낙하 피해: %d · HP %d"
 
-#: scenes/combat/actions.gd:992
+#: scenes/combat/actions.gd:995
 msgid "%s %s: HP +%d → %d"
 msgstr "%s %s: HP +%d → %d"
 

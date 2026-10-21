@@ -343,7 +343,7 @@ msgstr ""
 #: scenes/combat/actions.gd:298
 #: scenes/combat/actions.gd:382
 #: scenes/combat/actions.gd:414
-#: scenes/combat/actions.gd:921
+#: scenes/combat/actions.gd:924
 msgid "불"
 msgstr ""
 
@@ -351,7 +351,7 @@ msgstr ""
 #: scenes/combat/actions.gd:321
 #: scenes/combat/actions.gd:382
 #: scenes/combat/actions.gd:414
-#: scenes/combat/actions.gd:921
+#: scenes/combat/actions.gd:924
 #: scenes/combat/unit.gd:217
 msgid "독"
 msgstr ""
@@ -365,7 +365,7 @@ msgid "과부하 -2"
 msgstr ""
 
 #: scenes/combat/actions.gd:321
-#: scenes/combat/actions.gd:921
+#: scenes/combat/actions.gd:924
 #: scenes/combat/unit.gd:217
 msgid "화상"
 msgstr ""
@@ -428,12 +428,12 @@ msgstr ""
 
 #: scenes/combat/actions.gd:525
 #: scenes/combat/actions.gd:541
-#: scenes/combat/actions.gd:951
+#: scenes/combat/actions.gd:954
 msgid "낙사"
 msgstr ""
 
 #: scenes/combat/actions.gd:528
-#: scenes/combat/actions.gd:937
+#: scenes/combat/actions.gd:940
 msgid "물: 화상 해제"
 msgstr ""
 
@@ -613,59 +613,63 @@ msgstr ""
 msgid "흘려내기 %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:889
+#: scenes/combat/actions.gd:890
+msgid "%s 피해: %d · HP %d"
+msgstr ""
+
+#: scenes/combat/actions.gd:892
 msgid "%s 피해%s: %s + %d = %d · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:890
+#: scenes/combat/actions.gd:893
 msgid " (표식 추가)"
 msgstr ""
 
-#: scenes/combat/actions.gd:894
+#: scenes/combat/actions.gd:897
 msgid "%s 기절 면역"
 msgstr ""
 
-#: scenes/combat/actions.gd:895
+#: scenes/combat/actions.gd:898
 #: scenes/combat/turn_hud.gd:404
 msgid "기절 면역"
 msgstr ""
 
-#: scenes/combat/actions.gd:902
+#: scenes/combat/actions.gd:905
 msgid "정신 내성: d20 %d + %d = %d / DC %d · %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:904
+#: scenes/combat/actions.gd:907
 #: scenes/combat/turn_hud.gd:397
 #: scenes/combat/unit.gd:383
 #: scenes/combat/unit.gd:452
 msgid "기절"
 msgstr ""
 
-#: scenes/combat/actions.gd:904
+#: scenes/combat/actions.gd:907
 msgid "버팀"
 msgstr ""
 
-#: scenes/combat/actions.gd:905
+#: scenes/combat/actions.gd:908
 msgid "정신 내성 %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:920
+#: scenes/combat/actions.gd:923
 msgid "%s %s 장판: %s 부여"
 msgstr ""
 
-#: scenes/combat/actions.gd:934
+#: scenes/combat/actions.gd:937
 msgid "%s 물: 화상 해제"
 msgstr ""
 
-#: scenes/combat/actions.gd:948
+#: scenes/combat/actions.gd:951
 msgid "%s 낙사: 전투 불능"
 msgstr ""
 
-#: scenes/combat/actions.gd:964
+#: scenes/combat/actions.gd:967
 msgid "%s 낙하 피해: %d · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:992
+#: scenes/combat/actions.gd:995
 msgid "%s %s: HP +%d → %d"
 msgstr ""
 
