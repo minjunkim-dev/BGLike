@@ -562,7 +562,7 @@ func _dice_for_miss() -> CombatDice:
 func _test_layout() -> void:
 	# 해상도 ADR(docs/adr/0002-resolution.md)의 검증 창, 넓은 비율 창, 비정수 배율 창.
 	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900),
-		Vector2i(2560, 1080), Vector2i(1366, 768)]:
+		Vector2i(2560, 1600), Vector2i(2560, 1080), Vector2i(1366, 768)]:
 		root.size = size
 		await process_frame
 		await process_frame
@@ -841,7 +841,7 @@ func _test_focus_tooltips(buttons: Dictionary) -> void:
 	_check(hovered.has_focus() and not hovered.has_focus(true),
 		"클릭 포커스는 숨긴 포커스라 흰 테두리가 선택 금색 테두리를 덮지 않음")
 	hovered.release_focus()
-	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080)]:
+	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900)]:
 		root.size = size
 		await process_frame
 		await process_frame
@@ -1537,7 +1537,7 @@ func _test_spawned_portrait_input() -> void:
 		await process_frame
 		return
 	var scroll: ScrollContainer = hud.get_node("OrderScroll") as ScrollContainer
-	for size: Vector2i in [Vector2i(1920, 1080), Vector2i(1280, 720)]:
+	for size: Vector2i in [Vector2i(1920, 1080), Vector2i(1440, 900), Vector2i(1280, 720)]:
 		root.size = size
 		await process_frame
 		await process_frame

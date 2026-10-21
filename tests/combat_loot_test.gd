@@ -745,7 +745,11 @@ func _test_reward_flow() -> void:
 			"보상 확인 단계는 수치를 보여 주고 정비에서만 분배")
 		await _click(preparation.continue_button)
 		_check(preparation.maintaining and preparation.title_label.text == "정비", "보상 다음 정비 단계")
-		await _click(await _pick(preparation, "Item0", "Ally1"))
+		await _check_preparation_layout(preparation)
+		var give: Button = await _pick(preparation, "Item0", "Ally1")
+		# 칸을 골라 상세 패널에 동작 버튼이 생긴 상태도 검사한다.
+		await _check_preparation_layout(preparation)
+		await _click(give)
 		_check(party[1].get_armor_class() == 16 and party[1].hit_points == 0
 			and party[1].get_max_hit_points() == 18,
 			"실제 분배 버튼은 전투 불능 궁수에게 방어구 장착")
@@ -804,6 +808,29 @@ func _test_reward_flow() -> void:
 		_check(loot.bag.size() == 2 and loot.bag[0]["name"] == "버릴 무기"
 			and loot.bag[1]["kind"] == "potion", "패배 후 실제 막 재시작은 공용 가방 보존")
 	main.queue_free()
+	await process_frame
+
+
+## #265: 16:9와 16:10(논리 640×400) 창에서 정비 화면의 영역이 화면 안에 있고 서로 겹치지 않는다.
+func _check_preparation_layout(preparation: CombatPreparation) -> void:
+	# 다른 정비 검사의 기존 창 크기를 되돌린다.
+	var original: Vector2i = root.size
+	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1440, 900), Vector2i(2560, 1600)]:
+		root.size = size
+		await process_frame
+		await process_frame
+		var screen: Rect2 = Rect2(Vector2.ZERO, preparation.get_viewport_rect().size)
+		_check(preparation.get_global_rect() == screen, "%s: 정비 화면이 논리 화면 전체를 채움" % size)
+		var items: Control = preparation.content.get_parent().get_parent() as Control
+		var areas: Array[Control] = [preparation.enable_button, preparation.cards, items,
+			preparation.detail_panel, preparation.continue_button]
+		for index: int in range(areas.size()):
+			var rect: Rect2 = areas[index].get_global_rect()
+			_check(screen.encloses(rect), "%s: 정비 화면 영역이 화면 안: %s" % [size, areas[index]])
+			for other: Control in areas.slice(index + 1):
+				_check(not rect.intersects(other.get_global_rect()),
+					"%s: 정비 화면 영역끼리 겹치지 않음: %s, %s" % [size, areas[index], other])
+	root.size = original
 	await process_frame
 
 
