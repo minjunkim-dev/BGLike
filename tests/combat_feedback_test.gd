@@ -98,6 +98,7 @@ func _run() -> void:
 		"명중·빗나감·치명타 피해와 과부하 자해 유지")
 	_check(_popups().is_empty(), "마지막 피드백 이후 팝업 제거")
 	await _test_shock_feedback()
+	await _test_crowded_feedback()
 	monitoring = false
 	if observer != null:
 		_check(observer.last_error == OK and observer.frame_count > 0, "Forward+ 원본 프레임 저장")
@@ -168,6 +169,64 @@ func _test_shock_feedback() -> void:
 		await create_timer(1.0).timeout
 		_check(collisions.is_empty(), "충격 화살 팝업·상태 표시 겹침 없음: %s" % str(collisions))
 		_check(_popups().is_empty(), "충격 화살 팝업 제거")
+
+
+## #260: 3-1에서 궁수를 여섯 유닛이 둘러싼 밀집 배치. 새끼 거미의 치명타 팝업이 대상 가까이에 순서대로 쌓여야 한다.
+func _test_crowded_feedback() -> void:
+	battle.set_process(false)  # 적 AI 대신 정해진 공격 한 번만 실행한다.
+	(battle.get("progress") as CombatActProgress).stage_index = 6
+	battle.call("_start_stage", true)
+	var units: Array[CombatUnit] = battle.get("units")
+	_check(units.size() == 7, "밀집 팝업 전제조건: 3-1 유닛 7개")
+	if units.size() != 7:
+		return
+	var archer: CombatUnit = units[1]
+	var attacker: CombatUnit = units[2]
+	# 위쪽 HUD와 떨어진 자리라 같은 대상의 팝업을 위로 쌓을 공간이 있다.
+	var cells: Array[Vector2i] = [Vector2i(7, 8), Vector2i(8, 7), Vector2i(8, 6), Vector2i(9, 7), Vector2i(7, 7),
+		Vector2i(8, 8), Vector2i(9, 6)]
+	var rolls: Array[int] = []
+	for index: int in range(units.size()):
+		units[index].cell = cells[index]
+		units[index].reaction_left = 0
+		rolls.append(20 if units[index] == attacker else 1)
+	turns.start(units, ScriptedDice.new(rolls))
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	actions.dice = ScriptedDice.new([20], [20])
+	battle.call("_update_turn_ui")
+	_check(turns.current_unit == attacker and attacker.kind == CombatUnit.Kind.SPIDERLING
+		and archer.kind == CombatUnit.Kind.ARCHER, "밀집 팝업 전제조건: 새끼 거미 차례, 궁수 대상")
+	var parent: Node2D = battle.get_node("Units") as Node2D
+	var placed: Array[Dictionary] = []
+	var record: Callable = func(unit: CombatUnit, text: String) -> void:
+		for child: Node in parent.get_children():
+			if child is Label and child.text == text and child.get_meta("feedback_unit", 0) == unit.get_instance_id():
+				var canvas: Transform2D = parent.get_global_transform_with_canvas()
+				var scale: float = absf(canvas.get_scale().x)
+				placed.append({"unit": unit, "text": text, "rect": canvas * (child as Label).get_rect(),
+					"origin": canvas * (unit.position + Vector2(-16, unit.floor_offset_y + unit.get_status_label_y() - 5)),
+					"padding": 2.0 * scale, "near": CombatUnit.FEEDBACK_NEAR * scale})
+	actions.feedback.connect(record)
+	_check(await actions.attack(attacker, archer), "밀집 배치에서 새끼 거미 치명타 실행")
+	actions.feedback.disconnect(record)
+	var texts: Array = placed.map(func(entry: Dictionary) -> String: return entry["text"])
+	_check(texts == ["공격 24", "치명타!", "-1"], "밀집 배치의 판정·치명타·피해 팝업: %s" % str(texts))
+	# 기준 자리: 대상 상태 줄 기준점. 같은 대상의 이전 팝업이 있으면 그 팝업 바로 위가 더 위쪽일 때 그 자리.
+	var latest: Dictionary = {}
+	for entry: Dictionary in placed:
+		var rect: Rect2 = entry["rect"]
+		var slot: Vector2 = entry["origin"]
+		if latest.has(entry["unit"]):
+			var previous: Rect2 = latest[entry["unit"]]
+			_check(rect.end.y < previous.position.y, "같은 대상의 다음 팝업은 이전 팝업 위: %s %s / %s" % [
+				entry["text"], rect, previous])
+			slot.y = minf(slot.y, previous.position.y - 3.0 * entry["padding"] - rect.size.y)
+		_check(rect.position.distance_to(slot) <= entry["near"], "밀집 배치 팝업은 기준 자리에서 %.0fpx 안: %s %s / 기준 %s" % [
+			entry["near"], entry["text"], rect, slot])
+		latest[entry["unit"]] = rect
+	await create_timer(1.0).timeout
+	_check(collisions.is_empty(), "밀집 배치 팝업 겹침·화면 밖·HUD 침범 없음: %s" % str(collisions))
+	_check(_popups().is_empty(), "밀집 배치 팝업 제거")
 
 
 func _wait_for(predicate: Callable, seconds: float) -> bool:
