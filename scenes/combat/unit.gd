@@ -8,6 +8,9 @@ enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 
 const MOVEMENT_PER_TURN: int = 6
 const FEEDBACK_RISE: float = 12.0
+## 팝업 왼쪽 위가 기준 자리에서 벗어날 수 있는 최대 논리px(#260). 기준 자리는 대상 상태 줄 기준점이다.
+## 같은 대상의 이전 팝업이 그보다 높으면 그 팝업 바로 위다. 붐빌 때 옆 유닛 팝업 하나를 비켜 갈 만큼이다.
+const FEEDBACK_NEAR: float = 40.0
 
 const ALLY_COLOR: Color = Color("509be0")
 const ENEMY_COLOR: Color = Color("df6256")
@@ -201,6 +204,25 @@ func get_status_label_y() -> float:
 	return _art_top_y + body_offset_y - 9.0
 
 
+## 유닛 위에 지금 보이는 상태 글자. 기절·화상·독·표식.
+func get_status_text() -> String:
+	var status: String = get_periodic_status_text()
+	if is_stunned:
+		status = tr("기절") + (" " + status if not status.is_empty() else "")
+	if has_mark:
+		status += " ◎"
+	return status
+
+
+## 상태 글자 text가 차지할 화면 영역을 padding만큼 넓힌다. 팝업 배치가 피한다.
+func get_status_area(text: String, padding: float) -> Rect2:
+	var font: Font = ThemeDB.fallback_font
+	var width: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+	var area: Rect2 = Rect2(Vector2(-width / 2.0, floor_offset_y + get_status_label_y() - font.get_ascent(10)),
+		Vector2(width, font.get_height(10)))
+	return (get_global_transform_with_canvas() * area).grow(padding)
+
+
 func get_status_count(kind_name: String) -> int:
 	var count: int = 0
 	for effect: StatusEffect in status_effects:
@@ -379,11 +401,7 @@ func _draw() -> void:
 	var status_y: float = get_status_label_y()
 	draw_rect(Rect2(-9, status_y + 4, 18, 4), OUTLINE_COLOR)
 	draw_rect(Rect2(-8, status_y + 5, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
-	var status: String = get_periodic_status_text()
-	if is_stunned:
-		status = tr("기절") + (" " + status if not status.is_empty() else "")
-	if has_mark:
-		status += " ◎"
+	var status: String = get_status_text()
 	if not status.is_empty():
 		var font: Font = ThemeDB.fallback_font
 		var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
@@ -438,46 +456,88 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 	var canvas: Transform2D = (get_parent() as Node2D).get_global_transform_with_canvas()
 	var popup_size: Vector2 = (canvas * Rect2(Vector2.ZERO, popup.size)).size
 	var rise: float = absf(canvas.basis_xform(Vector2(0, -FEEDBACK_RISE)).y)
-	var padding: float = 2.0 * maxf(absf(canvas.get_scale().x), absf(canvas.get_scale().y))
+	var canvas_scale: float = maxf(absf(canvas.get_scale().x), absf(canvas.get_scale().y))
+	var padding: float = 2.0 * canvas_scale
 	var viewport: Rect2 = get_viewport().get_visible_rect()
 	var origin: Vector2 = canvas * (position + Vector2(-16, floor_offset_y + get_status_label_y() - 5))
 	var first: Vector2 = viewport.position + Vector2(padding, rise + padding)
-	var best: Vector2 = origin.clamp(first, viewport.end - popup_size - Vector2.ONE * padding)
-	var distance: float = INF
-	var occupied: Array[Rect2] = obstacles.duplicate()
-	# 새 기절·표식과 현재 화상·독을 함께 읽을 수 있는 상태 표시 영역을 예약한다.
-	var font: Font = ThemeDB.fallback_font
+	var center: Vector2 = origin.clamp(first, viewport.end - popup_size - Vector2.ONE * padding)
+	# 화면 패널, 다른 대상 팝업의 상승 경로, 지금 보이는 상태 글자와 대상 자신의 상태 자리는 언제나 피한다.
+	var blocked: Array[Rect2] = obstacles.duplicate()
+	# 다른 유닛의 새 기절·표식과 현재 화상·독을 읽을 자리는 근처에 빈 자리가 있을 때만 비워 둔다.
+	var reserved: Array[Rect2] = []
+	# 같은 대상의 팝업은 이전 팝업 위에 순서대로 쌓는다(#260).
+	var ceiling: float = INF
 	for child: Node in get_parent().get_children():
 		if child is CombatUnit:
 			var periodic: String = child.get_periodic_status_text()
-			var status: String = tr("기절") + (" " + periodic if not periodic.is_empty() else "") + " ◎"
-			var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-			var status_rect: Rect2 = Rect2(Vector2(-width / 2.0, child.get_status_label_y() - font.get_ascent(10)),
-				Vector2(width, font.get_height(10)))
-			var elevated_status: Rect2 = Rect2(status_rect.position + Vector2(0, child.floor_offset_y), status_rect.size)
-			occupied.append((child.get_global_transform_with_canvas() * elevated_status).grow(padding))
+			var area: Rect2 = child.get_status_area(
+				tr("기절") + (" " + periodic if not periodic.is_empty() else "") + " ◎", padding)
+			if child == self:
+				blocked.append(area)
+			else:
+				reserved.append(area)
+			var shown: String = child.get_status_text()
+			if not shown.is_empty():
+				blocked.append(child.get_status_area(shown, padding))
 		elif child is Label and child != popup and child.has_meta("feedback_unit"):
 			var area: Rect2 = canvas * child.get_rect()
+			if child.get_meta("feedback_unit") == get_instance_id():
+				# 같은 대상의 팝업은 같은 속도로 떠오르므로 상승 경로를 비우지 않고 바로 위에 쌓는다.
+				ceiling = minf(ceiling, area.position.y - 2.0 * padding)
+				blocked.append(area.grow(padding))
+				continue
 			area.position.y -= rise
 			area.size.y += rise
-			occupied.append(area.grow(padding))
-	var candidates: Array[Vector2] = [best]
+			blocked.append(area.grow(padding))
+	var anchor: Vector2 = Vector2(center.x, minf(center.y, ceiling - popup_size.y - padding))
+	var near: float = FEEDBACK_NEAR * canvas_scale
+	var quantum: float = 2.0 * padding
+	var steps: int = floori(near / quantum)
+	var nearby: Array[Vector2] = []
+	var above: Array[Vector2] = []
+	for row: int in range(-steps, ceili((anchor.y - first.y) / quantum) + 1):
+		for column: int in range(-steps, steps + 1):
+			var offset: Vector2 = Vector2(column, -row) * quantum
+			above.append(anchor + offset)
+			if offset.length() <= near:
+				nearby.append(anchor + offset)
+	var screen: Array[Vector2] = []
 	var step: Vector2 = popup_size + Vector2(padding * 2, rise + padding * 2)
 	for row: int in range(ceili(viewport.size.y / step.y)):
 		for column: int in range(ceili(viewport.size.x / step.x)):
-			candidates.append(first + Vector2(column, row) * step)
+			screen.append(first + Vector2(column, row) * step)
+	var all_blocked: Array[Rect2] = blocked + reserved
+	# 근처가 차면 다른 유닛의 상태 자리 예약을 풀고 다시 찾는다. 그래도 차면 위쪽으로 쌓는다.
+	# 위가 화면 패널에 막히면 순서를 포기하고 화면 전체에서 대상에 가장 가까운 빈 자리를 쓴다.
+	for search: Array in [[nearby, all_blocked, ceiling, anchor], [nearby, blocked, ceiling, anchor],
+			[above, blocked, ceiling, anchor], [screen, all_blocked, INF, center], [screen, blocked, INF, center]]:
+		var found: Variant = _closest_free_spot(search[0], search[3], popup_size, rise, padding, search[1], search[2])
+		if found != null:
+			return canvas.affine_inverse() * (found as Vector2)
+	return canvas.affine_inverse() * center
+
+
+## 후보 중 기준점에 가장 가까운 빈 자리. 없으면 null. 팝업 아래쪽은 ceiling을 넘지 않는다.
+func _closest_free_spot(candidates: Array[Vector2], target: Vector2, popup_size: Vector2, rise: float,
+		padding: float, blocked: Array[Rect2], ceiling: float) -> Variant:
+	var viewport: Rect2 = get_viewport().get_visible_rect()
+	var best: Variant = null
+	var distance: float = INF
 	for candidate: Vector2 in candidates:
+		var candidate_distance: float = candidate.distance_squared_to(target)
+		if candidate_distance >= distance:
+			continue
 		# 위로 뜨는 전체 경로를 예약해 연출 중에도 팝업과 HUD를 피한다.
 		var area: Rect2 = Rect2(candidate - Vector2(0, rise), popup_size + Vector2(0, rise)).grow(padding)
-		if not viewport.encloses(area):
+		if not viewport.encloses(area) or area.end.y > ceiling:
 			continue
 		var available: bool = true
-		for blocked: Rect2 in occupied:
-			if area.intersects(blocked):
+		for rect: Rect2 in blocked:
+			if area.intersects(rect):
 				available = false
 				break
-		var candidate_distance: float = candidate.distance_squared_to(origin)
-		if available and candidate_distance < distance:
+		if available:
 			best = candidate
 			distance = candidate_distance
-	return canvas.affine_inverse() * best
+	return best
