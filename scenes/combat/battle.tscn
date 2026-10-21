@@ -135,6 +135,7 @@ mouse_filter = 2
 layout_mode = 2
 theme_override_font_sizes/font_size = 10
 mouse_filter = 2
+autowrap_mode = 3
 
 [node name="AttackPreview" type="Label" parent="UI/TurnHud/UnitDetails"]
 layout_mode = 2

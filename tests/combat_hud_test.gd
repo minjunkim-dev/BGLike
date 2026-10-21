@@ -1283,6 +1283,37 @@ func _test_spawned_portrait_input() -> void:
 		main.queue_free()
 		await process_frame
 		return
+	var scroll: ScrollContainer = hud.get_node("OrderScroll") as ScrollContainer
+	for size: Vector2i in [Vector2i(1280, 720), Vector2i(640, 360)]:
+		root.size = size
+		await process_frame
+		await process_frame
+		var visible_bar: Rect2 = scroll.get_global_rect().intersection(hud.order_bar.get_global_rect())
+		_check((hud.get("_portraits") as Dictionary).size() == 7 and hud.order_bar.size.x > scroll.size.x
+			and scroll.get_h_scroll_bar().is_visible_in_tree() and visible_bar.has_area()
+			and not visible_bar.intersects((hud.get_node("UnitDetails") as Control).get_global_rect()),
+			"%s: 3-1 시작 초상7개가 넘쳐도 보이는 턴 순서 바는 정보 패널과 겹치지 않고 가로 스크롤" % size)
+	# 고철로봇의 긴 상태 줄도 정보 패널을 왼쪽으로 넓히지 않고 줄을 바꾼다.
+	var status_unit: CombatUnit = units[2]
+	var status_kind: CombatUnit.Kind = status_unit.kind
+	status_unit.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	status_unit.overloaded = true
+	status_unit.pull_cooldown = 1
+	status_unit.has_mark = true
+	for stack: int in range(3):
+		status_unit.status_effects.append(CombatUnit.StatusEffect.new("burn", status_unit, 2))
+		status_unit.status_effects.append(CombatUnit.StatusEffect.new("poison", status_unit, 2))
+	hud.show_unit(status_unit)
+	await process_frame
+	await process_frame
+	_check(not scroll.get_global_rect().intersects((hud.get_node("UnitDetails") as Control).get_global_rect())
+		and not (hud.get_node("UnitDetails/UnitPanel") as Control).get_global_rect().intersects(
+			hud.preview_label.get_global_rect()), "긴 상태 줄도 정보 패널이 턴 순서 바를 가리지 않음")
+	status_unit.kind = status_kind
+	status_unit.overloaded = false
+	status_unit.pull_cooldown = 0
+	status_unit.has_mark = false
+	status_unit.status_effects.clear()
 	var spawn_events: Array[int] = [0]
 	actions.logged.connect(func(message: String) -> void:
 		if " 새끼 낳기:" in message:
