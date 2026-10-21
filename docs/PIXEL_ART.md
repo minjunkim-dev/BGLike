@@ -24,6 +24,8 @@ HP·상태·피해 팝업은 그 유닛의 실제 그림 높이를 기준으로 
 
 사용자는2026-10-21에32px 결과의 가독성과 선명도 개선을 요청했다. [#194 결정](https://github.com/minjunkim-dev/BGLike/issues/194#issuecomment-6305982882)에 따라 원본에서64px로 재추출한다. 32px를 두 배로 확대한 파일을 납품하지 않는다. Sprite scale0.5로 기존 논리 표시 크기와 피벗(16,28)을 유지한다. 기본 레이아웃640×360, 창1280×720, Nearest와 정수 배율을 유지한다. `canvas_items`는2D와 글꼴을 실제 창 해상도에서 렌더한다. 따라서1280×720에서64px 이미지의 세부를 보존한다. 640×360의 축소 화면에서는 같은 세부를 모두 구분할 수 없다. 권장 창은1280×720 이상이다. [Godot 공식 렌더 설명](https://docs.godotengine.org/en/stable/tutorials/rendering/multiple_resolutions.html)을 따른다.
 
+`개발 결정`([#256](https://github.com/minjunkim-dev/BGLike/issues/256)): 유닛 윤곽 셰이더(`unit_outline.gdshader`)는 이웃 픽셀을 1텍셀과 1화면 픽셀 중 큰 간격으로 샘플한다. 640×360에서는 1텍셀이 0.5화면 픽셀이라 1텍셀 윤곽이 픽셀 사이로 빠져 끊긴 점으로 보였다. 이제 윤곽은 2텍셀(1화면 픽셀) 두께로 이어진다. 1280×720 이상에서는 1텍셀이 1화면 픽셀 이상이라 모양이 그대로다. 가림·선택·미리보기 윤곽과 사물 미리보기 윤곽이 같은 셰이더를 쓴다. 팀색과 윤곽 클릭 규칙은 바꾸지 않는다. 표시 두께만 화면 배율에 맞춘다. 기획자가 나중에 바꿀 수 있다.
+
 제작 원본과 프롬프트는 `scenes/combat/art/sources/`에 보존한다. 이 폴더는 Godot 리소스 가져오기에서 제외한다. `unit_generation.json`은 원본·프롬프트·가공 규격을 기록한다. `normalize_units.py`는 Pillow가 있는 Python에서 시트를 추출한다. 시스템 Python에 Pillow가 없으면 기존 Codex 번들 Python을 사용한다. 프로젝트의 실행 의존성을 추가하지 않는다. 런타임에는 개별 PNG 프레임을 연결한다. 생성 도구와 원본·가공 기록은 [자산 고지](../THIRD_PARTY_NOTICES.md)에 기록한다.
 
 ## 스킬 아이콘
