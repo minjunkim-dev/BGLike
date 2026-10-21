@@ -1837,6 +1837,10 @@ func _test_reaction_flow() -> void:
 			"기회 공격을 기다리는 동안 이동 연출 전의 칸·위치 유지")
 		_check(hud.reaction_dialog.get_ok_button().text == "공격"
 			and hud.reaction_dialog.get_cancel_button().text == "넘기기", "기회 공격 선택 문구")
+		var shared: Theme = load("res://scenes/ui_theme.tres")
+		_check(hud.reaction_dialog.get_theme_stylebox("embedded_border") == shared.get_stylebox("embedded_border", "Window")
+			and hud.reaction_dialog.get_ok_button().get_theme_stylebox("normal") == shared.get_stylebox("normal", "Button"),
+			"반응 확인 창은 공용 테마의 틀·버튼 모양")
 		var before: CombatUnit = turns.current_unit
 		hud.end_button.pressed.emit()
 		hud.unit_selected.emit(units[0])
