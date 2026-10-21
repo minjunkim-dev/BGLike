@@ -19,6 +19,8 @@ class SpaceBlocker extends Node:
 		if event is InputEventKey and event.keycode == KEY_SPACE:
 			get_viewport().set_input_as_handled()
 
+## 확인 창 모양은 프로젝트 공용 테마에서 가져온다(#262).
+const UI_THEME: Theme = preload("res://scenes/ui_theme.tres")
 const DEFAULT_BUTTON_COLOR: Color = Color("354656")
 const END_BUTTON_COLOR: Color = Color("926725")
 const RESOURCE_COLORS: Array[Color] = [Color("70c76d"), Color("edaa54"), Color("ac90e5")]
@@ -143,6 +145,7 @@ func _ready() -> void:
 			button.add_child(badge)
 			_badges[action] = badge
 	add_child(reaction_dialog)
+	reaction_dialog.theme = UI_THEME
 	reaction_dialog.add_child(SpaceBlocker.new())
 	reaction_dialog.title = tr("반응")
 	reaction_dialog.dialog_autowrap = true

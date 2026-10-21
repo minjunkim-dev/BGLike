@@ -4,6 +4,8 @@ extends ColorRect
 
 signal finished
 
+## 확인 창 모양은 프로젝트 공용 테마에서 가져온다(#262).
+const UI_THEME: Theme = preload("res://scenes/ui_theme.tres")
 const TEXT_COLOR: Color = Color("d8dee4")
 const DIM_COLOR: Color = Color("8d9aa6")
 const GOLD_COLOR: Color = Color("d6ad4f")
@@ -103,6 +105,7 @@ func _ready() -> void:
 	bottom.add_child(continue_button)
 	discard_dialog = ConfirmationDialog.new()
 	discard_dialog.name = "Discard"
+	discard_dialog.theme = UI_THEME
 	discard_dialog.title = tr("정비 종료 확인")
 	discard_dialog.ok_button_text = tr("마치기")
 	discard_dialog.cancel_button_text = tr("돌아가기")
