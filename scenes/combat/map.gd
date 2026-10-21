@@ -62,6 +62,7 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = n
 	for cell: Vector2i in grid.blocked_cells:
 		if grid.is_floor(cell) and not occupied.has(cell):
 			var marker: Node2D = _art_marker(cell, "ruin_wall", 4.0)
+			marker.name = "BlockedCell"
 			marker.set_meta("cell", cell)
 			add_child(marker)
 			_blocked_markers.append(marker)

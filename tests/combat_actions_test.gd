@@ -3682,8 +3682,9 @@ func _test_height_scene_input() -> void:
 		"앞 칸의 높은 옆면을 눌러도 가려진 뒤 칸을 선택하거나 이동하지 않음")
 	(battle.get("progress") as CombatActProgress).stage_index = 1
 	battle.call("_start_stage", true)
-	_check(actions.grid.heights.is_empty() and units[0].position == map.map_to_local(units[0].cell),
-		"다음 실제 평면 스테이지는 높이0으로 복귀하고 fixture 높이를 이어받지 않음")
+	_check(actions.grid.heights == battle.stages[1].heights
+		and units[0].position == map.map_to_local(units[0].cell),
+		"다음 실제 스테이지의 높이로 교체하고 fixture 높이를 이어받지 않음")
 	battle.queue_free()
 	await process_frame
 
@@ -3716,7 +3717,7 @@ func _test_blocked_scene_input() -> void:
 		"막힌 바닥의 두 번 우클릭은 이동·자원을 소비하지 않음")
 	(battle.get("progress") as CombatActProgress).stage_index = 1
 	battle.call("_start_stage", true)
-	_check(actions.grid.blocked_cells.is_empty() and not actions.grid.is_blocked(blocked)
+	_check(actions.grid.blocked_cells == battle.stages[1].get_blocked_cells() and not actions.grid.is_blocked(blocked)
 		and map.get_used_cells().size() == 100, "다음 스테이지는 막힌 칸 fixture를 이어받지 않음")
 	_check(not map.has_node("BlockedCell"), "다음 스테이지에서 막힌 칸 표시 정리")
 	battle.queue_free()
