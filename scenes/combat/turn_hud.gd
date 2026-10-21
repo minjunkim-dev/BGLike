@@ -148,6 +148,15 @@ func _ready() -> void:
 	reaction_dialog.dialog_hide_on_ok = false
 	reaction_dialog.confirmed.connect(_finish_reaction.bind(true))
 	reaction_dialog.canceled.connect(_finish_reaction.bind(false))
+	var order_scroll_bar: HScrollBar = ($OrderScroll as ScrollContainer).get_h_scroll_bar()
+	order_scroll_bar.changed.connect(_update_order_fade)
+	order_scroll_bar.value_changed.connect(_update_order_fade)
+
+
+# 오른쪽에 가린 초상이 남아 있을 때만 바 끝을 흐리게 한다.
+func _update_order_fade(_value: float = 0.0) -> void:
+	var bar: HScrollBar = ($OrderScroll as ScrollContainer).get_h_scroll_bar()
+	$OrderFade.visible = bar.value + bar.page < bar.max_value - 1.0
 
 
 func _connect_tooltip(control: Control) -> void:
