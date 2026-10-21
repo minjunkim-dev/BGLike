@@ -1362,8 +1362,8 @@ func _test_action_animations() -> void:
 			var actor: CombatUnit = units[1] if side else units[3]
 			var target: CombatUnit = units[2] if side else units[0]
 			actor.shock_left = 1
-			actor.cell = Vector2i(1, 4)
-			target.cell = Vector2i(4, 4)
+			actor.cell = Vector2i(1, 4) if side else Vector2i(4, 4)
+			target.cell = Vector2i(4, 4) if side else Vector2i(1, 4)
 			(units[0] if side else units[2]).cell = Vector2i(9, 9)
 			(units[3] if side else units[1]).cell = Vector2i(0, 0)
 			target.reaction_left = 0
@@ -1379,6 +1379,9 @@ func _test_action_animations() -> void:
 			_animated_attack(actor, target, shock, finished)
 			_check(actions.busy and battle.has_node("Arrow") and target.hit_points == hp,
 				"아군·적 궁수 기본/충격 화살은 비행 중 피해 적용 전: %s/%s" % [side, shock])
+			_check((battle.get_node("Arrow") as Node2D).position == actor.position + Vector2(
+				8 if side else -8, actor.floor_offset_y - 16),
+				"실제 도트 활의 발밑 기준 출발점과 좌우를 화살에 적용: %s/%s" % [side, shock])
 			_check(not actions.can_move(actor, Vector2i(2, 4)) and not actions.can_use(actor, "attack")
 				and not await actions.attack(actor, target, shock), "화살 비행 중 중복 입력 거부")
 			while not finished[0]:

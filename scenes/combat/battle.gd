@@ -361,7 +361,7 @@ func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
 	])
 	arrow.color = Color("efe4c8")
 	arrow.z_index = 1
-	arrow.position = actor.position + Vector2(0, actor.floor_offset_y - 14)
+	arrow.position = actor.position + Vector2(-8 if actor.facing_left else 8, actor.floor_offset_y - 16)
 	var destination: Vector2 = target.position + Vector2(0, target.floor_offset_y - 14)
 	arrow.rotation = (destination - arrow.position).angle()
 	add_child(arrow)
