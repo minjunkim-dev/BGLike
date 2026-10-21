@@ -26,6 +26,10 @@ HP·상태·피해 팝업은 그 유닛의 실제 그림 높이를 기준으로 
 
 `개발 결정`([#256](https://github.com/minjunkim-dev/BGLike/issues/256)): 유닛 윤곽 셰이더(`unit_outline.gdshader`)는 이웃 픽셀을 1텍셀과 1화면 픽셀 중 큰 간격으로 샘플한다. 640×360에서는 1텍셀이 0.5화면 픽셀이라 1텍셀 윤곽이 픽셀 사이로 빠져 끊긴 점으로 보였다. 이제 윤곽은 2텍셀(1화면 픽셀) 두께로 이어진다. 1280×720 이상에서는 1텍셀이 1화면 픽셀 이상이라 모양이 그대로다. 가림·선택·미리보기 윤곽과 사물 미리보기 윤곽이 같은 셰이더를 쓴다. 팀색과 윤곽 클릭 규칙은 바꾸지 않는다. 표시 두께만 화면 배율에 맞춘다. 기획자가 나중에 바꿀 수 있다.
 
+`개발 결정`([#264](https://github.com/minjunkim-dev/BGLike/issues/264)): 유닛·지형·사물·아이콘은 sharp bilinear 셰이더로 그린다. 64px 원본을 0.5배로 쓰므로 1920×1080(정수 배율3)에서는 1텍셀이 1.5화면 px이다. Nearest만 쓰면 1px과 2px 도트가 섞인다. 셰이더는 텍셀 안쪽을 Nearest처럼 한 색으로 칠하고, 텍셀 경계만 화면 1픽셀(`fwidth`) 폭으로 섞는다. 1텍셀이 1화면 픽셀 이하면 섞지 않는다. 그래서 1280×720과 2560×1440의 모양은 그대로다. 공용 샘플은 `scenes/combat/art/pixel_art.gdshaderinc`의 `SHARP_TEXTURE`다. `pixel_art.tres`(유닛·사물 Sprite, 초상·스킬·아이템 아이콘), `unit_outline.gdshader`(#256 윤곽), `terrain_detail.gdshader`(지형 칸)가 함께 쓴다. 윤곽도 같은 샘플의 알파를 읽어 그림 가장자리와 맞는다. 두께(1텍셀과 1화면 픽셀 중 큰 쪽)와 팀색은 그대로다. `tests/combat_loot_test.gd`가 실제 전투·정비 화면에서 도트 아트를 그리는 노드와 지형 칸의 셰이더를 검사한다. 측정과 캡처는 [해상도 ADR](adr/0002-resolution.md#1080p-도트-표시-264)에 있다. 도트 경계가 조금 부드러워지므로 기획자가 나중에 바꿀 수 있다.
+
+1920×1080 원본 Viewport의 4배 확대: [변경 전(Nearest)](assets/pixel_art_1080p_before.png), [변경 후](assets/pixel_art_1080p_after.png).
+
 제작 원본과 프롬프트는 `scenes/combat/art/sources/`에 보존한다. 이 폴더는 Godot 리소스 가져오기에서 제외한다. `unit_generation.json`은 원본·프롬프트·가공 규격을 기록한다. `normalize_units.py`는 Pillow가 있는 Python에서 시트를 추출한다. 시스템 Python에 Pillow가 없으면 기존 Codex 번들 Python을 사용한다. 프로젝트의 실행 의존성을 추가하지 않는다. 런타임에는 개별 PNG 프레임을 연결한다. 생성 도구와 원본·가공 기록은 [자산 고지](../THIRD_PARTY_NOTICES.md)에 기록한다.
 
 ## 스킬 아이콘

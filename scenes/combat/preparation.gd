@@ -266,6 +266,7 @@ func _render_card(index: int) -> void:
 	card.add_child(area)
 	var portrait: TextureRect = TextureRect.new()
 	portrait.texture = load(UNIT_FRAME % unit.get_art_id()) as Texture2D
+	portrait.material = preload("res://scenes/combat/art/pixel_art.tres")
 	portrait.position = Vector2(6, 4)
 	portrait.size = Vector2(64, 64)
 	if unit.hit_points <= 0:
@@ -310,6 +311,7 @@ func _render_card(index: int) -> void:
 	for slot: int in range(int(loot.data["potion_limit"])):
 		var pip: TextureRect = TextureRect.new()
 		pip.texture = potion_icon
+		pip.material = preload("res://scenes/combat/art/pixel_art.tres")
 		pip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		pip.custom_minimum_size = Vector2(16, 16)
 		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -357,6 +359,7 @@ func _render_detail() -> void:
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	icon.texture = _icon(item, owner_unit.get_art_id() if owner_unit else "")
+	icon.material = preload("res://scenes/combat/art/pixel_art.tres")
 	row.add_child(icon)
 	var info: VBoxContainer = VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -471,6 +474,7 @@ func _cell(parent: Node, item: Dictionary, unit_id: String, node_name: String, b
 	cell.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cell.add_theme_constant_override("icon_max_width", 32)
 	cell.icon = _icon(item, unit_id)
+	cell.material = preload("res://scenes/combat/art/pixel_art.tres")
 	if not item.is_empty():
 		cell.tooltip_text = CombatLoot.describe(item)
 	for state: String in ["normal", "hover", "disabled"]:

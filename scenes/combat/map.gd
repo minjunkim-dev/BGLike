@@ -220,6 +220,7 @@ func _art_marker(cell: Vector2i, id: String, foot: float) -> Node2D:
 	sprite.centered = false
 	sprite.offset = Vector2(-sprite.texture.get_width() / 2.0, -sprite.texture.get_height() + 8)
 	sprite.scale = Vector2.ONE * 0.5
+	sprite.material = preload("res://scenes/combat/art/pixel_art.tres")
 	sprite.position = map_to_surface(cell) - marker.position + Vector2(0, foot)
 	marker.add_child(sprite)
 	return marker

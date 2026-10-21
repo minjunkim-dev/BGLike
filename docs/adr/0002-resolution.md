@@ -29,6 +29,39 @@
 4. 16:10 화면(1440×900, 2560×1600)은 [#265](https://github.com/minjunkim-dev/BGLike/issues/265)에서 확인한다. `expand`로 맵이 위아래로 조금 더 보인다. HUD 배치가 깨지면 고친다.
 5. 직접 확인 해상도는 1280×720, 1920×1080, 2560×1440, 1440×900, Retina(2560×1600 등 실제 픽셀)다. 레이아웃 자동 검사는 이 목록의 1280×720, 1920×1080, 1440×900과 넓은 비율 창(2560×1080), 비정수 배율 창(1366×768)을 쓴다. 2560×1440과 2560×1600은 1280×720·1440×900과 논리 화면이 같다.
 
+## 1080p 도트 표시 (#264)
+
+2026-10-22 [#264](https://github.com/minjunkim-dev/BGLike/issues/264)에서 결정 3을 적용했다. 공용 샘플은 `scenes/combat/art/pixel_art.gdshaderinc`의 `SHARP_TEXTURE`다.
+
+- 텍셀 경계 `seam`에서 화면 픽셀 중심까지의 거리를 `fwidth`로 나눠 섞는 비율을 정한다. 텍셀 안쪽 픽셀은 한 텍셀만 읽어 Nearest와 같다. 네 텍셀을 Nearest로 읽고 알파를 곱한 색으로 섞는다. 그래서 투명 가장자리가 어둡게 번지지 않는다.
+- 1텍셀이 1화면 픽셀 이하면(`fwidth` 0.9 이상) 섞지 않고 원래 샘플을 쓴다. 버튼의 글꼴 글리프도 같은 재질로 그리지만 1:1이라 바뀌지 않는다.
+- 내장 `TEXTURE`를 함수 인자로 넘기면 headless 셰이더 컴파일이 `custom_samplers` 오류를 낸다. 그래서 텍셀 읽기는 매크로다.
+- 적용 대상: 유닛 `AnimatedSprite2D`, 사물·풍경 `Sprite2D`, 초상·스킬·아이템 아이콘 `Button`·`TextureRect`(`pixel_art.tres`), 가림·선택 윤곽(`unit_outline.gdshader`), 지형 칸(`terrain_detail.gdshader`). `tests/combat_loot_test.gd`의 `_check_pixel_art`가 실제 1-1 전투와 정비 화면에서 누락을 검사한다.
+
+원본 Viewport 측정(Godot 4.7.2 Forward+, 같은 1-1 장면, 애니메이션 첫 프레임 고정):
+
+| 창 | 변경 전후 | 그림 1텍셀 |
+| --- | --- | --- |
+| 1280×720 | 픽셀 단위로 같음(1-1, 2-1 가림 윤곽 모두 차이 0) | 1px |
+| 2560×1440 | 픽셀 단위로 같음 | 2px. 같은 색 가로 연속의 96.5%가 2px |
+| 1920×1080 | 1-1 약 15만 픽셀 변경 | 1.5px |
+
+1920×1080의 유닛 영역(180×100px)에서 같은 색 가로 연속 길이를 셌다. 변경 전은 1px 50.0%, 2px 47.1%로 두 도트 크기가 섞였다. 변경 후는 97.5%가 1px이다. 텍셀 경계의 화면 픽셀 절반이 두 텍셀의 중간색이 되어 모든 도트가 같은 1.5px 폭으로 보인다.
+
+| 1920×1080 4배 확대 | 변경 전 (Nearest) | 변경 후 |
+| --- | --- | --- |
+| 1-1 궁수(선택 윤곽)·전사 | ![](../assets/pixel_art_1080p_before.png) | ![](../assets/pixel_art_1080p_after.png) |
+| 2-1 바위 뒤 새끼 거미 윤곽(#256) | ![](../assets/pixel_art_outline_1080p_before.png) | ![](../assets/pixel_art_outline_1080p_after.png) |
+
+윤곽의 두께(1텍셀과 1화면 픽셀 중 큰 쪽)와 팀색은 그대로다. 윤곽 안쪽 경계도 그림과 같은 샘플을 써서 틈이 생기지 않는다.
+
+캡처 경로: macOS `open -g` 창이 2026-10-22 두 번 맨 앞으로 올라왔다. 그 뒤 측정은 Docker(OrbStack) 안의 Xvfb와 Mesa lavapipe Vulkan에서 Linux용 Godot 4.7.2 Forward+로 했다. 한글 글꼴은 macOS의 Apple SD Gothic Neo를 읽기 전용으로 연결했다. 변경 전후를 같은 경로에서 찍었다.
+
+한계:
+
+- 정수 배율 3 이상에서 정수가 아닌 위치로 움직이는 그림(이동 연출)은 경계가 부드럽게 섞인다. Nearest처럼 한 픽셀씩 튀지 않는다. 1280×720은 섞지 않아 그대로다.
+- Compatibility 렌더러와 실제 Metal 창의 1920×1080 화면은 확인하지 않았다.
+
 ## 대안
 
 - 640×360 창을 계속 지원: 1텍셀 윤곽([#256](https://github.com/minjunkim-dev/BGLike/issues/256))처럼 가독성 작업이 계속 든다([#223](https://github.com/minjunkim-dev/BGLike/issues/223)). 실제 사용자가 거의 없다. 택하지 않았다.

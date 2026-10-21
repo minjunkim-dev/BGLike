@@ -104,6 +104,7 @@ func _ready() -> void:
 			# 아이콘 오른쪽에 비용 마크 자리를 남긴다.
 			button.custom_minimum_size.x = 52
 			button.icon = CombatActionRules.icon_of(action)
+			button.material = preload("res://scenes/combat/art/pixel_art.tres")
 			button.add_theme_constant_override("icon_max_width", 32)
 			# 곱셈 색은 채도를 빼지 못해 반투명으로 어둡게 눌러 회색 배경에 묻는다.
 			button.add_theme_color_override("icon_disabled_color", Color("8a939b", 0.55))
@@ -469,6 +470,7 @@ func _build_portraits(turns: CombatTurns) -> void:
 			button.custom_minimum_size = Vector2(40, 43)
 			button.icon = load("res://scenes/combat/art/units/%s/idle/%s/000.png" % [
 				unit.get_art_id(), "right" if unit.is_ally else "left"]) as Texture2D
+			button.material = preload("res://scenes/combat/art/pixel_art.tres")
 			button.add_theme_constant_override("icon_max_width", 32)
 			button.add_theme_font_size_override("font_size", 10)
 			button.add_theme_color_override("font_disabled_color", Color("b5bdc4"))
