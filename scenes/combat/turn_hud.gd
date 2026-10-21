@@ -310,7 +310,7 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 		resource_label.text = ""
 		actor_label.text = ""
 		return
-	round_label.text = "라운드 %d · %s 턴 묶음" % [turns.round_number, "아군" if current.is_ally else "적"]
+	round_label.text = "라운드 %d · %s" % [turns.round_number, "아군 턴 묶음" if current.is_ally else "적 턴 묶음 · Space: 빠르게"]
 	actor_label.text = ("조작: " if current.is_ally else "진행: ") + current.get_display_name()
 	show_unit(current)
 	for unit: CombatUnit in _portraits:
