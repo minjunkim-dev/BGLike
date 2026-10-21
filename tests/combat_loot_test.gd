@@ -89,6 +89,9 @@ func _test_spiderling_rewards() -> void:
 					"새끼 거미가 한 마리라도 남으면 승리·보상 없음")
 		_check(actions.is_victory() and progress.rewards.size() == (2 if mixed else 1),
 			"새끼만 처치하면 보장1개이고 혼합 전투는 풋내기1마리분만 추가 드랍")
+		if not mixed:
+			# 실제 1-1의 사물·풍경과 지형. 정비 화면은 보상 흐름 검사에서 확인한다.
+			_check_pixel_art(main, ["AnimatedSprite2D", "Sprite2D", "Button"])
 		main.queue_free()
 		await process_frame
 
@@ -746,6 +749,7 @@ func _test_reward_flow() -> void:
 		_check(party[1].get_armor_class() == 16 and party[1].hit_points == 0
 			and party[1].get_max_hit_points() == 18,
 			"실제 분배 버튼은 전투 불능 궁수에게 방어구 장착")
+		_check_pixel_art(main, ["AnimatedSprite2D", "Sprite2D", "Button", "TextureRect"])
 		_check(preparation.continue_button.has_focus(), "분배 뒤 키보드 포커스 유지")
 		await _click(await _pick(preparation, "Item0", "Ally1"))
 		_check(party[1].potion_left == 2 and actual_rewards.size() == 1, "물약 분배와 보상 목록에서 제거")
@@ -801,6 +805,44 @@ func _test_reward_flow() -> void:
 			and loot.bag[1]["kind"] == "potion", "패배 후 실제 막 재시작은 공용 가방 보존")
 	main.queue_free()
 	await process_frame
+
+
+## #264: 도트 아트(유닛·지형·사물·아이콘)를 그리는 노드는 모두 sharp bilinear 셰이더를 쓴다.
+func _check_pixel_art(scene: Node, classes: Array[String]) -> void:
+	const INCLUDE: String = '#include "res://scenes/combat/art/pixel_art.gdshaderinc"'
+	var allowed: Array[Shader] = [preload("res://scenes/combat/art/pixel_art.gdshader"),
+		preload("res://scenes/combat/art/unit_outline.gdshader")]
+	var terrain: Shader = preload("res://scenes/combat/art/terrain_detail.gdshader")
+	for shader: Shader in allowed + [terrain]:
+		_check(INCLUDE in shader.code and "SHARP_TEXTURE(" in shader.code,
+			"공용 sharp bilinear 샘플 사용: " + shader.resource_path)
+	var counts: Dictionary[String, int] = {}
+	for item: CanvasItem in scene.find_children("*", "CanvasItem", true, false):
+		var texture: Texture2D = null
+		if item is Sprite2D:
+			texture = (item as Sprite2D).texture
+		elif item is AnimatedSprite2D:
+			var sprite: AnimatedSprite2D = item as AnimatedSprite2D
+			texture = sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
+		elif item is TextureRect:
+			texture = (item as TextureRect).texture
+		elif item is Button:
+			texture = (item as Button).icon
+		if texture == null or not texture.resource_path.begins_with("res://scenes/combat/art/"):
+			continue
+		counts[item.get_class()] = counts.get(item.get_class(), 0) + 1
+		var material: ShaderMaterial = item.material as ShaderMaterial
+		_check(material != null and material.shader in allowed, "도트 아트 셰이더 적용: %s" % item.get_path())
+	_check(counts.keys().all(func(name: String) -> bool: return name in classes)
+		and classes.all(func(name: String) -> bool: return counts.get(name, 0) > 0),
+		"도트 아트 노드 종류를 모두 검사: %s" % counts)
+	var tiles: int = 0
+	for map: TileMapLayer in scene.find_children("*", "TileMapLayer", true, false):
+		for cell: Vector2i in map.get_used_cells():
+			var material: ShaderMaterial = map.get_cell_tile_data(cell).material as ShaderMaterial
+			_check(material != null and material.shader == terrain, "지형 칸 셰이더 적용: %s" % cell)
+			tiles += 1
+	_check(tiles > 0, "지형 칸을 검사")
 
 
 func _test_scaled_combat() -> void:

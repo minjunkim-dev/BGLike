@@ -294,6 +294,7 @@ func _ready() -> void:
 	_sprite.centered = false
 	_sprite.offset = Vector2(-32, -56)
 	_sprite.scale = Vector2.ONE * 0.5
+	_sprite.material = preload("res://scenes/combat/art/pixel_art.tres")
 	_sprite.sprite_frames = SpriteFrames.new()
 	_sprite.sprite_frames.remove_animation("default")
 	var unit_id: String = get_art_id()
