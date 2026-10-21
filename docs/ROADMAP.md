@@ -67,7 +67,7 @@ flowchart LR
 |---|---|---|---|
 | **M1 전투 프로토타입** | BG3 전투를 구현해 프로젝트의 느낌을 확인 | 전투 시스템 기획서, 개발 요청서, 프로토타입 회고 | ✅ 범위 확정. 구현 완료 ([Issue #12](https://github.com/minjunkim-dev/BGLike/issues/12), [M1 검수 기록](M1_VERIFICATION.md)) |
 | **M2 게임 구조** | 무엇을 반복하는 게임인지 정함 | 게임 비전, [게임 구조 기획서](GAME_STRUCTURE.md) (코어 루프, 씬 흐름, 자원, 아이템 구조, 사각 높이 격자) | ✅ 구조 확정, 비전 ⏸ 보류 |
-| **M3 전투 확장** | 전투의 깊이와 전투 화면 | 맵, 공격 타입, 전투 UI 기획서 | 🟡 맵·높이·환경 규칙과9개 지형 맵 구현 (#136~#138, [#195](https://github.com/minjunkim-dev/BGLike/issues/195)). 전투 UI는 [#58](https://github.com/minjunkim-dev/BGLike/issues/58) 반영. 공격 타입은 후속 기획 |
+| **M3 전투 확장** | 전투의 깊이와 전투 화면 | 맵, 공격 타입, 전투 UI 기획서 | 🟡 맵·높이·환경 규칙 확정(#136·#137), 구현(#163~#166, [#195](https://github.com/minjunkim-dev/BGLike/issues/195)). 전투 UI는 [#58](https://github.com/minjunkim-dev/BGLike/issues/58) 반영. 공격 타입은 후속 기획 |
 | **M4 성장과 경제** | 전투 사이에 강해지는 구조 | 아이템 수치·드랍 기획 (육성은 아이템뿐, 2026-10-07) | 🟡 수치·드랍([#61](https://github.com/minjunkim-dev/BGLike/issues/61))과 공용 가방([#175](https://github.com/minjunkim-dev/BGLike/issues/175)) 구현. 장비 수치 재검토는 [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
 | **M5 콘텐츠** | 실제로 만들 것의 목록 | 캐릭터, 몬스터, 레벨 디자인 문서 | 🟡 몬스터7종·9개 배치 구현 (#107~[#113](https://github.com/minjunkim-dev/BGLike/issues/113)). 캐릭터 디자인은 [#210](https://github.com/minjunkim-dev/BGLike/issues/210) 기획자 확인 대기 |
 | **M6 밸런스와 연출** | 수치와 손맛 | 밸런스 표, 사운드·이펙트 목록 | 🟡 밸런스 재검토 [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
@@ -232,7 +232,7 @@ flowchart LR
 |---|---|
 | 구간 범위 | 전투 몇 번, 플레이 시간 몇 분 |
 | 이야기와 세계관 | 배경, 주인공, 대화·선택지 비중, 게임 정식 이름 |
-| 아트 | 도트 에셋 제작 (출처는 보류한 사용자 타겟과 함께 결정) |
+| 아트 | 도트 에셋 제작. 출처는 [#193](https://github.com/minjunkim-dev/BGLike/issues/193)에서 정함([기획 현황](DESIGN_STATUS.md)). 최종 아트 승인은 남음 |
 | 저장과 난이도 | 저장 방식, 난이도 옵션 |
 | 전투 외 화면 | 타이틀, 정비, 보상, 메뉴, 설정 |
 
