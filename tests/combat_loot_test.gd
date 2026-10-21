@@ -276,6 +276,8 @@ func _test_icons(loot: CombatLoot) -> void:
 		_check(texture != null and texture.get_size() == Vector2(64, 64)
 			and CombatLoot.icon_path(item).get_file() == expected[item["kind"]] + ".png",
 			"실제 아이템 데이터의 64px 아이콘: " + str(item["id"]))
+		_check(CombatLoot.icon_path(item, "warrior") == CombatLoot.icon_path(item),
+			"전사는 공용 아이콘: " + str(item["id"]))
 		var archer_path: String = CombatLoot.icon_path(item, "archer")
 		_check(archer_path.get_file() == ("bow.png" if item["kind"] == "weapon" else expected[item["kind"]] + ".png")
 			and load(archer_path) is Texture2D, "궁수 무기는 활, 나머지는 공용 아이콘: " + str(item["id"]))
