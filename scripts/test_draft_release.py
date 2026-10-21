@@ -9,16 +9,19 @@ import urllib.error
 from unittest.mock import patch
 import zipfile
 
-from draft_release import GitHub, check_source, create_draft, eligibility, inputs, verify_bundle
+from draft_release import (GitHub, check_source, create_draft, create_requested_draft,
+                           eligibility, inputs, read_request, request_artifact, verify_bundle, write_request)
 
 
 SHA = "a" * 40
 VERSION = "v0.1.0-alpha.1"
 ENGINE_HASH = "b" * 64
+REQUEST_SHA = "c" * 40
 
 
 class API:
     def __init__(self):
+        self.repo = "owner/repo"
         self.calls = []
         self.responses = {"": {"default_branch": "main"}, f"commits/{SHA}": {"sha": SHA},
             f"compare/{SHA}...main": {"status": "ahead", "merge_base_commit": {"sha": SHA}},
@@ -31,6 +34,16 @@ class API:
         self.releases = []
         self.release = None
         self.race = False
+        self.responses.update({
+            f"commits/{REQUEST_SHA}": {"sha": REQUEST_SHA},
+            f"compare/{REQUEST_SHA}...main": {"status": "ahead", "merge_base_commit": {"sha": REQUEST_SHA}},
+            "actions/workflows/draft-release.yml": {"id": 7, "state": "active", "path": ".github/workflows/draft-release.yml"},
+            "actions/runs/11": {"id": 11, "run_attempt": 1, "workflow_id": 7, "event": "workflow_dispatch",
+                "head_branch": "main", "head_sha": REQUEST_SHA, "head_repository": {"full_name": self.repo},
+                "status": "completed", "conclusion": "success"},
+            "actions/runs/11/artifacts?per_page=100": {"total_count": 1, "artifacts": [
+                {"id": 20, "name": "verification-request-1", "expired": False,
+                 "workflow_run": {"id": 11, "head_branch": "main", "head_sha": REQUEST_SHA}}]}})
 
     def request(self, method, path, data=None, **kwargs):
         self.calls.append((method, path, data))
@@ -91,7 +104,7 @@ class DraftTests(unittest.TestCase):
             output = Path(temporary) / "output"
             output.write_text("existing=value\n")
             self.assertEqual(check_source(API(), VERSION, SHA, output), 3)
-            self.assertEqual(output.read_text(), f"existing=value\nsource-sha={SHA}\n")
+            self.assertEqual(output.read_text(), f"existing=value\nsource-sha={SHA}\nversion={VERSION}\n")
 
     def test_ineligible_source_never_emits_checkout_output(self):
         cases = [("invalid SHA", "main", None, None),
@@ -108,6 +121,81 @@ class DraftTests(unittest.TestCase):
                     check_source(api, VERSION, sha, output)
                 self.assertFalse(output.exists())
                 self.assertFalse(any(call[0] == "POST" for call in api.calls))
+
+    def test_request_round_trip_is_bound_to_successful_main_dispatch(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "request"
+            write_request(API(), VERSION, SHA, directory, 11, 1, REQUEST_SHA)
+            self.assertEqual(request_artifact(API(), 11, 1)[1]["id"], 20)
+            self.assertEqual(read_request(API(), directory, 11, 1), (VERSION, SHA))
+            package = Path(temporary) / "package"
+            package.mkdir()
+            bundle(package)
+            api = API()
+            self.assertEqual(create_requested_draft(api, directory, 11, 1, package, ENGINE_HASH), 10)
+            self.assertEqual(api.release["target_commitish"], SHA)
+            self.assertTrue(api.release["draft"])
+
+    def test_request_provenance_and_attempt_fail_closed_before_release(self):
+        cases = [("event", "pull_request"), ("workflow_id", 99), ("head_branch", "other"),
+                 ("head_repository", {"full_name": "other/fork"}), ("head_sha", SHA),
+                 ("status", "in_progress"), ("conclusion", "failure"), ("run_attempt", 2)]
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "request"
+            write_request(API(), VERSION, SHA, directory, 11, 1, REQUEST_SHA)
+            for field, value in cases:
+                api = API()
+                api.responses["actions/runs/11"][field] = value
+                with self.subTest(field=field), self.assertRaises(ValueError):
+                    create_requested_draft(api, directory, 11, 1, Path(temporary), ENGINE_HASH)
+                self.assertFalse(any(call[0] == "POST" for call in api.calls))
+
+    def test_request_artifact_rejects_missing_duplicate_expired_or_wrong_run(self):
+        for mutation in ["missing", "duplicate", "expired", "wrong run", "wrong head"]:
+            api = API()
+            result = api.responses["actions/runs/11/artifacts?per_page=100"]
+            artifact = result["artifacts"][0]
+            if mutation == "missing":
+                result["artifacts"] = []
+            elif mutation == "duplicate":
+                result["artifacts"].append(copy.deepcopy(artifact))
+            elif mutation == "expired":
+                artifact["expired"] = True
+            elif mutation == "wrong run":
+                artifact["workflow_run"]["id"] = 99
+            else:
+                artifact["workflow_run"]["head_sha"] = SHA
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                request_artifact(api, 11, 1)
+
+    def test_request_payload_rejects_other_attempt_sha_extra_fields_and_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "request"
+            write_request(API(), VERSION, SHA, directory, 11, 1, REQUEST_SHA)
+            path = directory / "request.json"
+            original = json.loads(path.read_text())
+            for field, value in [("request_attempt", 2), ("request_run_id", True),
+                                 ("request_sha", SHA), ("source_sha", "main"),
+                                 ("version", "v0.1.0\nINJECT=value"), ("unknown", "value")]:
+                path.write_text(json.dumps(dict(original, **{field: value})))
+                with self.subTest(field=field), self.assertRaises(ValueError):
+                    read_request(API(), directory, 11, 1)
+            path.write_text("x" * 4097)
+            with self.assertRaises(ValueError):
+                read_request(API(), directory, 11, 1)
+            path.write_text(json.dumps(original))
+            (directory / "unexpected.py").write_text("raise RuntimeError('must never execute')")
+            with self.assertRaises(ValueError):
+                read_request(API(), directory, 11, 1)
+
+    def test_failed_ci_never_writes_request(self):
+        api = API()
+        api.responses["actions/runs/3/jobs?filter=latest&per_page=100"]["jobs"][0]["conclusion"] = "failure"
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "request"
+            with self.assertRaises(ValueError):
+                write_request(api, VERSION, SHA, directory, 11, 1, REQUEST_SHA)
+            self.assertFalse(directory.exists())
 
     def test_failure_cancel_missing_aggregate_and_wrong_ci_event(self):
         for conclusion in ["failure", "cancelled", None, "skipped"]:
