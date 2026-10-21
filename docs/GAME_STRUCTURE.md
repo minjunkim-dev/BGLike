@@ -372,7 +372,7 @@ flowchart TD
 
 | 항목 | 담당 | 언제 |
 |---|---|---|
-| 아이템 등급, 직업 제한 (4-7) | 기획 | 보류. M7 졸업 범위 밖 ([M7까지 남은 작업 지도](https://github.com/minjunkim-dev/BGLike/issues/200)) |
+| 아이템 등급, 직업 제한 (4-7) | 기획 | 보류. 시기는 4-7 |
 | 스킬 추가와 횟수, 탱커 수단 (5장) | 기획 | 스킬 디자인. [#201 권장안](https://github.com/minjunkim-dev/BGLike/issues/201#issuecomment-6311266130)의 기획자 확인([#210](https://github.com/minjunkim-dev/BGLike/issues/210)) 대기 |
 | 막별 장비 수치 재검토 (4-4) | 기획 | 막별 적 강화 제거(2-3) 뒤. [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
 | 저장 (게임을 껐다 켤 때) | 기획 | M7. [기획자 확인 #209](https://github.com/minjunkim-dev/BGLike/issues/209) |
