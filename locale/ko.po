@@ -36,12 +36,12 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: BGLike\n"
-"MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
 "Language: ko\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #: scenes/combat/action_rules.gd:11 scenes/combat/turn_hud.gd:262
@@ -539,15 +539,15 @@ msgstr "사용"
 msgid "넘기기"
 msgstr "넘기기"
 
-#: scenes/combat/actions.gd:824 scenes/combat/turn_hud.gd:400
+#: scenes/combat/actions.gd:824 scenes/combat/turn_hud.gd:401
 msgid "일반"
 msgstr "일반"
 
-#: scenes/combat/actions.gd:826 scenes/combat/turn_hud.gd:402
+#: scenes/combat/actions.gd:826 scenes/combat/turn_hud.gd:403
 msgid "유리"
 msgstr "유리"
 
-#: scenes/combat/actions.gd:828 scenes/combat/turn_hud.gd:404
+#: scenes/combat/actions.gd:828 scenes/combat/turn_hud.gd:405
 msgid "불리"
 msgstr "불리"
 
@@ -604,7 +604,7 @@ msgstr " (표식 추가)"
 msgid "%s 기절 면역"
 msgstr "%s 기절 면역"
 
-#: scenes/combat/actions.gd:871 scenes/combat/turn_hud.gd:383
+#: scenes/combat/actions.gd:871 scenes/combat/turn_hud.gd:384
 msgid "기절 면역"
 msgstr "기절 면역"
 
@@ -612,8 +612,8 @@ msgstr "기절 면역"
 msgid "정신 내성: d20 %d + %d = %d / DC %d · %s"
 msgstr "정신 내성: d20 %d + %d = %d / DC %d · %s"
 
-#: scenes/combat/actions.gd:880 scenes/combat/turn_hud.gd:376
-#: scenes/combat/unit.gd:383
+#: scenes/combat/actions.gd:880 scenes/combat/turn_hud.gd:377
+#: scenes/combat/unit.gd:383 scenes/combat/unit.gd:452
 msgid "기절"
 msgstr "기절"
 
@@ -832,7 +832,7 @@ msgstr "장착한 방어구가 없습니다."
 msgid "공용 가방에 빈 칸이 없어 해제할 수 없습니다."
 msgstr "공용 가방에 빈 칸이 없어 해제할 수 없습니다."
 
-#: scenes/combat/loot.gd:156 scenes/combat/turn_hud.gd:395
+#: scenes/combat/loot.gd:156 scenes/combat/turn_hud.gd:396
 msgid "없음"
 msgstr "없음"
 
@@ -950,11 +950,11 @@ msgstr "공용 가방 · %d/%d칸"
 msgid "가방이 비었습니다."
 msgstr "가방이 비었습니다."
 
-#: scenes/combat/preparation.gd:231
+#: scenes/combat/preparation.gd:231 scenes/combat/turn_hud.gd:345
 msgid "전사"
 msgstr "전사"
 
-#: scenes/combat/preparation.gd:232
+#: scenes/combat/preparation.gd:232 scenes/combat/turn_hud.gd:345
 msgid "궁수"
 msgstr "궁수"
 
@@ -1018,7 +1018,7 @@ msgstr "조작: %s"
 msgid "진행: %s"
 msgstr "진행: %s"
 
-#: scenes/combat/turn_hud.gd:343 scenes/combat/turn_hud.gd:344
+#: scenes/combat/turn_hud.gd:343
 msgid "아군"
 msgstr "아군"
 
@@ -1026,7 +1026,7 @@ msgstr "아군"
 msgid "적"
 msgstr "적"
 
-#: scenes/combat/turn_hud.gd:348
+#: scenes/combat/turn_hud.gd:349
 msgid ""
 "%s: 엄마 거미 바로 앞 순서\n"
 "생성한 라운드에는 행동하지 않습니다."
@@ -1034,27 +1034,27 @@ msgstr ""
 "%s: 엄마 거미 바로 앞 순서\n"
 "생성한 라운드에는 행동하지 않습니다."
 
-#: scenes/combat/turn_hud.gd:350
+#: scenes/combat/turn_hud.gd:351
 msgid "%s: d20 %d + 민첩 %d = %d"
 msgstr "%s: d20 %d + 민첩 %d = %d"
 
-#: scenes/combat/turn_hud.gd:381
+#: scenes/combat/turn_hud.gd:382
 msgid "과부하"
 msgstr "과부하"
 
-#: scenes/combat/turn_hud.gd:385
+#: scenes/combat/turn_hud.gd:386
 msgid "만능팔 대기"
 msgstr "만능팔 대기"
 
-#: scenes/combat/turn_hud.gd:387
+#: scenes/combat/turn_hud.gd:388
 msgid "◎ 표식"
 msgstr "◎ 표식"
 
-#: scenes/combat/turn_hud.gd:389
+#: scenes/combat/turn_hud.gd:390
 msgid "기회 공격 면제"
 msgstr "기회 공격 면제"
 
-#: scenes/combat/turn_hud.gd:390
+#: scenes/combat/turn_hud.gd:391
 msgid ""
 "HP %d / %d   AC %d\n"
 "힘 %+d · 민첩 %+d · 건강 %+d · 정신 %+d\n"
@@ -1066,23 +1066,23 @@ msgstr ""
 "명중 %+d · 사거리 %d칸\n"
 "상태: %s"
 
-#: scenes/combat/turn_hud.gd:406
+#: scenes/combat/turn_hud.gd:407
 msgid "유리/불리 상쇄"
 msgstr "유리/불리 상쇄"
 
-#: scenes/combat/turn_hud.gd:407
+#: scenes/combat/turn_hud.gd:408
 msgid "명중률 %.1f%% · %s"
 msgstr "명중률 %.1f%% · %s"
 
-#: scenes/combat/turn_hud.gd:409
+#: scenes/combat/turn_hud.gd:410
 msgid "공격할 수 없는 대상"
 msgstr "공격할 수 없는 대상"
 
-#: scenes/combat/turn_hud.gd:413
+#: scenes/combat/turn_hud.gd:414
 msgid "사거리 밖"
 msgstr "사거리 밖"
 
-#: scenes/combat/turn_hud.gd:458
+#: scenes/combat/turn_hud.gd:459
 msgid "⌛"
 msgstr "⌛"
 
@@ -1093,14 +1093,6 @@ msgstr "아군 전사"
 #: scenes/combat/unit.gd:190
 msgid "아군 궁수"
 msgstr "아군 궁수"
-
-#: scenes/combat/unit.gd:452
-msgid "기절 %s ◎"
-msgstr "기절 %s ◎"
-
-#: scenes/combat/unit.gd:452
-msgid "기절 ◎"
-msgstr "기절 ◎"
 
 msgid "BGLike"
 msgstr "BGLike"

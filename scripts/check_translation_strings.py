@@ -7,6 +7,8 @@ import subprocess
 import sys
 
 HANGUL = re.compile(r"[가-힣]")
+WORD = re.compile(r"\w+")
+FOLLOWING = re.compile(r"\s*(.?)")
 TRANSLATE = {"tr", "tr_n", "atr", "atr_n"}
 # Messages for developers only; they never reach the screen.
 DEBUG = {"assert", "push_error", "push_warning", "print", "printerr", "prints", "print_debug"}
@@ -33,9 +35,10 @@ def untranslated(source):
             end += len(quote)
             text = source[index:end]
             # Only a literal that is the call's own argument reaches the POT; tr("a" if b else "c") does not.
-            following = source[end:].lstrip()[:1]
+            following = FOLLOWING.match(source, end)[1]
             direct = bool(calls) and calls[-1] in TRANSLATE and previous in ("(", ",") and following in (")", ",")
-            rest = source[end:].split("\n", 1)[0]
+            line_end = source.find("\n", end)
+            rest = source[end:len(source) if line_end == -1 else line_end]
             if (HANGUL.search(text) and not direct and not DEBUG.intersection(calls)
                     and "NO_TRANSLATE" not in rest):
                 found.append((line, text))
@@ -51,7 +54,7 @@ def untranslated(source):
                 calls.pop()
             previous = char
         elif char.isalpha() or char == "_":
-            word = re.match(r"\w+", source[index:])[0]
+            word = WORD.match(source, index)[0]
             previous = word
             index += len(word)
             continue

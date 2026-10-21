@@ -341,7 +341,8 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 	for unit: CombatUnit in _portraits:
 		var button: Button = _portraits[unit]
 		button.text = "%s\n%s" % [tr("아군") if unit.is_ally else tr("적"),
-			unit.get_display_name().trim_prefix(tr("아군") + " ")]
+			unit.get_display_name() if not unit.is_ally
+			else tr("전사") if unit.kind == CombatUnit.Kind.WARRIOR else tr("궁수")]
 		if unit.is_boss():
 			button.text = unit.get_display_name().replace("-", "\n")
 		if unit.initiative_roll == 0:

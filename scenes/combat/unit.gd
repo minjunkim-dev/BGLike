@@ -449,7 +449,7 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 	for child: Node in get_parent().get_children():
 		if child is CombatUnit:
 			var periodic: String = child.get_periodic_status_text()
-			var status: String = tr("기절 %s ◎") % periodic if not periodic.is_empty() else tr("기절 ◎")
+			var status: String = tr("기절") + (" " + periodic if not periodic.is_empty() else "") + " ◎"
 			var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
 			var status_rect: Rect2 = Rect2(Vector2(-width / 2.0, child.get_status_label_y() - font.get_ascent(10)),
 				Vector2(width, font.get_height(10)))

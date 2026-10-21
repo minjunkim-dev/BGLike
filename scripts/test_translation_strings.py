@@ -33,6 +33,12 @@ class UntranslatedTests(unittest.TestCase):
                   'var plain := "Space"\n')
         self.assertEqual(untranslated(source), [])
 
+    def test_quotes_and_escapes_stay_inside_one_literal(self):
+        source = ('a = tr("\\"가\\" (b)")\n'
+                  "c = '나'\n"
+                  'd = tr("""다 "e" 라""")\n')
+        self.assertEqual(untranslated(source), [(2, "'나'")])
+
     def test_line_numbers_follow_multiline_strings(self):
         source = 'var a := """첫\n둘"""\nvar b := "셋"\n'
         self.assertEqual(untranslated(source), [(1, '"""첫\n둘"""'), (3, '"셋"')])
