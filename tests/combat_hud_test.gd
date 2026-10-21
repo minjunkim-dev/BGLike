@@ -1440,6 +1440,8 @@ func _test_order_bar_input() -> void:
 	var scroll: ScrollContainer = hud.get_node("OrderScroll") as ScrollContainer
 	var last_panel: Control = hud.order_bar.get_child(-1) as Control
 	var panel_end: float = last_panel.get_global_rect().end.x
+	_check(panel_end < scroll.get_global_rect().end.x and not (hud.get_node("OrderFade") as Control).visible,
+		"초상이 넘치지 않으면 턴 순서 바 끝을 흐리게 하지 않음")
 	var camera: Camera2D = battle.get_node("Camera") as Camera2D
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	var original: Vector2 = camera.position
