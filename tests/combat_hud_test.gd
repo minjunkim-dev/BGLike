@@ -645,8 +645,24 @@ func _test_guidance() -> void:
 		"밀치기 호버에 아군 무판정 안내")
 	await _hover((buttons["second_wind"] as Button))
 	_check((buttons["second_wind"] as Button).tooltip_text ==
-		"숨 고르기\nHP 1d10+1 회복.\n최대 HP를 넘지 않습니다.\n지금 사용 불가: HP가 이미 최대",
-		"비활성 숨 고르기는 기획 예시의 이름·효과·이유만 표시")
+		"숨 고르기\nHP 1d10+1 회복.\n최대 HP를 넘지 않습니다.\n사거리: 자신\n회복: 1d10+1\n판정: 없음\n지금 사용 불가: HP가 이미 최대",
+		"비활성 숨 고르기는 이름·효과·사거리·회복·판정·이유를 표시")
+	for action: String in buttons:
+		var icon_button: Button = buttons[action] as Button
+		var ally_action: bool = CombatActionRules.belongs_to(units[0], action) or CombatActionRules.belongs_to(units[1], action)
+		_check(icon_button.text.is_empty() and (icon_button.icon != null or not ally_action)
+			and icon_button.icon == CombatActionRules.icon_of(action)
+			and icon_button.accessibility_name == CombatActionRules.NAMES[action],
+			"스킬 버튼은 이름 대신 아이콘 표시: " + action)
+	_check("사거리: 인접1칸\n피해: 1d8+3\n판정: 명중 +5" in (buttons["attack"] as Button).tooltip_text,
+		"전사 공격 호버에 사거리·무기 피해·명중 표시")
+	units[0].weapon = {"stats": {"attack_bonus": 1, "damage_bonus": 2}}
+	battle.call("_update_turn_ui")
+	_check("피해: 1d8+5\n판정: 명중 +6" in (buttons["attack"] as Button).tooltip_text
+		and "피해: 1d8+5\n판정: 명중 +6" in (buttons["opportunity"] as Button).tooltip_text,
+		"현재 장비의 피해·명중 보정을 호버에 반영")
+	units[0].weapon = {}
+	battle.call("_update_turn_ui")
 	for title: Label in hud.get("_titles"):
 		await _hover(title)
 		_check(title.tooltip_text.is_empty() and not (hud.get("_tooltip_panel") as Control).visible,
@@ -757,6 +773,10 @@ func _test_guidance() -> void:
 				_check(removed not in button.tooltip_text, "호버에서 안내 제거: %s / %s" % [action, removed])
 			_check(unit.hit_points == hp and unit.surge_left == uses,
 				"호버는 동작 실행·자원 소비 없음: " + action)
+	_check("사거리: 1~6칸\n피해: 1d6+1\n판정: 명중 +5, 정신 내성 DC 13" in (buttons["shock"] as Button).tooltip_text
+		and "판정: 힘 +0 대결" in (buttons["shove"] as Button).tooltip_text,
+		"궁수 충격 화살·밀치기 호버에 사거리·피해·명중·내성 DC·대결 표시")
+	await _test_focus_tooltips(buttons)
 	# 비활성 버튼은 비용 소진·횟수 소진·효과 없음의 이유를 호버에 유지한다.
 	turns.select_unit(units[0])
 	units[0].action_left = 0
@@ -802,6 +822,47 @@ func _test_guidance() -> void:
 	units[0].hit_points = 12
 	actions.busy = false
 	await _hover(hud.end_button)
+
+
+# 키보드·컨트롤러 포커스로도 같은 설명이 화면과 HUD 안, 스킬 패널 위에 뜬다.
+func _test_focus_tooltips(buttons: Dictionary) -> void:
+	var tooltip: PanelContainer = hud.get("_tooltip_panel") as PanelContainer
+	var timer: Timer = hud.get("_tooltip_timer") as Timer
+	turns.select_unit(units[0])
+	battle.call("_update_turn_ui")
+	var hovered: Button = buttons["second_wind"] as Button
+	await _hover(hovered)
+	hovered.grab_focus()
+	_check(tooltip.visible and timer.is_stopped(), "호버 중 같은 버튼이 포커스를 받아도 설명을 다시 기다리지 않음")
+	hovered.release_focus()
+	await _click(hovered.get_global_rect().get_center())
+	_check(hovered.has_focus() and not hovered.has_focus(true),
+		"클릭 포커스는 숨긴 포커스라 흰 테두리가 선택 금색 테두리를 덮지 않음")
+	hovered.release_focus()
+	for size: Vector2i in [Vector2i(640, 360), Vector2i(1280, 720)]:
+		root.size = size
+		await process_frame
+		await process_frame
+		var screen: Rect2 = Rect2(Vector2.ZERO, hud.get_viewport_rect().size)
+		for unit: CombatUnit in [units[0], units[1]]:
+			turns.select_unit(unit)
+			battle.call("_update_turn_ui")
+			for action: String in CombatActionRules.NAMES:
+				var button: Button = buttons[action] as Button
+				if not button.is_visible_in_tree():
+					continue
+				button.grab_focus()
+				await timer.timeout
+				await process_frame
+				var rect: Rect2 = tooltip.get_global_rect()
+				_check(tooltip.visible and _has_tooltip(root, button.tooltip_text)
+					and screen.encloses(rect) and hud.get_global_rect().encloses(rect)
+					and not rect.intersects((hud.get_node("Skills") as Control).get_global_rect()),
+					"%s 포커스 호버는 화면·HUD 안, 스킬 패널 위: %s" % [size, action])
+				button.release_focus()
+				_check(not tooltip.visible, "포커스를 잃으면 설명 숨김: " + action)
+	root.size = Vector2i(640, 360)
+	await process_frame
 
 
 func _hover(control: Control) -> void:

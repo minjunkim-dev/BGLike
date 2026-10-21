@@ -99,16 +99,20 @@ func _ready() -> void:
 		column.add_child(buttons)
 		for action: String in CombatActionRules.GROUPS[index]:
 			var button: Button = HoverButton.new()
-			button.custom_minimum_size.y = 23
-			button.add_theme_font_size_override("font_size", 10)
-			button.add_theme_color_override("font_disabled_color", Color("8a939b"))
+			# 아이콘 오른쪽에 비용 마크 자리를 남긴다.
+			button.custom_minimum_size.x = 52
+			button.icon = CombatActionRules.icon_of(action)
+			button.add_theme_constant_override("icon_max_width", 32)
+			# 곱셈 색은 채도를 빼지 못해 반투명으로 어둡게 눌러 회색 배경에 묻는다.
+			button.add_theme_color_override("icon_disabled_color", Color("8a939b", 0.55))
+			button.accessibility_name = CombatActionRules.NAMES[action]
 			# 반응은 표시용이다. 자기 턴의 입력에는 연결하지 않는다.
 			if index != 2:
 				button.pressed.connect(func() -> void: action_selected.emit(action))
 			buttons.add_child(button)
 			_connect_tooltip(button)
 			_actions[action] = button
-			button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 			var cost: Label = Label.new()
 			cost.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 			cost.position = Vector2(-13, 5)
@@ -145,15 +149,23 @@ func _ready() -> void:
 
 
 func _connect_tooltip(control: Control) -> void:
-	control.mouse_entered.connect(func() -> void:
+	var start: Callable = func() -> void:
+		# 호버 중 클릭으로 포커스를 받아도 떠 있는 설명을 다시 기다리게 하지 않는다.
+		if _tooltip_owner == control and (_tooltip_panel.visible or not _tooltip_timer.is_stopped()):
+			return
 		_tooltip_owner = control
 		_tooltip_panel.hide()
-		_tooltip_timer.start())
-	control.mouse_exited.connect(func() -> void:
+		_tooltip_timer.start()
+	var stop: Callable = func() -> void:
 		if _tooltip_owner == control:
 			_tooltip_owner = null
 			_tooltip_timer.stop()
-			_tooltip_panel.hide())
+			_tooltip_panel.hide()
+	control.mouse_entered.connect(start)
+	control.mouse_exited.connect(stop)
+	# 키보드·컨트롤러 포커스도 같은 설명을 띄운다. 클릭으로 받은 포커스는 마우스가 떠나면 숨긴다.
+	control.focus_entered.connect(start)
+	control.focus_exited.connect(stop)
 
 
 func _process(_delta: float) -> void:
@@ -200,7 +212,6 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 		for action: String in CombatActionRules.GROUPS[index]:
 			var button: Button = _actions[action]
 			button.visible = CombatActionRules.belongs_to(shown, action)
-			button.text = CombatActionRules.NAMES[action] + "    "
 			_costs[action].text = symbols[index]
 			button.tooltip_text = CombatActionRules.NAMES[action] + "\n" + action_details(actions, shown, action)
 			var active: bool = ally_turn and not locked and actions.can_use(actor, action)
@@ -208,8 +219,12 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			button.disabled = (not ally_turn or locked) if index == 2 else not active
 			var color: Color = Color("293541") if not button.disabled else Color("242a30")
 			var border: Color = Color("f4cf69") if selected == action and active else Color("61717e")
-			for state: String in ["normal", "hover", "pressed", "disabled", "focus"]:
+			for state: String in ["normal", "hover", "pressed", "disabled"]:
 				button.add_theme_stylebox_override(state, _button_style(color, border))
+			# 키보드·컨트롤러 포커스는 배경 위에 흰 테두리만 겹친다.
+			var focus: StyleBoxFlat = _button_style(color, Color.WHITE)
+			focus.draw_center = false
+			button.add_theme_stylebox_override("focus", focus)
 			var uses: int = CombatActionRules.uses_left(shown, action)
 			_badges[action].visible = uses >= 0
 			_badges[action].text = str(uses)
@@ -226,6 +241,9 @@ func action_details(actions: CombatActions, actor: CombatUnit, action: String) -
 	if actor == null:
 		return ""
 	var effect: String = CombatActionRules.effect(actor, action)
+	var details: String = CombatActionRules.details(actor, action)
+	if not details.is_empty():
+		effect += "\n" + details
 	var reason: String = actions.unavailable_reason(actor, action)
 	if not reason.is_empty():
 		return effect + "\n지금 사용 불가: " + reason
