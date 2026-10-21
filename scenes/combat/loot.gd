@@ -115,6 +115,23 @@ func receive_from_bag(unit: CombatUnit, index: int) -> bool:
 	return true
 
 
+## 방어구를 해제할 수 없는 이유. 해제할 수 있으면 빈 문자열이다. 무기 해제는 지원하지 않는다.
+func armor_unequip_blocker(unit: CombatUnit) -> String:
+	if unit.armor.is_empty():
+		return "장착한 방어구가 없습니다."
+	if bag.size() >= int(data["bag_limit"]):
+		return "공용 가방에 빈 칸이 없어 해제할 수 없습니다."
+	return ""
+
+
+func unequip_armor(unit: CombatUnit) -> bool:
+	if not armor_unequip_blocker(unit).is_empty():
+		return false
+	bag.append(unit.armor)
+	unit.armor = {}
+	return true
+
+
 func transfer_potion(source: CombatUnit, target: CombatUnit) -> bool:
 	if source == target or source.potion_left <= 0 or target.potion_left >= int(data["potion_limit"]):
 		return false

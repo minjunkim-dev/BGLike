@@ -195,6 +195,10 @@ func _render() -> void:
 			_label(card, "HP %d / %d" % [unit.hit_points, unit.get_max_hit_points()])
 			_label(card, "무기: " + CombatLoot.describe(unit.weapon))
 			_label(card, "방어구: " + CombatLoot.describe(unit.armor))
+			var unequip: Button = _button(card, "방어구 해제", "UnequipArmor%d" % index)
+			unequip.tooltip_text = loot.armor_unequip_blocker(unit)
+			unequip.disabled = not unequip.tooltip_text.is_empty()
+			unequip.pressed.connect(func() -> void: _unequip_armor(index))
 			_label(card, "물약 %d/%d" % [unit.potion_left, int(loot.data["potion_limit"])])
 			for target: int in range(party.size()):
 				if target == index:
@@ -203,7 +207,7 @@ func _render() -> void:
 					"Transfer%dTo%d" % [index, target])
 				button.disabled = unit.potion_left <= 0 or party[target].potion_left >= int(loot.data["potion_limit"])
 				button.pressed.connect(func() -> void: _transfer(index, target))
-		_label(content, "교체한 장비와 받지 않은 보상은 공용 가방에 보관합니다.")
+		_label(content, "교체·해제한 장비와 받지 않은 보상은 공용 가방에 보관합니다.")
 	_render_items(rewards, false)
 	if rewards.is_empty():
 		_label(content, "남은 보상 없음")
@@ -247,6 +251,12 @@ func _receive(index: int, ally: int) -> void:
 
 func _receive_bag(index: int, ally: int) -> void:
 	if visible and maintaining and not discard_dialog.visible and loot.receive_from_bag(party[ally], index):
+		_render()
+		continue_button.grab_focus()
+
+
+func _unequip_armor(ally: int) -> void:
+	if visible and maintaining and not discard_dialog.visible and loot.unequip_armor(party[ally]):
 		_render()
 		continue_button.grab_focus()
 
