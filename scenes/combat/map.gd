@@ -287,6 +287,7 @@ func _add_height_source(height: int) -> int:
 	var proxy: Image = image.duplicate()
 	proxy.resize(image.get_width() / 2, image.get_height() / 2, Image.INTERPOLATE_NEAREST)
 	var source: TileSetAtlasSource = TileSetAtlasSource.new()
+	source.use_texture_padding = false
 	source.texture_region_size = Vector2i(size.x, image.get_height()) / 2
 	source.texture = ImageTexture.create_from_image(proxy)
 	for index: int in range(8):

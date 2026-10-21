@@ -143,6 +143,12 @@ func _test_square_map() -> void:
 	var detail: Texture2D = material.get_shader_parameter("detail_texture") as Texture2D
 	_check(detail.get_width() == source.texture.get_width() * 2,
 		"지형도 논리 크기 두 배의 실제 도트 디테일을 보존한다")
+	_check(source.get_runtime_texture().get_size() == source.texture.get_size(),
+		"실제 타일 UV와 고밀도 원본 UV의 전체 크기가 일치한다")
+	for index: int in range(8):
+		var region: Rect2i = source.get_runtime_tile_texture_region(Vector2i(index, 0), 0)
+		_check(region == Rect2i(Vector2i(index * source.texture_region_size.x, 0), source.texture_region_size),
+			"실제 타일 UV가 원본의 테두리까지 보존한다: %d" % index)
 	var colors: Dictionary[int, bool] = {}
 	var floor_image: Image = detail.get_image()
 	for y: int in range(floor_image.get_height()):
