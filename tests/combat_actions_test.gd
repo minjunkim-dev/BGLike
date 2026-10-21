@@ -447,6 +447,12 @@ func _test_rock_scene_input() -> void:
 		and "주사위 없음" in hud.preview_label.text and "방향 0,-1" in hud.preview_label.text
 		and "밀기 막힘" in hud.preview_label.text,
 		"바위 안내는 같은 충돌규칙의 방향/경로/정지와 아군 피해4/무굴림을 표시한다")
+	actions.grid.pits.append(Vector2i(1, 1))
+	battle.call("_update_turn_ui")
+	_check("아군 피해4: %s · 낙사" % units[1].get_display_name() in hud.preview_label.text,
+		"바위 안내의 충돌 대상 뒤에 밀려서 받는 낙사를 붙인다")
+	actions.grid.pits.erase(Vector2i(1, 1))
+	battle.call("_update_turn_ui")
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	_check(selection.preview_prop == null and rock.cell == Vector2i(1, 3), "바위 미리보기를 우클릭으로 취소한다")
 	hud.action_selected.emit("shove")
@@ -778,6 +784,7 @@ func _run() -> void:
 	await _test_pit_movement()
 	_test_pit_spawn()
 	_test_pit_forced_movement()
+	_test_forced_move_landing_preview()
 	await _test_height_opportunity()
 	_test_height_shove()
 	_test_height_pull()
@@ -1830,6 +1837,65 @@ func _test_pit_forced_movement() -> void:
 	_check(last.actions.shove(last.units[0], last.units[2])
 		and last.actions.is_over() and last.actions.is_victory(),
 		"마지막 적의 낙사는 기존 전투 승리 결과로 연결")
+
+
+func _test_forced_move_landing_preview() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	target.is_stunned = true
+	_check(f.actions.shove_landing(target, Vector2i(6, 4)).is_empty(), "평지 밀치기 미리보기는 착지 결과를 붙이지 않는다")
+	f.actions.grid.pits = [Vector2i(6, 4)]
+	f.actions.dice = _dice_for([], [])
+	_check(f.actions.shove_landing(target, Vector2i(6, 4)) == "낙사"
+		and f.actions.shove(f.units[0], target) and target.hit_points == 0,
+		"낭떠러지 옆 밀치기 미리보기는 실제 결과와 같은 낙사를 보인다")
+	for burning: bool in [false, true]:
+		f = _fixture()
+		target = f.units[2]
+		target.is_stunned = true
+		f.actions.grid.heights = {f.units[0].cell: 3, target.cell: 3}
+		if burning:
+			f.actions.grid.water_cells = [Vector2i(6, 4)]
+			f.actions.apply_status(f.units[0], target, "burn")
+		var note: String = f.actions.shove_landing(target, Vector2i(6, 4))
+		var before: int = target.hit_points
+		f.actions.dice = _dice_for([], [])
+		_check(f.actions.shove(f.units[0], target) and before > target.hit_points
+			and note == ("물: 화상 해제 · " if burning else "") + "낙하 피해 %d" % (before - target.hit_points)
+			and target.get_status_count("burn") == 0,
+			"높이 차3 밀치기 미리보기는 실제 낙하 피해와 물의 화상 해제를 보인다")
+	f = _fixture()
+	target = f.units[2]
+	target.cell = Vector2i(4, 6)
+	f.actions.grid.pits = [Vector2i(4, 7)]
+	var rock: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "rock")
+	var roll: CombatActions.RockRoll = f.actions.preview_rock(f.units[0], rock)
+	f.actions.dice = _dice_for([], [])
+	_check(f.actions.rock_landing(roll, target) == "낙사"
+		and f.actions.attack_prop(f.units[0], rock) and target.hit_points == 0,
+		"바위가 대상을 낭떠러지로 밀면 미리보기에 실제와 같은 낙사를 보인다")
+	f = _fixture()
+	target = f.units[2]
+	target.cell = Vector2i(4, 6)
+	f.actions.grid.pits = [Vector2i(4, 8)]
+	rock = f.actions.create_prop(Vector2i(4, 5), "rock")
+	roll = f.actions.preview_rock(f.units[0], rock)
+	f.actions.dice = _dice_for([], [])
+	_check(f.actions.rock_landing(roll, target) == "낙사"
+		and f.actions.attack_prop(f.units[0], rock) and target.hit_points == 0 and target.cell == Vector2i(4, 8),
+		"바위의 두 번째 밀기가 낭떠러지로 떨어뜨려도 미리보기에 낙사를 보인다")
+	f = _fixture()
+	target = f.units[2]
+	target.cell = Vector2i(4, 6)
+	for cell: Vector2i in [f.units[0].cell, Vector2i(4, 5), target.cell]:
+		f.actions.grid.heights[cell] = 3
+	rock = f.actions.create_prop(Vector2i(4, 5), "rock")
+	roll = f.actions.preview_rock(f.units[0], rock)
+	var before: int = target.hit_points
+	f.actions.dice = _dice_for([], [])
+	_check(f.actions.attack_prop(f.units[0], rock) and before - 4 > target.hit_points
+		and f.actions.rock_landing(roll, target) == "낙하 피해 %d" % (before - 4 - target.hit_points),
+		"바위 밀기 미리보기는 충돌 피해와 별도로 실제 낙하 피해를 보인다")
 
 
 func _test_height_opportunity() -> void:
@@ -3382,6 +3448,11 @@ func _test_scene_ally_shove() -> void:
 		and units[0].bonus_action_left == 1 and turns.current_unit == units[0],
 		"실제 아군 몸통 첫 클릭은 조작 유닛을 바꾸지 않고 밀치기 미리보기")
 	_check("밀려날 칸: 3, 4" in hud.preview_label.text, "아군 밀치기도 같은 착지 칸 안내")
+	actions.grid.pits.append(Vector2i(3, 4))
+	battle.call("_update_turn_ui")
+	_check("밀려날 칸: 3, 4 · 낙사" in hud.preview_label.text, "밀치기 안내는 착지 칸과 같은 줄에 낙사를 보인다")
+	actions.grid.pits.erase(Vector2i(3, 4))
+	battle.call("_update_turn_ui")
 	await _click(point)
 	_check(units[1].cell == Vector2i(3, 4) and units[0].bonus_action_left == 0
 		and units[1].movement_left == 6 and turns.current_unit == units[0],

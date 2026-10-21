@@ -519,6 +519,30 @@ func _fall_damage_from(actor: CombatUnit, origin: Vector2i, destination: Vector2
 	return ceili((drop - 2) * actor.get_max_hit_points() * 0.15) if drop >= 3 else 0
 
 
+# _land와 같은 순서로 밀린 착지 결과를 안내한다.
+func shove_landing(target: CombatUnit, destination: Vector2i) -> String:
+	if grid.pits.has(destination):
+		return "낙사"
+	var notes: Array[String] = []
+	if destination in grid.water_cells and target.get_status_count("burn") > 0:
+		notes.append("물: 화상 해제")
+	var fall: int = fall_damage(target, destination)
+	if fall > 0:
+		notes.append("낙하 피해 %d" % fall)
+	return " · ".join(notes)
+
+
+# _trace_rock이 예측한 밀기마다 같은 낙하 계산을 더한다.
+func rock_landing(roll: RockRoll, target: CombatUnit) -> String:
+	var fall: int = 0
+	for step: RockStep in roll.steps:
+		if step.push and step.target == target:
+			if grid.pits.has(step.push_cell):
+				return "낙사"
+			fall += _fall_damage_from(target, step.cell, step.push_cell)
+	return "낙하 피해 %d" % fall if fall > 0 else ""
+
+
 func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	from_cell: Vector2i = Vector2i(-1, -1)) -> bool:
 	if (actor == null or target == null or target.hit_points <= 0

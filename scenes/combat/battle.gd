@@ -456,7 +456,9 @@ func _update_turn_ui() -> void:
 		elif selection.selected_action == "shove":
 			if actions.can_target(turns.current_unit, selection.preview_target, "shove"):
 				var cell: Vector2i = actions.grid.push_destination(turns.current_unit.cell, selection.preview_target.cell)
-				hud.show_target_note("밀려날 칸: %d, %d" % [cell.x, cell.y])
+				var landing: String = actions.shove_landing(selection.preview_target, cell)
+				hud.show_target_note("밀려날 칸: %d, %d" % [cell.x, cell.y]
+					+ ("" if landing.is_empty() else " · " + landing))
 			else:
 				hud.show_target_note("밀치기를 사용할 수 없음")
 	elif selection.preview_prop != null:
@@ -470,7 +472,9 @@ func _update_turn_ui() -> void:
 				map.show_rock_roll(prop.cell, roll)
 				var collisions: Array[String] = []
 				for unit: CombatUnit in roll.collisions:
-					collisions.append(("아군 피해4: " if unit.is_ally else "적 피해4: ") + unit.get_display_name())
+					var landing: String = actions.rock_landing(roll, unit)
+					collisions.append(("아군 피해4: " if unit.is_ally else "적 피해4: ") + unit.get_display_name()
+						+ ("" if landing.is_empty() else " · " + landing))
 				note = "행동1 · 주사위 없음 · 재클릭\n방향 %d,%d · %d칸 · %s\n%s" % [
 					roll.direction.x, roll.direction.y, roll.cells.size(), roll.reason,
 					", ".join(collisions) if not collisions.is_empty() else "충돌 없음"]
