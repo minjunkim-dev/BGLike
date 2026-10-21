@@ -52,6 +52,7 @@ func _run() -> void:
 	await process_frame
 	_check("이니셔티브" not in hud.message_label.text, "전투 시작 로그에 이니셔티브 계산식 없음")
 	_test_square_map()
+	_test_unit_art()
 	_test_warrior()
 	await _test_resources()
 	_test_archer_and_enemy()
@@ -134,6 +135,37 @@ func _test_selection() -> void:
 func _test_square_map() -> void:
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	_check(map.get_used_cells().size() == 100, "사각 맵은100칸")
+	var source: TileSetAtlasSource = map.tile_set.get_source(map.get_cell_source_id(Vector2i.ZERO)) as TileSetAtlasSource
+	var material: ShaderMaterial = source.get_tile_data(map.get_cell_atlas_coords(Vector2i.ZERO), 0).material as ShaderMaterial
+	_check(material != null, "지형 타일에 실제 고밀도 원본 렌더를 연결한다")
+	if material == null:
+		return
+	var detail: Texture2D = material.get_shader_parameter("detail_texture") as Texture2D
+	_check(detail.get_width() == source.texture.get_width() * 2,
+		"지형도 논리 크기 두 배의 실제 도트 디테일을 보존한다")
+	_check(source.get_runtime_texture().get_size() == source.texture.get_size(),
+		"실제 타일 UV와 고밀도 원본 UV의 전체 크기가 일치한다")
+	for index: int in range(8):
+		var region: Rect2i = source.get_runtime_tile_texture_region(Vector2i(index, 0), 0)
+		_check(region == Rect2i(Vector2i(index * source.texture_region_size.x, 0), source.texture_region_size),
+			"실제 타일 UV가 원본의 테두리까지 보존한다: %d" % index)
+	var colors: Dictionary[int, bool] = {}
+	var floor_image: Image = detail.get_image()
+	for y: int in range(floor_image.get_height()):
+		for x: int in range(floor_image.get_width()):
+			var color: Color = floor_image.get_pixel(x, y)
+			if color.a > 0.0:
+				colors[color.to_rgba32()] = true
+	_check(colors.size() > 16, "평면 색 도형 대신 실제 바닥·벽 도트 텍스처를 사용한다")
+	for id: String in ["crate", "rock", "tree", "ruin_wall", "cottage"]:
+		var path: String = "res://scenes/combat/art/props/%s.png" % id
+		_check(ResourceLoader.exists(path), "실제 지형 오브젝트 PNG: " + id)
+		if ResourceLoader.exists(path):
+			var image: Image = (load(path) as Texture2D).get_image()
+			var size: Vector2i = Vector2i(128, 128) if id == "cottage" else (
+				Vector2i(64, 96) if id == "tree" else Vector2i(64, 64))
+			_check(image.get_size() == size and image.get_pixel(0, 0).a == 0.0,
+				"지형 오브젝트의 고밀도 캔버스와 투명 배경: " + id)
 	_check(map.tile_set.tile_shape == TileSet.TILE_SHAPE_ISOMETRIC
 		and map.tile_set.tile_size == Vector2i(32, 16), "사각 논리 칸을32×16 마름모로 표시")
 	for cell: Vector2i in map.get_used_cells():
@@ -145,6 +177,53 @@ func _test_square_map() -> void:
 		for neighbor: Vector2i in visual_neighbors:
 			_check(neighbors.has(neighbor) and CombatGrid.distance(cell, neighbor) == 1,
 				"Godot 타일 이웃과 전투 인접 판정 일치")
+
+
+func _test_unit_art() -> void:
+	for unit_id: String in ["warrior", "archer", "spiderling", "mother_spider",
+		"novice_barbarian", "novice_archer", "scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000"]:
+		for state: String in ["idle", "move", "attack"]:
+			for direction: String in ["left", "right"]:
+				var images: Array[Image] = []
+				for frame: int in range(2):
+					var path: String = "res://scenes/combat/art/units/%s/%s/%s/%03d.png" % [
+						unit_id, state, direction, frame]
+					_check(ResourceLoader.exists(path), "실제 유닛 프레임 납품: " + path)
+					if not ResourceLoader.exists(path):
+						continue
+					var texture: Texture2D = load(path) as Texture2D
+					var image: Image = texture.get_image()
+					_check(image.get_size() == Vector2i(64, 64) and image.is_invisible() == false
+						and image.get_pixel(0, 0).a == 0.0, "64×64 투명 프레임: " + path)
+					_check(image.get_used_rect().end.y <= 56,
+						"발밑 피벗56 아래는 투명 여백: " + path)
+					var enlarged: Image = image.duplicate()
+					enlarged.resize(32, 32, Image.INTERPOLATE_NEAREST)
+					enlarged.resize(64, 64, Image.INTERPOLATE_NEAREST)
+					_check(enlarged.get_data() != image.get_data(), "32px 단순 확대가 아닌 고밀도 원본: " + path)
+					images.append(image)
+				if images.size() == 2:
+					_check(images[0].get_data() != images[1].get_data(),
+						"상태마다 실제로 다른 애니메이션 프레임: %s/%s/%s" % [unit_id, state, direction])
+	for unit: CombatUnit in units:
+		var visible_sprites: int = 0
+		for child: Node in unit.get_children():
+			if child is AnimatedSprite2D and child.visible and child.sprite_frames != null:
+				visible_sprites += 1
+				var current: Texture2D = child.sprite_frames.get_frame_texture(child.animation, child.frame)
+				_check(current.get_size() * child.scale == Vector2(32, 32)
+					and child.offset * child.scale == Vector2(-16, -28),
+					"고밀도 프레임도 기존 표시 크기와 발밑 유지")
+		_check(visible_sprites == 1, "실제 전투 유닛은 도트 애니메이션1개로 표시: " + unit.get_display_name())
+		var resting_status_y: float = unit.get_status_label_y()
+		unit.body_offset_y = -16.0
+		_check(unit.get_status_label_y() == resting_status_y - 16.0,
+			"점프 정점에서도 HP·상태·팝업 기준이 실제 그림을 따라간다")
+		unit.body_offset_y = 0.0
+		var portrait: Button = (hud.get("_portraits") as Dictionary)[unit] as Button
+		_check(portrait.icon != null and portrait.icon.get_size() == Vector2(64, 64)
+			and portrait.get_theme_constant("icon_max_width") == 32,
+			"고밀도 초상의 논리 표시 폭32 유지: " + unit.get_display_name())
 
 
 func _test_warrior() -> void:
@@ -1269,6 +1348,7 @@ func _test_spawned_portrait_input() -> void:
 
 
 func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> void:
+	var already_busy: bool = actions.busy
 	var event: InputEventMouseButton = InputEventMouseButton.new()
 	event.position = root.get_final_transform() * point
 	event.global_position = event.position
@@ -1283,7 +1363,7 @@ func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> vo
 		var moving: bool = false
 		for unit: CombatUnit in units:
 			moving = moving or unit.is_moving
-		if not moving and not battle.has_node("Arrow"):
+		if not moving and not battle.has_node("Arrow") and (not actions.busy or already_busy or hud.reaction_dialog.visible):
 			return
 		await process_frame
 	_check(false, "포인터 입력 후 연출이 제한 시간 안에 끝나지 않음")
@@ -1327,8 +1407,8 @@ func _test_action_animations() -> void:
 			var actor: CombatUnit = units[1] if side else units[3]
 			var target: CombatUnit = units[2] if side else units[0]
 			actor.shock_left = 1
-			actor.cell = Vector2i(1, 4)
-			target.cell = Vector2i(4, 4)
+			actor.cell = Vector2i(1, 4) if side else Vector2i(4, 4)
+			target.cell = Vector2i(4, 4) if side else Vector2i(1, 4)
 			(units[0] if side else units[2]).cell = Vector2i(9, 9)
 			(units[3] if side else units[1]).cell = Vector2i(0, 0)
 			target.reaction_left = 0
@@ -1344,6 +1424,9 @@ func _test_action_animations() -> void:
 			_animated_attack(actor, target, shock, finished)
 			_check(actions.busy and battle.has_node("Arrow") and target.hit_points == hp,
 				"아군·적 궁수 기본/충격 화살은 비행 중 피해 적용 전: %s/%s" % [side, shock])
+			_check((battle.get_node("Arrow") as Node2D).position == actor.position + Vector2(
+				8 if side else -8, actor.floor_offset_y - 16),
+				"실제 도트 활의 발밑 기준 출발점과 좌우를 화살에 적용: %s/%s" % [side, shock])
 			_check(not actions.can_move(actor, Vector2i(2, 4)) and not actions.can_use(actor, "attack")
 				and not await actions.attack(actor, target, shock), "화살 비행 중 중복 입력 거부")
 			while not finished[0]:
@@ -1388,6 +1471,36 @@ func _test_action_animations() -> void:
 	_check(reactions[0] == 1 and not actions.busy and not hud.reaction_dialog.visible,
 		"화살 도착 뒤 반응 넘기기는 전투를 정상 재개")
 	actions.reaction_requested.disconnect(on_reaction)
+	_reset_units()
+	for actor: CombatUnit in [units[0], units[1]]:
+		_reset_units()
+		actions.grid.props.clear()
+		actor.cell = Vector2i(5, 5)
+		(units[1] if actor == units[0] else units[0]).cell = Vector2i(0, 0)
+		units[2].cell = Vector2i(8, 8)
+		units[3].cell = Vector2i(9, 9)
+		turns.select_unit(actor)
+		actor.facing_left = false
+		var crate: CombatGrid.Prop = actions.create_prop(Vector2i(4, 5), "crate")
+		battle.call("_update_turn_ui")
+		var event: InputEventMouseButton = InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = true
+		event.position = battle.map.get_global_transform_with_canvas() * (
+			battle.map.map_to_surface(crate.cell) + Vector2(0, -8))
+		battle.call("_unhandled_input", event)
+		battle.call("_unhandled_input", event)
+		var sprite: AnimatedSprite2D = actor.get_node("Sprite") as AnimatedSprite2D
+		_check(actions.busy and actor.facing_left and sprite.animation == &"attack_left"
+			and crate.hit_points == 6, "상자 공격은 방향·공격 자세를 먼저 표시하고 입력을 잠근다")
+		if actor.kind == CombatUnit.Kind.ARCHER:
+			_check(battle.has_node("Arrow"), "궁수의 상자 공격에도 실제 화살이 비행한다")
+		while actions.busy:
+			await process_frame
+		await process_frame
+		_check(actor.action_left == 0 and crate.hit_points < 6 and not battle.has_node("Arrow"),
+			"상자 공격 연출 뒤 기존 피해·행동 비용과 화살 정리를 유지한다")
+	actions.grid.props.clear()
 	_reset_units()
 
 

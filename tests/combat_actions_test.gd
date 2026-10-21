@@ -436,7 +436,8 @@ func _test_rock_scene_input() -> void:
 	dice.seed = 33
 	turns.start(units, dice)
 	units[1].cell = Vector2i(1, 2)
-	units[2].cell = Vector2i(2, 4)
+	# 밀치기를 허용하는 인접 적은 바위 그림을 가리지 않는 쪽에 둔다.
+	units[2].cell = Vector2i(1, 5)
 	var rock: CombatGrid.Prop = actions.create_prop(Vector2i(1, 3), "rock")
 	var point: Vector2 = map.get_global_transform_with_canvas() * (map.map_to_surface(rock.cell) + Vector2(0, -7))
 	await _click(point)
@@ -595,7 +596,7 @@ func _test_crate_scene_input() -> void:
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	_check(selection.preview_prop == null and crate.hit_points == 6,
 		"우클릭으로 상자 미리보기를 취소하며 막힌 칸으로 이동하지 않는다")
-	units[2].cell = Vector2i(2, 4)
+	units[2].cell = Vector2i(1, 5)
 	actions.changed.emit()
 	hud.action_selected.emit("shove")
 	await _click(point)
@@ -3345,9 +3346,11 @@ func _test_scene_input() -> void:
 	var overlap_map: TileMapLayer = overlap.get_node("Map") as TileMapLayer
 	dice.seed = 33
 	overlap_turns.start(overlap_units, dice)
-	var hidden_cell: Vector2i = overlap_units[0].cell - Vector2i(0, 1)
-	var hidden_screen: Vector2 = overlap_map.get_global_transform_with_canvas() * (
-		overlap_map.map_to_local(hidden_cell) + Vector2(5, 0))
+	var hidden_cell: Vector2i = overlap_units[0].cell - Vector2i.ONE
+	var hidden_local: Vector2 = overlap_map.map_to_local(hidden_cell) + Vector2(5, 0)
+	var hidden_screen: Vector2 = overlap_map.get_global_transform_with_canvas() * hidden_local
+	_check(overlap_units[0].contains_body_point(overlap_units[0].to_local(overlap_map.to_global(hidden_local))),
+		"빈 칸 입력점은 실제 도트 몸통에 가려진다")
 	await _click(hidden_screen, MOUSE_BUTTON_RIGHT)
 	_check((overlap.get("selection") as CombatSelection).preview_cell == hidden_cell, "이동 모드에서 몸통 뒤 빈 사각 칸 선택")
 	await _click(hidden_screen, MOUSE_BUTTON_RIGHT)
@@ -3356,7 +3359,11 @@ func _test_scene_input() -> void:
 	overlap_units[2].cell = Vector2i(4, 4)
 	overlap_units[3].cell = Vector2i(5, 5)
 	overlap.call("_update_turn_ui")
-	var overlap_point: Vector2 = overlap_units[2].get_global_transform_with_canvas() * Vector2(0, -1)
+	var overlap_world: Vector2 = overlap_units[2].to_global(Vector2(0, -8))
+	var overlap_point: Vector2 = overlap_units[2].get_global_transform_with_canvas() * Vector2(0, -8)
+	_check(overlap_units[2].contains_body_point(Vector2(0, -8))
+		and overlap_units[3].contains_body_point(overlap_units[3].to_local(overlap_world)),
+		"겹침 입력점은 두 실제 도트 몸통에 모두 포함된다")
 	await _click(overlap_point)
 	_check((overlap.get("selection") as CombatSelection).preview_target == overlap_units[3], "겹친 몸통은 y-sort 앞쪽 유닛 선택")
 	overlap.queue_free()
@@ -3599,6 +3606,13 @@ func _test_jump_scene_animation() -> void:
 	var before: int = actor.hit_points
 	var finished: Array[bool] = [false]
 	_jump_scene(actions, actor, destination, finished)
+	_check(actions.busy and not actor.is_moving and actor.cell == origin
+		and actor.movement_left == 6 and actor.bonus_action_left == 1,
+		"기회 공격 연출 중에는 점프 비용과 논리 원점을 유지한다")
+	for frame: int in range(600):
+		if actor.is_moving or finished[0]:
+			break
+		await process_frame
 	_check(actions.busy and actor.is_moving and actor.cell == origin
 		and actor.movement_left == 4 and actor.bonus_action_left == 0 and actor.hit_points == before,
 		"기회 공격 생존 후 비용을 먼저 쓰고 논리 원점에서 점프 연출, 착지 피해 대기")
@@ -3668,8 +3682,9 @@ func _test_height_scene_input() -> void:
 		"앞 칸의 높은 옆면을 눌러도 가려진 뒤 칸을 선택하거나 이동하지 않음")
 	(battle.get("progress") as CombatActProgress).stage_index = 1
 	battle.call("_start_stage", true)
-	_check(actions.grid.heights.is_empty() and units[0].position == map.map_to_local(units[0].cell),
-		"다음 실제 평면 스테이지는 높이0으로 복귀하고 fixture 높이를 이어받지 않음")
+	_check(actions.grid.heights == battle.stages[1].heights
+		and units[0].position == map.map_to_local(units[0].cell),
+		"다음 실제 스테이지의 높이로 교체하고 fixture 높이를 이어받지 않음")
 	battle.queue_free()
 	await process_frame
 
@@ -3702,7 +3717,7 @@ func _test_blocked_scene_input() -> void:
 		"막힌 바닥의 두 번 우클릭은 이동·자원을 소비하지 않음")
 	(battle.get("progress") as CombatActProgress).stage_index = 1
 	battle.call("_start_stage", true)
-	_check(actions.grid.blocked_cells.is_empty() and not actions.grid.is_blocked(blocked)
+	_check(actions.grid.blocked_cells == battle.stages[1].get_blocked_cells() and not actions.grid.is_blocked(blocked)
 		and map.get_used_cells().size() == 100, "다음 스테이지는 막힌 칸 fixture를 이어받지 않음")
 	_check(not map.has_node("BlockedCell"), "다음 스테이지에서 막힌 칸 표시 정리")
 	battle.queue_free()
@@ -3840,6 +3855,20 @@ func _test_scene_shock() -> void:
 
 
 func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> void:
+	var battle: Node2D
+	for child: Node in root.get_children():
+		if child.is_queued_for_deletion():
+			continue
+		if child is Node2D and child.has_node("Map") and child.has_node("UI/TurnHud"):
+			battle = child as Node2D
+		else:
+			battle = child.get_node_or_null("Battle") as Node2D
+		if battle != null and not battle.is_queued_for_deletion():
+			break
+	if battle == null:
+		_check(false, "포인터 검사의 활성 전투 장면이 존재한다")
+		return
+	var already_busy: bool = (battle.get("actions") as CombatActions).busy
 	var event: InputEventMouseButton = InputEventMouseButton.new()
 	event.position = root.get_final_transform() * point
 	event.global_position = event.position
@@ -3850,14 +3879,13 @@ func _click(point: Vector2, button_index: MouseButton = MOUSE_BUTTON_LEFT) -> vo
 	event.pressed = false
 	Input.parse_input_event(event)
 	await process_frame
-	var battle: Node2D = root.get_node_or_null("Battle") as Node2D
-	if battle == null:
-		return
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var hud: CombatTurnHud = battle.get("hud") as CombatTurnHud
 	for frame: int in range(600):
 		var moving: bool = false
 		for unit: CombatUnit in battle.get("units"):
 			moving = moving or unit.is_moving
-		if not moving and not battle.has_node("Arrow"):
+		if not moving and not battle.has_node("Arrow") and (not actions.busy or already_busy or hud.reaction_dialog.visible):
 			return
 		await process_frame
 	_check(false, "포인터 입력 후 연출이 제한 시간 안에 끝나지 않음")

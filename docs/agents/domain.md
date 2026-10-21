@@ -35,3 +35,7 @@ Issue 제목, 설명, 코드, 테스트, 리뷰에서는 `CONTEXT.md`의 용어�
 ## Flag ADR conflicts
 
 기획 문서나 기존 ADR과 다른 변경이 필요하면 충돌하는 문서와 이유를 명시합니다. Issue 코멘트에 질문을 남기고 결정을 확인한 뒤 구현합니다. 문서와 다른 수치나 규칙을 코드에서 먼저 확정하지 않습니다.
+
+## Art and terrain
+
+실제 유닛 자산은 [도트 아트 제작 기준](../PIXEL_ART.md)과 [납품 규격](../UNIT_IMAGE_TEMPLATE.md)을 따릅니다. 실제 지형과9개 맵은 [맵 제작 기준](../TERRAIN_MAPS.md), [논리 좌표 지도](../stages/README.md), `scenes/combat/stages/act*_stage*.tres`를 함께 확인합니다. 완료 여부는 #193/#194/#195의 최종 검증 근거로 확인합니다.

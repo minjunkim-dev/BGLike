@@ -20,6 +20,7 @@ func _check(condition: bool, message: String) -> void:
 
 func _run() -> void:
 	_test_act_progress()
+	_test_terrain_layouts()
 	await _test_spiderling_placement_and_turns()
 	await _test_mother_stages()
 	await _test_novice_placements()
@@ -50,6 +51,73 @@ func _run() -> void:
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat progression: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_terrain_layouts() -> void:
+	var sample: CombatStage = CombatStage.new()
+	if sample.has_method("get_blocked_cells"):
+		sample.blocked_cells = [Vector2i(1, 1), Vector2i(9, 9)]
+		sample.scenery[Vector2i(1, 1)] = "cottage"
+		var combined: Array[Vector2i] = sample.call("get_blocked_cells")
+		_check(combined.size() == 5 and combined.has(Vector2i(2, 2))
+			and sample.blocked_cells.size() == 2, "2×2 집의 footprint를 중복 없이 합치고 원본을 보존한다")
+	var layouts: Dictionary[String, bool] = {}
+	for act: int in range(1, 4):
+		for number: int in range(1, 4):
+			var stage: CombatStage = load("res://scenes/combat/stages/act%d_stage%d.tres" % [act, number]) as CombatStage
+			var label: String = "%d-%d" % [act, number]
+			_check(stage.heights.values().any(func(height: int) -> bool: return height >= 2),
+				label + " 실제 높이2 이상 고지대")
+			var paths: Variant = stage.get("path_cells")
+			var stones: Variant = stage.get("stone_cells")
+			var scenery: Variant = stage.get("scenery")
+			_check(paths is Array and not paths.is_empty() and stones is Array and not stones.is_empty(),
+				label + " 실제 길·석재 배치")
+			_check(scenery is Dictionary and not scenery.is_empty() and stage.has_method("get_blocked_cells"),
+				label + " 실제 장식과 같은 footprint의 이동 차단")
+			if not stage.has_method("get_blocked_cells"):
+				continue
+			var grid: CombatGrid = CombatGrid.new()
+			grid.map_size = stage.map_size
+			grid.heights = stage.heights.duplicate()
+			grid.pits = stage.pits.duplicate()
+			grid.blocked_cells = stage.call("get_blocked_cells")
+			for anchor: Vector2i in stage.scenery:
+				var size: Vector2i = CombatStage.SCENERY_SIZE[stage.scenery[anchor]]
+				for y: int in range(size.y):
+					for x: int in range(size.x):
+						var footprint: Vector2i = anchor + Vector2i(x, y)
+						_check(grid.is_floor(footprint) and grid.blocked_cells.has(footprint)
+							and grid.height_at(footprint) == grid.height_at(anchor),
+							label + " 장식의 바닥·높이·차단 footprint 일치")
+			for list: Array[Vector2i] in [stage.path_cells, stage.stone_cells, stage.water_cells,
+				stage.crate_cells, stage.rock_cells, stage.ally_cells]:
+				for cell: Vector2i in list:
+					_check(grid.is_floor(cell), label + " 재질·물체·아군 칸은 유효한 바닥")
+			for cell: Vector2i in stage.crate_cells:
+				grid.props.append(CombatGrid.Prop.new(cell, "crate"))
+			for cell: Vector2i in stage.rock_cells:
+				grid.props.append(CombatGrid.Prop.new(cell, "rock"))
+			for cell: Vector2i in stage.ally_cells:
+				_check(not grid.is_blocked(cell), label + " 아군 스폰을 장식·물체가 막지 않음")
+			var actor: CombatUnit = CombatUnit.new()
+			actor.cell = stage.ally_cells[0]
+			for y: int in range(stage.map_size.y):
+				for x: int in range(stage.map_size.x):
+					var cell: Vector2i = Vector2i(x, y)
+					if grid.is_floor(cell) and not grid.is_blocked(cell) and cell != actor.cell:
+						_check(not grid.path_to(actor, cell).is_empty(), label + " 보행 연결: " + str(cell))
+			var enemies: Node = stage.enemies.instantiate()
+			for unit: CombatUnit in enemies.get_children():
+				_check(grid.is_floor(unit.start_cell) and not grid.is_blocked(unit.start_cell)
+					and not grid.path_to(actor, unit.start_cell).is_empty(), label + " 적 스폰과 보행 교전 경로")
+				if unit.kind == CombatUnit.Kind.MOTHER_SPIDER:
+					_check(grid.empty_neighbors(unit.start_cell).size() >= 2, label + " 엄마 거미 소환 여유")
+			enemies.free()
+			actor.free()
+			var signature: String = var_to_str([stage.heights, paths, stones, scenery])
+			_check(not layouts.has(signature), label + " 독립적으로 배치한 지형")
+			layouts[signature] = true
 
 
 func _test_spiderling_placement_and_turns() -> void:

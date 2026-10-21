@@ -207,7 +207,8 @@ func _monitor() -> void:
 				var font: Font = ThemeDB.fallback_font
 				var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
 				var status_rect: Rect2 = unit.get_global_transform_with_canvas() * Rect2(
-					Vector2(-width / 2.0, -29 - font.get_ascent(10)), Vector2(width, font.get_height(10)))
+					Vector2(-width / 2.0, unit.floor_offset_y + unit.get_status_label_y() - font.get_ascent(10)),
+					Vector2(width, font.get_height(10)))
 				var status_pair: String = "%s / %s %s" % [popup.text, unit.get_display_name(), status]
 				if rect.grow(2).intersects(status_rect) and status_pair not in collisions:
 					collisions.append(status_pair)

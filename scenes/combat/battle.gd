@@ -81,9 +81,9 @@ func _start_stage(restore_act: bool) -> void:
 	actions.grid.map_size = map_size
 	actions.grid.heights = stage.heights.duplicate()
 	actions.grid.pits = stage.pits.duplicate()
-	actions.grid.blocked_cells = stage.blocked_cells.duplicate()
+	actions.grid.blocked_cells = stage.get_blocked_cells()
 	actions.grid.water_cells = stage.water_cells.duplicate()
-	map.build_grid(actions.grid, stage.tile_set)
+	map.build_grid(actions.grid, stage.tile_set, stage)
 	for index: int in range(party.size()):
 		party[index].cell = stage.ally_cells[index]
 		party[index].facing_left = false
@@ -231,8 +231,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var candidates: Array[CombatUnit] = []
 	for unit: CombatUnit in units:
-		var body_point: Vector2 = unit.to_local(world_position) - Vector2(0, unit.floor_offset_y)
-		if unit.hit_points > 0 and Rect2(-7, -20, 14, 22).has_point(body_point):
+		if unit.hit_points > 0 and unit.contains_body_point(unit.to_local(world_position)):
 			candidates.append(unit)
 	candidates.sort_custom(func(a: CombatUnit, b: CombatUnit) -> bool:
 		if a.position.y != b.position.y:
@@ -244,6 +243,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		if selection.select_prop(prop, selection.selected_action == "attack" and actions.can_attack_prop(actor, prop)):
 			selection.begin_execution()
+			actions.busy = true
+			await _animate_attack_at(actor, map.map_to_surface(prop.cell) + Vector2(0, -8))
+			actions.busy = false
 			actions.attack_prop(actor, prop)
 			selection.finish_execution()
 		_update_turn_ui()
@@ -350,8 +352,14 @@ func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
 
 
 func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
-	actor.face_toward(target.position)
+	await _animate_attack_at(actor, target.position + Vector2(0, target.floor_offset_y - 14))
+
+
+func _animate_attack_at(actor: CombatUnit, destination: Vector2) -> void:
+	actor.face_toward(destination)
+	actor.play_attack()
 	if actor.kind != CombatUnit.Kind.ARCHER:
+		await get_tree().create_timer(1.0 / 6.0).timeout
 		return
 	var arrow: Polygon2D = Polygon2D.new()
 	arrow.name = "Arrow"
@@ -360,8 +368,7 @@ func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
 	])
 	arrow.color = Color("efe4c8")
 	arrow.z_index = 1
-	arrow.position = actor.position + Vector2(0, actor.floor_offset_y - 14)
-	var destination: Vector2 = target.position + Vector2(0, target.floor_offset_y - 14)
+	arrow.position = actor.position + Vector2(-8 if actor.facing_left else 8, actor.floor_offset_y - 16)
 	arrow.rotation = (destination - arrow.position).angle()
 	add_child(arrow)
 	var tween: Tween = create_tween()

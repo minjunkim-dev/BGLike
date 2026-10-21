@@ -1,6 +1,6 @@
 class_name CombatUnit
 extends Node2D
-## 팀과 직업, 격자 위치와 유닛별 턴 자원을 가진 임시 유닛.
+## 팀과 직업, 격자 위치와 유닛별 턴 자원·도트 애니메이션.
 
 enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
@@ -32,8 +32,14 @@ class StatusEffect extends RefCounted:
 @export var start_cell: Vector2i = Vector2i.ZERO
 
 var cell: Vector2i = Vector2i.ZERO
-var is_moving: bool = false
-var facing_left: bool = false
+var is_moving: bool = false:
+	set(value):
+		is_moving = value
+		_update_animation()
+var facing_left: bool = false:
+	set(value):
+		facing_left = value
+		_update_animation()
 # 깊이 정렬의 기준점은 높이를 빼기 전 바닥에 두고 그림만 올린다.
 var floor_offset_y: float = 0.0:
 	set(value):
@@ -100,7 +106,10 @@ var is_selected: bool = false:
 		is_selected = value
 		queue_redraw()
 var is_occluded: bool = false
-var _silhouette: Node2D
+var _silhouette: Sprite2D
+var _sprite: AnimatedSprite2D
+var _attacking: bool = false
+var _art_top_y: float = -28.0
 
 
 func get_dexterity() -> int:
@@ -178,6 +187,17 @@ func get_display_name() -> String:
 	if not is_ally:
 		return CombatEnemyDefinitions.for_kind(kind)["name"]
 	return "아군 " + ("전사" if kind == Kind.WARRIOR else "궁수")
+
+
+func get_art_id() -> String:
+	if not is_ally and kind <= Kind.ARCHER:
+		return "novice_barbarian" if kind == Kind.WARRIOR else "novice_archer"
+	return ["warrior", "archer", "spiderling", "mother_spider",
+		"scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000"][kind]
+
+
+func get_status_label_y() -> float:
+	return _art_top_y + body_offset_y - 9.0
 
 
 func get_status_count(kind_name: String) -> int:
@@ -267,18 +287,77 @@ func has_available_turn_action(
 
 
 func _ready() -> void:
-	_silhouette = Node2D.new()
+	facing_left = not is_ally
+	_sprite = AnimatedSprite2D.new()
+	_sprite.name = "Sprite"
+	_sprite.centered = false
+	_sprite.offset = Vector2(-32, -56)
+	_sprite.scale = Vector2.ONE * 0.5
+	_sprite.sprite_frames = SpriteFrames.new()
+	_sprite.sprite_frames.remove_animation("default")
+	var unit_id: String = get_art_id()
+	_art_top_y = 0.0
+	for state: String in ["idle", "move", "attack"]:
+		for direction: String in ["left", "right"]:
+			var animation: StringName = state + "_" + direction
+			_sprite.sprite_frames.add_animation(animation)
+			var speed: float = 3.0 if state == "idle" else (24.0 if state == "move" else 12.0)
+			_sprite.sprite_frames.set_animation_speed(animation, speed)
+			_sprite.sprite_frames.set_animation_loop(animation, state != "attack")
+			for frame: int in range(2):
+				var texture: Texture2D = load("res://scenes/combat/art/units/%s/%s/%s/%03d.png" % [
+					unit_id, state, direction, frame]) as Texture2D
+				_sprite.sprite_frames.add_frame(animation, texture)
+				_art_top_y = minf(_art_top_y, (texture.get_image().get_used_rect().position.y - 56.0) * 0.5)
+	add_child(_sprite)
+	_silhouette = Sprite2D.new()
+	_silhouette.centered = false
+	_silhouette.offset = _sprite.offset
+	_silhouette.scale = _sprite.scale
 	_silhouette.z_index = 1
 	_silhouette.visible = false
-	_silhouette.draw.connect(func() -> void:
-		var color: Color = Color("f4cf69") if is_selected else (ALLY_COLOR if is_ally else ENEMY_COLOR)
-		_silhouette.draw_rect(Rect2(-6, -19, 12, 18), color, false)
-	)
+	var outline: ShaderMaterial = ShaderMaterial.new()
+	outline.shader = preload("res://scenes/combat/art/unit_outline.gdshader")
+	_silhouette.material = outline
 	add_child(_silhouette)
+	_sprite.frame_changed.connect(_sync_sprite)
+	_sprite.animation_changed.connect(_sync_sprite)
+	_sprite.animation_finished.connect(func() -> void:
+		_attacking = false
+		_update_animation())
+	_update_animation()
 	cell = start_cell
 	hit_points = get_max_hit_points()
 	begin_turn()
 	queue_redraw()
+
+
+func _update_animation() -> void:
+	if _sprite == null:
+		return
+	var state: String = "attack" if _attacking else ("move" if is_moving else "idle")
+	_sprite.play(state + ("_left" if facing_left else "_right"))
+	_sync_sprite()
+
+
+func _sync_sprite() -> void:
+	if _silhouette != null and _sprite.sprite_frames.has_animation(_sprite.animation):
+		_silhouette.texture = _sprite.sprite_frames.get_frame_texture(_sprite.animation, _sprite.frame)
+
+
+func play_attack() -> void:
+	_attacking = true
+	_sprite.stop()
+	_update_animation()
+
+
+func contains_body_point(point: Vector2) -> bool:
+	var pixel: Vector2i = Vector2i(((point - Vector2(0, floor_offset_y + body_offset_y))
+		/ _sprite.scale - _sprite.offset).floor())
+	if not Rect2i(Vector2i.ZERO, Vector2i(64, 64)).has_point(pixel):
+		return false
+	var texture: Texture2D = _sprite.sprite_frames.get_frame_texture(_sprite.animation, _sprite.frame)
+	return texture.get_image().get_pixelv(pixel).a > 0.0
 
 
 func face_toward(destination: Vector2) -> void:
@@ -288,12 +367,16 @@ func face_toward(destination: Vector2) -> void:
 
 
 func _draw() -> void:
-	_silhouette.visible = is_occluded
+	_silhouette.visible = is_occluded or is_selected or is_previewed
+	var edge: Color = Color("f4cf69") if is_selected else (
+		Color("f4ead1") if is_previewed else (ALLY_COLOR if is_ally else ENEMY_COLOR))
+	(_silhouette.material as ShaderMaterial).set_shader_parameter("outline_color", edge)
 	_silhouette.position = Vector2(0, floor_offset_y + body_offset_y)
-	_silhouette.queue_redraw()
+	_sprite.position = _silhouette.position
 	draw_set_transform(Vector2(0, floor_offset_y))
-	draw_rect(Rect2(-9, -25, 18, 4), OUTLINE_COLOR)
-	draw_rect(Rect2(-8, -24, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
+	var status_y: float = get_status_label_y()
+	draw_rect(Rect2(-9, status_y + 4, 18, 4), OUTLINE_COLOR)
+	draw_rect(Rect2(-8, status_y + 5, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
 	var status: String = get_periodic_status_text()
 	if is_stunned:
 		status = "기절" + (" " + status if not status.is_empty() else "")
@@ -302,32 +385,9 @@ func _draw() -> void:
 	if not status.is_empty():
 		var font: Font = ThemeDB.fallback_font
 		var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-		draw_string(font, Vector2(-width / 2.0, -29), status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, WEAPON_COLOR)
-	var body_color: Color = ALLY_COLOR if is_ally else ENEMY_COLOR
-	if is_selected:
-		draw_rect(Rect2(-7, -20, 14, 20), Color("f4cf69"), false)
-	elif is_previewed:
-		draw_rect(Rect2(-7, -20, 14, 20), Color("f4ead1"), false)
-	draw_rect(Rect2(-6, -1, 12, 3), OUTLINE_COLOR)
-	draw_set_transform(Vector2(0, floor_offset_y + body_offset_y), 0.0, Vector2(-1 if facing_left else 1, 1))
-	draw_rect(Rect2(-6, -19, 12, 18), OUTLINE_COLOR)
-	draw_rect(Rect2(-5, -18, 10, 16), body_color)
-
-	if is_boss():
-		draw_rect(Rect2(-4, -16, 8, 5), WEAPON_COLOR)
-		draw_rect(Rect2(-3, -15, 2, 2), OUTLINE_COLOR)
-		draw_rect(Rect2(1, -15, 2, 2), OUTLINE_COLOR)
-		draw_line(Vector2(-3, -7), Vector2(3, -7), WEAPON_COLOR)
-	elif kind != Kind.ARCHER:
-		# 검: 직선 칼날과 가로 손잡이.
-		draw_rect(Rect2(-1, -16, 2, 9), WEAPON_COLOR)
-		draw_rect(Rect2(-3, -8, 6, 2), WEAPON_COLOR)
-	else:
-		# 활: 꺾인 활대와 곧은 시위.
-		draw_polyline(PackedVector2Array([
-			Vector2(-2, -16), Vector2(2, -12), Vector2(-2, -8)
-		]), WEAPON_COLOR)
-		draw_line(Vector2(-2, -16), Vector2(-2, -8), WEAPON_COLOR)
+		draw_string(font, Vector2(-width / 2.0, status_y), status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, WEAPON_COLOR)
+	draw_polyline(PackedVector2Array([Vector2(-9, 0), Vector2(0, 4), Vector2(9, 0)]),
+		ALLY_COLOR if is_ally else ENEMY_COLOR)
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -357,7 +417,7 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 	var rise: float = absf(canvas.basis_xform(Vector2(0, -FEEDBACK_RISE)).y)
 	var padding: float = 2.0 * maxf(absf(canvas.get_scale().x), absf(canvas.get_scale().y))
 	var viewport: Rect2 = get_viewport().get_visible_rect()
-	var origin: Vector2 = canvas * (position + Vector2(-16, floor_offset_y - 42))
+	var origin: Vector2 = canvas * (position + Vector2(-16, floor_offset_y + get_status_label_y() - 5))
 	var first: Vector2 = viewport.position + Vector2(padding, rise + padding)
 	var best: Vector2 = origin.clamp(first, viewport.end - popup_size - Vector2.ONE * padding)
 	var distance: float = INF
@@ -369,7 +429,7 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 			var periodic: String = child.get_periodic_status_text()
 			var status: String = "기절 %s ◎" % periodic if not periodic.is_empty() else "기절 ◎"
 			var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-			var status_rect: Rect2 = Rect2(Vector2(-width / 2.0, -29 - font.get_ascent(10)),
+			var status_rect: Rect2 = Rect2(Vector2(-width / 2.0, child.get_status_label_y() - font.get_ascent(10)),
 				Vector2(width, font.get_height(10)))
 			var elevated_status: Rect2 = Rect2(status_rect.position + Vector2(0, child.floor_offset_y), status_rect.size)
 			occupied.append((child.get_global_transform_with_canvas() * elevated_status).grow(padding))
