@@ -848,6 +848,7 @@ func _run() -> void:
 	await _test_pit_scene_input()
 	await _test_pit_scene_victory()
 	await _test_isometric_unit_occlusion()
+	await _test_terrain_hidden_unit_outline()
 	await _test_scene_shock()
 	for f: Fixture in _fixtures:
 		for connection: Dictionary in f.actions.reaction_requested.get_connections():
@@ -3435,6 +3436,73 @@ func _test_isometric_unit_occlusion() -> void:
 		"가리는 지형이 없어지면 같은 화면 위치의 유닛을 미리보기")
 	battle.queue_free()
 	await process_frame
+
+
+func _test_terrain_hidden_unit_outline() -> void:
+	# 종류, 앞 칸, 앞 칸 바닥 높이, 그림이 못 가리는 몸통 px. 나무는 잎 틈으로 1px가 보인다.
+	for config: Array in [["rock", Vector2i(6, 4), 1, 0], ["crate", Vector2i(6, 4), 1, 0],
+			["ruin_wall", Vector2i(6, 4), 2, 0], ["tree", Vector2i(6, 4), 0, 1], ["cottage", Vector2i(5, 4), 1, 0]]:
+		var kind: String = config[0]
+		var front: Vector2i = config[1]
+		var stage: CombatStage = (load("res://scenes/combat/stages/act2_stage1.tres") as CombatStage).duplicate() as CombatStage
+		var heights: Dictionary[Vector2i, int] = stage.heights.duplicate()
+		var scenery: Dictionary[Vector2i, String] = stage.scenery.duplicate()
+		var footprint: Vector2i = CombatStage.SCENERY_SIZE.get(kind, Vector2i.ONE)
+		for y: int in range(footprint.y):
+			for x: int in range(footprint.x):
+				heights[front + Vector2i(x, y)] = config[2]
+		var props: Array[Vector2i] = [front]
+		var none: Array[Vector2i] = []
+		stage.heights = heights
+		stage.rock_cells = props if kind == "rock" else none
+		stage.crate_cells = props if kind == "crate" else none
+		if CombatStage.SCENERY_SIZE.has(kind):
+			scenery[front] = kind
+		stage.scenery = scenery
+		var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+		battle.stages[0] = stage
+		root.add_child(battle)
+		battle.set_process(false)
+		await process_frame
+		var units: Array[CombatUnit] = battle.get("units")
+		var map: CombatMap = battle.get_node("Map") as CombatMap
+		var actions: CombatActions = battle.get("actions") as CombatActions
+		var selection: CombatSelection = battle.get("selection") as CombatSelection
+		var archer: CombatUnit = units[1]
+		var spider: CombatUnit = units[2]
+		archer.cell = Vector2i(2, 3)
+		spider.cell = Vector2i(5, 3)
+		(battle.get("turns") as CombatTurns).start([archer, spider], _dice_for([20, 1], [20, 20]))
+		battle.call("_update_turn_ui")
+		await process_frame
+		var body: Array[Vector2] = []
+		var hidden: Array[Vector2] = []
+		for y: int in range(-40, 8):
+			for x: int in range(-24, 25):
+				var point: Vector2 = Vector2(x, y)
+				if spider.contains_body_point(point):
+					body.append(point)
+					if map.occludes(spider.cell, map.to_local(spider.to_global(point))):
+						hidden.append(point)
+		_check(spider.kind == CombatUnit.Kind.SPIDERLING and not body.is_empty()
+			and hidden.size() >= body.size() - (config[3] as int), "%s 뒤 새끼 거미의 몸통이 가려짐" % kind)
+		_check(spider.is_occluded and (spider.get("_silhouette") as Sprite2D).visible,
+			"%s에 몸통이 가린 유닛은 팀색 윤곽을 표시" % kind)
+		if hidden.is_empty():
+			battle.queue_free()
+			await process_frame
+			continue
+		var click: Vector2 = spider.get_global_transform_with_canvas() * hidden[hidden.size() / 2]
+		await _click(click)
+		_check(selection.preview_target == spider and selection.preview_prop == null and archer.action_left == 1,
+			"%s에 가린 윤곽 첫 좌클릭은 공격 미리보기" % kind)
+		actions.dice = _dice_for([1], [20])
+		await _click(click)
+		var placed: Array[CombatGrid.Prop] = actions.get_props()
+		_check(archer.action_left == 0 and (placed.is_empty() or (placed[0].cell == front and placed[0].hit_points == 6)),
+			"%s에 가린 윤곽 두 번째 좌클릭은 유닛 공격이며 사물은 그대로" % kind)
+		battle.queue_free()
+		await process_frame
 
 
 func _test_jump_path() -> void:

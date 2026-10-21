@@ -237,7 +237,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return a.get_index() > b.get_index()
 	)
 	var prop: CombatGrid.Prop = map.prop_at_point(map.to_local(world_position))
-	if prop != null and (candidates.is_empty() or map.map_to_local(prop.cell).y >= candidates[0].position.y):
+	# 윤곽이 보이는 가린 유닛은 앞 사물보다 몸통 클릭을 우선한다.
+	if prop != null and (candidates.is_empty() or (not candidates[0].is_occluded
+			and map.map_to_local(prop.cell).y >= candidates[0].position.y)):
 		get_viewport().set_input_as_handled()
 		if selection.select_prop(prop, selection.selected_action == "attack" and actions.can_attack_prop(actor, prop)):
 			selection.begin_execution()
@@ -379,6 +381,8 @@ func _update_turn_ui() -> void:
 	selection.discard_incapacitated_inspection()
 	if selection.preview_prop != null and selection.preview_prop not in actions.get_props():
 		selection.clear_preview()
+	# 유닛 가림 판정이 현재 사물 위치를 쓰도록 먼저 그린다.
+	map.show_props(actions.get_props(), selection.preview_prop)
 	for unit: CombatUnit in units:
 		unit.has_mark = actions.is_marked(unit)
 		if not unit.is_moving:
@@ -408,7 +412,6 @@ func _update_turn_ui() -> void:
 	map.show_movement(movement_cells, attack_cells, selection.preview_path,
 		turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO)
 	map.show_grounds(actions.get_grounds())
-	map.show_props(actions.get_props(), selection.preview_prop)
 	if selection.preview_target != null:
 		var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(
 			turns.current_unit, selection.preview_target)
