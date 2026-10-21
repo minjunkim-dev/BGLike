@@ -604,6 +604,8 @@ func _test_guidance() -> void:
 	_check("인접한 적을 기본 공격합니다." in (buttons["attack"] as Button).tooltip_text
 		and "지금 사용 불가" in (buttons["attack"] as Button).tooltip_text,
 		"공격 버튼 호버에 효과와 사용 불가 이유 유지")
+	_check("아군은 판정 없이 밀림" in (buttons["shove"] as Button).tooltip_text,
+		"밀치기 호버에 아군 무판정 안내")
 	await _hover((buttons["second_wind"] as Button))
 	_check((buttons["second_wind"] as Button).tooltip_text ==
 		"숨 고르기\nHP 1d10+1 회복.\n최대 HP를 넘지 않습니다.\n지금 사용 불가: HP가 이미 최대",
@@ -879,7 +881,8 @@ func _test_mouse_controls_and_inspection() -> void:
 		"적 초상을 반복 클릭해도 공격 준비·실행·조작 전환 없음")
 	_check(hud.unit_label.text == "풋내기 야만인" and hud.actor_label.text == "조작: 아군 전사"
 		and "힘 +3" in hud.resource_label.text and "민첩 +1" in hud.resource_label.text
-		and "체력 +2" in hud.resource_label.text and "정신 -2" in hud.resource_label.text
+		and "건강 +2" in hud.resource_label.text and "체력" not in hud.resource_label.text
+		and "정신 -2" in hud.resource_label.text
 		and "명중 +5" in hud.resource_label.text and "사거리 1칸" in hud.resource_label.text,
 		"정보 대상·조작 유닛을 구분하고 실제 능력치·공격 수치 표시")
 	_check("행동" not in hud.resource_label.text and "반응" not in hud.resource_label.text

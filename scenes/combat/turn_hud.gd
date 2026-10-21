@@ -360,7 +360,7 @@ func show_unit(unit: CombatUnit) -> void:
 		states.append("◎ 표식")
 	if unit.disengaged:
 		states.append("기회 공격 면제")
-	resource_label.text = "HP %d / %d   AC %d\n힘 %+d · 민첩 %+d · 체력 %+d · 정신 %+d\n명중 %+d · 사거리 %d칸\n상태: %s" % [
+	resource_label.text = "HP %d / %d   AC %d\n힘 %+d · 민첩 %+d · 건강 %+d · 정신 %+d\n명중 %+d · 사거리 %d칸\n상태: %s" % [
 		unit.hit_points, unit.get_max_hit_points(), unit.get_armor_class(),
 		unit.get_attribute(CombatUnit.Attribute.STRENGTH), unit.get_dexterity(),
 		unit.get_attribute(CombatUnit.Attribute.CONSTITUTION), unit.get_attribute(CombatUnit.Attribute.MENTAL),
