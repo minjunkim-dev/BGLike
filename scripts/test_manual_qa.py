@@ -24,7 +24,7 @@ class ManualQATests(unittest.TestCase):
         self.binary.write_text("#!/bin/sh\nif [ \"$1\" = --version ]; then echo 4.7.2.stable.official.fixture; fi\n")
         self.binary.chmod(0o755)
         self.case = {"id": "compact", "script": "res://tests/combat_capture_test.gd",
-                     "resolution": [640, 360], "acceptance": "Native input and original PNG reviewed",
+                     "resolution": [1280, 720], "acceptance": "Native input and original PNG reviewed",
                      "timeout": 2, "success_marker": "[CAPTURE_CHECK] PASS:"}
         self.directory = self.root / "session"
         self.directory.mkdir()
@@ -190,7 +190,7 @@ class ManualQATests(unittest.TestCase):
         command = launch.call_args.args[0]
         self.assertEqual(command[:4], ["open", "-g", "-n", "-W"])
         self.assertIn("forward_plus", command)
-        self.assertIn("640x360", command)
+        self.assertIn("1280x720", command)
 
     def test_cleanup_matches_executable_and_exact_log_argument(self):
         log = self.root / "game.log"

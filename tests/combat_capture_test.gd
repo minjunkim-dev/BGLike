@@ -39,7 +39,7 @@ func _run() -> void:
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--capture-dir="):
 			directory = argument.trim_prefix("--capture-dir=")
-	root.size = Vector2i(640, 360)
+	root.size = Vector2i(1280, 720)
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
@@ -172,7 +172,7 @@ func _validate_manifest() -> void:
 		frames += 1
 		_check(events.has(int(entry["event"])), "프레임을 앞서 기록한 이벤트에 연결")
 		var image: Image = Image.load_from_file(directory.path_join(entry["png"]))
-		_check(image != null and not image.is_empty() and image.get_size() == Vector2i(640, 360),
+		_check(image != null and not image.is_empty() and image.get_size() == Vector2i(1280, 720),
 			"원본 PNG를 다시 읽고 Viewport 크기 확인")
 		ally_frame = ally_frame or (entry["ally"] and int(entry["round"]) >= 2)
 	_check(enemy_event, "manifest에 실제 적 차례 기록")
