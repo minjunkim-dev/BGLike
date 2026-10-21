@@ -746,7 +746,10 @@ func _test_reward_flow() -> void:
 		await _click(preparation.continue_button)
 		_check(preparation.maintaining and preparation.title_label.text == "정비", "보상 다음 정비 단계")
 		await _check_preparation_layout(preparation)
-		await _click(await _pick(preparation, "Item0", "Ally1"))
+		var give: Button = await _pick(preparation, "Item0", "Ally1")
+		# 칸을 골라 상세 패널에 동작 버튼이 생긴 상태도 검사한다.
+		await _check_preparation_layout(preparation)
+		await _click(give)
 		_check(party[1].get_armor_class() == 16 and party[1].hit_points == 0
 			and party[1].get_max_hit_points() == 18,
 			"실제 분배 버튼은 전투 불능 궁수에게 방어구 장착")
@@ -817,6 +820,7 @@ func _check_preparation_layout(preparation: CombatPreparation) -> void:
 		await process_frame
 		await process_frame
 		var screen: Rect2 = Rect2(Vector2.ZERO, preparation.get_viewport_rect().size)
+		_check(preparation.get_global_rect() == screen, "%s: 정비 화면이 논리 화면 전체를 채움" % size)
 		var items: Control = preparation.content.get_parent().get_parent() as Control
 		var areas: Array[Control] = [preparation.enable_button, preparation.cards, items,
 			preparation.detail_panel, preparation.continue_button]
