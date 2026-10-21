@@ -35,6 +35,7 @@ func _run() -> void:
 		_test_bag_replacement()
 		_test_bag_capacity()
 		_test_bag_use()
+		_test_armor_unequip()
 		_test_act_values(loot, dice)
 		loot.data["extra_drop_chance"] = 0.0
 		_check(loot.roll_rewards(2, dice, 1).size() == 1, "추가 확률0이어도 보장1개")
@@ -49,6 +50,7 @@ func _run() -> void:
 	await _test_reward_flow()
 	await _test_full_bag_finish()
 	await _test_bag_scene_use()
+	await _test_armor_unequip_scene()
 	await _test_finish_preference()
 	await _test_accidental_advance()
 	await _test_scaled_combat()
@@ -148,6 +150,37 @@ func _test_bag_use() -> void:
 		"물약 한도에서 가방 수령 실패는 양쪽 소유권 보존")
 	_check(not loot.receive_from_bag(unit, -1) and not loot.receive_from_bag(unit, 11)
 		and loot.bag == stored, "무효 가방 칸은 소유권을 바꾸지 않음")
+	unit.free()
+
+
+func _test_armor_unequip() -> void:
+	var loot: CombatLoot = CombatLoot.new()
+	var unit: CombatUnit = CombatUnit.new()
+	var armor: Dictionary = {"kind": "armor", "name": "HP 방어구", "stats": {"max_hit_points": 5}}
+	var weapon: Dictionary = {"kind": "weapon", "name": "무기", "stats": {"damage_bonus": 1}}
+	_check(not loot.armor_unequip_blocker(unit).is_empty() and not loot.unequip_armor(unit)
+		and loot.bag.is_empty(), "방어구가 없으면 해제하지 못함")
+	unit.weapon = weapon
+	unit.armor = armor
+	unit.hit_points = 1
+	_check(unit.get_max_hit_points() == 17 and loot.armor_unequip_blocker(unit).is_empty(),
+		"방어구 해제 가능 상태")
+	_check(loot.unequip_armor(unit) and unit.armor.is_empty() and loot.bag == [armor]
+		and unit.hit_points == 1 and unit.get_max_hit_points() == 12 and unit.weapon == weapon,
+		"HP 1/17에서 최대 HP+5 방어구 해제는 1/12, 가방 보관, 무기 유지")
+	_check(loot.receive_from_bag(unit, 0) and unit.armor == armor and loot.bag.is_empty()
+		and unit.hit_points == 1 and unit.get_max_hit_points() == 17, "다시 장착하면 1/17")
+	unit.hit_points = 10
+	for index: int in range(12):
+		loot.bag.append({"kind": "potion", "name": "물약", "stats": {}})
+	var stored: Array[Dictionary] = loot.bag.duplicate(true)
+	_check("빈 칸" in loot.armor_unequip_blocker(unit) and not loot.unequip_armor(unit)
+		and unit.armor == armor and unit.hit_points == 10 and unit.get_max_hit_points() == 17
+		and loot.bag == stored, "가방이 가득 차면 해제하지 못하고 방어구·HP·가방 보존")
+	loot.bag.remove_at(0)
+	unit.hit_points = 0
+	_check(loot.unequip_armor(unit) and unit.hit_points == 0 and loot.bag.size() == 12,
+		"전투 불능 캐릭터 방어구 해제는 부활시키지 않음")
 	unit.free()
 
 
@@ -373,6 +406,71 @@ func _test_bag_scene_use() -> void:
 			"실제 가방 물약 버튼은 한도·전투 불능을 유지하며 한 개 분배")
 		_check((preparation.content.get_node("BagItem1/Ally1") as Button).disabled,
 			"한도에 도달하면 남은 가방 물약 분배 버튼 잠금")
+	main.queue_free()
+	await process_frame
+
+
+func _test_armor_unequip_scene() -> void:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	var loot: CombatLoot = battle.loot
+	var party: Array[CombatUnit] = battle.party
+	var warrior_armor: Dictionary = {"kind": "armor", "name": "전사 방어구", "stats": {"max_hit_points": 5}}
+	var archer_armor: Dictionary = {"kind": "armor", "name": "궁수 방어구", "stats": {"armor_class": 2}}
+	party[0].armor = warrior_armor
+	party[0].hit_points = 1
+	party[1].armor = archer_armor
+	var archer_hit_points: int = party[1].hit_points
+	for index: int in range(11):
+		loot.bag.append({"kind": "potion", "name": "가방 물약", "stats": {}})
+	# 1막 마지막 스테이지 승리로 다음 막 전환까지 확인한다.
+	battle.progress.stage_index = 2
+	for unit: CombatUnit in battle.units:
+		if not unit.is_ally:
+			battle.actions.incapacitate(unit)
+	battle.actions.changed.emit()
+	battle.progress.rewards.clear()
+	await _click(battle.hud.restart_button)
+	var preparation: CombatPreparation = battle.preparation
+	await _click(preparation.continue_button)
+	var unequip: Button = preparation.content.find_child("UnequipArmor0", true, false) as Button
+	_check(unequip != null and not unequip.disabled and unequip.tooltip_text.is_empty(),
+		"정비 화면의 장착 방어구 해제 버튼")
+	if unequip != null:
+		await _click(unequip)
+		_check(party[0].armor.is_empty() and party[0].hit_points == 1
+			and party[0].get_max_hit_points() == 12 and loot.bag.size() == 12
+			and loot.bag.back() == warrior_armor and preparation.continue_button.has_focus(),
+			"실제 해제 버튼은 잃은 HP를 유지하고 방어구를 가방 빈 칸에 보관")
+		unequip = preparation.content.find_child("UnequipArmor0", true, false) as Button
+		_check(unequip != null and unequip.disabled and not unequip.tooltip_text.is_empty(),
+			"방어구가 없으면 해제 버튼 비활성과 이유 표시")
+		var blocked: Button = preparation.content.find_child("UnequipArmor1", true, false) as Button
+		_check(blocked != null and blocked.disabled and "빈 칸" in blocked.tooltip_text,
+			"가방이 가득 차면 해제 버튼 비활성과 호버 설명에 이유 표시")
+		if blocked != null:
+			await _click(blocked)
+		# 비활성 버튼은 pressed를 내지 않으므로 화면 처리기의 거절도 직접 확인한다.
+		preparation._unequip_armor(1)
+		_check(party[1].armor == archer_armor and party[1].hit_points == archer_hit_points
+			and loot.bag.size() == 12, "가득 찬 가방에서 해제 입력은 방어구·HP·가방 보존")
+		await _click(preparation.continue_button)
+		_check(not preparation.visible and battle.progress.act_number() == 2
+			and battle.progress.stage_in_act() == 1 and party[0].armor.is_empty()
+			and party[0].hit_points == 12 and party[1].armor == archer_armor
+			and loot.bag.size() == 12 and loot.bag.back() == warrior_armor,
+			"막 전환은 해제한 장비·가방 상태 유지")
+		for unit: CombatUnit in party:
+			battle.actions.incapacitate(unit)
+		battle.actions.changed.emit()
+		await _click(battle.hud.restart_button)
+		_check(battle.progress.act_number() == 2 and battle.progress.stage_in_act() == 1
+			and party[0].armor.is_empty() and party[0].hit_points == 12
+			and party[1].armor == archer_armor and loot.bag.size() == 12
+			and loot.bag.back() == warrior_armor, "전멸 재시작은 해제한 장비·가방 상태 유지")
 	main.queue_free()
 	await process_frame
 
