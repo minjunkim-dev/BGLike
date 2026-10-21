@@ -64,6 +64,7 @@ func _run() -> void:
 	_test_high_ground_guidance()
 	await _test_mouse_controls_and_inspection()
 	await _test_group_keyboard()
+	await _test_skill_bar_keys()
 	await _test_joined_group_hud()
 	await _test_incapacitated_portrait_join()
 	await _test_portrait_stage_reset()
@@ -1262,6 +1263,147 @@ func _test_boundary_incapacitated_portrait_join() -> void:
 		"경계의 앞 아군 위치가 먼저 예약돼도 다른 생존 초상도 기존 표시 위치에서 이동함")
 	units[3].show()
 	_reset_units()
+
+
+func _test_skill_bar_keys() -> void:
+	_reset_units()
+	turns.select_unit(units[0])
+	battle.call("_update_turn_ui")
+	root.gui_release_focus()
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	var tooltip: PanelContainer = hud.get("_tooltip_panel") as PanelContainer
+	var timer: Timer = hud.get("_tooltip_timer") as Timer
+	var slots: Array[Button] = hud.get("_action_slots")
+	var by_button: Dictionary[Button, String] = {}
+	var expected: Array[Button] = []
+	for action: String in CombatActionRules.NAMES:
+		by_button[hud.get("_actions")[action]] = action
+	for group: Array in CombatActionRules.GROUPS:
+		for action: String in group:
+			var button: Button = hud.get("_actions")[action]
+			if button.is_visible_in_tree():
+				expected.append(button)
+	_check(slots == expected and slots.size() <= 9, "숫자 키 순서는 보이는 스킬 버튼의 왼쪽부터")
+	var disabled_seen: int = 0
+	var pressed_seen: int = 0
+	for slot: int in range(slots.size()):
+		var button: Button = slots[slot]
+		var action: String = by_button[button]
+		var before: String = selection.selected_action
+		await _key(KEY_1 + slot)
+		await timer.timeout
+		await process_frame
+		_check(button.has_focus(true) and tooltip.visible and _has_tooltip(root, button.tooltip_text),
+			"숫자 키 %d는 %s에 보이는 포커스와 상세 설명을 줌" % [slot + 1, action])
+		var reaction: bool = action in CombatActionRules.GROUPS[2]
+		if button.disabled:
+			disabled_seen += 1
+			_check("지금 사용 불가" in button.tooltip_text and selection.selected_action == before,
+				"비활성 버튼은 이유만 보이고 선택하지 않음: " + action)
+		elif not reaction:
+			pressed_seen += 1
+			_check(selection.selected_action == action, "숫자 키는 활성 버튼을 선택: " + action)
+		selection.selected_action = "attack"
+		battle.call("_update_turn_ui")
+	_check(disabled_seen > 0 and pressed_seen > 1, "숫자 키 검사는 활성·비활성 버튼을 모두 포함")
+	if slots.size() < 9:
+		await _key(KEY_1 + slots.size())
+		_check(slots.back().has_focus(), "빈 숫자 키는 포커스를 옮기지 않음")
+	var jump: Button = hud.get("_actions")["jump"]
+	var second_wind: Button = hud.get("_actions")["second_wind"]
+	_check(second_wind in slots and second_wind.disabled and jump in slots and not jump.disabled,
+		"입력 fixture: 숨 고르기는 비활성, 점프는 활성")
+	slots[0].grab_focus()
+	await _key(KEY_RIGHT)
+	_check(slots[1].has_focus(), "오른쪽 방향키는 다음 스킬 버튼으로 이동")
+	await _key(KEY_LEFT)
+	await _key(KEY_LEFT)
+	_check(slots.back().has_focus(), "왼쪽 방향키는 첫 버튼에서 마지막 버튼으로 순환")
+	await _joypad(JOY_BUTTON_DPAD_RIGHT)
+	_check(slots[0].has_focus(), "D-pad 오른쪽은 마지막 버튼에서 첫 버튼으로 순환")
+	await _joypad(JOY_BUTTON_DPAD_LEFT)
+	_check(slots.back().has_focus(), "D-pad 왼쪽도 스킬 바 안에서 이동")
+	jump.grab_focus()
+	await _key(KEY_ENTER)
+	_check(selection.selected_action == "jump", "Enter는 포커스된 스킬을 선택")
+	selection.selected_action = "attack"
+	await _joypad(JOY_BUTTON_A)
+	_check(selection.selected_action == "jump", "컨트롤러 확인 버튼은 포커스된 스킬을 선택")
+	selection.selected_action = "attack"
+	second_wind.grab_focus()
+	await _key(KEY_ENTER)
+	await _joypad(JOY_BUTTON_A)
+	_check(selection.selected_action == "attack", "비활성 버튼은 Enter·확인 버튼으로 선택되지 않음")
+	jump.grab_focus()
+	await _key(KEY_SPACE)
+	_check(selection.selected_action == "attack", "Space는 포커스된 스킬을 누르지 않음")
+	await _key(KEY_ESCAPE)
+	_check(selection.selected_action == "attack" and turns.current_unit == units[0],
+		"Esc는 스킬 선택과 조작 유닛을 바꾸지 않음")
+	await _tab()
+	_check(turns.current_unit == units[1], "스킬 버튼 포커스 중에도 Tab은 아군 전환")
+	await _tab()
+	root.gui_release_focus()
+	await _key(KEY_RIGHT)
+	_check(slots[0].has_focus(true) and selection.selected_action == "attack",
+		"포커스가 없으면 방향키는 첫 스킬 버튼에 포커스만 줌")
+	root.gui_release_focus()
+	await _joypad(JOY_BUTTON_DPAD_LEFT)
+	_check(slots[0].has_focus(true), "포커스가 없으면 D-pad도 스킬 바로 진입")
+	var lock: Callable = func(state: String, locked: bool) -> void:
+		match state:
+			"reaction":
+				if locked:
+					hud.reaction_dialog.popup_centered()
+				else:
+					hud.reaction_dialog.hide()
+			"result":
+				hud.get_node("Result").visible = locked
+			"preparation":
+				(battle.get("preparation") as Control).visible = locked
+			"busy":
+				actions.busy = locked
+	for state: String in ["reaction", "result", "preparation", "busy"]:
+		root.gui_release_focus()
+		lock.call(state, true)
+		await _key(KEY_3)
+		await _key(KEY_RIGHT)
+		_check(root.gui_get_focus_owner() == null and selection.selected_action == "attack",
+			"잠긴 화면에서 숫자 키·방향키는 스킬을 고르지 않음: " + state)
+		lock.call(state, false)
+	turns.end_turn()
+	turns.end_turn()
+	_check(not turns.current_unit.is_ally, "입력 fixture: 적 턴")
+	battle.call("_update_turn_ui")
+	root.gui_release_focus()
+	await _key(KEY_1)
+	await _key(KEY_RIGHT)
+	_check(root.gui_get_focus_owner() == null and selection.selected_action == "attack",
+		"적 턴에 숫자 키·방향키는 스킬을 고르지 않음")
+	_reset_units()
+	battle.call("_update_turn_ui")
+
+
+func _key(keycode: Key) -> void:
+	var event: InputEventKey = InputEventKey.new()
+	event.keycode = keycode
+	await _press(event)
+
+
+func _joypad(button: JoyButton) -> void:
+	var event: InputEventJoypadButton = InputEventJoypadButton.new()
+	event.button_index = button
+	await _press(event)
+
+
+func _press(event: InputEvent) -> void:
+	event.set("pressed", true)
+	Input.parse_input_event(event)
+	await process_frame
+	event = event.duplicate() as InputEvent
+	event.set("pressed", false)
+	Input.parse_input_event(event)
+	await process_frame
 
 
 func _tab(backwards: bool = false) -> void:
