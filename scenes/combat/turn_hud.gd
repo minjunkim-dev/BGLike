@@ -61,6 +61,8 @@ func _ready() -> void:
 	_tooltip_panel.z_index = 10
 	_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tooltip_panel.add_theme_stylebox_override("panel", _panel_style())
+	# 기본 반투명 배경은 아래 지형에 따라 대비가 바뀐다. 불투명 패널로 WCAG AA를 고정한다.
+	$CombatLog.add_theme_stylebox_override("panel", _panel_style())
 	_tooltip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tooltip_label.add_theme_font_size_override("font_size", 10)
 	_tooltip_panel.add_child(_tooltip_label)

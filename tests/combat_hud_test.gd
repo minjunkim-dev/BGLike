@@ -331,12 +331,25 @@ func _test_archer_and_enemy() -> void:
 	actions.busy = false
 
 
+# WCAG 2 상대 휘도의 명암비. Color는 sRGB 값을 담는다.
+func _contrast_ratio(a: Color, b: Color) -> float:
+	var la: float = a.srgb_to_linear().get_luminance()
+	var lb: float = b.srgb_to_linear().get_luminance()
+	return (maxf(la, lb) + 0.05) / (minf(la, lb) + 0.05)
+
+
 func _test_log_and_status() -> void:
 	hud.add_log("첫째")
 	hud.add_log("둘째")
 	hud.add_log("셋째")
 	hud.add_log("넷째")
 	_check(hud.message_label.text == "둘째\n셋째\n넷째", "최근 로그는 정확히3줄")
+	# 배경이 불투명해야 아래 지형과 관계없이 명암비가 고정된다.
+	var log_panel: PanelContainer = hud.get_node("CombatLog") as PanelContainer
+	var log_background: Color = (log_panel.get_theme_stylebox("panel") as StyleBoxFlat).bg_color
+	var log_contrast: float = _contrast_ratio(hud.message_label.get_theme_color("font_color"), log_background)
+	_check(log_background.a == 1.0 and log_contrast >= 4.5,
+		"전투 로그 불투명 배경과 WCAG AA 4.5:1 이상: alpha %.2f, %.2f" % [log_background.a, log_contrast])
 	units[1].marked_target = units[2]
 	units[2].is_stunned = true
 	units[2].hit_points = 5
