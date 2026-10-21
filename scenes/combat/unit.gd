@@ -187,7 +187,7 @@ func get_initiative() -> int:
 func get_display_name() -> String:
 	if not is_ally:
 		return CombatEnemyDefinitions.for_kind(kind)["name"]
-	return "아군 " + ("전사" if kind == Kind.WARRIOR else "궁수")
+	return tr("아군 전사") if kind == Kind.WARRIOR else tr("아군 궁수")
 
 
 func get_art_id() -> String:
@@ -214,7 +214,7 @@ func get_periodic_status_text() -> String:
 	for kind_name: String in ["burn", "poison"]:
 		var count: int = get_status_count(kind_name)
 		if count > 0:
-			states.append("%s%d" % ["화상" if kind_name == "burn" else "독", count])
+			states.append("%s%d" % [tr("화상") if kind_name == "burn" else tr("독"), count])
 	return " ".join(states)
 
 
@@ -380,7 +380,7 @@ func _draw() -> void:
 	draw_rect(Rect2(-8, status_y + 5, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
 	var status: String = get_periodic_status_text()
 	if is_stunned:
-		status = "기절" + (" " + status if not status.is_empty() else "")
+		status = tr("기절") + (" " + status if not status.is_empty() else "")
 	if has_mark:
 		status += " ◎"
 	if not status.is_empty():
@@ -397,9 +397,9 @@ func show_feedback(text: String, obstacles: Array[Rect2] = [], roll: CombatCheck
 	popup.z_index = 10
 	popup.text = text
 	popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	popup.add_theme_font_size_override("font_size", 14 if text == "치명타!" else 10)
-	popup.add_theme_color_override("font_color", CRITICAL_COLOR if text == "치명타!"
-		else FUMBLE_COLOR if text == "자동 실패" else WEAPON_COLOR)
+	popup.add_theme_font_size_override("font_size", 14 if text == tr("치명타!") else 10)
+	popup.add_theme_color_override("font_color", CRITICAL_COLOR if text == tr("치명타!")
+		else FUMBLE_COLOR if text == tr("자동 실패") else WEAPON_COLOR)
 	popup.add_theme_color_override("font_outline_color", OUTLINE_COLOR)
 	popup.add_theme_constant_override("outline_size", 2)
 	popup.set_meta("feedback_unit", get_instance_id())
@@ -449,7 +449,7 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 	for child: Node in get_parent().get_children():
 		if child is CombatUnit:
 			var periodic: String = child.get_periodic_status_text()
-			var status: String = "기절 %s ◎" % periodic if not periodic.is_empty() else "기절 ◎"
+			var status: String = tr("기절 %s ◎") % periodic if not periodic.is_empty() else tr("기절 ◎")
 			var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
 			var status_rect: Rect2 = Rect2(Vector2(-width / 2.0, child.get_status_label_y() - font.get_ascent(10)),
 				Vector2(width, font.get_height(10)))

@@ -52,7 +52,7 @@ func _ready() -> void:
 	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
 		# 공격 판정 팝업만 실제 d20 굴림을 받아 유리·불리 주사위를 보인다.
 		var roll: CombatChecks.RollResult = actions.last_attack if (actions.last_attack != null
-			and text == "공격 %d" % actions.last_attack.total) else null
+			and text == tr("공격 %d") % actions.last_attack.total) else null
 		unit.show_feedback(text, hud.feedback_obstacles(), roll))
 	actions.hit_landed.connect($HitSound.play)
 	actions.reaction_requested.connect(hud.show_reaction)
@@ -452,20 +452,20 @@ func _update_turn_ui() -> void:
 			turns.current_unit, selection.preview_target)
 		hud.show_attack_preview(selection.preview_target, preview)
 		if selection.selected_action == "mark":
-			hud.show_target_note("표식 대상" if actions.can_target(turns.current_unit, selection.preview_target, "mark") else "표식을 사용할 수 없음")
+			hud.show_target_note(tr("표식 대상") if actions.can_target(turns.current_unit, selection.preview_target, "mark") else tr("표식을 사용할 수 없음"))
 		elif selection.selected_action == "shove":
 			if actions.can_target(turns.current_unit, selection.preview_target, "shove"):
 				var cell: Vector2i = actions.grid.push_destination(turns.current_unit.cell, selection.preview_target.cell)
 				var landing: String = actions.shove_landing(selection.preview_target, cell)
-				hud.show_target_note("밀려날 칸: %d, %d" % [cell.x, cell.y]
+				hud.show_target_note(tr("밀려날 칸: %d, %d") % [cell.x, cell.y]
 					+ ("" if landing.is_empty() else " · " + landing))
 			else:
-				hud.show_target_note("밀치기를 사용할 수 없음")
+				hud.show_target_note(tr("밀치기를 사용할 수 없음"))
 	elif selection.preview_prop != null:
 		var actor: CombatUnit = turns.current_unit
 		var prop: CombatGrid.Prop = selection.preview_prop
-		var note: String = "기본 공격만 가능"
-		var title: String = "바위" if prop.kind == "rock" else "나무 상자 · 내구도 %d/6" % prop.hit_points
+		var note: String = tr("기본 공격만 가능")
+		var title: String = tr("바위") if prop.kind == "rock" else tr("나무 상자 · 내구도 %d/6") % prop.hit_points
 		if selection.selected_action == "attack" and actor != null:
 			if prop.kind == "rock":
 				var roll: CombatActions.RockRoll = actions.preview_rock(actor, prop)
@@ -473,25 +473,25 @@ func _update_turn_ui() -> void:
 				var collisions: Array[String] = []
 				for unit: CombatUnit in roll.collisions:
 					var landing: String = actions.rock_landing(roll, unit)
-					collisions.append(("아군 피해4: " if unit.is_ally else "적 피해4: ") + unit.get_display_name()
+					collisions.append((tr("아군 피해4: %s") if unit.is_ally else tr("적 피해4: %s")) % unit.get_display_name()
 						+ ("" if landing.is_empty() else " · " + landing))
-				note = "행동1 · 주사위 없음 · 재클릭\n방향 %d,%d · %d칸 · %s\n%s" % [
+				note = tr("행동1 · 주사위 없음 · 재클릭\n방향 %d,%d · %d칸 · %s\n%s") % [
 					roll.direction.x, roll.direction.y, roll.cells.size(), roll.reason,
-					", ".join(collisions) if not collisions.is_empty() else "충돌 없음"]
+					", ".join(collisions) if not collisions.is_empty() else tr("충돌 없음")]
 			else:
 				var sides: int = actor.get_damage_sides()
 				var minimum: int = maxi(1, actor.get_damage_bonus() + (1 if sides > 0 else 0))
 				var maximum: int = maxi(1, actor.get_damage_bonus() + sides)
-				note = "피해 %d~%d · 행동1 · 자동 명중\n같은 상자 재클릭" % [minimum, maximum]
+				note = tr("피해 %d~%d · 행동1 · 자동 명중\n같은 상자 재클릭") % [minimum, maximum]
 			if not actions.can_attack_prop(actor, prop):
 				if actor.action_left <= 0:
-					note = "행동 없음"
+					note = tr("행동 없음")
 				elif actor.is_stunned:
-					note = "기절하여 공격 불가"
+					note = tr("기절하여 공격 불가")
 				else:
 					note = actions.unavailable_reason(actor, "attack")
 					if note.is_empty():
-						note = "사거리 또는 높이 조건을 확인"
+						note = tr("사거리 또는 높이 조건을 확인")
 		hud.show_target_note(title + "\n" + note)
 	elif selection.inspected_unit != null:
 		hud.show_unit(selection.inspected_unit)
@@ -500,15 +500,15 @@ func _update_turn_ui() -> void:
 	hud.show_move_mode(showing_move)
 	if selection.selected_action == "jump":
 		hud.show_move_mode(false)
-		var note: String = "점프 · 착지 칸 우클릭\n같은 칸 재클릭으로 확정"
+		var note: String = tr("점프 · 착지 칸 우클릭\n같은 칸 재클릭으로 확정")
 		if not selection.preview_path.is_empty():
 			var actor: CombatUnit = turns.current_unit
 			var cell: Vector2i = selection.preview_cell
 			var reactors: int = actions.jump_reactors(actor, cell).size()
 			var fall: int = actions.fall_damage(actor, cell)
-			note = "점프 · 이동 %d · 보조 행동1\n%s · %s" % [actions.jump_cells(actor).get(cell, 0),
-				"기회 공격 %d명" % reactors if reactors > 0 else "기회 공격 없음",
-				"낙하 피해 %d" % fall if fall > 0 else "낙하 없음"]
+			note = tr("점프 · 이동 %d · 보조 행동1\n%s · %s") % [actions.jump_cells(actor).get(cell, 0),
+				tr_n("기회 공격 %d명", "기회 공격 %d명", reactors) % reactors if reactors > 0 else tr("기회 공격 없음"),
+				tr("낙하 피해 %d") % fall if fall > 0 else tr("낙하 없음")]
 		hud.show_target_note(note)
 	if actions.is_over():
 		hud.show_outcome(actions.is_victory())

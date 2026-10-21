@@ -4,9 +4,9 @@ extends RefCounted
 
 const DATA_PATH: String = "res://scenes/combat/item_data.json"
 const ICON_PATH: String = "res://scenes/combat/art/icons/items/%s.png"
-const STAT_NAMES: Dictionary = {
-	"attack_bonus": "명중", "damage_bonus": "피해", "armor_class": "AC",
-	"max_hit_points": "최대 HP"
+static var STAT_NAMES: Dictionary = {
+	"attack_bonus": TranslationServer.tr("명중"), "damage_bonus": TranslationServer.tr("피해"), "armor_class": TranslationServer.tr("AC"),
+	"max_hit_points": TranslationServer.tr("최대 HP")
 }
 
 var data: Dictionary
@@ -123,9 +123,9 @@ func receive_from_bag(unit: CombatUnit, index: int) -> bool:
 ## 방어구를 해제할 수 없는 이유. 해제할 수 있으면 빈 문자열이다. 무기 해제는 지원하지 않는다.
 func armor_unequip_blocker(unit: CombatUnit) -> String:
 	if unit.armor.is_empty():
-		return "장착한 방어구가 없습니다."
+		return tr("장착한 방어구가 없습니다.")
 	if bag.size() >= int(data["bag_limit"]):
-		return "공용 가방에 빈 칸이 없어 해제할 수 없습니다."
+		return tr("공용 가방에 빈 칸이 없어 해제할 수 없습니다.")
 	return ""
 
 
@@ -153,8 +153,8 @@ static func icon_path(item: Dictionary, unit_id: String = "") -> String:
 
 static func describe(item: Dictionary) -> String:
 	if item.is_empty():
-		return "없음"
-	var text: String = str(item["name"])
+		return TranslationServer.tr("없음")
+	var text: String = TranslationServer.tr(str(item["name"]))
 	for stat: String in item["stats"]:
 		text += " · %s+%d" % [STAT_NAMES[stat], int(item["stats"][stat])]
 	return text

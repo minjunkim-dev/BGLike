@@ -141,7 +141,7 @@ func _ready() -> void:
 			_badges[action] = badge
 	add_child(reaction_dialog)
 	reaction_dialog.add_child(SpaceBlocker.new())
-	reaction_dialog.title = "반응"
+	reaction_dialog.title = tr("반응")
 	reaction_dialog.dialog_autowrap = true
 	reaction_dialog.dialog_hide_on_ok = false
 	reaction_dialog.confirmed.connect(_finish_reaction.bind(true))
@@ -198,7 +198,7 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 	var locked: bool = actions.busy or actions.is_over()
 	var symbols: Array[String] = ["●", "▲", "◆"]
 	var empty_symbols: Array[String] = ["○", "△", "◇"]
-	var names: Array[String] = ["행동", "보조 행동", "반응"]
+	var names: Array[String] = [tr("행동"), tr("보조 행동"), tr("반응")]
 	for index: int in range(_containers.size()):
 		_containers[index].visible = shown != null and (index != 2 or shown.kind == CombatUnit.Kind.WARRIOR)
 		if shown == null:
@@ -246,7 +246,7 @@ func action_details(actions: CombatActions, actor: CombatUnit, action: String) -
 		effect += "\n" + details
 	var reason: String = actions.unavailable_reason(actor, action)
 	if not reason.is_empty():
-		return effect + "\n지금 사용 불가: " + reason
+		return effect + "\n" + tr("지금 사용 불가: %s") % reason
 	return effect
 
 
@@ -259,8 +259,8 @@ func add_log(message: String) -> void:
 
 func show_reaction(kind: String, prompt: String) -> void:
 	reaction_dialog.dialog_text = prompt
-	reaction_dialog.get_ok_button().text = "공격" if kind == "opportunity" else "흘려내기"
-	reaction_dialog.get_cancel_button().text = "넘기기"
+	reaction_dialog.get_ok_button().text = tr("공격") if kind == "opportunity" else tr("흘려내기")
+	reaction_dialog.get_cancel_button().text = tr("넘기기")
 	reaction_dialog.exclusive = true
 	reaction_dialog.popup_centered(Vector2i(360, 110))
 
@@ -282,7 +282,7 @@ func begin_stage(act: int, stage: int) -> void:
 		_order_tween.kill()
 	_order_moves.clear()
 	_shown_order.clear()
-	progress_label.text = "%d막 · %d스테이지" % [act, stage]
+	progress_label.text = tr("%d막 · %d스테이지") % [act, stage]
 	$Result.hide()
 	_hide_reaction()
 	_log_lines.clear()
@@ -293,9 +293,9 @@ func begin_stage(act: int, stage: int) -> void:
 func show_result(victory: bool, graduated: bool = false, locked: bool = false) -> void:
 	_hide_reaction()
 	var complete: bool = victory and graduated
-	result_label.text = "3막 졸업" if complete else "승리" if victory else "패배"
+	result_label.text = tr("3막 졸업") if complete else tr("승리") if victory else tr("패배")
 	restart_button.visible = not complete
-	restart_button.text = "보상 확인" if victory else "이 막 다시 시작"
+	restart_button.text = tr("보상 확인") if victory else tr("이 막 다시 시작")
 	$Result.show()
 	if not complete:
 		restart_button.grab_focus()
@@ -307,7 +307,7 @@ func hide_result() -> void:
 
 
 func show_outcome(victory: bool) -> void:
-	round_label.text = "승리" if victory else "패배"
+	round_label.text = tr("승리") if victory else tr("패배")
 
 
 ## 표식·밀치기처럼 명중률 대신 보일 대상 안내.
@@ -330,24 +330,24 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 	var current: CombatUnit = turns.current_unit
 	end_button.disabled = current == null
 	if current == null:
-		round_label.text = "턴 종료"
-		unit_label.text = "유닛 없음"
+		round_label.text = tr("턴 종료")
+		unit_label.text = tr("유닛 없음")
 		resource_label.text = ""
 		actor_label.text = ""
 		return
-	round_label.text = "라운드 %d · %s" % [turns.round_number, "아군 턴 묶음" if current.is_ally else "적 턴 묶음 · Space: 빠르게"]
-	actor_label.text = ("조작: " if current.is_ally else "진행: ") + current.get_display_name()
+	round_label.text = tr("라운드 %d · %s") % [turns.round_number, tr("아군 턴 묶음") if current.is_ally else tr("적 턴 묶음 · Space: 빠르게")]
+	actor_label.text = (tr("조작: %s") if current.is_ally else tr("진행: %s")) % current.get_display_name()
 	show_unit(current)
 	for unit: CombatUnit in _portraits:
 		var button: Button = _portraits[unit]
-		button.text = "%s\n%s" % ["아군" if unit.is_ally else "적",
-			unit.get_display_name().trim_prefix("아군 ")]
+		button.text = "%s\n%s" % [tr("아군") if unit.is_ally else tr("적"),
+			unit.get_display_name().trim_prefix(tr("아군") + " ")]
 		if unit.is_boss():
 			button.text = unit.get_display_name().replace("-", "\n")
 		if unit.initiative_roll == 0:
-			button.tooltip_text = "%s: 엄마 거미 바로 앞 순서\n생성한 라운드에는 행동하지 않습니다." % unit.get_display_name()
+			button.tooltip_text = tr("%s: 엄마 거미 바로 앞 순서\n생성한 라운드에는 행동하지 않습니다.") % unit.get_display_name()
 		else:
-			button.tooltip_text = "%s: d20 %d + 민첩 %d = %d" % [
+			button.tooltip_text = tr("%s: d20 %d + 민첩 %d = %d") % [
 				unit.get_display_name(), unit.initiative_roll, unit.get_dexterity(), unit.get_initiative()]
 		var in_group: bool = unit in turns.get_current_group()
 		(button.get_node("PendingTurn") as Control).visible = (
@@ -373,44 +373,44 @@ func show_unit(unit: CombatUnit) -> void:
 	health_bar.value = unit.hit_points
 	var states: Array[String] = []
 	if unit.is_stunned:
-		states.append("기절")
+		states.append(tr("기절"))
 	var periodic: String = unit.get_periodic_status_text()
 	if not periodic.is_empty():
 		states.append(periodic)
 	if unit.overloaded:
-		states.append("과부하")
+		states.append(tr("과부하"))
 	if unit.is_boss():
-		states.append("기절 면역")
+		states.append(tr("기절 면역"))
 	if unit.pull_cooldown > 0:
-		states.append("만능팔 대기")
+		states.append(tr("만능팔 대기"))
 	if unit.has_mark:
-		states.append("◎ 표식")
+		states.append(tr("◎ 표식"))
 	if unit.disengaged:
-		states.append("기회 공격 면제")
-	resource_label.text = "HP %d / %d   AC %d\n힘 %+d · 민첩 %+d · 건강 %+d · 정신 %+d\n명중 %+d · 사거리 %d칸\n상태: %s" % [
+		states.append(tr("기회 공격 면제"))
+	resource_label.text = tr("HP %d / %d   AC %d\n힘 %+d · 민첩 %+d · 건강 %+d · 정신 %+d\n명중 %+d · 사거리 %d칸\n상태: %s") % [
 		unit.hit_points, unit.get_max_hit_points(), unit.get_armor_class(),
 		unit.get_attribute(CombatUnit.Attribute.STRENGTH), unit.get_dexterity(),
 		unit.get_attribute(CombatUnit.Attribute.CONSTITUTION), unit.get_attribute(CombatUnit.Attribute.MENTAL),
 		unit.get_attack_bonus(), unit.get_attack_range(),
-		", ".join(states) if not states.is_empty() else "없음"]
+		", ".join(states) if not states.is_empty() else tr("없음")]
 
 
 func show_attack_preview(target: CombatUnit, preview: CombatChecks.AttackPreview) -> void:
 	show_unit(target)
-	var mode_text: String = "일반"
+	var mode_text: String = tr("일반")
 	if preview.mode == CombatChecks.RollMode.ADVANTAGE:
-		mode_text = "유리"
+		mode_text = tr("유리")
 	elif preview.mode == CombatChecks.RollMode.DISADVANTAGE:
-		mode_text = "불리"
+		mode_text = tr("불리")
 	elif preview.reasons.size() >= 2:
-		mode_text = "유리/불리 상쇄"
-	preview_label.text = "명중률 %.1f%% · %s" % [preview.chance * 100.0, mode_text]
+		mode_text = tr("유리/불리 상쇄")
+	preview_label.text = tr("명중률 %.1f%% · %s") % [preview.chance * 100.0, mode_text]
 	if not preview.valid_target:
-		preview_label.text += "\n공격할 수 없는 대상"
+		preview_label.text += "\n" + tr("공격할 수 없는 대상")
 	elif not preview.blocked_reason.is_empty():
 		preview_label.text += "\n" + preview.blocked_reason
 	elif not preview.in_range:
-		preview_label.text += "\n사거리 밖"
+		preview_label.text += "\n" + tr("사거리 밖")
 	elif not preview.reasons.is_empty():
 		preview_label.text += "\n" + ", ".join(preview.reasons)
 
