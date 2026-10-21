@@ -3,6 +3,9 @@ extends Node2D
 
 const MOVE_STEP_TIME: float = 0.09
 const ARROW_FLIGHT_TIME: float = 0.16
+const ENEMY_PAUSE_TIME: float = 0.35
+## 적 턴에 Space를 누르고 있는 동안의 시간 배율. 규칙이 아니라 표시 속도다.
+const ENEMY_FAST_SPEED: float = 4.0
 
 @export var stages: Array[CombatStage] = []
 
@@ -15,6 +18,8 @@ var turns: CombatTurns = CombatTurns.new()
 var actions: CombatActions = CombatActions.new()
 var enemy_ai: CombatEnemyAi = CombatEnemyAi.new()
 var _enemy_turn_running: bool = false
+var _enemy_shown: bool = false
+var _enemy_acted: bool = false
 var selection: CombatSelection = CombatSelection.new()
 var movement_cells: Array[Vector2i] = []
 var _last_ally: CombatUnit
@@ -63,6 +68,7 @@ func _exit_tree() -> void:
 	actions.movement_animation = Callable()
 	actions.jump_animation = Callable()
 	actions.attack_animation = Callable()
+	Engine.time_scale = 1.0
 
 
 func _start_stage(restore_act: bool) -> void:
@@ -143,6 +149,9 @@ func _finish_preparation() -> void:
 
 
 func _process(_delta: float) -> void:
+	# 반응 확인 창은 가속과 관계없이 보통 속도로 선택을 기다린다.
+	Engine.time_scale = ENEMY_FAST_SPEED if (_enemy_turn_running and not hud.reaction_dialog.visible
+		and Input.is_key_pressed(KEY_SPACE)) else 1.0
 	var actor: CombatUnit = turns.current_unit
 	if (actor != null and not actor.is_ally and not actions.busy
 		and not actions.is_over() and not _enemy_turn_running):
@@ -151,7 +160,8 @@ func _process(_delta: float) -> void:
 
 func _play_enemy_turn(actor: CombatUnit) -> void:
 	_enemy_turn_running = true
-	await _pause_enemy_action()
+	_enemy_shown = false
+	_enemy_acted = false
 	await enemy_ai.play_turn(actor, actions, _pause_enemy_action)
 	if not actions.is_over() and turns.current_unit == actor:
 		turns.end_turn()
@@ -159,10 +169,22 @@ func _play_enemy_turn(actor: CombatUnit) -> void:
 	_update_turn_ui()
 
 
+## 이동·공격하지 않은 적 행동 뒤에는 기다리지 않는다.
 func _pause_enemy_action() -> void:
-	if actions.is_over():
+	if actions.is_over() or not _enemy_acted:
 		return
-	await get_tree().create_timer(0.35).timeout
+	_enemy_acted = false
+	await get_tree().create_timer(ENEMY_PAUSE_TIME).timeout
+
+
+## 적 턴의 첫 이동·공격 연출 전에 한 번 멈춰 행동할 적을 보여 준다.
+func _show_enemy_action() -> void:
+	if not _enemy_turn_running:
+		return
+	_enemy_acted = true
+	if not _enemy_shown:
+		_enemy_shown = true
+		await get_tree().create_timer(ENEMY_PAUSE_TIME).timeout
 
 
 func _on_unit_selected(unit: CombatUnit) -> void:
@@ -192,6 +214,10 @@ func _on_action_selected(action: String) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.keycode == KEY_SPACE and not actions.is_over():
+		# Space는 적 턴 가속 키다. 포커스된 버튼(턴 종료 등)을 누르지 않게 소비한다.
+		get_viewport().set_input_as_handled()
+		return
 	if event is not InputEventKey or event.keycode != KEY_TAB or preparation.visible:
 		return
 	# GUI보다 먼저 소비해 전투 중 기본 Tab 포커스 이동을 막는다.
@@ -325,6 +351,7 @@ func _execute_target(target: CombatUnit) -> void:
 
 
 func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
+	await _show_enemy_action()
 	var destination: Vector2 = map.map_to_local(cell)
 	unit.face_toward(destination)
 	unit.is_moving = true
@@ -340,6 +367,7 @@ func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
 
 
 func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
+	await _show_enemy_action()
 	var destination: Vector2 = map.map_to_local(cell)
 	var duration: float = MOVE_STEP_TIME * 2.0
 	var apex: float = -float(map.tile_set.tile_size.y)
@@ -357,6 +385,7 @@ func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
 
 
 func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
+	await _show_enemy_action()
 	await _animate_attack_at(actor, target.position + Vector2(0, target.floor_offset_y - 14))
 
 

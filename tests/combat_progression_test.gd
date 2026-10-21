@@ -27,6 +27,7 @@ func _run() -> void:
 	await _test_scrap_robot_stage()
 	await _test_scrap_robot_2000_stage()
 	await _test_scrap_robot_3000_stage()
+	await _test_enemy_turn_speed()
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
@@ -292,6 +293,115 @@ func _test_novice_placements() -> void:
 				and enemies[enemy].cell == expected[index][enemy][1], "2스테이지 풋내기 종류와 좌표")
 	main.queue_free()
 	await process_frame
+
+
+func _test_enemy_turn_speed() -> void:
+	var main: Node = _start_three_one()
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	for ally: CombatUnit in battle.get("party"):
+		turns.end_turn()
+	var stuck: CombatUnit = turns.current_unit
+	stuck.movement_left = 0
+	# 대기 타이머를 기다리지 않으면 호출이 반환될 때 이미 턴이 끝나 있다.
+	battle.call("_play_enemy_turn", stuck)
+	_check(not stuck.is_ally and stuck.kind == CombatUnit.Kind.SPIDERLING
+		and not battle.get("_enemy_turn_running") and turns.current_unit != stuck,
+		"갈 곳이 막혀 이동도 공격도 하지 않은 새끼 거미 턴은 기다리지 않음")
+	main.queue_free()
+	await process_frame
+	var normal: Dictionary = await _play_three_one_rounds(false)
+	var fast: Dictionary = await _play_three_one_rounds(true)
+	print("3-1 적 턴 2라운드: 보통 %d ms, Space %d ms, 새끼 거미 %d마리" % [
+		normal.msec, fast.msec, normal.spiderlings])
+	_check(normal.spiderlings >= 5 and fast.state == normal.state,
+		"Space 가속은 새끼 거미가 늘어난 3-1의 적 행동 결과를 바꾸지 않음")
+	# 프레임 처리 시간은 배율과 무관해 느린 CI에서 차이가 줄어든다.
+	_check(fast.msec * 4 < normal.msec * 3, "Space를 누르고 있으면 3-1 적 턴 시간이 4분의 3 아래로 줄어듦")
+	_check(fast.reaction_waits, "반응 확인 창이 열리면 가속을 멈추고 새로 누른 Space로도 선택하지 않음")
+	_check(fast.get("released", false), "적 턴 중 Space를 떼면 보통 속도로 돌아옴")
+
+
+## 아군이 먼저, 적은 배치 순서로 행동하는 3-1을 준비한다.
+func _start_three_one() -> Node:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	(battle.get("progress") as CombatActProgress).stage_index = 6
+	battle.call("_start_stage", true)
+	var units: Array[CombatUnit] = battle.get("units")
+	var initiative: Array[int] = []
+	for unit: CombatUnit in units:
+		initiative.append(20 if unit.is_ally else 1)
+	(battle.get("turns") as CombatTurns).start(units, ScriptedDice.new(initiative))
+	(battle.get("actions") as CombatActions).dice.seed = 221
+	return main
+
+
+## 아군은 바로 턴을 넘기고 적 두 라운드의 실제 진행 시간을 잰다.
+func _play_three_one_rounds(fast: bool) -> Dictionary:
+	var main: Node = _start_three_one()
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var space: InputEventKey = InputEventKey.new()
+	space.keycode = KEY_SPACE
+	space.physical_keycode = KEY_SPACE
+	space.pressed = fast
+	Input.parse_input_event(space)
+	var result: Dictionary = {"spiderlings": 0, "reaction_waits": false}
+	battle.set_process(true)
+	var started: int = Time.get_ticks_msec()
+	while turns.round_number < 3 and not actions.is_over() and Time.get_ticks_msec() - started < 30000:
+		var actor: CombatUnit = turns.current_unit
+		if actor != null and actor.is_ally and not battle.get("_enemy_turn_running"):
+			# 반응 선택 창 대기 없이 같은 적 행동을 비교한다.
+			for ally: CombatUnit in battle.get("party"):
+				ally.reaction_left = 0
+			turns.end_turn()
+		elif fast and not result.reaction_waits and battle.get("_enemy_turn_running"):
+			# 배율은 다음 프레임의 battle._process에서 적용된다.
+			await process_frame
+		if fast and not result.reaction_waits and battle.get("_enemy_turn_running") and Engine.time_scale > 1.0:
+			_check(Engine.time_scale == 4.0 and "Space: 빠르게" in hud.round_label.text,
+				"적 턴에 Space를 누르고 있으면 빨라지고 안내를 표시")
+			var chosen: Array[bool] = []
+			var choose: Callable = func(use_reaction: bool) -> void: chosen.append(use_reaction)
+			hud.reaction_selected.connect(choose)
+			hud.show_reaction("parry", "검사")
+			await process_frame
+			await process_frame
+			# 창이 열린 뒤 다시 눌렀다 뗀 Space도 포커스된 선택 버튼을 누르지 않는다.
+			for pressed: bool in [false, true, false]:
+				space.pressed = pressed
+				Input.parse_input_event(space)
+				await process_frame
+			result.reaction_waits = Engine.time_scale == 1.0 and hud.reaction_dialog.visible and chosen.is_empty()
+			hud.call("_hide_reaction")
+			hud.reaction_selected.disconnect(choose)
+			# 창을 닫은 뒤 손을 뗀 상태의 battle._process가 배율을 되돌린다.
+			await process_frame
+			result.released = Engine.time_scale == 1.0 and battle.get("_enemy_turn_running")
+			space.pressed = true
+			Input.parse_input_event(space)
+		await process_frame
+	result.msec = Time.get_ticks_msec() - started
+	_check(turns.round_number == 3, "3-1 적 턴 두 라운드를 제한 시간 안에 마침")
+	_check(turns.current_unit.is_ally and not "Space: 빠르게" in hud.round_label.text, "아군 턴에는 Space 안내를 숨김")
+	space.pressed = false
+	Input.parse_input_event(space)
+	await process_frame
+	var state: Array[String] = []
+	for unit: CombatUnit in battle.get("units"):
+		state.append("%s %s %d" % [unit.get_display_name(), unit.cell, unit.hit_points])
+		if unit.kind == CombatUnit.Kind.SPIDERLING and unit.hit_points > 0:
+			result.spiderlings += 1
+	result.state = state
+	main.queue_free()
+	await process_frame
+	return result
 
 
 func _test_scrap_robot_stage() -> void:

@@ -13,6 +13,12 @@ class HoverButton extends Button:
 	func _get_tooltip(_at_position: Vector2) -> String:
 		return ""
 
+# Space는 적 턴 가속 키다. 반응 확인 창의 포커스된 버튼을 누르지 않는다.
+class SpaceBlocker extends Node:
+	func _input(event: InputEvent) -> void:
+		if event is InputEventKey and event.keycode == KEY_SPACE:
+			get_viewport().set_input_as_handled()
+
 const DEFAULT_BUTTON_COLOR: Color = Color("354656")
 const END_BUTTON_COLOR: Color = Color("926725")
 const RESOURCE_COLORS: Array[Color] = [Color("70c76d"), Color("edaa54"), Color("ac90e5")]
@@ -130,6 +136,7 @@ func _ready() -> void:
 			button.add_child(badge)
 			_badges[action] = badge
 	add_child(reaction_dialog)
+	reaction_dialog.add_child(SpaceBlocker.new())
 	reaction_dialog.title = "반응"
 	reaction_dialog.dialog_autowrap = true
 	reaction_dialog.dialog_hide_on_ok = false
@@ -310,7 +317,7 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 		resource_label.text = ""
 		actor_label.text = ""
 		return
-	round_label.text = "라운드 %d · %s 턴 묶음" % [turns.round_number, "아군" if current.is_ally else "적"]
+	round_label.text = "라운드 %d · %s" % [turns.round_number, "아군 턴 묶음" if current.is_ally else "적 턴 묶음 · Space: 빠르게"]
 	actor_label.text = ("조작: " if current.is_ally else "진행: ") + current.get_display_name()
 	show_unit(current)
 	for unit: CombatUnit in _portraits:
