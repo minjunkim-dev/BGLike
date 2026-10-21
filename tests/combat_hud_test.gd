@@ -560,7 +560,7 @@ func _dice_for_miss() -> CombatDice:
 
 
 func _test_layout() -> void:
-	# 해상도 ADR(docs/adr/0002-resolution.md)의 검증 창과 비정수 비율 창.
+	# 해상도 ADR(docs/adr/0002-resolution.md)의 검증 창, 넓은 비율 창, 비정수 배율 창.
 	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900),
 		Vector2i(2560, 1080), Vector2i(1366, 768)]:
 		root.size = size
