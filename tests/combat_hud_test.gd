@@ -560,8 +560,9 @@ func _dice_for_miss() -> CombatDice:
 
 
 func _test_layout() -> void:
-	for size: Vector2i in [Vector2i(640, 360), Vector2i(1280, 720), Vector2i(1920, 1080),
-		Vector2i(800, 360), Vector2i(683, 384)]:
+	# 해상도 ADR(docs/adr/0002-resolution.md)의 검증 창, 넓은 비율 창, 비정수 배율 창.
+	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900),
+		Vector2i(2560, 1080), Vector2i(1366, 768)]:
 		root.size = size
 		await process_frame
 		await process_frame
@@ -604,7 +605,7 @@ func _test_layout() -> void:
 	_check(not (hud.get_node("UnitDetails/UnitPanel") as Control).get_global_rect().intersects(
 		hud.preview_label.get_global_rect()), "줄 높이가 커져도 정보·공격 예측은 겹치지 않음")
 	hud.resource_label.remove_theme_constant_override("line_spacing")
-	root.size = Vector2i(640, 360)
+	root.size = Vector2i(1280, 720)
 	await process_frame
 
 
@@ -840,7 +841,7 @@ func _test_focus_tooltips(buttons: Dictionary) -> void:
 	_check(hovered.has_focus() and not hovered.has_focus(true),
 		"클릭 포커스는 숨긴 포커스라 흰 테두리가 선택 금색 테두리를 덮지 않음")
 	hovered.release_focus()
-	for size: Vector2i in [Vector2i(640, 360), Vector2i(1280, 720)]:
+	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080)]:
 		root.size = size
 		await process_frame
 		await process_frame
@@ -862,7 +863,7 @@ func _test_focus_tooltips(buttons: Dictionary) -> void:
 					"%s 포커스 호버는 화면·HUD 안, 스킬 패널 위: %s" % [size, action])
 				button.release_focus()
 				_check(not tooltip.visible, "포커스를 잃으면 설명 숨김: " + action)
-	root.size = Vector2i(640, 360)
+	root.size = Vector2i(1280, 720)
 	await process_frame
 
 
@@ -1476,7 +1477,7 @@ func _test_order_bar_input() -> void:
 
 
 func _test_transparent_order_input() -> void:
-	for window_size: Vector2i in [Vector2i(640, 360), Vector2i(1280, 800), Vector2i(1920, 1080)]:
+	for window_size: Vector2i in [Vector2i(1280, 720), Vector2i(1280, 800), Vector2i(1920, 1080)]:
 		root.size = window_size
 		_reset_units()
 		units[0].cell = Vector2i(0, 0)
@@ -1499,7 +1500,7 @@ func _test_transparent_order_input() -> void:
 		await _click(enemy_point)
 		_check(units[0].action_left == 0 and units[2].hit_points == 7,
 			"상단 유닛 몸통 두 번째 클릭은 공격 확정: %s" % window_size)
-	root.size = Vector2i(640, 360)
+	root.size = Vector2i(1280, 720)
 	_reset_units()
 	battle.call("_update_turn_ui")
 	await process_frame
@@ -1507,7 +1508,7 @@ func _test_transparent_order_input() -> void:
 
 
 func _test_spawned_portrait_input() -> void:
-	root.size = Vector2i(640, 360)
+	root.size = Vector2i(1280, 720)
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
@@ -1536,7 +1537,7 @@ func _test_spawned_portrait_input() -> void:
 		await process_frame
 		return
 	var scroll: ScrollContainer = hud.get_node("OrderScroll") as ScrollContainer
-	for size: Vector2i in [Vector2i(1280, 720), Vector2i(640, 360)]:
+	for size: Vector2i in [Vector2i(1920, 1080), Vector2i(1280, 720)]:
 		root.size = size
 		await process_frame
 		await process_frame

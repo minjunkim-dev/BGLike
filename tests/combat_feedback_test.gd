@@ -35,7 +35,7 @@ func _run() -> void:
 		if not finished:
 			push_error("Combat feedback watchdog expired")
 			quit(1))
-	root.size = Vector2i(640, 360)
+	root.size = Vector2i(1280, 720)
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
