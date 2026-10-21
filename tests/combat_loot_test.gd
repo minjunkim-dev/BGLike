@@ -814,7 +814,8 @@ func _check_pixel_art(scene: Node, classes: Array[String]) -> void:
 		preload("res://scenes/combat/art/unit_outline.gdshader")]
 	var terrain: Shader = preload("res://scenes/combat/art/terrain_detail.gdshader")
 	for shader: Shader in allowed + [terrain]:
-		_check(INCLUDE in shader.code, "공용 sharp bilinear 샘플 사용: " + shader.resource_path)
+		_check(INCLUDE in shader.code and "SHARP_TEXTURE(" in shader.code,
+			"공용 sharp bilinear 샘플 사용: " + shader.resource_path)
 	var counts: Dictionary[String, int] = {}
 	for item: CanvasItem in scene.find_children("*", "CanvasItem", true, false):
 		var texture: Texture2D = null

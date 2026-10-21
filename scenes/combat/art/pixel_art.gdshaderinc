@@ -25,4 +25,5 @@ vec4 sharp_mix(vec4 top_left, vec4 top_right, vec4 bottom_left, vec4 bottom_righ
 
 // tex의 텍셀 경계 seam 주변 텍셀 하나를 읽는다. size는 tex의 텍셀 수다.
 #define SHARP_FETCH(tex, uv, size, dx, dy) texture(tex, (floor((uv) * (size) + 0.5) + vec2(dx, dy)) / (size))
-#define SHARP_TEXTURE(tex, uv, size) (!sharp_magnified((uv) * (size)) ? texture(tex, uv) : sharp_mix(SHARP_FETCH(tex, uv, size, -0.5, -0.5), SHARP_FETCH(tex, uv, size, 0.5, -0.5), SHARP_FETCH(tex, uv, size, -0.5, 0.5), SHARP_FETCH(tex, uv, size, 0.5, 0.5), sharp_weight((uv) * (size))))
+// 분기 없이 mix로 고른다. fwidth가 균일한 흐름에서만 계산되고, 확대가 아니면 원래 샘플과 정확히 같다.
+#define SHARP_TEXTURE(tex, uv, size) mix(texture(tex, uv), sharp_mix(SHARP_FETCH(tex, uv, size, -0.5, -0.5), SHARP_FETCH(tex, uv, size, 0.5, -0.5), SHARP_FETCH(tex, uv, size, -0.5, 0.5), SHARP_FETCH(tex, uv, size, 0.5, 0.5), sharp_weight((uv) * (size))), float(sharp_magnified((uv) * (size))))
