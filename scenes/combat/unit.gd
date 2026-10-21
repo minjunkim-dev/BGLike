@@ -57,7 +57,6 @@ var reaction_capacity: int = 1
 var action_left: int = 1
 var bonus_action_left: int = 1
 var reaction_left: int = 1
-var act_number: int = 1
 var overloaded: bool = false
 var pull_cooldown: int = 0
 var _lost_hit_points: int = 0
