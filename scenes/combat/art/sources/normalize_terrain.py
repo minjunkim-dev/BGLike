@@ -51,4 +51,3 @@ for item in manifest["props"]:
     assert frame.getbbox() and frame.getbbox()[3] <= height - 8
 print(json.dumps({"atlas": [512, 32], "logical_tile": [32, 16], "props": len(manifest["props"]),
                   "resampling": "nearest", "alpha_threshold": 128}))
-
