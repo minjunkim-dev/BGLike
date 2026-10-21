@@ -2,7 +2,7 @@
 
 > M2에서 정한 게임 전체 구조입니다. 전투 밖의 진행, 막 단위 자원, 아이템, 격자 변경을 다룹니다.
 >
-> - 기준일: 2026-10-18 ([Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136) 사각 높이 격자 반영, 2026-10-07 기획 논의, Issue #61 아이템 수치 결정, [Issue #99](https://github.com/minjunkim-dev/BGLike/issues/99) 막별 적 강화 제거 반영)
+> - 기준일: 2026-10-21 ([Issue #214](https://github.com/minjunkim-dev/BGLike/issues/214) 드랍 기대값과 8장 정리, [Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136) 사각 높이 격자 반영, 2026-10-07 기획 논의, Issue #61 아이템 수치 결정, [Issue #99](https://github.com/minjunkim-dev/BGLike/issues/99) 막별 적 강화 제거 반영)
 > - 관련 문서: [기획 현황](DESIGN_STATUS.md) · [기획 로드맵](ROADMAP.md) · [전투 시스템 기획서](COMBAT_DESIGN.md)
 > - 이 문서와 전투 시스템 기획서가 다르면 이 문서가 기준입니다. 바뀌는 전투 규칙은 [7장](#7-전투-시스템-기획서에서-바뀌는-규칙)에 모았습니다.
 > - 표시: ✅ 정해짐 · ❓ 정해야 함
@@ -160,9 +160,9 @@ flowchart TD
 | 몬스터당 추가 드랍 | **35%** |
 | 보장 드랍 풀 | 추가 드랍과 **같은 풀** |
 
-> 스테이지마다 적이 2명이면 9전투에서 평균 약 15개(장비 약 9, 물약 약 7)를 얻습니다. 1막 3전투에서 물약을 하나도 못 얻을 확률은 약 7%입니다.
+> 현재9개 스테이지([스테이지 배치](stages/README.md))에서는 9전투에서 이론상 평균13.2개(장비 약7.5, 물약 약5.7), 최대21개를 얻습니다. 보장9개에 추가 추첨 대상12마리×35%를 더한 값입니다. [새끼 거미](monsters/spiderling.md)는 추가 드랍을 하지 않습니다. 1막 3전투(추가 추첨 대상2마리)에서 물약을 하나도 못 얻을 확률은 약13%입니다. 계산 기준은 [아이템 안내](ITEM_LOOT.md#흐름)와 같으며 실측 균형 검수 결과는 아닙니다. 보장1개·추첨 비중2/2/3·추가 확률35%는 유지합니다.
 
-> 새 배치([Issue #99](https://github.com/minjunkim-dev/BGLike/issues/99))에서는 [새끼 거미](monsters/spiderling.md)가 추가 드랍을 하지 않고, 몬스터가 1마리인 스테이지가 있습니다. 위 기대 개수와 확률은 스테이지마다 적이 2명이던 시험 배치 기준입니다. 새 배치의 기대값 재계산은 후속 기획입니다 ❓. 보장1개·추첨 비중2/2/3·추가 확률35%는 유지합니다.
+> 이전의 평균 약15개와 1막 물약0개 확률 약7%는 스테이지마다 적이2명이던 시험 배치 기준입니다([Issue #99](https://github.com/minjunkim-dev/BGLike/issues/99) 이전).
 
 ### 4-6. 최대 HP가 바뀔 때 현재 HP ✅
 
@@ -372,10 +372,14 @@ flowchart TD
 
 | 항목 | 담당 | 언제 |
 |---|---|---|
-| 아이템 등급, 직업 제한, 인벤토리 (4-7) | 기획 | M5 이후 |
-| 스킬 추가와 횟수, 탱커 수단 (5장) | 기획 | 스킬 디자인 |
-| 몬스터 종류 | 기획 | ✅ [몬스터 디자인 기획서](monsters/README.md)의7종을 #107~#112에서 구현. [통합 검수](M5_VERIFICATION.md)는 #113 |
-| 9개 스테이지 레벨 디자인 | 기획 | ✅ [스테이지 배치](stages/README.md)를 실제 전투에 연결. 맵 지형은 M3. 직접 플레이 상태는 [통합 검수](M5_VERIFICATION.md) 참조 |
-| 막별 장비 수치 재검토 (4-4) | 기획 | 막별 적 강화 제거(2-3) 뒤 |
-| 드랍 기대 개수 재계산 (4-5) | 기획 | 새 스테이지 배치 반영 |
-| 저장 (게임을 껐다 켤 때) | 기획 | M7 |
+| 아이템 등급, 직업 제한 (4-7) | 기획 | 보류. M7 졸업 범위 밖 ([M7까지 남은 작업 지도](https://github.com/minjunkim-dev/BGLike/issues/200)) |
+| 스킬 추가와 횟수, 탱커 수단 (5장) | 기획 | 스킬 디자인. [#201 권장안](https://github.com/minjunkim-dev/BGLike/issues/201#issuecomment-6311266130)의 기획자 확인([#210](https://github.com/minjunkim-dev/BGLike/issues/210)) 대기 |
+| 막별 장비 수치 재검토 (4-4) | 기획 | 막별 적 강화 제거(2-3) 뒤. [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
+| 저장 (게임을 껐다 켤 때) | 기획 | M7. [기획자 확인 #209](https://github.com/minjunkim-dev/BGLike/issues/209) |
+
+이미 정한 항목은 표에서 뺐습니다.
+
+- 몬스터 종류: [몬스터 디자인 기획서](monsters/README.md)의7종을 #107~#112에서 구현했습니다. [통합 검수](M5_VERIFICATION.md)는 #113입니다.
+- 9개 스테이지 레벨 디자인: [스테이지 배치](stages/README.md)를 실제 전투에 연결했습니다. 맵 지형은 #195의 [맵 기준](TERRAIN_MAPS.md)과 스테이지 자원을 따릅니다.
+- 인벤토리: 파티 공용 가방12칸입니다 (4-3).
+- 드랍 기대 개수: 현재 배치로 다시 계산했습니다 (4-5).
