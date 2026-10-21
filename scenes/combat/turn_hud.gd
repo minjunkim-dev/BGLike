@@ -103,7 +103,8 @@ func _ready() -> void:
 			button.custom_minimum_size.x = 52
 			button.icon = CombatActionRules.icon_of(action)
 			button.add_theme_constant_override("icon_max_width", 32)
-			button.add_theme_color_override("icon_disabled_color", Color("8a939b"))
+			# 곱셈 색은 채도를 빼지 못해 반투명으로 어둡게 눌러 회색 배경에 묻는다.
+			button.add_theme_color_override("icon_disabled_color", Color("8a939b", 0.55))
 			button.accessibility_name = CombatActionRules.NAMES[action]
 			# 반응은 표시용이다. 자기 턴의 입력에는 연결하지 않는다.
 			if index != 2:
@@ -239,7 +240,10 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 func action_details(actions: CombatActions, actor: CombatUnit, action: String) -> String:
 	if actor == null:
 		return ""
-	var effect: String = CombatActionRules.effect(actor, action) + "\n" + CombatActionRules.details(actor, action)
+	var effect: String = CombatActionRules.effect(actor, action)
+	var details: String = CombatActionRules.details(actor, action)
+	if not details.is_empty():
+		effect += "\n" + details
 	var reason: String = actions.unavailable_reason(actor, action)
 	if not reason.is_empty():
 		return effect + "\n지금 사용 불가: " + reason

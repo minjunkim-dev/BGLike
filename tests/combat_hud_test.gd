@@ -649,7 +649,9 @@ func _test_guidance() -> void:
 		"비활성 숨 고르기는 이름·효과·사거리·회복·판정·이유를 표시")
 	for action: String in buttons:
 		var icon_button: Button = buttons[action] as Button
-		_check(icon_button.text.is_empty() and icon_button.icon == CombatActionRules.icon_of(action)
+		var ally_action: bool = CombatActionRules.belongs_to(units[0], action) or CombatActionRules.belongs_to(units[1], action)
+		_check(icon_button.text.is_empty() and (icon_button.icon != null or not ally_action)
+			and icon_button.icon == CombatActionRules.icon_of(action)
 			and icon_button.accessibility_name == CombatActionRules.NAMES[action],
 			"스킬 버튼은 이름 대신 아이콘 표시: " + action)
 	_check("사거리: 인접1칸\n피해: 1d8+3\n판정: 명중 +5" in (buttons["attack"] as Button).tooltip_text,
@@ -826,6 +828,17 @@ func _test_guidance() -> void:
 func _test_focus_tooltips(buttons: Dictionary) -> void:
 	var tooltip: PanelContainer = hud.get("_tooltip_panel") as PanelContainer
 	var timer: Timer = hud.get("_tooltip_timer") as Timer
+	turns.select_unit(units[0])
+	battle.call("_update_turn_ui")
+	var hovered: Button = buttons["second_wind"] as Button
+	await _hover(hovered)
+	hovered.grab_focus()
+	_check(tooltip.visible and timer.is_stopped(), "호버 중 같은 버튼이 포커스를 받아도 설명을 다시 기다리지 않음")
+	hovered.release_focus()
+	await _click(hovered.get_global_rect().get_center())
+	_check(hovered.has_focus() and not hovered.has_focus(true),
+		"클릭 포커스는 숨긴 포커스라 흰 테두리가 선택 금색 테두리를 덮지 않음")
+	hovered.release_focus()
 	for size: Vector2i in [Vector2i(640, 360), Vector2i(1280, 720)]:
 		root.size = size
 		await process_frame
