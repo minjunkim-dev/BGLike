@@ -1308,9 +1308,12 @@ func _test_skill_bar_keys() -> void:
 		selection.selected_action = "attack"
 		battle.call("_update_turn_ui")
 	_check(disabled_seen > 0 and pressed_seen > 1, "숫자 키 검사는 활성·비활성 버튼을 모두 포함")
+	# AZERTY의 숫자 1 자리는 &를 보낸다. 자리로 고른다.
+	await _key(KEY_AMPERSAND, KEY_1)
+	_check(slots[0].has_focus(true), "숫자 키는 자판 배열과 관계없이 윗줄 자리로 고름")
 	if slots.size() < 9:
 		await _key(KEY_1 + slots.size())
-		_check(slots.back().has_focus(), "빈 숫자 키는 포커스를 옮기지 않음")
+		_check(slots[0].has_focus(), "빈 숫자 키는 포커스를 옮기지 않음")
 	var jump: Button = hud.get("_actions")["jump"]
 	var second_wind: Button = hud.get("_actions")["second_wind"]
 	_check(second_wind in slots and second_wind.disabled and jump in slots and not jump.disabled,
@@ -1389,10 +1392,10 @@ func _test_skill_bar_keys() -> void:
 	battle.call("_update_turn_ui")
 
 
-func _key(keycode: Key) -> void:
+func _key(keycode: Key, physical: Key = keycode) -> void:
 	var event: InputEventKey = InputEventKey.new()
 	event.keycode = keycode
-	event.physical_keycode = keycode
+	event.physical_keycode = physical
 	await _press(event)
 
 
