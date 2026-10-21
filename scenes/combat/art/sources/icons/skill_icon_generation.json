@@ -13,6 +13,7 @@
     "outline": "2px #1a121c around every shape, like the unit sprites",
     "palette": "warm steel, wood, gold, indigo, teal and red tones picked from the unit sprites",
     "background": "transparent; no action/bonus/reaction cost colour border",
+    "margin": "content and outline may reach the canvas edge so the 32px display keeps the largest shapes",
     "resampling": "none; every pixel is drawn at 64px without anti-aliasing"
   },
   "icons": [
