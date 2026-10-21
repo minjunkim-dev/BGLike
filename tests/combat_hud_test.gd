@@ -1291,8 +1291,10 @@ func _test_skill_bar_keys() -> void:
 		var action: String = by_button[button]
 		var before: String = selection.selected_action
 		await _key(KEY_1 + slot)
-		await timer.timeout
-		await process_frame
+		# 포커스가 옮겨지지 않으면 설명 타이머가 돌지 않아 기다리지 않는다.
+		if button.has_focus():
+			await timer.timeout
+			await process_frame
 		_check(button.has_focus(true) and tooltip.visible and _has_tooltip(root, button.tooltip_text),
 			"숫자 키 %d는 %s에 보이는 포커스와 상세 설명을 줌" % [slot + 1, action])
 		var reaction: bool = action in CombatActionRules.GROUPS[2]
@@ -1318,11 +1320,12 @@ func _test_skill_bar_keys() -> void:
 	_check(slots[1].has_focus(), "오른쪽 방향키는 다음 스킬 버튼으로 이동")
 	await _key(KEY_LEFT)
 	await _key(KEY_LEFT)
-	_check(slots.back().has_focus(), "왼쪽 방향키는 첫 버튼에서 마지막 버튼으로 순환")
+	_check(slots[0].has_focus(), "왼쪽 방향키는 첫 버튼에서 멈춤")
+	slots.back().grab_focus()
 	await _joypad(JOY_BUTTON_DPAD_RIGHT)
-	_check(slots[0].has_focus(), "D-pad 오른쪽은 마지막 버튼에서 첫 버튼으로 순환")
+	_check(slots.back().has_focus(), "D-pad 오른쪽은 마지막 버튼에서 멈춤")
 	await _joypad(JOY_BUTTON_DPAD_LEFT)
-	_check(slots.back().has_focus(), "D-pad 왼쪽도 스킬 바 안에서 이동")
+	_check(slots[slots.size() - 2].has_focus(), "D-pad 왼쪽도 스킬 바 안에서 이동")
 	jump.grab_focus()
 	await _key(KEY_ENTER)
 	_check(selection.selected_action == "jump", "Enter는 포커스된 스킬을 선택")
@@ -1366,6 +1369,8 @@ func _test_skill_bar_keys() -> void:
 	for state: String in ["reaction", "result", "preparation", "busy"]:
 		root.gui_release_focus()
 		lock.call(state, true)
+		# 반응 창은 키를 먼저 가져갈 수 있어 잠금 조건도 직접 확인한다.
+		_check(not battle.call("_ally_input_open"), "아군 키 입력 잠금: " + state)
 		await _key(KEY_3)
 		await _key(KEY_RIGHT)
 		_check(root.gui_get_focus_owner() == null and selection.selected_action == "attack",
@@ -1387,6 +1392,7 @@ func _test_skill_bar_keys() -> void:
 func _key(keycode: Key) -> void:
 	var event: InputEventKey = InputEventKey.new()
 	event.keycode = keycode
+	event.physical_keycode = keycode
 	await _press(event)
 
 

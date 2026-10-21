@@ -237,11 +237,11 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			_costs[action].reset_size()
 			_badges[action].modulate = Color.WHITE if ally_turn else Color("888888")
 			_costs[action].modulate = Color.WHITE if not button.disabled else Color("666666")
-	# 좌우 방향키·D-pad는 스킬 바 안에서만 옮기고 끝에서 반대쪽 끝으로 돈다.
+	# 좌우 방향키·D-pad는 스킬 바 안에서만 옮긴다. 스틱을 누르고 있어도 끝에서 멈춘다.
 	for index: int in range(_action_slots.size()):
 		var button: Button = _action_slots[index]
-		button.focus_neighbor_left = button.get_path_to(_action_slots[index - 1])
-		button.focus_neighbor_right = button.get_path_to(_action_slots[(index + 1) % _action_slots.size()])
+		button.focus_neighbor_left = button.get_path_to(_action_slots[maxi(index - 1, 0)])
+		button.focus_neighbor_right = button.get_path_to(_action_slots[mini(index + 1, _action_slots.size() - 1)])
 	end_button.disabled = not ally_turn or locked
 	for button: Button in _portraits.values():
 		button.disabled = button.disabled or locked

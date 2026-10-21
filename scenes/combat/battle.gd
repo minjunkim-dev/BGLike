@@ -218,11 +218,11 @@ func _input(event: InputEvent) -> void:
 		# Space는 적 턴 가속 키다. 포커스된 버튼(턴 종료 등)을 누르지 않게 소비한다.
 		get_viewport().set_input_as_handled()
 		return
-	# 숫자 키 1~9는 스킬 바의 버튼을 왼쪽부터 고른다.
-	if event is InputEventKey and event.keycode >= KEY_1 and event.keycode <= KEY_9:
+	# 숫자 키 1~9는 스킬 바의 버튼을 왼쪽부터 고른다. 자판 배열과 관계없이 윗줄 숫자 자리를 쓴다.
+	if event is InputEventKey and event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_9:
 		if event.pressed and not event.echo and _ally_input_open():
 			get_viewport().set_input_as_handled()
-			hud.focus_action_slot(event.keycode - KEY_1, true)
+			hud.focus_action_slot(event.physical_keycode - KEY_1, true)
 		return
 	# 포커스가 없으면 좌우 방향키·D-pad가 스킬 바의 첫 버튼으로 들어간다.
 	if ((event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"))
