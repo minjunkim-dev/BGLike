@@ -26,8 +26,8 @@ GitHub 품질 운영은 1인 개발 기준입니다. 필수 승인 인원은 0�
 ## Discord 소통
 
 - [BGLike 서버](https://discord.com/channels/1554865028006547549/1554865028837015667)의 `#일반`에서 짧은 질문과 일정을 공유합니다. 게임 화면을 함께 볼 때는 음성 `플레이테스트` 채널을 사용합니다.
-- `#github-알림`에는 비-Draft PR의 열림·재열림·ready 전환과 PR 종료를 알립니다. [Discord PR 알림 워크플로우](../.github/workflows/discord-pr.yml)는 같은 저장소의 브랜치에서 만든 PR만 처리합니다.
-- [Godot 워크플로우](../.github/workflows/godot.yml)의 `notify` 작업은 정책 또는 게임 검사 실패를 알립니다. 정상 실행 결과는 GitHub Actions에서 확인합니다. Discord 전송 실패가 검사 결과를 바꾸지 않습니다. 중복 알림을 막기 위해 기존 GitHub 저장소 웹훅은 비활성화했습니다.
+- `#github-알림`에는 PR 병합과 닫힘만 알립니다. [Discord PR 알림 워크플로우](../.github/workflows/discord-pr.yml)는 같은 저장소의 브랜치에서 만든 PR만 처리합니다.
+- [Godot 워크플로우](../.github/workflows/godot.yml)의 `notify` 작업은 정책 또는 게임 검사 실패를 알립니다. 정상 실행 결과는 GitHub Actions에서 확인합니다. Discord 전송 실패가 검사 결과를 바꾸지 않습니다. 중복 알림을 막기 위해 기존 GitHub 저장소 웹훅은 삭제했습니다.
 - 두 워크플로우는 GitHub Actions의 `DISCORD_PR_WEBHOOK_URL` 저장소 비밀값을 사용합니다. Discord 웹훅 URL을 문서나 채팅에 공유하지 않습니다.
 - 채팅이나 통화에서 확정한 작업 범위와 결정은 해당 GitHub Issue 또는 PR에 기록합니다. 동료의 Discord 사용자명 확인 전에는 초대하지 않습니다.
 
