@@ -394,6 +394,7 @@ func _test_log_and_status() -> void:
 	_check(has_popup, "실제 빗나감 결과 팝업 연결")
 	_check(_has_feedback(units[1], "공격 %d" % actions.last_attack.total),
 		"불리 공격의 실제 판정 합계를 숫자 팝업으로 표시")
+	_check(_has_roll_dice(units[1], actions.last_attack), "불리 팝업은 두 주사위를 보이고 버린 쪽을 흐림")
 	units[1].action_left = 1
 	units[2].is_stunned = true
 	actions.dice = CombatDice.new()
@@ -406,6 +407,7 @@ func _test_log_and_status() -> void:
 	_check("표식 추가" in hud.message_label.text, "표식 추가 피해를 로그에 명시")
 	_check(_has_feedback(units[1], "공격 %d" % actions.last_attack.total),
 		"유리 공격의 실제 판정 합계를 숫자 팝업으로 표시")
+	_check(_has_roll_dice(units[1], actions.last_attack), "유리 팝업은 두 주사위를 보이고 버린 쪽을 흐림")
 	await _test_roll_popups()
 
 
@@ -435,6 +437,24 @@ func _has_feedback(unit: CombatUnit, text: String) -> bool:
 	for child: Node in unit.get_parent().get_children():
 		if child is Label and child.text == text and child.get_meta("feedback_unit", 0) == unit.get_instance_id():
 			return true
+	return false
+
+
+func _has_roll_dice(unit: CombatUnit, roll: CombatChecks.RollResult) -> bool:
+	var kept: int = roll.rolls.find(roll.selected_roll)
+	for child: Node in unit.get_parent().get_children():
+		if (child is Label and child.text == "공격 %d" % roll.total
+			and child.get_meta("feedback_unit", 0) == unit.get_instance_id()):
+			var dice: Array[Node] = child.get_children()
+			if dice.size() != 2:
+				return false
+			var rect: Rect2 = Rect2(Vector2.ZERO, (child as Label).size)
+			for index: int in range(2):
+				var die: Label = dice[index] as Label
+				if (die.text != str(roll.rolls[index]) or not rect.encloses(die.get_rect())
+					or (die.modulate.a == 1.0) != (index == kept)):
+					return false
+			return (dice[0] as Label).get_rect().end.x <= (dice[1] as Label).position.x
 	return false
 
 

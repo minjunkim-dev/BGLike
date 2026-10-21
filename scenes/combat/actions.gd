@@ -830,8 +830,10 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 		str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total, target.get_armor_class(),
 		"치명타" if last_attack.critical else "명중" if last_attack.success else "빗나감"])
 	feedback.emit(actor, "공격 %d" % last_attack.total)
+	if last_attack.critical:
+		feedback.emit(target, "치명타!")
 	if not last_attack.success:
-		feedback.emit(target, "빗나감")
+		feedback.emit(target, "자동 실패" if last_attack.selected_roll == 1 else "빗나감")
 		return
 	if (save_dc > 0 and CombatActionRules.has_uses(target, "parry") and not target.is_stunned
 		and target.reaction_left > 0):

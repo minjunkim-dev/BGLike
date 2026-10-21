@@ -14,6 +14,7 @@ var collisions: Array[String] = []
 var messages: Array[String] = []
 var monitoring: bool = true
 var popup_samples: int = 0
+var popup_styles: Dictionary[String, Array] = {}
 var manual: bool = "--manual" in OS.get_cmdline_user_args()
 var finished: bool = false
 
@@ -89,6 +90,8 @@ func _run() -> void:
 	await create_timer(1.0).timeout
 	_check(popup_samples > 0, "반복 공격에서 실제 팝업을 관찰함")
 	_check(collisions.is_empty(), "반복 공격 팝업 겹침 없음: %s" % str(collisions))
+	_check(popup_styles.get("치명타!", []) == [CombatUnit.CRITICAL_COLOR, 14], "치명타는 금색 큰 글씨 팝업")
+	_check(popup_styles.get("자동 실패", []) == [CombatUnit.FUMBLE_COLOR, 10], "자동 실패는 회색 팝업")
 	_check(messages.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 2,
 		"과부하 중 회전 공격 두 번 유지")
 	_check(units[0].hit_points == 5 and units[1].hit_points == 10 and boss.hit_points == 23,
@@ -193,6 +196,7 @@ func _monitor() -> void:
 		popup_samples += popups.size()
 		for index: int in range(popups.size()):
 			var popup: Label = popups[index]
+			popup_styles[popup.text] = [popup.get_theme_color("font_color"), popup.get_theme_font_size("font_size")]
 			if popup.modulate.a < 0.1:
 				continue
 			var rect: Rect2 = popup.get_global_transform_with_canvas() * Rect2(Vector2.ZERO, popup.size)
