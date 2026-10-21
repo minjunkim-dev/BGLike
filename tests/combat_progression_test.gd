@@ -317,8 +317,8 @@ func _test_enemy_turn_speed() -> void:
 	_check(normal.spiderlings >= 5 and fast.state == normal.state,
 		"Space 가속은 새끼 거미가 늘어난 3-1의 적 행동 결과를 바꾸지 않음")
 	_check(fast.msec * 2 < normal.msec, "Space를 누르고 있으면 3-1 적 턴 시간이 절반 아래로 줄어듦")
-	_check(fast.reaction_waits, "반응 확인 창이 열리면 가속을 멈추고 Space로 선택하지 않음")
-	_check(Engine.time_scale == 1.0, "Space를 떼면 보통 속도로 돌아옴")
+	_check(fast.reaction_waits, "반응 확인 창이 열리면 가속을 멈추고 새로 누른 Space로도 선택하지 않음")
+	_check(fast.get("released", false), "적 턴 중 Space를 떼면 보통 속도로 돌아옴")
 
 
 ## 아군이 먼저, 적은 배치 순서로 행동하는 3-1을 준비한다.
@@ -347,6 +347,7 @@ func _play_three_one_rounds(fast: bool) -> Dictionary:
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var space: InputEventKey = InputEventKey.new()
 	space.keycode = KEY_SPACE
+	space.physical_keycode = KEY_SPACE
 	space.pressed = fast
 	Input.parse_input_event(space)
 	var result: Dictionary = {"spiderlings": 0, "reaction_waits": false}
@@ -369,13 +370,21 @@ func _play_three_one_rounds(fast: bool) -> Dictionary:
 			var choose: Callable = func(use_reaction: bool) -> void: chosen.append(use_reaction)
 			hud.reaction_selected.connect(choose)
 			hud.show_reaction("parry", "검사")
-			var echo: InputEventKey = space.duplicate() as InputEventKey
-			echo.echo = true
-			Input.parse_input_event(echo)
 			await process_frame
+			await process_frame
+			# 창이 열린 뒤 다시 눌렀다 뗀 Space도 포커스된 선택 버튼을 누르지 않는다.
+			for pressed: bool in [false, true, false]:
+				space.pressed = pressed
+				Input.parse_input_event(space)
+				await process_frame
 			result.reaction_waits = Engine.time_scale == 1.0 and hud.reaction_dialog.visible and chosen.is_empty()
 			hud.call("_hide_reaction")
 			hud.reaction_selected.disconnect(choose)
+			# 창을 닫은 뒤 손을 뗀 상태의 battle._process가 배율을 되돌린다.
+			await process_frame
+			result.released = Engine.time_scale == 1.0 and battle.get("_enemy_turn_running")
+			space.pressed = true
+			Input.parse_input_event(space)
 		await process_frame
 	result.msec = Time.get_ticks_msec() - started
 	_check(turns.round_number == 3, "3-1 적 턴 두 라운드를 제한 시간 안에 마침")
