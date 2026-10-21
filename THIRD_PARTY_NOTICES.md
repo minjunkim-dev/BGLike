@@ -35,7 +35,7 @@ SRD 5.1은 CC-BY-4.0과 OGL 1.0a 중 하나를 고를 수 있습니다. BGLike�
 | `docs/images/combat_ui_archer_turn.png` | `e89cf19`의 전투 기획 문서에 포함된 화면 참고 이미지 | 정이건의 기여 기록을 확인했습니다. 별도의 외부 원본 출처는 기록돼 있지 않습니다. |
 | `docs/images/combat_ui_reaction.png` | 같은 기획 문서의 화면 참고 이미지 | 같은 기준을 적용합니다. |
 | `docs/images/combat_ui_warrior_turn.png` | 같은 기획 문서의 화면 참고 이미지 | 같은 기준을 적용합니다. |
-| `docs/images/pixel_*.png`, `docs/images/terrain_maps_*.png` | #194·#195 최종 직접 확인의 실제 게임 화면 캡처. 위 유닛·지형 이미지를 표시한 원본 Viewport PNG와 그 nearest 축소 contact sheet | 표시된 유닛·지형 이미지의 기준을 그대로 적용합니다. 화면 UI는 프로젝트 자체 구현입니다. |
+| `docs/images/pixel_*.png`, `docs/images/terrain_maps_*.png` | #194·#195 최종 직접 확인의 실제 게임 화면 캡처. 위 유닛·지형 이미지를 표시한 원본 Viewport PNG와 그 contact sheet(1280×720 캡처는 nearest 축소) | 표시된 유닛·지형 이미지의 기준을 그대로 적용합니다. 화면 UI는 프로젝트 자체 구현입니다. |
 
 Git 기여 기록만으로 제3자 자료의 원저작권을 확정하지 않습니다.
 외부 원본이나 생성 도구의 별도 조건이 있으면 원래 출처와 조건을 기록하고 우선 적용합니다.
