@@ -416,17 +416,17 @@ func _test_bag_scene_use() -> void:
 	await _click(battle.hud.restart_button)
 	var preparation: CombatPreparation = battle.preparation
 	await _click(preparation.continue_button)
-	var row: Node = preparation.content.get_node_or_null("BagItem0")
-	_check(row != null, "정비 화면의 공용 가방 아이템 목록")
-	if row != null:
-		await _click(row.get_node("Ally0") as Button)
+	var equip: Button = await _pick(preparation, "BagItem0", "Ally0")
+	_check(equip != null, "정비 화면의 공용 가방 칸을 고르면 상세 패널에 장착 버튼")
+	if equip != null:
+		await _click(equip)
 		_check(party[0].armor == next and party[0].hit_points == 8
 			and loot.bag.size() == 12 and loot.bag[0] == old,
 			"실제 가방 장착 버튼은 같은 칸 교환과 잃은 HP 유지")
-		await _click(preparation.content.get_node("BagItem1/Ally1") as Button)
+		await _click(await _pick(preparation, "BagItem1", "Ally1"))
 		_check(party[1].potion_left == 3 and party[1].hit_points == 0 and loot.bag.size() == 11,
 			"실제 가방 물약 버튼은 한도·전투 불능을 유지하며 한 개 분배")
-		_check((preparation.content.get_node("BagItem1/Ally1") as Button).disabled,
+		_check((await _pick(preparation, "BagItem1", "Ally1")).disabled,
 			"한도에 도달하면 남은 가방 물약 분배 버튼 잠금")
 	main.queue_free()
 	await process_frame
@@ -458,7 +458,20 @@ func _test_armor_unequip_scene() -> void:
 	await _click(battle.hud.restart_button)
 	var preparation: CombatPreparation = battle.preparation
 	await _click(preparation.continue_button)
-	var unequip: Button = preparation.content.find_child("UnequipArmor0", true, false) as Button
+	var weapon_cell: Button = preparation.find_child("Weapon0", true, false) as Button
+	weapon_cell.grab_focus()
+	await _action("ui_accept")
+	_check(weapon_cell.button_pressed and preparation.detail.find_children("*", "Button", true, false).is_empty(),
+		"Enter로 무기 칸을 고르면 해제 버튼 없이 수치만 표시")
+	await _action("ui_right")
+	_check((preparation.find_child("Armor0", true, false) as Control).has_focus(), "방향키로 이웃 칸 이동")
+	var unequip: Button = await _pick(preparation, "Armor0", "UnequipArmor0")
+	# 고른 칸에서 방향키로 상세 패널의 동작 버튼까지 내려간다.
+	for step: int in range(6):
+		if unequip == null or unequip.has_focus():
+			break
+		await _action("ui_down")
+	_check(unequip != null and unequip.has_focus(), "방향키로 상세 패널의 동작 버튼에 도달")
 	_check(unequip != null and not unequip.disabled and unequip.tooltip_text.is_empty(),
 		"정비 화면의 장착 방어구 해제 버튼")
 	if unequip != null:
@@ -467,10 +480,10 @@ func _test_armor_unequip_scene() -> void:
 			and party[0].get_max_hit_points() == 12 and loot.bag.size() == 12
 			and loot.bag.back() == warrior_armor and preparation.continue_button.has_focus(),
 			"실제 해제 버튼은 잃은 HP를 유지하고 방어구를 가방 빈 칸에 보관")
-		unequip = preparation.content.find_child("UnequipArmor0", true, false) as Button
+		unequip = await _pick(preparation, "Armor0", "UnequipArmor0")
 		_check(unequip != null and unequip.disabled and not unequip.tooltip_text.is_empty(),
 			"방어구가 없으면 해제 버튼 비활성과 이유 표시")
-		var blocked: Button = preparation.content.find_child("UnequipArmor1", true, false) as Button
+		var blocked: Button = await _pick(preparation, "Armor1", "UnequipArmor1")
 		_check(blocked != null and blocked.disabled and "빈 칸" in blocked.tooltip_text,
 			"가방이 가득 차면 해제 버튼 비활성과 호버 설명에 이유 표시")
 		if blocked != null:
@@ -570,7 +583,7 @@ func _test_finish_preference() -> void:
 			and battle.progress.stage_index == 1 and loot.bag.size() == 12
 			and battle.progress.rewards.size() == 1 and preparation.bag_notice.visible,
 			"확인 생략 중에도 가득 찬 가방은 정비 종료 차단")
-		await _click(preparation.content.get_node("BagItem0/Discard") as Button)
+		await _click(await _pick(preparation, "BagItem0", "DiscardItem"))
 		_check(preparation.discard_dialog.visible and not skip.visible
 			and preparation.discard_dialog.get_cancel_button().has_focus(),
 			"종료 확인 생략은 아이템 폐기 확인을 생략하지 않음")
@@ -660,7 +673,7 @@ func _test_full_bag_finish() -> void:
 	var notice: Label = preparation.find_child("BagNotice", true, false) as Label
 	_check(notice != null and notice.visible and "1칸" in notice.text and "부족" in notice.text,
 		"정비에 남겨 가방 부족 칸 수를 표시")
-	var discard: Button = preparation.content.get_node_or_null("BagItem0/Discard") as Button
+	var discard: Button = await _pick(preparation, "BagItem0", "DiscardItem")
 	_check(discard != null, "가방 아이템별 폐기 버튼")
 	if discard != null:
 		await _click(discard)
@@ -670,7 +683,7 @@ func _test_full_bag_finish() -> void:
 		await _enter_dialog(preparation.discard_dialog)
 		_check(loot.bag.size() == 12 and progress.rewards.size() == 1
 			and not preparation.discard_dialog.visible, "폐기 확인 기본 Enter는 취소하고 아이템 보존")
-		await _click(preparation.content.get_node("BagItem0/Discard") as Button)
+		await _click(await _pick(preparation, "BagItem0", "DiscardItem"))
 		preparation.discard_dialog.get_ok_button().grab_focus()
 		await _enter_dialog(preparation.discard_dialog)
 		preparation.discard_dialog.confirmed.emit()
@@ -722,32 +735,35 @@ func _test_reward_flow() -> void:
 		var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
 		_check(preparation.visible and not preparation.maintaining, "승리 뒤 보상 화면 진입")
 		_check((battle.get("progress") as CombatActProgress).stage_index == 0, "보상 확인은 다음 전투를 시작하지 않음")
-		_check(preparation.content.get_node("Item0").get_child_count() == 1,
+		_check(await _pick(preparation, "Item0", "Ally1") == null
+			and preparation.detail.find_children("*", "Button", true, false).is_empty()
+			and preparation.detail.find_children("*", "Label", true, false).any(
+				func(label: Label) -> bool: return "검사 방어구 · AC+2" in label.text),
 			"보상 확인 단계는 수치를 보여 주고 정비에서만 분배")
 		await _click(preparation.continue_button)
 		_check(preparation.maintaining and preparation.title_label.text == "정비", "보상 다음 정비 단계")
-		await _click(preparation.content.get_node("Item0/Ally1") as Button)
+		await _click(await _pick(preparation, "Item0", "Ally1"))
 		_check(party[1].get_armor_class() == 16 and party[1].hit_points == 0
 			and party[1].get_max_hit_points() == 18,
 			"실제 분배 버튼은 전투 불능 궁수에게 방어구 장착")
 		_check(preparation.continue_button.has_focus(), "분배 뒤 키보드 포커스 유지")
-		await _click(preparation.content.get_node("Item0/Ally1") as Button)
+		await _click(await _pick(preparation, "Item0", "Ally1"))
 		_check(party[1].potion_left == 2 and actual_rewards.size() == 1, "물약 분배와 보상 목록에서 제거")
 		actual_rewards.append({"kind": "potion", "name": "검사 물약", "stats": {}})
 		# 다음 정비 조작에서 화면을 갱신한 뒤 한도 수령을 검사한다.
-		var transfer: Button = preparation.content.find_child("Transfer1To0", true, false) as Button
+		var transfer: Button = preparation.find_child("Transfer1To0", true, false) as Button
 		await _click(transfer)
 		_check(party[1].potion_left == 1 and party[0].potion_left == 1, "정비 양도 버튼은 물약1개 이동")
 		_check(preparation.continue_button.has_focus(), "양도 뒤 키보드 포커스 유지")
 		actual_rewards.append({"kind": "potion", "name": "검사 물약", "stats": {}})
 		actual_rewards.append({"kind": "potion", "name": "검사 물약", "stats": {}})
-		await _click(preparation.content.get_node("Item1/Ally1") as Button)
-		await _click(preparation.content.get_node("Item1/Ally1") as Button)
-		_check((preparation.content.get_node("Item1/Ally1") as Button).disabled
-			and (preparation.content.find_child("Transfer0To1", true, false) as Button).disabled,
+		await _click(await _pick(preparation, "Item1", "Ally1"))
+		await _click(await _pick(preparation, "Item1", "Ally1"))
+		_check((await _pick(preparation, "Item1", "Ally1")).disabled
+			and (preparation.find_child("Transfer0To1", true, false) as Button).disabled,
 			"물약3개 캐릭터는 수령·양도 도착 버튼 잠금")
-		await _click(preparation.content.find_child("Transfer1To0", true, false) as Button)
-		await _click(preparation.content.find_child("Transfer1To0", true, false) as Button)
+		await _click(preparation.find_child("Transfer1To0", true, false) as Button)
+		await _click(preparation.find_child("Transfer1To0", true, false) as Button)
 		_check(party[1].potion_left == 1 and party[0].potion_left == 3, "양도 도착 한도3까지")
 		await _click(preparation.continue_button)
 		preparation.discard_dialog.confirmed.emit()
@@ -889,6 +905,26 @@ func _enter_dialog(dialog: ConfirmationDialog) -> void:
 	await process_frame
 	key.pressed = false
 	dialog.push_input(key)
+	await process_frame
+
+
+## 정비 칸을 클릭해 고르고 상세 패널의 동작 버튼을 돌려준다.
+func _pick(preparation: CombatPreparation, cell: String, action: String) -> Button:
+	var button: Button = preparation.find_child(cell, true, false) as Button
+	if button == null:
+		return null
+	await _click(button)
+	return preparation.detail.find_child(action, true, false) as Button
+
+
+func _action(action: String) -> void:
+	var event: InputEventAction = InputEventAction.new()
+	event.action = action
+	event.pressed = true
+	Input.parse_input_event(event)
+	await process_frame
+	event.pressed = false
+	Input.parse_input_event(event)
 	await process_frame
 
 
