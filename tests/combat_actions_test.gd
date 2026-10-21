@@ -3529,8 +3529,10 @@ func _check_rock_around_hidden_unit(battle: Node2D, rock: CombatGrid.Prop, hidde
 	warrior.cell = Vector2i(5, 3)
 	selection.clear_preview()
 	battle.call("_update_turn_ui")
-	_check(warrior.is_occluded and not spider.is_occluded, "바위 뒤로 옮긴 아군도 윤곽을 표시")
-	await _click(warrior.get_global_transform_with_canvas() * hidden[hidden.size() / 2])
+	var body: Vector2 = hidden[hidden.size() / 2]
+	_check(warrior.is_occluded and not spider.is_occluded and warrior.contains_body_point(body),
+		"바위 뒤로 옮긴 아군도 윤곽을 표시하고 클릭 지점은 아군 몸통")
+	await _click(warrior.get_global_transform_with_canvas() * body)
 	_check(selection.preview_prop == rock, "동작이 없는 가린 아군 몸통보다 앞 바위 선택을 우선")
 	actions.grid.props.erase(rock)
 	battle.call("_update_turn_ui")
