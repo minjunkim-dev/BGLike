@@ -93,6 +93,35 @@ static func icon_of(action: String) -> Texture2D:
 	return load(path) as Texture2D if ResourceLoader.exists(path) else null
 
 
+## 호버의 사거리·피해 또는 회복·판정 줄. 현재 장비의 명중·피해 보정을 반영한다.
+static func details(actor: CombatUnit, action: String) -> String:
+	var melee: bool = actor.get_attack_range() == 1
+	var weapon: String = "피해: 1d%d%s" % [actor.get_damage_sides(),
+		"" if actor.get_damage_bonus() == 0 else "%+d" % actor.get_damage_bonus()]
+	var hit: String = "명중 %+d" % actor.get_attack_bonus()
+	var lines: Array[String] = []
+	match action:
+		"attack", "opportunity":
+			lines = ["사거리: " + ("인접1칸" if melee else "1~%d칸" % actor.get_attack_range()), weapon, "판정: " + hit]
+		"shock":
+			lines = ["사거리: 1~%d칸" % SKILL_RANGE, weapon, "판정: %s, 정신 내성 DC %d" % [hit, actor.get_save_dc()]]
+		"mark":
+			lines = ["사거리: 1~%d칸" % SKILL_RANGE, "판정: 없음"]
+		"shove":
+			lines = ["사거리: 인접1칸", "판정: 힘 %+d 대결" % actor.get_attribute(CombatUnit.Attribute.STRENGTH)]
+		"jump":
+			lines = ["사거리: 1~2칸", "판정: 없음"]
+		"second_wind":
+			lines = ["사거리: 자신", "회복: 1d10+1", "판정: 없음"]
+		"potion":
+			lines = ["사거리: 자신", "회복: 2d4+2", "판정: 없음"]
+		"surge", "disengage":
+			lines = ["사거리: 자신", "판정: 없음"]
+		"parry":
+			lines = ["사거리: 자신", "판정: 민첩 내성 %+d 대 공격자 DC" % actor.get_dexterity()]
+	return "\n".join(lines)
+
+
 static func effect(actor: CombatUnit, action: String) -> String:
 	if action == "attack":
 		return "인접한 적을 기본 공격합니다." if actor.get_attack_range() == 1 else "1~6칸 원거리 공격.\n옆에 적이 있으면 불리."

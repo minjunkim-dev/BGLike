@@ -147,9 +147,9 @@ autowrap_mode = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 8.0
-offset_top = -108.0
+offset_top = -117.0
 offset_right = 544.0
-offset_bottom = -60.0
+offset_bottom = -69.0
 grow_vertical = 0
 
 [node name="Message" type="Label" parent="UI/TurnHud/CombatLog"]
@@ -162,7 +162,7 @@ mouse_filter = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 8.0
-offset_top = -54.0
+offset_top = -63.0
 offset_right = 544.0
 offset_bottom = -6.0
 grow_vertical = 0
