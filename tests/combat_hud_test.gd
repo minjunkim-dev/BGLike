@@ -584,6 +584,10 @@ func _test_layout() -> void:
 				hud.preview_label.get_global_rect()), "확장한 유닛 정보와 공격 예측은 겹치지 않음")
 			var skills: Rect2 = (hud.get_node("Skills") as Control).get_global_rect()
 			_check(not skills.intersects(hud.end_button.get_global_rect()), "스킬과 턴 종료가 겹치지 않음")
+			var combat_log: Rect2 = (hud.get_node("CombatLog") as Control).get_global_rect()
+			_check(not combat_log.intersects(skills)
+				and not combat_log.intersects((hud.get_node("UnitDetails") as Control).get_global_rect()),
+				"%s: 전투 로그는 스킬·유닛 정보와 겹치지 않음" % size)
 			var badges: Dictionary = hud.get("_badges")
 			var costs: Dictionary = hud.get("_costs")
 			for action: String in badges:
