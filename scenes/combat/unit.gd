@@ -8,7 +8,7 @@ enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 
 const MOVEMENT_PER_TURN: int = 6
 const FEEDBACK_RISE: float = 12.0
-## 팝업 왼쪽 위가 기준 자리에서 벗어날 수 있는 최대 논리px(#260). 기준 자리는 대상 상태 줄 기준점이다.
+## 팝업이 먼저 찾는 범위: 기준 자리에서 팝업 왼쪽 위까지의 최대 논리px(#260). 기준 자리는 대상 상태 줄 기준점이다.
 ## 같은 대상의 이전 팝업이 그보다 높으면 그 팝업 바로 위다. 붐빌 때 옆 유닛 팝업 하나를 비켜 갈 만큼이다.
 const FEEDBACK_NEAR: float = 40.0
 
@@ -494,28 +494,35 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 	var near: float = FEEDBACK_NEAR * canvas_scale
 	var quantum: float = 2.0 * padding
 	var steps: int = floori(near / quantum)
-	var nearby: Array[Vector2] = []
-	var above: Array[Vector2] = []
-	for row: int in range(-steps, ceili((anchor.y - first.y) / quantum) + 1):
-		for column: int in range(-steps, steps + 1):
-			var offset: Vector2 = Vector2(column, -row) * quantum
-			above.append(anchor + offset)
-			if offset.length() <= near:
-				nearby.append(anchor + offset)
+	var nearby: Array[Vector2] = _spot_grid(anchor, quantum, steps, steps, steps, near)
 	var screen: Array[Vector2] = []
 	var step: Vector2 = popup_size + Vector2(padding * 2, rise + padding * 2)
 	for row: int in range(ceili(viewport.size.y / step.y)):
 		for column: int in range(ceili(viewport.size.x / step.x)):
 			screen.append(first + Vector2(column, row) * step)
 	var all_blocked: Array[Rect2] = blocked + reserved
-	# 근처가 차면 다른 유닛의 상태 자리 예약을 풀고 다시 찾는다. 그래도 차면 위쪽으로 쌓는다.
-	# 위가 화면 패널에 막히면 순서를 포기하고 화면 전체에서 대상에 가장 가까운 빈 자리를 쓴다.
+	# 1~2: 기준 자리 40px 안. 근처가 차면 다른 유닛의 상태 자리 예약을 풀고 다시 찾는다.
+	# 3: 기준 자리 위쪽 띠(가로 ±40px)로 쌓는다. 4: 위가 막히면 순서를 포기하고 대상 기준점 40px 안에서 찾는다.
+	# 5~6: 그래도 없으면 전처럼 화면 전체에서 대상에 가장 가까운 빈 자리를 쓴다.
 	for search: Array in [[nearby, all_blocked, ceiling, anchor], [nearby, blocked, ceiling, anchor],
-			[above, blocked, ceiling, anchor], [screen, all_blocked, INF, center], [screen, blocked, INF, center]]:
+			[_spot_grid(anchor, quantum, steps, 0, ceili((anchor.y - first.y) / quantum)), blocked, ceiling, anchor],
+			[_spot_grid(center, quantum, steps, steps, steps, near), blocked, INF, center],
+			[screen, all_blocked, INF, center], [screen, blocked, INF, center]]:
 		var found: Variant = _closest_free_spot(search[0], search[3], popup_size, rise, padding, search[1], search[2])
 		if found != null:
 			return canvas.affine_inverse() * (found as Vector2)
 	return canvas.affine_inverse() * center
+
+
+## base에서 quantum 간격의 후보 격자. 가로 ±columns칸, 아래 down칸에서 위 up칸까지. radius 밖은 뺀다.
+func _spot_grid(base: Vector2, quantum: float, columns: int, down: int, up: int, radius: float = INF) -> Array[Vector2]:
+	var spots: Array[Vector2] = []
+	for row: int in range(-down, up + 1):
+		for column: int in range(-columns, columns + 1):
+			var offset: Vector2 = Vector2(column, -row) * quantum
+			if offset.length() <= radius:
+				spots.append(base + offset)
+	return spots
 
 
 ## 후보 중 기준점에 가장 가까운 빈 자리. 없으면 null. 팝업 아래쪽은 ceiling을 넘지 않는다.
