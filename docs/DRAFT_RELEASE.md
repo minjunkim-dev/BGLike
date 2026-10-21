@@ -19,6 +19,10 @@ helper는 source SHA가 현재 `main`의 조상인지 확인합니다.
 실패·취소·진행 중·누락된 CI는 허용하지 않습니다.
 이미 있는 태그·Release·Draft 이름은 실패 처리합니다.
 GitHub API 오류와 조회 한계도 실패 처리합니다.
+모든 검증을 통과한 뒤에만 helper가 `GITHUB_OUTPUT`에 source SHA를 기록합니다.
+제품 checkout은 raw 입력 대신 이 검증 출력만 사용합니다.
+main 밖 SHA와 실패한 CI는 source 실행 전에 차단합니다.
+`contents: read`만으로는 기본 브랜치 캐시 쓰기까지 차단하지 못하므로, source 검증을 생략하지 않습니다.
 
 ## 패키지와 권한
 
@@ -66,3 +70,4 @@ headless smoke는 조작감·화면 가독성·OS 지원·출시 준비·공개 
 
 Action pin은 [upload-artifact v7.0.2](https://github.com/actions/upload-artifact/releases/tag/v7.0.2)와 [download-artifact v8.0.2](https://github.com/actions/download-artifact/releases/tag/v8.0.2)의 공식 tag commit입니다.
 Godot 명령은 [공식 command line 문서](https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html)를 따릅니다.
+기본 브랜치 캐시의 신뢰 경계는 [CodeQL의 cache poisoning 설명](https://codeql.github.com/codeql-query-help/actions/actions-cache-poisoning-poisonable-step/)을 따릅니다.

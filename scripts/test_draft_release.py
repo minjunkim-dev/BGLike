@@ -9,7 +9,7 @@ import urllib.error
 from unittest.mock import patch
 import zipfile
 
-from draft_release import GitHub, create_draft, eligibility, inputs, verify_bundle
+from draft_release import GitHub, check_source, create_draft, eligibility, inputs, verify_bundle
 
 
 SHA = "a" * 40
@@ -85,6 +85,29 @@ class DraftTests(unittest.TestCase):
                 api.responses[path] = response
                 with self.assertRaises(ValueError):
                     eligibility(api, VERSION, SHA)
+
+    def test_eligible_source_output_preserves_existing_step_outputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "output"
+            output.write_text("existing=value\n")
+            self.assertEqual(check_source(API(), VERSION, SHA, output), 3)
+            self.assertEqual(output.read_text(), f"existing=value\nsource-sha={SHA}\n")
+
+    def test_ineligible_source_never_emits_checkout_output(self):
+        cases = [("invalid SHA", "main", None, None),
+                 ("outside main", SHA, f"compare/{SHA}...main", {"status": "diverged"}),
+                 ("failed CI", SHA, "actions/runs/3/jobs?filter=latest&per_page=100",
+                  {"jobs": [{"name": "CI", "status": "completed", "conclusion": "failure"}]})]
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "output"
+            for name, sha, path, response in cases:
+                api = API()
+                if path:
+                    api.responses[path] = response
+                with self.subTest(name=name), self.assertRaises(ValueError):
+                    check_source(api, VERSION, sha, output)
+                self.assertFalse(output.exists())
+                self.assertFalse(any(call[0] == "POST" for call in api.calls))
 
     def test_failure_cancel_missing_aggregate_and_wrong_ci_event(self):
         for conclusion in ["failure", "cancelled", None, "skipped"]:

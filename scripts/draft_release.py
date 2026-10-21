@@ -95,6 +95,13 @@ def eligibility(api, version, sha):
     return run["id"]
 
 
+def check_source(api, version, sha, output):
+    run_id = eligibility(api, version, sha)
+    with output.open("a", encoding="utf-8") as stream:
+        stream.write(f"source-sha={sha}\n")
+    return run_id
+
+
 def verify_bundle(directory, version, sha, engine_hash):
     inputs(version, sha)
     name = f"bglike-{version}-pck.zip"
@@ -169,7 +176,7 @@ if __name__ == "__main__":
         version, sha = os.environ["RELEASE_VERSION"], os.environ["SOURCE_SHA"]
         api = GitHub(os.environ["GITHUB_REPOSITORY"], os.environ["GH_TOKEN"])
         if args.mode == "check":
-            print(f"Eligible CI run: {eligibility(api, version, sha)}")
+            print(f"Eligible CI run: {check_source(api, version, sha, Path(os.environ['GITHUB_OUTPUT']))}")
         else:
             config = dict(line.split("=", 1) for line in Path("scripts/godot.env").read_text().splitlines() if line and not line.startswith("#"))
             print(f"Unpublished Draft ID: {create_draft(api, args.artifact, version, sha, config['GODOT_LINUX_X86_64_SHA256'])}")
