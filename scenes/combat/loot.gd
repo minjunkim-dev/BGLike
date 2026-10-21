@@ -29,8 +29,8 @@ func _init() -> void:
 		assert(item.get("kind", "") in ["weapon", "armor", "potion"], "알 수 없는 아이템 종류")
 		assert(not str(item.get("name", "")).is_empty(), "아이템 이름이 필요합니다.")
 		assert(int(item.get("weight", 0)) > 0, "아이템 추첨 비중은 양수여야 합니다.")
-		assert(ResourceLoader.exists(icon_path(item)), "아이템 아이콘이 필요합니다.")
 		assert(item.get("unit_icons", {}) is Dictionary, "unit_icons는 객체여야 합니다.")
+		assert(ResourceLoader.exists(icon_path(item)), "아이템 아이콘이 필요합니다.")
 		for unit_id: String in item.get("unit_icons", {}):
 			assert(ResourceLoader.exists(icon_path(item, unit_id)), "직업별 아이콘이 없습니다.")
 		total_weight += int(item["weight"])
