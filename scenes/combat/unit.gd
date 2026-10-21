@@ -287,6 +287,7 @@ func has_available_turn_action(
 
 
 func _ready() -> void:
+	facing_left = not is_ally
 	_sprite = AnimatedSprite2D.new()
 	_sprite.name = "Sprite"
 	_sprite.centered = false
