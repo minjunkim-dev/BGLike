@@ -29,6 +29,8 @@ var _order_moves: Dictionary[CombatUnit, Vector2] = {}
 var _order_tween: Tween
 var _order_revision: int = 0
 var _actions: Dictionary[String, Button] = {}
+# 지금 보이는 스킬 버튼. 숫자 키와 방향키가 왼쪽부터 이 순서를 쓴다.
+var _action_slots: Array[Button] = []
 var _badges: Dictionary[String, Label] = {}
 var _costs: Dictionary[String, Label] = {}
 var _containers: Array[PanelContainer] = []
@@ -199,6 +201,7 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 	var symbols: Array[String] = ["●", "▲", "◆"]
 	var empty_symbols: Array[String] = ["○", "△", "◇"]
 	var names: Array[String] = [tr("행동"), tr("보조 행동"), tr("반응")]
+	_action_slots.clear()
 	for index: int in range(_containers.size()):
 		_containers[index].visible = shown != null and (index != 2 or shown.kind == CombatUnit.Kind.WARRIOR)
 		if shown == null:
@@ -212,6 +215,8 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 		for action: String in CombatActionRules.GROUPS[index]:
 			var button: Button = _actions[action]
 			button.visible = CombatActionRules.belongs_to(shown, action)
+			if button.visible and _containers[index].visible:
+				_action_slots.append(button)
 			_costs[action].text = symbols[index]
 			button.tooltip_text = CombatActionRules.NAMES[action] + "\n" + action_details(actions, shown, action)
 			var active: bool = ally_turn and not locked and actions.can_use(actor, action)
@@ -232,9 +237,24 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			_costs[action].reset_size()
 			_badges[action].modulate = Color.WHITE if ally_turn else Color("888888")
 			_costs[action].modulate = Color.WHITE if not button.disabled else Color("666666")
+	# 좌우 방향키·D-pad는 스킬 바 안에서만 옮긴다. 스틱을 누르고 있어도 끝에서 멈춘다.
+	for index: int in range(_action_slots.size()):
+		var button: Button = _action_slots[index]
+		button.focus_neighbor_left = button.get_path_to(_action_slots[maxi(index - 1, 0)])
+		button.focus_neighbor_right = button.get_path_to(_action_slots[mini(index + 1, _action_slots.size() - 1)])
 	end_button.disabled = not ally_turn or locked
 	for button: Button in _portraits.values():
 		button.disabled = button.disabled or locked
+
+
+## 스킬 바의 slot번째 버튼에 포커스를 준다. 비활성 버튼은 설명만 보이고 누르지 않는다.
+func focus_action_slot(slot: int, press: bool) -> void:
+	if slot >= _action_slots.size():
+		return
+	var button: Button = _action_slots[slot]
+	button.grab_focus()
+	if press and not button.disabled:
+		button.pressed.emit()
 
 
 func action_details(actions: CombatActions, actor: CombatUnit, action: String) -> String:

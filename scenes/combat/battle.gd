@@ -218,16 +218,25 @@ func _input(event: InputEvent) -> void:
 		# Space는 적 턴 가속 키다. 포커스된 버튼(턴 종료 등)을 누르지 않게 소비한다.
 		get_viewport().set_input_as_handled()
 		return
+	# 숫자 키 1~9는 스킬 바의 버튼을 왼쪽부터 고른다. 자판 배열과 관계없이 윗줄 숫자 자리를 쓴다.
+	if event is InputEventKey and event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_9:
+		if event.pressed and not event.echo and _ally_input_open():
+			get_viewport().set_input_as_handled()
+			hud.focus_action_slot(event.physical_keycode - KEY_1, true)
+		return
+	# 포커스가 없으면 좌우 방향키·D-pad가 스킬 바의 첫 버튼으로 들어간다.
+	if ((event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"))
+		and get_viewport().gui_get_focus_owner() == null and _ally_input_open()):
+		get_viewport().set_input_as_handled()
+		hud.focus_action_slot(0, false)
+		return
 	if event is not InputEventKey or event.keycode != KEY_TAB or preparation.visible:
 		return
 	# GUI보다 먼저 소비해 전투 중 기본 Tab 포커스 이동을 막는다.
 	get_viewport().set_input_as_handled()
-	if (not event.pressed or event.echo or actions.busy or actions.is_over()
-		or hud.reaction_dialog.visible or hud.get_node("Result").visible):
+	if not event.pressed or event.echo or not _ally_input_open():
 		return
 	var actor: CombatUnit = turns.current_unit
-	if actor == null or not actor.is_ally:
-		return
 	var group: Array[CombatUnit] = turns.get_current_group()
 	var index: int = group.find(actor)
 	var direction: int = -1 if event.shift_pressed else 1
@@ -237,6 +246,13 @@ func _input(event: InputEvent) -> void:
 			selection.inspect(unit)
 			_update_turn_ui()
 			return
+
+
+## 아군 턴의 키보드 조작을 받을 수 있는지. 연출·반응 확인·결과·정비 화면에서는 잠근다.
+func _ally_input_open() -> bool:
+	var actor: CombatUnit = turns.current_unit
+	return (actor != null and actor.is_ally and not actions.busy and not actions.is_over()
+		and not hud.reaction_dialog.visible and not hud.get_node("Result").visible and not preparation.visible)
 
 
 func _unhandled_input(event: InputEvent) -> void:
