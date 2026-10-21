@@ -89,12 +89,13 @@ func _run() -> void:
 
 
 func _test_skill_icons() -> void:
-	for action: String in ["attack", "second_wind", "surge", "parry", "opportunity", "mark", "shock",
-			"disengage", "shove", "jump", "potion"]:
+	# 새 아군 동작을 NAMES에 추가하면 아이콘도 함께 요구한다.
+	for action: String in CombatActionRules.NAMES:
 		var icon: Texture2D = CombatActionRules.icon_of(action)
-		_check(icon != null and icon.get_size() == Vector2(64, 64), "스킬 아이콘 64px 원본: " + action)
-	for action: String in ["spawn", "pull", "spin"]:
-		_check(CombatActionRules.icon_of(action) == null, "적 전용 스킬은 아이콘 범위 밖: " + action)
+		if action in ["spawn", "pull", "spin"]:
+			_check(icon == null, "적 전용 스킬은 아이콘 범위 밖: " + action)
+		else:
+			_check(icon != null and icon.get_size() == Vector2(64, 64), "스킬 아이콘 64px 원본: " + action)
 
 
 func _test_selection() -> void:
