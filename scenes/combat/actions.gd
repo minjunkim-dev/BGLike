@@ -27,7 +27,7 @@ class RockRoll extends RefCounted:
 	var collisions: Array[CombatUnit] = []
 	var stop_cell: Vector2i
 	var destroyed: bool = false
-	var reason: String = "최대3칸"
+	var reason: String = TranslationServer.tr("최대3칸")
 
 
 class Ground extends RefCounted:
@@ -127,9 +127,9 @@ func attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
 	prop.hit_points = maxi(0, prop.hit_points - last_damage)
 	if prop.hit_points == 0:
 		grid.props.erase(prop)
-	var message: String = "%s 나무 상자 공격: %d, %d · 피해 %d · 내구도 %d/6%s" % [
+	var message: String = tr("%s 나무 상자 공격: %d, %d · 피해 %d · 내구도 %d/6%s") % [
 		actor.get_display_name(), prop.cell.x, prop.cell.y, last_damage, prop.hit_points,
-		" · 파괴" if prop.hit_points == 0 else ""]
+		tr(" · 파괴") if prop.hit_points == 0 else ""]
 	hit_landed.emit()
 	logged.emit(message)
 	busy = false
@@ -141,13 +141,13 @@ func preview_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> RockRoll:
 	var roll: RockRoll = RockRoll.new()
 	if (not is_instance_valid(actor) or prop == null or prop not in grid.props
 		or prop.kind != "rock" or prop.hit_points <= 0):
-		roll.reason = "대상 없음"
+		roll.reason = tr("대상 없음")
 		return roll
 	var offset: Vector2i = prop.cell - actor.cell
 	roll.direction = (Vector2i(signi(offset.x), 0) if absi(offset.x) >= absi(offset.y)
 		else Vector2i(0, signi(offset.y)))
 	if roll.direction == Vector2i.ZERO:
-		roll.reason = "방향 없음"
+		roll.reason = tr("방향 없음")
 		return roll
 	return _trace_rock(prop, roll.direction, 3, [])
 
@@ -171,16 +171,16 @@ func _trace_rock(prop: CombatGrid.Prop, direction: Vector2i, limit: int,
 		roll.stop_cell = next
 		if not grid.is_inside(next):
 			step.advance = false
-			step.reason = "맵 경계"
+			step.reason = tr("맵 경계")
 		elif grid.is_blocked(next):
 			step.advance = false
-			step.reason = "물체" if grid.prop_at(next) != null else "장벽"
+			step.reason = tr("물체") if grid.prop_at(next) != null else tr("장벽")
 		elif grid.height_at(next) > grid.height_at(cell):
 			step.advance = false
-			step.reason = "오르막"
+			step.reason = tr("오르막")
 		elif grid.pits.has(next) or grid.height_at(cell) - grid.height_at(next) >= 2:
 			step.destroyed = true
-			step.reason = "낭떠러지 소멸" if grid.pits.has(next) else "높이 차2 파괴"
+			step.reason = tr("낭떠러지 소멸") if grid.pits.has(next) else tr("높이 차2 파괴")
 		else:
 			for target: CombatUnit in positions:
 				if positions[target] == next and health[target] > 0:
@@ -203,7 +203,7 @@ func _trace_rock(prop: CombatGrid.Prop, direction: Vector2i, limit: int,
 							blocked = true
 					if blocked:
 						step.advance = false
-						step.reason = "밀기 막힘"
+						step.reason = tr("밀기 막힘")
 					else:
 						step.push = true
 						step.push_cell = destination
@@ -217,7 +217,7 @@ func _trace_rock(prop: CombatGrid.Prop, direction: Vector2i, limit: int,
 							side_alive = true
 					if not side_alive:
 						step.advance = false
-						step.reason = "전투 종료"
+						step.reason = tr("전투 종료")
 		roll.steps.append(step)
 		if step.advance:
 			roll.cells.append(next)
@@ -244,12 +244,12 @@ func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
 			_damage(target, step.damage)
 			if not _can_continue_rock(actor, prop, origin) or not is_instance_valid(target) or target not in units:
 				return
-			impact_summary += (" · 충돌: " if impact_summary.is_empty() else ", ") + target.get_display_name() + " 피해4"
-			logged.emit("%s 바위 충돌: 피해4 · HP %d" % [target.get_display_name(), target.hit_points])
+			impact_summary += (tr(" · 충돌: %s 피해4") if impact_summary.is_empty() else tr(", %s 피해4")) % target.get_display_name()
+			logged.emit(tr("%s 바위 충돌: 피해4 · HP %d") % [target.get_display_name(), target.hit_points])
 			if not _can_continue_rock(actor, prop, origin) or not is_instance_valid(target) or target not in units:
 				return
 			if is_over():
-				logged.emit("바위 정지: 전투 종료" + impact_summary)
+				logged.emit(tr("바위 정지: 전투 종료") + impact_summary)
 				return
 			step = _trace_rock(prop, direction, 1, struck).steps[0]
 			if step.damage > 0:
@@ -260,7 +260,7 @@ func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
 			if not _can_continue_rock(actor, prop, origin) or not is_instance_valid(target) or target not in units:
 				return
 			if is_over():
-				logged.emit("바위 정지: 전투 종료" + impact_summary)
+				logged.emit(tr("바위 정지: 전투 종료") + impact_summary)
 				return
 			step = _trace_rock(prop, direction, 1, struck).steps[0]
 			if step.damage > 0:
@@ -270,13 +270,13 @@ func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
 		if step.destroyed:
 			prop.hit_points = 0
 			grid.props.erase(prop)
-		logged.emit("바위 %s: %d, %d" % [step.reason if not step.reason.is_empty() else "이동",
+		logged.emit(tr("바위 %s: %d, %d") % [step.reason if not step.reason.is_empty() else tr("이동"),
 			prop.cell.x, prop.cell.y] + (impact_summary if not step.reason.is_empty() else ""))
 		if step.destroyed or not step.advance:
 			return
 		if not _can_continue_rock(actor, prop, step.cell) or is_over():
 			return
-	logged.emit("바위 정지: 최대3칸" + impact_summary)
+	logged.emit(tr("바위 정지: 최대3칸") + impact_summary)
 
 
 func _can_continue_rock(actor: CombatUnit, prop: CombatGrid.Prop, cell: Vector2i) -> bool:
@@ -294,8 +294,8 @@ func _on_turn_started(unit: CombatUnit) -> void:
 			ground.turns_left -= 1
 			if ground.turns_left == 0:
 				_grounds.erase(ground)
-				ground_messages.append("%s %s 장판 만료: %d, %d" % [unit.get_display_name(),
-					"불" if ground.kind == "burn" else "독", ground.cell.x, ground.cell.y])
+				ground_messages.append(tr("%s %s 장판 만료: %d, %d") % [unit.get_display_name(),
+					tr("불") if ground.kind == "burn" else tr("독"), ground.cell.x, ground.cell.y])
 	for target: CombatUnit in units:
 		if target.stun_source == unit:
 			target.is_stunned = false
@@ -309,8 +309,8 @@ func _on_turn_started(unit: CombatUnit) -> void:
 	_clear_burn_in_water(unit)
 	if unit.overloaded and unit.hit_points > 0 and not is_over():
 		_damage(unit, 2)
-		logged.emit("%s 과부하: 자기 피해 2 · HP %d" % [unit.get_display_name(), unit.hit_points])
-		feedback.emit(unit, "과부하 -2")
+		logged.emit(tr("%s 과부하: 자기 피해 2 · HP %d") % [unit.get_display_name(), unit.hit_points])
+		feedback.emit(unit, tr("과부하 -2"))
 	_apply_grounds(unit, false)
 	var poison_checked: bool = false
 	for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
@@ -318,14 +318,14 @@ func _on_turn_started(unit: CombatUnit) -> void:
 			break
 		if effect not in unit.status_effects:
 			continue
-		var name: String = "화상" if effect.kind == "burn" else "독"
+		var name: String = tr("화상") if effect.kind == "burn" else tr("독")
 		if effect.kind == "poison" and not poison_checked:
 			poison_checked = true
 			var constitution: int = unit.get_attribute(CombatUnit.Attribute.CONSTITUTION)
 			var saved: CombatChecks.RollResult = CombatChecks.saving_throw(constitution, effect.save_dc, dice)
-			logged.emit("%s 독 건강 내성: d20 %d + %d = %d / DC %d · %s" % [unit.get_display_name(),
-				saved.selected_roll, constitution, saved.total, effect.save_dc, "성공" if saved.success else "실패"])
-			feedback.emit(unit, "독 내성 %d" % saved.total)
+			logged.emit(tr("%s 독 건강 내성: d20 %d + %d = %d / DC %d · %s") % [unit.get_display_name(),
+				saved.selected_roll, constitution, saved.total, effect.save_dc, tr("성공") if saved.success else tr("실패")])
+			feedback.emit(unit, tr("독 내성 %d") % saved.total)
 			if unit.hit_points <= 0 or is_over():
 				break
 			if effect not in unit.status_effects:
@@ -335,7 +335,7 @@ func _on_turn_started(unit: CombatUnit) -> void:
 				continue
 		var amount: int = dice.roll(4) if effect.kind == "burn" else 1
 		_damage(unit, amount)
-		logged.emit("%s %s: %d · HP %d" % [unit.get_display_name(), name, amount, unit.hit_points])
+		logged.emit(tr("%s %s: %d · HP %d") % [unit.get_display_name(), name, amount, unit.hit_points])
 		feedback.emit(unit, "%s -%d" % [name, amount])
 	changed.emit()
 
@@ -378,8 +378,8 @@ func create_ground(source: CombatUnit, cell: Vector2i, kind: String) -> bool:
 			break
 	if not refreshed:
 		_grounds.append(Ground.new(source, cell, kind))
-	logged.emit("%s %s 장판 %s: %d, %d" % [owner.get_display_name(),
-		"불" if kind == "burn" else "독", "갱신" if refreshed else "생성", cell.x, cell.y])
+	logged.emit(tr("%s %s 장판 %s: %d, %d") % [owner.get_display_name(),
+		tr("불") if kind == "burn" else tr("독"), tr("갱신") if refreshed else tr("생성"), cell.x, cell.y])
 	changed.emit()
 	return true
 
@@ -410,8 +410,8 @@ func incapacitate(target: CombatUnit) -> void:
 		ground.entered.erase(target)
 		if ground.source == target:
 			_grounds.erase(ground)
-			ground_messages.append("%s %s 장판 해제: %d, %d" % [target.get_display_name(),
-				"불" if ground.kind == "burn" else "독", ground.cell.x, ground.cell.y])
+			ground_messages.append(tr("%s %s 장판 해제: %d, %d") % [target.get_display_name(),
+				tr("불") if ground.kind == "burn" else tr("독"), ground.cell.x, ground.cell.y])
 	for unit: CombatUnit in units:
 		if unit.marked_target == target:
 			unit.marked_target = null
@@ -477,10 +477,10 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	changed.emit()
 	for reactor: CombatUnit in jump_reactors(actor, destination):
 		var chance: float = grid.attack_preview(reactor, actor).chance
-		if await _ask_reaction(reactor, "opportunity", "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)" % [actor.get_display_name(), chance * 100.0]):
+		if await _ask_reaction(reactor, "opportunity", tr("%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)") % [actor.get_display_name(), chance * 100.0]):
 			reactor.spend_resource(CombatUnit.TurnResource.REACTION)
 			if not reactor.is_ally:
-				logged.emit("%s 기회 공격: 반응 사용" % reactor.get_display_name())
+				logged.emit(tr("%s 기회 공격: 반응 사용") % reactor.get_display_name())
 			await _perform_attack(reactor, actor, false)
 		if actor.hit_points <= 0:
 			break
@@ -492,7 +492,7 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	if jump_animation.is_valid():
 		await jump_animation.call(actor, destination)
 	_land(actor, destination)
-	logged.emit("%s 점프: 이동 %d, 보조 행동1 · 남은 이동 %d" % [
+	logged.emit(tr("%s 점프: 이동 %d, 보조 행동1 · 남은 이동 %d") % [
 		actor.get_display_name(), cells[destination], actor.movement_left])
 	_finish()
 	return true
@@ -522,13 +522,13 @@ func _fall_damage_from(actor: CombatUnit, origin: Vector2i, destination: Vector2
 # _land와 같은 순서로 밀린 착지 결과를 안내한다.
 func shove_landing(target: CombatUnit, destination: Vector2i) -> String:
 	if grid.pits.has(destination):
-		return "낙사"
+		return tr("낙사")
 	var notes: Array[String] = []
 	if destination in grid.water_cells and target.get_status_count("burn") > 0:
-		notes.append("물: 화상 해제")
+		notes.append(tr("물: 화상 해제"))
 	var fall: int = fall_damage(target, destination)
 	if fall > 0:
-		notes.append("낙하 피해 %d" % fall)
+		notes.append(tr("낙하 피해 %d") % fall)
 	return " · ".join(notes)
 
 
@@ -538,9 +538,9 @@ func rock_landing(roll: RockRoll, target: CombatUnit) -> String:
 	for step: RockStep in roll.steps:
 		if step.push and step.target == target:
 			if grid.pits.has(step.push_cell):
-				return "낙사"
+				return tr("낙사")
 			fall += _fall_damage_from(target, step.cell, step.push_cell)
-	return "낙하 피해 %d" % fall if fall > 0 else ""
+	return tr("낙하 피해 %d") % fall if fall > 0 else ""
 
 
 func can_target(actor: CombatUnit, target: CombatUnit, action: String,
@@ -615,23 +615,23 @@ func unavailable_reason(actor: CombatUnit, action: String) -> String:
 	var resource: CombatUnit.TurnResource = CombatActionRules.resource_of(action)
 	var reaction: bool = resource == CombatUnit.TurnResource.REACTION
 	if is_over() or (busy and not reaction):
-		return "전투 입력 잠금"
+		return tr("전투 입력 잠금")
 	if not reaction and (actor != turns.current_unit or not actor.is_ally):
-		return "아군의 자기 턴에만 사용"
+		return tr("아군의 자기 턴에만 사용")
 	if CombatActionRules.uses_left(actor, action) == 0:
-		return "보유 물약 없음" if action == "potion" else "이번 막의 횟수를 모두 씀"
+		return tr("보유 물약 없음") if action == "potion" else tr("이번 막의 횟수를 모두 씀")
 	if [actor.action_left, actor.bonus_action_left, actor.reaction_left][resource] == 0:
-		return "자원을 이미 씀"
+		return tr("자원을 이미 씀")
 	if reaction:
 		if actor.hit_points <= 0:
-			return "전투 불능"
-		return "기절 상태" if actor.is_stunned else ""
+			return tr("전투 불능")
+		return tr("기절 상태") if actor.is_stunned else ""
 	if action in ["second_wind", "potion"] and actor.hit_points == actor.get_max_hit_points():
-		return "HP가 이미 최대"
+		return tr("HP가 이미 최대")
 	if action == "surge" and actor.action_left > 0:
-		return "행동이 아직 남아 있음"
+		return tr("행동이 아직 남아 있음")
 	if not can_use(actor, action):
-		return "이동이 없거나 이미 효과 적용 중" if action == "disengage" else "사거리 또는 대상 조건을 확인"
+		return tr("이동이 없거나 이미 효과 적용 중") if action == "disengage" else tr("사거리 또는 대상 조건을 확인")
 	return ""
 
 
@@ -651,10 +651,10 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 					and CombatActionRules.belongs_to(reactor, "opportunity") and reactor.reaction_left > 0
 					and grid.leaves_reach(reactor, actor.cell, step)):
 					var chance: float = grid.attack_preview(reactor, actor).chance
-					if await _ask_reaction(reactor, "opportunity", "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)" % [actor.get_display_name(), chance * 100.0]):
+					if await _ask_reaction(reactor, "opportunity", tr("%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)") % [actor.get_display_name(), chance * 100.0]):
 						reactor.spend_resource(CombatUnit.TurnResource.REACTION)
 						if not reactor.is_ally:
-							logged.emit("%s 기회 공격: 반응 사용" % reactor.get_display_name())
+							logged.emit(tr("%s 기회 공격: 반응 사용") % reactor.get_display_name())
 						await _perform_attack(reactor, actor, false)
 					if actor.hit_points <= 0:
 						break
@@ -668,7 +668,7 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 		_apply_grounds(actor, true)
 		moved += 1
 		changed.emit()
-	logged.emit("%s 이동: %d칸, 남은 이동 %d" % [actor.get_display_name(), moved, actor.movement_left])
+	logged.emit(tr_n("%s 이동: %d칸, 남은 이동 %d", "%s 이동: %d칸, 남은 이동 %d", moved) % [actor.get_display_name(), moved, actor.movement_left])
 	_finish()
 	return true
 
@@ -693,7 +693,7 @@ func spin(actor: CombatUnit) -> bool:
 	var targets: Array[CombatUnit] = grid.opponents_in_area(actor, 1)
 	busy = true
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
-	logged.emit("%s 회전회오리: 인접 대상 %d명" % [actor.get_display_name(), targets.size()])
+	logged.emit(tr_n("%s 회전회오리: 인접 대상 %d명", "%s 회전회오리: 인접 대상 %d명", targets.size()) % [actor.get_display_name(), targets.size()])
 	changed.emit()
 	for target: CombatUnit in targets:
 		if actor.hit_points <= 0 or actor.is_stunned or actor != turns.current_unit or is_over():
@@ -724,7 +724,7 @@ func spawn_spiderling(actor: CombatUnit) -> bool:
 		busy = false
 		return false
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
-	logged.emit("%s 새끼 낳기: %s" % [actor.get_display_name(), child.cell])
+	logged.emit(tr("%s 새끼 낳기: %s") % [actor.get_display_name(), child.cell])
 	_finish()
 	return true
 
@@ -736,15 +736,15 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 	CombatActionRules.spend_use(actor, action)
 	match action:
 		"second_wind":
-			_heal(actor, dice.roll(10) + 1, "숨 고르기")
+			_heal(actor, dice.roll(10) + 1, tr("숨 고르기"))
 		"surge":
 			actor.action_left = 1
-			logged.emit("%s 몰아치기: 행동 회복" % actor.get_display_name())
+			logged.emit(tr("%s 몰아치기: 행동 회복") % actor.get_display_name())
 		"disengage":
 			actor.disengaged = true
-			logged.emit("%s 물러서며 쏘기: 이번 턴 이동은 기회 공격 제외" % actor.get_display_name())
+			logged.emit(tr("%s 물러서며 쏘기: 이번 턴 이동은 기회 공격 제외") % actor.get_display_name())
 		"potion":
-			_heal(actor, dice.roll(4) + dice.roll(4) + 2, "물약")
+			_heal(actor, dice.roll(4) + dice.roll(4) + 2, tr("물약"))
 	changed.emit()
 	return true
 
@@ -755,7 +755,7 @@ func mark(actor: CombatUnit, target: CombatUnit) -> bool:
 	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
 	CombatActionRules.spend_use(actor, "mark")
 	actor.marked_target = target
-	logged.emit("%s 표식: %s" % [actor.get_display_name(), target.get_display_name()])
+	logged.emit(tr("%s 표식: %s") % [actor.get_display_name(), target.get_display_name()])
 	changed.emit()
 	return true
 
@@ -771,12 +771,12 @@ func pull(actor: CombatUnit, target: CombatUnit) -> bool:
 	if result.attacker_wins:
 		var cells: Array[Vector2i] = grid.pull_cells(actor, target)
 		_land(target, cells[0] if cells.size() == 1 else cells[dice.roll(cells.size()) - 1])
-	logged.emit("%s 만능팔: %d + %d = %d / %d + %d = %d · %s" % [
+	logged.emit(tr("%s 만능팔: %d + %d = %d / %d + %d = %d · %s") % [
 		actor.get_display_name(), result.attacker_roll,
 		actor.get_attribute(CombatUnit.Attribute.STRENGTH), result.attacker_total,
 		result.defender_roll, maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()),
-		result.defender_total, "성공" if result.attacker_wins else "실패"])
-	feedback.emit(target, "끌어옴" if result.attacker_wins else "만능팔 저항")
+		result.defender_total, tr("성공") if result.attacker_wins else tr("실패")])
+	feedback.emit(target, tr("끌어옴") if result.attacker_wins else tr("만능팔 저항"))
 	changed.emit()
 	return true
 
@@ -791,14 +791,14 @@ func shove(actor: CombatUnit, target: CombatUnit) -> bool:
 			actor.get_attribute(CombatUnit.Attribute.STRENGTH),
 			maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), dice)
 		won = result.attacker_wins
-		feedback.emit(actor, "밀치기 %d" % result.attacker_total)
-		feedback.emit(target, "저항 %d" % result.defender_total)
-		logged.emit("밀치기 대결: %d + %d = %d / %d + %d = %d" % [
+		feedback.emit(actor, tr("밀치기 %d") % result.attacker_total)
+		feedback.emit(target, tr("저항 %d") % result.defender_total)
+		logged.emit(tr("밀치기 대결: %d + %d = %d / %d + %d = %d") % [
 			result.attacker_roll, actor.get_attribute(CombatUnit.Attribute.STRENGTH), result.attacker_total,
 			result.defender_roll, maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), result.defender_total])
 	if won:
 		_land(target, grid.push_destination(actor.cell, target.cell))
-	logged.emit("밀치기 %s" % ("성공" if won else "실패"))
+	logged.emit(tr("밀치기 %s") % (tr("성공") if won else tr("실패")))
 	changed.emit()
 	return true
 
@@ -826,7 +826,7 @@ func _ask_reaction(reactor: CombatUnit, kind: String, prompt: String) -> bool:
 	_emit_reaction.call_deferred(kind, prompt)
 	var accepted: bool = await reaction_decided
 	logged.emit("%s %s: %s" % [reactor.get_display_name(),
-		"기회 공격" if kind == "opportunity" else "흘려내기", "사용" if accepted else "넘기기"])
+		tr("기회 공격") if kind == "opportunity" else tr("흘려내기"), tr("사용") if accepted else tr("넘기기")])
 	pending_kind = ""
 	return accepted
 
@@ -845,32 +845,32 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	last_attack = CombatChecks.attack(actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
 	last_damage = 0
 	last_damage_rolls.clear()
-	var mode_name: String = "일반"
+	var mode_name: String = tr("일반")
 	if last_attack.mode == CombatChecks.RollMode.ADVANTAGE:
-		mode_name = "유리"
+		mode_name = tr("유리")
 	elif last_attack.mode == CombatChecks.RollMode.DISADVANTAGE:
-		mode_name = "불리"
-	logged.emit("%s 공격(%s): d20 %s + %d = %d / AC %d · %s" % [actor.get_display_name(), mode_name,
+		mode_name = tr("불리")
+	logged.emit(tr("%s 공격(%s): d20 %s + %d = %d / AC %d · %s") % [actor.get_display_name(), mode_name,
 		str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total, target.get_armor_class(),
-		"치명타" if last_attack.critical else "명중" if last_attack.success else "빗나감"])
-	feedback.emit(actor, "공격 %d" % last_attack.total)
+		tr("치명타") if last_attack.critical else tr("명중") if last_attack.success else tr("빗나감")])
+	feedback.emit(actor, tr("공격 %d") % last_attack.total)
 	if last_attack.critical:
-		feedback.emit(target, "치명타!")
+		feedback.emit(target, tr("치명타!"))
 	if not last_attack.success:
-		feedback.emit(target, "자동 실패" if last_attack.selected_roll == 1 else "빗나감")
+		feedback.emit(target, tr("자동 실패") if last_attack.selected_roll == 1 else tr("빗나감"))
 		return
 	if (save_dc > 0 and CombatActionRules.has_uses(target, "parry") and not target.is_stunned
 		and target.reaction_left > 0):
 		var success_rolls: int = clampi(21 + target.get_dexterity() - save_dc, 0, 20)
-		if await _ask_reaction(target, "parry", "%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)" % [target.get_display_name(), success_rolls * 5.0, target.parry_left]):
+		if await _ask_reaction(target, "parry", tr("%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)") % [target.get_display_name(), success_rolls * 5.0, target.parry_left]):
 			target.spend_resource(CombatUnit.TurnResource.REACTION)
 			CombatActionRules.spend_use(target, "parry")
 			var saved: CombatChecks.RollResult = CombatChecks.saving_throw(target.get_dexterity(), save_dc, dice)
-			logged.emit("흘려내기: d20 %d + %d = %d / DC %d · %s" % [saved.selected_roll,
-				target.get_dexterity(), saved.total, save_dc, "성공" if saved.success else "실패"])
-			feedback.emit(target, "흘려내기 %d" % saved.total)
+			logged.emit(tr("흘려내기: d20 %d + %d = %d / DC %d · %s") % [saved.selected_roll,
+				target.get_dexterity(), saved.total, save_dc, tr("성공") if saved.success else tr("실패")])
+			feedback.emit(target, tr("흘려내기 %d") % saved.total)
 			if saved.success:
-				feedback.emit(target, "흘려내기")
+				feedback.emit(target, tr("흘려내기"))
 				return
 	var count: int = 2 if last_attack.critical else 1
 	var sides: int = actor.get_damage_sides()
@@ -886,23 +886,23 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	for rolled: int in last_damage_rolls:
 		last_damage += rolled
 	_damage(target, last_damage)
-	logged.emit("%s 피해%s: %s + %d = %d · HP %d" % [target.get_display_name(),
-		" (표식 추가)" if has_mark_damage else "",
+	logged.emit(tr("%s 피해%s: %s + %d = %d · HP %d") % [target.get_display_name(),
+		tr(" (표식 추가)") if has_mark_damage else "",
 		str(last_damage_rolls), damage_bonus, last_damage, target.hit_points])
 	feedback.emit(target, "-%d" % last_damage)
 	if shock and target.hit_points > 0 and target.is_boss():
-		logged.emit("%s 기절 면역" % target.get_display_name())
-		feedback.emit(target, "기절 면역")
+		logged.emit(tr("%s 기절 면역") % target.get_display_name())
+		feedback.emit(target, tr("기절 면역"))
 		return
 	if shock and target.hit_points > 0:
 		var saved: CombatChecks.RollResult = CombatChecks.saving_throw(
 			target.get_attribute(CombatUnit.Attribute.MENTAL), save_dc, dice)
 		if not saved.success:
 			apply_status(actor, target, "stun")
-		logged.emit("정신 내성: d20 %d + %d = %d / DC %d · %s" % [saved.selected_roll,
+		logged.emit(tr("정신 내성: d20 %d + %d = %d / DC %d · %s") % [saved.selected_roll,
 			target.get_attribute(CombatUnit.Attribute.MENTAL), saved.total, save_dc,
-			"기절" if not saved.success else "버팀"])
-		feedback.emit(target, "정신 내성 %d" % saved.total)
+			tr("기절") if not saved.success else tr("버팀")])
+		feedback.emit(target, tr("정신 내성 %d") % saved.total)
 
 
 func _apply_grounds(unit: CombatUnit, entering: bool) -> void:
@@ -917,8 +917,8 @@ func _apply_grounds(unit: CombatUnit, entering: bool) -> void:
 				continue
 			ground.entered.append(unit)
 		if apply_status(ground.source, unit, ground.kind):
-			logged.emit("%s %s 장판: %s 부여" % [unit.get_display_name(),
-				"불" if ground.kind == "burn" else "독", "화상" if ground.kind == "burn" else "독"])
+			logged.emit(tr("%s %s 장판: %s 부여") % [unit.get_display_name(),
+				tr("불") if ground.kind == "burn" else tr("독"), tr("화상") if ground.kind == "burn" else tr("독")])
 
 
 func _clear_burn_in_water(unit: CombatUnit) -> void:
@@ -931,10 +931,10 @@ func _clear_burn_in_water(unit: CombatUnit) -> void:
 	changed.emit()
 	if not _same_combat(unit, revision):
 		return
-	logged.emit("%s 물: 화상 해제" % unit.get_display_name())
+	logged.emit(tr("%s 물: 화상 해제") % unit.get_display_name())
 	if not _same_combat(unit, revision):
 		return
-	feedback.emit(unit, "물: 화상 해제")
+	feedback.emit(unit, tr("물: 화상 해제"))
 
 
 func _land(target: CombatUnit, destination: Vector2i) -> void:
@@ -945,10 +945,10 @@ func _land(target: CombatUnit, destination: Vector2i) -> void:
 		incapacitate(target)
 		if not _same_combat(target, revision):
 			return
-		logged.emit("%s 낙사: 전투 불능" % target.get_display_name())
+		logged.emit(tr("%s 낙사: 전투 불능") % target.get_display_name())
 		if not _same_combat(target, revision):
 			return
-		feedback.emit(target, "낙사")
+		feedback.emit(target, tr("낙사"))
 		return
 	_clear_burn_in_water(target)
 	if not _same_combat(target, revision):
@@ -961,7 +961,7 @@ func _land(target: CombatUnit, destination: Vector2i) -> void:
 		changed.emit()
 		if not _same_combat(target, revision):
 			return
-		logged.emit("%s 낙하 피해: %d · HP %d" % [target.get_display_name(), amount, target.hit_points])
+		logged.emit(tr("%s 낙하 피해: %d · HP %d") % [target.get_display_name(), amount, target.hit_points])
 		if not _same_combat(target, revision):
 			return
 		feedback.emit(target, "-%d" % amount)
@@ -989,7 +989,7 @@ func _same_combat(unit: CombatUnit, revision: int) -> bool:
 func _heal(actor: CombatUnit, amount: int, name: String) -> void:
 	var before: int = actor.hit_points
 	actor.hit_points = mini(actor.get_max_hit_points(), actor.hit_points + amount)
-	logged.emit("%s %s: HP +%d → %d" % [actor.get_display_name(), name, actor.hit_points - before, actor.hit_points])
+	logged.emit(tr("%s %s: HP +%d → %d") % [actor.get_display_name(), name, actor.hit_points - before, actor.hit_points])
 	feedback.emit(actor, "+%d" % (actor.hit_points - before))
 
 

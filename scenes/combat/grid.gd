@@ -253,21 +253,21 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 		return preview
 	preview.valid_target = true
 	if attacker.is_stunned:
-		preview.blocked_reason = "기절하여 공격 불가"
+		preview.blocked_reason = tr("기절하여 공격 불가")
 	preview.in_range = can_target(attacker, target, "attack")
 	var advantages: int = 0
 	var disadvantages: int = 0
 	if target.is_stunned:
 		advantages = 1
-		preview.reasons.append("기절한 대상")
+		preview.reasons.append(tr("기절한 대상"))
 	if attacker.get_attack_range() > 1 and height_at(attacker.cell) - height_at(target.cell) >= 2:
 		advantages = 1
-		preview.reasons.append("고지대")
+		preview.reasons.append(tr("고지대"))
 	if attacker.kind == CombatUnit.Kind.ARCHER:
 		for unit: CombatUnit in opponents_in_range(attacker, 1):
 			if not unit.is_stunned and are_adjacent(attacker.cell, unit.cell):
 				disadvantages = 1
-				preview.reasons.append("옆에 적")
+				preview.reasons.append(tr("옆에 적"))
 				break
 	preview.mode = CombatChecks.roll_mode(advantages, disadvantages)
 	if preview.in_range and preview.blocked_reason.is_empty():
