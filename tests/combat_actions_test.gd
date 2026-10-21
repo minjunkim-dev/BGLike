@@ -3501,8 +3501,40 @@ func _test_terrain_hidden_unit_outline() -> void:
 		var placed: Array[CombatGrid.Prop] = actions.get_props()
 		_check(archer.action_left == 0 and (placed.is_empty() or (placed[0].cell == front and placed[0].hit_points == 6)),
 			"%s에 가린 윤곽 두 번째 좌클릭은 유닛 공격이며 사물은 그대로" % kind)
+		if kind == "rock":
+			await _check_rock_around_hidden_unit(battle, placed[0], hidden)
 		battle.queue_free()
 		await process_frame
+
+
+func _check_rock_around_hidden_unit(battle: Node2D, rock: CombatGrid.Prop, hidden: Array[Vector2]) -> void:
+	var units: Array[CombatUnit] = battle.get("units")
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	var spider: CombatUnit = units[2]
+	var outside: Vector2 = Vector2.INF
+	for y: int in range(-48, 8):
+		for x: int in range(-24, 25):
+			var point: Vector2 = map.map_to_surface(rock.cell) + Vector2(x, y)
+			if (outside == Vector2.INF and map.prop_at_point(point) == rock
+				and not spider.contains_body_point(spider.to_local(map.to_global(point)))):
+				outside = point
+	selection.clear_preview()
+	await _click(map.get_global_transform_with_canvas() * outside)
+	_check(outside != Vector2.INF and selection.preview_prop == rock,
+		"가린 유닛 몸통 밖의 바위 픽셀은 계속 바위를 선택")
+	var warrior: CombatUnit = units[0]
+	spider.cell = Vector2i(9, 9)
+	warrior.cell = Vector2i(5, 3)
+	selection.clear_preview()
+	battle.call("_update_turn_ui")
+	_check(warrior.is_occluded and not spider.is_occluded, "바위 뒤로 옮긴 아군도 윤곽을 표시")
+	await _click(warrior.get_global_transform_with_canvas() * hidden[hidden.size() / 2])
+	_check(selection.preview_prop == rock, "동작이 없는 가린 아군 몸통보다 앞 바위 선택을 우선")
+	actions.grid.props.erase(rock)
+	battle.call("_update_turn_ui")
+	_check(not warrior.is_occluded, "바위가 사라진 같은 화면 갱신에서 윤곽을 해제")
 
 
 func _test_jump_path() -> void:
