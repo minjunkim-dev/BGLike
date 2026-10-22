@@ -3990,7 +3990,8 @@ func _test_pit_scene_victory() -> void:
 	units[2].is_stunned = true
 	actions.incapacitate(units[3])
 	battle.call("_update_turn_ui")
-	actions.dice = _dice_for([], [])
+	# 승리 드랍도 전투 주사위로 굴린다.
+	actions.dice = _dice_for([], []).then_seeded()
 	hud.action_selected.emit("shove")
 	var point: Vector2 = units[2].get_global_transform_with_canvas() * Vector2(0, -10)
 	await _click(point)
