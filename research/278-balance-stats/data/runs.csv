@@ -1,0 +1,101 @@
+policy,run,exit_code,reason,wall_s,game_s,pointer_fallbacks,field_click_failures
+mother,1,0,graduated,8.6,123.9,0,2
+mother,10,0,graduated,10.1,117.5,0,0
+mother,11,0,graduated,66.5,447.7,0,0
+mother,12,0,graduated,74.1,474.9,0,0
+mother,13,4,round cap 60 at 3-1,104.7,476.1,0,0
+mother,14,4,round cap 60 at 3-1,86.6,486.4,0,0
+mother,15,4,round cap 60 at 3-1,94.3,548.5,0,0
+mother,16,4,round cap 60 at 3-1,103.7,502.3,0,1
+mother,17,0,graduated,12.2,160.8,0,0
+mother,18,0,graduated,10.1,146.4,0,0
+mother,19,0,graduated,14.6,178.1,0,2
+mother,2,4,round cap 60 at 3-1,86.6,485.2,0,1
+mother,20,0,graduated,8.0,98.7,0,2
+mother,21,0,graduated,10.2,135.4,0,2
+mother,22,0,graduated,108.5,525.6,0,0
+mother,23,0,graduated,10.9,132.9,0,0
+mother,24,0,graduated,8.9,117.5,0,0
+mother,25,4,round cap 60 at 3-1,308.4,1545.1,0,1
+mother,26,0,graduated,69.0,458.4,0,2
+mother,27,0,graduated,19.0,217.9,0,0
+mother,28,0,graduated,10.1,141.2,0,1
+mother,29,4,round cap 60 at 3-1,68.9,383.9,0,0
+mother,3,0,graduated,11.2,153.2,0,0
+mother,30,0,graduated,6.3,84.6,0,0
+mother,31,0,graduated,10.3,137.2,0,2
+mother,32,0,graduated,7.4,102.3,0,2
+mother,33,0,graduated,7.8,103.2,0,0
+mother,34,0,graduated,6.6,96.2,0,2
+mother,35,4,round cap 60 at 3-1,101.5,419.5,0,0
+mother,36,0,graduated,31.3,271.0,0,1
+mother,37,0,graduated,89.5,470.1,0,0
+mother,38,0,graduated,6.9,92.3,0,2
+mother,39,0,graduated,104.5,495.6,0,1
+mother,4,0,graduated,13.3,161.9,0,3
+mother,40,0,graduated,115.6,625.9,0,2
+mother,41,0,graduated,34.1,242.5,0,0
+mother,42,0,graduated,25.3,189.5,0,4
+mother,43,0,graduated,28.6,204.6,0,0
+mother,44,0,graduated,20.1,148.3,0,2
+mother,45,0,graduated,32.3,224.9,0,0
+mother,46,4,round cap 60 at 3-1,133.5,573.5,0,0
+mother,47,0,graduated,31.4,211.1,0,0
+mother,48,0,graduated,19.6,155.8,0,0
+mother,49,0,graduated,21.6,156.1,0,1
+mother,5,0,graduated,7.2,93.8,0,0
+mother,50,0,graduated,17.3,145.2,0,4
+mother,6,0,graduated,13.9,134.2,0,1
+mother,7,0,graduated,28.0,206.4,0,1
+mother,8,0,graduated,13.4,124.6,0,0
+mother,9,0,graduated,14.3,144.9,0,0
+nearest,1,4,round cap 60 at 3-1,83.8,367.4,0,0
+nearest,10,4,round cap 60 at 3-1,453.2,1793.6,0,0
+nearest,11,4,round cap 60 at 3-1,61.1,328.5,0,0
+nearest,12,4,round cap 60 at 3-1,58.7,363.3,0,0
+nearest,13,4,round cap 60 at 3-1,77.9,424.1,0,0
+nearest,14,0,graduated,73.5,511.5,0,0
+nearest,15,6,attempt cap 10 at 3-1,526.6,2759.2,0,1
+nearest,16,4,round cap 60 at 3-1,136.6,579.0,0,0
+nearest,17,0,graduated,14.5,168.5,0,5
+nearest,18,4,round cap 60 at 3-1,153.1,952.3,0,0
+nearest,19,4,round cap 60 at 3-1,102.0,508.7,0,0
+nearest,2,4,round cap 60 at 3-1,75.9,368.2,0,0
+nearest,20,4,round cap 60 at 3-1,62.9,342.8,0,0
+nearest,21,0,graduated,10.5,127.9,0,0
+nearest,22,4,round cap 60 at 3-1,237.5,1008.0,0,0
+nearest,23,4,round cap 60 at 3-1,64.9,399.8,0,1
+nearest,24,0,graduated,10.9,133.6,0,0
+nearest,25,4,round cap 60 at 3-1,86.1,466.8,0,0
+nearest,26,6,attempt cap 10 at 3-1,516.3,2638.1,0,0
+nearest,27,4,round cap 60 at 3-1,247.0,1289.9,0,0
+nearest,28,6,attempt cap 10 at 3-1,448.8,2312.2,0,1
+nearest,29,4,round cap 60 at 3-1,83.3,438.6,0,0
+nearest,3,6,attempt cap 10 at 3-1,425.2,2475.6,0,0
+nearest,30,4,round cap 60 at 3-1,133.1,467.9,0,0
+nearest,31,4,round cap 60 at 3-1,81.4,477.6,0,0
+nearest,32,6,attempt cap 10 at 3-1,371.1,2267.0,0,2
+nearest,33,4,round cap 60 at 3-1,187.8,842.6,0,0
+nearest,34,6,attempt cap 10 at 3-1,522.5,2812.2,0,2
+nearest,35,4,round cap 60 at 3-1,81.8,488.0,0,0
+nearest,36,4,round cap 60 at 3-1,115.7,486.3,0,0
+nearest,37,4,round cap 60 at 3-1,60.8,463.1,0,0
+nearest,38,6,attempt cap 10 at 3-1,397.6,2295.5,0,0
+nearest,39,6,attempt cap 10 at 3-1,299.9,1885.8,0,1
+nearest,4,0,graduated,191.0,949.4,0,3
+nearest,40,4,round cap 60 at 3-1,210.9,581.7,0,0
+nearest,41,4,round cap 60 at 3-1,66.0,307.8,0,0
+nearest,42,0,graduated,273.7,1388.8,0,1
+nearest,43,6,attempt cap 10 at 3-1,387.1,2256.2,0,2
+nearest,44,4,round cap 60 at 3-1,56.9,361.2,0,0
+nearest,45,4,round cap 60 at 3-1,96.9,517.1,0,1
+nearest,46,4,round cap 60 at 3-1,66.1,404.8,0,0
+nearest,47,4,round cap 60 at 3-1,55.3,380.1,0,0
+nearest,48,4,round cap 60 at 3-1,44.4,379.3,0,0
+nearest,49,4,round cap 60 at 3-1,101.8,543.9,0,0
+nearest,5,4,round cap 60 at 3-1,109.2,432.1,0,0
+nearest,50,4,round cap 60 at 3-1,85.1,458.1,0,0
+nearest,6,6,attempt cap 10 at 3-1,540.7,2679.6,0,0
+nearest,7,4,round cap 60 at 3-1,138.3,506.9,0,0
+nearest,8,6,attempt cap 10 at 3-1,282.5,1815.9,0,1
+nearest,9,0,graduated,298.0,1237.7,0,0
