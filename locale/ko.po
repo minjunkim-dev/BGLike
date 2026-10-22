@@ -1176,7 +1176,7 @@ msgstr "새 게임"
 msgid "이어하기"
 msgstr "이어하기"
 
-#: scenes/main.tscn
+#: scenes/main.tscn scenes/settings.tscn
 msgid "설정"
 msgstr "설정"
 
@@ -1216,7 +1216,7 @@ msgstr "효과음"
 msgid "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
 msgstr "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
 
-#: scenes/main.tscn
+#: scenes/main.tscn scenes/settings.tscn
 msgid "뒤로"
 msgstr "뒤로"
 
@@ -1228,6 +1228,22 @@ msgstr "저장을 읽을 수 없음"
 msgid "%d막 %d스테이지 진행 중"
 msgstr "%d막 %d스테이지 진행 중"
 
-#: scenes/title.gd:23
+#: scenes/settings.gd:37
+msgid "음소거"
+msgstr "음소거"
+
+#: scenes/settings.tscn
+msgid "마스터 음량"
+msgstr "마스터 음량"
+
+#: scenes/settings.tscn
+msgid "창 모드"
+msgstr "창 모드"
+
+#: scenes/settings.tscn
+msgid "전체 화면"
+msgstr "전체 화면"
+
+#: scenes/title.gd:24
 msgid "이 게임은 Godot Engine %d.%d.%d를 사용합니다. Godot Engine은 다음 MIT 라이선스를 따릅니다."
 msgstr "이 게임은 Godot Engine %d.%d.%d를 사용합니다. Godot Engine은 다음 MIT 라이선스를 따릅니다."

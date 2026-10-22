@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Theme" path="res://scenes/ui_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scenes/title.gd" id="2_title"]
+[ext_resource type="PackedScene" path="res://scenes/settings.tscn" id="3_settings"]
 
 [node name="Title" type="Control"]
 layout_mode = 3
@@ -172,3 +173,7 @@ custom_minimum_size = Vector2(80, 20)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "뒤로"
+
+[node name="SettingsScreen" parent="." instance=ExtResource("3_settings")]
+unique_name_in_owner = true
+layout_mode = 1

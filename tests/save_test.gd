@@ -114,17 +114,22 @@ func _test_interrupted_write() -> void:
 
 
 func _test_settings_survive_delete() -> void:
-	_check(GameSettings.read("master_volume", 0.8) == 0.8, "설정이 없으면 기본값")
-	_check(GameSettings.write("master_volume", 0.25) == OK, "설정 쓰기 성공")
-	GameSettings.write("window_mode", 1)
+	_check(GameSettings.volume() == GameSettings.VOLUME_DEFAULT and not GameSettings.fullscreen(),
+		"설정이 없으면 기본값: 음량 %d%%, 창" % GameSettings.VOLUME_DEFAULT)
+	_check(GameSettings.write("master_volume", 30) == OK, "설정 쓰기 성공")
+	GameSettings.write("fullscreen", true)
 	_check(GameSettings.path != GameSave.path, "설정은 게임 저장과 다른 파일")
 	GameSave.write(3, 3, _sections())
 	GameSave.delete()
-	_check(GameSettings.read("master_volume", 0.8) == 0.25 and GameSettings.read("window_mode", 0) == 1,
-		"저장 삭제(새 게임·졸업) 뒤에도 설정이 남음")
-	_check(GameSettings.read("window_mode", "창") == "창", "타입이 다른 값은 기본값")
+	_check(GameSettings.volume() == 30 and GameSettings.fullscreen(), "저장 삭제(새 게임·졸업) 뒤에도 설정이 남음")
+	_check(GameSettings.read("fullscreen", "창") == "창", "타입이 다른 값은 기본값")
+	# 손으로 고친 음량은 0–100의 한 단계 값으로 맞춘다.
+	for case: Array in [[34, 30], [35, 40], [-5, 0], [300, 100], [0.5, GameSettings.VOLUME_DEFAULT]]:
+		GameSettings.write("master_volume", case[0])
+		_check(GameSettings.volume() == case[1], "음량 %s → %d: %d" % [case[0], case[1], GameSettings.volume()])
 	_write_raw(GameSettings.path, "[settings\nmaster_volume=".to_utf8_buffer())
-	_check(GameSettings.read("master_volume", 0.8) == 0.8, "깨진 설정 파일은 기본값")
+	_check(GameSettings.volume() == GameSettings.VOLUME_DEFAULT and not GameSettings.fullscreen(),
+		"깨진 설정 파일은 기본값")
 
 
 func _write_raw(target: String, bytes: PackedByteArray) -> void:
