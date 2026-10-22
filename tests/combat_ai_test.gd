@@ -676,7 +676,7 @@ func _test_guards() -> void:
 
 
 func _test_scene() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	root.add_child(main)
@@ -766,7 +766,7 @@ func _test_scene() -> void:
 
 
 func _test_default_scene() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	root.add_child(main)
 	battle.set_process(false)

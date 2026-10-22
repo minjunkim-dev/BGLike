@@ -28,7 +28,7 @@ func _run() -> void:
 	await _test_scrap_robot_2000_stage()
 	await _test_scrap_robot_3000_stage()
 	await _test_enemy_turn_speed()
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
@@ -122,7 +122,7 @@ func _test_terrain_layouts() -> void:
 
 
 func _test_spiderling_placement_and_turns() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
@@ -194,7 +194,7 @@ func _test_mother_stages() -> void:
 		6: [Vector2i(7, 2), Vector2i(7, 4), Vector2i(7, 7), Vector2i(9, 2), Vector2i(9, 7)]
 	}
 	for stage: int in [3, 6]:
-		var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+		var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 		root.add_child(main)
 		var battle: Node2D = main.get_node("Battle") as Node2D
 		battle.set_process(false)
@@ -259,7 +259,7 @@ func _test_mother_stages() -> void:
 
 
 func _test_novice_placements() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
@@ -324,7 +324,7 @@ func _test_enemy_turn_speed() -> void:
 
 ## 아군이 먼저, 적은 배치 순서로 행동하는 3-1을 준비한다.
 func _start_three_one() -> Node:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
@@ -405,7 +405,7 @@ func _play_three_one_rounds(fast: bool) -> Dictionary:
 
 
 func _test_scrap_robot_stage() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
@@ -437,7 +437,7 @@ func _test_scrap_robot_stage() -> void:
 
 
 func _test_scrap_robot_2000_stage() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
@@ -478,7 +478,7 @@ func _test_scrap_robot_2000_stage() -> void:
 
 
 func _test_scrap_robot_3000_stage() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
@@ -523,7 +523,7 @@ func _test_scrap_robot_3000_stage() -> void:
 
 
 func _test_async_transition() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(main)
 	current_scene = main

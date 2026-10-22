@@ -418,7 +418,7 @@ func _test_rock_downhill_and_reentry() -> void:
 
 
 func _test_rock_scene_input() -> void:
-	var scene: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var scene: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	var battle: Node2D = scene.get_node("Battle") as Node2D
 	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
 	stage.crate_cells = []
@@ -547,7 +547,7 @@ func _test_crate_action_availability() -> void:
 
 
 func _test_crate_stage() -> void:
-	var scene: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var scene: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	var battle: Node2D = scene.get_node("Battle") as Node2D
 	root.add_child(scene)
 	battle.set_process(false)
@@ -575,7 +575,7 @@ func _test_crate_stage() -> void:
 
 
 func _test_crate_scene_input() -> void:
-	var scene: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var scene: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	var battle: Node2D = scene.get_node("Battle") as Node2D
 	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
 	stage.crate_cells = [Vector2i(1, 3)]
@@ -2986,7 +2986,7 @@ func _test_poison_removed_during_save() -> void:
 
 
 func _test_water_stage() -> void:
-	var scene: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var scene: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	var battle_scene: Node2D = scene.get_node("Battle") as Node2D
 	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
 	stage.water_cells = [Vector2i(4, 5), Vector2i(3, 4)]
