@@ -12,6 +12,8 @@ const SCROLL_STEP: int = 24
 @onready var continue_button: Button = %Continue
 @onready var settings_button: Button = %Settings
 @onready var settings: SettingsScreen = %SettingsScreen
+@onready var help_button: Button = %HelpButton
+@onready var help: HelpScreen = %Help
 @onready var credits_button: Button = %CreditsButton
 @onready var quit_button: Button = %Quit
 @onready var credits: Control = %Credits
@@ -30,6 +32,8 @@ func _ready() -> void:
 	new_game_button.pressed.connect(func() -> void: get_tree().change_scene_to_file(GAME_SCENE))
 	settings_button.pressed.connect(show_settings.bind(true))
 	settings.closed.connect(show_settings.bind(false))
+	help_button.pressed.connect(show_help.bind(true))
+	help.closed.connect(show_help.bind(false))
 	credits_button.pressed.connect(show_credits.bind(true))
 	back_button.pressed.connect(show_credits.bind(false))
 	quit_button.pressed.connect(get_tree().quit)
@@ -47,6 +51,14 @@ func show_settings(open: bool) -> void:
 		settings.open()
 	else:
 		settings_button.grab_focus()
+
+
+func show_help(open: bool) -> void:
+	menu.visible = not open
+	if open:
+		help.open()
+	else:
+		help_button.grab_focus()
 
 
 func show_credits(open: bool) -> void:

@@ -1,5 +1,5 @@
 extends SceneTree
-## 실제 메인 장면에서 타이틀 버튼, 키보드·컨트롤러 조작, 설정·출처 화면과 새 게임 진입을 검사한다 (#283, #285).
+## 실제 메인 장면에서 타이틀 버튼, 키보드·컨트롤러 조작, 설정·도움말·출처 화면과 새 게임 진입을 검사한다 (#283, #285, #287).
 
 const WINDOWS: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900)]
 ## 창별 논리 화면. headless 기본 창이 아니라 이 크기의 실제 창에서 배치를 본다 (#272).
@@ -7,6 +7,11 @@ const LOGICAL: Dictionary[Vector2i, Vector2] = {Vector2i(1280, 720): Vector2(640
 	Vector2i(1920, 1080): Vector2(640, 360), Vector2i(1440, 900): Vector2(640, 400)}
 ## ADR 0002의 레이아웃 자동 검사 창: 16:10 4배, 넓은 비율, 비정수 배율.
 const EXTRA_WINDOWS: Array[Vector2i] = [Vector2i(2560, 1600), Vector2i(2560, 1080), Vector2i(1366, 768)]
+## 도움말에 적을 조작과 규칙. README·전투 기획서의 이름을 쓴다.
+const HELP_TOPICS: Array[String] = ["우클릭", "좌클릭", "숫자 키 1~9", "방향키", "D-pad", "Enter", "Tab",
+	"Space 누르고 있기", "Esc", "점프", "유리", "불리", "내성", "반응", "기회 공격", "흘려내기"]
+## #209 6번: 이번 도움말에 넣지 않는 메커닉. 점프는 조작만 적고 높이 규칙은 적지 않는다.
+const HELP_EXCLUDED: Array[String] = ["높이", "낙하", "낭떠러지", "화상", "물 칸"]
 ## 여러 worktree가 같은 user://를 쓰므로 실행마다 폴더를 나눈다 (docs/adr/0003).
 var directory: String = "user://tests/title/%d" % OS.get_process_id()
 
@@ -43,21 +48,25 @@ func _run() -> void:
 	var shown: Array = title.menu.get_children().filter(func(node: Node) -> bool:
 		return node is Button and (node as Button).visible).map(func(button: Button) -> String:
 			return button.text)
-	_check(shown == ["새 게임", "설정", "출처", "종료"], "저장이 없을 때 타이틀 버튼: %s" % [shown])
+	_check(shown == ["새 게임", "설정", "도움말", "출처", "종료"], "저장이 없을 때 타이틀 버튼: %s" % [shown])
 	_check((title.menu.get_node("Name") as Label).text == "BGLike", "임시 이름 BGLike")
 	_check(not title.continue_button.visible and not title.has_save(), "저장이 없으면 이어하기를 숨김")
 	_check(not title.settings_button.disabled, "설정 버튼을 누를 수 있음")
 	_check(title.quit_button.pressed.is_connected(quit), "종료 버튼은 SceneTree.quit에 연결")
 	_check(title.new_game_button.has_focus(), "시작 포커스는 새 게임")
+	_check(not title.help.visible, "처음 실행할 때 도움말을 저절로 열지 않음")
 	await _check_layout(title)
 	await _check_settings(title)
-	# 방향키로 출처까지 내려가 Enter로 연다.
+	# 방향키로 도움말까지 내려가 Enter로 연다.
 	var path: PackedStringArray = []
-	while path.size() < 4 and not title.credits_button.has_focus():
+	while path.size() < 4 and not title.help_button.has_focus():
 		await _tap(_action("ui_down"))
 		var owner: Control = root.gui_get_focus_owner()
 		path.append(owner.name if owner else "-")
-	_check(title.credits_button.has_focus(), "방향키 아래로 출처 버튼: %s" % [path])
+	_check(title.help_button.has_focus(), "방향키 아래로 도움말 버튼: %s" % [path])
+	await _check_help(title)
+	await _tap(_action("ui_down"))
+	_check(title.credits_button.has_focus(), "도움말 다음은 출처 버튼")
 	await _tap(_action("ui_accept"))
 	_check(title.credits.visible and not title.menu.visible and title.back_button.has_focus(),
 		"Enter로 출처 화면을 열고 뒤로 버튼에 포커스")
@@ -76,6 +85,7 @@ func _run() -> void:
 	_check(title.credits.visible and title.back_button.has_focus(), "Enter로 출처 화면을 다시 엶")
 	await _tap(_joypad(JOY_BUTTON_A))
 	_check(not title.credits.visible and title.credits_button.has_focus(), "컨트롤러 A로 뒤로 버튼을 눌러 닫음")
+	await _check_help_entry()
 	# 새 게임은 지금처럼 1막 1스테이지 전투로 간다.
 	title.new_game_button.grab_focus()
 	await _tap(_action("ui_accept"))
@@ -92,6 +102,60 @@ func _run() -> void:
 		_check((hud.get_node("Progress") as Label).text == "1막 · 1스테이지", "1-1 전투 화면")
 	await _check_settings_kept()
 	_finish()
+
+
+## 도움말: Enter로 열고, 내용을 확인하고, D-pad로 끝까지 스크롤하고, Esc와 컨트롤러 A로 닫는다.
+func _check_help(title: TitleScreen) -> void:
+	var help: HelpScreen = title.help
+	await _tap(_action("ui_accept"))
+	_check(help.visible and not title.menu.visible and help.back_button.has_focus(),
+		"Enter로 도움말을 열고 뒤로 버튼에 포커스")
+	var text: String = "\n".join(help.scroll.find_children("*", "Label", true, false).map(
+		func(label: Label) -> String: return label.text))
+	for topic: String in HELP_TOPICS:
+		_check(topic in text, "도움말에 %s" % topic)
+	for excluded: String in HELP_EXCLUDED:
+		_check(excluded not in text, "도움말에 새 메커닉 %s를 넣지 않음" % excluded)
+	await _check_layout(title)
+	# 1280×720에서 글이 화면보다 길어도 컨트롤러만으로 끝까지 읽는다.
+	var bar: VScrollBar = help.scroll.get_v_scroll_bar()
+	var bottom: int = int(bar.max_value - bar.page)
+	_check(bottom > 0, "1280×720에서 도움말은 스크롤이 필요한 길이: %d" % bottom)
+	var taps: int = 0
+	while help.scroll.scroll_vertical < bottom and taps < 100:
+		await _tap(_joypad(JOY_BUTTON_DPAD_DOWN))
+		taps += 1
+	_check(help.scroll.scroll_vertical == bottom and help.back_button.has_focus(),
+		"D-pad 아래로 도움말 끝까지 스크롤: %d/%d" % [help.scroll.scroll_vertical, bottom])
+	await _tap(_action("ui_up"))
+	_check(help.scroll.scroll_vertical < bottom, "위 방향키로 도움말 글 되돌림")
+	await _tap(_action("ui_cancel"))
+	_check(not help.visible and title.menu.visible and title.help_button.has_focus(),
+		"Esc로 도움말을 닫고 도움말 버튼으로 포커스 복귀")
+	await _tap(_action("ui_accept"))
+	_check(help.visible and help.scroll.scroll_vertical == 0, "다시 열면 도움말 맨 위부터")
+	await _tap(_joypad(JOY_BUTTON_A))
+	_check(not help.visible and title.help_button.has_focus(), "컨트롤러 A로 뒤로 버튼을 눌러 도움말을 닫음")
+
+
+## 일시정지 메뉴(#286)가 쓸 진입점: 도움말 장면만 넣고 `open()`을 부르면 게임을 멈춘 동안에도 읽고 닫는다.
+func _check_help_entry() -> void:
+	var help: HelpScreen = (load("res://scenes/help.tscn") as PackedScene).instantiate() as HelpScreen
+	root.add_child(help)
+	await process_frame
+	var closed: Array[bool] = []
+	help.closed.connect(func() -> void: closed.append(true))
+	paused = true
+	help.open()
+	await process_frame
+	_check(help.visible and help.back_button.has_focus() and help.theme != null, "도움말 장면만으로 열림, 공용 테마")
+	await _tap(_joypad(JOY_BUTTON_DPAD_DOWN))
+	_check(help.scroll.scroll_vertical > 0, "게임을 멈춘 동안에도 D-pad로 도움말 스크롤")
+	await _tap(_action("ui_cancel"))
+	_check(not help.visible and closed == [true], "게임을 멈춘 동안에도 Esc로 닫고 closed 신호")
+	paused = false
+	help.queue_free()
+	await process_frame
 
 
 ## 설정 화면을 키보드와 컨트롤러로 열고 바꾸고 닫는다. 바꾼 값은 바로 설정 파일에 쓰고 적용한다.
@@ -191,7 +255,7 @@ func _check_notices(title: TitleScreen) -> void:
 	_check("Kenney" in (notices.get_node("Sound") as Label).text, "효과음 원본 표기")
 
 
-## ADR 0002의 여섯 창에서 타이틀, 설정, 출처 화면이 논리 화면 안에 겹치지 않고 들어간다.
+## ADR 0002의 여섯 창에서 타이틀, 설정, 도움말, 출처 화면이 논리 화면 안에 겹치지 않고 들어간다.
 func _check_layout(title: TitleScreen) -> void:
 	for size: Vector2i in WINDOWS + EXTRA_WINDOWS:
 		root.size = size
@@ -211,6 +275,11 @@ func _check_layout(title: TitleScreen) -> void:
 			for node: Node in title.menu.get_children():
 				if (node as Control).visible:
 					areas.append(node as Control)
+		elif title.help.visible:
+			_check(title.help.get_global_rect() == screen, "%s: 도움말이 논리 화면 전체를 채움" % size)
+			areas = [title.help.find_child("Heading") as Control, title.help.scroll, title.help.back_button]
+			var topics: Control = title.help.scroll.get_child(0) as Control
+			_check(topics.size.x <= title.help.scroll.size.x, "%s: 도움말 글이 가로로 넘치지 않음" % size)
 		else:
 			_check(title.credits.get_global_rect() == screen, "%s: 출처 화면이 논리 화면 전체를 채움" % size)
 			areas = [title.credits.find_child("Heading") as Control, title.credits_scroll, title.back_button]
@@ -223,6 +292,7 @@ func _check_layout(title: TitleScreen) -> void:
 				_check(not rect.intersects(other.get_global_rect()),
 					"%s: 겹치지 않음: %s, %s" % [size, areas[index].name, other.name])
 	root.size = WINDOWS[0]
+	await process_frame
 	await process_frame
 
 

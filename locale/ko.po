@@ -1028,7 +1028,7 @@ msgstr "전사"
 msgid "궁수"
 msgstr "궁수"
 
-#: scenes/combat/turn_hud.gd:137 scenes/combat/turn_hud.gd:151
+#: scenes/combat/turn_hud.gd:137 scenes/combat/turn_hud.gd:151 scenes/help.tscn
 msgid "반응"
 msgstr "반응"
 
@@ -1164,6 +1164,114 @@ msgstr "아군 전사"
 msgid "아군 궁수"
 msgstr "아군 궁수"
 
+#: scenes/help.tscn scenes/main.tscn
+msgid "도움말"
+msgstr "도움말"
+
+#: scenes/help.tscn
+msgid "마우스"
+msgstr "마우스"
+
+#: scenes/help.tscn
+msgid "빈 칸 우클릭: 이동 경로를 봅니다. 같은 칸을 다시 우클릭하면 이동합니다."
+msgstr "빈 칸 우클릭: 이동 경로를 봅니다. 같은 칸을 다시 우클릭하면 이동합니다."
+
+#: scenes/help.tscn
+msgid "점프: 스킬 바에서 점프를 고른 뒤 빈 칸을 우클릭해 착지 칸을 보고, 같은 칸을 다시 우클릭하면 뜁니다."
+msgstr "점프: 스킬 바에서 점프를 고른 뒤 빈 칸을 우클릭해 착지 칸을 보고, 같은 칸을 다시 우클릭하면 뜁니다."
+
+#: scenes/help.tscn
+msgid "적·나무 상자·바위 좌클릭: 고른 동작(처음에는 기본 공격)의 대상과 명중률 같은 미리보기를 봅니다. 같은 대상을 다시 좌클릭하면 실행합니다. 밀치기는 아군도 고를 수 있습니다."
+msgstr "적·나무 상자·바위 좌클릭: 고른 동작(처음에는 기본 공격)의 대상과 명중률 같은 미리보기를 봅니다. 같은 대상을 다시 좌클릭하면 실행합니다. 밀치기는 아군도 고를 수 있습니다."
+
+#: scenes/help.tscn
+msgid "스킬 바 버튼: 스킬·밀치기·물약을 고릅니다. 자기에게 쓰는 동작은 같은 버튼을 다시 누르면 씁니다."
+msgstr "스킬 바 버튼: 스킬·밀치기·물약을 고릅니다. 자기에게 쓰는 동작은 같은 버튼을 다시 누르면 씁니다."
+
+#: scenes/help.tscn
+msgid "초상: HP·AC·능력치·상태를 봅니다. 지금 조작할 수 있는 아군의 초상은 그 유닛으로 바꿉니다."
+msgstr "초상: HP·AC·능력치·상태를 봅니다. 지금 조작할 수 있는 아군의 초상은 그 유닛으로 바꿉니다."
+
+#: scenes/help.tscn
+msgid "턴 종료 버튼: 지금 유닛의 턴을 끝냅니다."
+msgstr "턴 종료 버튼: 지금 유닛의 턴을 끝냅니다."
+
+#: scenes/help.tscn
+msgid "키보드·컨트롤러"
+msgstr "키보드·컨트롤러"
+
+#: scenes/help.tscn
+msgid "숫자 키 1~9: 아군 턴에 스킬 바의 버튼을 왼쪽부터 고릅니다."
+msgstr "숫자 키 1~9: 아군 턴에 스킬 바의 버튼을 왼쪽부터 고릅니다."
+
+#: scenes/help.tscn
+msgid "방향키·D-pad: 버튼 사이를 옮깁니다. 전투에서 포커스가 없으면 좌우 입력으로 스킬 바 첫 버튼에 들어갑니다. 도움말·출처 화면에서는 위아래로 글을 스크롤합니다."
+msgstr "방향키·D-pad: 버튼 사이를 옮깁니다. 전투에서 포커스가 없으면 좌우 입력으로 스킬 바 첫 버튼에 들어갑니다. 도움말·출처 화면에서는 위아래로 글을 스크롤합니다."
+
+#: scenes/help.tscn
+msgid "Enter·컨트롤러 A: 포커스된 버튼을 누릅니다."
+msgstr "Enter·컨트롤러 A: 포커스된 버튼을 누릅니다."
+
+#: scenes/help.tscn
+msgid "Tab: 같은 묶음의 다음 아군으로 바꿉니다. Shift+Tab은 이전 아군입니다. 바꿔도 자원은 회복하지 않습니다."
+msgstr "Tab: 같은 묶음의 다음 아군으로 바꿉니다. Shift+Tab은 이전 아군입니다. 바꿔도 자원은 회복하지 않습니다."
+
+#: scenes/help.tscn
+msgid "Space 누르고 있기: 적 턴을 4배로 빠르게 봅니다. 손을 떼면 보통 속도로 돌아옵니다."
+msgstr "Space 누르고 있기: 적 턴을 4배로 빠르게 봅니다. 손을 떼면 보통 속도로 돌아옵니다."
+
+#: scenes/help.tscn
+msgid "Esc: 반응 확인 창에서는 반응을 넘깁니다. 다른 확인 창과 도움말·출처 화면은 닫습니다."
+msgstr "Esc: 반응 확인 창에서는 반응을 넘깁니다. 다른 확인 창과 도움말·출처 화면은 닫습니다."
+
+#: scenes/help.tscn
+msgid "유리 / 불리"
+msgstr "유리 / 불리"
+
+#: scenes/help.tscn
+msgid "유리는 d20을 두 번 굴려 높은 값을, 불리는 낮은 값을 씁니다. 둘이 함께 있으면 서로 지워져 한 번만 굴립니다. 같은 쪽이 여러 개여도 두 번만 굴립니다."
+msgstr "유리는 d20을 두 번 굴려 높은 값을, 불리는 낮은 값을 씁니다. 둘이 함께 있으면 서로 지워져 한 번만 굴립니다. 같은 쪽이 여러 개여도 두 번만 굴립니다."
+
+#: scenes/help.tscn
+msgid "기절한 대상을 공격하면 유리입니다. 원거리 공격자의 인접 칸에 기절하지 않은 적이 있으면 불리입니다."
+msgstr "기절한 대상을 공격하면 유리입니다. 원거리 공격자의 인접 칸에 기절하지 않은 적이 있으면 불리입니다."
+
+#: scenes/help.tscn
+msgid "명중률 표시에 유리/불리가 들어갑니다. 고른 d20이 20이면 치명타, 1이면 빗나갑니다."
+msgstr "명중률 표시에 유리/불리가 들어갑니다. 고른 d20이 20이면 치명타, 1이면 빗나갑니다."
+
+#: scenes/help.tscn
+msgid "내성 굴림"
+msgstr "내성 굴림"
+
+#: scenes/help.tscn
+msgid "효과를 받은 쪽이 버티려고 굴립니다. d20 + 해당 능력치 보정값이 효과를 건 유닛의 내성 DC 이상이면 버팁니다. 1과 20의 자동 성공·실패는 없습니다."
+msgstr "효과를 받은 쪽이 버티려고 굴립니다. d20 + 해당 능력치 보정값이 효과를 건 유닛의 내성 DC 이상이면 버팁니다. 1과 20의 자동 성공·실패는 없습니다."
+
+#: scenes/help.tscn
+msgid "내성 DC는 효과를 건 유닛의 값입니다. 아군은 13(8 + 숙련 보너스 + 공격 능력치 보정값)이고 적은 종류마다 정해져 있습니다. 예: 충격 화살에 맞은 대상은 정신 내성에 실패하면 기절합니다(보스는 면역)."
+msgstr "내성 DC는 효과를 건 유닛의 값입니다. 아군은 13(8 + 숙련 보너스 + 공격 능력치 보정값)이고 적은 종류마다 정해져 있습니다. 예: 충격 화살에 맞은 대상은 정신 내성에 실패하면 기절합니다(보스는 면역)."
+
+#: scenes/help.tscn
+msgid "반응은 조건이 맞으면 누구의 턴이든 쓰는 실행 기회입니다. 하나뿐이고 자기 턴 시작에 회복합니다. 기회 공격과 흘려내기가 함께 씁니다."
+msgstr "반응은 조건이 맞으면 누구의 턴이든 쓰는 실행 기회입니다. 하나뿐이고 자기 턴 시작에 회복합니다. 기회 공격과 흘려내기가 함께 씁니다."
+
+#: scenes/help.tscn
+msgid "기회 공격(전사·일부 적): 상대가 스스로 인접 칸을 벗어날 때 기본 공격을 합니다. 밀치기와 물러서며 쏘기의 이동은 기회 공격을 받지 않습니다."
+msgstr "기회 공격(전사·일부 적): 상대가 스스로 인접 칸을 벗어날 때 기본 공격을 합니다. 밀치기와 물러서며 쏘기의 이동은 기회 공격을 받지 않습니다."
+
+#: scenes/help.tscn
+msgid "흘려내기(전사): 공격에 명중당했을 때 피해를 굴리기 전에 씁니다. d20 + 민첩이 공격자의 내성 DC 이상이면 그 공격을 피합니다."
+msgstr "흘려내기(전사): 공격에 명중당했을 때 피해를 굴리기 전에 씁니다. d20 + 민첩이 공격자의 내성 DC 이상이면 그 공격을 피합니다."
+
+#: scenes/help.tscn
+msgid "아군의 반응은 확인 창에서 쓸지 고릅니다. 적의 반응은 자동입니다."
+msgstr "아군의 반응은 확인 창에서 쓸지 고릅니다. 적의 반응은 자동입니다."
+
+#: scenes/help.tscn scenes/main.tscn scenes/settings.tscn
+msgid "뒤로"
+msgstr "뒤로"
+
 #: scenes/main.tscn
 msgid "BGLike"
 msgstr "BGLike"
@@ -1216,10 +1324,6 @@ msgstr "효과음"
 msgid "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
 msgstr "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
 
-#: scenes/main.tscn scenes/settings.tscn
-msgid "뒤로"
-msgstr "뒤로"
-
 #: scenes/save/game_save.gd:60
 msgid "저장을 읽을 수 없음"
 msgstr "저장을 읽을 수 없음"
@@ -1244,6 +1348,6 @@ msgstr "창 모드"
 msgid "전체 화면"
 msgstr "전체 화면"
 
-#: scenes/title.gd:24
+#: scenes/title.gd:26
 msgid "이 게임은 Godot Engine %d.%d.%d를 사용합니다. Godot Engine은 다음 MIT 라이선스를 따릅니다."
 msgstr "이 게임은 Godot Engine %d.%d.%d를 사용합니다. Godot Engine은 다음 MIT 라이선스를 따릅니다."
