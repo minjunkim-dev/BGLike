@@ -38,6 +38,7 @@ var _replay_actions: int = 0
 @onready var map: CombatMap = $Map
 @onready var camera: Camera2D = $Camera
 @onready var hud: CombatTurnHud = $UI/TurnHud
+@onready var pause_menu: PauseMenu = $Pause/PauseMenu
 
 
 func _ready() -> void:
@@ -57,6 +58,7 @@ func _ready() -> void:
 	hud.action_selected.connect(_on_action_selected)
 	hud.reaction_selected.connect(actions.resolve_reaction)
 	hud.restart_requested.connect(_restart)
+	pause_menu.give_up_confirmed.connect(_give_up)
 	actions.changed.connect(_on_actions_changed)
 	actions.logged.connect(hud.add_log)
 	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
@@ -284,6 +286,17 @@ func _restart() -> void:
 	_start_stage(progress.starts_act())
 
 
+## 일시정지 메뉴의 `전투 포기`(#286). 전멸과 같은 패배라 결과 화면에서 이 막을 처음부터 다시 한다.
+func _give_up() -> void:
+	actions.give_up()
+	_save_give_up()
+
+
+## 포기를 확정한 순간을 행동 하나로 저장하는 자리. 전투 상태 저장(#281)을 이어하기와 연결하는 #284가 채운다.
+func _save_give_up() -> void:
+	pass
+
+
 func _finish_preparation() -> void:
 	if not actions.is_over() or actions.busy or _enemy_turn_running or not actions.is_victory():
 		return
@@ -339,7 +352,8 @@ func _pause_enemy_action() -> void:
 	if actions.is_over() or not _enemy_acted:
 		return
 	_enemy_acted = false
-	await get_tree().create_timer(ENEMY_PAUSE_TIME).timeout
+	# 연출 타이머는 일시정지 메뉴가 열린 동안 멈춘다.
+	await get_tree().create_timer(ENEMY_PAUSE_TIME, false).timeout
 
 
 ## 적 턴의 첫 이동·공격 연출 전에 한 번 멈춰 행동할 적을 보여 준다.
@@ -349,7 +363,7 @@ func _show_enemy_action() -> void:
 	_enemy_acted = true
 	if not _enemy_shown:
 		_enemy_shown = true
-		await get_tree().create_timer(ENEMY_PAUSE_TIME).timeout
+		await get_tree().create_timer(ENEMY_PAUSE_TIME, false).timeout
 
 
 ## 행동이 끝나 연출·반응 확인 창을 기다리지 않는 순간. 확정 전 입력(선택·미리보기)은 상태를 바꾸지 않는다.
@@ -400,6 +414,11 @@ func _on_action_selected(action: String) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# 반응·정비 확인 창이 떠 있으면 그 창이 Esc·Start를 먼저 받는다. Esc는 지금처럼 반응을 넘긴다.
+	if event.is_action_pressed("pause"):
+		get_viewport().set_input_as_handled()
+		pause_menu.open(not actions.is_over())
+		return
 	if event is InputEventKey and event.keycode == KEY_SPACE and not actions.is_over():
 		# Space는 적 턴 가속 키다. 포커스된 버튼(턴 종료 등)을 누르지 않게 소비한다.
 		get_viewport().set_input_as_handled()
@@ -607,7 +626,7 @@ func _animate_attack_at(actor: CombatUnit, destination: Vector2) -> void:
 	actor.face_toward(destination)
 	actor.play_attack()
 	if actor.kind != CombatUnit.Kind.ARCHER:
-		await get_tree().create_timer(1.0 / 6.0).timeout
+		await get_tree().create_timer(1.0 / 6.0, false).timeout
 		return
 	var arrow: Polygon2D = Polygon2D.new()
 	arrow.name = "Arrow"

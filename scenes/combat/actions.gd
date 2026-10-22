@@ -487,6 +487,17 @@ func incapacitate(target: CombatUnit) -> void:
 	target.visible = false
 
 
+## 전투 포기(#286). 남은 아군을 모두 전투 불능으로 만들어 전멸과 똑같이 패배한다.
+func give_up() -> void:
+	if is_over():
+		return
+	logged.emit(tr("전투 포기"))
+	for unit: CombatUnit in units.duplicate():
+		if unit.is_ally and unit.hit_points > 0:
+			incapacitate(unit)
+	changed.emit()
+
+
 func is_over() -> bool:
 	var ally: bool = false
 	var enemy: bool = false
