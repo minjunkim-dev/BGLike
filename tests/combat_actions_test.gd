@@ -1818,6 +1818,7 @@ func _test_pit_forced_movement() -> void:
 			_check(target not in f.turns.ordered_units and not target.visible
 				and f.actions.grid.unit_at(Vector2i(6, 4)) == null and f.units[3].marked_target == null,
 				"낙사도 턴·점유·표식·표시를 함께 정리")
+			_check(f.hits.size() == 1, "낙사도 HP 감소라 타격음을 한 번 재생")
 	var pulled: Fixture = _fixture()
 	var boss: CombatUnit = pulled.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
@@ -1833,6 +1834,7 @@ func _test_pit_forced_movement() -> void:
 	_check(pulled.actions.grid.pull_cells(boss, target) == [Vector2i(5, 4)]
 		and pulled.actions.pull(boss, target) and target.hit_points == 0,
 		"끌기도 시전자 옆 낭떠러지의 없는 바닥 높이와 비교하지 않고 즉시 낙사")
+	_check(pulled.hits.size() == 1, "끌기 낙사도 타격음을 한 번 재생")
 	var last: Fixture = _fixture()
 	last.actions.incapacitate(last.units[3])
 	last.units[2].is_stunned = true

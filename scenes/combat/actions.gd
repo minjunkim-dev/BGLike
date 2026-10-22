@@ -945,7 +945,7 @@ func _land(target: CombatUnit, destination: Vector2i) -> void:
 	var amount: int = fall_damage(target, destination)
 	target.cell = destination
 	if grid.pits.has(destination):
-		incapacitate(target)
+		_damage(target, target.hit_points)
 		if not _same_combat(target, revision):
 			return
 		logged.emit(tr("%s 낙사: 전투 불능") % target.get_display_name())
