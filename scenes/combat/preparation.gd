@@ -3,6 +3,8 @@ extends ColorRect
 ## 전투 사이 보상 확인과 정비. 칸을 클릭해 고르고 아래 상세 패널의 버튼으로 실행한다 (#229 A안).
 
 signal finished
+## 화면 단계·보상·가방·장비·물약이 바뀌어 다시 그린 뒤. 전투가 자동 저장한다(#282). 칸 선택과 확인 창은 바꾸지 않는다.
+signal changed
 
 ## 확인 창 모양은 프로젝트 공용 테마에서 가져온다(#262).
 const UI_THEME: Theme = preload("res://scenes/ui_theme.tres")
@@ -133,7 +135,7 @@ func _ready() -> void:
 
 func open_rewards(
 	model: CombatLoot, allies: Array[CombatUnit], drops: Array[Dictionary],
-	is_final: bool, is_last_in_act: bool
+	is_final: bool, is_last_in_act: bool, is_maintaining: bool = false
 ) -> void:
 	if visible:
 		return
@@ -142,7 +144,7 @@ func open_rewards(
 	rewards = drops
 	final_stage = is_final
 	last_in_act = is_last_in_act
-	maintaining = false
+	maintaining = is_maintaining
 	show()
 	_render()
 	continue_button.grab_focus()
@@ -269,6 +271,8 @@ func _render() -> void:
 			bag_grid.add_child(empty)
 	_label(content, tr("교체·해제한 장비와 받지 않은 보상은 공용 가방에 보관합니다."), DIM_COLOR)
 	_render_detail()
+	# 상태를 바꾸는 동작과 화면 단계 전환만 다시 그린다.
+	changed.emit()
 
 
 func _render_card(index: int) -> void:

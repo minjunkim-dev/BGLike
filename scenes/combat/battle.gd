@@ -50,6 +50,7 @@ func _ready() -> void:
 	preparation.name = "Preparation"
 	$UI.add_child(preparation)
 	preparation.finished.connect(_finish_preparation)
+	preparation.changed.connect(func() -> void: _save_pending = true)
 
 	hud.unit_selected.connect(_on_unit_selected)
 	hud.end_turn_requested.connect(_end_turn)
@@ -243,6 +244,28 @@ func _is_valid_state(state: Dictionary) -> bool:
 		and saved_units.any(func(unit: Dictionary) -> bool: return unit.ally and unit.hit_points > 0))
 
 
+## 이어하기. GameSave.read()의 sections를 그대로 받는다. 정비·보상 확인 화면 중의 저장이면 그 화면과 단계를 다시 연다.
+## 저장이 맞지 않으면 아무것도 바꾸지 않고 false다.
+func restore_save(sections: Variant) -> bool:
+	var combat: Variant = sections.get("combat") if sections is Dictionary else null
+	var screen: Variant = sections.get("preparation", {}) if sections is Dictionary else null
+	# 정비·보상 화면은 드랍을 굴린 승리 뒤에만 열린다.
+	if not (screen is Dictionary and (screen.is_empty() or screen.keys() == ["maintaining"]
+			and screen.maintaining is bool and combat is Dictionary and _is_valid_state(combat) and combat.rewarded
+			and combat.units.all(func(unit: Dictionary) -> bool: return unit.ally or unit.hit_points <= 0))):
+		push_warning("저장을 읽을 수 없음")
+		return false
+	if not restore_combat(combat):
+		return false
+	if not screen.is_empty():
+		preparation.open_rewards(loot, party, progress.rewards, progress.is_final_stage(),
+			progress.is_last_in_act(), screen.maintaining)
+		hud.hide_result()
+		# 방금 읽은 저장과 같은 상태다.
+		_save_pending = false
+	return true
+
+
 func _valid_items(items: Variant) -> bool:
 	return items is Array and (items as Array).all(loot.is_valid_item)
 
@@ -337,7 +360,11 @@ func _can_save() -> bool:
 ## 쓰기에 실패하면 이전 저장이 남고 다음 행동이 끝날 때 다시 쓴다. 매 프레임 다시 쓰지 않는다.
 func _autosave(state: Dictionary) -> void:
 	_save_pending = false
-	if GameSave.write(progress.act_number(), progress.stage_in_act(), {"combat": state}) == OK:
+	var sections: Dictionary = {"combat": state}
+	# 선택한 칸과 열린 확인 창은 저장하지 않는다. 이어하기는 같은 화면 단계에서 아무것도 고르지 않은 채 시작한다.
+	if preparation.visible:
+		sections["preparation"] = {"maintaining": preparation.maintaining}
+	if GameSave.write(progress.act_number(), progress.stage_in_act(), sections) == OK:
 		autosaved.emit()
 
 
