@@ -30,6 +30,8 @@
 # res://scenes/combat/unit.gd
 # res://scenes/combat/unit.tscn
 # res://scenes/main.tscn
+# res://scenes/save/game_save.gd
+# res://scenes/save/game_settings.gd
 #
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
@@ -1186,4 +1188,12 @@ msgid "아군 궁수"
 msgstr ""
 
 msgid "BGLike"
+msgstr ""
+
+#: scenes/save/game_save.gd:58
+msgid "저장을 읽을 수 없음"
+msgstr ""
+
+#: scenes/save/game_save.gd:59
+msgid "%d막 %d스테이지 진행 중"
 msgstr ""
