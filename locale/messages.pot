@@ -58,7 +58,7 @@ msgid "공격"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:11
-#: scenes/combat/actions.gd:805
+#: scenes/combat/actions.gd:809
 msgid "숨 고르기"
 msgstr ""
 
@@ -83,18 +83,18 @@ msgid "밀치기"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:13
-#: scenes/combat/actions.gd:813
+#: scenes/combat/actions.gd:817
 msgid "물약"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:13
-#: scenes/combat/actions.gd:899
+#: scenes/combat/actions.gd:903
 msgid "기회 공격"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:13
-#: scenes/combat/actions.gd:899
-#: scenes/combat/actions.gd:941
+#: scenes/combat/actions.gd:903
+#: scenes/combat/actions.gd:945
 #: scenes/combat/turn_hud.gd:230
 msgid "흘려내기"
 msgstr ""
@@ -354,7 +354,7 @@ msgstr ""
 #: scenes/combat/actions.gd:351
 #: scenes/combat/actions.gd:437
 #: scenes/combat/actions.gd:469
-#: scenes/combat/actions.gd:992
+#: scenes/combat/actions.gd:996
 msgid "불"
 msgstr ""
 
@@ -362,7 +362,7 @@ msgstr ""
 #: scenes/combat/actions.gd:374
 #: scenes/combat/actions.gd:437
 #: scenes/combat/actions.gd:469
-#: scenes/combat/actions.gd:992
+#: scenes/combat/actions.gd:996
 #: scenes/combat/unit.gd:247
 msgid "독"
 msgstr ""
@@ -376,7 +376,7 @@ msgid "과부하 2"
 msgstr ""
 
 #: scenes/combat/actions.gd:374
-#: scenes/combat/actions.gd:992
+#: scenes/combat/actions.gd:996
 #: scenes/combat/unit.gd:247
 msgid "화상"
 msgstr ""
@@ -386,16 +386,16 @@ msgid "%s 독 건강 내성: d20 %d + %d = %d / DC %d · %s"
 msgstr ""
 
 #: scenes/combat/actions.gd:380
-#: scenes/combat/actions.gd:844
-#: scenes/combat/actions.gd:866
-#: scenes/combat/actions.gd:939
+#: scenes/combat/actions.gd:848
+#: scenes/combat/actions.gd:870
+#: scenes/combat/actions.gd:943
 msgid "성공"
 msgstr ""
 
 #: scenes/combat/actions.gd:380
-#: scenes/combat/actions.gd:844
-#: scenes/combat/actions.gd:866
-#: scenes/combat/actions.gd:939
+#: scenes/combat/actions.gd:848
+#: scenes/combat/actions.gd:870
+#: scenes/combat/actions.gd:943
 msgid "실패"
 msgstr ""
 
@@ -423,349 +423,349 @@ msgstr ""
 msgid "%s %s 장판 해제: %d, %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:494
+#: scenes/combat/actions.gd:501
 #: scenes/pause_menu.gd:34
 #: scenes/pause_menu.tscn
 msgid "전투 포기"
 msgstr ""
 
-#: scenes/combat/actions.gd:546
-#: scenes/combat/actions.gd:720
+#: scenes/combat/actions.gd:550
+#: scenes/combat/actions.gd:724
 msgid "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)"
 msgstr ""
 
-#: scenes/combat/actions.gd:549
-#: scenes/combat/actions.gd:723
+#: scenes/combat/actions.gd:553
+#: scenes/combat/actions.gd:727
 msgid "%s 기회 공격: 반응 사용"
 msgstr ""
 
-#: scenes/combat/actions.gd:561
+#: scenes/combat/actions.gd:565
 msgid "%s 점프: 이동 %d, 보조 행동1 · 남은 이동 %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:591
-#: scenes/combat/actions.gd:607
-#: scenes/combat/actions.gd:1022
+#: scenes/combat/actions.gd:595
+#: scenes/combat/actions.gd:611
+#: scenes/combat/actions.gd:1026
 msgid "낙사"
 msgstr ""
 
-#: scenes/combat/actions.gd:594
-#: scenes/combat/actions.gd:1008
+#: scenes/combat/actions.gd:598
+#: scenes/combat/actions.gd:1012
 msgid "물: 화상 해제"
 msgstr ""
 
-#: scenes/combat/actions.gd:597
-#: scenes/combat/actions.gd:609
-#: scenes/combat/battle.gd:716
+#: scenes/combat/actions.gd:601
+#: scenes/combat/actions.gd:613
+#: scenes/combat/battle.gd:743
 msgid "낙하 피해 %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:684
+#: scenes/combat/actions.gd:688
 msgid "전투 입력 잠금"
 msgstr ""
 
-#: scenes/combat/actions.gd:686
+#: scenes/combat/actions.gd:690
 msgid "아군의 자기 턴에만 사용"
 msgstr ""
 
-#: scenes/combat/actions.gd:688
+#: scenes/combat/actions.gd:692
 msgid "보유 물약 없음"
 msgstr ""
 
-#: scenes/combat/actions.gd:688
+#: scenes/combat/actions.gd:692
 msgid "이번 막의 횟수를 모두 씀"
 msgstr ""
 
-#: scenes/combat/actions.gd:690
+#: scenes/combat/actions.gd:694
 msgid "자원을 이미 씀"
 msgstr ""
 
-#: scenes/combat/actions.gd:693
+#: scenes/combat/actions.gd:697
 msgid "전투 불능"
 msgstr ""
 
-#: scenes/combat/actions.gd:694
+#: scenes/combat/actions.gd:698
 msgid "기절 상태"
 msgstr ""
 
-#: scenes/combat/actions.gd:696
+#: scenes/combat/actions.gd:700
 msgid "HP가 이미 최대"
 msgstr ""
 
-#: scenes/combat/actions.gd:698
+#: scenes/combat/actions.gd:702
 msgid "행동이 아직 남아 있음"
 msgstr ""
 
-#: scenes/combat/actions.gd:700
+#: scenes/combat/actions.gd:704
 msgid "이동이 없거나 이미 효과 적용 중"
 msgstr ""
 
-#: scenes/combat/actions.gd:700
+#: scenes/combat/actions.gd:704
 msgid "사거리 또는 대상 조건을 확인"
 msgstr ""
 
-#: scenes/combat/actions.gd:737
+#: scenes/combat/actions.gd:741
 msgid "%s 이동: %d칸, 남은 이동 %d"
 msgid_plural "%s 이동: %d칸, 남은 이동 %d"
 msgstr[0] ""
 msgstr[1] ""
 
-#: scenes/combat/actions.gd:762
+#: scenes/combat/actions.gd:766
 msgid "%s 회전회오리: 인접 대상 %d명"
 msgid_plural "%s 회전회오리: 인접 대상 %d명"
 msgstr[0] ""
 msgstr[1] ""
 
-#: scenes/combat/actions.gd:793
+#: scenes/combat/actions.gd:797
 msgid "%s 새끼 낳기: %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:808
+#: scenes/combat/actions.gd:812
 msgid "%s 몰아치기: 행동 회복"
 msgstr ""
 
-#: scenes/combat/actions.gd:811
+#: scenes/combat/actions.gd:815
 msgid "%s 물러서며 쏘기: 이번 턴 이동은 기회 공격 제외"
 msgstr ""
 
-#: scenes/combat/actions.gd:824
+#: scenes/combat/actions.gd:828
 msgid "%s 표식: %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:840
+#: scenes/combat/actions.gd:844
 msgid "%s 만능팔: %d + %d = %d / %d + %d = %d · %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:845
+#: scenes/combat/actions.gd:849
 msgid "끌어옴"
 msgstr ""
 
-#: scenes/combat/actions.gd:845
+#: scenes/combat/actions.gd:849
 msgid "만능팔 저항"
 msgstr ""
 
-#: scenes/combat/actions.gd:860
+#: scenes/combat/actions.gd:864
 msgid "밀치기 대결: %d + %d = %d / %d + %d = %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:863
+#: scenes/combat/actions.gd:867
 msgid "밀치기 성공"
 msgstr ""
 
-#: scenes/combat/actions.gd:863
+#: scenes/combat/actions.gd:867
 msgid "밀치기 실패"
 msgstr ""
 
-#: scenes/combat/actions.gd:866
+#: scenes/combat/actions.gd:870
 msgid "밀치기 %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:899
+#: scenes/combat/actions.gd:903
 msgid "사용"
 msgstr ""
 
-#: scenes/combat/actions.gd:899
+#: scenes/combat/actions.gd:903
 #: scenes/combat/turn_hud.gd:231
 msgid "넘기기"
 msgstr ""
 
-#: scenes/combat/actions.gd:918
+#: scenes/combat/actions.gd:922
 #: scenes/combat/turn_hud.gd:369
 msgid "일반"
 msgstr ""
 
-#: scenes/combat/actions.gd:920
+#: scenes/combat/actions.gd:924
 #: scenes/combat/turn_hud.gd:371
 msgid "유리"
 msgstr ""
 
-#: scenes/combat/actions.gd:922
+#: scenes/combat/actions.gd:926
 #: scenes/combat/turn_hud.gd:373
 msgid "불리"
 msgstr ""
 
-#: scenes/combat/actions.gd:923
+#: scenes/combat/actions.gd:927
 msgid "%s 공격(%s): d20 %s + %d = %d / AC %d · %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:925
+#: scenes/combat/actions.gd:929
 msgid "치명타"
 msgstr ""
 
-#: scenes/combat/actions.gd:925
+#: scenes/combat/actions.gd:929
 #: scenes/combat/loot.gd:8
 msgid "명중"
 msgstr ""
 
-#: scenes/combat/actions.gd:925
 #: scenes/combat/actions.gd:929
+#: scenes/combat/actions.gd:933
 msgid "빗나감"
 msgstr ""
 
-#: scenes/combat/actions.gd:927
+#: scenes/combat/actions.gd:931
 #: scenes/combat/unit.gd:487
 #: scenes/combat/unit.gd:488
 msgid "치명타!"
 msgstr ""
 
-#: scenes/combat/actions.gd:934
+#: scenes/combat/actions.gd:938
 msgid "%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)"
 msgstr ""
 
-#: scenes/combat/actions.gd:938
+#: scenes/combat/actions.gd:942
 msgid "흘려내기: d20 %d + %d = %d / DC %d · %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:958
+#: scenes/combat/actions.gd:962
 msgid "%s 피해: %d · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:960
+#: scenes/combat/actions.gd:964
 msgid "%s 피해%s: %s + %d = %d · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:961
+#: scenes/combat/actions.gd:965
 msgid " (표식 추가)"
 msgstr ""
 
-#: scenes/combat/actions.gd:965
+#: scenes/combat/actions.gd:969
 msgid "%s 기절 면역"
 msgstr ""
 
-#: scenes/combat/actions.gd:966
+#: scenes/combat/actions.gd:970
 #: scenes/combat/turn_hud.gd:352
 msgid "기절 면역"
 msgstr ""
 
-#: scenes/combat/actions.gd:973
+#: scenes/combat/actions.gd:977
 msgid "정신 내성: d20 %d + %d = %d / DC %d · %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:975
-#: scenes/combat/actions.gd:976
+#: scenes/combat/actions.gd:979
+#: scenes/combat/actions.gd:980
 #: scenes/combat/turn_hud.gd:345
 #: scenes/combat/unit.gd:219
 #: scenes/combat/unit.gd:522
 msgid "기절"
 msgstr ""
 
-#: scenes/combat/actions.gd:975
+#: scenes/combat/actions.gd:979
 msgid "버팀"
 msgstr ""
 
-#: scenes/combat/actions.gd:976
+#: scenes/combat/actions.gd:980
 msgid "정신 내성"
 msgstr ""
 
-#: scenes/combat/actions.gd:991
+#: scenes/combat/actions.gd:995
 msgid "%s %s 장판: %s 부여"
 msgstr ""
 
-#: scenes/combat/actions.gd:1005
+#: scenes/combat/actions.gd:1009
 msgid "%s 물: 화상 해제"
 msgstr ""
 
-#: scenes/combat/actions.gd:1019
+#: scenes/combat/actions.gd:1023
 msgid "%s 낙사: 전투 불능"
 msgstr ""
 
-#: scenes/combat/actions.gd:1035
+#: scenes/combat/actions.gd:1039
 msgid "%s 낙하 피해: %d · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:1063
+#: scenes/combat/actions.gd:1067
 msgid "%s %s: HP +%d → %d"
 msgstr ""
 
-#: scenes/combat/battle.gd:660
+#: scenes/combat/battle.gd:687
 msgid "표식 대상"
 msgstr ""
 
-#: scenes/combat/battle.gd:660
+#: scenes/combat/battle.gd:687
 msgid "표식을 사용할 수 없음"
 msgstr ""
 
-#: scenes/combat/battle.gd:665
+#: scenes/combat/battle.gd:692
 msgid "밀려날 칸: %d, %d"
 msgstr ""
 
-#: scenes/combat/battle.gd:668
+#: scenes/combat/battle.gd:695
 msgid "밀치기를 사용할 수 없음"
 msgstr ""
 
-#: scenes/combat/battle.gd:672
+#: scenes/combat/battle.gd:699
 msgid "기본 공격만 가능"
 msgstr ""
 
-#: scenes/combat/battle.gd:673
+#: scenes/combat/battle.gd:700
 msgid "바위"
 msgstr ""
 
-#: scenes/combat/battle.gd:673
+#: scenes/combat/battle.gd:700
 msgid "나무 상자 · 내구도 %d/6"
 msgstr ""
 
-#: scenes/combat/battle.gd:681
+#: scenes/combat/battle.gd:708
 msgid "아군 피해4: %s"
 msgstr ""
 
-#: scenes/combat/battle.gd:681
+#: scenes/combat/battle.gd:708
 msgid "적 피해4: %s"
 msgstr ""
 
-#: scenes/combat/battle.gd:683
+#: scenes/combat/battle.gd:710
 msgid ""
 "행동1 · 주사위 없음 · 재클릭\n"
 "방향 %d,%d · %d칸 · %s\n"
 "%s"
 msgstr ""
 
-#: scenes/combat/battle.gd:685
+#: scenes/combat/battle.gd:712
 msgid "충돌 없음"
 msgstr ""
 
-#: scenes/combat/battle.gd:690
+#: scenes/combat/battle.gd:717
 msgid ""
 "피해 %d~%d · 행동1 · 자동 명중\n"
 "같은 상자 재클릭"
 msgstr ""
 
-#: scenes/combat/battle.gd:693
+#: scenes/combat/battle.gd:720
 msgid "행동 없음"
 msgstr ""
 
-#: scenes/combat/battle.gd:695
+#: scenes/combat/battle.gd:722
 #: scenes/combat/grid.gd:256
 msgid "기절하여 공격 불가"
 msgstr ""
 
-#: scenes/combat/battle.gd:699
+#: scenes/combat/battle.gd:726
 msgid "사거리 또는 높이 조건을 확인"
 msgstr ""
 
-#: scenes/combat/battle.gd:708
+#: scenes/combat/battle.gd:735
 msgid ""
 "점프 · 착지 칸 우클릭\n"
 "같은 칸 재클릭으로 확정"
 msgstr ""
 
-#: scenes/combat/battle.gd:714
+#: scenes/combat/battle.gd:741
 msgid ""
 "점프 · 이동 %d · 보조 행동1\n"
 "%s · %s"
 msgstr ""
 
-#: scenes/combat/battle.gd:715
+#: scenes/combat/battle.gd:742
 msgid "기회 공격 %d명"
 msgid_plural "기회 공격 %d명"
 msgstr[0] ""
 msgstr[1] ""
 
-#: scenes/combat/battle.gd:715
+#: scenes/combat/battle.gd:742
 msgid "기회 공격 없음"
 msgstr ""
 
-#: scenes/combat/battle.gd:716
+#: scenes/combat/battle.gd:743
 msgid "낙하 없음"
 msgstr ""
 
@@ -851,207 +851,207 @@ msgstr ""
 msgid "없음"
 msgstr ""
 
-#: scenes/combat/preparation.gd:70
+#: scenes/combat/preparation.gd:72
 msgid "정비 종료 확인 다시 켜기"
 msgstr ""
 
-#: scenes/combat/preparation.gd:113
-#: scenes/combat/preparation.gd:162
+#: scenes/combat/preparation.gd:115
+#: scenes/combat/preparation.gd:164
 msgid "정비 종료 확인"
 msgstr ""
 
-#: scenes/combat/preparation.gd:114
-#: scenes/combat/preparation.gd:163
+#: scenes/combat/preparation.gd:116
+#: scenes/combat/preparation.gd:165
 msgid "마치기"
 msgstr ""
 
-#: scenes/combat/preparation.gd:115
+#: scenes/combat/preparation.gd:117
 msgid "돌아가기"
 msgstr ""
 
-#: scenes/combat/preparation.gd:125
+#: scenes/combat/preparation.gd:127
 msgid "더 이상 이 메시지를 띄우지 않음"
 msgstr ""
 
-#: scenes/combat/preparation.gd:164
+#: scenes/combat/preparation.gd:166
 msgid "받지 않은 아이템이 있습니다. 마치시겠습니까?"
 msgstr ""
 
-#: scenes/combat/preparation.gd:182
+#: scenes/combat/preparation.gd:184
 msgid "가방 아이템 폐기"
 msgstr ""
 
-#: scenes/combat/preparation.gd:183
-#: scenes/combat/preparation.gd:396
+#: scenes/combat/preparation.gd:185
+#: scenes/combat/preparation.gd:400
 msgid "폐기"
 msgstr ""
 
-#: scenes/combat/preparation.gd:184
+#: scenes/combat/preparation.gd:186
 msgid ""
 "%s\n"
 "아이템 한 개를 버리시겠습니까?"
 msgstr ""
 
-#: scenes/combat/preparation.gd:219
+#: scenes/combat/preparation.gd:221
 msgid "가방 공간이 %d칸 부족합니다. 장착·물약 분배 또는 가방 아이템 폐기로 공간을 확보하세요."
 msgid_plural "가방 공간이 %d칸 부족합니다. 장착·물약 분배 또는 가방 아이템 폐기로 공간을 확보하세요."
 msgstr[0] ""
 msgstr[1] ""
 
-#: scenes/combat/preparation.gd:239
+#: scenes/combat/preparation.gd:241
 msgid "정비"
 msgstr ""
 
-#: scenes/combat/preparation.gd:239
+#: scenes/combat/preparation.gd:241
 msgid "보상 · %d개"
 msgid_plural "보상 · %d개"
 msgstr[0] ""
 msgstr[1] ""
 
-#: scenes/combat/preparation.gd:240
+#: scenes/combat/preparation.gd:242
 msgid "칸을 클릭해 고르고 아래 버튼으로 장착·해제·폐기합니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:241
+#: scenes/combat/preparation.gd:243
 msgid "받은 보상을 확인합니다. 정비에서 캐릭터에게 나눠 줍니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:242
+#: scenes/combat/preparation.gd:244
 #: scenes/combat/turn_hud.gd:264
 msgid "3막 졸업"
 msgstr ""
 
-#: scenes/combat/preparation.gd:242
+#: scenes/combat/preparation.gd:244
 msgid "다음 막 시작"
 msgstr ""
 
-#: scenes/combat/preparation.gd:243
+#: scenes/combat/preparation.gd:245
 msgid "다음 스테이지"
 msgstr ""
 
-#: scenes/combat/preparation.gd:243
+#: scenes/combat/preparation.gd:245
 msgid "정비하기"
 msgstr ""
 
-#: scenes/combat/preparation.gd:248
+#: scenes/combat/preparation.gd:250
 msgid "받지 않은 보상 %d · 정비를 마치면 공용 가방에 보관"
 msgid_plural "받지 않은 보상 %d · 정비를 마치면 공용 가방에 보관"
 msgstr[0] ""
 msgstr[1] ""
 
-#: scenes/combat/preparation.gd:250
+#: scenes/combat/preparation.gd:252
 msgid "남은 보상 없음"
 msgstr ""
 
-#: scenes/combat/preparation.gd:257
+#: scenes/combat/preparation.gd:259
 msgid "공용 가방 · %d/%d칸"
 msgstr ""
 
-#: scenes/combat/preparation.gd:270
+#: scenes/combat/preparation.gd:272
 msgid "교체·해제한 장비와 받지 않은 보상은 공용 가방에 보관합니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:290
+#: scenes/combat/preparation.gd:294
 msgid "HP %d / %d"
 msgstr ""
 
-#: scenes/combat/preparation.gd:293
+#: scenes/combat/preparation.gd:297
 msgid "HP %d / %d · 전투 불능"
 msgstr ""
 
-#: scenes/combat/preparation.gd:305
-#: scenes/combat/preparation.gd:383
+#: scenes/combat/preparation.gd:309
+#: scenes/combat/preparation.gd:387
 msgid "무기 없음"
 msgstr ""
 
-#: scenes/combat/preparation.gd:306
-#: scenes/combat/preparation.gd:383
+#: scenes/combat/preparation.gd:310
+#: scenes/combat/preparation.gd:387
 msgid "방어구 없음"
 msgstr ""
 
-#: scenes/combat/preparation.gd:316
+#: scenes/combat/preparation.gd:320
 msgid "방어구"
 msgstr ""
 
-#: scenes/combat/preparation.gd:316
+#: scenes/combat/preparation.gd:320
 msgid "무기"
 msgstr ""
 
-#: scenes/combat/preparation.gd:335
-#: scenes/combat/preparation.gd:452
+#: scenes/combat/preparation.gd:339
+#: scenes/combat/preparation.gd:456
 msgid "물약 %d/%d"
 msgstr ""
 
-#: scenes/combat/preparation.gd:339
+#: scenes/combat/preparation.gd:343
 msgid "물약 1개 → %s"
 msgstr ""
 
-#: scenes/combat/preparation.gd:341
+#: scenes/combat/preparation.gd:345
 msgid "넘길 물약이 없습니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:342
+#: scenes/combat/preparation.gd:346
 msgid "받는 캐릭터의 물약이 가득 찼습니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:361
+#: scenes/combat/preparation.gd:365
 msgid "칸을 클릭하면 여기에 아이템과 동작이 나옵니다. 방향키로 칸을 옮기고 Enter로 고릅니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:362
+#: scenes/combat/preparation.gd:366
 msgid "칸을 클릭하면 아이템 수치를 봅니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:389
+#: scenes/combat/preparation.gd:393
 msgid "공용 가방 · 장착하면 지금 장비는 이 칸으로 옵니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:390
+#: scenes/combat/preparation.gd:394
 msgid "받지 않은 보상 · 정비를 마치면 공용 가방에 보관합니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:391
+#: scenes/combat/preparation.gd:395
 msgid "정비하기를 누른 뒤 캐릭터에게 나눠 줍니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:400
+#: scenes/combat/preparation.gd:404
 msgid "%s의 무기 · 무기는 해제할 수 없습니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:402
+#: scenes/combat/preparation.gd:406
 msgid "%s의 방어구 · 해제하면 공용 가방 빈 칸에 보관합니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:403
+#: scenes/combat/preparation.gd:407
 msgid "%s의 방어구 · 정비에서 해제할 수 있습니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:406
+#: scenes/combat/preparation.gd:410
 msgid "방어구 해제"
 msgstr ""
 
-#: scenes/combat/preparation.gd:441
+#: scenes/combat/preparation.gd:445
 msgid "%s에게 주기"
 msgstr ""
 
-#: scenes/combat/preparation.gd:441
+#: scenes/combat/preparation.gd:445
 msgid "%s에게 장착"
 msgstr ""
 
-#: scenes/combat/preparation.gd:445
+#: scenes/combat/preparation.gd:449
 msgid "물약을 더 가질 수 없습니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:446
+#: scenes/combat/preparation.gd:450
 msgid "공용 가방에 빈 칸이 없어 지금 장비를 보관할 수 없습니다."
 msgstr ""
 
-#: scenes/combat/preparation.gd:491
+#: scenes/combat/preparation.gd:495
 #: scenes/combat/turn_hud.gd:313
 msgid "전사"
 msgstr ""
 
-#: scenes/combat/preparation.gd:491
+#: scenes/combat/preparation.gd:495
 #: scenes/combat/turn_hud.gd:313
 msgid "궁수"
 msgstr ""
