@@ -216,6 +216,12 @@ func _is_valid_state(state: Dictionary) -> bool:
 			and CombatTurns.is_valid_state(state.get("turns"), count)
 			and CombatActions.is_valid_state(state, count, stage.map_size)):
 		return false
+	# 턴 순서는 살아 있는 유닛 전부다. 쓰러진 유닛이나 빠진 유닛이 있으면 턴이 끝없이 넘어가거나 멈춘다.
+	var order: Array = state.turns.order
+	var living: Array = range(count).filter(func(index: int) -> bool: return saved_units[index].hit_points > 0)
+	if (order.size() != living.size() or not living.all(func(index: int) -> bool: return index in order)
+			or not order.is_empty() and state.turns.current < 0):
+		return false
 	# 기절은 시전자의 턴이 와야 풀린다. 시전자가 살아서 순서에 있어야 턴이 끝없이 넘어가지 않는다.
 	for saved: Dictionary in saved_units:
 		if saved.stunned and saved.hit_points > 0 and (saved_units[saved.stun_source].hit_points <= 0
@@ -225,7 +231,8 @@ func _is_valid_state(state: Dictionary) -> bool:
 	if not (replay is Dictionary and replay.get("actions", 0) is int
 			and replay.get("actions", 0) <= CombatUnit.SAVED_INT_LIMIT and replay.get("reactions", []) is Array
 			and replay.get("reactions", []).size() <= CombatUnit.SAVED_INT_LIMIT
-			and replay.get("reactions", []).all(func(answer: Variant) -> bool: return answer is bool)):
+			and replay.get("reactions", []).all(func(answer: Variant) -> bool: return answer is bool)
+			and (replay.get("actions", 0) > 0 or replay.get("reactions", []).is_empty())):
 		return false
 	if replay.get("actions", 0) == 0:
 		return true

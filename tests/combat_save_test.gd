@@ -340,6 +340,11 @@ func _test_rejects_bad_saves() -> void:
 		"가방 한도 초과": func(state: Dictionary) -> void:
 			for index: int in range(20):
 				state.bag.append(state.bag[0].duplicate(true)),
+		"턴 순서의 쓰러진 유닛": func(state: Dictionary) -> void: state.units[state.turns.order[0]].hit_points = 0,
+		"턴 순서에 없는 살아 있는 유닛": func(state: Dictionary) -> void:
+			state.turns.order.remove_at(state.turns.order.size() - 1),
+		"현재 유닛 없음": func(state: Dictionary) -> void: state.turns.current = -1,
+		"다시 실행 없는 반응 답": func(state: Dictionary) -> void: state.replay = {"actions": 0, "reactions": [true]},
 		"묶음 밖의 현재 유닛": func(state: Dictionary) -> void:
 			state.turns.group = Vector2i(0, 0)
 			state.turns.current = state.turns.order[1],
