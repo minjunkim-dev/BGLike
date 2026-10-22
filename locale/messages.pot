@@ -1175,13 +1175,13 @@ msgstr ""
 msgid "아군 궁수"
 msgstr ""
 
-msgid "BGLike"
-msgstr ""
-
 #: scenes/save/game_save.gd:60
 msgid "저장을 읽을 수 없음"
 msgstr ""
 
 #: scenes/save/game_save.gd:61
 msgid "%d막 %d스테이지 진행 중"
+msgstr ""
+
+msgid "BGLike"
 msgstr ""
