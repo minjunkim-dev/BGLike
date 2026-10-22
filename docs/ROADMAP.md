@@ -178,7 +178,7 @@ flowchart LR
 
 ### 주사위 결과 피드백에서 정할 것 ❓
 
-> 2026-10-21 [#204](https://github.com/minjunkim-dev/BGLike/issues/204): 치명타·자동 실패·유리/불리 팝업([#222](https://github.com/minjunkim-dev/BGLike/issues/222))과 적 턴 빠르게 보기([#221](https://github.com/minjunkim-dev/BGLike/issues/221))는 개발 결정입니다. 수식 노출은 [기획자 확인 #220](https://github.com/minjunkim-dev/BGLike/issues/220)을 기다립니다.
+> 2026-10-21 [#204](https://github.com/minjunkim-dev/BGLike/issues/204): 치명타·자동 실패·유리/불리 팝업([#222](https://github.com/minjunkim-dev/BGLike/issues/222))과 적 턴 빠르게 보기([#221](https://github.com/minjunkim-dev/BGLike/issues/221))는 개발 결정입니다. 수식 노출은 2026-10-22 [#220 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/220#issuecomment-6331002448)으로 정했습니다([팝업 문구 규칙](COMBAT_UIUX.md#팝업-문구-규칙), 구현 #289).
 
 | 질문 | 선택지 예 |
 |---|---|
@@ -272,9 +272,9 @@ flowchart LR
 | 주제 | 왜 필요한가 | 권하는 시기 |
 |---|---|---|
 | **범위와 목표 플레이 시간** | 두 사람이 만들 수 있는 양을 먼저 정해야 콘텐츠 수가 나옴 | ⏸ 보류 (게임 비전에 포함) |
-| **운 관리** | d20 게임은 연속 빗나감이 큰 불만. 표시 확률 보정, 시드 고정, 다시 하기 허용 여부 | [기획자 확인 #220](https://github.com/minjunkim-dev/BGLike/issues/220) 대기 |
+| **운 관리** | d20 게임은 연속 빗나감이 큰 불만. 표시 확률 보정, 시드 고정, 다시 하기 허용 여부 | [#220 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/220#issuecomment-6331002448)으로 정함: 보정 없음, 시드 고정 없음([전투 4-5](COMBAT_DESIGN.md#4-5-운과-난수)), 전투 중 되돌리기 없음과 `전투 포기`([게임 구조 2-5](GAME_STRUCTURE.md#2-5-전투-밖-화면-)) |
 | **전투 템포** | 턴제는 연출이 쌓이면 느려짐. 빠르게 보기, 적 턴 가속 | [#204](https://github.com/minjunkim-dev/BGLike/issues/204)에서 개발 결정. 구현 [#221](https://github.com/minjunkim-dev/BGLike/issues/221) |
-| **튜토리얼** | 5e 규칙(유리/불리, 내성, 반응)은 처음 보는 사람에게 어려움 | M7 |
+| **튜토리얼** | 5e 규칙(유리/불리, 내성, 반응)은 처음 보는 사람에게 어려움 | M7. 정적 `도움말` 화면으로 정함([게임 구조 2-5](GAME_STRUCTURE.md#2-5-전투-밖-화면-), 구현 #287) |
 | **라이선스 표기** | SRD 5e(CC-BY-4.0)는 게임 안에 출처 표기가 필요. 폰트·무료 에셋 라이선스도 확인 | M7 이전. SRD 고지 문서와 배포 묶음은 [#213](https://github.com/minjunkim-dev/BGLike/issues/213) 완료. 게임 안 출처 화면은 타이틀 화면 [#283](https://github.com/minjunkim-dev/BGLike/issues/283) |
 | **플레이 테스트 방법** | 무엇을 보고 재미를 판단할지 (승률, 전투 시간, 막힌 지점) | M1 회고 양식에 반영 |
 | **출시 형태** | 스토어, 가격, 데모 공개 시점 | M7 이전 |
