@@ -115,7 +115,7 @@ autowrap_mode = 3
 
 [node name="Keys6" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
-text = "Esc: 반응 확인 창에서는 반응을 넘깁니다. 다른 확인 창과 도움말·출처 화면은 닫습니다."
+text = "Esc·컨트롤러 Start: 전투·정비 중에 일시정지 메뉴를 열고 닫습니다. 메뉴가 열려 있는 동안 전투가 멈춥니다. 반응 확인 창에서 Esc는 반응을 넘깁니다. 다른 확인 창과 설정·도움말·출처 화면은 Esc로 닫습니다."
 autowrap_mode = 3
 
 [node name="AdvantageHeading" type="Label" parent="Margin/Layout/HelpScroll/Topics"]

@@ -31,10 +31,18 @@ ui_accept={
 ]
 }
 
+; 일시정지 메뉴(#286): Esc와 컨트롤러 Start.
+pause={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":4194305,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
+, Object(InputEventJoypadButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"button_index":6,"pressure":0.0,"pressed":false,"script":null)
+]
+}
+
 [internationalization]
 
 locale/translations=PackedStringArray("res://locale/ko.po")
-locale/translations_pot_files=PackedStringArray("res://scenes/combat/act_progress.gd", "res://scenes/combat/action_rules.gd", "res://scenes/combat/actions.gd", "res://scenes/combat/battle.gd", "res://scenes/combat/battle.tscn", "res://scenes/combat/checks.gd", "res://scenes/combat/dice.gd", "res://scenes/combat/enemies.tscn", "res://scenes/combat/enemy_ai.gd", "res://scenes/combat/enemy_definitions.gd", "res://scenes/combat/grid.gd", "res://scenes/combat/hover_tooltip.gd", "res://scenes/combat/loot.gd", "res://scenes/combat/map.gd", "res://scenes/combat/preparation.gd", "res://scenes/combat/selection.gd", "res://scenes/combat/stage.gd", "res://scenes/combat/stages/act1_stage1_enemies.tscn", "res://scenes/combat/stages/act1_stage2_enemies.tscn", "res://scenes/combat/stages/act1_stage3_enemies.tscn", "res://scenes/combat/stages/act2_stage1_enemies.tscn", "res://scenes/combat/stages/act2_stage2_enemies.tscn", "res://scenes/combat/stages/act2_stage3_enemies.tscn", "res://scenes/combat/stages/act3_stage1_enemies.tscn", "res://scenes/combat/stages/act3_stage2_enemies.tscn", "res://scenes/combat/stages/act3_stage3_enemies.tscn", "res://scenes/combat/turn_hud.gd", "res://scenes/combat/turn_order_scroll.gd", "res://scenes/combat/turns.gd", "res://scenes/combat/unit.gd", "res://scenes/combat/unit.tscn", "res://scenes/game.tscn", "res://scenes/help.gd", "res://scenes/help.tscn", "res://scenes/main.tscn", "res://scenes/save/game_save.gd", "res://scenes/save/game_settings.gd", "res://scenes/settings.gd", "res://scenes/settings.tscn", "res://scenes/title.gd")
+locale/translations_pot_files=PackedStringArray("res://scenes/combat/act_progress.gd", "res://scenes/combat/action_rules.gd", "res://scenes/combat/actions.gd", "res://scenes/combat/battle.gd", "res://scenes/combat/battle.tscn", "res://scenes/combat/checks.gd", "res://scenes/combat/dice.gd", "res://scenes/combat/enemies.tscn", "res://scenes/combat/enemy_ai.gd", "res://scenes/combat/enemy_definitions.gd", "res://scenes/combat/grid.gd", "res://scenes/combat/hover_tooltip.gd", "res://scenes/combat/loot.gd", "res://scenes/combat/map.gd", "res://scenes/combat/preparation.gd", "res://scenes/combat/selection.gd", "res://scenes/combat/stage.gd", "res://scenes/combat/stages/act1_stage1_enemies.tscn", "res://scenes/combat/stages/act1_stage2_enemies.tscn", "res://scenes/combat/stages/act1_stage3_enemies.tscn", "res://scenes/combat/stages/act2_stage1_enemies.tscn", "res://scenes/combat/stages/act2_stage2_enemies.tscn", "res://scenes/combat/stages/act2_stage3_enemies.tscn", "res://scenes/combat/stages/act3_stage1_enemies.tscn", "res://scenes/combat/stages/act3_stage2_enemies.tscn", "res://scenes/combat/stages/act3_stage3_enemies.tscn", "res://scenes/combat/turn_hud.gd", "res://scenes/combat/turn_order_scroll.gd", "res://scenes/combat/turns.gd", "res://scenes/combat/unit.gd", "res://scenes/combat/unit.tscn", "res://scenes/game.tscn", "res://scenes/help.gd", "res://scenes/help.tscn", "res://scenes/main.tscn", "res://scenes/pause_menu.gd", "res://scenes/pause_menu.tscn", "res://scenes/save/game_save.gd", "res://scenes/save/game_settings.gd", "res://scenes/settings.gd", "res://scenes/settings.tscn", "res://scenes/title.gd")
 
 [rendering]
 

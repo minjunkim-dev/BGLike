@@ -1,0 +1,95 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Theme" path="res://scenes/ui_theme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scenes/pause_menu.gd" id="2_pause"]
+[ext_resource type="PackedScene" path="res://scenes/settings.tscn" id="3_settings"]
+[ext_resource type="PackedScene" path="res://scenes/help.tscn" id="4_help"]
+
+[node name="PauseMenu" type="ColorRect"]
+process_mode = 3
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+color = Color(0.04, 0.06, 0.08, 0.85)
+script = ExtResource("2_pause")
+
+[node name="Menu" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -70.0
+offset_top = -98.0
+offset_right = 70.0
+offset_bottom = 98.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="Heading" type="Label" parent="Menu"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "일시정지"
+horizontal_alignment = 1
+
+[node name="Gap" type="Control" parent="Menu"]
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+
+[node name="Resume" type="Button" parent="Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "계속"
+
+[node name="SettingsButton" type="Button" parent="Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "설정"
+
+[node name="HelpButton" type="Button" parent="Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "도움말"
+
+[node name="GiveUp" type="Button" parent="Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "전투 포기"
+
+[node name="ToTitle" type="Button" parent="Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "타이틀로"
+
+[node name="Quit" type="Button" parent="Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "종료"
+
+[node name="Confirm" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+theme = ExtResource("1_theme")
+dialog_hide_on_ok = false
+dialog_autowrap = true
+
+[node name="SettingsScreen" parent="." instance=ExtResource("3_settings")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="Help" parent="." instance=ExtResource("4_help")]
+unique_name_in_owner = true
+layout_mode = 1

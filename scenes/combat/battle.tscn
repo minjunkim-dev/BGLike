@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://scenes/combat/battle.gd" id="1_battle"]
 [ext_resource type="PackedScene" path="res://scenes/combat/unit.tscn" id="2_unit"]
@@ -18,6 +18,7 @@
 [ext_resource type="Resource" path="res://scenes/combat/stages/act3_stage1.tres" id="13_stage1"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act3_stage3.tres" id="14_stage3"]
 [ext_resource type="Script" path="res://scenes/combat/map.gd" id="16_map"]
+[ext_resource type="PackedScene" path="res://scenes/pause_menu.tscn" id="17_pause"]
 
 [sub_resource type="Theme" id="Theme_legend"]
 default_font_size = 12
@@ -238,3 +239,8 @@ horizontal_alignment = 1
 [node name="Restart" type="Button" parent="UI/TurnHud/Result/Panel/Contents"]
 layout_mode = 2
 text = "재시작"
+
+[node name="Pause" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="PauseMenu" parent="Pause" instance=ExtResource("17_pause")]
