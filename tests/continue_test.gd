@@ -80,6 +80,17 @@ func _test_new_game_and_continue() -> void:
 	await process_frame
 	_check(GameSave.autosave and FileAccess.get_file_as_bytes(GameSave.path) == bytes,
 		"이어한 뒤에도 자동 저장을 켜고, 1-1 시작 상태로 저장을 덮지 않음")
+	# 일시정지 메뉴의 `타이틀로`(#286)로 나가도 같은 자리에서 이어한다.
+	var menu: PauseMenu = battle.get("pause_menu")
+	await _tap(_action("pause"))
+	menu.title_button.pressed.emit()
+	menu.confirm.get_ok_button().pressed.emit()
+	await _settle()
+	_check(current_scene is TitleScreen and (current_scene as TitleScreen).continue_button.visible and not paused,
+		"일시정지 메뉴의 타이틀로 뒤 타이틀에 이어하기")
+	if current_scene is TitleScreen:
+		battle = await _continue(current_scene as TitleScreen)
+		_check(battle.call("combat_state") == state, "일시정지 메뉴의 타이틀로 뒤 이어하면 같은 자리")
 
 
 ## 이어한 전투를 이겨 보상 확인·정비 화면에서 끄고 다시 켜면 그 화면 단계, 가방, 물약으로 돌아온다.

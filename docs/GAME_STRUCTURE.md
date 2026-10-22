@@ -90,12 +90,12 @@ flowchart TD
 - 개발 결정으로 남긴 것: 저장 파일의 위치·형식·버전 처리, 확인 창 문구.
   - `개발 결정`: 저장 파일의 위치·형식·버전 처리는 [#280](https://github.com/minjunkim-dev/BGLike/issues/280)에서 정했습니다([ADR 0003](adr/0003-save-files.md)).
   - `개발 결정`: 적 턴 중간의 저장은 그 적 턴이 시작한 상태와 끝낸 적 행동 수·아군의 반응 답으로 적고, 이어하기가 같은 난수로 끝낸 행동까지 연출 없이 다시 실행합니다. 결과는 마지막으로 끝난 적 행동 직후의 그 자리입니다. 승리 드랍은 전투 주사위로 굴려 이어하기로 다시 뽑을 수 없습니다 ([#281](https://github.com/minjunkim-dev/BGLike/issues/281), [ADR 0003](adr/0003-save-files.md#전투-칸-281)).
-  - `개발 결정`: 파일은 있는데 읽을 수 없는 저장(깨짐, 다른 형식 버전, 맞지 않는 전투 칸)은 없는 것처럼 `이어하기`를 숨기고 타이틀에 "저장을 읽을 수 없어 이어할 수 없습니다."를 보입니다. 게임은 멈추지 않고 파일은 `새 게임`을 확인할 때까지 지우지 않습니다. `새 게임`의 덮어쓰기 확인 창은 이때 "저장을 읽을 수 없음"을 보입니다. 졸업 화면에서는 일시정지 메뉴를 열지 않습니다 ([#284](https://github.com/minjunkim-dev/BGLike/issues/284), [ADR 0003](adr/0003-save-files.md#새-게임이어하기졸업-284)).
+  - `개발 결정`: 파일은 있는데 머리·본문을 읽을 수 없는 저장(깨짐, 다른 형식 버전)은 없는 것처럼 `이어하기`를 숨기고 타이틀에 "저장을 읽을 수 없어 이어할 수 없습니다."를 보입니다. 머리는 읽히지만 전투 칸이 복원 검사에 맞지 않으면 `이어하기`를 누를 때 거르고, 전투를 열지 않은 채 같은 안내를 보입니다. 게임은 멈추지 않고 파일은 `새 게임`을 확인할 때까지 지우지 않습니다. `새 게임`의 덮어쓰기 확인 창은 이때 "저장을 읽을 수 없음"을 보입니다. 졸업 화면에서는 일시정지 메뉴를 열지 않습니다 ([#284](https://github.com/minjunkim-dev/BGLike/issues/284), [ADR 0003](adr/0003-save-files.md#새-게임이어하기졸업-284)).
   - `개발 결정`: 정비·보상 확인 화면 중의 저장은 화면 단계(보상 확인·정비)만 더 적습니다. 가방·장비·물약·남은 보상은 전투 저장에 들어 있습니다. 정비 종료 확인 생략 선택은 저장하지 않아 이어하기 뒤 한 번 다시 묻습니다 ([#282](https://github.com/minjunkim-dev/BGLike/issues/282), [ADR 0003](adr/0003-save-files.md#정비-칸-282)).
 
 ### 2-5. 전투 밖 화면 ✅
 
-> **결정됨, 구현 중.** 2026-10-22 [#209 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6330756631) 2~6번, [#209 3번 정정](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6331003204), [#220 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/220#issuecomment-6331002448) 3번입니다. 구현은 [타이틀 #283](https://github.com/minjunkim-dev/BGLike/issues/283), [설정 #285](https://github.com/minjunkim-dev/BGLike/issues/285), [일시정지·전투 포기 #286](https://github.com/minjunkim-dev/BGLike/issues/286), [도움말 #287](https://github.com/minjunkim-dev/BGLike/issues/287)에서 합니다.
+> **결정됨, 구현됨.** 2026-10-22 [#209 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6330756631) 2~6번, [#209 3번 정정](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6331003204), [#220 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/220#issuecomment-6331002448) 3번입니다. 구현은 [타이틀 #283](https://github.com/minjunkim-dev/BGLike/issues/283), [설정 #285](https://github.com/minjunkim-dev/BGLike/issues/285), [일시정지·전투 포기 #286](https://github.com/minjunkim-dev/BGLike/issues/286), [도움말 #287](https://github.com/minjunkim-dev/BGLike/issues/287)에서 했습니다.
 
 | 화면 | 결정 |
 |---|---|

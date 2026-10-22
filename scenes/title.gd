@@ -84,7 +84,7 @@ func start_new_game() -> void:
 ## 저장한 자리의 전투·보상·정비 화면을 연다. 저장이 맞지 않으면 타이틀에 남고 이어하기를 숨긴다.
 ## 첫 프레임 전에 복원해야 1-1 시작 상태가 저장을 덮지 않는다 (docs/adr/0003).
 func continue_game() -> void:
-	# 복원에 실패한 장면이 지워지기 전 프레임에 저장을 덮지 않게 성공한 뒤에 켠다.
+	# 복원 전에는 쓰지 않고, 실패하면 스위치를 끈 채 둔다.
 	GameSave.autosave = false
 	var game: Node = (load(GAME_SCENE) as PackedScene).instantiate()
 	get_tree().root.add_child(game)
@@ -95,6 +95,8 @@ func continue_game() -> void:
 		return
 	GameSave.autosave = true
 	get_tree().current_scene = game
+	# 지워지는 프레임에 한 번 더 눌러 게임 장면을 둘 열지 않게 바로 숨긴다.
+	hide()
 	queue_free()
 
 

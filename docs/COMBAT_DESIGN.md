@@ -416,7 +416,7 @@ flowchart TD
 
 | 씬 | 내용 |
 |---|---|
-| 전투 | 실행하면 타이틀 화면에서 시작함. 타이틀·일시정지·설정·도움말 화면은 [게임 구조 2-5](GAME_STRUCTURE.md#2-5-전투-밖-화면-)로 정함(결정됨, 구현 중: [#283](https://github.com/minjunkim-dev/BGLike/issues/283), [#285](https://github.com/minjunkim-dev/BGLike/issues/285)~[#287](https://github.com/minjunkim-dev/BGLike/issues/287)) |
+| 전투 | 실행하면 타이틀 화면에서 시작함. 타이틀·일시정지·설정·도움말 화면은 [게임 구조 2-5](GAME_STRUCTURE.md#2-5-전투-밖-화면-)로 정함([#283](https://github.com/minjunkim-dev/BGLike/issues/283), [#285](https://github.com/minjunkim-dev/BGLike/issues/285)~[#287](https://github.com/minjunkim-dev/BGLike/issues/287)) |
 | 결과 창 | 전투 씬 위에 띄움. 승리 / 패배와 재시작 버튼 (지금과 같음) |
 
 ### 9-2. 전투 화면 배치
