@@ -19,8 +19,9 @@ func _ready() -> void:
 
 
 func open() -> void:
-	volume_slider.set_value_no_signal(GameSettings.volume())
-	_show_volume(GameSettings.volume())
+	var volume: int = GameSettings.volume()
+	volume_slider.set_value_no_signal(volume)
+	_show_volume(volume)
 	fullscreen_box.set_pressed_no_signal(GameSettings.fullscreen())
 	show()
 	volume_slider.grab_focus()
@@ -36,15 +37,16 @@ func _show_volume(value: int) -> void:
 	volume_label.text = tr("음소거") if value == 0 else "%d%%" % value
 
 
+## 파일 쓰기에 실패해도(경고만 남김) 화면에 보인 값을 적용한다. 다음 실행에만 남지 않는다.
 func _on_volume_changed(value: float) -> void:
 	_show_volume(int(value))
 	GameSettings.write("master_volume", int(value))
-	GameSettings.apply()
+	GameSettings.apply_volume(int(value))
 
 
 func _on_fullscreen_toggled(on: bool) -> void:
 	GameSettings.write("fullscreen", on)
-	GameSettings.apply()
+	GameSettings.apply_window_mode(on)
 
 
 func _input(event: InputEvent) -> void:

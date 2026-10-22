@@ -37,12 +37,20 @@ static func fullscreen() -> bool:
 	return read("fullscreen", false)
 
 
-## 저장한 값을 Master 버스와 창에 적용한다. 게임을 시작할 때(타이틀)와 설정을 바꿀 때 부른다.
+## 저장한 값을 Master 버스와 창에 적용한다. 게임을 시작할 때(타이틀) 부른다.
 static func apply() -> void:
-	AudioServer.set_bus_volume_linear(0, volume() / 100.0)
+	apply_volume(volume())
+	apply_window_mode(fullscreen())
+
+
+static func apply_volume(percent: int) -> void:
+	AudioServer.set_bus_volume_linear(AudioServer.get_bus_index("Master"), percent / 100.0)
+
+
+static func apply_window_mode(full_screen: bool) -> void:
 	# 창 모드에서는 최대화·최소화한 창을 그대로 둔다.
 	var full: bool = DisplayServer.window_get_mode() in [DisplayServer.WINDOW_MODE_FULLSCREEN,
 		DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN]
-	if full != fullscreen():
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen()
+	if full != full_screen:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if full_screen
 			else DisplayServer.WINDOW_MODE_WINDOWED)

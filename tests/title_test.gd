@@ -115,6 +115,14 @@ func _check_settings(title: TitleScreen) -> void:
 	await _tap(_joypad(JOY_BUTTON_DPAD_RIGHT))
 	_check(settings.volume_slider.value == 10 and GameSettings.volume() == 10
 		and is_equal_approx(AudioServer.get_bus_volume_linear(0), 0.1), "D-pad 오른쪽으로 10%")
+	# 설정 파일을 쓸 수 없어도 화면에 보인 값과 Master 버스는 같다.
+	var saved_path: String = GameSettings.path
+	GameSettings.path = directory + "/missing/settings.cfg"
+	await _tap(_action("ui_right"))
+	_check(settings.volume_label.text == "20%" and is_equal_approx(AudioServer.get_bus_volume_linear(0), 0.2),
+		"쓰기 실패에도 보인 20%를 적용")
+	GameSettings.path = saved_path
+	await _tap(_action("ui_left"))
 	await _tap(_action("ui_up"))
 	_check(settings.volume_slider.has_focus(), "음량 위로는 포커스가 나가지 않음")
 	await _tap(_joypad(JOY_BUTTON_DPAD_DOWN))
@@ -146,6 +154,9 @@ func _check_settings_kept() -> void:
 	_check(is_equal_approx(AudioServer.get_bus_volume_linear(0), 0.1), "다시 시작하면 저장한 음량 10%를 적용")
 	_check(title.settings_button.visible, "다시 시작한 타이틀에서도 설정을 엶")
 	title.queue_free()
+	# 화면이 있는 실행(화면 밖 Docker 등)에서 창이 전체 화면으로 남지 않게 되돌린다.
+	GameSettings.write("fullscreen", false)
+	GameSettings.apply_window_mode(false)
 	await process_frame
 
 
@@ -242,5 +253,7 @@ func _finish() -> void:
 	if current_scene:
 		current_scene.queue_free()
 	await process_frame
+	for file: String in [GameSettings.path, GameSettings.path + ".tmp"]:
+		DirAccess.remove_absolute(file)
 	DirAccess.remove_absolute(directory)
 	quit(0 if failures == 0 else 1)

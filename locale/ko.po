@@ -1228,7 +1228,7 @@ msgstr "저장을 읽을 수 없음"
 msgid "%d막 %d스테이지 진행 중"
 msgstr "%d막 %d스테이지 진행 중"
 
-#: scenes/settings.gd:36
+#: scenes/settings.gd:37
 msgid "음소거"
 msgstr "음소거"
 

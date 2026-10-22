@@ -1245,7 +1245,7 @@ msgstr ""
 msgid "%d막 %d스테이지 진행 중"
 msgstr ""
 
-#: scenes/settings.gd:36
+#: scenes/settings.gd:37
 msgid "음소거"
 msgstr ""
 
