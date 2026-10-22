@@ -91,7 +91,11 @@ func _run() -> void:
 	_check(popup_samples > 0, "반복 공격에서 실제 팝업을 관찰함")
 	_check(collisions.is_empty(), "반복 공격 팝업 겹침 없음: %s" % str(collisions))
 	_check(popup_styles.get("치명타!", []) == [CombatUnit.CRITICAL_COLOR, 14], "치명타는 금색 큰 글씨 팝업")
-	_check(popup_styles.get("자동 실패", []) == [CombatUnit.FUMBLE_COLOR, 10], "자동 실패는 회색 팝업")
+	_check(popup_styles.get("빗나감", []) == [CombatUnit.WEAPON_COLOR, 10]
+		and not popup_styles.has("자동 실패"), "자연 1도 일반 빗나감 팝업")
+	_check(popup_styles.keys().all(func(text: String) -> bool:
+		return not text.begins_with("공격 ") and not text.begins_with("-")),
+		"공격자 판정 합계 팝업과 피해 부호 없음: %s" % str(popup_styles.keys()))
 	_check(messages.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 2,
 		"과부하 중 회전 공격 두 번 유지")
 	_check(units[0].hit_points == 5 and units[1].hit_points == 10 and boss.hit_points == 23,
@@ -210,7 +214,7 @@ func _test_crowded_feedback() -> void:
 	_check(await actions.attack(attacker, archer), "밀집 배치에서 새끼 거미 치명타 실행")
 	actions.feedback.disconnect(record)
 	var texts: Array = placed.map(func(entry: Dictionary) -> String: return entry["text"])
-	_check(texts == ["공격 24", "치명타!", "-1"], "밀집 배치의 판정·치명타·피해 팝업: %s" % str(texts))
+	_check(texts == ["치명타!", "1"], "밀집 배치의 치명타·피해 팝업: %s" % str(texts))
 	# 기준 자리: 대상 상태 줄 기준점. 같은 대상의 이전 팝업이 있으면 그 팝업 바로 위가 더 위쪽일 때 그 자리.
 	var latest: Dictionary = {}
 	for entry: Dictionary in placed:

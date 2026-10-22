@@ -5,6 +5,7 @@ extends RefCounted
 signal changed
 signal logged(message: String)
 signal feedback(unit: CombatUnit, text: String)
+signal healed(unit: CombatUnit, amount: int)
 signal hit_landed
 signal reaction_requested(kind: String, prompt: String)
 signal reaction_decided(use_reaction: bool)
@@ -310,7 +311,7 @@ func _on_turn_started(unit: CombatUnit) -> void:
 	if unit.overloaded and unit.hit_points > 0 and not is_over():
 		_damage(unit, 2)
 		logged.emit(tr("%s 과부하: 자기 피해 2 · HP %d") % [unit.get_display_name(), unit.hit_points])
-		feedback.emit(unit, tr("과부하 -2"))
+		feedback.emit(unit, tr("과부하 2"))
 	_apply_grounds(unit, false)
 	var poison_checked: bool = false
 	for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
@@ -325,7 +326,9 @@ func _on_turn_started(unit: CombatUnit) -> void:
 			var saved: CombatChecks.RollResult = CombatChecks.saving_throw(constitution, effect.save_dc, dice)
 			logged.emit(tr("%s 독 건강 내성: d20 %d + %d = %d / DC %d · %s") % [unit.get_display_name(),
 				saved.selected_roll, constitution, saved.total, effect.save_dc, tr("성공") if saved.success else tr("실패")])
-			feedback.emit(unit, tr("독 내성 %d") % saved.total)
+			# 실패는 뒤따르는 `독 1` 틱 팝업이 효과 이름을 보인다.
+			if saved.success:
+				feedback.emit(unit, tr("독 내성"))
 			if unit.hit_points <= 0 or is_over():
 				break
 			if effect not in unit.status_effects:
@@ -336,7 +339,7 @@ func _on_turn_started(unit: CombatUnit) -> void:
 		var amount: int = dice.roll(4) if effect.kind == "burn" else 1
 		_damage(unit, amount)
 		logged.emit(tr("%s %s: %d · HP %d") % [unit.get_display_name(), name, amount, unit.hit_points])
-		feedback.emit(unit, "%s -%d" % [name, amount])
+		feedback.emit(unit, "%s %d" % [name, amount])
 	changed.emit()
 
 
@@ -791,11 +794,10 @@ func shove(actor: CombatUnit, target: CombatUnit) -> bool:
 			actor.get_attribute(CombatUnit.Attribute.STRENGTH),
 			maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), dice)
 		won = result.attacker_wins
-		feedback.emit(actor, tr("밀치기 %d") % result.attacker_total)
-		feedback.emit(target, tr("저항 %d") % result.defender_total)
 		logged.emit(tr("밀치기 대결: %d + %d = %d / %d + %d = %d") % [
 			result.attacker_roll, actor.get_attribute(CombatUnit.Attribute.STRENGTH), result.attacker_total,
 			result.defender_roll, maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), result.defender_total])
+	feedback.emit(target, tr("밀치기 성공") if won else tr("밀치기 실패"))
 	if won:
 		_land(target, grid.push_destination(actor.cell, target.cell))
 	logged.emit(tr("밀치기 %s") % (tr("성공") if won else tr("실패")))
@@ -853,11 +855,10 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 	logged.emit(tr("%s 공격(%s): d20 %s + %d = %d / AC %d · %s") % [actor.get_display_name(), mode_name,
 		str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total, target.get_armor_class(),
 		tr("치명타") if last_attack.critical else tr("명중") if last_attack.success else tr("빗나감")])
-	feedback.emit(actor, tr("공격 %d") % last_attack.total)
 	if last_attack.critical:
 		feedback.emit(target, tr("치명타!"))
 	if not last_attack.success:
-		feedback.emit(target, tr("자동 실패") if last_attack.selected_roll == 1 else tr("빗나감"))
+		feedback.emit(target, tr("빗나감"))
 		return
 	if (save_dc > 0 and CombatActionRules.has_uses(target, "parry") and not target.is_stunned
 		and target.reaction_left > 0):
@@ -868,7 +869,6 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 			var saved: CombatChecks.RollResult = CombatChecks.saving_throw(target.get_dexterity(), save_dc, dice)
 			logged.emit(tr("흘려내기: d20 %d + %d = %d / DC %d · %s") % [saved.selected_roll,
 				target.get_dexterity(), saved.total, save_dc, tr("성공") if saved.success else tr("실패")])
-			feedback.emit(target, tr("흘려내기 %d") % saved.total)
 			if saved.success:
 				feedback.emit(target, tr("흘려내기"))
 				return
@@ -892,7 +892,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 		logged.emit(tr("%s 피해%s: %s + %d = %d · HP %d") % [target.get_display_name(),
 			tr(" (표식 추가)") if has_mark_damage else "",
 			str(last_damage_rolls), damage_bonus, last_damage, target.hit_points])
-	feedback.emit(target, "-%d" % last_damage)
+	feedback.emit(target, str(last_damage))
 	if shock and target.hit_points > 0 and target.is_boss():
 		logged.emit(tr("%s 기절 면역") % target.get_display_name())
 		feedback.emit(target, tr("기절 면역"))
@@ -905,7 +905,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 		logged.emit(tr("정신 내성: d20 %d + %d = %d / DC %d · %s") % [saved.selected_roll,
 			target.get_attribute(CombatUnit.Attribute.MENTAL), saved.total, save_dc,
 			tr("기절") if not saved.success else tr("버팀")])
-		feedback.emit(target, tr("정신 내성 %d") % saved.total)
+		feedback.emit(target, tr("정신 내성") if saved.success else tr("기절"))
 
 
 func _apply_grounds(unit: CombatUnit, entering: bool) -> void:
@@ -967,7 +967,7 @@ func _land(target: CombatUnit, destination: Vector2i) -> void:
 		logged.emit(tr("%s 낙하 피해: %d · HP %d") % [target.get_display_name(), amount, target.hit_points])
 		if not _same_combat(target, revision):
 			return
-		feedback.emit(target, "-%d" % amount)
+		feedback.emit(target, str(amount))
 	if not _same_combat(target, revision):
 		return
 	_apply_grounds(target, true)
@@ -993,7 +993,7 @@ func _heal(actor: CombatUnit, amount: int, name: String) -> void:
 	var before: int = actor.hit_points
 	actor.hit_points = mini(actor.get_max_hit_points(), actor.hit_points + amount)
 	logged.emit(tr("%s %s: HP +%d → %d") % [actor.get_display_name(), name, actor.hit_points - before, actor.hit_points])
-	feedback.emit(actor, "+%d" % (actor.hit_points - before))
+	healed.emit(actor, actor.hit_points - before)
 
 
 func _finish() -> void:
