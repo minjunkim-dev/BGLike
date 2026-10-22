@@ -294,6 +294,17 @@ class ManualQATests(unittest.TestCase):
         with patch.object(qa.subprocess, "check_output", return_value="\n"):
             self.assertFalse(qa.container_alive("bglike-qa-test"))
 
+    def test_interrupted_cleanup_keeps_original_failure(self):
+        with patch.object(qa, "start_container", return_value="sha256:image"), \
+                patch.object(qa, "import_offscreen", side_effect=ValueError("Offscreen import failed")), \
+                patch.object(qa, "stop_container", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                qa.run_case(self.app, self.case, self.directory, self.state, offscreen=True)
+        attempt = self.state["cases"]["compact"]["attempts"][-1]
+        self.assertEqual(attempt["status"], "interrupted")
+        self.assertEqual((attempt["reason"], attempt["cleanup_error"]),
+                         ("Offscreen import failed", "Interrupted during process cleanup"))
+
     def test_offscreen_import_script_error_blocks_launch(self):
         def run(_command, stdout, **_kwargs):
             stdout.write("SCRIPT ERROR: Parse Error\n")

@@ -46,7 +46,7 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 
 도우미는 `open -g -n -W`로 Forward+ 인스턴스를 연다. `--manual`을 넘긴다. 직접 확인 모드는 이니셔티브만 고정한다. 실제 전투 주사위와 반응 UI를 유지한다. 게임 창을 전면으로 올리는 명령은 사용하지 않는다. 입력 도구는 해당 Godot 인스턴스에 연결한 비활성 창 입력을 사용한다.
 
-`open -g`로 띄워도 Godot 창이 스스로 맨 앞에 올 수 있다. 2026-10-22 [#264](https://github.com/minjunkim-dev/BGLike/issues/264) 작업([PR #268](https://github.com/minjunkim-dev/BGLike/pull/268))에서 일어났다. 조건은 공식 Godot 4.7.2 macOS Forward+(Metal), `open -g -n -W`, 2-1 장면의 윤곽을 원본 Viewport로 저장하는 임시 SceneTree 스크립트다. 윤곽 캡처 두 번에서 Godot가 약 0.3초 맨 앞 앱이 됐다. 감시 스크립트가 `lsappinfo front`로 감지했다. 그 스크립트는 pid를 잘못 읽어 즉시 종료하지 못했다. 두 인스턴스는 캡처 뒤 스스로 끝났다.
+`open -g`로 띄워도 Godot 창이 스스로 맨 앞에 올 수 있다. 2026-10-22 [#264](https://github.com/minjunkim-dev/BGLike/issues/264) 작업([PR #268](https://github.com/minjunkim-dev/BGLike/pull/268))에서 일어났다. 조건은 공식 Godot 4.7.2 Forward+의 macOS `open -g` 창과, 2-1 장면의 윤곽을 원본 Viewport로 저장하는 임시 스크립트다. 윤곽 캡처 두 번에서 Godot가 약 0.3초 맨 앞 앱이 됐다. 감시 스크립트가 `lsappinfo front`로 감지했다. 그 스크립트는 pid를 잘못 읽어 즉시 종료하지 못했다. 두 인스턴스는 캡처 뒤 스스로 끝났다.
 
 같은 날 같은 실행 방법의 [PR #266](https://github.com/minjunkim-dev/BGLike/pull/266) 측정은 `lsappinfo front`를 0.05초 간격으로 읽었고, Godot가 맨 앞에 오지 않았다. 간헐적이며 원인은 특정하지 못했다. 이후 PR #267, #269~#271, #273, #275의 화면 확인은 화면 밖 실행으로 대신했다. 사용자 포커스를 가져가므로 이 문서를 고칠 때 다시 재현하지 않았다.
 

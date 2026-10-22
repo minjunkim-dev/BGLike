@@ -282,7 +282,7 @@ def run_case(app, case, directory, state, offscreen=False):
                     raise ValueError(f"Godot error at shutdown: {log}")
         except KeyboardInterrupt:
             entry["status"] = "interrupted"
-            record["reason"] = "Interrupted during process cleanup"
+            record["cleanup_error" if "reason" in record else "reason"] = "Interrupted during process cleanup"
             raise
         except Exception as error:
             entry["status"] = "failed"
