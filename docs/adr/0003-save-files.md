@@ -37,7 +37,7 @@
 - `sections`는 저장하는 쪽이 이름별로 채운다. 예를 들어 #281은 `"combat"`, #282는 `"preparation"`을 넣는다. 저장하는 쪽은 자기 칸을 만들고 읽을 수 있다. 칸을 더해도 파일 머리와 본문 틀은 그대로다.
 - `bytes_to_var()`는 Object를 복원하지 않는다(`bytes_to_var_with_objects()`와 다르다). 저장 파일로 스크립트나 리소스를 불러올 수 없다. 그래서 `sections`에는 Object가 아닌 값(정수, 실수, 문자열, 벡터, 배열, Dictionary, Packed 배열)만 넣는다.
 
-설정 파일은 Godot `ConfigFile` 텍스트(`[settings]` 섹션)다. 키와 기본값은 #285가 정한다. `GameSettings.read(key, fallback)`는 파일이 없거나 깨졌거나 값의 타입이 `fallback`과 다르면 `fallback`을 돌려준다.
+설정 파일은 Godot `ConfigFile` 텍스트(`[settings]` 섹션)다. 키는 #285가 정했다: `master_volume`(정수 %, 기본 80, 10% 단계)과 `fullscreen`(bool, 기본 `false`). `GameSettings.volume()`은 손으로 고친 값을 0–100의 한 단계 값으로 맞춘다. 화면과 단계의 근거는 [설정 화면](../COMBAT_UIUX.md#설정-화면)에 있다. `GameSettings.read(key, fallback)`는 파일이 없거나 깨졌거나 값의 타입이 `fallback`과 다르면 `fallback`을 돌려준다.
 
 ### 버전 처리
 

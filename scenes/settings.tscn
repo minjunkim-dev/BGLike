@@ -1,0 +1,97 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://scenes/ui_theme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scenes/settings.gd" id="2_settings"]
+
+[node name="Settings" type="ColorRect"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+color = Color(0.04, 0.06, 0.08, 1)
+script = ExtResource("2_settings")
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Layout" type="VBoxContainer" parent="Center"]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Heading" type="Label" parent="Center/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "설정"
+horizontal_alignment = 1
+
+[node name="Grid" type="GridContainer" parent="Center/Layout"]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="VolumeName" type="Label" parent="Center/Layout/Grid"]
+layout_mode = 2
+text = "마스터 음량"
+
+[node name="VolumeRow" type="HBoxContainer" parent="Center/Layout/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Volume" type="HSlider" parent="Center/Layout/Grid/VolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+focus_neighbor_top = NodePath(".")
+focus_neighbor_bottom = NodePath("../../Fullscreen")
+focus_next = NodePath("../../Fullscreen")
+focus_previous = NodePath(".")
+
+[node name="VolumeValue" type="Label" parent="Center/Layout/Grid/VolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="WindowName" type="Label" parent="Center/Layout/Grid"]
+layout_mode = 2
+text = "창 모드"
+
+[node name="Fullscreen" type="CheckBox" parent="Center/Layout/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_neighbor_left = NodePath(".")
+focus_neighbor_top = NodePath("../VolumeRow/Volume")
+focus_neighbor_right = NodePath(".")
+focus_neighbor_bottom = NodePath("../../Back")
+focus_next = NodePath("../../Back")
+focus_previous = NodePath("../VolumeRow/Volume")
+text = "전체 화면"
+
+[node name="Gap" type="Control" parent="Center/Layout"]
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+
+[node name="Back" type="Button" parent="Center/Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 20)
+layout_mode = 2
+size_flags_horizontal = 4
+focus_neighbor_left = NodePath(".")
+focus_neighbor_top = NodePath("../Grid/Fullscreen")
+focus_neighbor_right = NodePath(".")
+focus_neighbor_bottom = NodePath(".")
+focus_next = NodePath(".")
+focus_previous = NodePath("../Grid/Fullscreen")
+text = "뒤로"

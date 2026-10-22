@@ -34,6 +34,8 @@
 # res://scenes/main.tscn
 # res://scenes/save/game_save.gd
 # res://scenes/save/game_settings.gd
+# res://scenes/settings.gd
+# res://scenes/settings.tscn
 # res://scenes/title.gd
 #
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -1190,6 +1192,7 @@ msgid "이어하기"
 msgstr ""
 
 #: scenes/main.tscn
+#: scenes/settings.tscn
 msgid "설정"
 msgstr ""
 
@@ -1230,6 +1233,7 @@ msgid "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
 msgstr ""
 
 #: scenes/main.tscn
+#: scenes/settings.tscn
 msgid "뒤로"
 msgstr ""
 
@@ -1241,6 +1245,22 @@ msgstr ""
 msgid "%d막 %d스테이지 진행 중"
 msgstr ""
 
-#: scenes/title.gd:23
+#: scenes/settings.gd:36
+msgid "음소거"
+msgstr ""
+
+#: scenes/settings.tscn
+msgid "마스터 음량"
+msgstr ""
+
+#: scenes/settings.tscn
+msgid "창 모드"
+msgstr ""
+
+#: scenes/settings.tscn
+msgid "전체 화면"
+msgstr ""
+
+#: scenes/title.gd:24
 msgid "이 게임은 Godot Engine %d.%d.%d를 사용합니다. Godot Engine은 다음 MIT 라이선스를 따릅니다."
 msgstr ""

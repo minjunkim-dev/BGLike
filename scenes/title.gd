@@ -11,6 +11,7 @@ const SCROLL_STEP: int = 24
 @onready var new_game_button: Button = %NewGame
 @onready var continue_button: Button = %Continue
 @onready var settings_button: Button = %Settings
+@onready var settings: SettingsScreen = %SettingsScreen
 @onready var credits_button: Button = %CreditsButton
 @onready var quit_button: Button = %Quit
 @onready var credits: Control = %Credits
@@ -24,9 +25,11 @@ func _ready() -> void:
 		version.major, version.minor, version.patch]
 	(%EngineLicense as Label).text = Engine.get_license_text()
 	continue_button.visible = has_save()
-	# 설정 화면은 #285가 이 버튼에 연결할 때까지 꺼 둔다.
-	settings_button.disabled = true
+	# 설정은 게임 저장과 따로 보관하며 시작할 때 적용한다 (docs/adr/0003).
+	GameSettings.apply()
 	new_game_button.pressed.connect(func() -> void: get_tree().change_scene_to_file(GAME_SCENE))
+	settings_button.pressed.connect(show_settings.bind(true))
+	settings.closed.connect(show_settings.bind(false))
 	credits_button.pressed.connect(show_credits.bind(true))
 	back_button.pressed.connect(show_credits.bind(false))
 	quit_button.pressed.connect(get_tree().quit)
@@ -36,6 +39,14 @@ func _ready() -> void:
 ## 이어할 저장이 있는지. `이어하기`를 눌렀을 때 저장한 자리로 가는 동작은 #284가 연결한다.
 func has_save() -> bool:
 	return GameSave.has_save()
+
+
+func show_settings(open: bool) -> void:
+	menu.visible = not open
+	if open:
+		settings.open()
+	else:
+		settings_button.grab_focus()
 
 
 func show_credits(open: bool) -> void:

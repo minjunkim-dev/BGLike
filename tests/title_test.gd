@@ -1,7 +1,10 @@
 extends SceneTree
-## 실제 메인 장면에서 타이틀 버튼, 키보드·컨트롤러 조작, 출처 화면과 새 게임 진입을 검사한다 (#283).
+## 실제 메인 장면에서 타이틀 버튼, 키보드·컨트롤러 조작, 설정·출처 화면과 새 게임 진입을 검사한다 (#283, #285).
 
 const WINDOWS: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900)]
+## 창별 논리 화면. headless 기본 창이 아니라 이 크기의 실제 창에서 배치를 본다 (#272).
+const LOGICAL: Dictionary[Vector2i, Vector2] = {Vector2i(1280, 720): Vector2(640, 360),
+	Vector2i(1920, 1080): Vector2(640, 360), Vector2i(1440, 900): Vector2(640, 400)}
 ## ADR 0002의 레이아웃 자동 검사 창: 16:10 4배, 넓은 비율, 비정수 배율.
 const EXTRA_WINDOWS: Array[Vector2i] = [Vector2i(2560, 1600), Vector2i(2560, 1080), Vector2i(1366, 768)]
 ## 여러 worktree가 같은 user://를 쓰므로 실행마다 폴더를 나눈다 (docs/adr/0003).
@@ -25,6 +28,7 @@ func _check(condition: bool, message: String) -> void:
 func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(directory)
 	GameSave.path = directory + "/save.bin"
+	GameSettings.path = directory + "/settings.cfg"
 	await _check_continue_with_save()
 	var main_scene: String = ProjectSettings.get_setting("application/run/main_scene")
 	var title: TitleScreen = (load(main_scene) as PackedScene).instantiate() as TitleScreen
@@ -42,10 +46,11 @@ func _run() -> void:
 	_check(shown == ["새 게임", "설정", "출처", "종료"], "저장이 없을 때 타이틀 버튼: %s" % [shown])
 	_check((title.menu.get_node("Name") as Label).text == "BGLike", "임시 이름 BGLike")
 	_check(not title.continue_button.visible and not title.has_save(), "저장이 없으면 이어하기를 숨김")
-	_check(title.settings_button.disabled, "설정 화면이 생기기 전에는 설정 버튼을 꺼 둠")
+	_check(not title.settings_button.disabled, "설정 버튼을 누를 수 있음")
 	_check(title.quit_button.pressed.is_connected(quit), "종료 버튼은 SceneTree.quit에 연결")
 	_check(title.new_game_button.has_focus(), "시작 포커스는 새 게임")
 	await _check_layout(title)
+	await _check_settings(title)
 	# 방향키로 출처까지 내려가 Enter로 연다.
 	var path: PackedStringArray = []
 	while path.size() < 4 and not title.credits_button.has_focus():
@@ -85,7 +90,63 @@ func _run() -> void:
 		_check(progress.stage_index == 0 and progress.act_number() == 1, "새 게임은 1막 1스테이지")
 		var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 		_check((hud.get_node("Progress") as Label).text == "1막 · 1스테이지", "1-1 전투 화면")
+	await _check_settings_kept()
 	_finish()
+
+
+## 설정 화면을 키보드와 컨트롤러로 열고 바꾸고 닫는다. 바꾼 값은 바로 설정 파일에 쓰고 적용한다.
+func _check_settings(title: TitleScreen) -> void:
+	var settings: SettingsScreen = title.settings
+	await _tap(_action("ui_down"))
+	_check(title.settings_button.has_focus(), "새 게임 아래가 설정 버튼")
+	await _tap(_action("ui_accept"))
+	_check(settings.visible and not title.menu.visible and settings.volume_slider.has_focus(),
+		"Enter로 설정 화면을 열고 음량 슬라이더에 포커스")
+	_check(settings.volume_slider.value == 80 and settings.volume_label.text == "80%", "처음 음량은 80%")
+	_check(not settings.fullscreen_box.button_pressed, "처음 창 모드는 창")
+	_check(is_equal_approx(AudioServer.get_bus_volume_linear(0), 0.8), "시작할 때 처음 음량을 Master 버스에 적용")
+	await _check_layout(title)
+	# 왼쪽 방향키 한 번에 10%씩 줄어 0에서 멈춘다. 0이 음소거다.
+	for step: int in range(9):
+		await _tap(_action("ui_left"))
+	_check(settings.volume_slider.value == 0 and settings.volume_slider.has_focus(), "왼쪽 방향키로 0까지, 0에서 멈춤")
+	_check(settings.volume_label.text == "음소거" and AudioServer.get_bus_volume_linear(0) == 0.0
+		and GameSettings.volume() == 0, "0은 음소거로 보이고 Master 버스를 끄고 파일에 씀")
+	await _tap(_joypad(JOY_BUTTON_DPAD_RIGHT))
+	_check(settings.volume_slider.value == 10 and GameSettings.volume() == 10
+		and is_equal_approx(AudioServer.get_bus_volume_linear(0), 0.1), "D-pad 오른쪽으로 10%")
+	await _tap(_action("ui_up"))
+	_check(settings.volume_slider.has_focus(), "음량 위로는 포커스가 나가지 않음")
+	await _tap(_joypad(JOY_BUTTON_DPAD_DOWN))
+	_check(settings.fullscreen_box.has_focus(), "D-pad 아래로 전체 화면 칸")
+	await _tap(_joypad(JOY_BUTTON_A))
+	_check(settings.fullscreen_box.button_pressed and GameSettings.fullscreen(), "컨트롤러 A로 전체 화면을 켜고 파일에 씀")
+	await _tap(_action("ui_down"))
+	await _tap(_action("ui_down"))
+	_check(settings.back_button.has_focus(), "아래로 뒤로 버튼, 끝에서 멈춤")
+	await _tap(_joypad(JOY_BUTTON_A))
+	_check(not settings.visible and title.menu.visible and title.settings_button.has_focus(),
+		"뒤로 버튼으로 닫고 설정 버튼으로 포커스 복귀")
+	# 다시 열면 저장한 값을 보이고, Esc로 닫는다.
+	await _tap(_action("ui_accept"))
+	_check(settings.visible and settings.volume_slider.value == 10 and settings.fullscreen_box.button_pressed,
+		"다시 열면 저장한 값")
+	await _tap(_action("ui_cancel"))
+	_check(not settings.visible and title.settings_button.has_focus(), "Esc로 설정 화면을 닫음")
+	title.new_game_button.grab_focus()
+
+
+## 새 게임은 설정 파일을 지우지 않는다. 게임을 다시 켠 것처럼 타이틀을 새로 열면 저장한 설정을 적용한다.
+func _check_settings_kept() -> void:
+	_check(GameSettings.volume() == 10 and GameSettings.fullscreen(), "새 게임 뒤에도 설정 유지")
+	AudioServer.set_bus_volume_linear(0, 1.0)
+	var title: TitleScreen = (load("res://scenes/main.tscn") as PackedScene).instantiate() as TitleScreen
+	root.add_child(title)
+	await process_frame
+	_check(is_equal_approx(AudioServer.get_bus_volume_linear(0), 0.1), "다시 시작하면 저장한 음량 10%를 적용")
+	_check(title.settings_button.visible, "다시 시작한 타이틀에서도 설정을 엶")
+	title.queue_free()
+	await process_frame
 
 
 ## 저장이 있으면 `새 게임` 다음에 `이어하기`가 보인다.
@@ -119,16 +180,23 @@ func _check_notices(title: TitleScreen) -> void:
 	_check("Kenney" in (notices.get_node("Sound") as Label).text, "효과음 원본 표기")
 
 
-## 1280×720·1920×1080·1440×900 창에서 타이틀과 출처 화면이 논리 화면 안에 겹치지 않고 들어간다.
+## ADR 0002의 여섯 창에서 타이틀, 설정, 출처 화면이 논리 화면 안에 겹치지 않고 들어간다.
 func _check_layout(title: TitleScreen) -> void:
 	for size: Vector2i in WINDOWS + EXTRA_WINDOWS:
 		root.size = size
 		await process_frame
 		await process_frame
 		var screen: Rect2 = Rect2(Vector2.ZERO, title.get_viewport_rect().size)
+		_check(root.size == size and screen.size == LOGICAL.get(size, screen.size),
+			"%s: 창과 논리 화면 %s" % [size, screen.size])
 		_check(title.get_global_rect() == screen, "%s: 타이틀이 논리 화면 전체를 채움" % size)
 		var areas: Array[Control] = []
-		if title.menu.visible:
+		if title.settings.visible:
+			_check(title.settings.get_global_rect() == screen, "%s: 설정 화면이 논리 화면 전체를 채움" % size)
+			var grid: Node = title.settings.find_child("Grid")
+			areas = [title.settings.find_child("Heading") as Control, title.settings.back_button]
+			areas.append_array(grid.get_children())
+		elif title.menu.visible:
 			for node: Node in title.menu.get_children():
 				if (node as Control).visible:
 					areas.append(node as Control)
