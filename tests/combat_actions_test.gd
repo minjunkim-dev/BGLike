@@ -2156,10 +2156,11 @@ func _test_attacks() -> void:
 	_check(f.hits.size() == 1, "HP가 줄지 않으면 타격음을 요청하지 않음")
 	var healed: Array = []
 	f.actions.healed.connect(func(unit: CombatUnit, amount: int) -> void: healed.append([unit, amount]))
+	f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void: healed.append([unit, text]))
 	actor.hit_points -= 1
 	f.actions._heal(actor, 1, "회복 검사")
 	_check(f.hits.size() == 1, "회복은 타격음을 요청하지 않음")
-	_check(healed == [[actor, 1]], "회복 팝업은 실제 회복량만 보냄")
+	_check(healed == [[actor, 1]], "회복은 일반 팝업 없이 실제 회복량만 보냄: %s" % str(healed))
 
 
 func _test_archer_balance() -> void:
@@ -2978,7 +2979,7 @@ func _test_poison_removed_during_save() -> void:
 		f.turns.end_turn()
 		f.turns.end_turn()
 		_check(target.hit_points == (0 if boundary == 1 else 12) and damage_messages.is_empty(),
-			"독 내성 피드백 중 시전자·대상 탈락 또는 전투 종료 뒤 독 피해를 실행하지 않음: " + str(boundary))
+			"독 내성 로그 중 시전자·대상 탈락 또는 전투 종료 뒤 독 피해를 실행하지 않음: " + str(boundary))
 
 
 func _test_water_stage() -> void:

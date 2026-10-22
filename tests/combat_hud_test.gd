@@ -495,7 +495,7 @@ func _test_roll_popups() -> void:
 		"회복 팝업은 + 없는 수치를 초록색으로 표시")
 	warrior.second_wind_left = wind_left
 	warrior.hit_points = hit_points
-	# 명중(비치명타) 굴림을 정해 정신 내성까지 진행하고 실제 로그 합계와 비교한다.
+	# 명중(비치명타) 굴림을 정해 정신 내성까지 진행한다. 팝업은 결과만, 로그는 전체 수식이다.
 	turns.select_unit(units[1])
 	units[1].cell = Vector2i(1, 4)
 	target.cell = Vector2i(5, 4)
@@ -509,7 +509,7 @@ func _test_roll_popups() -> void:
 	_check(_has_feedback(target, "기절" if target.is_stunned else "정신 내성"),
 		"정신 내성 팝업은 실패 시 효과 이름, 성공 시 내성 이름만")
 	_check("정신 내성: d20 " in hud.message_label.text, "로그는 정신 내성 전체 수식 유지")
-	# 아군 전사의 흘려내기는 실제 내성 합계를 표시한다.
+	# 아군 전사의 흘려내기 팝업은 성공 결과만 보이고 로그는 전체 수식이다.
 	target = warrior
 	target.cell = Vector2i(4, 4)
 	units[3].cell = Vector2i(1, 4)
