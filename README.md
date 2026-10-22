@@ -30,7 +30,7 @@ make check
 
 기존 편집기는 `GODOT=/Applications/Godot.app/Contents/MacOS/Godot make check`로 검사합니다.
 플랫폼별 설치, 버전 검사와 캐시 없는 실행은 [공통 환경](docs/ENVIRONMENT.md)을 따릅니다.
-전투 캡처의 차례 복귀 검사와 비활성 창의 Forward+ 직접 확인은 [캡처 검증](docs/CAPTURE_VERIFICATION.md)을 따릅니다.
+전투 캡처의 차례 복귀 검사와 에이전트의 Forward+ 직접 확인(기본은 Docker 화면 밖 실행)은 [캡처 검증](docs/CAPTURE_VERIFICATION.md)을 따릅니다.
 
 문서·관리 파일만 바뀌면 공백과 Python 검사를 수행합니다. CI의 엔진 선택과 알림 조건은 [CI 구성](docs/CI.md)을 따릅니다.
 

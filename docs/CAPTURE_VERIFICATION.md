@@ -28,7 +28,7 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 
 `scripts/qa_offscreen.Dockerfile`이 Ubuntu 24.04 이미지 `bglike-qa-offscreen`을 만든다. Xvfb, Mesa llvmpipe Vulkan과 `fonts-noto-cjk`를 설치한다. Godot은 `scripts/install_godot.sh`가 `scripts/godot.env`의 Linux SHA-256을 확인한 공식 4.7.2다. Docker(OrbStack)가 필요하다. 도우미는 시도마다 `docker build`를 호출해 이미지를 Dockerfile·설치 스크립트와 맞춘다. 첫 빌드는 몇 분 걸리고, 이후는 캐시를 쓴다.
 
-1. 시도마다 새 컨테이너를 띄운다. 작업 폴더를 읽기 전용으로 연결하고 `.godot`·`.git`·`.cache`를 뺀 사본을 컨테이너 안에서 import한다. import에 `SCRIPT ERROR` 또는 `Failed to load script`가 있으면 게임을 열지 않는다.
+1. 시도마다 네트워크 없는 새 컨테이너를 띄운다. 작업 폴더를 읽기 전용으로 연결하고 `.godot`·`.git`·`.cache`·`.env*`·`export_credentials.cfg`를 뺀 사본을 컨테이너 안에서 import한다. import에 `SCRIPT ERROR` 또는 `Failed to load script`가 있으면 게임을 열지 않는다.
 2. 시도 폴더가 컨테이너의 `/out`이다. `container.log`, `import.log`, `preflight.log`, `game.log`, `frames/`가 시도 폴더에 남는다. `state.json`의 시도 기록에 컨테이너 이름과 이미지 ID를 남긴다.
 3. Godot는 `xvfb-run` 안에서 사례 해상도와 같은 가상 화면에 Forward+ Vulkan으로 연다. `game.log`에 `Forward+`와 `llvmpipe`가 찍힌다.
 4. 성공·실패·중단 뒤 `docker rm -f`로 컨테이너를 지운다. 지우지 못하면 실패로 기록한다. 제어 프로세스가 강제 종료되어 컨테이너가 남으면 다음 `run`이 멈춘다. `docker ps --filter name=bglike-qa`로 확인하고 로그를 본 뒤 `docker rm -f <이름>`으로 지운다.
@@ -46,9 +46,11 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 
 도우미는 `open -g -n -W`로 Forward+ 인스턴스를 연다. `--manual`을 넘긴다. 직접 확인 모드는 이니셔티브만 고정한다. 실제 전투 주사위와 반응 UI를 유지한다. 게임 창을 전면으로 올리는 명령은 사용하지 않는다. 입력 도구는 해당 Godot 인스턴스에 연결한 비활성 창 입력을 사용한다.
 
-`open -g`로 띄워도 Godot 창이 스스로 맨 앞에 올 수 있다. 2026-10-22 [#264](https://github.com/minjunkim-dev/BGLike/issues/264) 작업([PR #268](https://github.com/minjunkim-dev/BGLike/pull/268))에서 재현됐다. 조건은 macOS 27(Darwin 27), 공식 Godot 4.7.2 macOS Forward+(Metal), `open -g -n -W`, 2-1 장면을 원본 Viewport로 저장하는 임시 SceneTree 스크립트다. 윤곽 캡처 두 번에서 Godot가 약 0.3초 맨 앞 앱이 됐다. 0.05초 간격으로 읽은 `lsappinfo front`가 근거다. 같은 날 같은 방식의 [PR #266](https://github.com/minjunkim-dev/BGLike/pull/266) 측정에서는 오지 않았다. 간헐적이며 창이 앞으로 오는 원인은 특정하지 못했다. 이후 #255·#256, #260~#265, #272, #274 작업은 화면 밖 실행으로 대신했다. 사용자 포커스를 가져가므로 이 문서를 고칠 때 다시 재현하지 않았다.
+`open -g`로 띄워도 Godot 창이 스스로 맨 앞에 올 수 있다. 2026-10-22 [#264](https://github.com/minjunkim-dev/BGLike/issues/264) 작업([PR #268](https://github.com/minjunkim-dev/BGLike/pull/268))에서 일어났다. 조건은 공식 Godot 4.7.2 macOS Forward+(Metal), `open -g -n -W`, 2-1 장면의 윤곽을 원본 Viewport로 저장하는 임시 SceneTree 스크립트다. 윤곽 캡처 두 번에서 Godot가 약 0.3초 맨 앞 앱이 됐다. 감시 스크립트가 `lsappinfo front`로 감지했다. 그 스크립트는 pid를 잘못 읽어 즉시 종료하지 못했다. 두 인스턴스는 캡처 뒤 스스로 끝났다.
 
-보호 장치: 게임을 연 뒤 0.1초마다 `lsappinfo front`의 pid를 읽는다. 그 pid가 이 시도의 Godot(실행 파일과 로그 경로로 식별)이면 즉시 그 인스턴스를 종료하고 사례를 `failed`로 기록한다. 시도 기록의 `foreground`에 감지를, `reason`에 종료 실패(`Owned Godot instance did not stop`)를 남긴다. 감지 전에 포커스는 이미 넘어갔을 수 있다. 이 장치는 피해 시간을 줄일 뿐 막지 못한다. 그래서 기본은 화면 밖 실행이다.
+같은 날 같은 실행 방법의 [PR #266](https://github.com/minjunkim-dev/BGLike/pull/266) 측정은 `lsappinfo front`를 0.05초 간격으로 읽었고, Godot가 맨 앞에 오지 않았다. 간헐적이며 원인은 특정하지 못했다. 이후 PR #267, #269~#271, #273, #275의 화면 확인은 화면 밖 실행으로 대신했다. 사용자 포커스를 가져가므로 이 문서를 고칠 때 다시 재현하지 않았다.
+
+보호 장치: 게임을 연 뒤 0.1초마다 `lsappinfo front`의 pid를 읽는다. 그 pid가 이 시도의 Godot(실행 파일과 로그 경로로 식별)이면 즉시 그 인스턴스를 종료하고 사례를 `failed`로 기록한다. 시도 기록의 `foreground`와 `reason`에 감지를, `cleanup_error`에 종료 실패(`Owned Godot instance did not stop`)를 남긴다. 감지 전에 포커스는 이미 넘어갔을 수 있다. 이 장치는 피해 시간을 줄일 뿐 막지 못한다. 그래서 기본은 화면 밖 실행이다.
 
 아래 절차와 CUA 규칙은 macOS 창 실행에 적용한다.
 
@@ -76,7 +78,7 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 
 ## 직접 확인 실행 기록
 
-1. 작업 폴더 밖에 `plan.json`을 만든다. `source_sha`에는 `git rev-parse HEAD`의 전체 SHA를 넣는다. `inputs`에는 Git이 무시하는 임시 보조 스크립트를 모두 적는다. 사례를 시작한 뒤 계획을 바꾸지 않는다.
+1. 작업 폴더 밖에 `plan.json`을 만든다. `source_sha`에는 `git rev-parse HEAD`의 전체 SHA를 넣는다. `inputs`에는 Git이 무시하는 임시 보조 스크립트를 모두 적는다. 사례를 시작한 뒤 계획을 바꾸지 않는다. 아래 예시는 macOS 창 실행의 직접 입력 사례다.
 
    ```json
    {
@@ -93,7 +95,7 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
    }
    ```
 
-   위 예시는 macOS 창 실행의 직접 입력 사례다. 화면 밖 실행은 같은 스크립트의 자동 경로를 쓰므로 `success_marker`를 `", 0 failures;"`로 바꾸고, 합격 기준에서 직접 입력을 뺀다.
+   화면 밖 실행은 같은 스크립트의 자동 경로를 쓰므로 `success_marker`를 `", 0 failures;"`로 바꾸고, 합격 기준에서 직접 입력을 뺀다.
 
    임시 사례도 같은 형식을 사용한다. `args` 문자열 배열로 `--profile=compact` 같은 사용자 인수를 추가할 수 있다. 스크립트는 실제 창 크기를 유지해야 한다. 크기를 자체 변경하는 스크립트는 그 크기를 합격 기준과 증거에 기록한다.
 

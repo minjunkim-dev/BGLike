@@ -153,11 +153,12 @@ def start_container(name, attempt):
     with (attempt / "container.log").open("x") as output:
         image = subprocess.check_output(["docker", "build", "-q", "-t", IMAGE, "-f", str(ROOT / "scripts/qa_offscreen.Dockerfile"),
                                          str(ROOT / "scripts")], text=True, stderr=output, timeout=1800).strip()
-        subprocess.run(["docker", "run", "-d", "--rm", "--init", "--name", name, "-v", f"{ROOT}:/src:ro",
+        # No network: the run needs nothing outside, and ignored local files are copied in with the project.
+        subprocess.run(["docker", "run", "-d", "--rm", "--init", "--network", "none", "--name", name, "-v", f"{ROOT}:/src:ro",
                         "-v", f"{attempt}:/out", image, "sleep", "infinity"],
                        check=True, stdout=output, stderr=subprocess.STDOUT, timeout=60)
         subprocess.run(["docker", "exec", name, "sh", "-c", "mkdir /work && tar -C /src --exclude=./.godot --exclude=./.git "
-                        "--exclude=./.cache -cf - . | tar -C /work -xf -"],
+                        "--exclude=./.cache --exclude='./.env*' --exclude=./export_credentials.cfg -cf - . | tar -C /work -xf -"],
                        check=True, stdout=output, stderr=subprocess.STDOUT, timeout=300)
     return image
 
@@ -197,7 +198,8 @@ def run_case(app, case, directory, state, offscreen=False):
     log = attempt / "game.log"
     record = {"directory": str(attempt), "started": time.time()}
     if offscreen:
-        record["container"] = "bglike-qa-" + hashlib.sha256(str(attempt).encode()).hexdigest()[:16]
+        # The start time keeps a recreated session path from naming (and later removing) an older container.
+        record["container"] = "bglike-qa-" + hashlib.sha256(f"{attempt}{record['started']}".encode()).hexdigest()[:16]
     else:
         record["app"] = str(app)
     entry["attempts"].append(record)
@@ -284,7 +286,8 @@ def run_case(app, case, directory, state, offscreen=False):
             raise
         except Exception as error:
             entry["status"] = "failed"
-            record["reason"] = str(error)
+            # Keep the original failure (e.g. a stopped Docker daemon) visible beside the cleanup error.
+            record["cleanup_error" if "reason" in record else "reason"] = str(error)
             raise
         finally:
             record["finished"] = time.time()
@@ -303,7 +306,7 @@ def session(plan_path, directory, mode="offscreen"):
             raise ValueError("Plan/source inputs changed; preserve this session and use a new directory")
         # Sessions from before the offscreen mode recorded only macOS attempts.
         if state.get("mode", "macos") != mode:
-            raise ValueError(f"Session uses {state.get('mode', 'macos')} mode; use a new directory for {mode}")
+            raise ValueError(f"Session uses {state.get('mode', 'macos')} mode; pass that --mode or use a new directory")
     else:
         state = {"source_sha": plan["source_sha"], "fingerprint": fingerprint, "mode": mode,
                  "cases": {case["id"]: {"status": "not_run", "attempts": []} for case in plan["cases"]}}

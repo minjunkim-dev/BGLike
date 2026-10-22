@@ -55,7 +55,7 @@
 
 윤곽의 두께(1텍셀과 1화면 픽셀 중 큰 쪽)와 팀색은 그대로다. 윤곽 안쪽 경계도 그림과 같은 샘플을 써서 틈이 생기지 않는다.
 
-캡처 경로: macOS `open -g` 창이 2026-10-22 두 번 맨 앞으로 올라왔다. 그 뒤 측정은 Docker(OrbStack) 안의 Xvfb와 Mesa lavapipe Vulkan에서 Linux용 Godot 4.7.2 Forward+로 했다. 한글 글꼴은 macOS의 Apple SD Gothic Neo를 읽기 전용으로 연결했다. 변경 전후를 같은 경로에서 찍었다. 이 경로는 뒤에 `scripts/manual_qa.py`의 화면 밖 실행으로 정식화했다. 정식 경로의 한글은 Noto Sans CJK다.
+캡처 경로: macOS `open -g` 창이 2026-10-22 두 번 맨 앞으로 올라왔다. 그 뒤 측정은 Docker(OrbStack) 안의 Xvfb와 Mesa lavapipe Vulkan에서 Linux용 Godot 4.7.2 Forward+로 했다. 한글 글꼴은 macOS의 Apple SD Gothic Neo를 읽기 전용으로 연결했다. 변경 전후를 같은 경로에서 찍었다. 이 경로는 뒤에 `scripts/manual_qa.py`의 화면 밖 실행으로 정식화했다. 정식 경로의 한글은 Noto Sans CJK다. lavapipe는 Mesa의 Vulkan 드라이버 이름이고, 로그의 장치 이름은 llvmpipe다. 같은 경로다.
 
 한계:
 

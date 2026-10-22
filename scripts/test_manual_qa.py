@@ -210,7 +210,8 @@ class ManualQATests(unittest.TestCase):
                 attempt = self.state["cases"]["compact"]["attempts"][-1]
                 self.assertEqual(attempt["status"], "failed")
                 self.assertIn("frontmost", attempt["foreground"])
-                self.assertIn("did not stop" if failure else "frontmost", attempt["reason"])
+                self.assertIn("frontmost", attempt["reason"])
+                self.assertEqual("did not stop" in attempt.get("cleanup_error", ""), failure is not None)
 
     def test_other_frontmost_app_does_not_stop_game(self):
         with patch.object(qa, "frontmost_pid", return_value=1), patch.object(qa, "native_pids", return_value=[4242]):
@@ -270,6 +271,28 @@ class ManualQATests(unittest.TestCase):
         launch.assert_not_called()
         stop.assert_called_once_with(self.state["cases"]["compact"]["attempts"][-1]["container"])
         self.assertEqual(self.state["cases"]["compact"]["status"], "failed")
+
+    def test_marker_written_just_before_exit_is_success(self):
+        log = self.directory / "compact/1/game.log"
+        launcher = Mock(pid=999999)
+
+        def exit_after_marker():
+            log.write_text("Vulkan - Forward+ - llvmpipe\n[CAPTURE_CHECK] PASS:\n")
+            return 0
+        launcher.poll.side_effect = exit_after_marker
+        with patch.object(qa, "launch", return_value=launcher), patch.object(qa, "stop_native"):
+            qa.run_case(self.app, self.case, self.directory, self.state)
+        self.assertEqual(self.state["cases"]["compact"]["status"], "awaiting_review")
+
+    def test_container_liveness_uses_exact_name_and_blocks_failed_removal(self):
+        with patch.object(qa.subprocess, "check_output", return_value="1085826332dd\n") as ps, \
+                patch.object(qa.subprocess, "run") as remove:
+            with self.assertRaisesRegex(RuntimeError, "did not stop"):
+                qa.stop_container("bglike-qa-test")
+        self.assertEqual(remove.call_args.args[0], ["docker", "rm", "-f", "bglike-qa-test"])
+        self.assertEqual(ps.call_args.args[0], ["docker", "ps", "-q", "--filter", "name=^bglike-qa-test$"])
+        with patch.object(qa.subprocess, "check_output", return_value="\n"):
+            self.assertFalse(qa.container_alive("bglike-qa-test"))
 
     def test_offscreen_import_script_error_blocks_launch(self):
         def run(_command, stdout, **_kwargs):
@@ -386,7 +409,7 @@ class ManualQATests(unittest.TestCase):
     def test_session_keeps_one_run_mode(self):
         self.prepare_plan()
         qa.session(self.plan, self.directory, "offscreen")
-        with self.assertRaisesRegex(ValueError, "offscreen mode"):
+        with self.assertRaisesRegex(ValueError, "offscreen mode; pass that --mode"):
             qa.session(self.plan, self.directory, "macos")
         state = json.loads((self.directory / "state.json").read_text())
         del state["mode"]
