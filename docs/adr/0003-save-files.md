@@ -19,7 +19,7 @@
 | 게임 저장 | `user://save.bin` | 새 게임, 졸업(`GameSave.delete()`) |
 | 설정 | `user://settings.cfg` | 지우지 않음 |
 
-`user://`는 Godot 기본값을 쓴다. macOS는 `~/Library/Application Support/Godot/app_userdata/BGLike/`, Linux는 `~/.local/share/godot/app_userdata/BGLike/`다. 편집기 실행과 내보낸 게임이 같은 폴더를 쓴다. 자동 검사는 `user://tests/save/`로 경로를 바꿔 개발자의 저장을 건드리지 않는다.
+`user://`는 Godot 기본값을 쓴다. macOS는 `~/Library/Application Support/Godot/app_userdata/BGLike/`, Linux는 `~/.local/share/godot/app_userdata/BGLike/`다. 편집기 실행과 내보낸 게임이 같은 폴더를 쓴다. 자동 검사는 `user://tests/save/<프로세스 ID>/`로 경로를 바꿔 개발자의 저장을 건드리지 않는다.
 
 ### 형식
 
@@ -35,7 +35,7 @@
 
 - `act`·`stage`는 요약(`GameSave.summary_text()`: "3막 2스테이지 진행 중")에 쓴다. 이어하기 전에 본문 전체를 해석하는 쪽에 맡기지 않고 바로 보여 줄 수 있다.
 - `sections`는 저장하는 쪽이 이름별로 채운다. 예를 들어 #281은 `"combat"`, #282는 `"preparation"`을 넣는다. 저장하는 쪽은 자기 칸을 만들고 읽을 수 있다. 칸을 더해도 파일 머리와 본문 틀은 그대로다.
-- `bytes_to_var()`는 Object를 만들지 않는다. 저장 파일로 스크립트나 리소스를 불러올 수 없다. 그래서 `sections`에는 Object가 아닌 값(정수, 실수, 문자열, 벡터, 배열, Dictionary, Packed 배열)만 넣는다.
+- `bytes_to_var()`는 Object를 복원하지 않는다(`bytes_to_var_with_objects()`와 다르다). 저장 파일로 스크립트나 리소스를 불러올 수 없다. 그래서 `sections`에는 Object가 아닌 값(정수, 실수, 문자열, 벡터, 배열, Dictionary, Packed 배열)만 넣는다.
 
 설정 파일은 Godot `ConfigFile` 텍스트(`[settings]` 섹션)다. 키와 기본값은 #285가 정한다. `GameSettings.read(key, fallback)`는 파일이 없거나 깨졌거나 값의 타입이 `fallback`과 다르면 `fallback`을 돌려준다.
 
@@ -57,17 +57,19 @@
 
 ### 원자적 쓰기
 
-`GameSave.write_atomic()`은 `<경로>.tmp`에 다 쓰고 닫은 뒤 `DirAccess.rename_absolute()`로 바꿔치기한다. 쓰는 도중 종료되면 `.tmp`만 반쯤 남고 원래 파일은 이전 저장 그대로다. 다음 쓰기가 `.tmp`를 덮어쓴다. `delete()`는 `.tmp`도 지운다. 설정 파일도 같은 함수로 쓴다.
+`GameSave.write_atomic()`은 `<경로>.tmp`에 다 쓰고 닫은 뒤 `DirAccess.rename_absolute()`로 바꿔치기한다. 쓰기 오류가 있거나 닫은 임시 파일의 크기가 쓴 바이트 수와 다르면(디스크 부족) 바꿔치기하지 않는다. 쓰는 도중 종료되면 `.tmp`만 반쯤 남고 원래 파일은 이전 저장 그대로다. 다음 쓰기가 `.tmp`를 덮어쓴다. `delete()`는 `.tmp`도 지운다. 설정 파일도 같은 함수로 쓴다.
 
 ### 검사
 
-`tests/save_test.gd`가 `make check`(`scripts/check_godot.sh`)에서 실행된다. 정상 왕복(64비트 난수 상태, `Vector2i` 키 포함), 버전 0·2, 깨진 파일 7가지, 반쯤 쓴 `.tmp`, 임시 파일을 열 수 없는 쓰기 실패, 저장 삭제 뒤 설정 유지, 깨진 설정 파일을 검사한다.
+`tests/save_test.gd`가 `make check`(`scripts/check_godot.sh`)에서 실행된다. 정상 왕복(64비트 난수 상태, `Vector2i` 키 포함), 버전 0·2, 깨진 파일 9가지, 반쯤 쓴 `.tmp`, 임시 파일을 열 수 없는 쓰기 실패, 저장 삭제 뒤 설정 유지, 깨진 설정 파일을 검사한다.
 
 ## 한계와 후속
 
 - Godot `FileAccess`는 `fsync`를 하지 않는다. 프로세스 종료·강제 종료에는 이전 저장이 남는다. 운영체제가 디스크에 쓰기 전에 전원이 꺼지면 새 파일이 비어 있을 수 있다. 그때도 읽을 수 없는 저장으로 처리되어 게임은 멈추지 않는다.
 - 내보내기 대상은 지금 Linux다. Windows의 `rename_absolute` 덮어쓰기는 확인하지 않았다. Windows 내보내기를 더할 때 확인한다.
 - 비트 하나가 바뀐 손상처럼 해석은 되는 본문은 거르지 않는다. 체크섬은 실제로 그런 손상을 겪으면 더한다.
+- 설정 파일의 `ConfigFile` 텍스트 파서는 `Object(...)` 값을 만든다. `read()`는 타입이 다른 값을 버리지만 만들어지는 것 자체는 막지 않는다. 사용자 폴더의 파일을 고칠 수 있는 사람은 이미 사용자 권한을 가진 것으로 보고 신뢰 경계 밖으로 둔다.
+- `sections` 안의 값은 이 모듈이 검사하지 않는다. 채우는 쪽(#281·#282)이 복원할 때 타입과 범위를 검사하고, 맞지 않으면 읽을 수 없는 저장으로 처리한다.
 - `user://` 위치를 나중에 `application/config/use_custom_user_dir`로 바꾸면 기존 저장·설정을 옮겨야 한다.
 
 ## 대안

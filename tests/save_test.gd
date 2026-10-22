@@ -1,7 +1,8 @@
 extends SceneTree
 ## 저장 한 슬롯과 설정 파일: 정상, 버전 불일치, 깨진 파일, 쓰기 중단, 삭제 범위를 검사한다.
 
-const DIRECTORY: String = "user://tests/save"
+## 여러 worktree가 같은 user://를 쓰므로 실행마다 폴더를 나눈다.
+var directory: String = "user://tests/save/%d" % OS.get_process_id()
 
 var checks: int = 0
 var failures: int = 0
@@ -19,9 +20,9 @@ func _check(condition: bool, message: String) -> void:
 
 
 func _run() -> void:
-	DirAccess.make_dir_recursive_absolute(DIRECTORY)
-	GameSave.path = DIRECTORY + "/save.bin"
-	GameSettings.path = DIRECTORY + "/settings.cfg"
+	DirAccess.make_dir_recursive_absolute(directory)
+	GameSave.path = directory + "/save.bin"
+	GameSettings.path = directory + "/settings.cfg"
 	_clean()
 	_test_round_trip()
 	_test_version_mismatch()
@@ -29,6 +30,7 @@ func _run() -> void:
 	_test_interrupted_write()
 	_test_settings_survive_delete()
 	_clean()
+	DirAccess.remove_absolute(directory)
 	print("Save: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
 
@@ -56,7 +58,7 @@ func _test_round_trip() -> void:
 	_check(save.get("sections") == _sections(), "64비트 난수 상태, Vector2i 키, 배열을 그대로 읽음")
 	_check(GameSave.summary_text(save) == "3막 2스테이지 진행 중", "요약 문구: " + GameSave.summary_text(save))
 	_check(not FileAccess.file_exists(GameSave.path + ".tmp"), "쓰기 뒤 임시 파일이 남지 않음")
-	GameSave.delete()
+	_check(GameSave.delete() == OK, "삭제 성공")
 	_check(not GameSave.has_save() and GameSave.read().is_empty(), "삭제 뒤 저장 없음")
 
 
@@ -83,6 +85,8 @@ func _test_corrupt_files() -> void:
 		"본문이 쓰레기": header + PackedByteArray([250, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
 		"본문 모양이 다름": header + var_to_bytes([1, 2, 3]),
 		"막이 정수가 아님": header + var_to_bytes({"act": "3", "stage": 2, "sections": {}}),
+		"스테이지가 없음": header + var_to_bytes({"act": 3, "sections": {}}),
+		"sections가 배열": header + var_to_bytes({"act": 3, "stage": 2, "sections": []}),
 	}
 	# Godot는 깨진 본문을 해석할 때 ERROR를 출력한다. 결과는 read()의 반환값으로 판정한다.
 	for name: String in cases:

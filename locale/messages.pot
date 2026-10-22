@@ -1190,10 +1190,10 @@ msgstr ""
 msgid "BGLike"
 msgstr ""
 
-#: scenes/save/game_save.gd:58
+#: scenes/save/game_save.gd:60
 msgid "저장을 읽을 수 없음"
 msgstr ""
 
-#: scenes/save/game_save.gd:59
+#: scenes/save/game_save.gd:61
 msgid "%d막 %d스테이지 진행 중"
 msgstr ""

@@ -46,10 +46,12 @@ static func read() -> Dictionary:
 
 
 ## 새 게임·졸업에서 부른다. 설정 파일(GameSettings)은 건드리지 않는다.
-static func delete() -> void:
-	for file: String in [path, path + ".tmp"]:
-		if FileAccess.file_exists(file):
-			DirAccess.remove_absolute(file)
+static func delete() -> Error:
+	for file: String in [path + ".tmp", path]:
+		if FileAccess.file_exists(file) and DirAccess.remove_absolute(file) != OK:
+			push_warning("저장을 지울 수 없음: %s" % file)
+			return FAILED
+	return OK
 
 
 ## 덮어쓰기 확인 창과 이어하기에 보일 한 줄. read()의 결과를 받는다.
@@ -66,9 +68,12 @@ static func write_atomic(target: String, data: PackedByteArray) -> Error:
 	if file == null:
 		push_warning("저장 임시 파일을 열 수 없음: %s" % temp)
 		return FileAccess.get_open_error()
-	file.store_buffer(data)
+	var stored: bool = file.store_buffer(data)
 	var error: Error = file.get_error()
 	file.close()
+	# 디스크가 가득 차 잘린 임시 파일이 이전 저장을 덮지 않게 한다.
+	if error == OK and (not stored or FileAccess.get_size(temp) != data.size()):
+		error = ERR_FILE_CANT_WRITE
 	if error == OK:
 		error = DirAccess.rename_absolute(temp, target)
 	if error != OK:
