@@ -38,7 +38,7 @@ import time
 
 tests = iter([f"tests/combat_{name}_test.gd" for name in
               ("hud", "ai", "turns", "checks", "actions", "progression", "loot", "capture", "feedback")]
-             + ["tests/save_test.gd"])
+             + ["tests/save_test.gd", "tests/title_test.gd"])
 active = []
 status = 0
 def cancel(_signal, _frame):

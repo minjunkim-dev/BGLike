@@ -26,7 +26,7 @@ func _check(condition: bool, message: String) -> void:
 func _run() -> void:
 	_test_selection()
 	_test_skill_icons()
-	var scene: PackedScene = load("res://scenes/main.tscn") as PackedScene
+	var scene: PackedScene = load("res://scenes/game.tscn") as PackedScene
 	var main: Node = scene.instantiate()
 	# 전사·궁수 UI 회귀는 기존 풋내기 배치를 fixture로 유지한다.
 	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
@@ -1504,7 +1504,7 @@ func _test_transparent_order_input() -> void:
 
 func _test_spawned_portrait_input() -> void:
 	root.size = Vector2i(1280, 720)
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
 	battle = main.get_node("Battle") as Node2D

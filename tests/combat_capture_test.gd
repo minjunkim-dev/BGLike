@@ -40,7 +40,7 @@ func _run() -> void:
 		if argument.begins_with("--capture-dir="):
 			directory = argument.trim_prefix("--capture-dir=")
 	root.size = Vector2i(1280, 720)
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
 	battle = main.get_node("Battle") as Node2D

@@ -67,7 +67,7 @@ func _run() -> void:
 
 func _test_spiderling_rewards() -> void:
 	for mixed: bool in [false, true]:
-		var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+		var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 		root.add_child(main)
 		var battle: Node2D = main.get_node("Battle") as Node2D
 		battle.set_process(false)
@@ -99,7 +99,7 @@ func _test_spiderling_rewards() -> void:
 func _test_boss_reward_boundary() -> void:
 	for stage: int in [2, 5, 8]:
 		for extra: bool in [false, true]:
-			var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+			var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 			root.add_child(main)
 			var battle: Node2D = main.get_node("Battle") as Node2D
 			battle.set_process(false)
@@ -395,7 +395,7 @@ func _test_act_values(loot: CombatLoot, dice: CombatDice) -> void:
 
 
 func _test_bag_scene_use() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
@@ -436,7 +436,7 @@ func _test_bag_scene_use() -> void:
 
 
 func _test_armor_unequip_scene() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
@@ -516,7 +516,7 @@ func _test_armor_unequip_scene() -> void:
 
 
 func _test_finish_preference() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
@@ -627,7 +627,7 @@ func _test_finish_preference() -> void:
 				"확인을 다시 생략한 실행을 끝내고 새 실행 기본값 검사")
 	main.queue_free()
 	await process_frame
-	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	main = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
 	battle = main.get_node("Battle") as Node2D
@@ -647,7 +647,7 @@ func _test_finish_preference() -> void:
 
 
 func _test_full_bag_finish() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
@@ -713,7 +713,7 @@ func _test_full_bag_finish() -> void:
 
 
 func _test_reward_flow() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(main)
 	current_scene = main
@@ -1051,7 +1051,7 @@ func _check_pixel_art(scene: Node, classes: Array[String]) -> void:
 
 
 func _test_scaled_combat() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	(main.get_node("Battle") as Node2D).stages[6] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(main)
 	current_scene = main
@@ -1203,7 +1203,7 @@ func _click(button: Button) -> void:
 
 
 func _test_accidental_advance() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(main)
 	current_scene = main

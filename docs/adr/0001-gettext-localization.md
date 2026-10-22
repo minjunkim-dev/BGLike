@@ -16,7 +16,7 @@
 - `locale/ko.po`: 템플릿에서 만든 한국어 메시지 파일이다. msgstr은 msgid와 같다. `internationalization/locale/translations`에 등록한다.
 - 스크립트의 화면 문자열은 `tr()`로 감싼다. 개수에 따라 말이 바뀌는 문장은 `tr_n()`을 쓴다. 형식 문자열은 `tr("...") % 값`으로 쓴다. 템플릿 생성기는 상수 문자열 인자만 읽기 때문이다.
 - 정적 함수와 이름·설명 표는 인스턴스가 없으므로 `TranslationServer.tr()`을 쓴다. 템플릿 생성기는 `const` 초기값을 읽지 않는다. 그래서 화면 문자열이 든 표(`CombatActionRules.NAMES`·`EFFECTS`, `CombatLoot.STAT_NAMES`, 몬스터 정의)는 `static var`로 둔다.
-- 장면의 Control 문구(`text`, `tooltip_text`, 대화상자 제목·버튼)는 Godot가 자동 번역한다. 지금 장면은 모두 `auto_translate_mode` 기본값(상속)을 쓴다.
+- 장면의 Control 문구(`text`, `tooltip_text`, 대화상자 제목·버튼)는 Godot가 자동 번역한다. 장면은 `auto_translate_mode` 기본값(상속)을 쓴다. 예외: 타이틀 `출처` 화면의 법적 고지 원문(SRD 5.1 표기, Godot 라이선스 전문)은 어느 언어에서도 원문 그대로 보이도록 `auto_translate_mode`를 끈다(#283).
 
 ### 화면 문자열과 로그·디버그 전용 문자열
 

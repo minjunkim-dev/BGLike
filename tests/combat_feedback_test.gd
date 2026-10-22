@@ -36,7 +36,7 @@ func _run() -> void:
 			push_error("Combat feedback watchdog expired")
 			quit(1))
 	root.size = Vector2i(1280, 720)
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
 	battle = main.get_node("Battle") as Node2D
