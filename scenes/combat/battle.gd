@@ -334,13 +334,11 @@ func _can_save() -> bool:
 	return not actions.busy and not _enemy_turn_running and actions.pending_reactor == null and not progress.graduated
 
 
-## 쓰기에 실패하면 이전 저장이 남고 다음 프레임에 다시 쓴다.
+## 쓰기에 실패하면 이전 저장이 남고 다음 행동이 끝날 때 다시 쓴다. 매 프레임 다시 쓰지 않는다.
 func _autosave(state: Dictionary) -> void:
-	if GameSave.write(progress.act_number(), progress.stage_in_act(), {"combat": state}) != OK:
-		_save_pending = true
-		return
 	_save_pending = false
-	autosaved.emit()
+	if GameSave.write(progress.act_number(), progress.stage_in_act(), {"combat": state}) == OK:
+		autosaved.emit()
 
 
 ## 이어하기가 끝낸 적 행동을 다시 실행하는 중인지. 연출·팝업·소리를 건너뛴다.
