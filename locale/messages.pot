@@ -1340,7 +1340,9 @@ msgid "종료"
 msgstr ""
 
 #: scenes/main.tscn
-msgid "저장을 읽을 수 없어 이어할 수 없습니다."
+msgid ""
+"저장을 읽을 수 없어\n"
+"이어할 수 없습니다."
 msgstr ""
 
 #: scenes/main.tscn

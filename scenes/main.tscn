@@ -84,7 +84,8 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_font_sizes/font_size = 10
-text = "저장을 읽을 수 없어 이어할 수 없습니다."
+text = "저장을 읽을 수 없어
+이어할 수 없습니다."
 horizontal_alignment = 1
 autowrap_mode = 3
 
