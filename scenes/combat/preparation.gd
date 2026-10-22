@@ -43,6 +43,8 @@ var _exits: Array[Button] = []
 ## 고른 칸: "reward"·"bag"·"weapon"·"armor"와 보상·가방·캐릭터 번호.
 var _selected_kind: String = ""
 var _selected_index: int = -1
+## 칸과 버튼의 설명. 호버와 키보드·컨트롤러 포커스에 스킬 바와 같은 모양·시점으로 띄운다(#274).
+var _tooltip: HoverTooltip = HoverTooltip.new()
 
 
 func _ready() -> void:
@@ -124,6 +126,8 @@ func _ready() -> void:
 	skip_confirmation.add_theme_font_size_override("font_size", 12)
 	confirmation_content.add_child(skip_confirmation)
 	add_child(discard_dialog)
+	_tooltip.hidden_when = func() -> bool: return discard_dialog.visible
+	add_child(_tooltip)
 	hide()
 
 
@@ -498,7 +502,8 @@ func _icon(item: Dictionary, unit_id: String) -> Texture2D:
 
 ## 아이템 칸. 고르면 파란 테두리가 남는다.
 func _cell(parent: Node, item: Dictionary, unit_id: String, node_name: String, border: Color) -> Button:
-	var cell: Button = Button.new()
+	var cell: Button = HoverTooltip.HoverButton.new()
+	_tooltip.attach(cell)
 	cell.name = node_name
 	cell.custom_minimum_size = Vector2(36, 36)
 	cell.toggle_mode = true
@@ -561,7 +566,8 @@ func _label(parent: Node, text: String, font_color: Color = TEXT_COLOR, wrap: bo
 
 
 func _button(parent: Node, text: String, node_name: String) -> Button:
-	var button: Button = Button.new()
+	var button: Button = HoverTooltip.HoverButton.new()
+	_tooltip.attach(button)
 	button.name = node_name
 	button.text = text
 	button.add_theme_font_size_override("font_size", 12)
