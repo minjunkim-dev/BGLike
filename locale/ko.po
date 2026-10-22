@@ -30,6 +30,8 @@
 # res://scenes/combat/unit.gd
 # res://scenes/combat/unit.tscn
 # res://scenes/main.tscn
+# res://scenes/save/game_save.gd
+# res://scenes/save/game_settings.gd
 #
 # Automatically generated, 2026.
 #
@@ -1175,3 +1177,11 @@ msgstr "아군 궁수"
 
 msgid "BGLike"
 msgstr "BGLike"
+
+#: scenes/save/game_save.gd:60
+msgid "저장을 읽을 수 없음"
+msgstr "저장을 읽을 수 없음"
+
+#: scenes/save/game_save.gd:61
+msgid "%d막 %d스테이지 진행 중"
+msgstr "%d막 %d스테이지 진행 중"
