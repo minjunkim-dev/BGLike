@@ -2,6 +2,10 @@ extends SceneTree
 ## 실제 메인 장면에서 타이틀 버튼, 키보드·컨트롤러 조작, 출처 화면과 새 게임 진입을 검사한다 (#283).
 
 const WINDOWS: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900)]
+## ADR 0002의 레이아웃 자동 검사 창: 16:10 4배, 넓은 비율, 비정수 배율.
+const EXTRA_WINDOWS: Array[Vector2i] = [Vector2i(2560, 1600), Vector2i(2560, 1080), Vector2i(1366, 768)]
+## 여러 worktree가 같은 user://를 쓰므로 실행마다 폴더를 나눈다 (docs/adr/0003).
+var directory: String = "user://tests/title/%d" % OS.get_process_id()
 
 var checks: int = 0
 var failures: int = 0
@@ -19,9 +23,8 @@ func _check(condition: bool, message: String) -> void:
 
 
 func _run() -> void:
-	# 사용자의 실제 저장을 건드리지 않는다.
-	GameSave.path = "user://title_test_save.bin"
-	GameSave.delete()
+	DirAccess.make_dir_recursive_absolute(directory)
+	GameSave.path = directory + "/save.bin"
 	await _check_continue_with_save()
 	var main_scene: String = ProjectSettings.get_setting("application/run/main_scene")
 	var title: TitleScreen = (load(main_scene) as PackedScene).instantiate() as TitleScreen
@@ -118,7 +121,7 @@ func _check_notices(title: TitleScreen) -> void:
 
 ## 1280×720·1920×1080·1440×900 창에서 타이틀과 출처 화면이 논리 화면 안에 겹치지 않고 들어간다.
 func _check_layout(title: TitleScreen) -> void:
-	for size: Vector2i in WINDOWS:
+	for size: Vector2i in WINDOWS + EXTRA_WINDOWS:
 		root.size = size
 		await process_frame
 		await process_frame
@@ -171,4 +174,5 @@ func _finish() -> void:
 	if current_scene:
 		current_scene.queue_free()
 	await process_frame
+	DirAccess.remove_absolute(directory)
 	quit(0 if failures == 0 else 1)
