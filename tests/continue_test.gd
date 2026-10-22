@@ -90,7 +90,7 @@ func _test_new_game_and_continue() -> void:
 		"일시정지 메뉴의 타이틀로 뒤 타이틀에 이어하기")
 	if current_scene is TitleScreen:
 		battle = await _continue(current_scene as TitleScreen)
-		_check(battle.call("combat_state") == state, "일시정지 메뉴의 타이틀로 뒤 이어하면 같은 자리")
+		_check(battle != null and battle.call("combat_state") == state, "일시정지 메뉴의 타이틀로 뒤 이어하면 같은 자리")
 
 
 ## 이어한 전투를 이겨 보상 확인·정비 화면에서 끄고 다시 켜면 그 화면 단계, 가방, 물약으로 돌아온다.
