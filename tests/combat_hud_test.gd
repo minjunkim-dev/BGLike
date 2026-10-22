@@ -1339,9 +1339,13 @@ func _test_skill_bar_keys() -> void:
 	jump.grab_focus()
 	await _key(KEY_SPACE)
 	_check(selection.selected_action == "attack", "Space는 포커스된 스킬을 누르지 않음")
+	# Esc는 일시정지 메뉴를 연다(#286). 다시 누르면 닫는다.
 	await _key(KEY_ESCAPE)
-	_check(selection.selected_action == "attack" and turns.current_unit == units[0],
-		"Esc는 스킬 선택과 조작 유닛을 바꾸지 않음")
+	var pause_menu: PauseMenu = battle.get("pause_menu") as PauseMenu
+	_check(pause_menu.visible and paused, "Esc는 일시정지 메뉴를 엶")
+	await _key(KEY_ESCAPE)
+	_check(not pause_menu.visible and not paused and selection.selected_action == "attack"
+		and turns.current_unit == units[0], "Esc는 스킬 선택과 조작 유닛을 바꾸지 않음")
 	await _tab()
 	_check(turns.current_unit == units[1], "스킬 버튼 포커스 중에도 Tab은 아군 전환")
 	await _tab()
