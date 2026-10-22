@@ -708,7 +708,12 @@ func unavailable_reason(actor: CombatUnit, action: String) -> String:
 func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	if not can_move(actor, destination):
 		return false
-	var path: Array[Vector2i] = grid.path_to(actor, destination)
+	var ground_cells: Array[Vector2i] = []
+	if not actor.is_ally:
+		for ground: Ground in _grounds:
+			if ground.cell not in ground_cells:
+				ground_cells.append(ground.cell)
+	var path: Array[Vector2i] = grid.path_to(actor, destination, ground_cells)
 	busy = true
 	changed.emit()
 	var moved: int = 0

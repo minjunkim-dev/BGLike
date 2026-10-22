@@ -79,10 +79,12 @@ func are_adjacent(a: Vector2i, b: Vector2i) -> bool:
 	return distance(a, b) == 1 and absi(height_at(a) - height_at(b)) <= 1
 
 
-func path_to(actor: CombatUnit, destination: Vector2i) -> Array[Vector2i]:
+func path_to(actor: CombatUnit, destination: Vector2i, grounds: Array[Vector2i] = []) -> Array[Vector2i]:
 	var path: Array[Vector2i] = []
 	if actor == null or not is_floor(destination) or is_blocked(destination) or unit_at(destination) != null:
 		return path
+	if not grounds.is_empty():
+		return _path_avoiding_grounds(actor, destination, grounds)
 	var routes: Routes = _search(actor.cell, map_size.x * map_size.y, destination)
 	if not routes.parents.has(destination):
 		return path
@@ -90,6 +92,39 @@ func path_to(actor: CombatUnit, destination: Vector2i) -> Array[Vector2i]:
 	while cursor != actor.cell:
 		path.push_front(cursor)
 		cursor = routes.parents[cursor]
+	return path
+
+
+func _path_avoiding_grounds(actor: CombatUnit, destination: Vector2i, grounds: Array[Vector2i]) -> Array[Vector2i]:
+	var layers: Array[Routes] = [Routes.new()]
+	if is_blocked(actor.cell):
+		return []
+	layers[0].costs[actor.cell] = 0
+	var best_depth: int = -1
+	var best_cost: int = actor.movement_left + 1
+	# 같은 칸도 남은 이동력이 다르면 이후에 고를 수 있는 우회 경로가 다르다.
+	for depth: int in range(1, mini(actor.movement_left, map_size.x * map_size.y - 1) + 1):
+		var layer: Routes = Routes.new()
+		layers.append(layer)
+		for here: Vector2i in layers[depth - 1].costs:
+			for next: Vector2i in neighbors(here):
+				if (not is_floor(next) or is_blocked(next) or unit_at(next) != null
+					or not are_adjacent(here, next)):
+					continue
+				var cost: int = layers[depth - 1].costs[here] + (1 if next in grounds else 0)
+				if cost < layer.costs.get(next, best_cost + 1):
+					layer.costs[next] = cost
+					layer.parents[next] = here
+		if layer.costs.has(destination) and layer.costs[destination] < best_cost:
+			best_cost = layer.costs[destination]
+			best_depth = depth
+			if best_cost == 0:
+				break
+	var path: Array[Vector2i] = []
+	var cursor: Vector2i = destination
+	for depth: int in range(best_depth, 0, -1):
+		path.push_front(cursor)
+		cursor = layers[depth].parents[cursor]
 	return path
 
 
