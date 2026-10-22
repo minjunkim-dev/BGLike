@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Preflight and record bounded macOS Forward+ QA without activating the game."""
+"""Preflight and record bounded Forward+ QA offscreen in Docker, or in an inactive macOS window."""
 
 import argparse
 import fcntl
@@ -15,6 +15,9 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 ERROR = re.compile(r"SCRIPT ERROR|Failed to load script|^ERROR:|\b[1-9][0-9]* failures\b", re.M)
+# Same import gate as scripts/check_godot.sh.
+IMPORT_ERROR = re.compile(r"SCRIPT ERROR|Failed to load script")
+IMAGE = "bglike-qa-offscreen"
 
 
 def git(*args):
@@ -85,6 +88,28 @@ def native_pids(app, log):
     return found
 
 
+def frontmost_pid():
+    asn = subprocess.check_output(["lsappinfo", "front"], text=True).strip()
+    match = re.search(r'"?pid"?\s*=\s*(\d+)', subprocess.check_output(["lsappinfo", "info", "-only", "pid", asn], text=True))
+    return int(match[1]) if match else None
+
+
+def container_alive(name):
+    return bool(subprocess.check_output(["docker", "ps", "-q", "--filter", f"name=^{name}$"], text=True).strip())
+
+
+def alive(record):
+    if "container" in record:
+        return container_alive(record["container"])
+    return bool(native_pids(Path(record["app"]), Path(record["directory"]) / "game.log"))
+
+
+def stop_container(name):
+    subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if container_alive(name):
+        raise RuntimeError("Owned QA container did not stop")
+
+
 def stop_native(app, log):
     # A unique log path and executable identify only this attempt, even after PID reuse.
     for signum in (signal.SIGTERM, signal.SIGKILL):
@@ -100,8 +125,8 @@ def stop_native(app, log):
         raise RuntimeError("Owned Godot instance did not stop")
 
 
-def preflight(binary, case, log):
-    base = [str(binary), "--headless", "--path", str(ROOT)]
+def preflight(godot, project, case, log):
+    base = [*godot, "--headless", "--path", str(project)]
     commands = [([*base, "--check-only", "--script", case["script"]], log, None)]
     if "preflight_args" in case:
         commands.append(([*base, "--script", case["script"], "--", *case["preflight_args"]],
@@ -120,7 +145,40 @@ def preflight(binary, case, log):
                     process.wait()
         text = output_path.read_text(errors="replace")
         if result or ERROR.search(text) or (marker is not None and marker not in text):
-            raise ValueError(f"Preflight failed; native launch blocked: {output_path}")
+            raise ValueError(f"Preflight failed; game launch blocked: {output_path}")
+
+
+def start_container(name, attempt):
+    # The attempt directory is the container's /out, so logs and frames land beside native evidence.
+    with (attempt / "container.log").open("x") as output:
+        image = subprocess.check_output(["docker", "build", "-q", "-t", IMAGE, "-f", str(ROOT / "scripts/qa_offscreen.Dockerfile"),
+                                         str(ROOT / "scripts")], text=True, stderr=output, timeout=1800).strip()
+        subprocess.run(["docker", "run", "-d", "--rm", "--init", "--name", name, "-v", f"{ROOT}:/src:ro",
+                        "-v", f"{attempt}:/out", image, "sleep", "infinity"],
+                       check=True, stdout=output, stderr=subprocess.STDOUT, timeout=60)
+        subprocess.run(["docker", "exec", name, "sh", "-c", "mkdir /work && tar -C /src --exclude=./.godot --exclude=./.git "
+                        "--exclude=./.cache -cf - . | tar -C /work -xf -"],
+                       check=True, stdout=output, stderr=subprocess.STDOUT, timeout=300)
+    return image
+
+
+def import_offscreen(name, attempt):
+    with (attempt / "import.log").open("x") as output:
+        result = subprocess.run(["docker", "exec", name, "godot", "--headless", "--path", "/work", "--import"],
+                                stdout=output, stderr=subprocess.STDOUT, timeout=600)
+    if result.returncode or IMPORT_ERROR.search((attempt / "import.log").read_text(errors="replace")):
+        raise ValueError(f"Offscreen import failed; game launch blocked: {attempt / 'import.log'}")
+
+
+def launch_offscreen(name, case):
+    size = "x".join(map(str, case["resolution"]))
+    # No --manual: nothing can send OS input to Xvfb, so the case script drives its own input.
+    return subprocess.Popen(["docker", "exec", name, "xvfb-run", "-a", "-s", f"-screen 0 {size}x24",
+                             "godot", "--path", "/work", "--rendering-method", "forward_plus",
+                             "--rendering-driver", "vulkan", "--resolution", size, "--position", "0,0",
+                             "--log-file", "/out/game.log", "--script", case["script"], "--",
+                             "--capture-dir=/out/frames", *case.get("args", [])],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, start_new_session=True)
 
 
 def launch(app, case, log, frames):
@@ -132,28 +190,47 @@ def launch(app, case, log, frames):
                             stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, start_new_session=True)
 
 
-def run_case(app, case, directory, state):
+def run_case(app, case, directory, state, offscreen=False):
     entry = state["cases"][case["id"]]
     attempt = directory / case["id"] / str(len(entry["attempts"]) + 1)
     attempt.mkdir(parents=True)
     log = attempt / "game.log"
-    record = {"directory": str(attempt), "app": str(app), "started": time.time()}
+    record = {"directory": str(attempt), "started": time.time()}
+    if offscreen:
+        record["container"] = "bglike-qa-" + hashlib.sha256(str(attempt).encode()).hexdigest()[:16]
+    else:
+        record["app"] = str(app)
     entry["attempts"].append(record)
     entry["status"] = "running"
     save(directory, state)
     launcher = None
     try:
-        binary = app / "Contents/MacOS/Godot"
-        version = subprocess.check_output([str(binary), "--version"], text=True, timeout=10).strip()
+        if offscreen:
+            record["image"] = start_container(record["container"], attempt)
+            import_offscreen(record["container"], attempt)
+            godot, project = ["docker", "exec", record["container"], "godot"], "/work"
+        else:
+            godot, project = [str(app / "Contents/MacOS/Godot")], ROOT
+        version = subprocess.check_output([*godot, "--version"], text=True, timeout=10).strip()
         expected = re.search(r"^GODOT_VERSION=(.+)$", (ROOT / "scripts/godot.env").read_text(), re.M)[1]
         if not version.startswith(expected + ".stable.official."):
             raise ValueError(f"Godot mismatch: {version}")
-        preflight(binary, case, attempt / "preflight.log")
-        launcher = launch(app, case, log, attempt / "frames")
+        preflight(godot, project, case, attempt / "preflight.log")
+        if offscreen:
+            launcher = launch_offscreen(record["container"], case)
+        else:
+            launcher = launch(app, case, log, attempt / "frames")
         record["launcher_pid"] = launcher.pid
         save(directory, state)
         deadline = time.monotonic() + case["timeout"]
         while True:
+            # macOS can still raise an `open -g` window; stop it rather than keep the user's focus.
+            front = None if offscreen else frontmost_pid()
+            if front is not None and front in native_pids(app, log):
+                record["foreground"] = "Godot became the frontmost app; stopping the owned instance"
+                raise ValueError(record["foreground"])
+            # Poll before reading so a game that prints its marker and exits is not a false failure.
+            exited = launcher.poll() is not None
             output = log.read_text(errors="replace") if log.exists() else ""
             if ERROR.search(output):
                 raise ValueError(f"Godot error; discard this attempt's success events: {log}")
@@ -162,7 +239,7 @@ def run_case(app, case, directory, state):
                     raise ValueError("Forward+ startup evidence missing")
                 entry["status"] = "awaiting_review"
                 break
-            if launcher.poll() is not None:
+            if exited:
                 raise ValueError(f"Game exited without success_marker: {log}")
             if time.monotonic() >= deadline:
                 raise ValueError(f"Case timeout: {log}")
@@ -176,23 +253,27 @@ def run_case(app, case, directory, state):
         raise
     finally:
         try:
-            if launcher is not None:
+            if launcher is not None or offscreen:
                 try:
-                    stop_native(app, log)
+                    if offscreen:
+                        stop_container(record["container"])
+                    else:
+                        stop_native(app, log)
                 finally:
-                    if launcher.poll() is None:
+                    if launcher is not None:
+                        if launcher.poll() is None:
+                            try:
+                                os.killpg(launcher.pid, signal.SIGTERM)
+                            except ProcessLookupError:
+                                pass
                         try:
-                            os.killpg(launcher.pid, signal.SIGTERM)
-                        except ProcessLookupError:
-                            pass
-                    try:
-                        launcher.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        try:
-                            os.killpg(launcher.pid, signal.SIGKILL)
-                        except ProcessLookupError:
-                            pass
-                        launcher.wait()
+                            launcher.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            try:
+                                os.killpg(launcher.pid, signal.SIGKILL)
+                            except ProcessLookupError:
+                                pass
+                            launcher.wait()
                 # Errors flushed during shutdown still invalidate a success marker.
                 if entry["status"] == "awaiting_review" and ERROR.search(log.read_text(errors="replace")):
                     entry["status"] = "failed"
@@ -211,7 +292,7 @@ def run_case(app, case, directory, state):
             save(directory, state)
 
 
-def session(plan_path, directory):
+def session(plan_path, directory, mode="offscreen"):
     if directory.is_relative_to(ROOT):
         raise ValueError("Store session evidence outside the worktree")
     plan, fingerprint = load_plan(plan_path)
@@ -220,8 +301,11 @@ def session(plan_path, directory):
         state = json.loads(path.read_text())
         if state["fingerprint"] != fingerprint:
             raise ValueError("Plan/source inputs changed; preserve this session and use a new directory")
+        # Sessions from before the offscreen mode recorded only macOS attempts.
+        if state.get("mode", "macos") != mode:
+            raise ValueError(f"Session uses {state.get('mode', 'macos')} mode; use a new directory for {mode}")
     else:
-        state = {"source_sha": plan["source_sha"], "fingerprint": fingerprint,
+        state = {"source_sha": plan["source_sha"], "fingerprint": fingerprint, "mode": mode,
                  "cases": {case["id"]: {"status": "not_run", "attempts": []} for case in plan["cases"]}}
         save(directory, state)
     return plan, state
@@ -232,6 +316,8 @@ def main():
     parser.add_argument("action", choices=("run", "status", "accept", "reject"))
     parser.add_argument("plan", type=Path)
     parser.add_argument("directory", type=Path)
+    parser.add_argument("--mode", choices=("offscreen", "macos"), default="offscreen",
+                        help="offscreen: Docker Xvfb + llvmpipe (agent default); macos: inactive Godot.app window")
     parser.add_argument("--app", type=Path, default=Path("/Applications/Godot.app"))
     parser.add_argument("--case")
     parser.add_argument("--evidence", type=Path)
@@ -246,10 +332,10 @@ def main():
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError:
                 raise ValueError("QA controller is still running; inspect its existing game/state") from None
-            plan, state = session(args.plan.resolve(), directory)
+            plan, state = session(args.plan.resolve(), directory, args.mode)
             for entry in state["cases"].values():
                 for previous in entry["attempts"]:
-                    if native_pids(Path(previous["app"]), Path(previous["directory"]) / "game.log"):
+                    if alive(previous):
                         raise ValueError("Previous game is still alive; inspect it before restarting or reviewing")
                 if entry["status"] == "running":
                     previous = entry["attempts"][-1]
@@ -272,7 +358,7 @@ def main():
                         continue
                     if entry["status"] == "awaiting_review":
                         raise ValueError(f"Review {case['id']} captures/input evidence before continuing")
-                    run_case(args.app.resolve(), case, directory, state)
+                    run_case(args.app.resolve(), case, directory, state, args.mode == "offscreen")
                     break
             for name, entry in state["cases"].items():
                 print(f"{name}: {entry['status']}")
