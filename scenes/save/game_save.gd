@@ -10,6 +10,8 @@ const HEADER_SIZE: int = 8
 
 ## 테스트는 다른 경로로 바꾼다.
 static var path: String = "user://save.bin"
+## 전투가 행동마다 저장하는지. 이어하기 연결(#284)이 켠다. 검사와 장면 직접 실행은 사용자의 저장을 덮지 않는다.
+static var autosave: bool = false
 
 
 static func has_save() -> bool:

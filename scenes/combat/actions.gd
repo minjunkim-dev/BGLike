@@ -60,6 +60,10 @@ var last_damage: int = 0
 var movement_animation: Callable
 var jump_animation: Callable
 var attack_animation: Callable
+## 이번 적 턴에 아군이 답한 반응. 적 턴 중간 저장이 기록한다.
+var reaction_answers: Array[bool] = []
+## 이어하기가 다시 실행하는 적 턴에서 묻지 않고 차례로 쓸 반응 답.
+var replay_answers: Array[bool] = []
 var _grounds: Array[Ground] = []
 var _revision: int = 0
 
@@ -75,6 +79,51 @@ func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> v
 	turns = combat_turns
 	turns.turn_started.connect(_on_turn_started)
 	dice.randomize()
+
+
+## 이어하기용 상자·바위, 장판, 난수 상태. 유닛은 전투 유닛 목록의 번호로 적는다.
+func save_state() -> Dictionary:
+	var props: Array = []
+	for prop: CombatGrid.Prop in grid.props:
+		props.append([prop.kind, prop.cell, prop.hit_points])
+	var grounds: Array = []
+	for ground: Ground in _grounds:
+		grounds.append([units.find(ground.source), ground.cell, ground.kind, ground.turns_left,
+			ground.entered.map(func(unit: CombatUnit) -> int: return units.find(unit))])
+	return {"props": props, "grounds": grounds, "dice": dice.state}
+
+
+## save_state()의 값으로 되돌린다. initialize() 뒤에 부르고, is_valid_state()를 먼저 확인한다.
+func load_state(data: Dictionary) -> void:
+	grid.props.clear()
+	for saved: Array in data.props:
+		var prop: CombatGrid.Prop = CombatGrid.Prop.new(saved[1], saved[0])
+		prop.hit_points = saved[2]
+		grid.props.append(prop)
+	_grounds.clear()
+	for saved: Array in data.grounds:
+		var ground: Ground = Ground.new(units[saved[0]], saved[1], saved[2])
+		ground.turns_left = saved[3]
+		for index: int in saved[4]:
+			ground.entered.append(units[index])
+		_grounds.append(ground)
+	dice.state = data.dice
+
+
+## 저장 파일의 값을 load_state()에 넘겨도 되는지. count는 전투 유닛 수다.
+static func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
+	if not (data is Dictionary and data.get("dice") is int and data.get("props") is Array
+			and data.get("grounds") is Array):
+		return false
+	var area: Rect2i = Rect2i(Vector2i.ZERO, map_size)
+	var unit_index: Callable = func(index: Variant) -> bool: return index is int and index >= 0 and index < count
+	return (data.props.all(func(saved: Variant) -> bool:
+			return (saved is Array and saved.size() == 3 and saved[0] in ["crate", "rock"]
+				and saved[1] is Vector2i and area.has_point(saved[1]) and saved[2] is int and saved[2] > 0))
+		and data.grounds.all(func(saved: Variant) -> bool:
+			return (saved is Array and saved.size() == 5 and unit_index.call(saved[0])
+				and saved[1] is Vector2i and area.has_point(saved[1]) and saved[2] in ["burn", "poison"]
+				and saved[3] is int and saved[4] is Array and saved[4].all(unit_index))))
 
 
 func create_prop(cell: Vector2i, kind: String) -> CombatGrid.Prop:
@@ -823,10 +872,15 @@ func _can_act(actor: CombatUnit) -> bool:
 func _ask_reaction(reactor: CombatUnit, kind: String, prompt: String) -> bool:
 	if not reactor.is_ally:
 		return true
-	pending_reactor = reactor
-	pending_kind = kind
-	_emit_reaction.call_deferred(kind, prompt)
-	var accepted: bool = await reaction_decided
+	var accepted: bool
+	if not replay_answers.is_empty():
+		accepted = replay_answers.pop_front()
+	else:
+		pending_reactor = reactor
+		pending_kind = kind
+		_emit_reaction.call_deferred(kind, prompt)
+		accepted = await reaction_decided
+	reaction_answers.append(accepted)
 	logged.emit("%s %s: %s" % [reactor.get_display_name(),
 		tr("기회 공격") if kind == "opportunity" else tr("흘려내기"), tr("사용") if accepted else tr("넘기기")])
 	pending_kind = ""
