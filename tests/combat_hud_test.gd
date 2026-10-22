@@ -406,9 +406,8 @@ func _test_log_and_status() -> void:
 		if child is Label and child.text == "빗나감":
 			has_popup = true
 	_check(has_popup, "실제 빗나감 결과 팝업 연결")
-	_check(_has_feedback(units[1], "공격 %d" % actions.last_attack.total),
-		"불리 공격의 실제 판정 합계를 숫자 팝업으로 표시")
-	_check(_has_roll_dice(units[1], actions.last_attack), "불리 팝업은 두 주사위를 보이고 버린 쪽을 흐림")
+	_check(not _has_feedback(units[1], "공격 %d" % actions.last_attack.total),
+		"불리 공격도 공격자 판정 합계 팝업 없음")
 	units[1].action_left = 1
 	units[2].is_stunned = true
 	actions.dice = CombatDice.new()
@@ -419,9 +418,9 @@ func _test_log_and_status() -> void:
 	_check(_has_two_dice_log("유리"),
 		"유리 판정은 로그에 주사위 두 값을 모두 표시")
 	_check("표식 추가" in hud.message_label.text, "표식 추가 피해를 로그에 명시")
-	_check(_has_feedback(units[1], "공격 %d" % actions.last_attack.total),
-		"유리 공격의 실제 판정 합계를 숫자 팝업으로 표시")
-	_check(_has_roll_dice(units[1], actions.last_attack), "유리 팝업은 두 주사위를 보이고 버린 쪽을 흐림")
+	_check(not _has_feedback(units[1], "공격 %d" % actions.last_attack.total),
+		"유리 공격도 공격자 판정 합계 팝업 없음")
+	_check(_has_feedback(units[2], str(actions.last_damage)), "명중 팝업은 부호 없는 피해 합계")
 	await _test_roll_popups()
 
 
@@ -454,24 +453,6 @@ func _has_feedback(unit: CombatUnit, text: String) -> bool:
 	return false
 
 
-func _has_roll_dice(unit: CombatUnit, roll: CombatChecks.RollResult) -> bool:
-	var kept: int = roll.rolls.find(roll.selected_roll)
-	for child: Node in unit.get_parent().get_children():
-		if (child is Label and child.text == "공격 %d" % roll.total
-			and child.get_meta("feedback_unit", 0) == unit.get_instance_id()):
-			var dice: Array[Node] = child.get_children()
-			if dice.size() != 2:
-				return false
-			var rect: Rect2 = Rect2(Vector2.ZERO, (child as Label).size)
-			for index: int in range(2):
-				var die: Label = dice[index] as Label
-				if (die.text != str(roll.rolls[index]) or not rect.encloses(die.get_rect())
-					or (die.modulate.a == 1.0) != (index == kept)):
-					return false
-			return (dice[0] as Label).get_rect().end.x <= (dice[1] as Label).position.x
-	return false
-
-
 func _test_roll_popups() -> void:
 	var warrior: CombatUnit = units[0]
 	var target: CombatUnit = units[2]
@@ -488,9 +469,9 @@ func _test_roll_popups() -> void:
 		maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), expected_dice)
 	actions.dice.seed = 100
 	actions.shove(warrior, target)
-	_check(_has_feedback(warrior, "밀치기 %d" % contest.attacker_total)
-		and _has_feedback(target, "저항 %d" % contest.defender_total), "밀치기 양쪽 대결 합계를 표시")
-	# 기절 자동 성공에는 굴림이 없으므로 숫자를 새로 만들지 않는다.
+	_check(_has_feedback(target, "밀치기 성공" if contest.attacker_wins else "밀치기 실패")
+		and not _has_feedback(warrior, "밀치기 %d" % contest.attacker_total),
+		"밀치기는 대상 위에 결과만 표시")
 	warrior.bonus_action_left = 1
 	target.cell = Vector2i(5, 4)
 	target.is_stunned = true
@@ -498,8 +479,23 @@ func _test_roll_popups() -> void:
 	var capture: Callable = func(_unit: CombatUnit, text: String) -> void: emitted.append(text)
 	actions.feedback.connect(capture)
 	actions.shove(warrior, target)
-	_check(emitted.is_empty(), "기절 대상의 자동 밀치기는 가짜 대결 숫자를 표시하지 않음")
-	# 명중(비치명타) 굴림을 정해 정신 내성까지 진행하고 실제 로그 합계와 비교한다.
+	_check(emitted == ["밀치기 성공"], "기절 대상의 자동 밀치기도 결과만 표시: %s" % str(emitted))
+	var wind_left: int = warrior.second_wind_left
+	var hit_points: int = warrior.hit_points
+	warrior.bonus_action_left = 1
+	warrior.second_wind_left = 1
+	warrior.hit_points = 1
+	_check(actions.use_self(warrior, "second_wind"), "숨 고르기 실행")
+	var healed: String = str(warrior.hit_points - 1)
+	var heal_popup: Label = null
+	for child: Node in warrior.get_parent().get_children():
+		if child is Label and child.text == healed and child.get_meta("feedback_unit", 0) == warrior.get_instance_id():
+			heal_popup = child
+	_check(heal_popup != null and heal_popup.get_theme_color("font_color") == CombatUnit.HEAL_COLOR,
+		"회복 팝업은 + 없는 수치를 초록색으로 표시")
+	warrior.second_wind_left = wind_left
+	warrior.hit_points = hit_points
+	# 명중(비치명타) 굴림을 정해 정신 내성까지 진행한다. 팝업은 결과만, 로그는 전체 수식이다.
 	turns.select_unit(units[1])
 	units[1].cell = Vector2i(1, 4)
 	target.cell = Vector2i(5, 4)
@@ -510,10 +506,10 @@ func _test_roll_popups() -> void:
 	units[1].marked_target = null
 	actions.dice = ScriptedDice.new([15], [20]).then_seeded()
 	await actions.attack(units[1], target, true)
-	var save_total: String = hud.message_label.text.get_slice("정신 내성: ", 1).get_slice(" = ", 1).get_slice(" /", 0)
-	_check(save_total.is_valid_int() and _has_feedback(target, "정신 내성 %s" % save_total),
-		"정신 내성 팝업은 실제 로그의 합계와 일치")
-	# 아군 전사의 흘려내기는 실제 내성 합계를 표시한다.
+	_check(_has_feedback(target, "기절" if target.is_stunned else "정신 내성"),
+		"정신 내성 팝업은 실패 시 효과 이름, 성공 시 내성 이름만")
+	_check("정신 내성: d20 " in hud.message_label.text, "로그는 정신 내성 전체 수식 유지")
+	# 아군 전사의 흘려내기 팝업은 성공 결과만 보이고 로그는 전체 수식이다.
 	target = warrior
 	target.cell = Vector2i(4, 4)
 	units[3].cell = Vector2i(1, 4)
@@ -530,11 +526,10 @@ func _test_roll_popups() -> void:
 	actions.dice = ScriptedDice.new([11, 10], [20, 20])
 	await actions.attack(units[3], target)
 	actions.reaction_requested.disconnect(respond)
-	var parry_text: String = ""
-	for text: String in emitted:
-		if text.begins_with("흘려내기 ") and text.get_slice(" ", 1).is_valid_int():
-			parry_text = text
-	_check(not parry_text.is_empty() and _has_feedback(target, parry_text), "흘려내기 실제 내성 합계 표시")
+	_check("흘려내기: d20 " in hud.message_label.text, "흘려내기 반응과 전체 수식 로그")
+	var parried: bool = hud.message_label.text.get_slice("흘려내기: d20 ", 1).get_slice("\n", 0).ends_with("성공")
+	_check(emitted.filter(func(text: String) -> bool: return text.begins_with("흘려내기")) == (
+		["흘려내기"] if parried else []), "흘려내기는 성공할 때만 수치 없이 표시: %s" % str(emitted))
 	var popup_rects: Array[Rect2] = []
 	await process_frame
 	for child: Node in target.get_parent().get_children():

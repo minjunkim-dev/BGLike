@@ -26,8 +26,8 @@ policy와 `make repository-check`는 `scripts/check_bugbot_rules.py`를 실행�
 제목 수정 후 새 커밋을 push하여 최신 제목의 policy 검사를 실행합니다. 기존 실행의 재실행은 과거 이벤트의 제목을 사용합니다.
 edited 전용 lint 검사는 제목 변경을 빠르게 확인하는 보조 검사입니다.
 
-Godot 작업은 headless import, 메인 장면 시작과 기존 전투 회귀 테스트를 모두 수행합니다.
-import와 메인 장면 검사 뒤 전투 테스트를 두 그룹으로 병렬 실행합니다.
+Godot 작업은 headless import, 메인 장면 시작과 기존 전투·저장 회귀 테스트를 모두 수행합니다.
+import와 메인 장면 검사 뒤 전투·저장 테스트를 두 그룹으로 병렬 실행합니다.
 오류 로그를 분리하고 두 그룹의 성공을 요구합니다.
 Godot는 스크립트 파싱 오류에도 0으로 끝납니다. 그래서 각 단계의 `SCRIPT ERROR`나 `Failed to load script` 출력도 실패로 처리합니다.
 Ubuntu 24.04에서 로컬과 같은 `make godot-install`, `make godot-check`를 호출합니다.

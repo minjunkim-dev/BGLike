@@ -1,0 +1,81 @@
+# 0003. 자동 저장은 `user://save.bin` 한 슬롯의 버전 머리 + Variant 바이너리, 설정은 `user://settings.cfg`
+
+- 상태: 채택 (2026-10-22)
+- 구분: 개발 결정. 저장 파일의 위치·형식·버전 처리는 [#209 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6330756631)이 개발 결정으로 남겼다. 기획자가 나중에 바꿀 수 있다.
+- 관련: [Issue #280](https://github.com/minjunkim-dev/BGLike/issues/280). 이 기반을 쓰는 Issue는 [#281](https://github.com/minjunkim-dev/BGLike/issues/281)(전투 상태), [#282](https://github.com/minjunkim-dev/BGLike/issues/282)(정비·보상 화면), [#284](https://github.com/minjunkim-dev/BGLike/issues/284)(새 게임·이어하기), [#285](https://github.com/minjunkim-dev/BGLike/issues/285)(설정)
+
+## 맥락
+
+기획 결정(#209 4·7·8·9번): 자동 저장 한 슬롯에 전투 상태 전체를 행동이 끝날 때마다 저장한다. 난수 상태도 저장한다. 정비·보상 화면 중에도 저장한다. 졸업 화면이 뜨면 저장을 지운다. 설정(마스터 음량, 창 모드)은 게임 저장과 따로 두고 새 게임·졸업이 지우지 않는다.
+
+저장할 값에는 Godot `RandomNumberGenerator.state`(64비트 정수), `Vector2i` 칸 좌표와 그 좌표를 키로 쓰는 Dictionary가 들어간다. 행동마다 쓰므로 쓰는 도중 게임이 꺼질 수 있다.
+
+## 결정
+
+### 위치
+
+| 파일 | 경로 | 지우는 때 |
+| --- | --- | --- |
+| 게임 저장 | `user://save.bin` | 새 게임, 졸업(`GameSave.delete()`) |
+| 설정 | `user://settings.cfg` | 지우지 않음 |
+
+`user://`는 Godot 기본값을 쓴다. macOS는 `~/Library/Application Support/Godot/app_userdata/BGLike/`, Linux는 `~/.local/share/godot/app_userdata/BGLike/`다. 편집기 실행과 내보낸 게임이 같은 폴더를 쓴다. 자동 검사는 `user://tests/save/<프로세스 ID>/`로 경로를 바꿔 개발자의 저장을 건드리지 않는다.
+
+### 형식
+
+게임 저장 파일은 8바이트 머리와 본문이다.
+
+| 바이트 | 내용 |
+| --- | --- |
+| 0–3 | `BGLS`(ASCII) |
+| 4–7 | 형식 버전(u32 little-endian). 지금 `1` |
+| 8– | `var_to_bytes()`로 만든 본문 |
+
+본문은 `{"act": int, "stage": int, "sections": Dictionary}`다.
+
+- `act`·`stage`는 요약(`GameSave.summary_text()`: "3막 2스테이지 진행 중")에 쓴다. 이어하기 전에 본문 전체를 해석하는 쪽에 맡기지 않고 바로 보여 줄 수 있다.
+- `sections`는 저장하는 쪽이 이름별로 채운다. 예를 들어 #281은 `"combat"`, #282는 `"preparation"`을 넣는다. 저장하는 쪽은 자기 칸을 만들고 읽을 수 있다. 칸을 더해도 파일 머리와 본문 틀은 그대로다.
+- `bytes_to_var()`는 Object를 복원하지 않는다(`bytes_to_var_with_objects()`와 다르다). 저장 파일로 스크립트나 리소스를 불러올 수 없다. 그래서 `sections`에는 Object가 아닌 값(정수, 실수, 문자열, 벡터, 배열, Dictionary, Packed 배열)만 넣는다.
+
+설정 파일은 Godot `ConfigFile` 텍스트(`[settings]` 섹션)다. 키와 기본값은 #285가 정한다. `GameSettings.read(key, fallback)`는 파일이 없거나 깨졌거나 값의 타입이 `fallback`과 다르면 `fallback`을 돌려준다.
+
+### 버전 처리
+
+- 형식 버전이 `FORMAT_VERSION`과 다르면(높든 낮든) 읽지 않는다. 본문도 해석하지 않는다.
+- 본문의 모양(어느 칸이 있고 어떤 타입인지)을 호환되지 않게 바꾸면 `FORMAT_VERSION`을 올린다. 새 `sections` 칸을 처음 추가하는 것은 바꿈이 아니다. 그 칸이 없는 옛 저장은 저장하는 쪽이 "읽을 수 없음"으로 처리한다.
+- 출시 전에는 옛 버전을 변환하지 않는다. 출시 뒤 옛 저장을 살려야 하면 `read()`에 N-1 → N 변환 단계를 더한다.
+
+### 읽을 수 없는 저장
+
+다음은 모두 "저장을 읽을 수 없음"이다. `GameSave.read()`가 빈 Dictionary를 돌려주고 `push_warning`으로 이유를 남긴다. 게임은 멈추지 않는다.
+
+- 8바이트 이하, 머리가 `BGLS`가 아님, 형식 버전이 다름
+- 본문을 해석할 수 없음(잘림, 쓰레기 값)
+- 본문이 Dictionary가 아니거나 `act`·`stage`가 정수가 아니거나 `sections`가 Dictionary가 아님
+
+`has_save()`는 파일이 있는지만 본다. 파일은 있는데 읽을 수 없는 경우를 화면에 어떻게 보일지는 #284가 정한다. `summary_text({})`는 "저장을 읽을 수 없음"을 돌려준다.
+
+### 원자적 쓰기
+
+`GameSave.write_atomic()`은 `<경로>.tmp`에 다 쓰고 닫은 뒤 `DirAccess.rename_absolute()`로 바꿔치기한다. 쓰기 오류가 있거나 닫은 임시 파일의 크기가 쓴 바이트 수와 다르면(디스크 부족) 바꿔치기하지 않는다. 쓰는 도중 종료되면 `.tmp`만 반쯤 남고 원래 파일은 이전 저장 그대로다. 다음 쓰기가 `.tmp`를 덮어쓴다. `delete()`는 `.tmp`도 지운다. 설정 파일도 같은 함수로 쓴다.
+
+### 검사
+
+`tests/save_test.gd`가 `make check`(`scripts/check_godot.sh`)에서 실행된다. 정상 왕복(64비트 난수 상태, `Vector2i` 키 포함), 버전 0·2, 깨진 파일 9가지, 반쯤 쓴 `.tmp`, 임시 파일을 열 수 없는 쓰기 실패, 저장 삭제 뒤 설정 유지, 깨진 설정 파일을 검사한다.
+
+## 한계와 후속
+
+- Godot `FileAccess`는 `fsync`를 하지 않는다. 프로세스 종료·강제 종료에는 이전 저장이 남는다. 운영체제가 디스크에 쓰기 전에 전원이 꺼지면 새 파일이 비어 있을 수 있다. 그때도 읽을 수 없는 저장으로 처리되어 게임은 멈추지 않는다.
+- 내보내기 대상은 지금 Linux다. Windows의 `rename_absolute` 덮어쓰기는 확인하지 않았다. Windows 내보내기를 더할 때 확인한다.
+- 비트 하나가 바뀐 손상처럼 해석은 되는 본문은 거르지 않는다. 체크섬은 실제로 그런 손상을 겪으면 더한다.
+- 설정 파일의 `ConfigFile` 텍스트 파서는 `Object(...)` 값을 만든다. `read()`는 타입이 다른 값을 버리지만 만들어지는 것 자체는 막지 않는다. 사용자 폴더의 파일을 고칠 수 있는 사람은 이미 사용자 권한을 가진 것으로 보고 신뢰 경계 밖으로 둔다.
+- `sections` 안의 값은 이 모듈이 검사하지 않는다. 채우는 쪽(#281·#282)이 복원할 때 타입과 범위를 검사하고, 맞지 않으면 읽을 수 없는 저장으로 처리한다.
+- `user://` 위치를 나중에 `application/config/use_custom_user_dir`로 바꾸면 기존 저장·설정을 옮겨야 한다.
+
+## 대안
+
+- JSON: 사람이 읽기 쉽지만 숫자가 64비트 실수라 난수 상태(64비트 정수)가 깨지고 `Vector2i`·키 타입을 직접 바꿔야 한다. 택하지 않았다.
+- `var_to_str()`·`ConfigFile` 텍스트로 게임 저장: 타입은 보존하지만 텍스트 파서가 `Object(...)` 값을 만들 수 있다. 행동마다 쓰는 저장은 사람이 직접 고칠 일이 없다. 택하지 않았다. 설정은 값 몇 개뿐이고 타입이 다르면 기본값을 쓰므로 `ConfigFile`을 쓴다.
+- 버전 없는 파일: 형식을 바꾼 뒤 옛 파일을 잘못 해석할 수 있다. 택하지 않았다.
+- 저장하는 쪽을 등록하는 레지스트리: 저장 시점에 부르는 쪽(전투, 정비 화면)이 칸을 모두 알고 있어 필요 없다. 택하지 않았다.
+- 여러 슬롯·직접 저장: 기획 결정(#209 7번) 범위 밖이다.
