@@ -1,4 +1,4 @@
-"""Native QA must not launch broken scripts or reuse incomplete evidence."""
+"""QA must not launch broken scripts, take the user's focus or reuse incomplete evidence."""
 
 import json
 import os
@@ -11,6 +11,8 @@ import unittest
 from unittest.mock import Mock, patch
 
 import manual_qa as qa
+
+frontmost_pid = qa.frontmost_pid
 
 
 class ManualQATests(unittest.TestCase):
@@ -29,6 +31,9 @@ class ManualQATests(unittest.TestCase):
         self.directory = self.root / "session"
         self.directory.mkdir()
         self.state = {"cases": {"compact": {"status": "not_run", "attempts": []}}}
+        front = patch.object(qa, "frontmost_pid", return_value=None)
+        front.start()
+        self.addCleanup(front.stop)
 
     def native_fixture(self, text, wait=True):
         def launch(_app, _case, log, _frames):
@@ -192,6 +197,122 @@ class ManualQATests(unittest.TestCase):
         self.assertIn("forward_plus", command)
         self.assertIn("1280x720", command)
 
+    def test_foreground_game_is_stopped_and_kill_failure_recorded(self):
+        for failure in (None, RuntimeError("Owned Godot instance did not stop")):
+            with self.subTest(failure=failure), \
+                    patch.object(qa, "launch", side_effect=self.native_fixture("Metal - Forward+\n")), \
+                    patch.object(qa, "frontmost_pid", return_value=4242), \
+                    patch.object(qa, "native_pids", return_value=[4242]), \
+                    patch.object(qa, "stop_native", side_effect=failure) as stop:
+                with self.assertRaisesRegex(Exception, "did not stop" if failure else "frontmost"):
+                    qa.run_case(self.app, self.case, self.directory, self.state)
+                stop.assert_called_once()
+                attempt = self.state["cases"]["compact"]["attempts"][-1]
+                self.assertEqual(attempt["status"], "failed")
+                self.assertIn("frontmost", attempt["foreground"])
+                self.assertIn("frontmost", attempt["reason"])
+                self.assertEqual("did not stop" in attempt.get("cleanup_error", ""), failure is not None)
+
+    def test_other_frontmost_app_does_not_stop_game(self):
+        with patch.object(qa, "frontmost_pid", return_value=1), patch.object(qa, "native_pids", return_value=[4242]):
+            self.run_case("Metal - Forward+\n[CAPTURE_CHECK] PASS:\n")
+        self.assertEqual(self.state["cases"]["compact"]["status"], "awaiting_review")
+
+    def test_frontmost_pid_reads_lsappinfo(self):
+        outputs = ["ASN:0x0-0x62062:\n", '"Godot" ASN:0x0-0x62062: (in front)\n    pid = 1398 !cgsConnection\n']
+        with patch.object(qa.subprocess, "check_output", side_effect=outputs) as run:
+            self.assertEqual(frontmost_pid(), 1398)
+        self.assertEqual(run.call_args.args[0], ["lsappinfo", "info", "-only", "pid", "ASN:0x0-0x62062:"])
+
+    def test_offscreen_command_never_opens_macos_window(self):
+        self.case["args"] = ["--profile=compact"]
+        with patch.object(qa.subprocess, "Popen") as launch:
+            qa.launch_offscreen("bglike-qa-test", self.case)
+        command = launch.call_args.args[0]
+        self.assertEqual(command[:3], ["docker", "exec", "bglike-qa-test"])
+        self.assertIn("xvfb-run", command)
+        self.assertIn("-screen 0 1280x720x24", command)
+        self.assertNotIn("open", command)
+        self.assertNotIn("--manual", command)
+        for flag, value in (("--rendering-method", "forward_plus"), ("--resolution", "1280x720"),
+                            ("--log-file", "/out/game.log")):
+            self.assertEqual(command[command.index(flag) + 1], value)
+        self.assertEqual(command[-2:], ["--capture-dir=/out/frames", "--profile=compact"])
+
+    def offscreen_fixture(self, text):
+        launch = self.native_fixture(text)
+        return lambda _name, case: launch(None, case, self.directory / "compact/1/game.log", None)
+
+    def test_offscreen_runs_godot_in_container_and_removes_it(self):
+        with patch.object(qa, "start_container", return_value="sha256:image") as start, \
+                patch.object(qa, "import_offscreen"), \
+                patch.object(qa.subprocess, "check_output", return_value="4.7.2.stable.official.fixture"), \
+                patch.object(qa, "preflight") as preflight, \
+                patch.object(qa, "launch_offscreen", side_effect=self.offscreen_fixture(
+                    "Vulkan - Forward+ - llvmpipe\nCombat capture: 9 checks, 0 failures\n")), \
+                patch.object(qa, "stop_container") as stop, patch.object(qa, "launch") as native:
+            self.case["success_marker"] = "0 failures"
+            qa.run_case(self.app, self.case, self.directory, self.state, offscreen=True)
+        attempt = self.state["cases"]["compact"]["attempts"][-1]
+        name = attempt["container"]
+        start.assert_called_once_with(name, self.directory / "compact/1")
+        self.assertEqual(preflight.call_args.args[:2], (["docker", "exec", name, "godot"], "/work"))
+        stop.assert_called_once_with(name)
+        native.assert_not_called()
+        self.assertNotIn("app", attempt)
+        self.assertEqual((attempt["image"], attempt["status"]), ("sha256:image", "awaiting_review"))
+
+    def test_offscreen_failure_before_launch_still_removes_container(self):
+        with patch.object(qa, "start_container", return_value="sha256:image"), \
+                patch.object(qa, "import_offscreen", side_effect=ValueError("Offscreen import failed")), \
+                patch.object(qa, "launch_offscreen") as launch, patch.object(qa, "stop_container") as stop:
+            with self.assertRaisesRegex(ValueError, "import failed"):
+                qa.run_case(self.app, self.case, self.directory, self.state, offscreen=True)
+        launch.assert_not_called()
+        stop.assert_called_once_with(self.state["cases"]["compact"]["attempts"][-1]["container"])
+        self.assertEqual(self.state["cases"]["compact"]["status"], "failed")
+
+    def test_marker_written_just_before_exit_is_success(self):
+        log = self.directory / "compact/1/game.log"
+        launcher = Mock(pid=999999)
+
+        def exit_after_marker():
+            log.write_text("Vulkan - Forward+ - llvmpipe\n[CAPTURE_CHECK] PASS:\n")
+            return 0
+        launcher.poll.side_effect = exit_after_marker
+        with patch.object(qa, "launch", return_value=launcher), patch.object(qa, "stop_native"):
+            qa.run_case(self.app, self.case, self.directory, self.state)
+        self.assertEqual(self.state["cases"]["compact"]["status"], "awaiting_review")
+
+    def test_container_liveness_uses_exact_name_and_blocks_failed_removal(self):
+        with patch.object(qa.subprocess, "check_output", return_value="1085826332dd\n") as ps, \
+                patch.object(qa.subprocess, "run") as remove:
+            with self.assertRaisesRegex(RuntimeError, "did not stop"):
+                qa.stop_container("bglike-qa-test")
+        self.assertEqual(remove.call_args.args[0], ["docker", "rm", "-f", "bglike-qa-test"])
+        self.assertEqual(ps.call_args.args[0], ["docker", "ps", "-q", "--filter", "name=^bglike-qa-test$"])
+        with patch.object(qa.subprocess, "check_output", return_value="\n"):
+            self.assertFalse(qa.container_alive("bglike-qa-test"))
+
+    def test_interrupted_cleanup_keeps_original_failure(self):
+        with patch.object(qa, "start_container", return_value="sha256:image"), \
+                patch.object(qa, "import_offscreen", side_effect=ValueError("Offscreen import failed")), \
+                patch.object(qa, "stop_container", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                qa.run_case(self.app, self.case, self.directory, self.state, offscreen=True)
+        attempt = self.state["cases"]["compact"]["attempts"][-1]
+        self.assertEqual(attempt["status"], "interrupted")
+        self.assertEqual((attempt["reason"], attempt["cleanup_error"]),
+                         ("Offscreen import failed", "Interrupted during process cleanup"))
+
+    def test_offscreen_import_script_error_blocks_launch(self):
+        def run(_command, stdout, **_kwargs):
+            stdout.write("SCRIPT ERROR: Parse Error\n")
+            return Mock(returncode=0)
+        with patch.object(qa.subprocess, "run", side_effect=run):
+            with self.assertRaisesRegex(ValueError, "import failed"):
+                qa.import_offscreen("bglike-qa-test", self.directory)
+
     def test_cleanup_matches_executable_and_exact_log_argument(self):
         log = self.root / "game.log"
         rows = (f" 10 {self.binary} --log-file {log} --script a\n"
@@ -278,7 +399,7 @@ class ManualQATests(unittest.TestCase):
             run.assert_not_called()
         with patch.object(qa, "native_pids", return_value=[]), patch.object(qa, "run_case") as run:
             self.assertEqual(self.cli("run"), 0)
-            self.assertEqual(run.call_args.args[-1]["cases"]["compact"]["status"], "interrupted")
+            self.assertEqual(run.call_args.args[3]["cases"]["compact"]["status"], "interrupted")
 
     def test_cleanup_failure_and_pending_review_cannot_bypass_live_game_check(self):
         self.prepare_plan()
@@ -295,6 +416,29 @@ class ManualQATests(unittest.TestCase):
                     self.assertEqual(self.cli("run"), 1)
                     run.assert_not_called()
                     self.assertEqual(self.cli("accept", "--case", "compact", "--evidence", str(evidence)), 1)
+
+    def test_session_keeps_one_run_mode(self):
+        self.prepare_plan()
+        qa.session(self.plan, self.directory, "offscreen")
+        with self.assertRaisesRegex(ValueError, "offscreen mode; pass that --mode"):
+            qa.session(self.plan, self.directory, "macos")
+        state = json.loads((self.directory / "state.json").read_text())
+        del state["mode"]
+        qa.save(self.directory, state)
+        qa.session(self.plan, self.directory, "macos")
+        with self.assertRaisesRegex(ValueError, "macos mode"):
+            qa.session(self.plan, self.directory, "offscreen")
+
+    def test_resume_refuses_live_container(self):
+        self.prepare_plan()
+        _, state = qa.session(self.plan, self.directory)
+        state["cases"]["compact"].update(status="running", attempts=[
+            {"container": "bglike-qa-test", "directory": str(self.root)}])
+        qa.save(self.directory, state)
+        with patch.object(qa, "container_alive", return_value=True) as alive, patch.object(qa, "run_case") as run:
+            self.assertEqual(self.cli("run"), 1)
+            run.assert_not_called()
+        alive.assert_called_with("bglike-qa-test")
 
     def test_failure_stops_before_next_case(self):
         self.prepare_plan()
