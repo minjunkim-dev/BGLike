@@ -47,7 +47,7 @@ static func read() -> Dictionary:
 
 ## 새 게임·졸업에서 부른다. 설정 파일(GameSettings)은 건드리지 않는다.
 static func delete() -> Error:
-	for file: String in [path + ".tmp", path]:
+	for file: String in [path, path + ".tmp"]:
 		if FileAccess.file_exists(file) and DirAccess.remove_absolute(file) != OK:
 			push_warning("저장을 지울 수 없음: %s" % file)
 			return FAILED
