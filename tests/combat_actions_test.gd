@@ -2960,7 +2960,7 @@ func _test_poison_removed_during_save() -> void:
 		f.actions.apply_status(f.units[1] if boundary == 0 else f.units[3], target, "poison")
 		var damage_messages: Array[String] = []
 		# 내성 실패는 팝업이 없으므로 같은 시점의 내성 로그에서 끼어든다.
-		f.actions.logged.connect(func(message: String) -> void:
+		var interrupt: Callable = func(message: String) -> void:
 			if not message.begins_with("%s 독 건강 내성" % target.get_display_name()):
 				return
 			if boundary == 0:
@@ -2970,14 +2970,17 @@ func _test_poison_removed_during_save() -> void:
 			else:
 				f.actions.incapacitate(f.units[0])
 				f.actions.incapacitate(f.units[1])
-		)
-		f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+		var record: Callable = func(unit: CombatUnit, text: String) -> void:
 			if unit == target and text.begins_with("독 "):
 				damage_messages.append(text)
-		)
+		f.actions.logged.connect(interrupt)
+		f.actions.feedback.connect(record)
 		f.actions.dice = _dice_for([1], [20])
 		f.turns.end_turn()
 		f.turns.end_turn()
+		# 픽스처를 잡은 콜백이 순환 참조로 남지 않게 끊는다.
+		f.actions.logged.disconnect(interrupt)
+		f.actions.feedback.disconnect(record)
 		_check(target.hit_points == (0 if boundary == 1 else 12) and damage_messages.is_empty(),
 			"독 내성 로그 중 시전자·대상 탈락 또는 전투 종료 뒤 독 피해를 실행하지 않음: " + str(boundary))
 
