@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Theme" path="res://scenes/ui_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scenes/title.gd" id="2_title"]
 [ext_resource type="PackedScene" path="res://scenes/settings.tscn" id="3_settings"]
+[ext_resource type="PackedScene" path="res://scenes/help.tscn" id="4_help"]
 
 [node name="Title" type="Control"]
 layout_mode = 3
@@ -59,6 +60,12 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 text = "설정"
+
+[node name="HelpButton" type="Button" parent="Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "도움말"
 
 [node name="CreditsButton" type="Button" parent="Menu"]
 unique_name_in_owner = true
@@ -175,5 +182,9 @@ size_flags_horizontal = 4
 text = "뒤로"
 
 [node name="SettingsScreen" parent="." instance=ExtResource("3_settings")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="Help" parent="." instance=ExtResource("4_help")]
 unique_name_in_owner = true
 layout_mode = 1
