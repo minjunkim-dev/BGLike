@@ -42,6 +42,7 @@ func _run() -> void:
 	await _check_give_up(battle, menu)
 	await _check_after_combat(battle, menu)
 	await _check_to_title(menu)
+	await _check_split_groups(await _open_game())
 	battle = await _open_game()
 	await _check_enemy_turn(battle, battle.get("pause_menu") as PauseMenu)
 	_finish()
@@ -270,6 +271,34 @@ func _check_to_title(menu: PauseMenu) -> void:
 	_check(current_scene is TitleScreen and not paused, "타이틀로는 멈춤을 풀고 타이틀 화면으로")
 
 
+## 아군이 두 묶음으로 나뉜 순서([아군][적][아군])에서 포기해도 사이의 적 턴 시작 효과가 들지 않는다.
+## 과부하로 죽을 마지막 적이 있어도 승리로 바뀌지 않는다.
+func _check_split_groups(battle: Node2D) -> void:
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var party: Array[CombatUnit] = battle.get("party")
+	var enemy: CombatUnit = null
+	for unit: CombatUnit in battle.get("units"):
+		if not unit.is_ally:
+			if enemy == null:
+				enemy = unit
+			else:
+				actions.incapacitate(unit)
+	var living: Array[CombatUnit] = [party[0], party[1], enemy]
+	var dice: CombatDice = CombatDice.new()
+	while turns.ordered_units != [turns.current_unit, enemy, turns.ordered_units[2]] or not turns.current_unit.is_ally:
+		dice.seed += 1
+		turns.start(living, dice)
+	enemy.overloaded = true
+	enemy.hit_points = 2
+	battle.call("_give_up")
+	await process_frame
+	_check(actions.is_over() and not actions.is_victory() and enemy.hit_points == 2 and hud.result_label.text == "패배",
+		"아군 묶음 사이의 적 턴 시작 효과 없이 패배: HP %d, %s" % [enemy.hit_points, hud.result_label.text])
+	_check(hud.message_label.text.ends_with("전투 포기"), "전투 포기가 전투 기록의 마지막 줄")
+
+
 ## 적 턴 중에도 메뉴를 연다. 열린 동안 적 연출·타이머가 멈추고, 포기하면 적 턴이 끝난 뒤 결과 버튼이 풀린다.
 func _check_enemy_turn(battle: Node2D, menu: PauseMenu) -> void:
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
@@ -296,6 +325,7 @@ func _check_enemy_turn(battle: Node2D, menu: PauseMenu) -> void:
 	await process_frame
 	_check(actions.is_over() and not actions.is_victory() and hud.result_label.text == "패배", "적 턴 중 포기도 패배")
 	_check(_saved_defeat(), "적 턴 중에도 포기한 순간을 바로 저장")
+	_check(battle.get("_enemy_turn_running") and hud.restart_button.disabled, "진행 중인 적 행동이 끝날 때까지 결과 버튼 잠금")
 	var waited: float = 0.0
 	while battle.get("_enemy_turn_running") and waited < 5.0:
 		await create_timer(0.05).timeout

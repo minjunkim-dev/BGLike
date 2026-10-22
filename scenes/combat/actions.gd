@@ -491,10 +491,14 @@ func incapacitate(target: CombatUnit) -> void:
 func give_up() -> void:
 	if is_over():
 		return
+	var allies: Array[CombatUnit] = units.filter(func(unit: CombatUnit) -> bool:
+		return unit.is_ally and unit.hit_points > 0)
+	# 먼저 모두 0으로 두어 전투를 끝낸다. 하나씩 빼다 시작된 다음 적 묶음의 턴 시작 효과(과부하·화상)가 들지 않는다.
+	for unit: CombatUnit in allies:
+		unit.hit_points = 0
+	for unit: CombatUnit in allies:
+		incapacitate(unit)
 	logged.emit(tr("전투 포기"))
-	for unit: CombatUnit in units.duplicate():
-		if unit.is_ally and unit.hit_points > 0:
-			incapacitate(unit)
 	changed.emit()
 
 

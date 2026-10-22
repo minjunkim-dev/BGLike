@@ -27,9 +27,9 @@ var _focus_before: Control
 
 func _ready() -> void:
 	resume_button.pressed.connect(close)
-	settings_button.pressed.connect(_open_screen.bind(settings))
+	settings_button.pressed.connect(_open_screen.bind(settings.open))
 	settings.closed.connect(_back_to_menu.bind(settings_button))
-	help_button.pressed.connect(_open_screen.bind(help))
+	help_button.pressed.connect(_open_screen.bind(help.open))
 	help.closed.connect(_back_to_menu.bind(help_button))
 	give_up_button.pressed.connect(_ask.bind(give_up_button, tr("전투 포기"),
 		tr("전투를 포기하면 패배로 처리되고, 이 막을 처음부터 다시 합니다."), tr("포기"), _give_up))
@@ -62,9 +62,9 @@ func close() -> void:
 		_focus_before.grab_focus()
 
 
-func _open_screen(screen: Control) -> void:
+func _open_screen(open_screen: Callable) -> void:
 	menu.hide()
-	screen.call("open")
+	open_screen.call()
 
 
 func _back_to_menu(button: Button) -> void:
