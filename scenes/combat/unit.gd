@@ -23,6 +23,9 @@ const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initi
 	"action_capacity", "bonus_action_capacity", "reaction_capacity", "action_left", "bonus_action_left",
 	"reaction_left", "overloaded", "pull_cooldown", "disengaged", "second_wind_left", "parry_left",
 	"surge_left", "mark_left", "shock_left", "disengage_left", "potion_left"]
+## 저장 파일의 정수 상한. 고친 저장이 끝나지 않는 턴이나 큰 목록을 만들지 않게 한다.
+const SAVED_INT_LIMIT: int = 99
+const SAVED_HIT_POINT_LIMIT: int = 999
 
 class StatusEffect extends RefCounted:
 	var kind: String
@@ -315,20 +318,24 @@ func load_state(data: Dictionary, units: Array[CombatUnit]) -> void:
 func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 	if not (data is Dictionary and data.get("kind") is int and data.kind in Kind.values() and data.get("ally") is bool
 			and data.get("weapon") is Dictionary and data.get("armor") is Dictionary
-			and data.get("hit_points") is int and data.hit_points >= 0
-			and data.get("lost_hit_points") is int and data.lost_hit_points >= 0 and data.get("stunned") is bool
-			and _valid_index(data.get("stun_source"), count, true)
-			and _valid_index(data.get("marked_target"), count, true) and data.get("statuses") is Array):
+			and data.get("hit_points") is int and data.hit_points >= 0 and data.hit_points <= SAVED_HIT_POINT_LIMIT
+			and data.get("lost_hit_points") is int and data.lost_hit_points >= 0
+			and data.lost_hit_points <= SAVED_HIT_POINT_LIMIT and data.get("stunned") is bool
+			and _valid_index(data.get("stun_source"), count, true) and (not data.stunned or data.stun_source >= 0)
+			and _valid_index(data.get("marked_target"), count, true)
+			and data.get("statuses") is Array and data.statuses.size() <= 6):
 		return false
 	for field: String in SAVED_FIELDS:
-		if typeof(data.get(field)) != typeof(get(field)):
+		var value: Variant = data.get(field)
+		if typeof(value) != typeof(get(field)) or value is int and (value < 0 or value > SAVED_INT_LIMIT):
 			return false
 	var area: Rect2i = Rect2i(Vector2i.ZERO, map_size)
 	if not area.has_point(data.cell) or not area.has_point(data.start_cell):
 		return false
 	return (data.statuses as Array).all(func(saved: Variant) -> bool:
 		return (saved is Array and saved.size() == 4 and saved[0] in ["burn", "poison"]
-			and _valid_index(saved[1], count, false) and saved[2] is int and saved[3] is int))
+			and _valid_index(saved[1], count, false) and saved[2] is int and saved[2] >= 1 and saved[2] <= 4
+			and saved[3] is int and saved[3] >= 0 and saved[3] <= SAVED_INT_LIMIT))
 
 
 static func _valid_index(value: Variant, count: int, optional: bool) -> bool:

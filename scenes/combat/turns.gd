@@ -81,7 +81,7 @@ static func is_valid_state(data: Variant, count: int) -> bool:
 			and data.get("group") is Vector2i and _valid_indices(data.get("order"), count)):
 		return false
 	for key: String in SAVED_LISTS:
-		if not _valid_indices(data.get(key), count):
+		if not (_valid_indices(data.get(key), count) and data[key].size() <= count):
 			return false
 	var order: Array = data.order
 	var group: Vector2i = data.group
@@ -91,7 +91,7 @@ static func is_valid_state(data: Variant, count: int) -> bool:
 	if order.is_empty():
 		return group == Vector2i(0, -1) and data.current == -1
 	return (group.x >= 0 and group.x <= group.y and group.y < order.size()
-		and (data.current == -1 or data.current in order))
+		and (data.current == -1 or order.slice(group.x, group.y + 1).has(data.current)))
 
 
 static func _valid_indices(value: Variant, count: int) -> bool:

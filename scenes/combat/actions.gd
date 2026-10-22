@@ -112,18 +112,21 @@ func load_state(data: Dictionary) -> void:
 
 ## 저장 파일의 값을 load_state()에 넘겨도 되는지. count는 전투 유닛 수다.
 static func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
-	if not (data is Dictionary and data.get("dice") is int and data.get("props") is Array
-			and data.get("grounds") is Array):
-		return false
 	var area: Rect2i = Rect2i(Vector2i.ZERO, map_size)
+	if not (data is Dictionary and data.get("dice") is int and data.get("props") is Array
+			and data.props.size() <= area.get_area() and data.get("grounds") is Array
+			and data.grounds.size() <= area.get_area() * 2):
+		return false
 	var unit_index: Callable = func(index: Variant) -> bool: return index is int and index >= 0 and index < count
 	return (data.props.all(func(saved: Variant) -> bool:
 			return (saved is Array and saved.size() == 3 and saved[0] in ["crate", "rock"]
-				and saved[1] is Vector2i and area.has_point(saved[1]) and saved[2] is int and saved[2] > 0))
+				and saved[1] is Vector2i and area.has_point(saved[1]) and saved[2] is int and saved[2] > 0
+				and saved[2] <= 6))
 		and data.grounds.all(func(saved: Variant) -> bool:
 			return (saved is Array and saved.size() == 5 and unit_index.call(saved[0])
 				and saved[1] is Vector2i and area.has_point(saved[1]) and saved[2] in ["burn", "poison"]
-				and saved[3] is int and saved[4] is Array and saved[4].all(unit_index))))
+				and saved[3] is int and saved[3] >= 1 and saved[3] <= 4
+				and saved[4] is Array and saved[4].size() <= count and saved[4].all(unit_index))))
 
 
 func create_prop(cell: Vector2i, kind: String) -> CombatGrid.Prop:

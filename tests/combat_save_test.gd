@@ -7,6 +7,10 @@ const MAX_STEPS: int = 140
 const STAGE_COUNT: int = 9
 ## 저장 한 번(상태 수집과 파일 쓰기)의 평균 허용 시간. 60fps 한 프레임이다.
 const FRAME_USEC: int = 16_667
+## 실제 연출을 켠 채로 빠르게 진행한다. 다시 실행이 연출만 바꾸는 상태(방향)도 같게 만드는지 본다.
+const TIME_SCALE: float = 100.0
+## 연출을 기다리는 프레임의 상한. 멈춘 전투가 검사를 끝없이 붙잡지 않게 한다.
+const MAX_FRAMES: int = 20_000
 
 ## 여러 worktree가 같은 user://를 쓰므로 실행마다 폴더를 나눈다.
 var directory: String = "user://tests/combat_save/%d" % OS.get_process_id()
@@ -39,6 +43,7 @@ func _run() -> void:
 	_check(reaction_stages >= 3, "여러 스테이지에서 아군 반응 답을 담은 적 턴 중간 저장을 복원함: %d" % reaction_stages)
 	await _test_rejects_bad_saves()
 	GameSave.autosave = false
+	Engine.time_scale = 1.0
 	GameSave.delete()
 	DirAccess.remove_absolute(directory)
 	save_usec.sort()
@@ -56,13 +61,11 @@ func _run() -> void:
 
 
 ## 게임 장면 하나. 아군에게 장비·가방·물약을 주고 stage_index 스테이지를 새로 시작한다. -1이면 1-1 그대로 둔다.
-func _battle(stage_index: int, animate: bool = false) -> Node2D:
+func _battle(stage_index: int) -> Node2D:
 	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
-	if not animate:
-		_stop_animation(battle)
 	if stage_index < 0:
 		return battle
 	var loot: CombatLoot = battle.get("loot")
@@ -91,13 +94,6 @@ func _battle(stage_index: int, animate: bool = false) -> Node2D:
 	return battle
 
 
-func _stop_animation(battle: Node2D) -> void:
-	var actions: CombatActions = battle.get("actions")
-	actions.movement_animation = Callable()
-	actions.jump_animation = Callable()
-	actions.attack_animation = Callable()
-
-
 func _free(battle: Node2D) -> void:
 	battle.get_parent().queue_free()
 	await process_frame
@@ -114,38 +110,44 @@ func _track(battle: Node2D) -> Array[Dictionary]:
 
 
 ## 한 단계 진행한다. 같은 상태에서는 늘 같은 입력을 주므로 원래 전투와 이어한 전투가 같은 입력을 받는다.
-## 실제 게임처럼 저장할 프레임과 행동할 프레임을 나눈다.
-func _step(battle: Node2D, points: Array[Dictionary]) -> void:
+## 실제 게임처럼 저장할 프레임과 행동할 프레임을 나눈다. 연출 중인 적 턴은 한 프레임 기다리고 false다.
+func _step(battle: Node2D, points: Array[Dictionary]) -> bool:
 	var actions: CombatActions = battle.get("actions")
 	var turns: CombatTurns = battle.get("turns")
 	if actions.pending_reactor != null:
 		# 반응 답은 난수 상태로 정해 받기와 넘기기를 모두 거친다.
 		actions.resolve_reaction(actions.dice.state % 2 == 0)
-		return
+		return true
+	if battle.get("_enemy_turn_running"):
+		await process_frame
+		return false
 	var saved: int = points.size()
 	var actor: CombatUnit = turns.current_unit
 	battle.call("_process", 0.0)
+	# battle의 _process가 보통 속도로 되돌린다.
+	Engine.time_scale = TIME_SCALE
 	if (points.size() != saved or actions.is_over() or actor == null or not actor.is_ally
 			or turns.current_unit != actor):
-		return
+		return true
 	for target: CombatUnit in actions.units:
 		if target.hit_points <= 0 or target.is_ally:
 			continue
 		if actions.can_target(actor, target, "mark") and actor.marked_target == null:
 			actions.mark(actor, target)
-			return
+			return true
 		if actions.can_target(actor, target, "attack"):
 			await actions.attack(actor, target, actions.can_target(actor, target, "shock"))
-			return
+			return true
 	for heal: String in ["second_wind", "potion"]:
 		if actor.hit_points * 2 <= actor.get_max_hit_points() and actions.can_use(actor, heal):
 			actions.use_self(actor, heal)
-			return
+			return true
 	var cell: Vector2i = CombatEnemyAi.new().approach_cell(actor, actions)
 	if cell != actor.cell and actions.can_move(actor, cell):
 		await actions.move_to(actor, cell)
-		return
+		return true
 	battle.call("_end_turn")
+	return true
 
 
 func _test_stage(stage_index: int) -> void:
@@ -153,10 +155,14 @@ func _test_stage(stage_index: int) -> void:
 	var battle: Node2D = _battle(stage_index)
 	var points: Array[Dictionary] = _track(battle)
 	var base_count: int = (battle.get("units") as Array).size()
-	for step: int in range(MAX_STEPS):
-		if (battle.get("actions") as CombatActions).is_over():
-			break
-		await _step(battle, points)
+	var steps: int = 0
+	var frames: int = 0
+	while steps < MAX_STEPS and frames < MAX_FRAMES and not (battle.get("actions") as CombatActions).is_over():
+		if await _step(battle, points):
+			steps += 1
+		else:
+			frames += 1
+	_check(frames < MAX_FRAMES, label + " 적 턴 연출이 끝남")
 	battle.call("_process", 0.0)
 	_measure(battle)
 	await _free(battle)
@@ -212,19 +218,17 @@ func _kinds(points: Array[Dictionary], index: int, base_count: int) -> Array[Str
 	return kinds
 
 
-## 새 게임 장면에 저장을 복원한다. 적 턴 중간 저장은 연출을 켠 채로 다음 프레임에 끝낸 행동까지
-## 바로 다시 실행해야 같은 프레임 안에 저장 시점의 상태에 닿는다.
+## 새 게임 장면에 저장을 복원한다. 적 턴 중간 저장은 다음 프레임에 끝낸 행동까지 연출 없이
+## 바로 다시 실행해 같은 프레임 안에 저장 시점의 상태에 닿는다.
 func _restore(point: Dictionary, label: String) -> Node2D:
-	var battle: Node2D = _battle(-1, true)
+	var battle: Node2D = _battle(-1)
 	var points: Array[Dictionary] = _track(battle)
-	battle.connect("autosaved", _stop_animation.bind(battle))
 	if not battle.call("restore_combat", point.save):
 		_check(false, label + " 복원 실패")
 		await _free(battle)
 		return null
 	if point.save.get("replay", {}).get("actions", 0) == 0:
 		_check(battle.call("combat_state") == point.state, label + " 복원한 상태가 저장한 순간과 같음")
-		_stop_animation(battle)
 		return battle
 	battle.call("_process", 0.0)
 	_check(not points.is_empty() and points[0].state == point.state,
@@ -236,21 +240,22 @@ func _restore(point: Dictionary, label: String) -> Node2D:
 ## 복원한 전투에 같은 입력을 이어서 주면 원래 전투와 같은 저장·상태(같은 굴림)가 차례로 나온다.
 func _test_continuation(original: Array[Dictionary], from: int, label: String) -> void:
 	var point: Dictionary = original[from]
-	var battle: Node2D = _battle(-1, true)
+	var battle: Node2D = _battle(-1)
 	var points: Array[Dictionary] = _track(battle)
-	battle.connect("autosaved", _stop_animation.bind(battle))
 	if not battle.call("restore_combat", point.save):
 		_check(false, label + " 이어하기 복원 실패")
 		await _free(battle)
 		return
-	_stop_animation(battle)
 	# 적 턴 중간 저장은 다시 실행한 순간에 같은 저장을 한 번 더 쓴다.
 	var first: int = from if point.save.has("replay") else from + 1
 	var expected: Array[Dictionary] = original.slice(first)
 	var guard: int = 0
-	while points.size() < expected.size() and guard < MAX_STEPS * 4:
-		guard += 1
-		await _step(battle, points)
+	var frames: int = 0
+	while points.size() < expected.size() and guard < MAX_STEPS * 4 and frames < MAX_FRAMES:
+		if await _step(battle, points):
+			guard += 1
+		else:
+			frames += 1
 	var matched: bool = points.size() >= expected.size()
 	for index: int in range(mini(points.size(), expected.size())):
 		if points[index].save != expected[index].save or points[index].state != expected[index].state:
@@ -314,6 +319,30 @@ func _test_rejects_bad_saves() -> void:
 			state.replay = {"actions": 1, "reactions": []},
 		"반응 답이 bool이 아님": func(state: Dictionary) -> void: state.replay = {"actions": 0, "reactions": [1]},
 		"마지막 아군이 적": func(state: Dictionary) -> void: state.last_ally = enemy,
+		"끝나지 않는 행동 수": func(state: Dictionary) -> void: state.units[enemy].action_left = 1 << 40,
+		"한도 밖 HP": func(state: Dictionary) -> void: state.units[0].hit_points = 1 << 60,
+		"한도 밖 장비 수치": func(state: Dictionary) -> void: state.units[1].armor.stats.armor_class = 1 << 60,
+		"시전자 없는 기절": func(state: Dictionary) -> void:
+			state.units[0].stunned = true
+			state.units[0].stun_source = -1,
+		"쓰러진 시전자의 기절": func(state: Dictionary) -> void:
+			state.units[0].stunned = true
+			state.units[0].stun_source = enemy
+			state.units[enemy].hit_points = 0,
+		"끝난 전투의 적 턴 다시 실행": func(state: Dictionary) -> void:
+			for unit: Dictionary in state.units:
+				if unit.ally:
+					unit.hit_points = 0
+			state.turns.current = state.turns.order[state.turns.order.find_custom(
+				func(index: int) -> bool: return not state.units[index].ally)]
+			state.replay = {"actions": 1, "reactions": []},
+		"너무 많은 다시 실행": func(state: Dictionary) -> void: state.replay = {"actions": 1 << 40, "reactions": []},
+		"가방 한도 초과": func(state: Dictionary) -> void:
+			for index: int in range(20):
+				state.bag.append(state.bag[0].duplicate(true)),
+		"묶음 밖의 현재 유닛": func(state: Dictionary) -> void:
+			state.turns.group = Vector2i(0, 0)
+			state.turns.current = state.turns.order[1],
 		"유닛 목록이 없음": func(state: Dictionary) -> void: state.erase("units"),
 	}
 	var battle: Node2D = _battle(-1)

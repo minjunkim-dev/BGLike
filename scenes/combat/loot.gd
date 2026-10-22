@@ -153,9 +153,14 @@ func is_valid_item(item: Variant) -> bool:
 		if item.get("name") != definition["name"] or item.get("kind") != definition["kind"]:
 			continue
 		var stats: Variant = item.get("stats")
-		if not (stats is Dictionary and stats.keys() == definition["stats"].keys()
-				and stats.values().all(func(value: Variant) -> bool: return value is int)):
+		if not (stats is Dictionary and stats.keys() == definition["stats"].keys()):
 			return false
+		# 수치는 그 종류가 어느 막에서든 굴릴 수 있는 범위 안이다.
+		for stat: String in stats:
+			var bounds: Array = definition["stats"][stat]
+			if not (stats[stat] is int and stats[stat] >= bounds.map(func(act: Array) -> int: return int(act[0])).min()
+					and stats[stat] <= bounds.map(func(act: Array) -> int: return int(act[1])).max()):
+				return false
 		var expected: Dictionary = definition.duplicate(true)
 		expected["stats"] = stats
 		return item == expected
