@@ -38,7 +38,7 @@ var confirmation_text: Label
 var _discard_index: int = -1
 var _confirm_finish: bool = true
 var _cells: ButtonGroup
-## 오른쪽 패널에서 아래에 칸이 없는 보상·가방 칸. 방향키 아래로 상세 패널의 동작 버튼에 간다(#272).
+## 오른쪽 패널 맨 아래 줄의 칸(가방 칸, 가방이 비면 보상 칸). 방향키 아래로 상세 패널의 동작 버튼에 간다(#272).
 var _exits: Array[Button] = []
 ## 고른 칸: "reward"·"bag"·"weapon"·"armor"와 보상·가방·캐릭터 번호.
 var _selected_kind: String = ""
@@ -412,15 +412,20 @@ func _render_detail() -> void:
 	_link_detail_focus(buttons)
 
 
-## 상세 패널은 왼쪽 아래라 16:9 창의 기하 탐색이 가방 칸에서 진행 버튼으로 건너뛴다(#272).
-## 오른쪽 패널 아래 끝 칸·진행 버튼과 상세 패널 버튼의 위아래 이웃을 직접 잇는다. 동작이 없으면 기하 탐색에 맡긴다.
+## 상세 패널은 왼쪽 아래라 16:9 창의 기하 탐색이 가방 칸에서 진행 버튼으로 건너뛰고,
+## 수치 비교 글자로 벌어진 버튼 사이에서는 위 캐릭터 카드로 빠진다(#272). 그래서 이웃을 직접 잇는다.
+## 아래 끝 칸 → 첫 버튼 → 진행 버튼, 위로는 반대로 고른 칸까지. 좌우는 버튼 순서대로, 끝에서 멈춘다(#248 스킬 바와 같다).
+## 동작이 없으면 기하 탐색에 맡긴다.
 func _link_detail_focus(buttons: Array[Button]) -> void:
 	var selected: BaseButton = _cells.get_pressed_button()
 	continue_button.focus_neighbor_top = (NodePath() if buttons.is_empty()
 		else continue_button.get_path_to(buttons[0]))
 	for cell: Button in _exits:
 		cell.focus_neighbor_bottom = NodePath() if buttons.is_empty() else cell.get_path_to(buttons[0])
-	for button: Button in buttons:
+	for index: int in range(buttons.size()):
+		var button: Button = buttons[index]
+		button.focus_neighbor_left = button.get_path_to(buttons[maxi(index - 1, 0)])
+		button.focus_neighbor_right = button.get_path_to(buttons[mini(index + 1, buttons.size() - 1)])
 		button.focus_neighbor_top = button.get_path_to(selected) if selected else NodePath()
 		button.focus_neighbor_bottom = button.get_path_to(continue_button)
 

@@ -482,11 +482,11 @@ func _test_armor_unequip_scene() -> void:
 		unequip = await _pick(preparation, "Armor0", "UnequipArmor0")
 		_check(unequip != null and unequip.disabled and not unequip.tooltip_text.is_empty(),
 			"방어구가 없으면 해제 버튼 비활성과 이유 표시")
+		# 비활성 버튼만 있는 상세 패널도 방향키로 오간다.
+		await _check_preparation_focus(preparation, "Armor1")
 		var blocked: Button = await _pick(preparation, "Armor1", "UnequipArmor1")
 		_check(blocked != null and blocked.disabled and "빈 칸" in blocked.tooltip_text,
 			"가방이 가득 차면 해제 버튼 비활성과 호버 설명에 이유 표시")
-		# 비활성 버튼만 있는 상세 패널도 방향키로 오간다.
-		await _check_preparation_focus(preparation, "Armor1")
 		if blocked != null:
 			await _click(blocked)
 		# 비활성 버튼은 pressed를 내지 않으므로 화면 처리기의 거절도 직접 확인한다.
@@ -751,6 +751,8 @@ func _test_reward_flow() -> void:
 		await _click(preparation.continue_button)
 		_check(preparation.maintaining and preparation.title_label.text == "정비", "보상 다음 정비 단계")
 		await _check_preparation_layout(preparation)
+		# 가방이 비면 보상 칸에서 아래로 상세 패널에 간다.
+		await _check_preparation_focus(preparation, "Item0")
 		var give: Button = await _pick(preparation, "Item0", "Ally1")
 		# 칸을 골라 상세 패널에 동작 버튼이 생긴 상태도 검사한다.
 		await _check_preparation_layout(preparation)
@@ -866,14 +868,21 @@ func _check_preparation_focus(preparation: CombatPreparation, cell_name: String)
 			await _action("ui_down")
 			var owner: Control = root.gui_get_focus_owner()
 			path.append(owner.name if owner else "-")
-		_check(first.has_focus() and path[0].begins_with("BagItem"),
-			"%s: 장비 칸 → 가방 칸 → 상세 패널: %s" % [size, path])
+		_check(first.has_focus() and "Item" in path[0],
+			"%s: 장비 칸 → 보상·가방 칸 → 상세 패널: %s" % [size, path])
+		var dpad_right: InputEventJoypadButton = InputEventJoypadButton.new()
+		dpad_right.button_index = JOY_BUTTON_DPAD_RIGHT
 		for index: int in range(buttons.size()):
 			var button: Button = buttons[index] as Button
 			if index > 0:
-				await _action("ui_right")
+				await _tap(dpad_right)
 			_check(button.has_focus() and (not button.disabled or not button.tooltip_text.is_empty()),
-				"%s: 방향키로 상세 패널 버튼 %s에 포커스, 비활성이면 이유 설명" % [size, button.name])
+				"%s: D-pad로 상세 패널 버튼 %s에 포커스, 비활성이면 이유 설명" % [size, button.name])
+		await _action("ui_right")
+		_check(buttons.back().has_focus(), "%s: 상세 패널 오른쪽 끝에서 멈춤" % size)
+		for index: int in range(buttons.size() - 1):
+			await _action("ui_left")
+		_check(first.has_focus(), "%s: 왼쪽 방향키로 상세 패널 첫 버튼에 돌아옴" % size)
 		await _action("ui_down")
 		_check(preparation.continue_button.has_focus(), "%s: 상세 패널 → 진행 버튼" % size)
 		await _action("ui_up")
@@ -1055,10 +1064,15 @@ func _pick(preparation: CombatPreparation, cell: String, action: String) -> Butt
 func _action(action: String) -> void:
 	var event: InputEventAction = InputEventAction.new()
 	event.action = action
-	event.pressed = true
+	await _tap(event)
+
+
+## 누름과 뗌을 한 프레임씩 보낸다. 컨트롤러 D-pad는 InputEventJoypadButton을 넘긴다.
+func _tap(event: InputEvent) -> void:
+	event.set("pressed", true)
 	Input.parse_input_event(event)
 	await process_frame
-	event.pressed = false
+	event.set("pressed", false)
 	Input.parse_input_event(event)
 	await process_frame
 
