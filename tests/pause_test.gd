@@ -105,6 +105,12 @@ func _check_menu(battle: Node2D, menu: PauseMenu) -> void:
 	await _tap(_key(KEY_ESCAPE))
 	await _tap(_key(KEY_ESCAPE))
 	_check(not menu.visible and not paused, "Esc로 열고 Esc로 닫음")
+	# 끝난 행동의 저장이 다음 프레임을 기다리는 중에 메뉴를 열면 멈추기 전에 쓴다(메뉴에서 바로 종료해도 남는다).
+	GameSave.delete()
+	(battle.get("actions") as CombatActions).changed.emit()
+	await _tap(_key(KEY_ESCAPE))
+	_check(GameSave.has_save() and not battle.get("_save_pending"), "메뉴를 열 때 미뤄 둔 자동 저장을 씀")
+	await _tap(_key(KEY_ESCAPE))
 
 
 ## 설정과 도움말은 타이틀과 같은 장면이다. 닫으면 메뉴의 자기 버튼으로 돌아오고 게임은 계속 멈춰 있다.
@@ -320,9 +326,8 @@ func _check_enemy_turn(battle: Node2D, menu: PauseMenu) -> void:
 		"메뉴가 열린 동안 적 행동이 멈춤")
 	menu.give_up_button.grab_focus()
 	await _tap(_action("ui_accept"))
-	menu.confirm.get_ok_button().grab_focus()
-	await _tap(_action("ui_accept"))
-	await process_frame
+	# 확정과 같은 호출 안에서 본다. 다음 프레임이면 멈췄던 적 행동이 끝났을 수 있다.
+	menu.confirm.get_ok_button().pressed.emit()
 	_check(actions.is_over() and not actions.is_victory() and hud.result_label.text == "패배", "적 턴 중 포기도 패배")
 	_check(_saved_defeat(), "적 턴 중에도 포기한 순간을 바로 저장")
 	_check(battle.get("_enemy_turn_running") and hud.restart_button.disabled, "진행 중인 적 행동이 끝날 때까지 결과 버튼 잠금")

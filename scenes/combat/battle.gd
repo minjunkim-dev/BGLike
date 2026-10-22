@@ -416,6 +416,9 @@ func _input(event: InputEvent) -> void:
 	# 반응·정비 확인 창이 떠 있으면 그 창이 Esc·Start를 먼저 받는다. Esc는 지금처럼 반응을 넘긴다.
 	if event.is_action_pressed("pause"):
 		get_viewport().set_input_as_handled()
+		# 멈추면 _process가 돌지 않는다. 메뉴에서 바로 타이틀로·종료해도 끝난 행동이 남게 먼저 쓴다.
+		if _save_pending and GameSave.autosave and _can_save():
+			_autosave(combat_state())
 		pause_menu.open(not actions.is_over())
 		return
 	if event is InputEventKey and event.keycode == KEY_SPACE and not actions.is_over():
