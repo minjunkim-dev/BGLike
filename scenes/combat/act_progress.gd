@@ -49,6 +49,18 @@ func record_victory(loot: CombatLoot, monster_count: int, dice: CombatDice) -> v
 	_victory_recorded = true
 
 
+func save_state() -> Dictionary:
+	return {"stage": stage_index, "rewards": rewards, "rewarded": _victory_recorded}
+
+
+## 이어하기. 승리 뒤에 저장했다면 굴린 드랍을 그대로 쓰고 다시 굴리지 않는다.
+func load_state(data: Dictionary) -> void:
+	stage_index = data.stage
+	graduated = false
+	rewards.assign(data.rewards)
+	_victory_recorded = data.rewarded
+
+
 ## 아군 전멸 뒤 그 막의 첫 스테이지로 돌아간다.
 func restart_act() -> void:
 	stage_index -= stage_index % STAGES_PER_ACT

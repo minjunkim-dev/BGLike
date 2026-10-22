@@ -6,6 +6,12 @@ signal changed
 signal turn_started(unit: CombatUnit)
 signal order_rotated(units: Array[CombatUnit])
 
+## 저장 키와 그 키에 담는 내부 목록.
+const SAVED_LISTS: Dictionary[String, StringName] = {
+	"finished": &"_finished_units", "pending": &"_pending_finished_units", "started": &"_started_units",
+	"activated": &"_activated_units", "deferred": &"_deferred_units"
+}
+
 var ordered_units: Array[CombatUnit] = []
 var current_unit: CombatUnit
 var round_number: int = 0
@@ -46,6 +52,62 @@ func start(combat_units: Array[CombatUnit], dice: CombatDice) -> void:
 	if not ordered_units.is_empty():
 		_start_group_at(0)
 	changed.emit()
+
+
+## 저장할 순서와 묶음 진행. 유닛은 전투 유닛 목록의 번호로 적는다.
+func save_state(units: Array[CombatUnit]) -> Dictionary:
+	var data: Dictionary = {"order": _indices(ordered_units, units), "current": units.find(current_unit),
+		"round": round_number, "group": Vector2i(_group_start, _group_end)}
+	for key: String in SAVED_LISTS:
+		data[key] = _indices(get(SAVED_LISTS[key]), units)
+	return data
+
+
+## save_state()의 값으로 되돌린다. 턴 시작 효과는 다시 실행하지 않는다. is_valid_state()를 먼저 확인한다.
+func load_state(data: Dictionary, units: Array[CombatUnit]) -> void:
+	ordered_units = _units(data.order, units)
+	current_unit = units[data.current] if data.current >= 0 else null
+	round_number = data.round
+	_group_start = data.group.x
+	_group_end = data.group.y
+	for key: String in SAVED_LISTS:
+		set(SAVED_LISTS[key], _units(data[key], units))
+	changed.emit()
+
+
+## 저장 파일의 값을 load_state()에 넘겨도 되는지. count는 전투 유닛 수다.
+static func is_valid_state(data: Variant, count: int) -> bool:
+	if not (data is Dictionary and data.get("current") is int and data.get("round") is int
+			and data.get("group") is Vector2i and _valid_indices(data.get("order"), count)):
+		return false
+	for key: String in SAVED_LISTS:
+		if not (_valid_indices(data.get(key), count) and data[key].size() <= count):
+			return false
+	var order: Array = data.order
+	var group: Vector2i = data.group
+	for index: int in order:
+		if order.count(index) > 1:
+			return false
+	if order.is_empty():
+		return group == Vector2i(0, -1) and data.current == -1
+	return (group.x >= 0 and group.x <= group.y and group.y < order.size()
+		and (data.current == -1 or order.slice(group.x, group.y + 1).has(data.current)))
+
+
+static func _valid_indices(value: Variant, count: int) -> bool:
+	return value is Array and (value as Array).all(func(index: Variant) -> bool:
+		return index is int and index >= 0 and index < count)
+
+
+static func _indices(members: Array[CombatUnit], units: Array[CombatUnit]) -> Array:
+	return members.map(func(unit: CombatUnit) -> int: return units.find(unit))
+
+
+static func _units(indices: Array, units: Array[CombatUnit]) -> Array[CombatUnit]:
+	var members: Array[CombatUnit] = []
+	for index: int in indices:
+		members.append(units[index])
+	return members
 
 
 func get_turn_groups() -> Array[Array]:

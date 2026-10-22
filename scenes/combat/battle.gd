@@ -7,6 +7,9 @@ const ENEMY_PAUSE_TIME: float = 0.35
 ## 적 턴에 Space를 누르고 있는 동안의 시간 배율. 규칙이 아니라 표시 속도다.
 const ENEMY_FAST_SPEED: float = 4.0
 
+## 자동 저장을 마친 뒤. 검사가 저장한 순간의 상태를 비교한다.
+signal autosaved
+
 @export var stages: Array[CombatStage] = []
 
 var progress: CombatActProgress
@@ -25,6 +28,12 @@ var movement_cells: Array[Vector2i] = []
 var _last_ally: CombatUnit
 var loot: CombatLoot = CombatLoot.new()
 var preparation: CombatPreparation
+var _save_pending: bool = false
+## 진행 중인 적 턴이 시작한 순간의 상태와 그 뒤 끝낸 적 행동 수. 적 턴 중간 저장에 쓴다.
+var _turn_start: Dictionary = {}
+var _turn_actions: int = 0
+## 이어하기가 연출 없이 다시 실행할 적 행동 수.
+var _replay_actions: int = 0
 
 @onready var map: CombatMap = $Map
 @onready var camera: Camera2D = $Camera
@@ -50,10 +59,14 @@ func _ready() -> void:
 	actions.changed.connect(_on_actions_changed)
 	actions.logged.connect(hud.add_log)
 	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
-		unit.show_feedback(text, hud.feedback_obstacles()))
+		if not _replaying():
+			unit.show_feedback(text, hud.feedback_obstacles()))
 	actions.healed.connect(func(unit: CombatUnit, amount: int) -> void:
-		unit.show_feedback(str(amount), hud.feedback_obstacles(), CombatUnit.HEAL_COLOR))
-	actions.hit_landed.connect($HitSound.play)
+		if not _replaying():
+			unit.show_feedback(str(amount), hud.feedback_obstacles(), CombatUnit.HEAL_COLOR))
+	actions.hit_landed.connect(func() -> void:
+		if not _replaying():
+			$HitSound.play())
 	actions.reaction_requested.connect(hud.show_reaction)
 	actions.movement_animation = _animate_movement
 	actions.jump_animation = _animate_jump
@@ -71,42 +84,14 @@ func _exit_tree() -> void:
 
 
 func _start_stage(restore_act: bool) -> void:
-	progress.begin_stage()
-	var stage: CombatStage = stages[progress.stage_index]
-	assert(stage != null, "스테이지 데이터가 비어 있습니다: %d" % (progress.stage_index + 1))
-	assert(stage.ally_cells.size() == party.size(),
-		"아군 시작 칸 수가 파티 크기와 다릅니다: " + stage.resource_path)
+	_replay_actions = 0
+	actions.replay_answers.clear()
 	for unit: CombatUnit in party:
 		unit.begin_stage(restore_act)
-	for unit: CombatUnit in units:
-		if not unit.is_ally:
-			unit.free()
-	for child: Node in $Units.get_children():
-		if child is Label:
-			child.free()
-	units = party.duplicate()
-	map_size = stage.map_size
-	actions.grid.map_size = map_size
-	actions.grid.heights = stage.heights.duplicate()
-	actions.grid.pits = stage.pits.duplicate()
-	actions.grid.blocked_cells = stage.get_blocked_cells()
-	actions.grid.water_cells = stage.water_cells.duplicate()
-	map.build_grid(actions.grid, stage.tile_set, stage)
+	var stage: CombatStage = _build_stage()
 	for index: int in range(party.size()):
 		party[index].cell = stage.ally_cells[index]
 		party[index].facing_left = false
-	var enemies: Node = stage.enemies.instantiate()
-	$Units.add_child(enemies)
-	for child: Node in enemies.get_children():
-		var unit: CombatUnit = child as CombatUnit
-		unit.reparent($Units, false)
-		units.append(unit)
-	enemies.free()
-	camera.position = (map.map_to_local(Vector2i.ZERO)
-		+ map.map_to_local(map_size - Vector2i.ONE)) / 2.0
-	selection.reset()
-	hud.begin_stage(progress.act_number(), progress.stage_in_act())
-	actions.initialize(units, turns)
 	var dice: CombatDice = CombatDice.new()
 	dice.randomize()
 	var living: Array[CombatUnit] = []
@@ -121,6 +106,145 @@ func _start_stage(restore_act: bool) -> void:
 	for cell: Vector2i in stage.rock_cells:
 		var prop: CombatGrid.Prop = actions.create_prop(cell, "rock")
 		assert(prop != null, "바위 시작 칸이 유효하지 않습니다: %s %s" % [stage.resource_path, cell])
+
+
+## 지금 스테이지의 지도와 처음 배치의 적을 새로 만든다. 아군 상태와 턴 순서는 건드리지 않는다.
+func _build_stage() -> CombatStage:
+	progress.begin_stage()
+	var stage: CombatStage = stages[progress.stage_index]
+	assert(stage != null, "스테이지 데이터가 비어 있습니다: %d" % (progress.stage_index + 1))
+	assert(stage.ally_cells.size() == party.size(),
+		"아군 시작 칸 수가 파티 크기와 다릅니다: " + stage.resource_path)
+	for unit: CombatUnit in units:
+		if not unit.is_ally:
+			unit.free()
+	for child: Node in $Units.get_children():
+		if child is Label:
+			child.free()
+	units = party.duplicate()
+	map_size = stage.map_size
+	actions.grid.map_size = map_size
+	actions.grid.heights = stage.heights.duplicate()
+	actions.grid.pits = stage.pits.duplicate()
+	actions.grid.blocked_cells = stage.get_blocked_cells()
+	actions.grid.water_cells = stage.water_cells.duplicate()
+	map.build_grid(actions.grid, stage.tile_set, stage)
+	var enemies: Node = stage.enemies.instantiate()
+	$Units.add_child(enemies)
+	for child: Node in enemies.get_children():
+		var unit: CombatUnit = child as CombatUnit
+		unit.reparent($Units, false)
+		units.append(unit)
+	enemies.free()
+	camera.position = (map.map_to_local(Vector2i.ZERO)
+		+ map.map_to_local(map_size - Vector2i.ONE)) / 2.0
+	selection.reset()
+	hud.begin_stage(progress.act_number(), progress.stage_in_act())
+	actions.initialize(units, turns)
+	return stage
+
+
+## 이어하기에 필요한 전투 상태 전체. Object 없이 GameSave에 그대로 쓸 수 있는 값이다 (docs/adr/0003).
+func combat_state() -> Dictionary:
+	var state: Dictionary = progress.save_state()
+	state.merge(actions.save_state())
+	state["bag"] = loot.bag
+	state["units"] = units.map(func(unit: CombatUnit) -> Dictionary: return unit.save_state(units))
+	state["turns"] = turns.save_state(units)
+	state["last_ally"] = units.find(_last_ally)
+	return state.duplicate(true)
+
+
+## combat_state()로 저장한 전투로 되돌린다. 저장이 맞지 않으면 아무것도 바꾸지 않고 false다.
+## 값은 GameSave.read()의 sections.combat을 그대로 받는다.
+## 적 턴 중간의 저장이면 그 적 턴이 시작한 상태로 되돌리고, 다음 프레임에 끝낸 적 행동까지 연출 없이 다시 실행한다.
+func restore_combat(state: Variant) -> bool:
+	if actions.busy or _enemy_turn_running or preparation.visible or not (state is Dictionary and _is_valid_state(state)):
+		push_warning("전투 저장을 읽을 수 없음")
+		return false
+	progress.stage_index = state.stage
+	_build_stage()
+	progress.load_state(state)
+	loot.bag.assign(state.bag)
+	for saved: Dictionary in state.units.slice(units.size()):
+		var child: CombatUnit = (preload("res://scenes/combat/unit.tscn") as PackedScene).instantiate() as CombatUnit
+		child.kind = saved.kind
+		child.is_ally = false
+		$Units.add_child(child)
+		units.append(child)
+	for index: int in range(units.size()):
+		units[index].load_state(state.units[index], units)
+	actions.load_state(state)
+	turns.load_state(state.turns, units)
+	_last_ally = units[state.last_ally]
+	var replay: Dictionary = state.get("replay", {})
+	_replay_actions = replay.get("actions", 0)
+	actions.replay_answers.assign(replay.get("reactions", []))
+	selection.reset()
+	_update_turn_ui()
+	# 방금 읽은 저장과 같은 상태다. 적 턴 중간 저장을 시작 상태로 덮지 않는다.
+	_save_pending = false
+	return true
+
+
+## 저장 파일의 값은 신뢰하지 않는다. 스테이지·유닛 구성·번호·칸·아이템을 모두 확인한다.
+func _is_valid_state(state: Dictionary) -> bool:
+	if not (state.get("stage") is int and state.stage >= 0 and state.stage < stages.size()
+			and state.get("rewarded") is bool and state.get("units") is Array and state.get("last_ally") is int
+			and _valid_items(state.get("rewards")) and _valid_items(state.get("bag"))
+			and state.rewards.size() <= CombatUnit.SAVED_INT_LIMIT and state.bag.size() <= int(loot.data["bag_limit"])):
+		return false
+	var stage: CombatStage = stages[state.stage]
+	var identities: Array = party.map(func(unit: CombatUnit) -> Array: return [unit.kind, true])
+	var enemies: Node = stage.enemies.instantiate()
+	for child: Node in enemies.get_children():
+		identities.append([(child as CombatUnit).kind, false])
+	enemies.free()
+	var saved_units: Array = state.units
+	var count: int = saved_units.size()
+	# 늘어나는 유닛은 새끼 거미뿐이고 한 칸에 하나다.
+	if count < identities.size() or count > identities.size() + stage.map_size.x * stage.map_size.y:
+		return false
+	for index: int in range(count):
+		var saved: Variant = saved_units[index]
+		var identity: Array = identities[index] if index < identities.size() else [CombatUnit.Kind.SPIDERLING, false]
+		if (not party[0].is_valid_state(saved, count, stage.map_size) or [saved.kind, saved.ally] != identity
+				or not (saved.weapon.is_empty() or loot.is_valid_item(saved.weapon) and saved.weapon.kind == "weapon")
+				or not (saved.armor.is_empty() or loot.is_valid_item(saved.armor) and saved.armor.kind == "armor")):
+			return false
+	if not (state.last_ally >= 0 and state.last_ally < count and saved_units[state.last_ally].ally
+			and CombatTurns.is_valid_state(state.get("turns"), count)
+			and CombatActions.is_valid_state(state, count, stage.map_size)):
+		return false
+	# 턴 순서는 살아 있는 유닛 전부다. 쓰러진 유닛이나 빠진 유닛이 있으면 턴이 끝없이 넘어가거나 멈춘다.
+	var order: Array = state.turns.order
+	var living: Array = range(count).filter(func(index: int) -> bool: return saved_units[index].hit_points > 0)
+	if (order.size() != living.size() or not living.all(func(index: int) -> bool: return index in order)
+			or not order.is_empty() and state.turns.current < 0):
+		return false
+	# 기절은 시전자의 턴이 와야 풀린다. 시전자가 살아서 순서에 있어야 턴이 끝없이 넘어가지 않는다.
+	for saved: Dictionary in saved_units:
+		if saved.stunned and saved.hit_points > 0 and (saved_units[saved.stun_source].hit_points <= 0
+				or saved.stun_source not in state.turns.order):
+			return false
+	var replay: Variant = state.get("replay", {})
+	if not (replay is Dictionary and replay.get("actions", 0) is int
+			and replay.get("actions", 0) <= CombatUnit.SAVED_INT_LIMIT and replay.get("reactions", []) is Array
+			and replay.get("reactions", []).size() <= CombatUnit.SAVED_INT_LIMIT
+			and replay.get("reactions", []).all(func(answer: Variant) -> bool: return answer is bool)
+			and (replay.get("actions", 0) > 0 or replay.get("reactions", []).is_empty())):
+		return false
+	if replay.get("actions", 0) == 0:
+		return true
+	# 적 턴 중간 저장은 살아 있는 적의 차례이고 양편이 남아 있을 때만 있다.
+	var current: int = state.turns.current
+	return (replay.actions > 0 and current >= 0 and not saved_units[current].ally
+		and saved_units[current].hit_points > 0
+		and saved_units.any(func(unit: Dictionary) -> bool: return unit.ally and unit.hit_points > 0))
+
+
+func _valid_items(items: Variant) -> bool:
+	return items is Array and (items as Array).all(loot.is_valid_item)
 
 
 func _restart() -> void:
@@ -148,6 +272,8 @@ func _finish_preparation() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _save_pending and GameSave.autosave and _can_save():
+		_autosave(combat_state())
 	# 반응 확인 창은 가속과 관계없이 보통 속도로 선택을 기다린다.
 	Engine.time_scale = ENEMY_FAST_SPEED if (_enemy_turn_running and not hud.reaction_dialog.visible
 		and Input.is_key_pressed(KEY_SPACE)) else 1.0
@@ -161,15 +287,32 @@ func _play_enemy_turn(actor: CombatUnit) -> void:
 	_enemy_turn_running = true
 	_enemy_shown = false
 	_enemy_acted = false
+	_turn_actions = 0
+	actions.reaction_answers.clear()
+	if GameSave.autosave:
+		_turn_start = combat_state()
 	await enemy_ai.play_turn(actor, actions, _pause_enemy_action)
+	_replay_actions = 0
+	actions.replay_answers.clear()
+	_turn_start = {}
 	if not actions.is_over() and turns.current_unit == actor:
 		turns.end_turn()
 	_enemy_turn_running = false
 	_update_turn_ui()
 
 
-## 이동·공격하지 않은 적 행동 뒤에는 기다리지 않는다.
+## 적 행동 하나가 끝날 때마다 AI가 부른다. 저장한 뒤, 이동·공격하지 않은 적 행동 뒤에는 기다리지 않는다.
 func _pause_enemy_action() -> void:
+	_turn_actions += 1
+	if _turn_actions < _replay_actions:
+		return
+	_replay_actions = 0
+	if GameSave.autosave and not _turn_start.is_empty():
+		# AI는 턴 안의 진행을 지역 값으로 들고 있어 중간 상태에서 다시 시작하면 다른 선택을 할 수 있다.
+		# 그래서 턴 시작 상태와 끝낸 행동 수, 아군의 반응 답을 저장하고 이어하기가 같은 난수로 다시 실행한다.
+		var state: Dictionary = _turn_start.duplicate()
+		state["replay"] = {"actions": _turn_actions, "reactions": actions.reaction_answers.duplicate()}
+		_autosave(state)
 	if actions.is_over() or not _enemy_acted:
 		return
 	_enemy_acted = false
@@ -184,6 +327,23 @@ func _show_enemy_action() -> void:
 	if not _enemy_shown:
 		_enemy_shown = true
 		await get_tree().create_timer(ENEMY_PAUSE_TIME).timeout
+
+
+## 행동이 끝나 연출·반응 확인 창을 기다리지 않는 순간. 확정 전 입력(선택·미리보기)은 상태를 바꾸지 않는다.
+func _can_save() -> bool:
+	return not actions.busy and not _enemy_turn_running and actions.pending_reactor == null and not progress.graduated
+
+
+## 쓰기에 실패하면 이전 저장이 남고 다음 행동이 끝날 때 다시 쓴다. 매 프레임 다시 쓰지 않는다.
+func _autosave(state: Dictionary) -> void:
+	_save_pending = false
+	if GameSave.write(progress.act_number(), progress.stage_in_act(), {"combat": state}) == OK:
+		autosaved.emit()
+
+
+## 이어하기가 끝낸 적 행동을 다시 실행하는 중인지. 연출·팝업·소리를 건너뛴다.
+func _replaying() -> bool:
+	return _turn_actions < _replay_actions
 
 
 func _on_unit_selected(unit: CombatUnit) -> void:
@@ -335,18 +495,19 @@ func preview_enemy(target: CombatUnit) -> bool:
 
 
 func _on_actions_changed() -> void:
+	_save_pending = true
 	if actions.is_over() and actions.is_victory():
-		var dice: CombatDice = CombatDice.new()
-		dice.randomize()
 		var monster_count: int = 0
 		for unit: CombatUnit in units:
 			if unit.can_drop_extra_reward():
 				monster_count += 1
-		progress.record_victory(loot, monster_count, dice)
+		# 전투 주사위로 굴려 이어하기가 마지막 공격을 다시 해도 드랍이 바뀌지 않는다.
+		progress.record_victory(loot, monster_count, actions.dice)
 	_update_turn_ui()
 
 
 func _on_turn_changed() -> void:
+	_save_pending = true
 	selection.reset()
 	_update_turn_ui()
 
@@ -366,8 +527,12 @@ func _execute_target(target: CombatUnit) -> void:
 
 
 func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
-	await _show_enemy_action()
 	var destination: Vector2 = map.map_to_local(cell)
+	# 다시 실행할 때도 방향은 저장하는 상태라 그대로 바꾼다.
+	if _replaying():
+		unit.face_toward(destination)
+		return
+	await _show_enemy_action()
 	unit.face_toward(destination)
 	unit.is_moving = true
 	var tween: Tween = create_tween().set_parallel()
@@ -382,8 +547,11 @@ func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
 
 
 func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
-	await _show_enemy_action()
 	var destination: Vector2 = map.map_to_local(cell)
+	if _replaying():
+		unit.face_toward(destination)
+		return
+	await _show_enemy_action()
 	var duration: float = MOVE_STEP_TIME * 2.0
 	var apex: float = -float(map.tile_set.tile_size.y)
 	unit.face_toward(destination)
@@ -400,8 +568,12 @@ func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
 
 
 func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
+	var destination: Vector2 = target.position + Vector2(0, target.floor_offset_y - 14)
+	if _replaying():
+		actor.face_toward(destination)
+		return
 	await _show_enemy_action()
-	await _animate_attack_at(actor, target.position + Vector2(0, target.floor_offset_y - 14))
+	await _animate_attack_at(actor, destination)
 
 
 func _animate_attack_at(actor: CombatUnit, destination: Vector2) -> void:

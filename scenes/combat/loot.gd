@@ -145,6 +145,28 @@ func transfer_potion(source: CombatUnit, target: CombatUnit) -> bool:
 	return true
 
 
+## 저장 파일의 아이템이 아이템 데이터의 한 종류이고 수치만 정수로 굴린 값인지.
+func is_valid_item(item: Variant) -> bool:
+	if not item is Dictionary:
+		return false
+	for definition: Dictionary in data["items"]:
+		if item.get("name") != definition["name"] or item.get("kind") != definition["kind"]:
+			continue
+		var stats: Variant = item.get("stats")
+		if not (stats is Dictionary and stats.keys() == definition["stats"].keys()):
+			return false
+		# 수치는 그 종류가 어느 막에서든 굴릴 수 있는 범위 안이다.
+		for stat: String in stats:
+			var bounds: Array = definition["stats"][stat]
+			if not (stats[stat] is int and stats[stat] >= bounds.map(func(act: Array) -> int: return int(act[0])).min()
+					and stats[stat] <= bounds.map(func(act: Array) -> int: return int(act[1])).max()):
+				return false
+		var expected: Dictionary = definition.duplicate(true)
+		expected["stats"] = stats
+		return item == expected
+	return false
+
+
 ## 아이템 아이콘 경로. 장착한 직업의 `unit_icons`가 있으면 그 아이콘을 쓴다.
 static func icon_path(item: Dictionary, unit_id: String = "") -> String:
 	var icon: String = str(item.get("unit_icons", {}).get(unit_id, item.get("icon", "")))

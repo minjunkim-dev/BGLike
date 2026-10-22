@@ -225,7 +225,7 @@ func _test_mother_stages() -> void:
 		turns.end_turn()
 		turns.end_turn()
 		var actions: CombatActions = battle.get("actions") as CombatActions
-		actions.dice = ScriptedDice.new([1], [3])
+		actions.dice = ScriptedDice.new([1], [3]).then_seeded()
 		await (battle.get("enemy_ai") as CombatEnemyAi).play_turn(mothers[0], actions)
 		var child: CombatUnit = units.back()
 		_check(units.size() == 8 and child.kind == CombatUnit.Kind.SPIDERLING
@@ -459,7 +459,7 @@ func _test_scrap_robot_2000_stage() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	turns.start(units, ScriptedDice.new([5, 4, 20], [20, 20, 20]))
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.dice = ScriptedDice.new([12, 10], [20, 20])
+	actions.dice = ScriptedDice.new([12, 10], [20, 20]).then_seeded()
 	_check(actions.pull(boss, units[1]) and units[1].cell == Vector2i(5, 4),
 		"실제 2000 보스 전투의 만능팔이 대상 위치와 화면 상태를 갱신")
 	boss.hit_points = 2
@@ -501,7 +501,7 @@ func _test_scrap_robot_3000_stage() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	turns.start(units, ScriptedDice.new([5, 4, 20], [20, 20, 20]))
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.dice = ScriptedDice.new([15, 3, 15, 3], [20, 8, 20, 8])
+	actions.dice = ScriptedDice.new([15, 3, 15, 3], [20, 8, 20, 8]).then_seeded()
 	_check(await actions.spin(boss) and units[0].hit_points == 7 and units[1].hit_points == 9
 		and boss.action_left == 1 and boss.hit_points == 23,
 		"실제 3000 과부하 턴 시작 자기 피해 뒤 회전회오리가 두 아군과 화면을 갱신")

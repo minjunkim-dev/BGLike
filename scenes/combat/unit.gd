@@ -18,6 +18,14 @@ const OUTLINE_COLOR: Color = Color("202b35")
 const WEAPON_COLOR: Color = Color("f4ead1")
 const CRITICAL_COLOR: Color = Color("f4cf69")
 const HEAL_COLOR: Color = Color("70c76d")
+## 이어하기가 그대로 되돌리는 값. 저장 파일의 값은 이 변수와 같은 타입이어야 한다.
+const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initiative_roll", "movement_left",
+	"action_capacity", "bonus_action_capacity", "reaction_capacity", "action_left", "bonus_action_left",
+	"reaction_left", "overloaded", "pull_cooldown", "disengaged", "second_wind_left", "parry_left",
+	"surge_left", "mark_left", "shock_left", "disengage_left", "potion_left"]
+## 저장 파일의 정수 상한. 고친 저장이 끝나지 않는 턴이나 큰 목록을 만들지 않게 한다.
+const SAVED_INT_LIMIT: int = 99
+const SAVED_HIT_POINT_LIMIT: int = 999
 
 class StatusEffect extends RefCounted:
 	var kind: String
@@ -272,6 +280,66 @@ func begin_stage(restore_act: bool) -> void:
 	is_selected = false
 	is_previewed = false
 	begin_turn()
+
+
+## 이어하기용 상태. 다른 유닛은 전투 유닛 목록의 번호로 적고, 없으면 -1이다.
+func save_state(units: Array[CombatUnit]) -> Dictionary:
+	var statuses: Array = []
+	for effect: StatusEffect in status_effects:
+		statuses.append([effect.kind, units.find(effect.source), effect.turns_left, effect.save_dc])
+	var data: Dictionary = {"kind": kind, "ally": is_ally, "weapon": weapon, "armor": armor,
+		"hit_points": hit_points, "lost_hit_points": _lost_hit_points, "stunned": is_stunned,
+		"stun_source": units.find(stun_source), "marked_target": units.find(marked_target), "statuses": statuses}
+	for field: String in SAVED_FIELDS:
+		data[field] = get(field)
+	return data
+
+
+## save_state()의 값으로 되돌린다. 장비·HP setter가 바꾸는 HP·과부하·행동은 뒤에서 덮는다.
+func load_state(data: Dictionary, units: Array[CombatUnit]) -> void:
+	armor = data.armor
+	weapon = data.weapon
+	hit_points = data.hit_points
+	for field: String in SAVED_FIELDS:
+		set(field, data[field])
+	_lost_hit_points = data.lost_hit_points
+	is_stunned = data.stunned
+	stun_source = units[data.stun_source] if data.stun_source >= 0 else null
+	marked_target = units[data.marked_target] if data.marked_target >= 0 else null
+	status_effects.clear()
+	for saved: Array in data.statuses:
+		var effect: StatusEffect = StatusEffect.new(saved[0], units[saved[1]], saved[2])
+		effect.save_dc = saved[3]
+		status_effects.append(effect)
+
+
+## 저장 파일의 값을 load_state()에 넘겨도 되는지. 장비의 내용은 CombatLoot가 확인한다.
+## 타입은 이 유닛의 변수와 비교하므로 어느 유닛에서 불러도 같다. count는 전투 유닛 수다.
+func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
+	if not (data is Dictionary and data.get("kind") is int and data.kind in Kind.values() and data.get("ally") is bool
+			and data.get("weapon") is Dictionary and data.get("armor") is Dictionary
+			and data.get("hit_points") is int and data.hit_points >= 0 and data.hit_points <= SAVED_HIT_POINT_LIMIT
+			and data.get("lost_hit_points") is int and data.lost_hit_points >= 0
+			and data.lost_hit_points <= SAVED_HIT_POINT_LIMIT and data.get("stunned") is bool
+			and _valid_index(data.get("stun_source"), count, true) and (not data.stunned or data.stun_source >= 0)
+			and _valid_index(data.get("marked_target"), count, true)
+			and data.get("statuses") is Array and data.statuses.size() <= 6):
+		return false
+	for field: String in SAVED_FIELDS:
+		var value: Variant = data.get(field)
+		if typeof(value) != typeof(get(field)) or value is int and (value < 0 or value > SAVED_INT_LIMIT):
+			return false
+	var area: Rect2i = Rect2i(Vector2i.ZERO, map_size)
+	if not area.has_point(data.cell) or not area.has_point(data.start_cell):
+		return false
+	return (data.statuses as Array).all(func(saved: Variant) -> bool:
+		return (saved is Array and saved.size() == 4 and saved[0] in ["burn", "poison"]
+			and _valid_index(saved[1], count, false) and saved[2] is int and saved[2] >= 1 and saved[2] <= 4
+			and saved[3] is int and saved[3] >= 0 and saved[3] <= SAVED_INT_LIMIT))
+
+
+static func _valid_index(value: Variant, count: int, optional: bool) -> bool:
+	return value is int and value >= (-1 if optional else 0) and value < count
 
 
 func spend_movement(cost: int) -> bool:
