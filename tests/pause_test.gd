@@ -30,6 +30,7 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(directory)
 	GameSave.path = directory + "/save.bin"
 	GameSettings.path = directory + "/settings.cfg"
+	GameSave.autosave = true
 	root.size = WINDOWS[0]
 	var battle: Node2D = await _open_game()
 	var menu: PauseMenu = battle.get("pause_menu") as PauseMenu
@@ -227,6 +228,7 @@ func _check_give_up(battle: Node2D, menu: PauseMenu) -> void:
 		and hud.restart_button.text == "이 막 다시 시작" and not hud.restart_button.disabled
 		and hud.restart_button.has_focus(), "패배 결과 화면")
 	_check("전투 포기" in hud.message_label.text, "전투 기록에 전투 포기")
+	_check(_saved_defeat(), "포기를 확정한 순간의 전멸 상태를 저장")
 	await _tap(_action("ui_accept"))
 	await process_frame
 	_check(hud.progress_label.text == "2막 · 1스테이지" and not hud.get_node("Result").visible, "포기한 막의 1스테이지부터")
@@ -293,12 +295,30 @@ func _check_enemy_turn(battle: Node2D, menu: PauseMenu) -> void:
 	await _tap(_action("ui_accept"))
 	await process_frame
 	_check(actions.is_over() and not actions.is_victory() and hud.result_label.text == "패배", "적 턴 중 포기도 패배")
+	_check(_saved_defeat(), "적 턴 중에도 포기한 순간을 바로 저장")
 	var waited: float = 0.0
 	while battle.get("_enemy_turn_running") and waited < 5.0:
 		await create_timer(0.05).timeout
 		waited += 0.05
 	_check(not battle.get("_enemy_turn_running") and not hud.restart_button.disabled
 		and hud.get_node("Result").visible, "적 턴이 끝난 뒤 결과 버튼이 풀림")
+	_check(_saved_defeat(), "남은 적 행동이 끝나도 포기 저장을 적 턴 시작 상태로 덮지 않음")
+	# 강제 종료 뒤 이어하기: 저장을 새 게임 장면에 되돌리면 포기한 패배 결과다.
+	var state: Variant = GameSave.read().sections.combat
+	battle = await _open_game()
+	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	_check(battle.call("restore_combat", state) and (battle.get("actions") as CombatActions).is_over()
+		and hud.get_node("Result").visible and hud.result_label.text == "패배"
+		and hud.restart_button.text == "이 막 다시 시작", "포기 저장을 이어하면 패배 결과 화면")
+
+
+## 마지막 저장이 아군 전원 전투 불능인 전투 상태인지.
+func _saved_defeat() -> bool:
+	var save: Dictionary = GameSave.read()
+	if save.is_empty():
+		return false
+	var allies: Array = save.sections.combat.units.filter(func(unit: Dictionary) -> bool: return unit.ally)
+	return not allies.is_empty() and allies.all(func(unit: Dictionary) -> bool: return unit.hit_points == 0)
 
 
 func _snapshot(battle: Node2D) -> Array:
@@ -408,9 +428,11 @@ func _tap(event: InputEvent) -> void:
 func _finish() -> void:
 	print("Pause: %d checks, %d failures;" % [checks, failures])
 	paused = false
+	GameSave.autosave = false
 	if current_scene:
 		current_scene.queue_free()
 	await process_frame
+	GameSave.delete()
 	for file: String in [GameSettings.path, GameSettings.path + ".tmp"]:
 		DirAccess.remove_absolute(file)
 	DirAccess.remove_absolute(directory)

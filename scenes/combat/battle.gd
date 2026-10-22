@@ -287,14 +287,13 @@ func _restart() -> void:
 
 
 ## 일시정지 메뉴의 `전투 포기`(#286). 전멸과 같은 패배라 결과 화면에서 이 막을 처음부터 다시 한다.
+## 확정한 순간을 행동 하나로 바로 저장한다. 적 턴·연출 중이어도 강제 종료로 포기를 되돌릴 수 없다(#220 3번).
 func _give_up() -> void:
 	actions.give_up()
-	_save_give_up()
-
-
-## 포기를 확정한 순간을 행동 하나로 저장하는 자리. 전투 상태 저장(#281)을 이어하기와 연결하는 #284가 채운다.
-func _save_give_up() -> void:
-	pass
+	if GameSave.autosave:
+		# 진행 중이던 적 행동이 끝나며 적 턴 시작 상태로 덮어쓰지 않게 한다.
+		_turn_start = {}
+		_autosave(combat_state())
 
 
 func _finish_preparation() -> void:
