@@ -65,6 +65,7 @@ func _run() -> void:
 	await _test_mother()
 	await _test_spiderling()
 	await _test_warrior()
+	await _test_ground_paths()
 	await _test_jump_attack()
 	await _test_jump_priorities()
 	await _test_jump_retreat_and_pull()
@@ -86,6 +87,73 @@ func _run() -> void:
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat AI: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_ground_paths() -> void:
+	for budget: int in [2, 6]:
+		var f: Fixture = _fixture()
+		var actor: CombatUnit = f.units[2]
+		actor.cell = Vector2i(0, 1)
+		actor.movement_left = budget
+		actor.surge_left = 0
+		f.units[0].cell = Vector2i(3, 1)
+		f.units[1].cell = Vector2i(9, 9)
+		f.units[3].cell = Vector2i(9, 8)
+		f.actions.grid.map_size = Vector2i(4, 3)
+		var destination: Vector2i = ai.approach_cell(actor, f.actions)
+		_check(destination == Vector2i(2, 1), "장판 생성 전 기존 접근 목적지")
+		_check(f.actions.create_ground(f.units[0], Vector2i(1, 1), "poison")
+			and f.actions.create_ground(f.units[0], actor.cell, "poison"), "경로와 시작 칸에 장판 생성")
+		_check(ai.approach_cell(actor, f.actions) == destination, "장판이 목적지 선택을 바꾸지 않음")
+		var walked: Array[Vector2i] = []
+		f.actions.movement_animation = func(_unit: CombatUnit, cell: Vector2i) -> void: walked.append(cell)
+		f.actions.dice = ScriptedDice.new([1], [20])
+		await ai.play_turn(actor, f.actions)
+		var expected: Array[Vector2i] = [Vector2i(1, 1), destination]
+		if budget == 6:
+			expected = [Vector2i(0, 2), Vector2i(1, 2), Vector2i(2, 2), destination]
+		_check(walked == expected and actor.cell == destination and actor.movement_left == budget - expected.size(),
+			"실제 AI는 목적지를 유지하고 이동력이 허용하면 우회, 불가능하면 장판 통과")
+		_check(actor.get_status_count("poison") == (1 if budget == 2 else 0) and actor.action_left == 0,
+			"걷기의 장판 적용과 도착 후 공격을 유지하고 시작 장판에서 별도 탈출하지 않음")
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[2]
+	actor.cell = Vector2i.ZERO
+	f.units[0].cell = Vector2i(9, 9)
+	f.units[1].cell = Vector2i(9, 8)
+	f.units[3].cell = Vector2i(9, 7)
+	f.actions.grid.map_size = Vector2i(5, 2)
+	var grounds: Array[Vector2i] = [Vector2i(1, 0), Vector2i(4, 0)]
+	actor.movement_left = 4
+	_check(f.actions.grid.path_to(actor, Vector2i(4, 0), grounds).size() == 4,
+		"합류점까지 짧지만 위험한 경로도 보존하여 이동력 안에 목적지에 도착")
+	actor.movement_left = 6
+	var detour: Array[Vector2i] = f.actions.grid.path_to(actor, Vector2i(4, 0), grounds)
+	_check(detour.size() == 6 and Vector2i(1, 0) not in detour and detour.back() == Vector2i(4, 0),
+		"목적지 장판이 불가피해도 중간 장판을 덜 밟는 경로 선택")
+	f.actions.grid.blocked_cells = [Vector2i(2, 1)]
+	f.actions.grid.pits = [Vector2i(0, 1)]
+	f.actions.grid.heights = {Vector2i(1, 1): 2}
+	_check(f.actions.grid.path_to(actor, Vector2i(4, 0), grounds).size() == 4,
+		"장판을 피하려고 낭떠러지·막힌 칸·오를 수 없는 높이를 통과하지 않음")
+	actor.is_ally = true
+	_check(f.actions.create_ground(f.units[3], Vector2i(1, 0), "poison"), "아군 이동 검사용 장판")
+	var walked: Array[Vector2i] = []
+	f.actions.movement_animation = func(_unit: CombatUnit, cell: Vector2i) -> void: walked.append(cell)
+	f.actions.grid.blocked_cells.clear()
+	f.actions.grid.pits.clear()
+	f.actions.grid.heights.clear()
+	await f.actions.move_to(actor, Vector2i(4, 0))
+	_check(walked.size() == 4 and Vector2i(1, 0) in walked and actor.get_status_count("poison") == 1,
+		"아군 이동은 미리보기와 같은 기존 최단 경로와 장판 적용을 유지")
+	var stationary: Fixture = _fixture()
+	actor = stationary.units[2]
+	actor.surge_left = 0
+	_check(stationary.actions.create_ground(stationary.units[0], actor.cell, "poison"), "제자리 공격 검사용 장판")
+	stationary.actions.dice = ScriptedDice.new([1], [20])
+	await ai.play_turn(actor, stationary.actions)
+	_check(actor.cell == Vector2i(4, 4) and actor.movement_left == 6 and actor.action_left == 0,
+		"장판 위에서도 이미 공격할 수 있으면 별도 이탈 없이 공격")
 
 
 func _test_jump_attack() -> void:
