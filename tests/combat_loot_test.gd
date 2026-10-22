@@ -468,13 +468,9 @@ func _test_armor_unequip_scene() -> void:
 		"Enter로 무기 칸을 고르면 해제 버튼 없이 수치만 표시")
 	await _action("ui_right")
 	_check((preparation.find_child("Armor0", true, false) as Control).has_focus(), "방향키로 이웃 칸 이동")
+	await _check_preparation_focus(preparation, "Armor0")
+	await _check_preparation_focus(preparation, "BagItem0")
 	var unequip: Button = await _pick(preparation, "Armor0", "UnequipArmor0")
-	# 고른 칸에서 방향키로 상세 패널의 동작 버튼까지 내려간다.
-	for step: int in range(6):
-		if unequip == null or unequip.has_focus():
-			break
-		await _action("ui_down")
-	_check(unequip != null and unequip.has_focus(), "방향키로 상세 패널의 동작 버튼에 도달")
 	_check(unequip != null and not unequip.disabled and unequip.tooltip_text.is_empty(),
 		"정비 화면의 장착 방어구 해제 버튼")
 	if unequip != null:
@@ -489,6 +485,8 @@ func _test_armor_unequip_scene() -> void:
 		var blocked: Button = await _pick(preparation, "Armor1", "UnequipArmor1")
 		_check(blocked != null and blocked.disabled and "빈 칸" in blocked.tooltip_text,
 			"가방이 가득 차면 해제 버튼 비활성과 호버 설명에 이유 표시")
+		# 비활성 버튼만 있는 상세 패널도 방향키로 오간다.
+		await _check_preparation_focus(preparation, "Armor1")
 		if blocked != null:
 			await _click(blocked)
 		# 비활성 버튼은 pressed를 내지 않으므로 화면 처리기의 거절도 직접 확인한다.
@@ -837,6 +835,67 @@ func _check_preparation_layout(preparation: CombatPreparation) -> void:
 			for other: Control in areas.slice(index + 1):
 				_check(not rect.intersects(other.get_global_rect()),
 					"%s: 정비 화면 영역끼리 겹치지 않음: %s, %s" % [size, areas[index], other])
+	root.size = original
+	await process_frame
+
+
+## #272: 실제 창에서 방향키만으로 장비 칸 → 가방 칸 → 상세 패널 → 진행 버튼을 오가고 상세 패널 버튼을 모두 지난다.
+## headless 기본 창(논리 640×640)은 상세 패널이 가방 칸 바로 아래에 와서 이 문제를 놓친다. 그래서 창 크기를 직접 정한다.
+func _check_preparation_focus(preparation: CombatPreparation, cell_name: String) -> void:
+	var original: Vector2i = root.size
+	var windows: Dictionary[Vector2i, Vector2] = {Vector2i(1280, 720): Vector2(640, 360),
+		Vector2i(1920, 1080): Vector2(640, 360), Vector2i(1440, 900): Vector2(640, 400)}
+	for size: Vector2i in windows:
+		root.size = size
+		await process_frame
+		await process_frame
+		_check(root.size == size and preparation.get_viewport_rect().size == windows[size],
+			"%s: 창과 논리 화면 %s" % [size, preparation.get_viewport_rect().size])
+		var cell: Button = preparation.find_child(cell_name, true, false) as Button
+		cell.grab_focus()
+		await _action("ui_accept")
+		var buttons: Array[Node] = preparation.detail.find_children("*", "Button", true, false)
+		_check(cell.button_pressed and not buttons.is_empty(),
+			"%s: Enter로 %s을 고르면 상세 패널에 동작 버튼" % [size, cell_name])
+		if buttons.is_empty():
+			continue
+		var first: Button = buttons[0] as Button
+		(preparation.find_child("Armor0", true, false) as Control).grab_focus()
+		var path: PackedStringArray = []
+		while path.size() < 8 and not first.has_focus() and not preparation.continue_button.has_focus():
+			await _action("ui_down")
+			var owner: Control = root.gui_get_focus_owner()
+			path.append(owner.name if owner else "-")
+		_check(first.has_focus() and path[0].begins_with("BagItem"),
+			"%s: 장비 칸 → 가방 칸 → 상세 패널: %s" % [size, path])
+		for index: int in range(buttons.size()):
+			var button: Button = buttons[index] as Button
+			if index > 0:
+				await _action("ui_right")
+			_check(button.has_focus() and (not button.disabled or not button.tooltip_text.is_empty()),
+				"%s: 방향키로 상세 패널 버튼 %s에 포커스, 비활성이면 이유 설명" % [size, button.name])
+		await _action("ui_down")
+		_check(preparation.continue_button.has_focus(), "%s: 상세 패널 → 진행 버튼" % size)
+		await _action("ui_up")
+		_check(first.has_focus(), "%s: 진행 버튼 → 상세 패널" % size)
+		await _action("ui_up")
+		_check(cell.has_focus(), "%s: 상세 패널 → 고른 칸" % size)
+		# 갇히는 곳 없이 정비 화면의 모든 포커스 대상이 방향키로 서로 닿는다.
+		var targets: Array[Control] = []
+		for node: Node in preparation.find_children("*", "Control", true, false):
+			if (node as Control).is_visible_in_tree() and (node as Control).focus_mode == Control.FOCUS_ALL:
+				targets.append(node as Control)
+		for start: Control in targets:
+			var reached: Array[Control] = [start]
+			var next_index: int = 0
+			while next_index < reached.size():
+				for side: Side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+					var next: Control = reached[next_index].find_valid_focus_neighbor(side)
+					if next != null and next not in reached:
+						reached.append(next)
+				next_index += 1
+			_check(reached.size() == targets.size() and targets.all(func(target: Control) -> bool:
+				return target in reached), "%s: %s에서 방향키로 모든 포커스 대상에 닿음" % [size, start.name])
 	root.size = original
 	await process_frame
 

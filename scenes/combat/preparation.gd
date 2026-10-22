@@ -38,6 +38,8 @@ var confirmation_text: Label
 var _discard_index: int = -1
 var _confirm_finish: bool = true
 var _cells: ButtonGroup
+## 오른쪽 패널에서 아래에 칸이 없는 보상·가방 칸. 방향키 아래로 상세 패널의 동작 버튼에 간다(#272).
+var _exits: Array[Button] = []
 ## 고른 칸: "reward"·"bag"·"weapon"·"armor"와 보상·가방·캐릭터 번호.
 var _selected_kind: String = ""
 var _selected_index: int = -1
@@ -228,6 +230,7 @@ func _render() -> void:
 			parent.remove_child(child)
 			child.queue_free()
 	_cells = ButtonGroup.new()
+	_exits.clear()
 	_selected_kind = ""
 	title_label.text = tr("정비") if maintaining else tr_n("보상 · %d개", "보상 · %d개", rewards.size()) % rewards.size()
 	hint_label.text = (tr("칸을 클릭해 고르고 아래 버튼으로 장착·해제·폐기합니다.") if maintaining
@@ -243,14 +246,18 @@ func _render() -> void:
 		if not rewards.is_empty() else tr("남은 보상 없음"), GOLD_COLOR, false)
 	var reward_grid: GridContainer = _grid(content, 7)
 	for index: int in range(rewards.size()):
-		_cell(reward_grid, rewards[index], "", "Item%d" % index, GOLD_COLOR).pressed.connect(
-			func() -> void: _select("reward", index))
+		var reward: Button = _cell(reward_grid, rewards[index], "", "Item%d" % index, GOLD_COLOR)
+		reward.pressed.connect(func() -> void: _select("reward", index))
+		if loot.bag.is_empty() and index + reward_grid.columns >= rewards.size():
+			_exits.append(reward)
 	_label(content, tr("공용 가방 · %d/%d칸") % [loot.bag.size(), int(loot.data["bag_limit"])])
 	var bag_grid: GridContainer = _grid(content, 6)
 	for index: int in range(int(loot.data["bag_limit"])):
 		if index < loot.bag.size():
-			_cell(bag_grid, loot.bag[index], "", "BagItem%d" % index, LINE_COLOR).pressed.connect(
-				func() -> void: _select("bag", index))
+			var bag_cell: Button = _cell(bag_grid, loot.bag[index], "", "BagItem%d" % index, LINE_COLOR)
+			bag_cell.pressed.connect(func() -> void: _select("bag", index))
+			if index + bag_grid.columns >= loot.bag.size():
+				_exits.append(bag_cell)
 		else:
 			var empty: Panel = Panel.new()
 			empty.custom_minimum_size = Vector2(36, 36)
@@ -349,6 +356,7 @@ func _render_detail() -> void:
 	if _selected_kind.is_empty():
 		_label(detail, tr("칸을 클릭하면 여기에 아이템과 동작이 나옵니다. 방향키로 칸을 옮기고 Enter로 고릅니다.")
 			if maintaining else tr("칸을 클릭하면 아이템 수치를 봅니다."), DIM_COLOR)
+		_link_detail_focus([])
 		return
 	var owner_unit: CombatUnit = null if _selected_kind in ["reward", "bag"] else party[_selected_index]
 	var item: Dictionary = (rewards[_selected_index] if _selected_kind == "reward"
@@ -395,10 +403,26 @@ func _render_detail() -> void:
 				unequip.tooltip_text = loot.armor_unequip_blocker(owner_unit)
 				unequip.disabled = not unequip.tooltip_text.is_empty()
 				unequip.pressed.connect(func() -> void: _unequip_armor(ally))
+	var buttons: Array[Button] = []
 	if actions.get_child_count() > 0:
 		info.add_child(actions)
+		buttons.assign(actions.get_children().filter(func(child: Node) -> bool: return child is Button))
 	else:
 		actions.free()
+	_link_detail_focus(buttons)
+
+
+## 상세 패널은 왼쪽 아래라 16:9 창의 기하 탐색이 가방 칸에서 진행 버튼으로 건너뛴다(#272).
+## 오른쪽 패널 아래 끝 칸·진행 버튼과 상세 패널 버튼의 위아래 이웃을 직접 잇는다. 동작이 없으면 기하 탐색에 맡긴다.
+func _link_detail_focus(buttons: Array[Button]) -> void:
+	var selected: BaseButton = _cells.get_pressed_button()
+	continue_button.focus_neighbor_top = (NodePath() if buttons.is_empty()
+		else continue_button.get_path_to(buttons[0]))
+	for cell: Button in _exits:
+		cell.focus_neighbor_bottom = NodePath() if buttons.is_empty() else cell.get_path_to(buttons[0])
+	for button: Button in buttons:
+		button.focus_neighbor_top = button.get_path_to(selected) if selected else NodePath()
+		button.focus_neighbor_bottom = button.get_path_to(continue_button)
 
 
 ## 상세 패널의 장착·물약 받기 버튼과 지금 장비 비교.
