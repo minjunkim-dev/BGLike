@@ -71,7 +71,7 @@ flowchart LR
 | **M4 성장과 경제** | 전투 사이에 강해지는 구조 | 아이템 수치·드랍 기획 (육성은 아이템뿐, 2026-10-07) | 🟡 수치·드랍([#61](https://github.com/minjunkim-dev/BGLike/issues/61))과 공용 가방([#175](https://github.com/minjunkim-dev/BGLike/issues/175)) 구현. 장비 수치 재검토는 [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
 | **M5 콘텐츠** | 실제로 만들 것의 목록 | 캐릭터, 몬스터, 레벨 디자인 문서 | 🟡 몬스터7종·9개 배치 구현 (#107~[#113](https://github.com/minjunkim-dev/BGLike/issues/113)). 캐릭터 디자인은 [#210](https://github.com/minjunkim-dev/BGLike/issues/210) 기획자 확인 대기 |
 | **M6 밸런스와 연출** | 수치와 손맛 | 밸런스 표, 사운드·이펙트 목록 | 🟡 밸런스 재검토 [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
-| **M7 첫 플레이 가능 구간** | 처음부터 끝까지 하는 짧은 구간 | 구간 기획서 | 🟡 구간 범위 [#202](https://github.com/minjunkim-dev/BGLike/issues/202), 전투 외 화면·저장 [기획자 확인 #209](https://github.com/minjunkim-dev/BGLike/issues/209) |
+| **M7 첫 플레이 가능 구간** | 처음부터 끝까지 하는 짧은 구간 | 구간 기획서 | 🟡 구간 범위 [#202](https://github.com/minjunkim-dev/BGLike/issues/202), 전투 외 화면·저장은 [#209 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6330756631)으로 정함([게임 구조 2-4·2-5](GAME_STRUCTURE.md#2-4-저장과-이어하기-)), 구현 #280~#287 |
 
 - 각 마일스톤 끝에 그 단계의 개발 요청서를 씁니다.
 - M3과 M4는 서로 기대지 않으므로 함께 기획할 수 있습니다.
@@ -178,7 +178,7 @@ flowchart LR
 
 ### 주사위 결과 피드백에서 정할 것 ❓
 
-> 2026-10-21 [#204](https://github.com/minjunkim-dev/BGLike/issues/204): 치명타·자동 실패·유리/불리 팝업([#222](https://github.com/minjunkim-dev/BGLike/issues/222))과 적 턴 빠르게 보기([#221](https://github.com/minjunkim-dev/BGLike/issues/221))는 개발 결정입니다. 수식 노출은 [기획자 확인 #220](https://github.com/minjunkim-dev/BGLike/issues/220)을 기다립니다.
+> 2026-10-21 [#204](https://github.com/minjunkim-dev/BGLike/issues/204): 치명타·자동 실패·유리/불리 팝업([#222](https://github.com/minjunkim-dev/BGLike/issues/222))과 적 턴 빠르게 보기([#221](https://github.com/minjunkim-dev/BGLike/issues/221))는 개발 결정입니다. 수식 노출은 2026-10-22 [#220 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/220#issuecomment-6331002448)으로 정했습니다([팝업 문구 규칙](COMBAT_UIUX.md#팝업-문구-규칙), 구현 #289).
 
 | 질문 | 선택지 예 |
 |---|---|
@@ -233,8 +233,8 @@ flowchart LR
 | 구간 범위 | 전투 몇 번, 플레이 시간 몇 분 |
 | 이야기와 세계관 | 배경, 주인공, 대화·선택지 비중, 게임 정식 이름 |
 | 아트 | 도트 에셋 제작. 출처는 [#193](https://github.com/minjunkim-dev/BGLike/issues/193)에서 정함([기획 현황](DESIGN_STATUS.md)). 최종 아트 승인은 남음 |
-| 저장과 난이도 | 저장 방식, 난이도 옵션 |
-| 전투 외 화면 | 타이틀, 정비, 보상, 메뉴, 설정 |
+| 저장과 난이도 | 저장 방식, 난이도 옵션. 정함([게임 구조 2-4·2-5](GAME_STRUCTURE.md#2-4-저장과-이어하기-)), 구현 #280~#287 |
+| 전투 외 화면 | 타이틀, 정비, 보상, 메뉴, 설정. 타이틀·메뉴·설정은 정함([게임 구조 2-4·2-5](GAME_STRUCTURE.md#2-4-저장과-이어하기-)), 구현 #280~#287 |
 
 ---
 
@@ -272,9 +272,9 @@ flowchart LR
 | 주제 | 왜 필요한가 | 권하는 시기 |
 |---|---|---|
 | **범위와 목표 플레이 시간** | 두 사람이 만들 수 있는 양을 먼저 정해야 콘텐츠 수가 나옴 | ⏸ 보류 (게임 비전에 포함) |
-| **운 관리** | d20 게임은 연속 빗나감이 큰 불만. 표시 확률 보정, 시드 고정, 다시 하기 허용 여부 | [기획자 확인 #220](https://github.com/minjunkim-dev/BGLike/issues/220) 대기 |
+| **운 관리** | d20 게임은 연속 빗나감이 큰 불만. 표시 확률 보정, 시드 고정, 다시 하기 허용 여부 | [#220 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/220#issuecomment-6331002448)으로 정함: 보정 없음, 시드 고정 없음([전투 4-5](COMBAT_DESIGN.md#4-5-운과-난수)), 전투 중 되돌리기 없음과 `전투 포기`([게임 구조 2-5](GAME_STRUCTURE.md#2-5-전투-밖-화면-)) |
 | **전투 템포** | 턴제는 연출이 쌓이면 느려짐. 빠르게 보기, 적 턴 가속 | [#204](https://github.com/minjunkim-dev/BGLike/issues/204)에서 개발 결정. 구현 [#221](https://github.com/minjunkim-dev/BGLike/issues/221) |
-| **튜토리얼** | 5e 규칙(유리/불리, 내성, 반응)은 처음 보는 사람에게 어려움 | M7 |
-| **라이선스 표기** | SRD 5e(CC-BY-4.0)는 게임 안에 출처 표기가 필요. 폰트·무료 에셋 라이선스도 확인 | M7 이전. SRD 고지 문서와 배포 묶음은 [#213](https://github.com/minjunkim-dev/BGLike/issues/213) 완료. 게임 안 출처 화면은 [#209](https://github.com/minjunkim-dev/BGLike/issues/209) 뒤 타이틀 화면 Issue |
+| **튜토리얼** | 5e 규칙(유리/불리, 내성, 반응)은 처음 보는 사람에게 어려움 | M7. 정적 `도움말` 화면으로 정함([게임 구조 2-5](GAME_STRUCTURE.md#2-5-전투-밖-화면-), 구현 #287) |
+| **라이선스 표기** | SRD 5e(CC-BY-4.0)는 게임 안에 출처 표기가 필요. 폰트·무료 에셋 라이선스도 확인 | M7 이전. SRD 고지 문서와 배포 묶음은 [#213](https://github.com/minjunkim-dev/BGLike/issues/213) 완료. 게임 안 출처 화면은 타이틀 화면 [#283](https://github.com/minjunkim-dev/BGLike/issues/283) |
 | **플레이 테스트 방법** | 무엇을 보고 재미를 판단할지 (승률, 전투 시간, 막힌 지점) | M1 회고 양식에 반영 |
 | **출시 형태** | 스토어, 가격, 데모 공개 시점 | M7 이전 |
