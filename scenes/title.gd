@@ -33,9 +33,9 @@ func _ready() -> void:
 	new_game_button.grab_focus()
 
 
-## 이어할 저장이 있는지. shortcut: #280 저장 모듈 전까지 항상 없음. #284가 저장 조회와 이어하기 동작으로 바꾼다.
+## 이어할 저장이 있는지. `이어하기`를 눌렀을 때 저장한 자리로 가는 동작은 #284가 연결한다.
 func has_save() -> bool:
-	return false
+	return GameSave.has_save()
 
 
 func show_credits(open: bool) -> void:

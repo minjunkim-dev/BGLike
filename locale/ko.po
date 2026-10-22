@@ -1164,6 +1164,62 @@ msgstr "아군 전사"
 msgid "아군 궁수"
 msgstr "아군 궁수"
 
+#: scenes/main.tscn
+msgid "BGLike"
+msgstr "BGLike"
+
+#: scenes/main.tscn
+msgid "새 게임"
+msgstr "새 게임"
+
+#: scenes/main.tscn
+msgid "이어하기"
+msgstr "이어하기"
+
+#: scenes/main.tscn
+msgid "설정"
+msgstr "설정"
+
+#: scenes/main.tscn
+msgid "출처"
+msgstr "출처"
+
+#: scenes/main.tscn
+msgid "종료"
+msgstr "종료"
+
+#: scenes/main.tscn
+msgid "게임 규칙"
+msgstr "게임 규칙"
+
+#: scenes/main.tscn
+msgid "전투 규칙은 SRD 5.1을 근거로 하며 게임에 맞게 수정해 사용합니다."
+msgstr "전투 규칙은 SRD 5.1을 근거로 하며 게임에 맞게 수정해 사용합니다."
+
+#: scenes/main.tscn
+msgid "엔진"
+msgstr "엔진"
+
+#: scenes/main.tscn
+msgid "그림"
+msgstr "그림"
+
+#: scenes/main.tscn
+msgid "유닛·지형·사물 그림은 이미지 생성 도구로 독자 생성했습니다. 스킬·아이템 아이콘은 코드로 그렸습니다."
+msgstr "유닛·지형·사물 그림은 이미지 생성 도구로 독자 생성했습니다. 스킬·아이템 아이콘은 코드로 그렸습니다."
+
+#: scenes/main.tscn
+msgid "효과음"
+msgstr "효과음"
+
+#: scenes/main.tscn
+msgid "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
+msgstr "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
+
+#: scenes/main.tscn
+msgid "뒤로"
+msgstr "뒤로"
+
 #: scenes/save/game_save.gd:60
 msgid "저장을 읽을 수 없음"
 msgstr "저장을 읽을 수 없음"
@@ -1172,5 +1228,6 @@ msgstr "저장을 읽을 수 없음"
 msgid "%d막 %d스테이지 진행 중"
 msgstr "%d막 %d스테이지 진행 중"
 
-msgid "BGLike"
-msgstr "BGLike"
+#: scenes/title.gd:23
+msgid "이 게임은 Godot Engine %d.%d.%d를 사용합니다. Godot Engine은 다음 MIT 라이선스를 따릅니다."
+msgstr "이 게임은 Godot Engine %d.%d.%d를 사용합니다. Godot Engine은 다음 MIT 라이선스를 따릅니다."

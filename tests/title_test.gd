@@ -19,6 +19,10 @@ func _check(condition: bool, message: String) -> void:
 
 
 func _run() -> void:
+	# 사용자의 실제 저장을 건드리지 않는다.
+	GameSave.path = "user://title_test_save.bin"
+	GameSave.delete()
+	await _check_continue_with_save()
 	var main_scene: String = ProjectSettings.get_setting("application/run/main_scene")
 	var title: TitleScreen = (load(main_scene) as PackedScene).instantiate() as TitleScreen
 	_check(title != null, "메인 장면의 시작점은 타이틀 화면")
@@ -79,6 +83,19 @@ func _run() -> void:
 		var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 		_check((hud.get_node("Progress") as Label).text == "1막 · 1스테이지", "1-1 전투 화면")
 	_finish()
+
+
+## 저장이 있으면 `새 게임` 다음에 `이어하기`가 보인다.
+func _check_continue_with_save() -> void:
+	_check(GameSave.write(1, 1, {}) == OK, "검사용 저장 쓰기")
+	var title: TitleScreen = (load("res://scenes/main.tscn") as PackedScene).instantiate() as TitleScreen
+	root.add_child(title)
+	await process_frame
+	_check(title.continue_button.visible and title.continue_button.get_index() == title.new_game_button.get_index() + 1,
+		"저장이 있으면 새 게임 다음에 이어하기를 보임")
+	title.queue_free()
+	await process_frame
+	GameSave.delete()
 
 
 ## 출처 화면은 SRD 5.1 표기를 THIRD_PARTY_NOTICES.md의 원문 그대로 보이고 엔진 라이선스 전문을 싣는다.
