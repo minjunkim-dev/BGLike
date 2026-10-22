@@ -24,6 +24,10 @@
 
 Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행합니다. 위험 변경에는 Security도 별도 컨텍스트에서 수행합니다. 같은 모델을 쓰면 `같은 모델의 별도 컨텍스트`와 실제 모델명을 기록합니다. 다른 모델을 실행하지 않았으면 다른 모델의 리뷰로 보고하지 않습니다. 실행하지 못한 리뷰는 미완료로 기록합니다.
 
+리뷰어는 작성자가 같은 head SHA에서 통과시킨 검사를 다시 실행하지 않습니다. 작성자의 명령·결과·로그를 근거로 재사용합니다. 근거가 없거나 부족하면 그 이유를 기록합니다. 실행 권한이 없는 리뷰어는 그 검사를 미확인으로 기록합니다. 그리고 작성자에게 근거를 요청합니다. [읽기 전용 Claude 리뷰의 사전 승인](../WORKFLOW.md#읽기-전용-claude-리뷰의-사전-승인)에는 검사 실행 권한이 없습니다.
+
+실행 권한이 있는 리뷰어가 검사나 변이(mutation) 검사를 직접 실행하면 `git worktree add --detach <path> <head_sha>`로 만든 리뷰어 전용 worktree에서 실행합니다. 작성자나 다른 리뷰어의 worktree에서 실행하지 않습니다. 설치된 Godot은 `GODOT`에 실행 파일 경로를 지정해 재사용합니다. stash·branch·tag는 모든 worktree가 공유하므로 만들지 않습니다. 변이는 `git status`로 확인합니다. 변이는 `git restore`로 되돌립니다. 끝나면 `git worktree remove --force <path>`로 그 worktree를 삭제합니다. 수정·커밋하는 리뷰어는 [지적 처리](#지적-처리와-최종-검증) 1·3단계를 따릅니다.
+
 ## 지적 처리와 최종 검증
 
 1. 파일 소유권을 먼저 나눕니다. 리뷰어는 승인된 범위와 소유 파일 안의 확실한 결함을 직접 수정하고 커밋합니다. 다른 작업자의 변경을 되돌리지 않습니다. 읽기 전용으로 승인한 리뷰어는 수정하지 않고 소유 작업자에게 전달합니다.
@@ -53,6 +57,9 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 `one-way/broad`는 사람이 최종 head SHA와 영향 범위를 승인해야 한다.
 
 병합 직전에 GitHub API로 head·base와 검사 결과를 다시 확인한다.
+CodeQL 경고 수정 PR은 workflow 성공이 아니라 code scanning API로 판정한다.
+`refs/pull/<PR>/merge`의 Actions·Python 분석은 최종 base와 최종 head를 부모로 둔 merge 커밋에서 끝나야 한다. 각 분석의 `error`·`warning` 필드는 비어 있어야 한다. 그 ref의 열린 경고는 0건이어야 한다.
+code scanning API는 분석이 없는 ref에도 열린 경고 0건을 반환한다. 경고 수만 보고 판정하지 않는다.
 head나 base가 바뀌면 최종 독립 리뷰와 영향받는 검증을 갱신한다.
 `gh pr merge <PR> --repo <OWNER/REPO> --squash --match-head-commit <FINAL_HEAD_SHA>`로 병합한다.
 `--admin`으로 보호를 우회하지 않는다. 사용자가 병합을 금지한 PR은 열어 둔다.

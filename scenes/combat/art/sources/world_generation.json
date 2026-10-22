@@ -1,0 +1,108 @@
+{
+  "tool": "image_gen",
+  "mode": "built-in",
+  "date": "2026-10-21",
+  "materials": [
+    {
+      "id": "grass",
+      "subject": "lush muted olive and sage grass, tiny irregular warm-green tufts and occasional earth flecks, no flowers or objects",
+      "prompt": "Create ONE original production pixel-art terrain texture for a warm isometric tactical JRPG. Subject: lush muted olive and sage grass, tiny irregular warm-green tufts and occasional earth flecks, no flowers or objects. This is a seamless flat SQUARE material swatch, viewed straight on with NO perspective, filling the ENTIRE square edge to edge, no transparent margins. It will be sampled by an isometric tile renderer. Restrained palette, hand-placed crisp square pixel clusters at a logical 32x32-pixel texture resolution, rendered up with large uniform square pixels. Each smallest pixel cluster must survive nearest-neighbor reduction to 32x32. No smooth painting, no anti-aliasing, no lighting gradients, no bevelled border, no cast shadow, no text, no labels, no scenery, no UI, no decorative frame. Subtle texture contrast so character sprites remain readable. Light comes from upper left. Tileable in both horizontal and vertical directions. Original art, no existing game image copying.",
+      "source_path": "terrain/grass.png",
+      "generation_file": "exec-1de5717a-0810-4c7a-9b58-0609c0511d6f.png"
+    },
+    {
+      "id": "path",
+      "subject": "warm ochre compacted earth footpath, tiny sand grains and sparse pebble clusters, no grass edge or road border",
+      "prompt": "Create ONE original production pixel-art terrain texture for a warm isometric tactical JRPG. Subject: warm ochre compacted earth footpath, tiny sand grains and sparse pebble clusters, no grass edge or road border. This is a seamless flat SQUARE material swatch, viewed straight on with NO perspective, filling the ENTIRE square edge to edge, no transparent margins. It will be sampled by an isometric tile renderer. Restrained palette, hand-placed crisp square pixel clusters at a logical 32x32-pixel texture resolution, rendered up with large uniform square pixels. Each smallest pixel cluster must survive nearest-neighbor reduction to 32x32. No smooth painting, no anti-aliasing, no lighting gradients, no bevelled border, no cast shadow, no text, no labels, no scenery, no UI, no decorative frame. Subtle texture contrast so character sprites remain readable. Light comes from upper left. Tileable in both horizontal and vertical directions. Original art, no existing game image copying.",
+      "source_path": "terrain/path.png",
+      "generation_file": "exec-5ddcc91a-c79d-436b-bd95-c876a2324847.png"
+    },
+    {
+      "id": "stone",
+      "subject": "weathered warm pale limestone paving, irregular hand-set cobbles with thin dark mossy joints, no giant cracks or standalone objects",
+      "prompt": "Create ONE original production pixel-art terrain texture for a warm isometric tactical JRPG. Subject: weathered warm pale limestone paving, irregular hand-set cobbles with thin dark mossy joints, no giant cracks or standalone objects. This is a seamless flat SQUARE material swatch, viewed straight on with NO perspective, filling the ENTIRE square edge to edge, no transparent margins. It will be sampled by an isometric tile renderer. Restrained palette, hand-placed crisp square pixel clusters at a logical 32x32-pixel texture resolution, rendered up with large uniform square pixels. Each smallest pixel cluster must survive nearest-neighbor reduction to 32x32. No smooth painting, no anti-aliasing, no lighting gradients, no bevelled border, no cast shadow, no text, no labels, no scenery, no UI, no decorative frame. Subtle texture contrast so character sprites remain readable. Light comes from upper left. Tileable in both horizontal and vertical directions. Original art, no existing game image copying.",
+      "source_path": "terrain/stone.png",
+      "generation_file": "exec-3de06d0f-e4bd-45ac-bf39-ccba06bf1677.png"
+    },
+    {
+      "id": "wall",
+      "subject": "warm ochre limestone retaining-wall masonry, horizontal courses of irregular chunky stones, thin mossy mortar joints, a few dark weathered cracks",
+      "prompt": "Create ONE original production pixel-art terrain texture for a warm isometric tactical JRPG. Subject: warm ochre limestone retaining-wall masonry, horizontal courses of irregular chunky stones, thin mossy mortar joints, a few dark weathered cracks. This is a seamless flat SQUARE material swatch, viewed straight on with NO perspective, filling the ENTIRE square edge to edge, no transparent margins. It will be sampled by an isometric tile renderer. Restrained palette, hand-placed crisp square pixel clusters at a logical 32x32-pixel texture resolution, rendered up with large uniform square pixels. Each smallest pixel cluster must survive nearest-neighbor reduction to 32x32. No smooth painting, no anti-aliasing, no lighting gradients, no bevelled border, no cast shadow, no text, no labels, no scenery, no UI, no decorative frame. Subtle texture contrast so character sprites remain readable. Light comes from upper left. Tileable in both horizontal and vertical directions. Original art, no existing game image copying.",
+      "source_path": "terrain/wall.png",
+      "generation_file": "exec-d3955ada-938f-49a2-b0bf-ceff76ab0948.png"
+    },
+    {
+      "id": "water",
+      "subject": "clear turquoise water surface with dark teal depth patches and small sparse pale cyan wave clusters, no shore or land, no perspective reflections",
+      "prompt": "Create ONE original production pixel-art terrain texture for a warm isometric tactical JRPG. Subject: clear turquoise water surface with dark teal depth patches and small sparse pale cyan wave clusters, no shore or land, no perspective reflections. This is a seamless flat SQUARE material swatch, viewed straight on with NO perspective, filling the ENTIRE square edge to edge, no transparent margins. It will be sampled by an isometric tile renderer. Restrained palette, hand-placed crisp square pixel clusters at a logical 32x32-pixel texture resolution, rendered up with large uniform square pixels. Each smallest pixel cluster must survive nearest-neighbor reduction to 32x32. No smooth painting, no anti-aliasing, no lighting gradients, no bevelled border, no cast shadow, no text, no labels, no scenery, no UI, no decorative frame. Subtle texture contrast so character sprites remain readable. Light comes from upper left. Tileable in both horizontal and vertical directions. Original art, no existing game image copying.",
+      "source_path": "terrain/water.png",
+      "generation_file": "exec-d89a636d-d5e8-4e27-8f44-1d747090dba3.png"
+    }
+  ],
+  "props": [
+    {
+      "id": "crate",
+      "subject": "one sturdy closed wooden shipping crate with diagonal plank bracing, warm oak boards and dark iron corner braces; squat cubic form occupying ONE 32x16 isometric tile; no treasure motif, no lock icon",
+      "frame_size": "32x32",
+      "prompt": "Create ONE original production pixel-art environment sprite: one sturdy closed wooden shipping crate with diagonal plank bracing, warm oak boards and dark iron corner braces; squat cubic form occupying ONE 32x16 isometric tile; no treasure motif, no lock icon. Fully transparent background, entire object visible with generous margin, no cut-off edges. Tactical JRPG 3/4 isometric view, 2:1 diamond ground projection, left face softly lit and right face darker, light from upper left. Match the references only for warm pixel-art palette and deliberate large square pixel clusters, no character or terrain copying. Design for actual normalization into a 32x32-pixel transparent game frame. Strong readable silhouette at native size, hand-placed chunky pixel details, clean dark outlines, no anti-aliasing, no smooth painting, no glow. One object only centered in the image, no separate objects, no ground plane, no cast shadow outside the object, no scenery, no text, no labels, no grid, no UI. Original game asset, not concept illustration.",
+      "source_path": "terrain/crate.png",
+      "generation_file": "exec-6dad3027-b5d4-4077-b16b-7e7d61a915f2.png"
+    },
+    {
+      "id": "rock",
+      "subject": "one compact rolling boulder, irregular round gray-blue stone with warm ochre planes, a few large readable chipped facets; occupies ONE isometric tile, no moss that confuses its movable silhouette",
+      "frame_size": "32x32",
+      "prompt": "Create ONE original production pixel-art environment sprite: one compact rolling boulder, irregular round gray-blue stone with warm ochre planes, a few large readable chipped facets; occupies ONE isometric tile, no moss that confuses its movable silhouette. Fully transparent background, entire object visible with generous margin, no cut-off edges. Tactical JRPG 3/4 isometric view, 2:1 diamond ground projection, left face softly lit and right face darker, light from upper left. Match the references only for warm pixel-art palette and deliberate large square pixel clusters, no character or terrain copying. Design for actual normalization into a 32x32-pixel transparent game frame. Strong readable silhouette at native size, hand-placed chunky pixel details, clean dark outlines, no anti-aliasing, no smooth painting, no glow. One object only centered in the image, no separate objects, no ground plane, no cast shadow outside the object, no scenery, no text, no labels, no grid, no UI. Original game asset, not concept illustration.",
+      "source_path": "terrain/rock.png",
+      "generation_file": "exec-80b8a248-530c-44db-b962-d0bfcc1bf8af.png"
+    },
+    {
+      "id": "tree",
+      "subject": "one lush small broadleaf tree with warm green and olive foliage in three distinct chunky leaf masses, visible dark brown trunk and roots; canopy fits one tile width and has an upright compact silhouette, no grass mound",
+      "frame_size": "32x48",
+      "prompt": "Create ONE original production pixel-art environment sprite: one lush small broadleaf tree with warm green and olive foliage in three distinct chunky leaf masses, visible dark brown trunk and roots; canopy fits one tile width and has an upright compact silhouette, no grass mound. Fully transparent background, entire object visible with generous margin, no cut-off edges. Tactical JRPG 3/4 isometric view, 2:1 diamond ground projection, left face softly lit and right face darker, light from upper left. Match the references only for warm pixel-art palette and deliberate large square pixel clusters, no character or terrain copying. Design for actual normalization into a 32x48-pixel transparent game frame. Strong readable silhouette at native size, hand-placed chunky pixel details, clean dark outlines, no anti-aliasing, no smooth painting, no glow. One object only centered in the image, no separate objects, no ground plane, no cast shadow outside the object, no scenery, no text, no labels, no grid, no UI. Original game asset, not concept illustration.",
+      "source_path": "terrain/tree.png",
+      "first_source_path": "terrain/tree_first.png",
+      "correction_prompt": "Edit this exact tree sprite. Remove ALL soft glow, haze, bloom and semitransparent colored halo surrounding it. Preserve the same original tree shape, leaf clusters, palette, trunk, roots, pixel scale and detail. Outside the crisp hard pixel silhouette must be perfectly transparent with alpha zero. Every edge must be a clean stair-step pixel edge. No shadow or background. Keep the entire tree visible and otherwise unchanged. Production pixel-art sprite, fully transparent background.",
+      "generation_file": "exec-ad7f03a1-4bd1-4e8d-abad-662559249c2c.png",
+      "first_generation_file": "exec-8388f08b-a708-4309-8066-33b54059af92.png"
+    },
+    {
+      "id": "ruin_wall",
+      "subject": "one low broken limestone wall segment with warm ochre masonry, cracked uneven top and a few tiny moss tufts; compact chunky isometric one-tile footprint; no archway, no opening, clearly solid and impassable",
+      "frame_size": "32x32",
+      "prompt": "Create ONE original production pixel-art environment sprite: one low broken limestone wall segment with warm ochre masonry, cracked uneven top and a few tiny moss tufts; compact chunky isometric one-tile footprint; no archway, no opening, clearly solid and impassable. Fully transparent background, entire object visible with generous margin, no cut-off edges. Tactical JRPG 3/4 isometric view, 2:1 diamond ground projection, left face softly lit and right face darker, light from upper left. Match the references only for warm pixel-art palette and deliberate large square pixel clusters, no character or terrain copying. Design for actual normalization into a 32x32-pixel transparent game frame. Strong readable silhouette at native size, hand-placed chunky pixel details, clean dark outlines, no anti-aliasing, no smooth painting, no glow. One object only centered in the image, no separate objects, no ground plane, no cast shadow outside the object, no scenery, no text, no labels, no grid, no UI. Original game asset, not concept illustration.",
+      "source_path": "terrain/ruin_wall.png",
+      "generation_file": "exec-f7978332-b0b7-4293-901f-be1aa6cbe0bf.png"
+    },
+    {
+      "id": "cottage",
+      "subject": "one small original timber-and-limestone cottage with weathered deep blue slate gabled roof, cream plaster panels, brown structural beams, one simple wooden front door and tiny dark windows; clear TWO by TWO tile isometric footprint, 2:1 ground plane, no surrounding yard or platform",
+      "frame_size": "64x64",
+      "prompt": "Create ONE original production pixel-art environment sprite: one small original timber-and-limestone cottage with weathered deep blue slate gabled roof, cream plaster panels, brown structural beams, one simple wooden front door and tiny dark windows; clear TWO by TWO tile isometric footprint, 2:1 ground plane, no surrounding yard or platform. Fully transparent background, entire object visible with generous margin, no cut-off edges. Tactical JRPG 3/4 isometric view, 2:1 diamond ground projection, left face softly lit and right face darker, light from upper left. Match the references only for warm pixel-art palette and deliberate large square pixel clusters, no character or terrain copying. Design for actual normalization into a 64x64-pixel transparent game frame. Strong readable silhouette at native size, hand-placed chunky pixel details, clean dark outlines, no anti-aliasing, no smooth painting, no glow. One object only centered in the image, no separate objects, no ground plane, no cast shadow outside the object, no scenery, no text, no labels, no grid, no UI. Original game asset, not concept illustration.",
+      "source_path": "terrain/cottage.png",
+      "generation_file": "exec-f94dd8e1-2cfe-47f6-a66c-4b2957983a6c.png"
+    }
+  ],
+  "normalization": {
+    "atlas": [
+      512,
+      32
+    ],
+    "logical_tile": [
+      32,
+      16
+    ],
+    "physical_to_logical": 0.5,
+    "resampling": "nearest",
+    "alpha_threshold": 128,
+    "pivot": "bottom center at height - 8 physical pixels",
+    "material_order": [
+      "grass",
+      "path",
+      "stone",
+      "water"
+    ],
+    "variants": 2
+  }
+}

@@ -83,37 +83,6 @@ static func hit_chance(attack_bonus: int, armor_class: int, mode: RollMode) -> f
 	return normal
 
 
-static func attack_preview(
-	attacker: CombatUnit, target: CombatUnit, units: Array[CombatUnit]
-) -> AttackPreview:
-	var preview: AttackPreview = AttackPreview.new()
-	if (attacker == null or target == null or attacker.is_ally == target.is_ally
-		or attacker.hit_points <= 0 or target.hit_points <= 0):
-		return preview
-	preview.valid_target = true
-	if attacker.is_stunned:
-		preview.blocked_reason = "기절하여 공격 불가"
-	var distance: int = CombatHexGrid.distance(attacker.cell, target.cell)
-	preview.in_range = distance >= 1 and distance <= attacker.get_attack_range()
-	var advantages: int = 0
-	var disadvantages: int = 0
-	if target.is_stunned:
-		advantages = 1
-		preview.reasons.append("기절한 대상")
-	if attacker.kind == CombatUnit.Kind.ARCHER:
-		for unit: CombatUnit in units:
-			var adjacent_distance: int = CombatHexGrid.distance(attacker.cell, unit.cell)
-			if (unit.is_ally != attacker.is_ally and unit.hit_points > 0 and not unit.is_stunned
-				and adjacent_distance == 1):
-				disadvantages = 1
-				preview.reasons.append("옆에 적")
-				break
-	preview.mode = roll_mode(advantages, disadvantages)
-	if preview.in_range and preview.blocked_reason.is_empty():
-		preview.chance = hit_chance(attacker.get_attack_bonus(), target.get_armor_class(), preview.mode)
-	return preview
-
-
 static func _roll_d20(mode: RollMode, dice: CombatDice) -> RollResult:
 	var result: RollResult = RollResult.new()
 	result.mode = mode

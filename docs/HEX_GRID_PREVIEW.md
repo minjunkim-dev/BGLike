@@ -1,6 +1,8 @@
 # Issue #53 헥사 격자 시안
 
-기준: [Issue #53](https://github.com/minjunkim-dev/BGLike/issues/53), [게임 구조 기획서 6~7장](GAME_STRUCTURE.md#6-헥사-격자).
+> **대체된 기록입니다.** 2026-10-18 [Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136)에서 전투 격자를 높이 있는 사각 타일로 바꿨습니다. 현재 기준은 [게임 구조 기획서 6장](GAME_STRUCTURE.md#6-사각-높이-격자)입니다. 아래 내용은 당시 승인 기록으로 남깁니다.
+
+기준: [Issue #53](https://github.com/minjunkim-dev/BGLike/issues/53), 게임 구조 기획서 6~7장(당시 헥사 격자).
 개발 기준 커밋: `6cfaaa0e24016964602f62b0cf07e48dc4290860`.
 
 ## 시안 값

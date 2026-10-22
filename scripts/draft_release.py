@@ -60,8 +60,9 @@ def inputs(version, sha):
         raise ValueError("Expected full lowercase commit SHA")
 
 
-def eligibility(api, version, sha):
-    inputs(version, sha)
+def main_source(api, sha):
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise ValueError("Expected full lowercase commit SHA")
     if api.request("GET", "").get("default_branch") != "main":
         raise ValueError("Unexpected default branch")
     if api.request("GET", f"commits/{sha}").get("sha") != sha:
@@ -69,6 +70,11 @@ def eligibility(api, version, sha):
     comparison = api.request("GET", f"compare/{sha}...main")
     if comparison.get("status") not in {"ahead", "identical"} or comparison.get("merge_base_commit", {}).get("sha") != sha:
         raise ValueError("Source is not contained in main")
+
+
+def eligibility(api, version, sha):
+    inputs(version, sha)
+    main_source(api, sha)
     workflow = api.request("GET", "actions/workflows/godot.yml")
     if workflow.get("state") != "active" or workflow.get("path") != ".github/workflows/godot.yml":
         raise ValueError("Trusted CI workflow unavailable")
@@ -93,6 +99,66 @@ def eligibility(api, version, sha):
     if any(release.get("tag_name") == version or release.get("name") == version for release in api.all("releases")):
         raise ValueError("Draft or release version collision")
     return run["id"]
+
+
+def check_source(api, version, sha, output):
+    run_id = eligibility(api, version, sha)
+    with output.open("a", encoding="utf-8") as stream:
+        stream.write(f"source-sha={sha}\nversion={version}\n")
+    return run_id
+
+
+def write_request(api, version, sha, directory, run_id, attempt, request_sha):
+    if type(run_id) is not int or run_id < 1 or type(attempt) is not int or attempt < 1:
+        raise ValueError("Invalid request identity")
+    main_source(api, request_sha)
+    eligibility(api, version, sha)
+    record = {"version": version, "source_sha": sha, "request_run_id": run_id,
+              "request_attempt": attempt, "request_sha": request_sha}
+    directory.mkdir(parents=True)
+    (directory / "request.json").write_text(json.dumps(record, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def request_artifact(api, run_id, attempt):
+    if type(run_id) is not int or run_id < 1 or type(attempt) is not int or attempt < 1:
+        raise ValueError("Invalid request identity")
+    workflow = api.request("GET", "actions/workflows/draft-release.yml")
+    if workflow.get("state") != "active" or workflow.get("path") != ".github/workflows/draft-release.yml":
+        raise ValueError("Trusted request workflow unavailable")
+    run = api.request("GET", f"actions/runs/{run_id}")
+    expected = {"id": run_id, "run_attempt": attempt, "workflow_id": workflow["id"],
+                "event": "workflow_dispatch", "head_branch": "main", "status": "completed", "conclusion": "success"}
+    if any(run.get(key) != value for key, value in expected.items()) or run.get("head_repository", {}).get("full_name") != api.repo:
+        raise ValueError("Untrusted request run")
+    main_source(api, run["head_sha"])
+    result = api.request("GET", f"actions/runs/{run_id}/artifacts?per_page=100")
+    count, items = result.get("total_count"), result.get("artifacts")
+    if type(count) is not int or not 0 <= count <= 100 or not isinstance(items, list) or len(items) != count:
+        raise ValueError("Incomplete or excessive request artifact response")
+    artifacts = [item for item in items if item.get("name") == f"verification-request-{attempt}"]
+    if len(artifacts) != 1:
+        raise ValueError("Request artifact missing or duplicated")
+    artifact = artifacts[0]
+    provenance = artifact.get("workflow_run", {})
+    if type(artifact.get("id")) is not int or artifact["id"] < 1 or artifact.get("expired") is not False or any(
+            provenance.get(key) != value for key, value in {"id": run_id, "head_branch": "main", "head_sha": run["head_sha"]}.items()):
+        raise ValueError("Request artifact provenance mismatch")
+    return run, artifact
+
+
+def read_request(api, directory, run_id, attempt):
+    run, _ = request_artifact(api, run_id, attempt)
+    path = directory / "request.json"
+    if {item.name for item in directory.iterdir()} != {"request.json"} or path.is_symlink() or not path.is_file() or path.stat().st_size > 4096:
+        raise ValueError("Unexpected request files")
+    record = json.loads(path.read_text(encoding="utf-8"))
+    fields = {"version": str, "source_sha": str, "request_run_id": int, "request_attempt": int, "request_sha": str}
+    if not isinstance(record, dict) or set(record) != set(fields) or any(type(record[key]) is not kind for key, kind in fields.items()):
+        raise ValueError("Invalid request schema")
+    if (record["request_run_id"], record["request_attempt"], record["request_sha"]) != (run_id, attempt, run["head_sha"]):
+        raise ValueError("Request identity mismatch")
+    inputs(record["version"], record["source_sha"])
+    return record["version"], record["source_sha"]
 
 
 def verify_bundle(directory, version, sha, engine_hash):
@@ -158,20 +224,40 @@ def create_draft(api, directory, version, sha, engine_hash):
     return release_id
 
 
+def create_requested_draft(api, request, run_id, attempt, directory, engine_hash):
+    version, sha = read_request(api, request, run_id, attempt)
+    return create_draft(api, directory, version, sha, engine_hash)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=["check", "create"])
+    parser.add_argument("mode", choices=["request", "locate", "check", "create"])
+    parser.add_argument("--request", type=Path)
     parser.add_argument("--artifact", type=Path)
     args = parser.parse_args()
+    if args.mode != "locate" and args.request is None:
+        parser.error("--request is required")
+    if args.mode == "create" and args.artifact is None:
+        parser.error("--artifact is required")
     try:
-        if os.environ.get("GITHUB_REF") != "refs/heads/main" or os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch":
-            raise ValueError("Draft workflow must run from main by manual dispatch")
-        version, sha = os.environ["RELEASE_VERSION"], os.environ["SOURCE_SHA"]
+        event = "workflow_dispatch" if args.mode == "request" else "workflow_run"
+        if os.environ.get("GITHUB_REF") != "refs/heads/main" or os.environ.get("GITHUB_EVENT_NAME") != event:
+            raise ValueError("Unexpected Draft workflow event or ref")
         api = GitHub(os.environ["GITHUB_REPOSITORY"], os.environ["GH_TOKEN"])
-        if args.mode == "check":
-            print(f"Eligible CI run: {eligibility(api, version, sha)}")
+        if args.mode == "request":
+            write_request(api, os.environ["RELEASE_VERSION"], os.environ["SOURCE_SHA"], args.request,
+                          int(os.environ["GITHUB_RUN_ID"]), int(os.environ["GITHUB_RUN_ATTEMPT"]), os.environ["GITHUB_SHA"])
         else:
-            config = dict(line.split("=", 1) for line in Path("scripts/godot.env").read_text().splitlines() if line and not line.startswith("#"))
-            print(f"Unpublished Draft ID: {create_draft(api, args.artifact, version, sha, config['GODOT_LINUX_X86_64_SHA256'])}")
+            run_id, attempt = int(os.environ["REQUEST_RUN_ID"]), int(os.environ["REQUEST_RUN_ATTEMPT"])
+            if args.mode == "locate":
+                _, artifact = request_artifact(api, run_id, attempt)
+                with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as stream:
+                    stream.write(f"artifact-id={artifact['id']}\n")
+            elif args.mode == "check":
+                version, sha = read_request(api, args.request, run_id, attempt)
+                print(f"Eligible CI run: {check_source(api, version, sha, Path(os.environ['GITHUB_OUTPUT']))}")
+            else:
+                config = dict(line.split("=", 1) for line in Path("scripts/godot.env").read_text().splitlines() if line and not line.startswith("#"))
+                print(f"Unpublished Draft ID: {create_requested_draft(api, args.request, run_id, attempt, args.artifact, config['GODOT_LINUX_X86_64_SHA256'])}")
     except (ValueError, OSError, KeyError, TypeError, zipfile.BadZipFile, urllib.error.URLError):
         raise SystemExit("Draft validation failed; inspect any partially created Draft manually. No cleanup or publication was attempted.")

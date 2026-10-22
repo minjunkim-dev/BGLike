@@ -3,6 +3,9 @@ extends Node2D
 
 const MOVE_STEP_TIME: float = 0.09
 const ARROW_FLIGHT_TIME: float = 0.16
+const ENEMY_PAUSE_TIME: float = 0.35
+## 적 턴에 Space를 누르고 있는 동안의 시간 배율. 규칙이 아니라 표시 속도다.
+const ENEMY_FAST_SPEED: float = 4.0
 
 @export var stages: Array[CombatStage] = []
 
@@ -15,17 +18,15 @@ var turns: CombatTurns = CombatTurns.new()
 var actions: CombatActions = CombatActions.new()
 var enemy_ai: CombatEnemyAi = CombatEnemyAi.new()
 var _enemy_turn_running: bool = false
-var preview_target: CombatUnit
-var selected_action: String = "attack"
-var preview_cell: Vector2i = Vector2i(-1, -1)
-var preview_path: Array[Vector2i] = []
+var _enemy_shown: bool = false
+var _enemy_acted: bool = false
+var selection: CombatSelection = CombatSelection.new()
 var movement_cells: Array[Vector2i] = []
 var _last_ally: CombatUnit
-var _inspected_unit: CombatUnit
 var loot: CombatLoot = CombatLoot.new()
 var preparation: CombatPreparation
 
-@onready var map: TileMapLayer = $Map
+@onready var map: CombatMap = $Map
 @onready var camera: Camera2D = $Camera
 @onready var hud: CombatTurnHud = $UI/TurnHud
 
@@ -48,18 +49,26 @@ func _ready() -> void:
 	hud.restart_requested.connect(_restart)
 	actions.changed.connect(_on_actions_changed)
 	actions.logged.connect(hud.add_log)
-	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void: unit.show_feedback(text))
+	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+		# 공격 판정 팝업만 실제 d20 굴림을 받아 유리·불리 주사위를 보인다.
+		var roll: CombatChecks.RollResult = actions.last_attack if (actions.last_attack != null
+			and text == tr("공격 %d") % actions.last_attack.total) else null
+		unit.show_feedback(text, hud.feedback_obstacles(), roll))
 	actions.hit_landed.connect($HitSound.play)
 	actions.reaction_requested.connect(hud.show_reaction)
 	actions.movement_animation = _animate_movement
+	actions.jump_animation = _animate_jump
 	actions.attack_animation = _animate_attack
 	turns.changed.connect(_on_turn_changed)
+	turns.order_rotated.connect(hud.prepare_order_rotation)
 	_start_stage(true)
 
 
 func _exit_tree() -> void:
 	actions.movement_animation = Callable()
+	actions.jump_animation = Callable()
 	actions.attack_animation = Callable()
+	Engine.time_scale = 1.0
 
 
 func _start_stage(restore_act: bool) -> void:
@@ -78,18 +87,16 @@ func _start_stage(restore_act: bool) -> void:
 			child.free()
 	units = party.duplicate()
 	map_size = stage.map_size
-	map.clear()
-	map.tile_set = stage.tile_set
-	actions.map_size = map_size
-	for x: int in range(map_size.x):
-		for y: int in range(map_size.y):
-			map.set_cell(Vector2i(x, y), 0, Vector2i((x + y) % 2, 0))
+	actions.grid.map_size = map_size
+	actions.grid.heights = stage.heights.duplicate()
+	actions.grid.pits = stage.pits.duplicate()
+	actions.grid.blocked_cells = stage.get_blocked_cells()
+	actions.grid.water_cells = stage.water_cells.duplicate()
+	map.build_grid(actions.grid, stage.tile_set, stage)
 	for index: int in range(party.size()):
 		party[index].cell = stage.ally_cells[index]
 		party[index].facing_left = false
 	var enemies: Node = stage.enemies.instantiate()
-	for child: Node in enemies.get_children():
-		(child as CombatUnit).act_number = progress.act_number()
 	$Units.add_child(enemies)
 	for child: Node in enemies.get_children():
 		var unit: CombatUnit = child as CombatUnit
@@ -98,9 +105,7 @@ func _start_stage(restore_act: bool) -> void:
 	enemies.free()
 	camera.position = (map.map_to_local(Vector2i.ZERO)
 		+ map.map_to_local(map_size - Vector2i.ONE)) / 2.0
-	_inspected_unit = null
-	_clear_preview()
-	selected_action = "attack"
+	selection.reset()
 	hud.begin_stage(progress.act_number(), progress.stage_in_act())
 	actions.initialize(units, turns)
 	var dice: CombatDice = CombatDice.new()
@@ -111,6 +116,12 @@ func _start_stage(restore_act: bool) -> void:
 			living.append(unit)
 	_last_ally = living[0]
 	turns.start(living, dice)
+	for cell: Vector2i in stage.crate_cells:
+		var prop: CombatGrid.Prop = actions.create_prop(cell, "crate")
+		assert(prop != null, "나무 상자 시작 칸이 유효하지 않습니다: %s %s" % [stage.resource_path, cell])
+	for cell: Vector2i in stage.rock_cells:
+		var prop: CombatGrid.Prop = actions.create_prop(cell, "rock")
+		assert(prop != null, "바위 시작 칸이 유효하지 않습니다: %s %s" % [stage.resource_path, cell])
 
 
 func _restart() -> void:
@@ -138,6 +149,9 @@ func _finish_preparation() -> void:
 
 
 func _process(_delta: float) -> void:
+	# 반응 확인 창은 가속과 관계없이 보통 속도로 선택을 기다린다.
+	Engine.time_scale = ENEMY_FAST_SPEED if (_enemy_turn_running and not hud.reaction_dialog.visible
+		and Input.is_key_pressed(KEY_SPACE)) else 1.0
 	var actor: CombatUnit = turns.current_unit
 	if (actor != null and not actor.is_ally and not actions.busy
 		and not actions.is_over() and not _enemy_turn_running):
@@ -146,7 +160,8 @@ func _process(_delta: float) -> void:
 
 func _play_enemy_turn(actor: CombatUnit) -> void:
 	_enemy_turn_running = true
-	await _pause_enemy_action()
+	_enemy_shown = false
+	_enemy_acted = false
 	await enemy_ai.play_turn(actor, actions, _pause_enemy_action)
 	if not actions.is_over() and turns.current_unit == actor:
 		turns.end_turn()
@@ -154,21 +169,31 @@ func _play_enemy_turn(actor: CombatUnit) -> void:
 	_update_turn_ui()
 
 
+## 이동·공격하지 않은 적 행동 뒤에는 기다리지 않는다.
 func _pause_enemy_action() -> void:
-	if actions.is_over():
+	if actions.is_over() or not _enemy_acted:
 		return
-	await get_tree().create_timer(0.35).timeout
+	_enemy_acted = false
+	await get_tree().create_timer(ENEMY_PAUSE_TIME).timeout
+
+
+## 적 턴의 첫 이동·공격 연출 전에 한 번 멈춰 행동할 적을 보여 준다.
+func _show_enemy_action() -> void:
+	if not _enemy_turn_running:
+		return
+	_enemy_acted = true
+	if not _enemy_shown:
+		_enemy_shown = true
+		await get_tree().create_timer(ENEMY_PAUSE_TIME).timeout
 
 
 func _on_unit_selected(unit: CombatUnit) -> void:
 	if actions.busy or actions.is_over() or unit not in units or unit.hit_points <= 0:
 		return
-	_clear_preview()
-	if selected_action == "move":
-		selected_action = "attack"
+	selection.clear_preview()
 	# 조작 가능한 아군만 전환한다. 다른 초상은 정보만 표시한다.
 	turns.select_unit(unit)
-	_inspected_unit = unit
+	selection.inspect(unit)
 	_update_turn_ui()
 
 
@@ -182,15 +207,52 @@ func _on_action_selected(action: String) -> void:
 	var actor: CombatUnit = turns.current_unit
 	if actor == null or not actor.is_ally or not actions.can_use(actor, action):
 		return
-	_inspected_unit = null
-	if action == selected_action and action in CombatActionRules.SELF_TARGET:
-		_clear_preview()
+	if selection.select_action(action):
 		actions.use_self(actor, action)
-		selected_action = "attack"
-	else:
-		selected_action = action
-		_clear_preview()
+		selection.finish_execution()
 	_update_turn_ui()
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.keycode == KEY_SPACE and not actions.is_over():
+		# Space는 적 턴 가속 키다. 포커스된 버튼(턴 종료 등)을 누르지 않게 소비한다.
+		get_viewport().set_input_as_handled()
+		return
+	# 숫자 키 1~9는 스킬 바의 버튼을 왼쪽부터 고른다. 자판 배열과 관계없이 윗줄 숫자 자리를 쓴다.
+	if event is InputEventKey and event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_9:
+		if event.pressed and not event.echo and _ally_input_open():
+			get_viewport().set_input_as_handled()
+			hud.focus_action_slot(event.physical_keycode - KEY_1, true)
+		return
+	# 포커스가 없으면 좌우 방향키·D-pad가 스킬 바의 첫 버튼으로 들어간다.
+	if ((event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"))
+		and get_viewport().gui_get_focus_owner() == null and _ally_input_open()):
+		get_viewport().set_input_as_handled()
+		hud.focus_action_slot(0, false)
+		return
+	if event is not InputEventKey or event.keycode != KEY_TAB or preparation.visible:
+		return
+	# GUI보다 먼저 소비해 전투 중 기본 Tab 포커스 이동을 막는다.
+	get_viewport().set_input_as_handled()
+	if not event.pressed or event.echo or not _ally_input_open():
+		return
+	var actor: CombatUnit = turns.current_unit
+	var group: Array[CombatUnit] = turns.get_current_group()
+	var index: int = group.find(actor)
+	var direction: int = -1 if event.shift_pressed else 1
+	for step: int in range(1, group.size() + 1):
+		var unit: CombatUnit = group[wrapi(index + step * direction, 0, group.size())]
+		if turns.select_unit(unit):
+			selection.inspect(unit)
+			_update_turn_ui()
+			return
+
+
+## 아군 턴의 키보드 조작을 받을 수 있는지. 연출·반응 확인·결과·정비 화면에서는 잠근다.
+func _ally_input_open() -> bool:
+	var actor: CombatUnit = turns.current_unit
+	return (actor != null and actor.is_ally and not actions.busy and not actions.is_over()
+		and not hud.reaction_dialog.visible and not hud.get_node("Result").visible and not preparation.visible)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -200,55 +262,67 @@ func _unhandled_input(event: InputEvent) -> void:
 	if actions.busy or actions.is_over():
 		return
 	var world_position: Vector2 = get_canvas_transform().affine_inverse() * event.position
-	var cell: Vector2i = map.local_to_map(map.to_local(world_position))
+	var cell: Vector2i = map.surface_to_map(map.to_local(world_position))
 	var actor: CombatUnit = turns.current_unit
 	if actor == null or not actor.is_ally:
 		return
-	_inspected_unit = null
+	selection.begin_field_input(event.button_index == MOUSE_BUTTON_LEFT)
 	# 우클릭은 몸통에 가려진 칸도 격자 위치로 이동 판정한다.
 	if event.button_index == MOUSE_BUTTON_RIGHT:
 		get_viewport().set_input_as_handled()
 		await _select_move_cell(cell)
 		return
-	if selected_action == "move":
-		selected_action = "attack"
-		_clear_preview()
 	var candidates: Array[CombatUnit] = []
 	for unit: CombatUnit in units:
-		if unit.hit_points > 0 and Rect2(-7, -20, 14, 22).has_point(unit.to_local(world_position)):
+		if unit.hit_points > 0 and unit.contains_body_point(unit.to_local(world_position)):
 			candidates.append(unit)
 	candidates.sort_custom(func(a: CombatUnit, b: CombatUnit) -> bool:
 		if a.position.y != b.position.y:
 			return a.position.y > b.position.y
 		return a.get_index() > b.get_index()
 	)
+	var prop: CombatGrid.Prop = map.prop_at_point(map.to_local(world_position))
+	# 윤곽이 보이는 가린 유닛은 몸통 클릭이 동작할 때만 앞 사물보다 우선한다.
+	var unit_first: bool = not candidates.is_empty() and candidates[0].is_occluded and (
+		not candidates[0].is_ally or selection.selected_action == "shove")
+	if prop != null and not unit_first and (candidates.is_empty()
+			or map.map_to_local(prop.cell).y >= candidates[0].position.y):
+		get_viewport().set_input_as_handled()
+		if selection.select_prop(prop, selection.selected_action == "attack" and actions.can_attack_prop(actor, prop)):
+			selection.begin_execution()
+			actions.busy = true
+			await _animate_attack_at(actor, map.map_to_surface(prop.cell) + Vector2(0, -8))
+			actions.busy = false
+			actions.attack_prop(actor, prop)
+			selection.finish_execution()
+		_update_turn_ui()
+		return
 	if not candidates.is_empty():
 		var unit: CombatUnit = candidates[0]
 		get_viewport().set_input_as_handled()
-		if unit == preview_target and actions.can_target(turns.current_unit, unit, selected_action):
+		if unit.is_ally and selection.selected_action != "shove":
+			selection.clear_preview()
+		elif selection.select_target(unit, actions.can_target(actor, unit, selection.selected_action)):
 			await _execute_target(unit)
-		elif not preview_enemy(unit):
-			_clear_preview()
-			_update_turn_ui()
+		_update_turn_ui()
 		return
-	_clear_preview()
+	selection.clear_preview()
 	_update_turn_ui()
 
 
 func _select_move_cell(cell: Vector2i) -> void:
 	var actor: CombatUnit = turns.current_unit
-	selected_action = "move"
-	if actor != null and actor.is_ally and actions.can_move(actor, cell):
-		if cell == preview_cell:
-			_clear_preview()
-			if await actions.move_to(actor, cell):
-				selected_action = "attack"
-		else:
-			_clear_preview()
-			preview_cell = cell
-			preview_path = actions.path_to(actor, cell)
-	else:
-		_clear_preview()
+	var path: Array[Vector2i] = []
+	var jumping: bool = selection.selected_action == "jump"
+	if actor != null and actor.is_ally:
+		if jumping and actions.jump_cells(actor).has(cell):
+			path = actions.grid.jump_path(actor, cell)
+		elif not jumping and actions.can_move(actor, cell):
+			path = actions.grid.path_to(actor, cell)
+	if selection.select_move(cell, path):
+		var executed: bool = await actions.jump_to(actor, cell) if jumping else await actions.move_to(actor, cell)
+		if executed:
+			selection.finish_execution()
 	_update_turn_ui()
 
 
@@ -256,8 +330,7 @@ func preview_enemy(target: CombatUnit) -> bool:
 	if (turns.current_unit == null or not turns.current_unit.is_ally
 		or target not in units or target.is_ally or target.hit_points <= 0):
 		return false
-	_clear_preview()
-	preview_target = target
+	selection.preview_unit(target)
 	_update_turn_ui()
 	return true
 
@@ -275,23 +348,13 @@ func _on_actions_changed() -> void:
 
 
 func _on_turn_changed() -> void:
-	_inspected_unit = null
-	_clear_preview()
-	selected_action = "attack"
+	selection.reset()
 	_update_turn_ui()
-
-
-func _clear_preview() -> void:
-	preview_target = null
-	preview_cell = Vector2i(-1, -1)
-	preview_path.clear()
-	queue_redraw()
 
 
 func _execute_target(target: CombatUnit) -> void:
 	var actor: CombatUnit = turns.current_unit
-	var action: String = selected_action
-	_clear_preview()
+	var action: String = selection.begin_execution()
 	match action:
 		"attack", "shock":
 			await actions.attack(actor, target, action == "shock")
@@ -299,16 +362,18 @@ func _execute_target(target: CombatUnit) -> void:
 			actions.mark(actor, target)
 		"shove":
 			actions.shove(actor, target)
-	selected_action = "attack"
+	selection.finish_execution()
 	_update_turn_ui()
 
 
 func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
+	await _show_enemy_action()
 	var destination: Vector2 = map.map_to_local(cell)
 	unit.face_toward(destination)
 	unit.is_moving = true
 	var tween: Tween = create_tween().set_parallel()
 	tween.tween_property(unit, "position", destination, MOVE_STEP_TIME)
+	tween.tween_property(unit, "floor_offset_y", map.map_to_surface(cell).y - destination.y, MOVE_STEP_TIME)
 	tween.tween_property(unit, "body_offset_y", -3.0, MOVE_STEP_TIME / 2.0)
 	tween.tween_property(unit, "body_offset_y", 0.0, MOVE_STEP_TIME / 2.0).from(-3.0).set_delay(MOVE_STEP_TIME / 2.0)
 	await tween.finished
@@ -317,9 +382,34 @@ func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
 	unit.is_moving = false
 
 
+func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
+	await _show_enemy_action()
+	var destination: Vector2 = map.map_to_local(cell)
+	var duration: float = MOVE_STEP_TIME * 2.0
+	var apex: float = -float(map.tile_set.tile_size.y)
+	unit.face_toward(destination)
+	unit.is_moving = true
+	var tween: Tween = create_tween().set_parallel()
+	tween.tween_property(unit, "position", destination, duration)
+	tween.tween_property(unit, "floor_offset_y", map.map_to_surface(cell).y - destination.y, duration)
+	tween.tween_property(unit, "body_offset_y", apex, duration / 2.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(unit, "body_offset_y", 0.0, duration / 2.0).from(apex).set_delay(duration / 2.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	await tween.finished
+	unit.position = destination
+	unit.body_offset_y = 0.0
+	unit.is_moving = false
+
+
 func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
-	actor.face_toward(target.position)
+	await _show_enemy_action()
+	await _animate_attack_at(actor, target.position + Vector2(0, target.floor_offset_y - 14))
+
+
+func _animate_attack_at(actor: CombatUnit, destination: Vector2) -> void:
+	actor.face_toward(destination)
+	actor.play_attack()
 	if actor.kind != CombatUnit.Kind.ARCHER:
+		await get_tree().create_timer(1.0 / 6.0).timeout
 		return
 	var arrow: Polygon2D = Polygon2D.new()
 	arrow.name = "Arrow"
@@ -328,76 +418,119 @@ func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
 	])
 	arrow.color = Color("efe4c8")
 	arrow.z_index = 1
-	arrow.position = actor.position + Vector2(0, -14)
-	arrow.rotation = (target.position - actor.position).angle()
+	arrow.position = actor.position + Vector2(-8 if actor.facing_left else 8, actor.floor_offset_y - 16)
+	arrow.rotation = (destination - arrow.position).angle()
 	add_child(arrow)
 	var tween: Tween = create_tween()
-	tween.tween_property(arrow, "position", target.position + Vector2(0, -14), ARROW_FLIGHT_TIME)
+	tween.tween_property(arrow, "position", destination, ARROW_FLIGHT_TIME)
 	await tween.finished
 	arrow.queue_free()
 
 
 func _update_turn_ui() -> void:
-	if _inspected_unit != null and _inspected_unit.hit_points <= 0:
-		_inspected_unit = null
+	selection.discard_incapacitated_inspection()
+	if selection.preview_prop != null and selection.preview_prop not in actions.get_props():
+		selection.clear_preview()
 	for unit: CombatUnit in units:
 		unit.has_mark = actions.is_marked(unit)
 		if not unit.is_moving:
 			unit.position = map.map_to_local(unit.cell)
+			unit.floor_offset_y = map.map_to_surface(unit.cell).y - unit.position.y
 		unit.visible = unit.hit_points > 0
 		unit.is_selected = unit == turns.current_unit
-		unit.is_previewed = unit == preview_target or (not preview_path.is_empty()
-			and actions.can_target(turns.current_unit, unit, "attack", preview_cell))
+		unit.is_previewed = unit == selection.preview_target or (not selection.preview_path.is_empty()
+			and actions.can_target(turns.current_unit, unit, "attack", selection.preview_cell))
 		unit.queue_redraw()
 	if turns.current_unit != null and turns.current_unit.is_ally:
 		_last_ally = turns.current_unit
 	var can_act: bool = actions.has_available_action(turns.current_unit)
 	hud.refresh(turns, can_act)
 	movement_cells.clear()
-	if selected_action == "move" and turns.current_unit != null and turns.current_unit.is_ally:
-		movement_cells.assign(actions.reachable_cells(turns.current_unit).keys())
-	if preview_target != null:
-		var preview: CombatChecks.AttackPreview = CombatChecks.attack_preview(
-			turns.current_unit, preview_target, units)
-		hud.show_attack_preview(preview_target, preview)
-		if selected_action == "mark":
-			hud.show_target_note("표식 대상" if actions.can_target(turns.current_unit, preview_target, "mark") else "표식을 사용할 수 없음")
-		elif selected_action == "shove":
-			if actions.can_target(turns.current_unit, preview_target, "shove"):
-				var cell: Vector2i = actions.shove_destination(turns.current_unit, preview_target)
-				hud.show_target_note("밀려날 칸: %d, %d" % [cell.x, cell.y])
+	if turns.current_unit != null and turns.current_unit.is_ally:
+		if selection.selected_action == "move":
+			movement_cells.assign(actions.reachable_cells(turns.current_unit).keys())
+		elif selection.selected_action == "jump":
+			movement_cells.assign(actions.jump_cells(turns.current_unit).keys())
+	var attack_cells: Array[Vector2i] = []
+	for cell: Vector2i in movement_cells:
+		if not _attack_targets_from(cell).is_empty():
+			attack_cells.append(cell)
+	map.show_movement(movement_cells, attack_cells, selection.preview_path,
+		turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO)
+	map.show_grounds(actions.get_grounds())
+	map.show_props(actions.get_props(), selection.preview_prop)
+	# 가림 판정은 방금 그린 사물 위치를 사용한다.
+	for unit: CombatUnit in units:
+		unit.is_occluded = map.occludes(unit.cell,
+			map.to_local(unit.to_global(Vector2(0, unit.floor_offset_y - 10))))
+	if selection.preview_target != null:
+		var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(
+			turns.current_unit, selection.preview_target)
+		hud.show_attack_preview(selection.preview_target, preview)
+		if selection.selected_action == "mark":
+			hud.show_target_note(tr("표식 대상") if actions.can_target(turns.current_unit, selection.preview_target, "mark") else tr("표식을 사용할 수 없음"))
+		elif selection.selected_action == "shove":
+			if actions.can_target(turns.current_unit, selection.preview_target, "shove"):
+				var cell: Vector2i = actions.grid.push_destination(turns.current_unit.cell, selection.preview_target.cell)
+				var landing: String = actions.shove_landing(selection.preview_target, cell)
+				hud.show_target_note(tr("밀려날 칸: %d, %d") % [cell.x, cell.y]
+					+ ("" if landing.is_empty() else " · " + landing))
 			else:
-				hud.show_target_note("밀치기를 사용할 수 없음")
-	elif _inspected_unit != null:
-		hud.show_unit(_inspected_unit)
-	var showing_move: bool = selected_action == "move" or not preview_path.is_empty()
-	hud.refresh_actions(actions, selected_action, _last_ally)
+				hud.show_target_note(tr("밀치기를 사용할 수 없음"))
+	elif selection.preview_prop != null:
+		var actor: CombatUnit = turns.current_unit
+		var prop: CombatGrid.Prop = selection.preview_prop
+		var note: String = tr("기본 공격만 가능")
+		var title: String = tr("바위") if prop.kind == "rock" else tr("나무 상자 · 내구도 %d/6") % prop.hit_points
+		if selection.selected_action == "attack" and actor != null:
+			if prop.kind == "rock":
+				var roll: CombatActions.RockRoll = actions.preview_rock(actor, prop)
+				map.show_rock_roll(prop.cell, roll)
+				var collisions: Array[String] = []
+				for unit: CombatUnit in roll.collisions:
+					var landing: String = actions.rock_landing(roll, unit)
+					collisions.append((tr("아군 피해4: %s") if unit.is_ally else tr("적 피해4: %s")) % unit.get_display_name()
+						+ ("" if landing.is_empty() else " · " + landing))
+				note = tr("행동1 · 주사위 없음 · 재클릭\n방향 %d,%d · %d칸 · %s\n%s") % [
+					roll.direction.x, roll.direction.y, roll.cells.size(), roll.reason,
+					", ".join(collisions) if not collisions.is_empty() else tr("충돌 없음")]
+			else:
+				var sides: int = actor.get_damage_sides()
+				var minimum: int = maxi(1, actor.get_damage_bonus() + (1 if sides > 0 else 0))
+				var maximum: int = maxi(1, actor.get_damage_bonus() + sides)
+				note = tr("피해 %d~%d · 행동1 · 자동 명중\n같은 상자 재클릭") % [minimum, maximum]
+			if not actions.can_attack_prop(actor, prop):
+				if actor.action_left <= 0:
+					note = tr("행동 없음")
+				elif actor.is_stunned:
+					note = tr("기절하여 공격 불가")
+				else:
+					note = actions.unavailable_reason(actor, "attack")
+					if note.is_empty():
+						note = tr("사거리 또는 높이 조건을 확인")
+		hud.show_target_note(title + "\n" + note)
+	elif selection.inspected_unit != null:
+		hud.show_unit(selection.inspected_unit)
+	var showing_move: bool = selection.selected_action == "move" or not selection.preview_path.is_empty()
+	hud.refresh_actions(actions, selection.selected_action, _last_ally)
 	hud.show_move_mode(showing_move)
+	if selection.selected_action == "jump":
+		hud.show_move_mode(false)
+		var note: String = tr("점프 · 착지 칸 우클릭\n같은 칸 재클릭으로 확정")
+		if not selection.preview_path.is_empty():
+			var actor: CombatUnit = turns.current_unit
+			var cell: Vector2i = selection.preview_cell
+			var reactors: int = actions.jump_reactors(actor, cell).size()
+			var fall: int = actions.fall_damage(actor, cell)
+			note = tr("점프 · 이동 %d · 보조 행동1\n%s · %s") % [actions.jump_cells(actor).get(cell, 0),
+				tr_n("기회 공격 %d명", "기회 공격 %d명", reactors) % reactors if reactors > 0 else tr("기회 공격 없음"),
+				tr("낙하 피해 %d") % fall if fall > 0 else tr("낙하 없음")]
+		hud.show_target_note(note)
 	if actions.is_over():
 		hud.show_outcome(actions.is_victory())
 		if not preparation.visible:
 			hud.show_result(actions.is_victory(), progress.graduated, _enemy_turn_running or actions.busy)
 	queue_redraw()
-
-
-func _draw() -> void:
-	var half: Vector2 = Vector2(map.tile_set.tile_size) / 2.0
-	for cell: Vector2i in movement_cells:
-		var center: Vector2 = map.map_to_local(cell)
-		var color: Color = Color(0.22, 0.56, 0.92, 0.4)
-		if not _attack_targets_from(cell).is_empty():
-			color = Color(0.22, 0.8, 0.5, 0.45)
-		draw_colored_polygon(PackedVector2Array([center + Vector2(0, -half.y),
-			center + Vector2(half.x, -half.y / 2.0), center + Vector2(half.x, half.y / 2.0),
-			center + Vector2(0, half.y), center + Vector2(-half.x, half.y / 2.0),
-			center + Vector2(-half.x, -half.y / 2.0)]), color)
-	if preview_path.is_empty():
-		return
-	var points: PackedVector2Array = [map.map_to_local(turns.current_unit.cell)]
-	for cell: Vector2i in preview_path:
-		points.append(map.map_to_local(cell))
-	draw_polyline(points, Color("f4cf69"), 1.0)
-	draw_circle(points[-1], 3.0, Color("f4cf69"), false)
 
 
 func _attack_targets_from(cell: Vector2i) -> Array[CombatUnit]:

@@ -39,12 +39,15 @@ class GodotCheckTests(unittest.TestCase):
     def test_clean_output_passes_every_step(self):
         result, calls = self.run_check()
         self.assertEqual(result.returncode, 0, result.stderr)
-        # --version, --import, --quit-after and the seven combat tests.
-        self.assertEqual(len(calls), 10)
+        # --version, --import, --quit-after and the nine combat tests.
+        self.assertEqual(len(calls), 12)
+        self.assertTrue(any("combat_capture_test.gd" in call for call in calls))
+        self.assertTrue(any("combat_feedback_test.gd" in call for call in calls))
         self.assertIn("Fixture: 1 checks, 0 failures", result.stdout)
 
     def test_script_error_fails_each_step(self):
-        steps = ["--import", "--quit-after", "combat_turns_test", "combat_loot_test"]
+        steps = ["--import", "--quit-after", "combat_turns_test", "combat_loot_test",
+                 "combat_capture_test", "combat_feedback_test"]
         for step in steps:
             for line in [SCRIPT_ERROR, LOAD_ERROR]:
                 with self.subTest(step=step, line=line):

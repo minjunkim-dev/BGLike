@@ -20,12 +20,14 @@ func _check(condition: bool, message: String) -> void:
 
 func _run() -> void:
 	_test_act_progress()
+	_test_terrain_layouts()
 	await _test_spiderling_placement_and_turns()
 	await _test_mother_stages()
 	await _test_novice_placements()
 	await _test_scrap_robot_stage()
 	await _test_scrap_robot_2000_stage()
 	await _test_scrap_robot_3000_stage()
+	await _test_enemy_turn_speed()
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
@@ -50,6 +52,73 @@ func _run() -> void:
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat progression: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_terrain_layouts() -> void:
+	var sample: CombatStage = CombatStage.new()
+	if sample.has_method("get_blocked_cells"):
+		sample.blocked_cells = [Vector2i(1, 1), Vector2i(9, 9)]
+		sample.scenery[Vector2i(1, 1)] = "cottage"
+		var combined: Array[Vector2i] = sample.call("get_blocked_cells")
+		_check(combined.size() == 5 and combined.has(Vector2i(2, 2))
+			and sample.blocked_cells.size() == 2, "2×2 집의 footprint를 중복 없이 합치고 원본을 보존한다")
+	var layouts: Dictionary[String, bool] = {}
+	for act: int in range(1, 4):
+		for number: int in range(1, 4):
+			var stage: CombatStage = load("res://scenes/combat/stages/act%d_stage%d.tres" % [act, number]) as CombatStage
+			var label: String = "%d-%d" % [act, number]
+			_check(stage.heights.values().any(func(height: int) -> bool: return height >= 2),
+				label + " 실제 높이2 이상 고지대")
+			var paths: Variant = stage.get("path_cells")
+			var stones: Variant = stage.get("stone_cells")
+			var scenery: Variant = stage.get("scenery")
+			_check(paths is Array and not paths.is_empty() and stones is Array and not stones.is_empty(),
+				label + " 실제 길·석재 배치")
+			_check(scenery is Dictionary and not scenery.is_empty() and stage.has_method("get_blocked_cells"),
+				label + " 실제 장식과 같은 footprint의 이동 차단")
+			if not stage.has_method("get_blocked_cells"):
+				continue
+			var grid: CombatGrid = CombatGrid.new()
+			grid.map_size = stage.map_size
+			grid.heights = stage.heights.duplicate()
+			grid.pits = stage.pits.duplicate()
+			grid.blocked_cells = stage.call("get_blocked_cells")
+			for anchor: Vector2i in stage.scenery:
+				var size: Vector2i = CombatStage.SCENERY_SIZE[stage.scenery[anchor]]
+				for y: int in range(size.y):
+					for x: int in range(size.x):
+						var footprint: Vector2i = anchor + Vector2i(x, y)
+						_check(grid.is_floor(footprint) and grid.blocked_cells.has(footprint)
+							and grid.height_at(footprint) == grid.height_at(anchor),
+							label + " 장식의 바닥·높이·차단 footprint 일치")
+			for list: Array[Vector2i] in [stage.path_cells, stage.stone_cells, stage.water_cells,
+				stage.crate_cells, stage.rock_cells, stage.ally_cells]:
+				for cell: Vector2i in list:
+					_check(grid.is_floor(cell), label + " 재질·물체·아군 칸은 유효한 바닥")
+			for cell: Vector2i in stage.crate_cells:
+				grid.props.append(CombatGrid.Prop.new(cell, "crate"))
+			for cell: Vector2i in stage.rock_cells:
+				grid.props.append(CombatGrid.Prop.new(cell, "rock"))
+			for cell: Vector2i in stage.ally_cells:
+				_check(not grid.is_blocked(cell), label + " 아군 스폰을 장식·물체가 막지 않음")
+			var actor: CombatUnit = CombatUnit.new()
+			actor.cell = stage.ally_cells[0]
+			for y: int in range(stage.map_size.y):
+				for x: int in range(stage.map_size.x):
+					var cell: Vector2i = Vector2i(x, y)
+					if grid.is_floor(cell) and not grid.is_blocked(cell) and cell != actor.cell:
+						_check(not grid.path_to(actor, cell).is_empty(), label + " 보행 연결: " + str(cell))
+			var enemies: Node = stage.enemies.instantiate()
+			for unit: CombatUnit in enemies.get_children():
+				_check(grid.is_floor(unit.start_cell) and not grid.is_blocked(unit.start_cell)
+					and not grid.path_to(actor, unit.start_cell).is_empty(), label + " 적 스폰과 보행 교전 경로")
+				if unit.kind == CombatUnit.Kind.MOTHER_SPIDER:
+					_check(grid.empty_neighbors(unit.start_cell).size() >= 2, label + " 엄마 거미 소환 여유")
+			enemies.free()
+			actor.free()
+			var signature: String = var_to_str([stage.heights, paths, stones, scenery])
+			_check(not layouts.has(signature), label + " 독립적으로 배치한 지형")
+			layouts[signature] = true
 
 
 func _test_spiderling_placement_and_turns() -> void:
@@ -156,12 +225,12 @@ func _test_mother_stages() -> void:
 		turns.end_turn()
 		turns.end_turn()
 		var actions: CombatActions = battle.get("actions") as CombatActions
-		actions.dice = ScriptedDice.new([1], [5])
+		actions.dice = ScriptedDice.new([1], [3])
 		await (battle.get("enemy_ai") as CombatEnemyAi).play_turn(mothers[0], actions)
 		var child: CombatUnit = units.back()
 		_check(units.size() == 8 and child.kind == CombatUnit.Kind.SPIDERLING
 			and child.get_parent() == battle.get_node("Units") and child.is_inside_tree()
-			and actions.unit_at(child.cell) == child and turns.is_turn_finished(child),
+			and actions.grid.unit_at(child.cell) == child and turns.is_turn_finished(child),
 			"실제 AI가 만든 새끼를 장면·점유 칸·대기 중 턴에 함께 연결")
 		var portraits: Dictionary = (battle.get_node("UI/TurnHud") as CombatTurnHud).get("_portraits")
 		var tooltip: String = (portraits[child] as Button).tooltip_text
@@ -210,7 +279,7 @@ func _test_novice_placements() -> void:
 		_check(party[0].cell == Vector2i(1, 4) and party[1].cell == Vector2i(0, 5)
 			and not party[0].facing_left and not party[1].facing_left,
 			"모든 스테이지에서 아군이 왼쪽 두 칸에서 오른쪽을 보고 시작")
-		_check(battle.get("map_size") == Vector2i(10, 10), "모든 스테이지의 기존 10×10 헥사 맵 유지")
+		_check(battle.get("map_size") == Vector2i(10, 10), "모든 스테이지의 기존 10×10 크기를 사각 맵으로 유지")
 		_check_enemy_values(battle, progress.act_number())
 		if not expected.has(index):
 			continue
@@ -224,6 +293,115 @@ func _test_novice_placements() -> void:
 				and enemies[enemy].cell == expected[index][enemy][1], "2스테이지 풋내기 종류와 좌표")
 	main.queue_free()
 	await process_frame
+
+
+func _test_enemy_turn_speed() -> void:
+	var main: Node = _start_three_one()
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	for ally: CombatUnit in battle.get("party"):
+		turns.end_turn()
+	var stuck: CombatUnit = turns.current_unit
+	stuck.movement_left = 0
+	# 대기 타이머를 기다리지 않으면 호출이 반환될 때 이미 턴이 끝나 있다.
+	battle.call("_play_enemy_turn", stuck)
+	_check(not stuck.is_ally and stuck.kind == CombatUnit.Kind.SPIDERLING
+		and not battle.get("_enemy_turn_running") and turns.current_unit != stuck,
+		"갈 곳이 막혀 이동도 공격도 하지 않은 새끼 거미 턴은 기다리지 않음")
+	main.queue_free()
+	await process_frame
+	var normal: Dictionary = await _play_three_one_rounds(false)
+	var fast: Dictionary = await _play_three_one_rounds(true)
+	print("3-1 적 턴 2라운드: 보통 %d ms, Space %d ms, 새끼 거미 %d마리" % [
+		normal.msec, fast.msec, normal.spiderlings])
+	_check(normal.spiderlings >= 5 and fast.state == normal.state,
+		"Space 가속은 새끼 거미가 늘어난 3-1의 적 행동 결과를 바꾸지 않음")
+	# 프레임 처리 시간은 배율과 무관해 느린 CI에서 차이가 줄어든다.
+	_check(fast.msec * 4 < normal.msec * 3, "Space를 누르고 있으면 3-1 적 턴 시간이 4분의 3 아래로 줄어듦")
+	_check(fast.reaction_waits, "반응 확인 창이 열리면 가속을 멈추고 새로 누른 Space로도 선택하지 않음")
+	_check(fast.get("released", false), "적 턴 중 Space를 떼면 보통 속도로 돌아옴")
+
+
+## 아군이 먼저, 적은 배치 순서로 행동하는 3-1을 준비한다.
+func _start_three_one() -> Node:
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	(battle.get("progress") as CombatActProgress).stage_index = 6
+	battle.call("_start_stage", true)
+	var units: Array[CombatUnit] = battle.get("units")
+	var initiative: Array[int] = []
+	for unit: CombatUnit in units:
+		initiative.append(20 if unit.is_ally else 1)
+	(battle.get("turns") as CombatTurns).start(units, ScriptedDice.new(initiative))
+	(battle.get("actions") as CombatActions).dice.seed = 221
+	return main
+
+
+## 아군은 바로 턴을 넘기고 적 두 라운드의 실제 진행 시간을 잰다.
+func _play_three_one_rounds(fast: bool) -> Dictionary:
+	var main: Node = _start_three_one()
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var space: InputEventKey = InputEventKey.new()
+	space.keycode = KEY_SPACE
+	space.physical_keycode = KEY_SPACE
+	space.pressed = fast
+	Input.parse_input_event(space)
+	var result: Dictionary = {"spiderlings": 0, "reaction_waits": false}
+	battle.set_process(true)
+	var started: int = Time.get_ticks_msec()
+	while turns.round_number < 3 and not actions.is_over() and Time.get_ticks_msec() - started < 30000:
+		var actor: CombatUnit = turns.current_unit
+		if actor != null and actor.is_ally and not battle.get("_enemy_turn_running"):
+			# 반응 선택 창 대기 없이 같은 적 행동을 비교한다.
+			for ally: CombatUnit in battle.get("party"):
+				ally.reaction_left = 0
+			turns.end_turn()
+		elif fast and not result.reaction_waits and battle.get("_enemy_turn_running"):
+			# 배율은 다음 프레임의 battle._process에서 적용된다.
+			await process_frame
+		if fast and not result.reaction_waits and battle.get("_enemy_turn_running") and Engine.time_scale > 1.0:
+			_check(Engine.time_scale == 4.0 and "Space: 빠르게" in hud.round_label.text,
+				"적 턴에 Space를 누르고 있으면 빨라지고 안내를 표시")
+			var chosen: Array[bool] = []
+			var choose: Callable = func(use_reaction: bool) -> void: chosen.append(use_reaction)
+			hud.reaction_selected.connect(choose)
+			hud.show_reaction("parry", "검사")
+			await process_frame
+			await process_frame
+			# 창이 열린 뒤 다시 눌렀다 뗀 Space도 포커스된 선택 버튼을 누르지 않는다.
+			for pressed: bool in [false, true, false]:
+				space.pressed = pressed
+				Input.parse_input_event(space)
+				await process_frame
+			result.reaction_waits = Engine.time_scale == 1.0 and hud.reaction_dialog.visible and chosen.is_empty()
+			hud.call("_hide_reaction")
+			hud.reaction_selected.disconnect(choose)
+			# 창을 닫은 뒤 손을 뗀 상태의 battle._process가 배율을 되돌린다.
+			await process_frame
+			result.released = Engine.time_scale == 1.0 and battle.get("_enemy_turn_running")
+			space.pressed = true
+			Input.parse_input_event(space)
+		await process_frame
+	result.msec = Time.get_ticks_msec() - started
+	_check(turns.round_number == 3, "3-1 적 턴 두 라운드를 제한 시간 안에 마침")
+	_check(turns.current_unit.is_ally and not "Space: 빠르게" in hud.round_label.text, "아군 턴에는 Space 안내를 숨김")
+	space.pressed = false
+	Input.parse_input_event(space)
+	await process_frame
+	var state: Array[String] = []
+	for unit: CombatUnit in battle.get("units"):
+		state.append("%s %s %d" % [unit.get_display_name(), unit.cell, unit.hit_points])
+		if unit.kind == CombatUnit.Kind.SPIDERLING and unit.hit_points > 0:
+			result.spiderlings += 1
+	result.state = state
+	main.queue_free()
+	await process_frame
+	return result
 
 
 func _test_scrap_robot_stage() -> void:
@@ -418,6 +596,9 @@ func _win(battle: Node2D) -> void:
 
 
 func _test_stage_transition(battle: Node2D) -> void:
+	var loot: CombatLoot = battle.loot
+	var stored: Dictionary = {"kind": "potion", "name": "계속 보관할 물약", "stats": {}}
+	loot.bag.append(stored)
 	var party: Array[CombatUnit] = []
 	for unit: CombatUnit in battle.get("units"):
 		if unit.is_ally:
@@ -430,6 +611,7 @@ func _test_stage_transition(battle: Node2D) -> void:
 	warrior.surge_left = 0
 	warrior.potion_left = 3
 	warrior.is_stunned = true
+	warrior.stun_source = (battle.get("units") as Array)[2] as CombatUnit
 	warrior.disengaged = true
 	warrior.marked_target = (battle.get("units") as Array)[2] as CombatUnit
 	(battle.get("actions") as CombatActions).incapacitate(archer)
@@ -440,6 +622,7 @@ func _test_stage_transition(battle: Node2D) -> void:
 	second.ally_cells = [Vector2i(1, 8), Vector2i(2, 8)]
 	stages[1] = second
 	_win(battle)
+	_check(not warrior.is_stunned, "승리 때 기절 시전자 탈락을 먼저 반영")
 	_check(hud.result_label.text == "승리" and hud.restart_button.text == "보상 확인",
 		"스테이지 승리 결과에서 보상 확인 안내")
 	hud.restart_button.pressed.emit()
@@ -447,8 +630,9 @@ func _test_stage_transition(battle: Node2D) -> void:
 	await process_frame
 	await process_frame
 	_check((hud.get_node("Progress") as Label).text == "1막 · 2스테이지", "승리 뒤1-2 진행")
+	_check(loot.bag[0] == stored, "같은 막 다음 전투는 공용 가방 보존")
 	_check((battle.get_node("Map") as TileMapLayer).get_used_cells().size() == 72
-		and (battle.get("actions") as CombatActions).map_size == Vector2i(8, 9)
+		and (battle.get("actions") as CombatActions).grid.map_size == Vector2i(8, 9)
 		and warrior.cell == Vector2i(1, 8), "다음 스테이지 맵과 배치 데이터를 실제 전투에 적용")
 	_check(warrior.hit_points == 5 and warrior.second_wind_left == 0
 		and warrior.parry_left == 0 and warrior.surge_left == 0, "같은 막의 HP와 전사 스킬 횟수 유지")
@@ -456,7 +640,7 @@ func _test_stage_transition(battle: Node2D) -> void:
 		and archer not in (battle.get("turns") as CombatTurns).ordered_units,
 		"전투 불능 아군은 같은 막 다음 전투에 나오지 않음")
 	_check(warrior.potion_left == 3, "스테이지 전환에서 가진 물약 유지")
-	_check(not warrior.is_stunned and not warrior.disengaged
+	_check(not warrior.is_stunned and warrior.stun_source == null and not warrior.disengaged
 		and warrior.marked_target == null and not warrior.has_mark,
 		"기절·표식·이번 턴 효과는 전투 전환에서 해제")
 	_check(not hud.get_node("Result").visible, "다음 전투에서 이전 승리 창 숨김")
@@ -487,6 +671,12 @@ func _next(battle: Node2D) -> void:
 func _finish_rewards(battle: Node2D) -> void:
 	var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
 	preparation.continue_button.pressed.emit()
+	var missing: int = battle.loot.bag.size() + preparation.rewards.size() - int(battle.loot.data["bag_limit"])
+	# 9전투 진행 검사는 가방이 차면 실제 폐기 버튼과 확인을 거쳐 공간을 확보한다.
+	for index: int in range(maxi(0, missing)):
+		(preparation.find_child("BagItem0", true, false) as Button).pressed.emit()
+		(preparation.detail.find_child("DiscardItem", true, false) as Button).pressed.emit()
+		preparation.discard_dialog.confirmed.emit()
 	preparation.continue_button.pressed.emit()
 	preparation.discard_dialog.confirmed.emit()
 
@@ -498,6 +688,8 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	_check((battle.get_node("Map") as TileMapLayer).get_used_cells().size() == 100,
 		"다음 스테이지 데이터가 이전 맵 크기를 덮어씀")
 	_win(battle)
+	var expected_bag: Array[Dictionary] = battle.loot.bag.duplicate(true)
+	expected_bag.append_array(battle.progress.rewards)
 	_check(hud.restart_button.text == "보상 확인", "막 마지막 전투도 보상 확인 안내")
 	hud.restart_button.pressed.emit()
 	var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
@@ -508,6 +700,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	preparation.discard_dialog.confirmed.emit()
 	await process_frame
 	_check(hud.progress_label.text == "2막 · 1스테이지", "1-3 승리 뒤2-1 진행")
+	_check(battle.loot.bag == expected_bag, "다음 막 시작은 미수령 보상을 더한 공용 가방 보존")
 	_check_enemy_values(battle, 2)
 	_check((battle.get("turns") as CombatTurns).ordered_units.size() == 7,
 		"새 막에서 전투 불능 아군 부활과 적 재배치")
@@ -531,6 +724,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	hud.restart_button.pressed.emit()
 	_check(hud.progress_label.text == "2막 · 2스테이지", "전투 중 임의 진행 거부")
 	var actions: CombatActions = battle.get("actions") as CombatActions
+	expected_bag = battle.loot.bag.duplicate(true)
 	for unit: CombatUnit in party:
 		(battle.get("actions") as CombatActions).incapacitate(unit)
 	party[0].potion_left = 2
@@ -548,6 +742,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	hud.restart_button.pressed.emit()
 	await process_frame
 	_check(hud.progress_label.text == "2막 · 1스테이지", "패배한 막의1스테이지로 복귀")
+	_check(battle.loot.bag == expected_bag, "전멸한 막 재시작은 공용 가방 전량 보존")
 	_check_enemy_values(battle, 2)
 	for unit: CombatUnit in party:
 		_check(unit.hit_points == unit.get_max_hit_points() and unit.mark_left == 1

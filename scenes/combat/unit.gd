@@ -1,25 +1,55 @@
 class_name CombatUnit
 extends Node2D
-## 팀과 직업, 격자 위치와 유닛별 턴 자원을 가진 임시 유닛.
+## 팀과 직업, 격자 위치와 유닛별 턴 자원·도트 애니메이션.
 
 enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 
 const MOVEMENT_PER_TURN: int = 6
+const FEEDBACK_RISE: float = 12.0
+## 팝업이 먼저 찾는 범위: 기준 자리에서 팝업 왼쪽 위까지의 최대 논리px(#260). 기준 자리는 대상 상태 줄 기준점이다.
+## 같은 대상의 이전 팝업이 그보다 높으면 그 팝업 바로 위다. 붐빌 때 옆 유닛 팝업 하나를 비켜 갈 만큼이다.
+const FEEDBACK_NEAR: float = 40.0
 
 const ALLY_COLOR: Color = Color("509be0")
 const ENEMY_COLOR: Color = Color("df6256")
 const OUTLINE_COLOR: Color = Color("202b35")
 const WEAPON_COLOR: Color = Color("f4ead1")
+const CRITICAL_COLOR: Color = Color("f4cf69")
+const FUMBLE_COLOR: Color = Color("9a9a9a")
+
+class StatusEffect extends RefCounted:
+	var kind: String
+	var source: CombatUnit
+	var turns_left: int
+	var save_dc: int
+
+	func _init(effect_kind: String, caster: CombatUnit, duration: int) -> void:
+		kind = effect_kind
+		source = caster
+		turns_left = duration
+		save_dc = caster.get_save_dc()
+
 
 @export var kind: Kind = Kind.WARRIOR
 @export var is_ally: bool = true
 @export var start_cell: Vector2i = Vector2i.ZERO
 
 var cell: Vector2i = Vector2i.ZERO
-var is_moving: bool = false
-var facing_left: bool = false
+var is_moving: bool = false:
+	set(value):
+		is_moving = value
+		_update_animation()
+var facing_left: bool = false:
+	set(value):
+		facing_left = value
+		_update_animation()
+# 깊이 정렬의 기준점은 높이를 빼기 전 바닥에 두고 그림만 올린다.
+var floor_offset_y: float = 0.0:
+	set(value):
+		floor_offset_y = value
+		queue_redraw()
 var body_offset_y: float = 0.0:
 	set(value):
 		body_offset_y = value
@@ -32,7 +62,6 @@ var reaction_capacity: int = 1
 var action_left: int = 1
 var bonus_action_left: int = 1
 var reaction_left: int = 1
-var act_number: int = 1
 var overloaded: bool = false
 var pull_cooldown: int = 0
 var _lost_hit_points: int = 0
@@ -45,7 +74,13 @@ var hit_points: int = 12:
 			and hit_points <= get_max_hit_points() / 2):
 			overloaded = true
 			action_left += 1
-var is_stunned: bool = false
+var stun_source: CombatUnit
+var status_effects: Array[StatusEffect] = []
+var is_stunned: bool = false:
+	set(value):
+		is_stunned = value
+		if not value:
+			stun_source = null
 var has_mark: bool = false
 var disengaged: bool = false
 var marked_target: CombatUnit
@@ -74,6 +109,11 @@ var is_selected: bool = false:
 	set(value):
 		is_selected = value
 		queue_redraw()
+var is_occluded: bool = false
+var _silhouette: Sprite2D
+var _sprite: AnimatedSprite2D
+var _attacking: bool = false
+var _art_top_y: float = -28.0
 
 
 func get_dexterity() -> int:
@@ -150,7 +190,54 @@ func get_initiative() -> int:
 func get_display_name() -> String:
 	if not is_ally:
 		return CombatEnemyDefinitions.for_kind(kind)["name"]
-	return "아군 " + ("전사" if kind == Kind.WARRIOR else "궁수")
+	return tr("아군 전사") if kind == Kind.WARRIOR else tr("아군 궁수")
+
+
+func get_art_id() -> String:
+	if not is_ally and kind <= Kind.ARCHER:
+		return "novice_barbarian" if kind == Kind.WARRIOR else "novice_archer"
+	return ["warrior", "archer", "spiderling", "mother_spider",
+		"scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000"][kind]
+
+
+func get_status_label_y() -> float:
+	return _art_top_y + body_offset_y - 9.0
+
+
+## 유닛 위에 지금 보이는 상태 글자. 기절·화상·독·표식.
+func get_status_text() -> String:
+	var status: String = get_periodic_status_text()
+	if is_stunned:
+		status = tr("기절") + (" " + status if not status.is_empty() else "")
+	if has_mark:
+		status += " ◎"
+	return status
+
+
+## 상태 글자 text가 차지할 화면 영역을 padding만큼 넓힌다. 팝업 배치가 피한다.
+func get_status_area(text: String, padding: float) -> Rect2:
+	var font: Font = ThemeDB.fallback_font
+	var width: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+	var area: Rect2 = Rect2(Vector2(-width / 2.0, floor_offset_y + get_status_label_y() - font.get_ascent(10)),
+		Vector2(width, font.get_height(10)))
+	return (get_global_transform_with_canvas() * area).grow(padding)
+
+
+func get_status_count(kind_name: String) -> int:
+	var count: int = 0
+	for effect: StatusEffect in status_effects:
+		if effect.kind == kind_name:
+			count += 1
+	return count
+
+
+func get_periodic_status_text() -> String:
+	var states: Array[String] = []
+	for kind_name: String in ["burn", "poison"]:
+		var count: int = get_status_count(kind_name)
+		if count > 0:
+			states.append("%s%d" % [tr("화상") if kind_name == "burn" else tr("독"), count])
+	return " ".join(states)
 
 
 func is_boss() -> bool:
@@ -179,6 +266,7 @@ func begin_stage(restore_act: bool) -> void:
 		CombatActionRules.restore_uses(self)
 	# 물약은 막 시작과 재시작에서도 현재 개수를 유지한다.
 	is_stunned = false
+	status_effects.clear()
 	has_mark = false
 	marked_target = null
 	is_selected = false
@@ -222,10 +310,78 @@ func has_available_turn_action(
 
 
 func _ready() -> void:
+	facing_left = not is_ally
+	_sprite = AnimatedSprite2D.new()
+	_sprite.name = "Sprite"
+	_sprite.centered = false
+	_sprite.offset = Vector2(-32, -56)
+	_sprite.scale = Vector2.ONE * 0.5
+	_sprite.material = preload("res://scenes/combat/art/pixel_art.tres")
+	_sprite.sprite_frames = SpriteFrames.new()
+	_sprite.sprite_frames.remove_animation("default")
+	var unit_id: String = get_art_id()
+	_art_top_y = 0.0
+	for state: String in ["idle", "move", "attack"]:
+		for direction: String in ["left", "right"]:
+			var animation: StringName = state + "_" + direction
+			_sprite.sprite_frames.add_animation(animation)
+			var speed: float = 3.0 if state == "idle" else (24.0 if state == "move" else 12.0)
+			_sprite.sprite_frames.set_animation_speed(animation, speed)
+			_sprite.sprite_frames.set_animation_loop(animation, state != "attack")
+			for frame: int in range(2):
+				var texture: Texture2D = load("res://scenes/combat/art/units/%s/%s/%s/%03d.png" % [
+					unit_id, state, direction, frame]) as Texture2D
+				_sprite.sprite_frames.add_frame(animation, texture)
+				_art_top_y = minf(_art_top_y, (texture.get_image().get_used_rect().position.y - 56.0) * 0.5)
+	add_child(_sprite)
+	_silhouette = Sprite2D.new()
+	_silhouette.centered = false
+	_silhouette.offset = _sprite.offset
+	_silhouette.scale = _sprite.scale
+	_silhouette.z_index = 1
+	_silhouette.visible = false
+	var outline: ShaderMaterial = ShaderMaterial.new()
+	outline.shader = preload("res://scenes/combat/art/unit_outline.gdshader")
+	_silhouette.material = outline
+	add_child(_silhouette)
+	_sprite.frame_changed.connect(_sync_sprite)
+	_sprite.animation_changed.connect(_sync_sprite)
+	_sprite.animation_finished.connect(func() -> void:
+		_attacking = false
+		_update_animation())
+	_update_animation()
 	cell = start_cell
 	hit_points = get_max_hit_points()
 	begin_turn()
 	queue_redraw()
+
+
+func _update_animation() -> void:
+	if _sprite == null:
+		return
+	var state: String = "attack" if _attacking else ("move" if is_moving else "idle")
+	_sprite.play(state + ("_left" if facing_left else "_right"))
+	_sync_sprite()
+
+
+func _sync_sprite() -> void:
+	if _silhouette != null and _sprite.sprite_frames.has_animation(_sprite.animation):
+		_silhouette.texture = _sprite.sprite_frames.get_frame_texture(_sprite.animation, _sprite.frame)
+
+
+func play_attack() -> void:
+	_attacking = true
+	_sprite.stop()
+	_update_animation()
+
+
+func contains_body_point(point: Vector2) -> bool:
+	var pixel: Vector2i = Vector2i(((point - Vector2(0, floor_offset_y + body_offset_y))
+		/ _sprite.scale - _sprite.offset).floor())
+	if not Rect2i(Vector2i.ZERO, Vector2i(64, 64)).has_point(pixel):
+		return false
+	var texture: Texture2D = _sprite.sprite_frames.get_frame_texture(_sprite.animation, _sprite.frame)
+	return texture.get_image().get_pixelv(pixel).a > 0.0
 
 
 func face_toward(destination: Vector2) -> void:
@@ -235,61 +391,160 @@ func face_toward(destination: Vector2) -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(-9, -25, 18, 4), OUTLINE_COLOR)
-	draw_rect(Rect2(-8, -24, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
-	var status: String = ("기절" if is_stunned else "") + (" ◎" if has_mark else "")
+	_silhouette.visible = is_occluded or is_selected or is_previewed
+	var edge: Color = Color("f4cf69") if is_selected else (
+		Color("f4ead1") if is_previewed else (ALLY_COLOR if is_ally else ENEMY_COLOR))
+	(_silhouette.material as ShaderMaterial).set_shader_parameter("outline_color", edge)
+	_silhouette.position = Vector2(0, floor_offset_y + body_offset_y)
+	_sprite.position = _silhouette.position
+	draw_set_transform(Vector2(0, floor_offset_y))
+	var status_y: float = get_status_label_y()
+	draw_rect(Rect2(-9, status_y + 4, 18, 4), OUTLINE_COLOR)
+	draw_rect(Rect2(-8, status_y + 5, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
+	var status: String = get_status_text()
 	if not status.is_empty():
 		var font: Font = ThemeDB.fallback_font
 		var width: float = font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-		draw_string(font, Vector2(-width / 2.0, -29), status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, WEAPON_COLOR)
-	var body_color: Color = ALLY_COLOR if is_ally else ENEMY_COLOR
-	if is_selected:
-		draw_rect(Rect2(-7, -20, 14, 20), Color("f4cf69"), false)
-	elif is_previewed:
-		draw_rect(Rect2(-7, -20, 14, 20), Color("f4ead1"), false)
-	draw_rect(Rect2(-6, -1, 12, 3), OUTLINE_COLOR)
-	draw_set_transform(Vector2(0, body_offset_y), 0.0, Vector2(-1 if facing_left else 1, 1))
-	draw_rect(Rect2(-6, -19, 12, 18), OUTLINE_COLOR)
-	draw_rect(Rect2(-5, -18, 10, 16), body_color)
-
-	if is_boss():
-		draw_rect(Rect2(-4, -16, 8, 5), WEAPON_COLOR)
-		draw_rect(Rect2(-3, -15, 2, 2), OUTLINE_COLOR)
-		draw_rect(Rect2(1, -15, 2, 2), OUTLINE_COLOR)
-		draw_line(Vector2(-3, -7), Vector2(3, -7), WEAPON_COLOR)
-	elif kind != Kind.ARCHER:
-		# 검: 직선 칼날과 가로 손잡이.
-		draw_rect(Rect2(-1, -16, 2, 9), WEAPON_COLOR)
-		draw_rect(Rect2(-3, -8, 6, 2), WEAPON_COLOR)
-	else:
-		# 활: 꺾인 활대와 곧은 시위.
-		draw_polyline(PackedVector2Array([
-			Vector2(-2, -16), Vector2(2, -12), Vector2(-2, -8)
-		]), WEAPON_COLOR)
-		draw_line(Vector2(-2, -16), Vector2(-2, -8), WEAPON_COLOR)
+		draw_string(font, Vector2(-width / 2.0, status_y), status, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, WEAPON_COLOR)
+	draw_polyline(PackedVector2Array([Vector2(-9, 0), Vector2(0, 4), Vector2(9, 0)]),
+		ALLY_COLOR if is_ally else ENEMY_COLOR)
 	draw_set_transform(Vector2.ZERO)
 
 
-func show_feedback(text: String) -> void:
+func show_feedback(text: String, obstacles: Array[Rect2] = [], roll: CombatChecks.RollResult = null) -> void:
 	var popup: Label = Label.new()
 	popup.z_index = 10
 	popup.text = text
 	popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	popup.add_theme_font_size_override("font_size", 10)
-	popup.add_theme_color_override("font_color", WEAPON_COLOR)
+	popup.add_theme_font_size_override("font_size", 14 if text == tr("치명타!") else 10)
+	popup.add_theme_color_override("font_color", CRITICAL_COLOR if text == tr("치명타!")
+		else FUMBLE_COLOR if text == tr("자동 실패") else WEAPON_COLOR)
 	popup.add_theme_color_override("font_outline_color", OUTLINE_COLOR)
 	popup.add_theme_constant_override("outline_size", 2)
-	popup.position = Vector2(-16, -42)
-	# 같은 유닛의 판정과 피해가 함께 떠도 글자가 겹치지 않는다.
-	for child: Node in get_parent().get_children():
-		if child is Label and child.get_meta("feedback_unit", 0) == get_instance_id():
-			popup.position.y = minf(popup.position.y,
-				child.position.y - position.y - popup.get_combined_minimum_size().y - 16)
 	popup.set_meta("feedback_unit", get_instance_id())
 	# 전투 불능 유닛도 마지막 피해를 표시한다.
 	get_parent().add_child(popup)
-	popup.position += position
+	popup.size = popup.get_combined_minimum_size()
+	# 유리·불리 판정은 두 주사위를 나란히 두고 버린 쪽을 흐리게 한다.
+	if roll != null and roll.rolls.size() == 2:
+		var box: StyleBoxFlat = StyleBoxFlat.new()
+		box.bg_color = OUTLINE_COLOR
+		box.border_color = WEAPON_COLOR
+		box.set_border_width_all(1)
+		box.content_margin_left = 2
+		box.content_margin_right = 2
+		var kept: int = roll.rolls.find(roll.selected_roll)
+		for index: int in range(2):
+			var die: Label = Label.new()
+			die.text = str(roll.rolls[index])
+			die.add_theme_font_size_override("font_size", 10)
+			die.add_theme_color_override("font_color", WEAPON_COLOR)
+			die.add_theme_stylebox_override("normal", box)
+			die.modulate.a = 1.0 if index == kept else 0.35
+			popup.add_child(die)
+			die.size = die.get_combined_minimum_size()
+			die.position = Vector2(popup.size.x + 2, 0)
+			popup.size = Vector2(die.position.x + die.size.x, maxf(popup.size.y, die.size.y))
+	popup.position = _feedback_position(popup, obstacles)
 	var tween: Tween = popup.create_tween()
-	tween.tween_property(popup, "position:y", popup.position.y - 12, 0.8)
+	tween.tween_property(popup, "position:y", popup.position.y - FEEDBACK_RISE, 0.8)
 	tween.parallel().tween_property(popup, "modulate:a", 0.0, 0.8)
 	tween.tween_callback(popup.queue_free)
+
+
+func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
+	var canvas: Transform2D = (get_parent() as Node2D).get_global_transform_with_canvas()
+	var popup_size: Vector2 = (canvas * Rect2(Vector2.ZERO, popup.size)).size
+	var rise: float = absf(canvas.basis_xform(Vector2(0, -FEEDBACK_RISE)).y)
+	var canvas_scale: float = maxf(absf(canvas.get_scale().x), absf(canvas.get_scale().y))
+	var padding: float = 2.0 * canvas_scale
+	var viewport: Rect2 = get_viewport().get_visible_rect()
+	var origin: Vector2 = canvas * (position + Vector2(-16, floor_offset_y + get_status_label_y() - 5))
+	var first: Vector2 = viewport.position + Vector2(padding, rise + padding)
+	var center: Vector2 = origin.clamp(first, viewport.end - popup_size - Vector2.ONE * padding)
+	# 화면 패널, 다른 대상 팝업의 상승 경로, 지금 보이는 상태 글자와 대상 자신의 상태 자리는 언제나 피한다.
+	var blocked: Array[Rect2] = obstacles.duplicate()
+	# 다른 유닛의 새 기절·표식과 현재 화상·독을 읽을 자리는 근처에 빈 자리가 있을 때만 비워 둔다.
+	var reserved: Array[Rect2] = []
+	# 같은 대상의 팝업은 이전 팝업 위에 순서대로 쌓는다(#260).
+	var ceiling: float = INF
+	for child: Node in get_parent().get_children():
+		if child is CombatUnit:
+			var periodic: String = child.get_periodic_status_text()
+			var area: Rect2 = child.get_status_area(
+				tr("기절") + (" " + periodic if not periodic.is_empty() else "") + " ◎", padding)
+			if child == self:
+				blocked.append(area)
+			else:
+				reserved.append(area)
+			var shown: String = child.get_status_text()
+			if not shown.is_empty():
+				blocked.append(child.get_status_area(shown, padding))
+		elif child is Label and child != popup and child.has_meta("feedback_unit"):
+			var area: Rect2 = canvas * child.get_rect()
+			if child.get_meta("feedback_unit") == get_instance_id():
+				# 같은 대상의 팝업은 같은 속도로 떠오르므로 상승 경로를 비우지 않고 바로 위에 쌓는다.
+				ceiling = minf(ceiling, area.position.y - 2.0 * padding)
+				blocked.append(area.grow(padding))
+				continue
+			area.position.y -= rise
+			area.size.y += rise
+			blocked.append(area.grow(padding))
+	var anchor: Vector2 = Vector2(center.x, minf(center.y, ceiling - popup_size.y - padding))
+	var near: float = FEEDBACK_NEAR * canvas_scale
+	var quantum: float = 2.0 * padding
+	var steps: int = floori(near / quantum)
+	var nearby: Array[Vector2] = _spot_grid(anchor, quantum, steps, steps, steps, near)
+	var screen: Array[Vector2] = []
+	var step: Vector2 = popup_size + Vector2(padding * 2, rise + padding * 2)
+	for row: int in range(ceili(viewport.size.y / step.y)):
+		for column: int in range(ceili(viewport.size.x / step.x)):
+			screen.append(first + Vector2(column, row) * step)
+	var all_blocked: Array[Rect2] = blocked + reserved
+	# 1~2: 기준 자리 40px 안. 근처가 차면 다른 유닛의 상태 자리 예약을 풀고 다시 찾는다.
+	# 3: 기준 자리 위쪽 띠(가로 ±40px)로 쌓는다. 4: 위가 막히면 순서를 포기하고 대상 기준점 40px 안에서 찾는다.
+	# 5~6: 그래도 없으면 전처럼 화면 전체에서 대상에 가장 가까운 빈 자리를 쓴다.
+	for search: Array in [[nearby, all_blocked, ceiling, anchor], [nearby, blocked, ceiling, anchor],
+			[_spot_grid(anchor, quantum, steps, 0, ceili((anchor.y - first.y) / quantum)), blocked, ceiling, anchor],
+			[_spot_grid(center, quantum, steps, steps, steps, near), blocked, INF, center],
+			[screen, all_blocked, INF, center], [screen, blocked, INF, center]]:
+		var found: Variant = _closest_free_spot(search[0], search[3], popup_size, rise, padding, search[1], search[2])
+		if found != null:
+			return canvas.affine_inverse() * (found as Vector2)
+	return canvas.affine_inverse() * center
+
+
+## base에서 quantum 간격의 후보 격자. 가로 ±columns칸, 아래 down칸에서 위 up칸까지. radius 밖은 뺀다.
+func _spot_grid(base: Vector2, quantum: float, columns: int, down: int, up: int, radius: float = INF) -> Array[Vector2]:
+	var spots: Array[Vector2] = []
+	for row: int in range(-down, up + 1):
+		for column: int in range(-columns, columns + 1):
+			var offset: Vector2 = Vector2(column, -row) * quantum
+			if offset.length() <= radius:
+				spots.append(base + offset)
+	return spots
+
+
+## 후보 중 기준점에 가장 가까운 빈 자리. 없으면 null. 팝업 아래쪽은 ceiling을 넘지 않는다.
+func _closest_free_spot(candidates: Array[Vector2], target: Vector2, popup_size: Vector2, rise: float,
+		padding: float, blocked: Array[Rect2], ceiling: float) -> Variant:
+	var viewport: Rect2 = get_viewport().get_visible_rect()
+	var best: Variant = null
+	var distance: float = INF
+	for candidate: Vector2 in candidates:
+		var candidate_distance: float = candidate.distance_squared_to(target)
+		if candidate_distance >= distance:
+			continue
+		# 위로 뜨는 전체 경로를 예약해 연출 중에도 팝업과 HUD를 피한다.
+		var area: Rect2 = Rect2(candidate - Vector2(0, rise), popup_size + Vector2(0, rise)).grow(padding)
+		if not viewport.encloses(area) or area.end.y > ceiling:
+			continue
+		var available: bool = true
+		for rect: Rect2 in blocked:
+			if area.intersects(rect):
+				available = false
+				break
+		if available:
+			best = candidate
+			distance = candidate_distance
+	return best
