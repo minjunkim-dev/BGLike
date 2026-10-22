@@ -2,7 +2,7 @@
 
 > M2에서 정한 게임 전체 구조입니다. 전투 밖의 진행, 막 단위 자원, 아이템, 격자 변경을 다룹니다.
 >
-> - 기준일: 2026-10-22 ([Issue #288](https://github.com/minjunkim-dev/BGLike/issues/288) 저장·전투 밖 화면 반영), 2026-10-21 ([Issue #214](https://github.com/minjunkim-dev/BGLike/issues/214) 드랍 기대값과 8장 정리, [Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136) 사각 높이 격자 반영, 2026-10-07 기획 논의, Issue #61 아이템 수치 결정, [Issue #99](https://github.com/minjunkim-dev/BGLike/issues/99) 막별 적 강화 제거 반영)
+> - 기준일: 2026-10-22 ([Issue #288](https://github.com/minjunkim-dev/BGLike/issues/288) 저장·전투 밖 화면 반영, [Issue #284](https://github.com/minjunkim-dev/BGLike/issues/284) 새 게임·이어하기·졸업 구현), 2026-10-21 ([Issue #214](https://github.com/minjunkim-dev/BGLike/issues/214) 드랍 기대값과 8장 정리, [Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136) 사각 높이 격자 반영, 2026-10-07 기획 논의, Issue #61 아이템 수치 결정, [Issue #99](https://github.com/minjunkim-dev/BGLike/issues/99) 막별 적 강화 제거 반영)
 > - 관련 문서: [기획 현황](DESIGN_STATUS.md) · [기획 로드맵](ROADMAP.md) · [전투 시스템 기획서](COMBAT_DESIGN.md)
 > - 이 문서와 전투 시스템 기획서가 다르면 이 문서가 기준입니다. 바뀌는 전투 규칙은 [7장](#7-전투-시스템-기획서에서-바뀌는-규칙)에 모았습니다.
 > - 표시: ✅ 정해짐 · ❓ 정해야 함
@@ -73,7 +73,7 @@ flowchart TD
 
 ### 2-4. 저장과 이어하기 ✅
 
-> **결정됨, 구현 중.** 2026-10-22 [#209 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6330756631) 7~9번(7·8번은 개정 후 채택)입니다. 구현은 [저장 기반 #280](https://github.com/minjunkim-dev/BGLike/issues/280), [전투 상태 저장 #281](https://github.com/minjunkim-dev/BGLike/issues/281), [정비·보상 중 저장 #282](https://github.com/minjunkim-dev/BGLike/issues/282), [새 게임·이어하기·졸업 #284](https://github.com/minjunkim-dev/BGLike/issues/284)에서 합니다. 구현 전까지 현재 게임은 앱을 종료하면 진행을 저장하지 않습니다.
+> **결정됨, 구현됨.** 2026-10-22 [#209 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6330756631) 7~9번(7·8번은 개정 후 채택)입니다. 구현은 [저장 기반 #280](https://github.com/minjunkim-dev/BGLike/issues/280), [전투 상태 저장 #281](https://github.com/minjunkim-dev/BGLike/issues/281), [정비·보상 중 저장 #282](https://github.com/minjunkim-dev/BGLike/issues/282), [새 게임·이어하기·졸업 #284](https://github.com/minjunkim-dev/BGLike/issues/284)에서 했습니다.
 
 | 항목 | 결정 |
 |---|---|
@@ -90,11 +90,12 @@ flowchart TD
 - 개발 결정으로 남긴 것: 저장 파일의 위치·형식·버전 처리, 확인 창 문구.
   - `개발 결정`: 저장 파일의 위치·형식·버전 처리는 [#280](https://github.com/minjunkim-dev/BGLike/issues/280)에서 정했습니다([ADR 0003](adr/0003-save-files.md)).
   - `개발 결정`: 적 턴 중간의 저장은 그 적 턴이 시작한 상태와 끝낸 적 행동 수·아군의 반응 답으로 적고, 이어하기가 같은 난수로 끝낸 행동까지 연출 없이 다시 실행합니다. 결과는 마지막으로 끝난 적 행동 직후의 그 자리입니다. 승리 드랍은 전투 주사위로 굴려 이어하기로 다시 뽑을 수 없습니다 ([#281](https://github.com/minjunkim-dev/BGLike/issues/281), [ADR 0003](adr/0003-save-files.md#전투-칸-281)).
+  - `개발 결정`: 파일은 있는데 머리·본문을 읽을 수 없는 저장(깨짐, 다른 형식 버전)은 없는 것처럼 `이어하기`를 숨기고 타이틀에 "저장을 읽을 수 없어 이어할 수 없습니다."를 보입니다. 머리는 읽히지만 전투 칸이 복원 검사에 맞지 않으면 `이어하기`를 누를 때 거르고, 전투를 열지 않은 채 같은 안내를 보입니다. 게임은 멈추지 않고 파일은 `새 게임`을 확인할 때까지 지우지 않습니다. `새 게임`의 덮어쓰기 확인 창은 이때 "저장을 읽을 수 없음"을 보입니다. 졸업 화면에서는 일시정지 메뉴를 열지 않습니다 ([#284](https://github.com/minjunkim-dev/BGLike/issues/284), [ADR 0003](adr/0003-save-files.md#새-게임이어하기졸업-284)).
   - `개발 결정`: 정비·보상 확인 화면 중의 저장은 화면 단계(보상 확인·정비)만 더 적습니다. 가방·장비·물약·남은 보상은 전투 저장에 들어 있습니다. 정비 종료 확인 생략 선택은 저장하지 않아 이어하기 뒤 한 번 다시 묻습니다 ([#282](https://github.com/minjunkim-dev/BGLike/issues/282), [ADR 0003](adr/0003-save-files.md#정비-칸-282)).
 
 ### 2-5. 전투 밖 화면 ✅
 
-> **결정됨, 구현 중.** 2026-10-22 [#209 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6330756631) 2~6번, [#209 3번 정정](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6331003204), [#220 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/220#issuecomment-6331002448) 3번입니다. 구현은 [타이틀 #283](https://github.com/minjunkim-dev/BGLike/issues/283), [설정 #285](https://github.com/minjunkim-dev/BGLike/issues/285), [일시정지·전투 포기 #286](https://github.com/minjunkim-dev/BGLike/issues/286), [도움말 #287](https://github.com/minjunkim-dev/BGLike/issues/287)에서 합니다.
+> **결정됨, 구현됨.** 2026-10-22 [#209 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6330756631) 2~6번, [#209 3번 정정](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6331003204), [#220 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/220#issuecomment-6331002448) 3번입니다. 구현은 [타이틀 #283](https://github.com/minjunkim-dev/BGLike/issues/283), [설정 #285](https://github.com/minjunkim-dev/BGLike/issues/285), [일시정지·전투 포기 #286](https://github.com/minjunkim-dev/BGLike/issues/286), [도움말 #287](https://github.com/minjunkim-dev/BGLike/issues/287)에서 했습니다.
 
 | 화면 | 결정 |
 |---|---|
@@ -180,7 +181,7 @@ flowchart TD
 | 물약 한도 | 캐릭터당 **3개**. 한도를 넘게 줄 수 없음 |
 | 전투 불능인 캐릭터 | 아이템(장비, 물약)을 **받을 수 있음**. 다음 막에 부활하면 그 장비로 나옴 |
 
-공용 가방은12칸입니다. 장비1개와 물약1개가 각각1칸을 사용합니다. 정비에서 장착·물약 분배·선택한 한 개의 확인 후 폐기를 합니다. 스테이지·막 전환·전멸 재시작에서 유지합니다. 가방도 자동 저장 대상입니다 (2-4, 결정됨, 구현 중).
+공용 가방은12칸입니다. 장비1개와 물약1개가 각각1칸을 사용합니다. 정비에서 장착·물약 분배·선택한 한 개의 확인 후 폐기를 합니다. 스테이지·막 전환·전멸 재시작에서 유지합니다. 가방도 자동 저장 대상입니다 (2-4).
 미수령 보상이 있으면 종료 확인을 표시합니다. 메시지 생략은 성공한 명시적 확인에서만 적용합니다. 현재 앱 실행에서 유지하며 정비에서 다시 켤 수 있습니다. 생략 설정은 용량 검사와 아이템 폐기 확인을 건너뛰지 않습니다.
 이는 [#139의 구현 전 결정](https://github.com/minjunkim-dev/BGLike/issues/139#issuecomment-6295609725)과 [#175](https://github.com/minjunkim-dev/BGLike/issues/175)를 반영합니다. 초기12칸·초과 처리·메시지 설정 수명은 사용자의 선택 위임으로 채택한 권장안입니다. 기획자의 명시 수치와 구분합니다. 자세한 규칙은 [아이템 안내](ITEM_LOOT.md)를 따릅니다.
 

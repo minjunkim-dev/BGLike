@@ -47,7 +47,7 @@ M5에서는 처음 배치한 새끼와 생성한 새끼 모두 추가 드랍에�
 가방 칸을 고르면 나오는 `폐기` 버튼은 선택한 한 개를 확인 후 제거한다. 기본 선택은 `돌아가기`다.
 폐기 취소·닫기·Esc는 아이템을 보존한다. 종료 확인 생략은 폐기 확인을 건너뛰지 않는다.
 가방은 스테이지·막 전환·전멸 재시작에서 유지한다.
-저장은 [게임 구조 2-4](GAME_STRUCTURE.md#2-4-저장과-이어하기-)의 자동 저장을 따른다(결정됨, 구현 중: [#280](https://github.com/minjunkim-dev/BGLike/issues/280)~[#282](https://github.com/minjunkim-dev/BGLike/issues/282), [#284](https://github.com/minjunkim-dev/BGLike/issues/284)). 구현 전인 현재 게임은 앱을 종료하면 저장하지 않는다.
+저장은 [게임 구조 2-4](GAME_STRUCTURE.md#2-4-저장과-이어하기-)의 자동 저장을 따른다([#280](https://github.com/minjunkim-dev/BGLike/issues/280)~[#282](https://github.com/minjunkim-dev/BGLike/issues/282), [#284](https://github.com/minjunkim-dev/BGLike/issues/284)). 가방·장비·물약은 행동마다 저장하고 `이어하기`로 그대로 돌아온다.
 
 물약은 캐릭터마다 보유한다.
 가방의 물약은 캐릭터별 보유 한도3개에 포함하지 않는다.

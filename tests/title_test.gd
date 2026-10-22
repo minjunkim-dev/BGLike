@@ -320,9 +320,11 @@ func _tap(event: InputEvent) -> void:
 
 func _finish() -> void:
 	print("Title: %d checks, %d failures;" % [checks, failures])
+	GameSave.autosave = false
 	if current_scene:
 		current_scene.queue_free()
 	await process_frame
+	GameSave.delete()
 	for file: String in [GameSettings.path, GameSettings.path + ".tmp"]:
 		DirAccess.remove_absolute(file)
 	DirAccess.remove_absolute(directory)

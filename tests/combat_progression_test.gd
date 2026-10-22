@@ -771,9 +771,10 @@ func _test_graduation(battle: Node2D) -> void:
 		"3-3도 졸업 전에 보상과 정비 제공")
 	hud.restart_button.pressed.emit()
 	_finish_rewards(battle)
-	_check(hud.result_label.text == "3막 졸업" and not hud.restart_button.visible,
-		"3-3 승리 뒤 졸업 화면과 추가 스테이지 없음")
-	hud.restart_button.pressed.emit()
+	_check(hud.result_label.text == "3막 졸업" and hud.restart_button.text == "타이틀로",
+		"3-3 승리 뒤 졸업 화면과 추가 스테이지 없음, 버튼은 타이틀로")
+	# 타이틀로 전환은 tests/continue_test.gd가 본다. 여기서는 다시 온 진행 신호를 무시하는지 본다.
+	battle.call("_finish_preparation")
 	_check(hud.progress_label.text == "3막 · 3스테이지"
 		and hud.result_label.text == "3막 졸업", "졸업 뒤 진행 신호 무시")
 

@@ -262,11 +262,9 @@ func show_result(victory: bool, graduated: bool = false, locked: bool = false) -
 	_hide_reaction()
 	var complete: bool = victory and graduated
 	result_label.text = tr("3막 졸업") if complete else tr("승리") if victory else tr("패배")
-	restart_button.visible = not complete
-	restart_button.text = tr("보상 확인") if victory else tr("이 막 다시 시작")
+	restart_button.text = tr("타이틀로") if complete else tr("보상 확인") if victory else tr("이 막 다시 시작")
 	$Result.show()
-	if not complete:
-		restart_button.grab_focus()
+	restart_button.grab_focus()
 	restart_button.disabled = locked
 
 

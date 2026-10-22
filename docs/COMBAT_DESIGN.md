@@ -192,7 +192,7 @@ flowchart TD
 2026-10-22 [#220 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/220#issuecomment-6331002448) 1·2번입니다.
 
 - **표시 확률을 보정하지 않습니다.** 화면의 명중률이 실제 확률입니다. 사람이 플레이한 뒤 불운이 불만으로 나오면 새 항목으로 다시 엽니다.
-- **시드를 고정하지 않습니다.** 새 게임·막 재시작마다 새로 굴립니다. 이어하기는 저장한 난수 상태에서 이어집니다([게임 구조 2-4](GAME_STRUCTURE.md#2-4-저장과-이어하기-), 결정됨, 구현 중: [#281](https://github.com/minjunkim-dev/BGLike/issues/281)).
+- **시드를 고정하지 않습니다.** 새 게임·막 재시작마다 새로 굴립니다. 이어하기는 저장한 난수 상태에서 이어집니다([게임 구조 2-4](GAME_STRUCTURE.md#2-4-저장과-이어하기-), [#281](https://github.com/minjunkim-dev/BGLike/issues/281)).
 
 ---
 
@@ -416,7 +416,7 @@ flowchart TD
 
 | 씬 | 내용 |
 |---|---|
-| 전투 | 실행하면 타이틀 화면에서 시작함. 타이틀·일시정지·설정·도움말 화면은 [게임 구조 2-5](GAME_STRUCTURE.md#2-5-전투-밖-화면-)로 정함(결정됨, 구현 중: [#283](https://github.com/minjunkim-dev/BGLike/issues/283), [#285](https://github.com/minjunkim-dev/BGLike/issues/285)~[#287](https://github.com/minjunkim-dev/BGLike/issues/287)) |
+| 전투 | 실행하면 타이틀 화면에서 시작함. 타이틀·일시정지·설정·도움말 화면은 [게임 구조 2-5](GAME_STRUCTURE.md#2-5-전투-밖-화면-)로 정함([#283](https://github.com/minjunkim-dev/BGLike/issues/283), [#285](https://github.com/minjunkim-dev/BGLike/issues/285)~[#287](https://github.com/minjunkim-dev/BGLike/issues/287)) |
 | 결과 창 | 전투 씬 위에 띄움. 승리 / 패배와 재시작 버튼 (지금과 같음) |
 
 ### 9-2. 전투 화면 배치

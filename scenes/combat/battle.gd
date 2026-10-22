@@ -276,7 +276,11 @@ func _restart() -> void:
 	if not actions.is_over() or actions.busy or _enemy_turn_running:
 		return
 	if actions.is_victory():
-		if progress.graduated or preparation.visible:
+		# 졸업 화면의 버튼은 `타이틀로` 하나다 (#209 9번).
+		if progress.graduated:
+			get_tree().change_scene_to_file(PauseMenu.TITLE_SCENE)
+			return
+		if preparation.visible:
 			return
 		preparation.open_rewards(loot, party, progress.rewards, progress.is_final_stage(),
 			progress.is_last_in_act())
@@ -301,6 +305,10 @@ func _finish_preparation() -> void:
 		return
 	progress.advance()
 	if progress.graduated:
+		# 졸업 화면이 뜨는 순간 저장을 지운다. 이어하기로 마지막 정비 화면에 돌아가지 않는다 (#209 9번).
+		# 스위치가 꺼진 검사·장면 직접 실행은 사용자의 저장을 건드리지 않는다.
+		if GameSave.autosave:
+			GameSave.delete()
 		_update_turn_ui()
 		return
 	_start_stage(progress.starts_act())
@@ -416,6 +424,9 @@ func _input(event: InputEvent) -> void:
 	# 반응·정비 확인 창이 떠 있으면 그 창이 Esc·Start를 먼저 받는다. Esc는 지금처럼 반응을 넘긴다.
 	if event.is_action_pressed("pause"):
 		get_viewport().set_input_as_handled()
+		# 졸업 화면에는 `타이틀로`만 둔다.
+		if progress.graduated:
+			return
 		# 멈추면 _process가 돌지 않는다. 메뉴에서 바로 타이틀로·종료해도 끝난 행동이 남게 먼저 쓴다.
 		if _save_pending and GameSave.autosave and _can_save():
 			_autosave(combat_state())
