@@ -448,6 +448,9 @@ func _test_armor_unequip_scene() -> void:
 	party[0].armor = warrior_armor
 	party[0].hit_points = 1
 	party[1].armor = archer_armor
+	# 꺼진 주기(궁수 물약 한도)·넘기기(전사 물약 없음)의 포커스 설명 검사에 쓴다(#274).
+	party[0].potion_left = 0
+	party[1].potion_left = int(loot.data["potion_limit"])
 	var archer_hit_points: int = party[1].hit_points
 	for index: int in range(11):
 		loot.bag.append({"kind": "potion", "name": "가방 물약", "stats": {}})
@@ -493,6 +496,7 @@ func _test_armor_unequip_scene() -> void:
 		preparation._unequip_armor(1)
 		_check(party[1].armor == archer_armor and party[1].hit_points == archer_hit_points
 			and loot.bag.size() == 12, "가득 찬 가방에서 해제 입력은 방어구·HP·가방 보존")
+		await _check_preparation_focus_tooltips(preparation)
 		await _click(preparation.continue_button)
 		_check(not preparation.visible and battle.progress.act_number() == 2
 			and battle.progress.stage_in_act() == 1 and party[0].armor.is_empty()
@@ -906,6 +910,105 @@ func _check_preparation_focus(preparation: CombatPreparation, cell_name: String)
 			_check(reached.size() == targets.size() and targets.all(func(target: Control) -> bool:
 				return target in reached), "%s: %s에서 방향키로 모든 포커스 대상에 닿음" % [size, start.name])
 	root.size = original
+	await process_frame
+
+
+## #274: 실제 창에서 키보드·D-pad 포커스가 칸과 꺼진 해제·주기·넘기기 버튼에 가면 호버와 같은 설명을
+## 스킬 바처럼 0.5초 뒤 화면 안에 띄우고, 포커스가 떠나면 숨긴다. 창 크기 단언은 #272와 같다.
+## 전제: 가방이 가득 차 Armor1의 해제가 꺼지고, 가방 첫 칸은 물약, 궁수 물약은 한도, 전사 물약은 0개다.
+func _check_preparation_focus_tooltips(preparation: CombatPreparation) -> void:
+	var original: Vector2i = root.size
+	var windows: Dictionary[Vector2i, Vector2] = {Vector2i(1280, 720): Vector2(640, 360),
+		Vector2i(1920, 1080): Vector2(640, 360), Vector2i(1440, 900): Vector2(640, 400)}
+	var dpad_right: InputEventJoypadButton = InputEventJoypadButton.new()
+	dpad_right.button_index = JOY_BUTTON_DPAD_RIGHT
+	# 포인터가 칸 위에 남아 호버 설명이 섞이지 않게 화면 구석으로 옮긴다.
+	await _move_mouse(Vector2(1, 1))
+	for size: Vector2i in windows:
+		root.size = size
+		await process_frame
+		await process_frame
+		_check(root.size == size and preparation.get_viewport_rect().size == windows[size],
+			"%s: 창과 논리 화면 %s" % [size, preparation.get_viewport_rect().size])
+		var screen: Rect2 = Rect2(Vector2.ZERO, preparation.get_viewport_rect().size)
+		# 칸: 포커스된 방어구 칸은 아이템 설명을 띄운다. Enter로 골라 상세 패널을 연다.
+		(preparation.find_child("Armor1", true, false) as Control).grab_focus()
+		await _action("ui_accept")
+		await _check_focus_tooltip(preparation, "Armor1", screen, size, "ui_down", false)
+		# 해제: 진행 버튼에서 ↑로 상세 패널의 꺼진 버튼에 간다.
+		preparation.continue_button.grab_focus()
+		await _action("ui_up")
+		await _check_focus_tooltip(preparation, "UnequipArmor1", screen, size, "ui_up", true)
+		# 주기: 가방 물약 칸을 고르고 ↑, D-pad →로 궁수에게 주기에 간다.
+		(preparation.find_child("BagItem0", true, false) as Control).grab_focus()
+		await _action("ui_accept")
+		preparation.continue_button.grab_focus()
+		await _action("ui_up")
+		await _tap(dpad_right)
+		await _check_focus_tooltip(preparation, "Ally1", screen, size, "ui_up", true)
+		# 넘기기: 전사 카드의 무기 칸에서 ↓로 양도 버튼에 간다.
+		(preparation.find_child("Weapon0", true, false) as Control).grab_focus()
+		await _action("ui_down")
+		await _check_focus_tooltip(preparation, "Transfer0To1", screen, size, "ui_down", true)
+	# 마우스 호버는 같은 이유를 같은 설명 패널로 띄운다. 확인 창이 열리거나 포인터가 떠나면 숨긴다.
+	root.size = Vector2i(1280, 720)
+	await process_frame
+	var transfer: Button = preparation.find_child("Transfer0To1", true, false) as Button
+	await _move_mouse(transfer.get_global_rect().get_center())
+	await create_timer(0.8).timeout
+	_check(_tooltip_rect(preparation, transfer.tooltip_text).has_area(), "꺼진 넘기기 버튼의 호버 설명")
+	preparation._discard(0)
+	await process_frame
+	await process_frame
+	_check(preparation.discard_dialog.visible and not _tooltip_rect(preparation, transfer.tooltip_text).has_area(),
+		"확인 창이 열리면 호버 설명 숨김")
+	preparation.discard_dialog.canceled.emit()
+	await process_frame
+	await _move_mouse(Vector2(1, 1))
+	await create_timer(0.8).timeout
+	_check(not _tooltip_rect(preparation, transfer.tooltip_text).has_area(), "포인터가 떠나면 호버 설명 숨김")
+	root.size = original
+	await process_frame
+
+
+## 포커스된 칸·버튼(disabled면 꺼진 버튼)의 설명을 0.5초 전에는 숨기고, 뒤에는 화면 안에 보인다. leave 방향키로 떠나면 숨긴다.
+func _check_focus_tooltip(preparation: CombatPreparation, button_name: String, screen: Rect2,
+		size: Vector2i, leave: String, disabled: bool) -> void:
+	var button: Button = preparation.find_child(button_name, true, false) as Button
+	_check(button != null and button.has_focus(true) and button.disabled == disabled
+		and not button.tooltip_text.is_empty(),
+		"%s: 키보드·D-pad 포커스가 %s에 있음(꺼짐 %s)" % [size, button_name, disabled])
+	if button == null or not button.has_focus():
+		return
+	var text: String = button.tooltip_text
+	_check(not _tooltip_rect(preparation, text).has_area(), "%s: %s 설명은 0.5초 뒤에 뜸" % [size, button_name])
+	await create_timer(0.6).timeout
+	await process_frame
+	var rect: Rect2 = _tooltip_rect(preparation, text)
+	_check(rect.has_area() and screen.encloses(rect) and preparation.get_global_rect().encloses(rect),
+		"%s: 포커스된 %s의 설명이 화면 안에 보임: %s" % [size, button_name, rect])
+	await _action(leave)
+	_check(not button.has_focus() and not _tooltip_rect(preparation, text).has_area(),
+		"%s: 포커스가 %s를 떠나면 설명 숨김" % [size, button_name])
+
+
+## 정비 화면 바로 아래 설명 패널에 보이는 글의 영역. 없으면 빈 Rect2다.
+## 상세 패널의 같은 아이템 글과 Godot 기본 툴팁 창의 글은 세지 않는다.
+func _tooltip_rect(preparation: CombatPreparation, text: String) -> Rect2:
+	for label: Node in root.find_children("*", "Label", true, false):
+		var panel: Node = label.get_parent()
+		if (label as Label).text == text and (label as Label).is_visible_in_tree() \
+			and panel is PanelContainer and panel.get_parent() == preparation:
+			return (panel as Control).get_global_rect()
+	return Rect2()
+
+
+func _move_mouse(point: Vector2) -> void:
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = root.get_final_transform() * point
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
+	await process_frame
 	await process_frame
 
 

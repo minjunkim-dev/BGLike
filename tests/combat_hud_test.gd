@@ -667,7 +667,7 @@ func _test_guidance() -> void:
 	battle.call("_update_turn_ui")
 	for title: Label in hud.get("_titles"):
 		await _hover(title)
-		_check(title.tooltip_text.is_empty() and not (hud.get("_tooltip_panel") as Control).visible,
+		_check(title.tooltip_text.is_empty() and not (hud.get("_tooltip") as Control).visible,
 			"자원 제목에 실제 호버 설명 없음: " + title.text)
 	units[0].action_capacity = 3
 	units[0].bonus_action_capacity = 2
@@ -763,7 +763,7 @@ func _test_guidance() -> void:
 			await _hover(button)
 			_check(_has_tooltip(root, button.tooltip_text),
 				"활성·비활성 버튼의 실제 호버 설명: " + action)
-			var tooltip: PanelContainer = hud.get("_tooltip_panel") as PanelContainer
+			var tooltip: PanelContainer = hud.get("_tooltip") as PanelContainer
 			_check(hud.get_global_rect().encloses(tooltip.get_global_rect())
 				and not tooltip.get_global_rect().intersects((hud.get_node("Skills") as Control).get_global_rect())
 				and tooltip.z_index > (hud.get_node("Skills") as Control).z_index,
@@ -828,8 +828,8 @@ func _test_guidance() -> void:
 
 # 키보드·컨트롤러 포커스로도 같은 설명이 화면과 HUD 안, 스킬 패널 위에 뜬다.
 func _test_focus_tooltips(buttons: Dictionary) -> void:
-	var tooltip: PanelContainer = hud.get("_tooltip_panel") as PanelContainer
-	var timer: Timer = hud.get("_tooltip_timer") as Timer
+	var tooltip: PanelContainer = hud.get("_tooltip") as PanelContainer
+	var timer: Timer = hud.get("_tooltip").get("_timer") as Timer
 	turns.select_unit(units[0])
 	battle.call("_update_turn_ui")
 	var hovered: Button = buttons["second_wind"] as Button
@@ -1272,8 +1272,8 @@ func _test_skill_bar_keys() -> void:
 	battle.call("_update_turn_ui")
 	root.gui_release_focus()
 	var selection: CombatSelection = battle.get("selection") as CombatSelection
-	var tooltip: PanelContainer = hud.get("_tooltip_panel") as PanelContainer
-	var timer: Timer = hud.get("_tooltip_timer") as Timer
+	var tooltip: PanelContainer = hud.get("_tooltip") as PanelContainer
+	var timer: Timer = hud.get("_tooltip").get("_timer") as Timer
 	var slots: Array[Button] = hud.get("_action_slots")
 	var by_button: Dictionary[Button, String] = {}
 	var expected: Array[Button] = []

@@ -8,11 +8,6 @@ signal action_selected(action: String)
 signal reaction_selected(use_reaction: bool)
 signal restart_requested
 
-# 기본 툴팁 창 대신 같은 HUD의 최상단에 설명을 그린다.
-class HoverButton extends Button:
-	func _get_tooltip(_at_position: Vector2) -> String:
-		return ""
-
 # Space는 적 턴 가속 키다. 반응 확인 창의 포커스된 버튼을 누르지 않는다.
 class SpaceBlocker extends Node:
 	func _input(event: InputEvent) -> void:
@@ -38,10 +33,8 @@ var _costs: Dictionary[String, Label] = {}
 var _containers: Array[PanelContainer] = []
 var _titles: Array[Label] = []
 var _log_lines: Array[String] = []
-var _tooltip_owner: Control
-var _tooltip_panel: PanelContainer = PanelContainer.new()
-var _tooltip_label: Label = Label.new()
-var _tooltip_timer: Timer = Timer.new()
+# 기본 툴팁 창 대신 같은 HUD의 최상단에 설명을 그린다.
+var _tooltip: HoverTooltip = HoverTooltip.new()
 var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
 
 @onready var round_label: Label = $Round
@@ -70,18 +63,12 @@ func feedback_obstacles() -> Array[Rect2]:
 func _ready() -> void:
 	# 기본 반투명 배경은 아래 지형에 따라 대비가 바뀐다. 불투명 패널로 WCAG AA를 고정한다.
 	$CombatLog.add_theme_stylebox_override("panel", _panel_style())
-	_tooltip_panel.z_index = 10
-	_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_tooltip_panel.add_theme_stylebox_override("panel", _panel_style())
-	_tooltip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_tooltip_label.add_theme_font_size_override("font_size", 10)
-	_tooltip_panel.add_child(_tooltip_label)
-	add_child(_tooltip_panel)
-	_tooltip_panel.hide()
-	_tooltip_timer.one_shot = true
-	_tooltip_timer.wait_time = 0.5
-	_tooltip_timer.timeout.connect(_update_tooltip)
-	add_child(_tooltip_timer)
+	# 스킬 설명은 스킬 패널 위에 띄운다. 반응·결과 창이 열리면 숨긴다.
+	_tooltip.top_of = func(target: Control) -> float:
+		return ($Skills as Control).get_global_rect().position.y if $Skills.is_ancestor_of(target) \
+			else target.get_global_rect().position.y
+	_tooltip.hidden_when = func() -> bool: return reaction_dialog.visible or $Result.visible
+	add_child(_tooltip)
 	end_button.pressed.connect(func() -> void: end_turn_requested.emit())
 	restart_button.pressed.connect(func() -> void: restart_requested.emit())
 	for index: int in range(CombatActionRules.GROUPS.size()):
@@ -102,7 +89,7 @@ func _ready() -> void:
 		buttons.add_theme_constant_override("separation", 3)
 		column.add_child(buttons)
 		for action: String in CombatActionRules.GROUPS[index]:
-			var button: Button = HoverButton.new()
+			var button: Button = HoverTooltip.HoverButton.new()
 			# 아이콘 오른쪽에 비용 마크 자리를 남긴다.
 			button.custom_minimum_size.x = 52
 			button.icon = CombatActionRules.icon_of(action)
@@ -115,7 +102,7 @@ func _ready() -> void:
 			if index != 2:
 				button.pressed.connect(func() -> void: action_selected.emit(action))
 			buttons.add_child(button)
-			_connect_tooltip(button)
+			_tooltip.attach(button)
 			_actions[action] = button
 			button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 			var cost: Label = Label.new()
@@ -152,49 +139,6 @@ func _ready() -> void:
 	reaction_dialog.dialog_hide_on_ok = false
 	reaction_dialog.confirmed.connect(_finish_reaction.bind(true))
 	reaction_dialog.canceled.connect(_finish_reaction.bind(false))
-
-
-func _connect_tooltip(control: Control) -> void:
-	var start: Callable = func() -> void:
-		# 호버 중 클릭으로 포커스를 받아도 떠 있는 설명을 다시 기다리게 하지 않는다.
-		if _tooltip_owner == control and (_tooltip_panel.visible or not _tooltip_timer.is_stopped()):
-			return
-		_tooltip_owner = control
-		_tooltip_panel.hide()
-		_tooltip_timer.start()
-	var stop: Callable = func() -> void:
-		if _tooltip_owner == control:
-			_tooltip_owner = null
-			_tooltip_timer.stop()
-			_tooltip_panel.hide()
-	control.mouse_entered.connect(start)
-	control.mouse_exited.connect(stop)
-	# 키보드·컨트롤러 포커스도 같은 설명을 띄운다. 클릭으로 받은 포커스는 마우스가 떠나면 숨긴다.
-	control.focus_entered.connect(start)
-	control.focus_exited.connect(stop)
-
-
-func _process(_delta: float) -> void:
-	if _tooltip_panel.visible:
-		_update_tooltip()
-
-
-func _update_tooltip() -> void:
-	if not is_instance_valid(_tooltip_owner) or not _tooltip_owner.is_visible_in_tree() \
-		or reaction_dialog.visible or $Result.visible:
-		_tooltip_panel.hide()
-		return
-	_tooltip_label.text = _tooltip_owner.tooltip_text
-	_tooltip_panel.size = _tooltip_panel.get_combined_minimum_size()
-	var rect: Rect2 = _tooltip_owner.get_global_rect()
-	var top: float = ($Skills as Control).position.y if $Skills.is_ancestor_of(_tooltip_owner) else rect.position.y
-	var y: float = top - _tooltip_panel.size.y - 4
-	if y < 4:
-		y = rect.end.y + 4
-	_tooltip_panel.position = Vector2(
-		clampf(rect.position.x, 4, size.x - _tooltip_panel.size.x - 4),
-		clampf(y, 4, size.y - _tooltip_panel.size.y - 4))
-	_tooltip_panel.show()
 
 
 func refresh_actions(actions: CombatActions, selected: String, last_ally: CombatUnit) -> void:
@@ -467,7 +411,7 @@ func _build_portraits(turns: CombatTurns) -> void:
 		panel.add_child(box)
 		order_bar.add_child(panel)
 		for unit: CombatUnit in group:
-			var button: Button = HoverButton.new()
+			var button: Button = HoverTooltip.HoverButton.new()
 			# 이동 중에도 초상이 다른 묶음의 배경 위에 보이게 한다.
 			button.z_index = 1
 			button.custom_minimum_size = Vector2(40, 43)
@@ -490,7 +434,7 @@ func _build_portraits(turns: CombatTurns) -> void:
 			pending.offset_top = -16
 			pending.offset_right = -1
 			pending.offset_bottom = -1
-			_connect_tooltip(button)
+			_tooltip.attach(button)
 			_portraits[unit] = button
 	if not _order_moves.is_empty():
 		var positions: Dictionary[CombatUnit, Vector2] = _order_moves.duplicate()
