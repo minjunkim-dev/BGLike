@@ -2154,8 +2154,12 @@ func _test_attacks() -> void:
 	_check(killed.hits.size() == 1, "전투 불능 타격도 한 번 재생하고 거부한 공격은 무음")
 	f.actions._damage(target, 0)
 	_check(f.hits.size() == 1, "HP가 줄지 않으면 타격음을 요청하지 않음")
+	var healed: Array = []
+	f.actions.healed.connect(func(unit: CombatUnit, amount: int) -> void: healed.append([unit, amount]))
+	actor.hit_points -= 1
 	f.actions._heal(actor, 1, "회복 검사")
 	_check(f.hits.size() == 1, "회복은 타격음을 요청하지 않음")
+	_check(healed == [[actor, 1]], "회복 팝업은 실제 회복량만 보냄")
 
 
 func _test_archer_balance() -> void:
@@ -2372,7 +2376,7 @@ func _test_burn_stack_limit() -> void:
 	f.actions.dice = _dice_for([1, 2, 3], [4, 4, 4])
 	f.turns.end_turn()
 	f.turns.end_turn()
-	_check(target.hit_points == 6 and messages == ["화상 -1", "화상 -2", "화상 -3"],
+	_check(target.hit_points == 6 and messages == ["화상 1", "화상 2", "화상 3"],
 		"서로 다른 시전자의 화상3중첩은 각각 한 번씩 부여 순서로 피해")
 
 
@@ -2403,7 +2407,7 @@ func _test_status_fifo() -> void:
 	f.actions.dice = _dice_for([2, 10, 3], [4, 20, 4])
 	f.turns.end_turn()
 	f.turns.end_turn()
-	_check(target.hit_points == 5 and messages == ["화상 -2", "독 내성 12", "독 -1", "화상 -3", "독 -1"],
+	_check(target.hit_points == 5 and messages == ["화상 2", "독 1", "화상 3", "독 1"],
 		"다른 상태도 전체 FIFO: 첫 독DC13으로 내성 한 번만 굴리고 각 중첩 피해")
 
 
@@ -2417,9 +2421,16 @@ func _test_poison_save_oldest() -> void:
 	_check(not f.actions.apply_status(f.units[1], target, "poison"), "독도 상한3 이후 거부")
 	f.units[3].kind = CombatUnit.Kind.SCRAP_ROBOT_1000
 	f.actions.dice = _dice_for([9], [20])
+	var messages: Array[String] = []
+	var record: Callable = func(unit: CombatUnit, text: String) -> void:
+		if unit == target:
+			messages.append(text)
+	f.actions.feedback.connect(record)
 	f.turns.end_turn()
 	f.turns.end_turn()
+	f.actions.feedback.disconnect(record)
 	_check(target.hit_points == 10, "독 내성9+2는 부여 때DC11 성공: 가장 오래된 하나만 제거 후 두 틱")
+	_check(messages == ["독 내성", "독 1", "독 1"], "내성 성공은 이름만, 남은 틱은 원인과 피해: %s" % str(messages))
 	# 내성으로 없어진 시전자를 제거해도 남은 두 독은 그대로다.
 	f.actions.incapacitate(f.units[3])
 	f.actions.dice = _dice_for([10], [20])
@@ -2718,7 +2729,7 @@ func _test_ground_fifo() -> void:
 			messages.append(text))
 	f.turns.end_turn()
 	f.turns.end_turn()
-	_check(messages == ["독 내성 3", "독 -1", "화상 -2"] and target.hit_points == 9,
+	_check(messages == ["독 1", "화상 2"] and target.hit_points == 9,
 		"겹친 장판은 종류 고정 순서 대신 먼저 생성한 독부터 부여/FIFO 처리")
 
 
@@ -2854,7 +2865,7 @@ func _test_water_turn_start() -> void:
 	)
 	f.turns.end_turn()
 	f.turns.end_turn()
-	_check(target.hit_points == 11 and messages == ["물: 화상 해제", "독 내성 3", "독 -1"],
+	_check(target.hit_points == 11 and messages == ["물: 화상 해제", "독 1"],
 		"물 위 실제 시작은 화상 틱 전에 해제하고 독만 유지")
 
 
@@ -2931,7 +2942,7 @@ func _test_status_removed_during_tick() -> void:
 	f.actions.apply_status(f.units[1], target, "burn")
 	f.actions.apply_status(f.units[3], target, "burn")
 	f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
-		if unit == target and text == "화상 -2":
+		if unit == target and text == "화상 2":
 			f.actions.incapacitate(f.units[3])
 	)
 	f.actions.dice = _dice_for([2], [4])
@@ -2947,18 +2958,20 @@ func _test_poison_removed_during_save() -> void:
 		f.turns.select_unit(f.units[1])
 		f.actions.apply_status(f.units[1] if boundary == 0 else f.units[3], target, "poison")
 		var damage_messages: Array[String] = []
-		f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
-			if unit != target:
+		# 내성 실패는 팝업이 없으므로 같은 시점의 내성 로그에서 끼어든다.
+		f.actions.logged.connect(func(message: String) -> void:
+			if not message.begins_with("%s 독 건강 내성" % target.get_display_name()):
 				return
-			if text.begins_with("독 내성"):
-				if boundary == 0:
-					f.actions.incapacitate(f.units[1])
-				elif boundary == 1:
-					f.actions.incapacitate(target)
-				else:
-					f.actions.incapacitate(f.units[0])
-					f.actions.incapacitate(f.units[1])
-			elif text.begins_with("독 -"):
+			if boundary == 0:
+				f.actions.incapacitate(f.units[1])
+			elif boundary == 1:
+				f.actions.incapacitate(target)
+			else:
+				f.actions.incapacitate(f.units[0])
+				f.actions.incapacitate(f.units[1])
+		)
+		f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+			if unit == target and text.begins_with("독 "):
 				damage_messages.append(text)
 		)
 		f.actions.dice = _dice_for([1], [20])
@@ -3907,7 +3920,7 @@ func _test_scene_fall_feedback() -> void:
 	actions.dice = _dice_for([], [])
 	var feedback_feet: Array[Vector2] = []
 	actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
-		if unit == units[1] and text == "-3":
+		if unit == units[1] and text == "3":
 			feedback_feet.append(unit.position + Vector2(0, unit.floor_offset_y)))
 	_check(actions.shove(units[0], units[1]) and units[1].cell == Vector2i(3, 4)
 		and units[1].hit_points == 11 and units[0].bonus_action_left == 0,

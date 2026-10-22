@@ -17,7 +17,7 @@ const ENEMY_COLOR: Color = Color("df6256")
 const OUTLINE_COLOR: Color = Color("202b35")
 const WEAPON_COLOR: Color = Color("f4ead1")
 const CRITICAL_COLOR: Color = Color("f4cf69")
-const FUMBLE_COLOR: Color = Color("9a9a9a")
+const HEAL_COLOR: Color = Color("70c76d")
 
 class StatusEffect extends RefCounted:
 	var kind: String
@@ -400,7 +400,7 @@ func _draw() -> void:
 	draw_set_transform(Vector2(0, floor_offset_y))
 	var status_y: float = get_status_label_y()
 	draw_rect(Rect2(-9, status_y + 4, 18, 4), OUTLINE_COLOR)
-	draw_rect(Rect2(-8, status_y + 5, 16.0 * hit_points / get_max_hit_points(), 2), Color("70c76d"))
+	draw_rect(Rect2(-8, status_y + 5, 16.0 * hit_points / get_max_hit_points(), 2), HEAL_COLOR)
 	var status: String = get_status_text()
 	if not status.is_empty():
 		var font: Font = ThemeDB.fallback_font
@@ -411,40 +411,19 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
-func show_feedback(text: String, obstacles: Array[Rect2] = [], roll: CombatChecks.RollResult = null) -> void:
+func show_feedback(text: String, obstacles: Array[Rect2] = [], color: Color = WEAPON_COLOR) -> void:
 	var popup: Label = Label.new()
 	popup.z_index = 10
 	popup.text = text
 	popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	popup.add_theme_font_size_override("font_size", 14 if text == tr("치명타!") else 10)
-	popup.add_theme_color_override("font_color", CRITICAL_COLOR if text == tr("치명타!")
-		else FUMBLE_COLOR if text == tr("자동 실패") else WEAPON_COLOR)
+	popup.add_theme_color_override("font_color", CRITICAL_COLOR if text == tr("치명타!") else color)
 	popup.add_theme_color_override("font_outline_color", OUTLINE_COLOR)
 	popup.add_theme_constant_override("outline_size", 2)
 	popup.set_meta("feedback_unit", get_instance_id())
 	# 전투 불능 유닛도 마지막 피해를 표시한다.
 	get_parent().add_child(popup)
 	popup.size = popup.get_combined_minimum_size()
-	# 유리·불리 판정은 두 주사위를 나란히 두고 버린 쪽을 흐리게 한다.
-	if roll != null and roll.rolls.size() == 2:
-		var box: StyleBoxFlat = StyleBoxFlat.new()
-		box.bg_color = OUTLINE_COLOR
-		box.border_color = WEAPON_COLOR
-		box.set_border_width_all(1)
-		box.content_margin_left = 2
-		box.content_margin_right = 2
-		var kept: int = roll.rolls.find(roll.selected_roll)
-		for index: int in range(2):
-			var die: Label = Label.new()
-			die.text = str(roll.rolls[index])
-			die.add_theme_font_size_override("font_size", 10)
-			die.add_theme_color_override("font_color", WEAPON_COLOR)
-			die.add_theme_stylebox_override("normal", box)
-			die.modulate.a = 1.0 if index == kept else 0.35
-			popup.add_child(die)
-			die.size = die.get_combined_minimum_size()
-			die.position = Vector2(popup.size.x + 2, 0)
-			popup.size = Vector2(die.position.x + die.size.x, maxf(popup.size.y, die.size.y))
 	popup.position = _feedback_position(popup, obstacles)
 	var tween: Tween = popup.create_tween()
 	tween.tween_property(popup, "position:y", popup.position.y - FEEDBACK_RISE, 0.8)
