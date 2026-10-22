@@ -19,6 +19,9 @@ const SCROLL_STEP: int = 24
 
 
 func _ready() -> void:
+	var version: Dictionary = Engine.get_version_info()
+	(%Engine as Label).text = tr("이 게임은 Godot Engine %d.%d.%d를 사용합니다. Godot Engine은 다음 MIT 라이선스를 따릅니다.") % [
+		version.major, version.minor, version.patch]
 	(%EngineLicense as Label).text = Engine.get_license_text()
 	continue_button.visible = has_save()
 	# 설정 화면은 #285가 이 버튼에 연결할 때까지 꺼 둔다.

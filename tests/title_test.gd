@@ -36,7 +36,7 @@ func _run() -> void:
 	_check((title.menu.get_node("Name") as Label).text == "BGLike", "임시 이름 BGLike")
 	_check(not title.continue_button.visible and not title.has_save(), "저장이 없으면 이어하기를 숨김")
 	_check(title.settings_button.disabled, "설정 화면이 생기기 전에는 설정 버튼을 꺼 둠")
-	_check(title.quit_button.pressed.is_connected(quit), "종료 버튼은 게임을 끝냄")
+	_check(title.quit_button.pressed.is_connected(quit), "종료 버튼은 SceneTree.quit에 연결")
 	_check(title.new_game_button.has_focus(), "시작 포커스는 새 게임")
 	await _check_layout(title)
 	# 방향키로 출처까지 내려가 Enter로 연다.
@@ -61,6 +61,7 @@ func _run() -> void:
 	_check(not title.credits.visible and title.menu.visible and title.credits_button.has_focus(),
 		"Esc로 출처 화면을 닫고 출처 버튼으로 포커스 복귀")
 	await _tap(_action("ui_accept"))
+	_check(title.credits.visible and title.back_button.has_focus(), "Enter로 출처 화면을 다시 엶")
 	await _tap(_joypad(JOY_BUTTON_A))
 	_check(not title.credits.visible and title.credits_button.has_focus(), "컨트롤러 A로 뒤로 버튼을 눌러 닫음")
 	# 새 게임은 지금처럼 1막 1스테이지 전투로 간다.
@@ -88,8 +89,13 @@ func _check_notices(title: TitleScreen) -> void:
 			srd = line.trim_prefix("> ")
 	var notices: Control = title.credits_scroll.get_child(0) as Control
 	_check(srd != "" and (notices.get_node("SrdNotice") as Label).text == srd, "SRD 5.1 CC-BY-4.0 표기 원문")
+	var version: Dictionary = Engine.get_version_info()
 	_check((notices.get_node("EngineLicense") as Label).text == Engine.get_license_text()
-		and "MIT" in (notices.get_node("Engine") as Label).text, "Godot Engine MIT 라이선스 전문")
+		and "Godot Engine %d.%d.%d" % [version.major, version.minor, version.patch]
+		in (notices.get_node("Engine") as Label).text, "실행 중인 Godot Engine 버전과 MIT 라이선스 전문")
+	for name: String in ["SrdNotice", "EngineLicense"]:
+		_check((notices.get_node(name) as Node).auto_translate_mode == Node.AUTO_TRANSLATE_MODE_DISABLED,
+			"법적 고지문 %s은 번역하지 않음" % name)
 	_check("Kenney" in (notices.get_node("Sound") as Label).text, "효과음 원본 표기")
 
 

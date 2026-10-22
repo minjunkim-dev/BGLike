@@ -125,6 +125,7 @@ text = "전투 규칙은 SRD 5.1을 근거로 하며 게임에 맞게 수정해 
 autowrap_mode = 3
 
 [node name="SrdNotice" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+auto_translate_mode = 2
 layout_mode = 2
 text = "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
 autowrap_mode = 3
@@ -135,11 +136,12 @@ theme_override_font_sizes/font_size = 14
 text = "엔진"
 
 [node name="Engine" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "이 게임은 Godot Engine 4.7.2를 사용합니다. Godot Engine은 다음 MIT 라이선스를 따릅니다."
 autowrap_mode = 3
 
 [node name="EngineLicense" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+auto_translate_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
