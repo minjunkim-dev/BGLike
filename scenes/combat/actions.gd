@@ -32,10 +32,12 @@ class RockRoll extends RefCounted:
 
 
 class Ground extends RefCounted:
+	const POISON_STRENGTH: int = 4
 	var source: CombatUnit
 	var cell: Vector2i
 	var kind: String
 	var turns_left: int
+	var strength: int
 	var entered: Array[CombatUnit] = []
 
 	func _init(caster: CombatUnit, position: Vector2i, effect: String) -> void:
@@ -43,6 +45,7 @@ class Ground extends RefCounted:
 		cell = position
 		kind = effect
 		turns_left = 2 if kind == "burn" else 4
+		strength = POISON_STRENGTH if kind == "poison" else 0
 
 
 var grid: CombatGrid = CombatGrid.new()
@@ -89,7 +92,7 @@ func save_state() -> Dictionary:
 	var grounds: Array = []
 	for ground: Ground in _grounds:
 		grounds.append([units.find(ground.source), ground.cell, ground.kind, ground.turns_left,
-			ground.entered.map(func(unit: CombatUnit) -> int: return units.find(unit))])
+			ground.entered.map(func(unit: CombatUnit) -> int: return units.find(unit)), ground.strength])
 	return {"props": props, "grounds": grounds, "dice": dice.state}
 
 
@@ -104,6 +107,7 @@ func load_state(data: Dictionary) -> void:
 	for saved: Array in data.grounds:
 		var ground: Ground = Ground.new(units[saved[0]], saved[1], saved[2])
 		ground.turns_left = saved[3]
+		ground.strength = saved[5]
 		for index: int in saved[4]:
 			ground.entered.append(units[index])
 		_grounds.append(ground)
@@ -123,10 +127,12 @@ static func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> boo
 				and saved[1] is Vector2i and area.has_point(saved[1]) and saved[2] is int and saved[2] > 0
 				and saved[2] <= 6))
 		and data.grounds.all(func(saved: Variant) -> bool:
-			return (saved is Array and saved.size() == 5 and unit_index.call(saved[0])
+			return (saved is Array and saved.size() == 6 and unit_index.call(saved[0])
 				and saved[1] is Vector2i and area.has_point(saved[1]) and saved[2] in ["burn", "poison"]
 				and saved[3] is int and saved[3] >= 1 and saved[3] <= 4
-				and saved[4] is Array and saved[4].size() <= count and saved[4].all(unit_index))))
+				and saved[4] is Array and saved[4].size() <= count and saved[4].all(unit_index)
+				and saved[5] is int and saved[5] >= (1 if saved[2] == "poison" else 0)
+				and saved[5] <= CombatUnit.SAVED_INT_LIMIT)))
 
 
 func create_prop(cell: Vector2i, kind: String) -> CombatGrid.Prop:
@@ -374,13 +380,13 @@ func _on_turn_started(unit: CombatUnit) -> void:
 		var name: String = tr("화상") if effect.kind == "burn" else tr("독")
 		if effect.kind == "poison" and not poison_checked:
 			poison_checked = true
-			var constitution: int = unit.get_attribute(CombatUnit.Attribute.CONSTITUTION)
-			var saved: CombatChecks.RollResult = CombatChecks.saving_throw(constitution, effect.save_dc, dice)
-			logged.emit(tr("%s 독 건강 내성: d20 %d + %d = %d / DC %d · %s") % [unit.get_display_name(),
-				saved.selected_roll, constitution, saved.total, effect.save_dc, tr("성공") if saved.success else tr("실패")])
+			var nature_sides: int = unit.get_ability_sides(CombatUnit.Ability.NATURE)
+			var saved: CombatChecks.RollResult = CombatChecks.threshold(nature_sides, 0, effect.strength, dice)
+			logged.emit(tr("%s 독 제거: 자연 d%d %d / 강도 %d · %s") % [unit.get_display_name(),
+				nature_sides, saved.selected_roll, effect.strength, tr("성공") if saved.success else tr("실패")])
 			# 실패는 뒤따르는 `독 1` 틱 팝업이 효과 이름을 보인다.
 			if saved.success:
-				feedback.emit(unit, tr("독 내성"))
+				feedback.emit(unit, tr("독 제거"))
 			if unit.hit_points <= 0 or is_over():
 				break
 			if effect not in unit.status_effects:
@@ -395,10 +401,12 @@ func _on_turn_started(unit: CombatUnit) -> void:
 	changed.emit()
 
 
-func apply_status(source: CombatUnit, target: CombatUnit, kind: String) -> bool:
+func apply_status(source: CombatUnit, target: CombatUnit, kind: String,
+	strength: int = Ground.POISON_STRENGTH) -> bool:
 	if (not is_instance_valid(source) or not is_instance_valid(target)
 		or source not in units or target not in units or source.hit_points <= 0 or target.hit_points <= 0
-		or kind not in ["stun", "burn", "poison"]):
+		or kind not in ["stun", "burn", "poison"]
+		or kind == "poison" and (strength < 1 or strength > CombatUnit.SAVED_INT_LIMIT)):
 		return false
 	if kind == "burn" and target.cell in grid.water_cells:
 		return false
@@ -410,7 +418,7 @@ func apply_status(source: CombatUnit, target: CombatUnit, kind: String) -> bool:
 	else:
 		if target.get_status_count(kind) >= 3:
 			return false
-		target.status_effects.append(CombatUnit.StatusEffect.new(kind, source, 2 if kind == "burn" else 4))
+		target.status_effects.append(CombatUnit.StatusEffect.new(kind, source, 2 if kind == "burn" else 4, strength))
 	changed.emit()
 	return true
 
@@ -623,8 +631,7 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 		"attack":
 			return actor.action_left > 0
 		"shock":
-			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
-				and actor.get_save_dc() > 0)
+			return CombatActionRules.has_uses(actor, action) and actor.action_left > 0
 		"mark":
 			return CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
 		"shove":
@@ -640,7 +647,7 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 	match action:
 		"spin":
 			return (CombatActionRules.belongs_to(actor, action) and actor.action_left > 0
-				and not grid.opponents_in_area(actor, 1).is_empty())
+				and _spin_mode(actor, grid.opponents_in_area(actor, 1)) >= 0)
 		"spawn":
 			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
 				and actor in turns.ordered_units and not grid.empty_neighbors(actor.cell).is_empty())
@@ -762,10 +769,24 @@ func attack(actor: CombatUnit, target: CombatUnit, shock: bool = false) -> bool:
 	return true
 
 
+# shortcut: 현재 콘텐츠에서 없는 혼합 유리 조건은 #326 기획 확정 뒤 지원한다.
+func _spin_mode(actor: CombatUnit, targets: Array[CombatUnit]) -> int:
+	if targets.is_empty():
+		return -1
+	var mode: int = grid.attack_preview(actor, targets[0]).mode
+	for target: CombatUnit in targets:
+		if grid.attack_preview(actor, target).mode != mode:
+			return -1
+	return mode
+
+
 func spin(actor: CombatUnit) -> bool:
 	if not can_use(actor, "spin"):
 		return false
 	var targets: Array[CombatUnit] = grid.opponents_in_area(actor, 1)
+	var mode: CombatChecks.RollMode = _spin_mode(actor, targets) as CombatChecks.RollMode
+	var shared_roll: CombatChecks.RollResult = CombatChecks.attack_roll(
+		actor.get_ability_sides(CombatUnit.Ability.STRENGTH), actor.get_attack_bonus(), mode, dice)
 	busy = true
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	logged.emit(tr_n("%s 회전회오리: 인접 대상 %d명", "%s 회전회오리: 인접 대상 %d명", targets.size()) % [actor.get_display_name(), targets.size()])
@@ -774,7 +795,7 @@ func spin(actor: CombatUnit) -> bool:
 		if actor.hit_points <= 0 or actor.is_stunned or actor != turns.current_unit or is_over():
 			break
 		if target.hit_points > 0 and target.cell in grid.area_cells(actor.cell, 1):
-			await _perform_attack(actor, target, false)
+			await _perform_attack(actor, target, false, shared_roll)
 	_finish()
 	return true
 
@@ -840,18 +861,17 @@ func pull(actor: CombatUnit, target: CombatUnit) -> bool:
 		return false
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	actor.pull_cooldown = 2
-	var result: CombatChecks.ContestResult = CombatChecks.contest(
-		actor.get_attribute(CombatUnit.Attribute.STRENGTH),
-		maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), dice)
-	if result.attacker_wins:
+	var strength: CombatUnit.Ability = CombatUnit.Ability.STRENGTH
+	var result: CombatChecks.RollResult = CombatChecks.opposed_attack(actor.get_ability_sides(strength),
+		target.get_ability_sides(strength), actor.get_attack_bonus(), target.get_defense_bonus(), CombatChecks.RollMode.NORMAL, dice)
+	if result.success:
 		var cells: Array[Vector2i] = grid.pull_cells(actor, target)
 		_land(target, cells[0] if cells.size() == 1 else cells[dice.roll(cells.size()) - 1])
-	logged.emit(tr("%s 만능팔: %d + %d = %d / %d + %d = %d · %s") % [
-		actor.get_display_name(), result.attacker_roll,
-		actor.get_attribute(CombatUnit.Attribute.STRENGTH), result.attacker_total,
-		result.defender_roll, maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()),
-		result.defender_total, tr("성공") if result.attacker_wins else tr("실패")])
-	feedback.emit(target, tr("끌어옴") if result.attacker_wins else tr("만능팔 저항"))
+	logged.emit(tr("%s 만능팔: 힘 d%d %d %+d = %d / 힘 d%d %d %+d = %d · %s") % [
+		actor.get_display_name(), actor.get_ability_sides(strength), result.selected_roll,
+		actor.get_attack_bonus(), result.total, target.get_ability_sides(strength), result.defender_roll,
+		target.get_defense_bonus(), result.defender_total, tr("성공") if result.success else tr("실패")])
+	feedback.emit(target, tr("끌어옴") if result.success else tr("만능팔 저항"))
 	changed.emit()
 	return true
 
@@ -862,13 +882,13 @@ func shove(actor: CombatUnit, target: CombatUnit) -> bool:
 	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
 	var won: bool = target.is_stunned or actor.is_ally == target.is_ally
 	if not won:
-		var result: CombatChecks.ContestResult = CombatChecks.contest(
-			actor.get_attribute(CombatUnit.Attribute.STRENGTH),
-			maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), dice)
-		won = result.attacker_wins
-		logged.emit(tr("밀치기 대결: %d + %d = %d / %d + %d = %d") % [
-			result.attacker_roll, actor.get_attribute(CombatUnit.Attribute.STRENGTH), result.attacker_total,
-			result.defender_roll, maxi(target.get_attribute(CombatUnit.Attribute.STRENGTH), target.get_dexterity()), result.defender_total])
+		var strength: CombatUnit.Ability = CombatUnit.Ability.STRENGTH
+		var result: CombatChecks.RollResult = CombatChecks.opposed_attack(actor.get_ability_sides(strength),
+			target.get_ability_sides(strength), actor.get_attack_bonus(), target.get_defense_bonus(), CombatChecks.RollMode.NORMAL, dice)
+		won = result.success
+		logged.emit(tr("밀치기 대결: 힘 d%d %d %+d = %d / 힘 d%d %d %+d = %d") % [
+			actor.get_ability_sides(strength), result.selected_roll, actor.get_attack_bonus(), result.total,
+			target.get_ability_sides(strength), result.defender_roll, target.get_defense_bonus(), result.defender_total])
 	feedback.emit(target, tr("밀치기 성공") if won else tr("밀치기 실패"))
 	if won:
 		_land(target, grid.push_destination(actor.cell, target.cell))
@@ -914,14 +934,22 @@ func _emit_reaction(kind: String, prompt: String) -> void:
 	reaction_requested.emit(kind, prompt)
 
 
-func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void:
-	var save_dc: int = actor.get_save_dc()
+func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
+	shared_roll: CombatChecks.RollResult = null) -> void:
 	if attack_animation.is_valid():
 		await attack_animation.call(actor, target)
 	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
 		return
-	var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
-	last_attack = CombatChecks.attack(actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
+	var attack_ability: CombatUnit.Ability = actor.get_attack_ability()
+	var defense_ability: CombatUnit.Ability = CombatUnit.Ability.DEXTERITY if actor.is_ranged_attack() else CombatUnit.Ability.STRENGTH
+	var attack_sides: int = actor.get_ability_sides(attack_ability)
+	var defense_sides: int = target.get_ability_sides(defense_ability)
+	if shared_roll == null:
+		var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
+		last_attack = CombatChecks.opposed_attack(attack_sides, defense_sides,
+			actor.get_attack_bonus(), target.get_defense_bonus(), preview.mode, dice)
+	else:
+		last_attack = CombatChecks.defend_against(shared_roll, defense_sides, target.get_defense_bonus(), dice)
 	last_damage = 0
 	last_damage_rolls.clear()
 	var mode_name: String = tr("일반")
@@ -929,35 +957,33 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 		mode_name = tr("유리")
 	elif last_attack.mode == CombatChecks.RollMode.DISADVANTAGE:
 		mode_name = tr("불리")
-	logged.emit(tr("%s 공격(%s): d20 %s + %d = %d / AC %d · %s") % [actor.get_display_name(), mode_name,
-		str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total, target.get_armor_class(),
-		tr("치명타") if last_attack.critical else tr("명중") if last_attack.success else tr("빗나감")])
-	if last_attack.critical:
-		feedback.emit(target, tr("치명타!"))
+	logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / %s d%d %d %+d = %d · %s") % [
+		actor.get_display_name(), mode_name, CombatUnit.ability_name(attack_ability), attack_sides,
+		str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total,
+		CombatUnit.ability_name(defense_ability), defense_sides, last_attack.defender_roll,
+		target.get_defense_bonus(), last_attack.defender_total, tr("명중") if last_attack.success else tr("빗나감")])
 	if not last_attack.success:
 		feedback.emit(target, tr("빗나감"))
 		return
-	if (save_dc > 0 and CombatActionRules.has_uses(target, "parry") and not target.is_stunned
+	if (CombatActionRules.has_uses(target, "parry") and not target.is_stunned
 		and target.reaction_left > 0):
-		var success_rolls: int = clampi(21 + target.get_dexterity() - save_dc, 0, 20)
-		if await _ask_reaction(target, "parry", tr("%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)") % [target.get_display_name(), success_rolls * 5.0, target.parry_left]):
+		var parry_sides: int = target.get_ability_sides(CombatUnit.Ability.DEXTERITY)
+		var chance: float = CombatChecks.threshold_chance(parry_sides, 3, last_attack.total)
+		if await _ask_reaction(target, "parry", tr("%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)") % [target.get_display_name(), chance * 100.0, target.parry_left]):
 			target.spend_resource(CombatUnit.TurnResource.REACTION)
 			CombatActionRules.spend_use(target, "parry")
-			var saved: CombatChecks.RollResult = CombatChecks.saving_throw(target.get_dexterity(), save_dc, dice)
-			logged.emit(tr("흘려내기: d20 %d + %d = %d / DC %d · %s") % [saved.selected_roll,
-				target.get_dexterity(), saved.total, save_dc, tr("성공") if saved.success else tr("실패")])
+			var saved: CombatChecks.RollResult = CombatChecks.threshold(parry_sides, 3, last_attack.total, dice)
+			logged.emit(tr("흘려내기: 민첩 d%d %d + 3 = %d / 공격 %d · %s") % [parry_sides,
+				saved.selected_roll, saved.total, last_attack.total, tr("성공") if saved.success else tr("실패")])
 			if saved.success:
 				feedback.emit(target, tr("흘려내기"))
 				return
-	var count: int = 2 if last_attack.critical else 1
 	var sides: int = actor.get_damage_sides()
 	if sides > 0:
-		for index: int in range(count):
-			last_damage_rolls.append(dice.roll(sides))
+		last_damage_rolls.append(dice.roll(sides))
 	var has_mark_damage: bool = actor.marked_target == target
 	if has_mark_damage:
-		for index: int in range(count):
-			last_damage_rolls.append(dice.roll(6))
+		last_damage_rolls.append(dice.roll(6))
 	var damage_bonus: int = actor.get_damage_bonus()
 	last_damage = damage_bonus
 	for rolled: int in last_damage_rolls:
@@ -970,19 +996,14 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool) -> void
 			tr(" (표식 추가)") if has_mark_damage else "",
 			str(last_damage_rolls), damage_bonus, last_damage, target.hit_points])
 	feedback.emit(target, str(last_damage))
-	if shock and target.hit_points > 0 and target.is_boss():
-		logged.emit(tr("%s 기절 면역") % target.get_display_name())
-		feedback.emit(target, tr("기절 면역"))
-		return
 	if shock and target.hit_points > 0:
-		var saved: CombatChecks.RollResult = CombatChecks.saving_throw(
-			target.get_attribute(CombatUnit.Attribute.MENTAL), save_dc, dice)
-		if not saved.success:
+		if target.is_boss():
+			logged.emit(tr("%s 기절 면역") % target.get_display_name())
+			feedback.emit(target, tr("기절 면역"))
+		else:
 			apply_status(actor, target, "stun")
-		logged.emit(tr("정신 내성: d20 %d + %d = %d / DC %d · %s") % [saved.selected_roll,
-			target.get_attribute(CombatUnit.Attribute.MENTAL), saved.total, save_dc,
-			tr("기절") if not saved.success else tr("버팀")])
-		feedback.emit(target, tr("정신 내성") if saved.success else tr("기절"))
+			logged.emit(tr("%s 충격 화살: 명중하여 기절") % target.get_display_name())
+			feedback.emit(target, tr("기절"))
 
 
 func _apply_grounds(unit: CombatUnit, entering: bool) -> void:
@@ -996,7 +1017,7 @@ func _apply_grounds(unit: CombatUnit, entering: bool) -> void:
 			if unit in ground.entered:
 				continue
 			ground.entered.append(unit)
-		if apply_status(ground.source, unit, ground.kind):
+		if apply_status(ground.source, unit, ground.kind, ground.strength):
 			logged.emit(tr("%s %s 장판: %s 부여") % [unit.get_display_name(),
 				tr("불") if ground.kind == "burn" else tr("독"), tr("화상") if ground.kind == "burn" else tr("독")])
 

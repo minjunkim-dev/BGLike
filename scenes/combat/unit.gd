@@ -8,6 +8,8 @@ enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 enum Ability { STRENGTH, DEXTERITY, CRAFT, INTELLIGENCE, WILL, NATURE }
 
 const ALLY_ABILITY_SIDES: Array[Array] = [[20, 8, 6, 4, 12, 6], [8, 20, 12, 6, 4, 6]]
+static var ABILITY_NAMES: Array[String] = [TranslationServer.tr("힘"), TranslationServer.tr("민첩"),
+	TranslationServer.tr("솜씨"), TranslationServer.tr("지능"), TranslationServer.tr("의지"), TranslationServer.tr("자연")]
 
 const MOVEMENT_PER_TURN: int = 6
 const FEEDBACK_RISE: float = 12.0
@@ -35,12 +37,14 @@ class StatusEffect extends RefCounted:
 	var source: CombatUnit
 	var turns_left: int
 	var save_dc: int
+	var strength: int
 
-	func _init(effect_kind: String, caster: CombatUnit, duration: int) -> void:
+	func _init(effect_kind: String, caster: CombatUnit, duration: int, intensity: int = 0) -> void:
 		kind = effect_kind
 		source = caster
 		turns_left = duration
 		save_dc = caster.get_save_dc()
+		strength = intensity if kind == "poison" else 0
 
 
 @export var kind: Kind = Kind.WARRIOR
@@ -134,6 +138,10 @@ func get_ability_sides(ability: Ability) -> int:
 	return int(CombatEnemyDefinitions.for_kind(kind)["abilities"][ability])
 
 
+static func ability_name(ability: Ability) -> String:
+	return ABILITY_NAMES[ability]
+
+
 ## 현재 일반 무기는 직업의 기본 대검·활을 강화하는 장비다. 실제 대상 거리로 유형을 바꾸지 않는다.
 func get_attack_ability() -> Ability:
 	return Ability.DEXTERITY if kind == Kind.ARCHER else Ability.STRENGTH
@@ -187,7 +195,7 @@ func get_armor_class() -> int:
 func get_attack_bonus() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["attack_bonus"])
-	return 5 + _equipment_stat("attack_bonus")
+	return _equipment_stat("attack_bonus")
 
 
 func get_damage_bonus() -> int:
@@ -217,7 +225,7 @@ func get_attack_range() -> int:
 
 
 func get_initiative() -> int:
-	return initiative_roll + get_dexterity()
+	return initiative_roll
 
 
 func get_display_name() -> String:
@@ -311,7 +319,7 @@ func begin_stage(restore_act: bool) -> void:
 func save_state(units: Array[CombatUnit]) -> Dictionary:
 	var statuses: Array = []
 	for effect: StatusEffect in status_effects:
-		statuses.append([effect.kind, units.find(effect.source), effect.turns_left, effect.save_dc])
+		statuses.append([effect.kind, units.find(effect.source), effect.turns_left, effect.strength])
 	var data: Dictionary = {"kind": kind, "ally": is_ally, "weapon": weapon, "armor": armor,
 		"hit_points": hit_points, "lost_hit_points": _lost_hit_points, "stunned": is_stunned,
 		"stun_source": units.find(stun_source), "marked_target": units.find(marked_target), "statuses": statuses}
@@ -333,8 +341,7 @@ func load_state(data: Dictionary, units: Array[CombatUnit]) -> void:
 	marked_target = units[data.marked_target] if data.marked_target >= 0 else null
 	status_effects.clear()
 	for saved: Array in data.statuses:
-		var effect: StatusEffect = StatusEffect.new(saved[0], units[saved[1]], saved[2])
-		effect.save_dc = saved[3]
+		var effect: StatusEffect = StatusEffect.new(saved[0], units[saved[1]], saved[2], saved[3])
 		status_effects.append(effect)
 
 
@@ -360,7 +367,8 @@ func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 	return (data.statuses as Array).all(func(saved: Variant) -> bool:
 		return (saved is Array and saved.size() == 4 and saved[0] in ["burn", "poison"]
 			and _valid_index(saved[1], count, false) and saved[2] is int and saved[2] >= 1 and saved[2] <= 4
-			and saved[3] is int and saved[3] >= 0 and saved[3] <= SAVED_INT_LIMIT))
+			and saved[3] is int and saved[3] >= (1 if saved[0] == "poison" else 0)
+			and saved[3] <= SAVED_INT_LIMIT))
 
 
 static func _valid_index(value: Variant, count: int, optional: bool) -> bool:

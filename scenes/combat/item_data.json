@@ -18,7 +18,7 @@
       "kind": "armor",
       "icon": "armor",
       "weight": 2,
-      "stats": {"armor_class": [[1, 2], [3, 4], [5, 7]], "max_hit_points": [[2, 4], [5, 8], [9, 14]]}
+      "stats": {"defense_bonus": [[1, 2], [3, 4], [5, 7]], "max_hit_points": [[2, 4], [5, 8], [9, 14]]}
     },
     {
       "id": "healing_potion",
