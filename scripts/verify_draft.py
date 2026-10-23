@@ -100,19 +100,28 @@ def smoke(archive, godot, output):
 
 
 def verify(api, release_id, version, source_sha, output, godot, request_id=None, build_id=None):
-    inputs(version, source_sha)
-    if type(release_id) is not int or release_id < 1:
-        raise ValueError("Expected positive release ID")
     checkout = Path(__file__).resolve().parents[1]
     if output.is_symlink() or output.resolve().is_relative_to(checkout):
         raise ValueError("Output must be outside the checkout and not a symlink")
     output.mkdir(parents=True, exist_ok=True)
+    manifest = output / "identity.json"
+    if manifest.is_symlink():
+        raise ValueError("Unexpected identity symlink")
+    previous = json.loads(manifest.read_text()) if manifest.exists() else None
+    if previous is None:
+        if any(output.iterdir()):
+            raise ValueError("Expected empty output directory")
+    elif not isinstance(previous, dict) or previous.get("tool") != "bglike-verify-draft-v1":
+        raise ValueError("Output was not created by this verifier")
     # Clear an earlier success before any new network or runtime check can fail.
     report = output / "result.json"
     if report.is_symlink():
         raise ValueError("Unexpected result symlink")
     if report.exists():
         report.unlink()
+    inputs(version, source_sha)
+    if type(release_id) is not int or release_id < 1:
+        raise ValueError("Expected positive release ID")
     release = api.request("GET", f"releases/{release_id}")
     expected = {"id": release_id, "draft": True, "prerelease": True, "target_commitish": source_sha,
                 "name": version, "tag_name": version}
@@ -127,15 +136,12 @@ def verify(api, release_id, version, source_sha, output, godot, request_id=None,
             raise ValueError("Invalid Draft asset")
     main_source(api, source_sha)
     run_records = runs(api, request_id, build_id, version, source_sha)
-    identity = dict(expected, request_run_id=request_id, build_run_id=build_id,
+    identity = dict(expected, tool="bglike-verify-draft-v1", request_run_id=request_id, build_run_id=build_id,
                     assets=sorted(({key: asset.get(key) for key in ("id", "name", "size", "state", "digest")}
                                    for asset in assets), key=lambda asset: asset["name"]))
-    manifest = output / "identity.json"
-    if manifest.is_symlink() or (manifest.exists() and json.loads(manifest.read_text()) != identity):
+    if previous is not None and previous != identity:
         raise ValueError("Output belongs to another Draft or changed assets")
     if not manifest.exists():
-        if any(output.iterdir()):
-            raise ValueError("Expected empty output directory")
         with manifest.open("x", encoding="utf-8") as stream:
             json.dump(identity, stream, indent=2, sort_keys=True)
     for name, record in (("release.json", release), ("runs.json", run_records)):

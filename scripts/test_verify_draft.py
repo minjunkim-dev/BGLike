@@ -127,6 +127,20 @@ class DraftVerificationTests(unittest.TestCase):
             self.verify()
         self.assertFalse((self.output / "result.json").exists())
 
+    def test_invalid_input_clears_previous_success(self):
+        self.verify()
+        with self.assertRaises(ValueError):
+            verifier.verify(self.api, 10, VERSION, "main", self.output, str(self.godot))
+        self.assertFalse((self.output / "result.json").exists())
+
+    def test_unowned_output_is_preserved(self):
+        self.output.mkdir()
+        report = self.output / "result.json"
+        report.write_text("user data")
+        with self.assertRaises(ValueError):
+            self.verify()
+        self.assertEqual(report.read_text(), "user data")
+
     def test_changed_identity_and_corrupt_resume_reject_without_download(self):
         self.verify()
         self.release["assets"][0]["id"] = 42
