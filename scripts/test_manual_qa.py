@@ -13,6 +13,7 @@ from unittest.mock import Mock, patch
 import manual_qa as qa
 
 frontmost_pid = qa.frontmost_pid
+docker_preflight = qa.docker_preflight
 
 
 class ManualQATests(unittest.TestCase):
@@ -31,6 +32,9 @@ class ManualQATests(unittest.TestCase):
         self.directory = self.root / "session"
         self.directory.mkdir()
         self.state = {"cases": {"compact": {"status": "not_run", "attempts": []}}}
+        docker = patch.object(qa, "docker_preflight")
+        docker.start()
+        self.addCleanup(docker.stop)
         front = patch.object(qa, "frontmost_pid", return_value=None)
         front.start()
         self.addCleanup(front.stop)
@@ -223,6 +227,29 @@ class ManualQATests(unittest.TestCase):
         with patch.object(qa.subprocess, "check_output", side_effect=outputs) as run:
             self.assertEqual(frontmost_pid(), 1398)
         self.assertEqual(run.call_args.args[0], ["lsappinfo", "info", "-only", "pid", "ASN:0x0-0x62062:"])
+
+    def test_docker_unavailable_blocks_build_and_cleanup(self):
+        for error in (FileNotFoundError("docker"), subprocess.CalledProcessError(1, ["docker", "info"]),
+                      subprocess.TimeoutExpired(["docker", "info"], 5)):
+            with self.subTest(error=type(error).__name__), \
+                    patch.object(qa, "docker_preflight", docker_preflight), \
+                    patch.object(qa.subprocess, "run", side_effect=error) as run, \
+                    patch.object(qa, "start_container") as build, \
+                    patch.object(qa, "stop_container") as stop:
+                with self.assertRaisesRegex(ValueError, "Docker"):
+                    qa.run_case(self.app, self.case, self.directory, self.state, offscreen=True)
+                build.assert_not_called()
+                stop.assert_not_called()
+                self.assertEqual(run.call_args.kwargs["timeout"], 5)
+                self.assertEqual(run.call_args.args[0], ["docker", "info", "--format", "{{.ServerVersion}}"])
+                self.assertEqual(self.state["cases"]["compact"]["status"], "failed")
+
+    def test_docker_check_passes_with_bounded_server_query(self):
+        with patch.object(qa.subprocess, "run") as run:
+            docker_preflight()
+        self.assertEqual(run.call_args.args[0], ["docker", "info", "--format", "{{.ServerVersion}}"])
+        self.assertTrue(run.call_args.kwargs["check"])
+        self.assertEqual(run.call_args.kwargs["timeout"], 5)
 
     def test_offscreen_command_never_opens_macos_window(self):
         self.case["args"] = ["--profile=compact"]
@@ -439,6 +466,22 @@ class ManualQATests(unittest.TestCase):
             self.assertEqual(self.cli("run"), 1)
             run.assert_not_called()
         alive.assert_called_with("bglike-qa-test")
+
+    def test_resume_docker_query_has_five_second_limit(self):
+        self.prepare_plan()
+        _, state = qa.session(self.plan, self.directory)
+        state["cases"]["compact"].update(status="failed", attempts=[
+            {"container": "bglike-qa-test", "directory": str(self.root)}])
+        qa.save(self.directory, state)
+
+        def query(argv, **kwargs):
+            self.assertEqual(argv[:2], ["docker", "ps"])
+            self.assertEqual(kwargs.get("timeout"), 5)
+            raise subprocess.TimeoutExpired(argv, 5)
+
+        with patch.object(qa.subprocess, "check_output", side_effect=query), patch.object(qa, "run_case") as run:
+            self.assertEqual(self.cli("run"), 1)
+            run.assert_not_called()
 
     def test_failure_stops_before_next_case(self):
         self.prepare_plan()

@@ -28,6 +28,9 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 
 `scripts/qa_offscreen.Dockerfile`이 Ubuntu 24.04 이미지 `bglike-qa-offscreen`을 만든다. Xvfb, Mesa llvmpipe Vulkan과 `fonts-noto-cjk`를 설치한다. Godot은 `scripts/install_godot.sh`가 `scripts/godot.env`의 Linux SHA-256을 확인한 공식 4.7.2다. Docker(OrbStack)가 필요하다. 도우미는 시도마다 `docker build`를 호출해 이미지를 Dockerfile·설치 스크립트와 맞춘다. 첫 빌드는 몇 분 걸리고, 이후는 캐시를 쓴다.
 
+빌드 전에 `docker info`로 엔진 연결을 5초 안에 확인한다. CLI 없음·연결 실패·시간 초과는 실패한 시도로 기록하고 빌드와 컨테이너 정리를 시작하지 않는다. OrbStack 전체 재시작은 다른 컨테이너·VM에 영향을 주므로 사용자 승인을 받은 뒤 수행한다.
+기존 세션을 재개할 때의 컨테이너 조회와 소유 컨테이너 정리 명령에도 각각 5초 제한을 둔다. Docker가 멎으면 기존 인스턴스가 없다고 간주하지 않고 실패한다.
+
 1. 시도마다 네트워크 없는 새 컨테이너를 띄운다. 작업 폴더를 읽기 전용으로 연결하고 `.godot`·`.git`·`.cache`·`.env*`·`export_credentials.cfg`를 뺀 사본을 컨테이너 안에서 import한다. import에 `SCRIPT ERROR` 또는 `Failed to load script`가 있으면 게임을 열지 않는다.
 2. 시도 폴더가 컨테이너의 `/out`이다. `container.log`, `import.log`, `preflight.log`, `game.log`, `frames/`가 시도 폴더에 남는다. `state.json`의 시도 기록에 컨테이너 이름과 이미지 ID를 남긴다.
 3. Godot는 `xvfb-run` 안에서 사례 해상도와 같은 가상 화면에 Forward+ Vulkan으로 연다. `game.log`에 `Forward+`와 `llvmpipe`가 찍힌다.

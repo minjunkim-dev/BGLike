@@ -95,7 +95,7 @@ def frontmost_pid():
 
 
 def container_alive(name):
-    return bool(subprocess.check_output(["docker", "ps", "-q", "--filter", f"name=^{name}$"], text=True).strip())
+    return bool(subprocess.check_output(["docker", "ps", "-q", "--filter", f"name=^{name}$"], text=True, timeout=5).strip())
 
 
 def alive(record):
@@ -105,7 +105,7 @@ def alive(record):
 
 
 def stop_container(name):
-    subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
     if container_alive(name):
         raise RuntimeError("Owned QA container did not stop")
 
@@ -146,6 +146,14 @@ def preflight(godot, project, case, log):
         text = output_path.read_text(errors="replace")
         if result or ERROR.search(text) or (marker is not None and marker not in text):
             raise ValueError(f"Preflight failed; game launch blocked: {output_path}")
+
+
+def docker_preflight():
+    try:
+        subprocess.run(["docker", "info", "--format", "{{.ServerVersion}}"], check=True, timeout=5,
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ValueError(f"Docker connection unavailable (5s limit); inspect OrbStack: {error}") from None
 
 
 def start_container(name, attempt):
@@ -206,8 +214,11 @@ def run_case(app, case, directory, state, offscreen=False):
     entry["status"] = "running"
     save(directory, state)
     launcher = None
+    container_attempted = False
     try:
         if offscreen:
+            docker_preflight()
+            container_attempted = True
             record["image"] = start_container(record["container"], attempt)
             import_offscreen(record["container"], attempt)
             godot, project = ["docker", "exec", record["container"], "godot"], "/work"
@@ -255,7 +266,7 @@ def run_case(app, case, directory, state, offscreen=False):
         raise
     finally:
         try:
-            if launcher is not None or offscreen:
+            if launcher is not None or container_attempted:
                 try:
                     if offscreen:
                         stop_container(record["container"])
