@@ -30,6 +30,15 @@ Godot 작업은 headless import, 메인 장면 시작과 기존 전투·저장 �
 import와 메인 장면 검사 뒤 전투·저장 테스트를 두 그룹으로 병렬 실행합니다.
 오류 로그를 분리하고 두 그룹의 성공을 요구합니다.
 Godot는 스크립트 파싱 오류에도 0으로 끝납니다. 그래서 각 단계의 `SCRIPT ERROR`나 `Failed to load script` 출력도 실패로 처리합니다.
+
+빠른 로컬 확인은 등록된 회귀 스크립트 한 개를 같은 검사기로 선택합니다.
+
+```sh
+python3 ~/.agents/tools/agent_workflow.py check -- env GODOT=/Applications/Godot.app/Contents/MacOS/Godot bash scripts/check_godot.sh tests/combat_ai_test.gd
+```
+
+엔진 확인·import·메인 장면 검사는 유지하고 선택한 회귀 검사만 실행합니다. 오류 로그·종료 코드·취소 정리도 전체 검사와 같습니다. 알려지지 않은 경로와 둘 이상의 인자는 Godot 실행 전에 거부합니다. `make check`와 CI는 인자 없이 기존 전체 검사를 실행합니다.
+
 Ubuntu 24.04에서 로컬과 같은 `make godot-install`, `make godot-check`를 호출합니다.
 엔진 버전·해시는 `scripts/godot.env`를 따릅니다. [공통 환경](ENVIRONMENT.md)에 새 환경 설치와 캐시 없는 실행을 기록합니다.
 검사 실패를 통과로 처리하지 않습니다. PR 병합 전에 `PR conventions and scope`와 선택된 `smoke` 결과를 함께 확인합니다.
