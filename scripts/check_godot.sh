@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
+tests=(
+  tests/combat_{hud,ai,turns,checks,actions,progression,loot,capture,feedback,save,preparation_save}_test.gd
+  tests/{save,title,pause,continue}_test.gd
+)
+if [ "$#" -gt 0 ]; then
+  registered=false
+  for test_script in "${tests[@]}"; do
+    if [ "$#" -eq 1 ] && [ "$1" = "$test_script" ]; then
+      registered=true
+      break
+    fi
+  done
+  if [ "$registered" != true ]; then
+    printf 'Expected one registered Godot test path; omit the argument to run all tests.\n' >&2
+    exit 2
+  fi
+  tests=("$1")
+fi
 source scripts/godot_environment.sh
 godot="${GODOT:-$GODOT_BINARY}"
 if [ ! -x "$godot" ]; then
@@ -27,7 +45,7 @@ run_godot --quit-after 2
 rm -f "$log"
 trap - EXIT
 # Separate process groups let cancellation stop each owned test and its children.
-exec python3 - "$godot" <<'PY'
+exec python3 - "$godot" "${tests[@]}" <<'PY'
 import os
 from pathlib import Path
 import signal
@@ -36,8 +54,7 @@ import sys
 import tempfile
 import time
 
-tests = iter(f"tests/combat_{name}_test.gd" for name in
-             ("hud", "ai", "turns", "checks", "actions", "progression", "loot", "capture", "feedback"))
+tests = iter(sys.argv[2:])
 active = []
 status = 0
 def cancel(_signal, _frame):

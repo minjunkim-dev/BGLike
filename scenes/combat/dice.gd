@@ -9,6 +9,12 @@ var seed: int:
 		return _rng.seed
 	set(value):
 		_rng.seed = value
+## 굴림 순서의 위치(64비트). 이어하기가 되돌리면 같은 굴림이 이어진다.
+var state: int:
+	get:
+		return _rng.state
+	set(value):
+		_rng.state = value
 
 
 func randomize() -> void:

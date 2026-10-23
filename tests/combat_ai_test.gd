@@ -60,10 +60,15 @@ func _run() -> void:
 	await _test_scrap_robot_pull_priority()
 	await _test_scrap_robot_pull_movement_and_combo()
 	await _test_scrap_robot_spin_combos()
+	await _test_scrap_robot_spin_height()
 	await _test_scrap_robot_spin_reevaluation()
 	await _test_mother()
 	await _test_spiderling()
 	await _test_warrior()
+	await _test_ground_paths()
+	await _test_jump_attack()
+	await _test_jump_priorities()
+	await _test_jump_retreat_and_pull()
 	await _test_archer()
 	await _test_reaction_pause()
 	await _test_enemy_reactions()
@@ -82,6 +87,178 @@ func _run() -> void:
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat AI: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_ground_paths() -> void:
+	for budget: int in [2, 6]:
+		var f: Fixture = _fixture()
+		var actor: CombatUnit = f.units[2]
+		actor.cell = Vector2i(0, 1)
+		actor.movement_left = budget
+		actor.surge_left = 0
+		f.units[0].cell = Vector2i(3, 1)
+		f.units[1].cell = Vector2i(9, 9)
+		f.units[3].cell = Vector2i(9, 8)
+		f.actions.grid.map_size = Vector2i(4, 3)
+		var destination: Vector2i = ai.approach_cell(actor, f.actions)
+		_check(destination == Vector2i(2, 1), "장판 생성 전 기존 접근 목적지")
+		_check(f.actions.create_ground(f.units[0], Vector2i(1, 1), "poison")
+			and f.actions.create_ground(f.units[0], actor.cell, "poison"), "경로와 시작 칸에 장판 생성")
+		_check(ai.approach_cell(actor, f.actions) == destination, "장판이 목적지 선택을 바꾸지 않음")
+		var walked: Array[Vector2i] = []
+		f.actions.movement_animation = func(_unit: CombatUnit, cell: Vector2i) -> void: walked.append(cell)
+		f.actions.dice = ScriptedDice.new([1], [20])
+		await ai.play_turn(actor, f.actions)
+		var expected: Array[Vector2i] = [Vector2i(1, 1), destination]
+		if budget == 6:
+			expected = [Vector2i(0, 2), Vector2i(1, 2), Vector2i(2, 2), destination]
+		_check(walked == expected and actor.cell == destination and actor.movement_left == budget - expected.size(),
+			"실제 AI는 목적지를 유지하고 이동력이 허용하면 우회, 불가능하면 장판 통과")
+		_check(actor.get_status_count("poison") == (1 if budget == 2 else 0) and actor.action_left == 0,
+			"걷기의 장판 적용과 도착 후 공격을 유지하고 시작 장판에서 별도 탈출하지 않음")
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[2]
+	actor.cell = Vector2i.ZERO
+	f.units[0].cell = Vector2i(9, 9)
+	f.units[1].cell = Vector2i(9, 8)
+	f.units[3].cell = Vector2i(9, 7)
+	f.actions.grid.map_size = Vector2i(5, 2)
+	var grounds: Array[Vector2i] = [Vector2i(1, 0), Vector2i(4, 0)]
+	actor.movement_left = 4
+	_check(f.actions.grid.path_to(actor, Vector2i(4, 0), grounds).size() == 4,
+		"합류점까지 짧지만 위험한 경로도 보존하여 이동력 안에 목적지에 도착")
+	actor.movement_left = 6
+	var detour: Array[Vector2i] = f.actions.grid.path_to(actor, Vector2i(4, 0), grounds)
+	_check(detour.size() == 6 and Vector2i(1, 0) not in detour and detour.back() == Vector2i(4, 0),
+		"목적지 장판이 불가피해도 중간 장판을 덜 밟는 경로 선택")
+	f.actions.grid.blocked_cells = [Vector2i(2, 1)]
+	f.actions.grid.pits = [Vector2i(0, 1)]
+	f.actions.grid.heights = {Vector2i(1, 1): 2}
+	_check(f.actions.grid.path_to(actor, Vector2i(4, 0), grounds).size() == 4,
+		"장판을 피하려고 낭떠러지·막힌 칸·오를 수 없는 높이를 통과하지 않음")
+	actor.is_ally = true
+	_check(f.actions.create_ground(f.units[3], Vector2i(1, 0), "poison"), "아군 이동 검사용 장판")
+	var walked: Array[Vector2i] = []
+	f.actions.movement_animation = func(_unit: CombatUnit, cell: Vector2i) -> void: walked.append(cell)
+	f.actions.grid.blocked_cells.clear()
+	f.actions.grid.pits.clear()
+	f.actions.grid.heights.clear()
+	await f.actions.move_to(actor, Vector2i(4, 0))
+	_check(walked.size() == 4 and Vector2i(1, 0) in walked and actor.get_status_count("poison") == 1,
+		"아군 이동은 미리보기와 같은 기존 최단 경로와 장판 적용을 유지")
+	var stationary: Fixture = _fixture()
+	actor = stationary.units[2]
+	actor.surge_left = 0
+	_check(stationary.actions.create_ground(stationary.units[0], actor.cell, "poison"), "제자리 공격 검사용 장판")
+	stationary.actions.dice = ScriptedDice.new([1], [20])
+	await ai.play_turn(actor, stationary.actions)
+	_check(actor.cell == Vector2i(4, 4) and actor.movement_left == 6 and actor.action_left == 0,
+		"장판 위에서도 이미 공격할 수 있으면 별도 이탈 없이 공격")
+
+
+func _test_jump_attack() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[2]
+	actor.cell = Vector2i.ZERO
+	f.units[0].cell = Vector2i(2, 0)
+	f.units[1].cell = Vector2i(6, 0)
+	f.units[3].cell = Vector2i(9, 9)
+	f.actions.grid.map_size = Vector2i(7, 1)
+	f.actions.grid.heights = {Vector2i(1, 0): 2, Vector2i(2, 0): 2}
+	f.actions.dice = ScriptedDice.new([1], [20])
+	_check(ai.approach_cell(actor, f.actions) == Vector2i(1, 0),
+		"걸어서 오를 수 없는 높이2 공격 위치를 점프 접근 후보로 선택")
+	await ai.play_turn(actor, f.actions)
+	_check(actor.cell == Vector2i(1, 0) and actor.movement_left == 3
+		and actor.bonus_action_left == 0 and actor.action_left == 0,
+		"적 AI는 공용 점프 비용을 쓰고 착지 후 같은 높이 대상을 공격")
+	_check(f.logs.any(func(message: String) -> bool: return "점프:" in message),
+		"AI 점프는 실제 CombatActions 실행 경로를 사용")
+
+
+func _test_jump_priorities() -> void:
+	for heal: bool in [false, true]:
+		var f: Fixture = _fixture()
+		var actor: CombatUnit = f.units[2]
+		actor.cell = Vector2i.ZERO
+		f.units[0].cell = Vector2i(2, 0)
+		f.units[1].cell = Vector2i(6, 0)
+		f.units[3].cell = Vector2i(9, 9)
+		f.actions.grid.map_size = Vector2i(7, 1)
+		f.actions.grid.heights = {Vector2i(1, 0): 2, Vector2i(2, 0): 2}
+		actor.hit_points = 6 if heal else 12
+		actor.bonus_action_left = 1 if heal else 0
+		f.actions.dice = ScriptedDice.new([10], [10]) if heal else ScriptedDice.new([], [])
+		await ai.play_turn(actor, f.actions)
+		_check(actor.cell == Vector2i.ZERO and actor.bonus_action_left == 0
+			and actor.action_left == 1 and actor.movement_left == 6 and actor.hit_points == 12,
+			"회복을 우선하거나 보조 행동이 이미 소진됐으면 점프하지 않음")
+		_check(actor.second_wind_left == (0 if heal else 1)
+			and not f.logs.any(func(message: String) -> bool: return "점프:" in message),
+			"기존 회복 우선순위와 횟수 소비를 유지하고 점프를 추가 소비하지 않음")
+	var walking: Fixture = _fixture()
+	var actor: CombatUnit = walking.units[2]
+	actor.cell = Vector2i.ZERO
+	actor.surge_left = 0
+	walking.units[0].cell = Vector2i(2, 0)
+	walking.units[1].cell = Vector2i(6, 0)
+	walking.units[3].cell = Vector2i(9, 9)
+	walking.actions.grid.map_size = Vector2i(7, 2)
+	walking.actions.grid.heights = {Vector2i(1, 0): 2, Vector2i(2, 0): 2,
+		Vector2i(0, 1): 1, Vector2i(1, 1): 1}
+	walking.actions.dice = ScriptedDice.new([1], [20])
+	await ai.play_turn(actor, walking.actions)
+	_check(actor.cell == Vector2i(1, 0) and actor.movement_left == 3 and actor.bonus_action_left == 1
+		and not walking.logs.any(func(message: String) -> bool: return "점프:" in message),
+		"같은 목적지로 이번 턴에 걸어서 갈 수 있으면 우회 경로로 걷고 보조 행동 보존")
+	var danger: Fixture = _fixture()
+	actor = danger.units[2]
+	actor.cell = Vector2i.ZERO
+	danger.units[0].cell = Vector2i(3, 0)
+	danger.units[1].cell = Vector2i(9, 9)
+	danger.units[3].cell = Vector2i(9, 8)
+	danger.actions.grid.map_size = Vector2i(4, 1)
+	danger.actions.grid.heights = {Vector2i.ZERO: 3}
+	danger.actions.grid.pits = [Vector2i(1, 0)]
+	danger.actions.dice = ScriptedDice.new([], [])
+	_check(danger.actions.jump_cells(actor).has(Vector2i(2, 0))
+		and ai.approach_cell(actor, danger.actions) == Vector2i.ZERO,
+		"규칙상 가능한 낙하 차3 착지도 AI 접근 후보에서는 제외")
+	await ai.play_turn(actor, danger.actions)
+	_check(actor.cell == Vector2i.ZERO and actor.hit_points == 12 and actor.bonus_action_left == 1,
+		"위험한 점프밖에 없으면 원점과 HP·보조 행동 보존")
+
+
+func _test_jump_retreat_and_pull() -> void:
+	var retreat: Fixture = _fixture(true)
+	var archer: CombatUnit = retreat.units[3]
+	archer.cell = Vector2i(1, 0)
+	retreat.units[0].cell = Vector2i.ZERO
+	retreat.units[1].cell = Vector2i(9, 9)
+	retreat.units[2].cell = Vector2i(9, 8)
+	retreat.actions.grid.map_size = Vector2i(4, 1)
+	retreat.actions.grid.heights = {Vector2i(2, 0): 2, Vector2i(3, 0): 2}
+	retreat.actions.dice = ScriptedDice.new([1, 1], [20, 20])
+	await ai.play_turn(archer, retreat.actions)
+	_check(archer.cell == Vector2i(2, 0) and archer.movement_left == 3 and archer.bonus_action_left == 0
+		and archer.action_left == 0 and archer.disengage_left == 2 and not archer.disengaged,
+		"걸어서 후퇴할 칸이 없으면 점프로 후퇴·공격하고 이탈 보조 행동을 중복 소비하지 않음")
+	var pulled: Fixture = _fixture()
+	var boss: CombatUnit = pulled.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 45
+	boss.begin_turn()
+	boss.cell = Vector2i.ZERO
+	pulled.units[0].cell = Vector2i(3, 0)
+	pulled.units[1].cell = Vector2i(9, 9)
+	pulled.units[3].cell = Vector2i(9, 8)
+	pulled.actions.grid.map_size = Vector2i(4, 1)
+	pulled.actions.grid.heights = {Vector2i(1, 0): 2, Vector2i(2, 0): 2, Vector2i(3, 0): 2}
+	pulled.actions.dice = ScriptedDice.new([20, 1], [20, 20])
+	await ai.play_turn(boss, pulled.actions)
+	_check(boss.cell == Vector2i(1, 0) and boss.movement_left == 1 and boss.bonus_action_left == 0
+		and boss.action_left == 0 and boss.pull_cooldown == 2 and pulled.units[0].cell == Vector2i(2, 0),
+		"보스는 점프로 만능팔 위치에 접근한 뒤 기존 끌기 우선순위를 유지")
 
 
 func _test_scrap_robot() -> void:
@@ -120,7 +297,7 @@ func _test_scrap_robot() -> void:
 	distant.actions.dice = ScriptedDice.new([], [])
 	await ai.play_turn(boss, distant.actions)
 	_check(boss.movement_left == 0 and boss.action_left == 1
-		and CombatHexGrid.distance(boss.cell, distant.units[0].cell) == 3,
+		and CombatGrid.distance(boss.cell, distant.units[0].cell) == 3,
 		"사거리 밖의 보스는 가장 가까운 아군에게 4칸만 접근")
 
 
@@ -232,6 +409,24 @@ func _test_scrap_robot_spin_combos() -> void:
 		"회전회오리 두 번에 이동과 만능팔 쉬는 턴을 쓰지 않음")
 
 
+func _test_scrap_robot_spin_height() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 50
+	boss.begin_turn()
+	f.units[0].cell = Vector2i(3, 4)
+	f.units[1].cell = Vector2i(5, 4)
+	f.actions.grid.heights[f.units[1].cell] = 2
+	f.actions.dice = ScriptedDice.new([11, 1], [20, 8])
+	await ai.play_turn(boss, f.actions)
+	_check(f.units[0].hit_points == 9 and f.units[1].hit_points == 14
+		and boss.action_left == 0 and boss.movement_left == 4,
+		"높이2 대상을 제외한 로봇AI는 유효 대상 하나를 기본 공격하고 이동·제외 대상HP를 보존")
+	_check(f.logs.filter(func(line: String) -> bool: return "회전회오리:" in line).is_empty(),
+		"평면 인접2명이어도 높이 제한 뒤 대상1명이면 AI는 회전회오리를 고르지 않음")
+
+
 func _test_scrap_robot_spin_reevaluation() -> void:
 	for survivors: int in [1, 0]:
 		var f: Fixture = _fixture()
@@ -263,7 +458,7 @@ func _test_mother() -> void:
 	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
 	mother.hit_points = 20
 	mother.begin_turn()
-	spawning.actions.dice = ScriptedDice.new([1], [5])
+	spawning.actions.dice = ScriptedDice.new([1], [3])
 	await ai.play_turn(mother, spawning.actions)
 	_check(spawning.units.size() == 5 and mother.cell == Vector2i(4, 4)
 		and mother.movement_left == 4 and mother.action_left == 0
@@ -322,12 +517,12 @@ func _test_spiderling() -> void:
 	spiderling.kind = CombatUnit.Kind.SPIDERLING
 	spiderling.hit_points = 1
 	spiderling.cell = Vector2i(0, 0)
-	approach.units[0].cell = Vector2i(4, 4)
+	approach.units[0].cell = Vector2i(3, 3)
 	approach.units[1].cell = Vector2i(9, 9)
 	approach.units[1].hit_points = 1
 	approach.actions.dice = ScriptedDice.new([12], [20])
 	await ai.play_turn(spiderling, approach.actions)
-	_check(CombatHexGrid.distance(spiderling.cell, approach.units[0].cell) == 1
+	_check(CombatGrid.distance(spiderling.cell, approach.units[0].cell) == 1
 		and spiderling.movement_left == 1 and approach.units[0].hit_points == 11,
 		"새끼 거미는 낮은 HP의 먼 아군보다 가장 가까운 아군에 접근해 공격")
 	var opportunity: Fixture = _fixture()
@@ -374,14 +569,14 @@ func _test_warrior() -> void:
 	var approach: Fixture = _fixture()
 	approach.units[2].cell = Vector2i(0, 0)
 	approach.units[3].cell = Vector2i(9, 0)
-	approach.units[0].cell = Vector2i(4, 4)
+	approach.units[0].cell = Vector2i(3, 3)
 	approach.units[1].cell = Vector2i(9, 9)
 	approach.units[1].hit_points = 1
 	await ai.play_turn(approach.units[2], approach.actions)
-	_check(CombatHexGrid.distance(approach.units[2].cell, approach.units[0].cell) == 1,
+	_check(CombatGrid.distance(approach.units[2].cell, approach.units[0].cell) == 1,
 		"사거리 밖에서는 낮은 HP의 먼 대상보다 가장 가까운 대상에게 접근")
 	_check(approach.units[2].movement_left == 1 and approach.units[2].action_left == 0,
-		"헥사 거리6에서5칸 접근 후 공격, 이동과 행동 별도 소비")
+		"평면 거리6에서5칸 접근 후 공격, 이동과 행동 별도 소비")
 	var retarget: Fixture = _fixture()
 	retarget.units[1].cell = Vector2i(4, 5)
 	retarget.units[1].hit_points = 1
@@ -413,6 +608,18 @@ func _test_archer() -> void:
 		and not ranged.units[1].is_stunned, "풋내기 궁수는 충격 화살 없이 기본 공격")
 	_check(ranged.units[3].movement_left == 6 and ranged.units[3].disengage_left == 2,
 		"인접 위협이 없으면 불필요한 후퇴 없음")
+	var separated: Fixture = _fixture(true)
+	var archer: CombatUnit = separated.units[3]
+	archer.cell = Vector2i(4, 4)
+	separated.units[2].cell = Vector2i(9, 0)
+	separated.actions.grid.heights[separated.units[0].cell] = 2
+	await ai.play_turn(archer, separated.actions)
+	_check(archer.cell == Vector2i(4, 4) and archer.movement_left == 6
+		and archer.bonus_action_left == 1 and archer.disengage_left == 2,
+		"평면 옆 칸이어도 높이 차2면 인접 위협이 없어 후퇴 자원을 보존")
+	_check(archer.action_left == 0
+		and separated.actions.last_attack.mode == CombatChecks.RollMode.NORMAL,
+		"높이 차2인 옆 칸에 인접 불리 없이 원거리 기본 공격")
 	var retreat: Fixture = _fixture(true)
 	retreat.units[3].cell = Vector2i(4, 4)
 	retreat.units[2].cell = Vector2i(9, 0)
@@ -425,7 +632,7 @@ func _test_archer() -> void:
 	await ai.play_turn(retreat.units[3], retreat.actions)
 	_check(retreat.units[3].disengage_left == 1 and retreat.units[3].disengaged,
 		"인접 적이 있으면 물러서며 쏘기를 먼저 사용")
-	_check(CombatHexGrid.distance(retreat.units[3].cell, retreat.units[0].cell) > 1
+	_check(CombatGrid.distance(retreat.units[3].cell, retreat.units[0].cell) > 1
 		and retreat.units[3].movement_left == 5, "인접 위협에서 벗어나는 최단 후퇴")
 	_check(prompts[0] == 0 and retreat.units[0].reaction_left == 1,
 		"물러서며 쏘기 이동은 아군 기회 공격을 일으키지 않음")
@@ -436,11 +643,11 @@ func _test_archer() -> void:
 		"후퇴 후 공격의 인접 불리 제거")
 	var approach: Fixture = _fixture(true)
 	approach.units[3].cell = Vector2i(0, 0)
-	approach.units[0].cell = Vector2i(8, 8)
+	approach.units[0].cell = Vector2i(6, 6)
 	approach.units[1].cell = Vector2i(9, 9)
 	await ai.play_turn(approach.units[3], approach.actions)
 	_check(approach.units[3].movement_left == 0 and approach.units[3].action_left == 0,
-		"헥사 거리12에서 사거리6까지6칸 이동 후 공격")
+		"평면 거리12에서 사거리6까지6칸 이동 후 공격")
 	var exhausted: Fixture = _fixture(true)
 	exhausted.units[3].cell = Vector2i(2, 2)
 	exhausted.units[3].mark_left = 0
@@ -537,7 +744,7 @@ func _test_guards() -> void:
 
 
 func _test_scene() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	(main.get_node("Battle") as Node2D).stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	root.add_child(main)
@@ -627,7 +834,7 @@ func _test_scene() -> void:
 
 
 func _test_default_scene() -> void:
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	root.add_child(main)
 	battle.set_process(false)

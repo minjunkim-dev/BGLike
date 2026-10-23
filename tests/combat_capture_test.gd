@@ -39,8 +39,8 @@ func _run() -> void:
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--capture-dir="):
 			directory = argument.trim_prefix("--capture-dir=")
-	root.size = Vector2i(640, 360)
-	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	root.size = Vector2i(1280, 720)
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
 	battle = main.get_node("Battle") as Node2D
@@ -60,6 +60,9 @@ func _run() -> void:
 		for unit: CombatUnit in units:
 			if unit.is_ally:
 				unit.reaction_left = 0
+	if not _fixture_ready(units):
+		await _finish()
+		return
 	observer = CaptureObserver.new()
 	battle.add_child(observer)
 	var result: Error = observer.start(battle, directory)
@@ -112,6 +115,27 @@ func _run() -> void:
 	_finish()
 
 
+func _fixture_ready(units: Array[CombatUnit]) -> bool:
+	var previous_failures: int = failures
+	_check(units.size() == 3, "캡처 전제조건: 3-3 유닛 3개")
+	if units.size() != 3:
+		return false
+	_check(units[0].is_ally and units[0].kind == CombatUnit.Kind.WARRIOR
+		and units[1].is_ally and units[1].kind == CombatUnit.Kind.ARCHER
+		and not units[2].is_ally and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_3000,
+		"캡처 전제조건: 전사·궁수·고철로봇 3000")
+	var portraits: Dictionary = battle.get_node("UI/TurnHud").get("_portraits")
+	_check(portraits.size() == units.size(), "캡처 전제조건: 초상 3개")
+	for unit: CombatUnit in units:
+		_check(portraits.has(unit) and unit.hit_points == unit.get_max_hit_points(),
+			"캡처 전제조건: 각 유닛의 초상과 정상 HP")
+		if unit.is_ally:
+			_check(unit.movement_left == CombatUnit.MOVEMENT_PER_TURN and unit.action_left == 1
+				and unit.bonus_action_left == 1 and unit.reaction_left == (1 if manual else 0),
+				"캡처 전제조건: 아군 턴 자원과 모드별 반응 횟수")
+	return failures == previous_failures
+
+
 func _returned_to_ally() -> bool:
 	return (saw_enemy and turns.round_number >= 2 and turns.current_unit != null
 		and turns.current_unit.is_ally and not battle.get("_enemy_turn_running")
@@ -148,7 +172,7 @@ func _validate_manifest() -> void:
 		frames += 1
 		_check(events.has(int(entry["event"])), "프레임을 앞서 기록한 이벤트에 연결")
 		var image: Image = Image.load_from_file(directory.path_join(entry["png"]))
-		_check(image != null and not image.is_empty() and image.get_size() == Vector2i(640, 360),
+		_check(image != null and not image.is_empty() and image.get_size() == Vector2i(1280, 720),
 			"원본 PNG를 다시 읽고 Viewport 크기 확인")
 		ally_frame = ally_frame or (entry["ally"] and int(entry["round"]) >= 2)
 	_check(enemy_event, "manifest에 실제 적 차례 기록")

@@ -147,7 +147,7 @@ func _test_preview_conditions() -> void:
 	var target: CombatUnit = _unit(CombatUnit.Kind.ARCHER, false, Vector2i(7, 4))
 	var nearby: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(4, 5))
 	var units: Array[CombatUnit] = [archer, target, nearby]
-	var grid: CombatHexGrid = CombatHexGrid.new()
+	var grid: CombatGrid = CombatGrid.new()
 	grid.units = units
 	var preview: CombatChecks.AttackPreview = grid.attack_preview(archer, target)
 	_check(preview.in_range and preview.mode == CombatChecks.RollMode.DISADVANTAGE

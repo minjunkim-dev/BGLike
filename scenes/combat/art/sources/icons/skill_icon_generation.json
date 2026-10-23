@@ -1,0 +1,32 @@
+{
+  "generator": {
+    "tool": "draw_skill_icons.py (Pillow ImageDraw shapes placed by hand)",
+    "author": "Claude Code (claude-opus-5-5) for Issue #225",
+    "date": "2026-10-21",
+    "image_model": "none; the built-in image_gen used for units is not available in this runtime",
+    "command": "python3 scenes/combat/art/sources/icons/draw_skill_icons.py scenes/combat/art/icons/skills"
+  },
+  "spec": {
+    "canvas": [64, 64],
+    "display_scale": 0.5,
+    "logical_size": [32, 32],
+    "outline": "2px #1a121c around every shape, like the unit sprites",
+    "palette": "warm steel, wood, gold, indigo, teal and red tones picked from the unit sprites",
+    "background": "transparent; no action/bonus/reaction cost colour border",
+    "margin": "content and outline may reach the canvas edge so the 32px display keeps the largest shapes",
+    "resampling": "none; every pixel is drawn at 64px without anti-aliasing"
+  },
+  "icons": [
+    {"id": "attack", "name": "공격", "brief": "Steel sword pointing up-right with a gold crossguard and wooden grip."},
+    {"id": "second_wind", "name": "숨 고르기", "brief": "White and pale-cyan breath swirl at the top left over a green healing cross."},
+    {"id": "surge", "name": "몰아치기", "brief": "Single gold lightning bolt filling the frame: one more action at once."},
+    {"id": "parry", "name": "흘려내기", "brief": "Indigo round shield with steel rim and boss; a white arrow glances off the top right."},
+    {"id": "opportunity", "name": "기회 공격", "brief": "White crescent slash on the left and a red exclamation mark: strike the enemy who leaves."},
+    {"id": "mark", "name": "표식", "brief": "Red targeting reticle with outer ring, inner ring, four ticks and a bright centre."},
+    {"id": "shock", "name": "충격 화살", "brief": "Wooden arrow with steel head and teal fletching, wrapped by cyan electric zigzags."},
+    {"id": "disengage", "name": "물러서며 쏘기", "brief": "Wooden bow on the right and a teal arrow pointing back to the left with motion lines."},
+    {"id": "shove", "name": "밀치기", "brief": "Open skin-tone palm with thumb, pushing toward the right with white impact lines."},
+    {"id": "jump", "name": "점프", "brief": "White arcing arrow from a low stone block to a higher stone block."},
+    {"id": "potion", "name": "물약", "brief": "Round glass flask of red potion with a cork and a light glint."}
+  ]
+}

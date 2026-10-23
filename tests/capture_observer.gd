@@ -39,6 +39,7 @@ func start(battle: Node2D, directory: String) -> Error:
 	_directory = directory
 	_actions.logged.connect(record)
 	_actions.feedback.connect(_on_feedback)
+	_actions.healed.connect(_on_healed)
 	_turns.changed.connect(_on_turn_changed)
 	_timer = Timer.new()
 	_timer.wait_time = INTERVAL
@@ -69,6 +70,7 @@ func stop() -> void:
 	if _actions != null:
 		_actions.logged.disconnect(record)
 		_actions.feedback.disconnect(_on_feedback)
+		_actions.healed.disconnect(_on_healed)
 		_actions = null
 	if _turns != null:
 		_turns.changed.disconnect(_on_turn_changed)
@@ -82,6 +84,10 @@ func _exit_tree() -> void:
 
 func _on_feedback(unit: CombatUnit, message: String) -> void:
 	record("FEEDBACK %s: %s" % [unit.get_display_name(), message])
+
+
+func _on_healed(unit: CombatUnit, amount: int) -> void:
+	record("FEEDBACK %s: %d (heal)" % [unit.get_display_name(), amount])
 
 
 func _on_turn_changed() -> void:

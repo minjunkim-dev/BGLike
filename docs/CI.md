@@ -26,10 +26,19 @@ policy와 `make repository-check`는 `scripts/check_bugbot_rules.py`를 실행�
 제목 수정 후 새 커밋을 push하여 최신 제목의 policy 검사를 실행합니다. 기존 실행의 재실행은 과거 이벤트의 제목을 사용합니다.
 edited 전용 lint 검사는 제목 변경을 빠르게 확인하는 보조 검사입니다.
 
-Godot 작업은 headless import, 메인 장면 시작과 기존 전투 회귀 테스트를 모두 수행합니다.
-import와 메인 장면 검사 뒤 전투 테스트를 두 그룹으로 병렬 실행합니다.
+Godot 작업은 headless import, 메인 장면 시작과 기존 전투·저장 회귀 테스트를 모두 수행합니다.
+import와 메인 장면 검사 뒤 전투·저장 테스트를 두 그룹으로 병렬 실행합니다.
 오류 로그를 분리하고 두 그룹의 성공을 요구합니다.
 Godot는 스크립트 파싱 오류에도 0으로 끝납니다. 그래서 각 단계의 `SCRIPT ERROR`나 `Failed to load script` 출력도 실패로 처리합니다.
+
+빠른 로컬 확인은 등록된 회귀 스크립트 한 개를 같은 검사기로 선택합니다.
+
+```sh
+python3 ~/.agents/tools/agent_workflow.py check -- env GODOT=/Applications/Godot.app/Contents/MacOS/Godot bash scripts/check_godot.sh tests/combat_ai_test.gd
+```
+
+엔진 확인·import·메인 장면 검사는 유지하고 선택한 회귀 검사만 실행합니다. 오류 로그·종료 코드·취소 정리도 전체 검사와 같습니다. 알려지지 않은 경로와 둘 이상의 인자는 Godot 실행 전에 거부합니다. `make check`와 CI는 인자 없이 기존 전체 검사를 실행합니다.
+
 Ubuntu 24.04에서 로컬과 같은 `make godot-install`, `make godot-check`를 호출합니다.
 엔진 버전·해시는 `scripts/godot.env`를 따릅니다. [공통 환경](ENVIRONMENT.md)에 새 환경 설치와 캐시 없는 실행을 기록합니다.
 검사 실패를 통과로 처리하지 않습니다. PR 병합 전에 `PR conventions and scope`와 선택된 `smoke` 결과를 함께 확인합니다.
@@ -48,7 +57,7 @@ CI는 출시 OS 지원을 검증하지 않습니다. 검증용 PCK의 수동 미
 
 ## 알림과 권한
 
-Discord는 비-Draft PR의 열림·재열림·ready 전환과 PR 종료를 알립니다.
+Discord는 PR 병합과 닫힘만 알립니다. 열림 알림은 대부분 몇 분 안에 병합 알림과 겹쳐서 보내지 않습니다.
 Godot 워크플로의 별도 알림 작업은 정책 또는 게임 검사 실패에만 실행합니다.
 정상 실행마다 별도 runner를 할당하거나 제목 수정·검토자 요청마다 반복 알림을 보내지 않습니다.
 알림 작업은 PR 코드를 checkout하거나 실행하지 않습니다. 외부 fork에는 Secret 알림을 실행하지 않습니다.

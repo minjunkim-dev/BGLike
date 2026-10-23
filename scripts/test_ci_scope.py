@@ -17,7 +17,7 @@ class ScopeTests(unittest.TestCase):
 
     def test_game_and_unknown_changes(self):
         for path in ["project.godot", "scenes/combat/main.tscn", "tests/combat_hud_test.gd",
-                     "scenes/combat/art/floor_tiles.svg", ".gitattributes", "addons/new/plugin.cfg",
+                     "scenes/combat/art/terrain/floor_tiles.png", ".gitattributes", "addons/new/plugin.cfg",
                      "scripts/ci_scope.py", "scripts/test_ci_scope.py",
                      ".github/workflows/godot.yml", ".github/workflows/pr-lint.yml", "new.config"]:
             with self.subTest(path=path):
