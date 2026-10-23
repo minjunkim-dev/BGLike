@@ -11,6 +11,11 @@ Godot 워크플로는 main push, main 대상 PR과 수동 실행을 검사합니
 전체 PR diff와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인하고 Python 회귀 테스트를 실행합니다.
 PR에서는 제목과 브랜치 규칙도 검사합니다.
 
+로컬 `make repository-check`와 `make check`는 `scripts/check_whitespace.py`로
+`origin/main`과 HEAD의 공통 기준점부터 커밋된 변경, 스테이징, 미스테이징 변경을 각각 검사합니다.
+먼저 `git fetch origin main`으로 기준을 갱신합니다. 다른 기준은
+`python3 scripts/check_whitespace.py --base <ref>`로 지정합니다. 기준 ref를 찾지 못하면 실패합니다.
+
 policy와 `make repository-check`는 `scripts/check_bugbot_rules.py`를 실행합니다. 모든 추적된 root·영역 BUGBOT.md를 합산합니다. 개별 30,000자·총 95,000자 한도를 유지합니다. 필수 영역 파일 누락·빈 파일·symlink와 상세 문서의 로컬 링크를 거부합니다. 상세 문서는 크기 예산에 포함하지 않습니다. 로컬 상세 문서 선택은 `docs/agents/review.md`를 따릅니다. CI는 기준 SHA의 검사기를 사용하며 최초 도입에는 현재 검사기를 사용합니다. 서버 실제 포함과 계정 규칙은 수동 verbose 표로 확인합니다.
 
 - Markdown, `docs/` 자료와 `scripts/ci_scope.py`에 명시된 관리 파일만 바뀌면 Godot 작업을 선택하지 않습니다.
