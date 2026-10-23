@@ -15,6 +15,7 @@ class WhitespaceTests(unittest.TestCase):
         self.git("init", "-q", "--initial-branch=main")
         self.git("config", "user.name", "Fixture")
         self.git("config", "user.email", "fixture@example.invalid")
+        self.git("config", "commit.gpgsign", "false")
         self.git("config", "core.hooksPath", str(self.root / "empty-hooks"))
         self.file = self.root / "sample.txt"
         self.file.write_text("original\n")
