@@ -124,6 +124,10 @@ func _test_format_two_state() -> void:
 	var restored: Node2D = _battle(-1)
 	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
 		"형식 2의 강도·장비·이니셔티브를 포함한 상태 왕복")
+	for value: int in [1, 8]:
+		state.units[0].initiative_roll = value
+		_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
+			"전사 민첩 d8의 유효한 저장 경계: %d" % value)
 	await _free(restored)
 	await _free(battle)
 
@@ -211,6 +215,20 @@ func _test_stage(stage_index: int) -> void:
 		expected.append("after_spawn")
 	for kind: String in expected:
 		_check(kinds.has(kind), "%s %s 시점의 저장이 있음 (%s)" % [label, kind, kinds])
+	if kinds.has("after_spawn"):
+		var spawned: Dictionary = points[kinds.after_spawn].state.duplicate(true)
+		_check(spawned.units[base_count].initiative_roll == 0, label + " 생성한 새끼는 이니셔티브를 굴리지 않음")
+		var restored: Node2D = _battle(-1)
+		for value: int in [0, 8]:
+			spawned.units[base_count].initiative_roll = value
+			_check(restored.call("restore_combat", spawned) and restored.call("combat_state") == spawned,
+				"%s 생성한 새끼 민첩 d8의 유효한 저장 경계: %d" % [label, value])
+		var before: Dictionary = restored.call("combat_state")
+		for value: int in [-1, 9]:
+			spawned.units[base_count].initiative_roll = value
+			_check(not restored.call("restore_combat", spawned) and restored.call("combat_state") == before,
+				"%s 생성한 새끼 이니셔티브 범위 밖 거부: %d" % [label, value])
+		await _free(restored)
 	print("%s: %d saves, first of each kind %s" % [label, points.size(), kinds])
 	if kinds.has("reaction"):
 		reaction_stages += 1
@@ -328,6 +346,11 @@ func _test_rejects_bad_saves() -> void:
 		"스테이지 번호 밖": func(state: Dictionary) -> void: state.stage = 9,
 		"유닛 칸이 지도 밖": func(state: Dictionary) -> void: state.units[0].cell = Vector2i(99, 0),
 		"유닛 변수 타입이 다름": func(state: Dictionary) -> void: state.units[0].action_left = 1.0,
+		"초기 전사 이니셔티브가 0": func(state: Dictionary) -> void: state.units[0].initiative_roll = 0,
+		"전사 민첩 d8 밖 이니셔티브": func(state: Dictionary) -> void: state.units[0].initiative_roll = 9,
+		"궁수 민첩 d20 밖 이니셔티브": func(state: Dictionary) -> void: state.units[1].initiative_roll = 21,
+		"초기 새끼 거미 이니셔티브가 0": func(state: Dictionary) -> void: state.units[enemy].initiative_roll = 0,
+		"새끼 거미 민첩 d8 밖 이니셔티브": func(state: Dictionary) -> void: state.units[enemy].initiative_roll = 9,
 		"기본 배치와 다른 적 종류": func(state: Dictionary) -> void: state.units[enemy].kind = CombatUnit.Kind.SCRAP_ROBOT_3000,
 		"새끼 거미가 아닌 늘어난 유닛": func(state: Dictionary) -> void:
 			var extra: Dictionary = state.units[enemy].duplicate(true)
