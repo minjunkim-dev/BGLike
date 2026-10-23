@@ -131,8 +131,8 @@ static func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> boo
 				and saved[1] is Vector2i and area.has_point(saved[1]) and saved[2] in ["burn", "poison"]
 				and saved[3] is int and saved[3] >= 1 and saved[3] <= 4
 				and saved[4] is Array and saved[4].size() <= count and saved[4].all(unit_index)
-				and saved[5] is int and saved[5] >= (1 if saved[2] == "poison" else 0)
-				and saved[5] <= CombatUnit.SAVED_INT_LIMIT)))
+				and saved[5] is int and saved[5] >= 0 and saved[5] <= CombatUnit.SAVED_INT_LIMIT
+				and (saved[5] == 0 if saved[2] == "burn" else saved[5] > 0))))
 
 
 func create_prop(cell: Vector2i, kind: String) -> CombatGrid.Prop:

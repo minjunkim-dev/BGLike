@@ -331,8 +331,8 @@ func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 	return (data.statuses as Array).all(func(saved: Variant) -> bool:
 		return (saved is Array and saved.size() == 4 and saved[0] in ["burn", "poison"]
 			and _valid_index(saved[1], count, false) and saved[2] is int and saved[2] >= 1 and saved[2] <= 4
-			and saved[3] is int and saved[3] >= (1 if saved[0] == "poison" else 0)
-			and saved[3] <= SAVED_INT_LIMIT))
+			and saved[3] is int and saved[3] >= 0 and saved[3] <= SAVED_INT_LIMIT
+			and (saved[3] == 0 if saved[0] == "burn" else saved[3] > 0)))
 
 
 static func _valid_index(value: Variant, count: int, optional: bool) -> bool:

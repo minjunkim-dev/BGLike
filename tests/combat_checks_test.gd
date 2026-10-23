@@ -24,6 +24,7 @@ func _run() -> void:
 	_test_opposed_rolls()
 	_test_opposed_chances()
 	await _test_battle_rolls()
+	_test_strength_validation()
 	_test_preview_conditions()
 	await _test_scene_input()
 	for unit: CombatUnit in _created_units:
@@ -226,6 +227,26 @@ func _test_battle_rolls() -> void:
 		and archer.hit_points == archer_before - 5 and actions.last_attack.total == 11,
 		"실제 회전 베기는 공통 공격8+3과 두 대상의 방어를 비교하고 각각 피해")
 	# 신호가 actions와 turns를 함께 붙잡지 않게 연결을 해제한다.
+	turns.turn_started.disconnect(actions._on_turn_started)
+
+
+func _test_strength_validation() -> void:
+	var source: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(4, 4))
+	var target: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 5))
+	var units: Array[CombatUnit] = [source, target]
+	target.status_effects.append(CombatUnit.StatusEffect.new("burn", source, 2, 0))
+	var saved: Dictionary = target.save_state(units)
+	_check(target.is_valid_state(saved, 2, Vector2i(10, 10)), "화상 강도0 저장 허용")
+	saved.statuses[0][3] = 5
+	_check(not target.is_valid_state(saved, 2, Vector2i(10, 10)), "복원 때 사라질 잘못된 화상 강도 거부")
+	var actions: CombatActions = CombatActions.new()
+	var turns: CombatTurns = CombatTurns.new()
+	actions.initialize(units, turns)
+	actions.create_ground(source, Vector2i(5, 4), "burn")
+	saved = actions.save_state()
+	_check(CombatActions.is_valid_state(saved, 2, Vector2i(10, 10)), "불 장판 강도0 저장 허용")
+	saved.grounds[0][5] = 5
+	_check(not CombatActions.is_valid_state(saved, 2, Vector2i(10, 10)), "불 장판의 잘못된 강도 거부")
 	turns.turn_started.disconnect(actions._on_turn_started)
 
 
