@@ -148,6 +148,14 @@ def preflight(godot, project, case, log):
             raise ValueError(f"Preflight failed; game launch blocked: {output_path}")
 
 
+def docker_preflight():
+    try:
+        subprocess.run(["docker", "info", "--format", "{{.ServerVersion}}"], check=True, timeout=5,
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ValueError(f"Docker connection unavailable (5s limit); inspect OrbStack: {error}") from None
+
+
 def start_container(name, attempt):
     # The attempt directory is the container's /out, so logs and frames land beside native evidence.
     with (attempt / "container.log").open("x") as output:
@@ -206,8 +214,11 @@ def run_case(app, case, directory, state, offscreen=False):
     entry["status"] = "running"
     save(directory, state)
     launcher = None
+    container_attempted = False
     try:
         if offscreen:
+            docker_preflight()
+            container_attempted = True
             record["image"] = start_container(record["container"], attempt)
             import_offscreen(record["container"], attempt)
             godot, project = ["docker", "exec", record["container"], "godot"], "/work"
@@ -255,7 +266,7 @@ def run_case(app, case, directory, state, offscreen=False):
         raise
     finally:
         try:
-            if launcher is not None or offscreen:
+            if launcher is not None or container_attempted:
                 try:
                     if offscreen:
                         stop_container(record["container"])
