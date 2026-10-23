@@ -20,6 +20,8 @@ func _run() -> void:
 	_test_scripted_dice_leftovers()
 	_test_scripted_dice_shortfall()
 	_test_modes()
+	_test_opposed_rolls()
+	_test_opposed_chances()
 	_test_attacks()
 	_test_saves_and_contests()
 	_test_probabilities()
@@ -90,6 +92,66 @@ func _test_modes() -> void:
 	_check(CombatChecks.roll_mode(0, 3) == CombatChecks.RollMode.DISADVANTAGE, "불리 여러 개는 한 번의 불리")
 	_check(CombatChecks.roll_mode(3, 1) == CombatChecks.RollMode.NORMAL, "유리 수가 많아도 불리와 서로 취소")
 	_check(CombatChecks.roll_mode(1, 3) == CombatChecks.RollMode.NORMAL, "불리 수가 많아도 유리와 서로 취소")
+
+
+func _test_opposed_rolls() -> void:
+	var normal: CombatChecks.RollMode = CombatChecks.RollMode.NORMAL
+	var result: CombatChecks.RollResult = CombatChecks.opposed_attack(
+		20, 10, 1, 2, normal, ScriptedDice.new([7, 6], [20, 10]))
+	_check(result.rolls == [7] and result.total == 8
+		and result.defender_roll == 6 and result.defender_total == 8
+		and not result.success and not result.critical, "대결의 원본 굴림과 장비 가산을 보존, 동점 방어자 승")
+	result = CombatChecks.opposed_attack(
+		4, 20, 30, 0, normal, ScriptedDice.new([1, 20], [4, 20]))
+	_check(result.success and not result.critical, "최솟값도 합계가 높으면 성공, 자동 실패 없음")
+	result = CombatChecks.opposed_attack(
+		20, 4, 0, 30, normal, ScriptedDice.new([20, 1], [20, 4]))
+	_check(not result.success and not result.critical, "최댓값도 합계가 낮으면 실패, 치명타 없음")
+	for mode: CombatChecks.RollMode in [CombatChecks.RollMode.ADVANTAGE, CombatChecks.RollMode.DISADVANTAGE]:
+		result = CombatChecks.opposed_attack(
+			20, 10, 0, 0, mode, ScriptedDice.new([3, 17, 9], [20, 20, 10]))
+		_check(result.rolls == [3, 17] and result.defender_roll == 9
+			and result.mode == mode and result.success == (mode == CombatChecks.RollMode.ADVANTAGE),
+			"유리/불리는 공격 주사위만 두 번, 방어 주사위는 한 번")
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 321
+	var saved_state: int = dice.state
+	result = CombatChecks.opposed_attack(8, 12, 1, 2, CombatChecks.RollMode.ADVANTAGE, dice)
+	dice.state = saved_state
+	var replay: CombatChecks.RollResult = CombatChecks.opposed_attack(
+		8, 12, 1, 2, CombatChecks.RollMode.ADVANTAGE, dice)
+	_check(result.rolls == replay.rolls and result.defender_roll == replay.defender_roll,
+		"난수 상태 복원 뒤 공격과 방어 굴림을 함께 재현")
+
+
+func _test_opposed_chances() -> void:
+	var normal: CombatChecks.RollMode = CombatChecks.RollMode.NORMAL
+	_check(is_equal_approx(CombatChecks.opposed_chance(20, 10, 0, 0, normal), 0.725),
+		"전사 힘 d20 대 야만인 힘 d10의 명중률 72.5%")
+	for sides: Array in [[4, 4], [20, 10], [4, 20], [8, 12], [12, 6], [20, 20]]:
+		for bonuses: Array in [[0, 0], [1, 0], [0, 1], [-3, 4], [30, 0], [0, 30]]:
+			for mode: CombatChecks.RollMode in [normal, CombatChecks.RollMode.ADVANTAGE, CombatChecks.RollMode.DISADVANTAGE]:
+				var expected: float = _enumerated_opposed_chance(sides[0], sides[1], bonuses[0], bonuses[1], mode)
+				var actual: float = CombatChecks.opposed_chance(sides[0], sides[1], bonuses[0], bonuses[1], mode)
+				_check(is_equal_approx(actual, expected), "모든 실제 굴림 조합과 명중률 일치 %s %s %s" % [sides, bonuses, mode])
+
+
+func _enumerated_opposed_chance(attack_sides: int, defense_sides: int,
+	attack_bonus: int, defense_bonus: int, mode: CombatChecks.RollMode) -> float:
+	var hits: int = 0
+	var count: int = 0
+	for first: int in range(1, attack_sides + 1):
+		for second: int in range(1, (1 if mode == CombatChecks.RollMode.NORMAL else attack_sides) + 1):
+			var attack: int = first
+			if mode == CombatChecks.RollMode.ADVANTAGE:
+				attack = maxi(first, second)
+			elif mode == CombatChecks.RollMode.DISADVANTAGE:
+				attack = mini(first, second)
+			for defense: int in range(1, defense_sides + 1):
+				count += 1
+				if attack + attack_bonus > defense + defense_bonus:
+					hits += 1
+	return hits / float(count)
 
 
 func _test_attacks() -> void:
