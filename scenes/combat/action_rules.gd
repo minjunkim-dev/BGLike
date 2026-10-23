@@ -16,17 +16,17 @@ static var NAMES: Dictionary[String, String] = {
 static var EFFECTS: Dictionary[String, String] = {
 	"jump": TranslationServer.tr("1~2칸의 빈 바닥으로 점프.\n상승2까지, 낙하 차3부터 피해."),
 	"spawn": TranslationServer.tr("인접한 빈 칸에 새끼 거미1마리를 만듭니다."),
-	"spin": TranslationServer.tr("상하좌우1칸·높이 차이1 이하인 모든 아군에게 각각 기본 공격.\n밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."),
+	"spin": TranslationServer.tr("상하좌우1칸·높이 차이1 이하인 모든 아군에게 공통 공격 굴림과 각자의 방어 굴림.\n밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."),
 	"second_wind": TranslationServer.tr("HP 1d10+1 회복.\n최대 HP를 넘지 않습니다."),
 	"surge": TranslationServer.tr("이미 쓴 행동을 다시 채워\n한 번 더 공격할 수 있습니다."),
 	"mark": TranslationServer.tr("1~6칸 적에게 표식.\n이 궁수가 맞히면 피해 +1d6.\n전투 중 유지됩니다."),
-	"shock": TranslationServer.tr("1~6칸 공격.\n명중 후 정신 내성 실패 시 기절."),
-	"pull": TranslationServer.tr("2~3칸 대상을 힘 대 힘/민첩 대결로 끌어옵니다.\n피해와 기회 공격 없음. 다음 턴에는 쓸 수 없습니다."),
+	"shock": TranslationServer.tr("1~6칸 공격.\n명중하면 기절. 보스는 기절 면역."),
+	"pull": TranslationServer.tr("2~3칸 대상을 힘 대 힘 대결로 끌어옵니다.\n피해와 기회 공격 없음. 다음 턴에는 쓸 수 없습니다."),
 	"disengage": TranslationServer.tr("이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\n공격을 실행하지 않습니다."),
-	"shove": TranslationServer.tr("내 힘 대 상대의 힘/민첩\n중 높은 값으로 대결.\n성공: 1칸 밀기, 동점: 실패.\n기절 대상은 대결 없이 성공.\n아군은 판정 없이 밀림."),
+	"shove": TranslationServer.tr("내 힘 대 상대의 힘 주사위로 대결.\n성공: 1칸 밀기, 동점: 실패.\n기절 대상은 대결 없이 성공.\n아군은 판정 없이 밀림."),
 	"potion": TranslationServer.tr("HP 2d4+2 회복.\n최대 HP를 넘지 않습니다."),
 	"opportunity": TranslationServer.tr("적이 내 인접 칸을 벗어나면 기본 공격."),
-	"parry": TranslationServer.tr("공격에 맞았을 때 민첩 내성에 성공하면\n피해와 추가 효과를 피합니다.")
+	"parry": TranslationServer.tr("공격에 맞았을 때 민첩 주사위 +3이\n공격 굴림 이상이면 피해와 추가 효과를 피합니다.")
 }
 ## 대상 없이 바로 쓰는 보조 행동.
 const SELF_TARGET: Array[String] = ["second_wind", "surge", "disengage", "potion"]
@@ -98,18 +98,20 @@ static func details(actor: CombatUnit, action: String) -> String:
 	var melee: bool = actor.get_attack_range() == 1
 	var weapon: String = TranslationServer.tr("피해: 1d%d%s") % [actor.get_damage_sides(),
 		"" if actor.get_damage_bonus() == 0 else "%+d" % actor.get_damage_bonus()]
-	var hit: String = TranslationServer.tr("명중 %+d") % actor.get_attack_bonus()
+	var hit: String = TranslationServer.tr("%s d%d %+d 대 %s") % [CombatUnit.ability_name(actor.get_attack_ability()),
+		actor.get_ability_sides(actor.get_attack_ability()), actor.get_attack_bonus(),
+		TranslationServer.tr("민첩") if actor.is_ranged_attack() else TranslationServer.tr("힘")]
 	var lines: Array[String] = []
 	match action:
 		"attack", "opportunity":
 			lines = [TranslationServer.tr("사거리: 인접1칸") if melee else TranslationServer.tr("사거리: 1~%d칸") % actor.get_attack_range(), weapon,
 				TranslationServer.tr("판정: %s") % hit]
 		"shock":
-			lines = [TranslationServer.tr("사거리: 1~%d칸") % SKILL_RANGE, weapon, TranslationServer.tr("판정: %s, 정신 내성 DC %d") % [hit, actor.get_save_dc()]]
+			lines = [TranslationServer.tr("사거리: 1~%d칸") % SKILL_RANGE, weapon, TranslationServer.tr("판정: %s, 명중하면 기절") % hit]
 		"mark":
 			lines = [TranslationServer.tr("사거리: 1~%d칸") % SKILL_RANGE, TranslationServer.tr("판정: 없음")]
 		"shove":
-			lines = [TranslationServer.tr("사거리: 인접1칸"), TranslationServer.tr("판정: 힘 %+d 대결") % actor.get_attribute(CombatUnit.Attribute.STRENGTH)]
+			lines = [TranslationServer.tr("사거리: 인접1칸"), TranslationServer.tr("판정: 힘 d%d %+d 대 힘") % [actor.get_ability_sides(CombatUnit.Ability.STRENGTH), actor.get_attack_bonus()]]
 		"jump":
 			lines = [TranslationServer.tr("사거리: 1~2칸"), TranslationServer.tr("판정: 없음")]
 		"second_wind":
@@ -119,7 +121,7 @@ static func details(actor: CombatUnit, action: String) -> String:
 		"surge", "disengage":
 			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("판정: 없음")]
 		"parry":
-			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("판정: 민첩 내성 %+d 대 공격자 DC") % actor.get_dexterity()]
+			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("판정: 민첩 d%d +3이 공격 굴림 이상") % actor.get_ability_sides(CombatUnit.Ability.DEXTERITY)]
 	return "\n".join(lines)
 
 

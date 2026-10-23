@@ -231,12 +231,12 @@ func _test_armor_hit_points(loot: CombatLoot) -> void:
 	var unit: CombatUnit = CombatUnit.new()
 	unit.hit_points = 5
 	var armor: Dictionary = {"kind": "armor", "name": "HP 방어구",
-		"stats": {"armor_class": 2, "max_hit_points": 5}}
+		"stats": {"defense_bonus": 2, "max_hit_points": 5}}
 	loot.receive(unit, armor)
 	_check(unit.hit_points == 10 and unit.get_max_hit_points() == 17,
 		"방어구 최대 HP 증가 시 잃은 HP 7 유지")
 	var weaker: Dictionary = {"kind": "armor", "name": "낮은 HP 방어구",
-		"stats": {"armor_class": 1, "max_hit_points": 2}}
+		"stats": {"defense_bonus": 1, "max_hit_points": 2}}
 	loot.receive(unit, weaker)
 	_check(unit.hit_points == 7 and unit.get_max_hit_points() == 14,
 		"실제 수령 경로로 더 낮은 방어구 직접 교체 시 잃은 HP 유지")
@@ -302,7 +302,7 @@ func _test_items(loot: CombatLoot, dice: CombatDice) -> void:
 			"stats": {"attack_bonus": [[0, 2], [0, 2], [0, 2]],
 				"damage_bonus": [[1, 3], [1, 3], [1, 3]]}},
 		{"kind": "armor", "name": "검사 방어구", "weight": 1,
-			"stats": {"armor_class": [[1, 3], [1, 3], [1, 3]]}},
+			"stats": {"defense_bonus": [[1, 3], [1, 3], [1, 3]]}},
 		{"kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}
 	]
 	var seen: Dictionary = {}
@@ -327,17 +327,17 @@ func _test_items(loot: CombatLoot, dice: CombatDice) -> void:
 	archer.kind = CombatUnit.Kind.ARCHER
 	archer.hit_points = 0
 	var weapon: Dictionary = {"kind": "weapon", "name": "검사 무기", "stats": {"attack_bonus": 2, "damage_bonus": 3}}
-	var armor: Dictionary = {"kind": "armor", "name": "검사 방어구", "stats": {"armor_class": 3}}
+	var armor: Dictionary = {"kind": "armor", "name": "검사 방어구", "stats": {"defense_bonus": 3}}
 	_check(loot.receive(warrior, weapon) and loot.receive(warrior, armor), "무기·방어구 각1칸 수령")
-	_check(warrior.get_attack_bonus() == 7 and warrior.get_damage_bonus() == 6
-		and warrior.get_armor_class() == 19, "장비가 기본 전투 수치를 올림")
+	_check(warrior.get_attack_bonus() == 2 and warrior.get_damage_bonus() == 6
+		and warrior.get_defense_bonus() == 3, "장비가 기본 전투 수치를 올림")
 	weapon["stats"]["attack_bonus"] = 1
-	_check(warrior.get_attack_bonus() == 7, "받은 장비 수치는 보상 원본 변경과 독립")
+	_check(warrior.get_attack_bonus() == 2, "받은 장비 수치는 보상 원본 변경과 독립")
 	loot.receive(warrior, weapon)
-	_check(warrior.get_attack_bonus() == 6 and warrior.weapon["stats"]["attack_bonus"] == 1,
+	_check(warrior.get_attack_bonus() == 1 and warrior.weapon["stats"]["attack_bonus"] == 1,
 		"장비 교체는 이전 장비를 대체하고 합산하지 않음")
 	_check(loot.receive(archer, armor) and archer.hit_points == 0
-		and archer.get_armor_class() == 17, "전투 불능 캐릭터도 장비를 받고 전투 불능 유지")
+		and archer.get_defense_bonus() == 3, "전투 불능 캐릭터도 장비를 받고 전투 불능 유지")
 	var potion: Dictionary = {"kind": "potion", "name": "물약", "stats": {}}
 	for index: int in range(3):
 		_check(loot.receive(archer, potion), "전투 불능 캐릭터도 물약 수령")
@@ -351,7 +351,7 @@ func _test_items(loot: CombatLoot, dice: CombatDice) -> void:
 	_check(loot.transfer_potion(archer, warrior) and warrior.potion_left == 4, "데이터 물약 한도 적용")
 	warrior.begin_stage(true)
 	archer.begin_stage(true)
-	_check(warrior.weapon["stats"]["attack_bonus"] == 1 and archer.get_armor_class() == 17
+	_check(warrior.weapon["stats"]["attack_bonus"] == 1 and archer.get_defense_bonus() == 3
 		and warrior.potion_left == 4 and archer.hit_points == 14, "막 복구는 장비·남은 물약 유지")
 	warrior.free()
 	archer.free()
@@ -361,7 +361,7 @@ func _test_act_values(loot: CombatLoot, dice: CombatDice) -> void:
 	var expected: Dictionary = {
 		"weapon": {"attack_bonus": [[1, 2], [3, 4], [5, 7]],
 			"damage_bonus": [[1, 3], [4, 6], [7, 10]]},
-		"armor": {"armor_class": [[1, 2], [3, 4], [5, 7]],
+		"armor": {"defense_bonus": [[1, 2], [3, 4], [5, 7]],
 			"max_hit_points": [[2, 4], [5, 8], [9, 14]]},
 		"potion": {}
 	}
@@ -444,7 +444,7 @@ func _test_armor_unequip_scene() -> void:
 	var loot: CombatLoot = battle.loot
 	var party: Array[CombatUnit] = battle.party
 	var warrior_armor: Dictionary = {"kind": "armor", "name": "전사 방어구", "stats": {"max_hit_points": 5}}
-	var archer_armor: Dictionary = {"kind": "armor", "name": "궁수 방어구", "stats": {"armor_class": 2}}
+	var archer_armor: Dictionary = {"kind": "armor", "name": "궁수 방어구", "stats": {"defense_bonus": 2}}
 	party[0].armor = warrior_armor
 	party[0].hit_points = 1
 	party[1].armor = archer_armor
@@ -740,7 +740,7 @@ func _test_reward_flow() -> void:
 		# 입력 검사를 재현할 고정 보상. 드랍 생성은 위와 모델 검사에서 별도로 확인한다.
 		actual_rewards.clear()
 		actual_rewards.append({"kind": "armor", "name": "검사 방어구",
-			"stats": {"armor_class": 2, "max_hit_points": 4}})
+			"stats": {"defense_bonus": 2, "max_hit_points": 4}})
 		actual_rewards.append({"kind": "potion", "name": "검사 물약", "stats": {}})
 		actual_rewards.append({"kind": "weapon", "name": "버릴 무기", "stats": {"damage_bonus": 1}})
 		await _click(hud.restart_button)
@@ -750,7 +750,7 @@ func _test_reward_flow() -> void:
 		_check(await _pick(preparation, "Item0", "Ally1") == null
 			and preparation.detail.find_children("*", "Button", true, false).is_empty()
 			and preparation.detail.find_children("*", "Label", true, false).any(
-				func(label: Label) -> bool: return "검사 방어구 · AC+2" in label.text),
+				func(label: Label) -> bool: return "검사 방어구 · 방어+2" in label.text),
 			"보상 확인 단계는 수치를 보여 주고 정비에서만 분배")
 		await _click(preparation.continue_button)
 		_check(preparation.maintaining and preparation.title_label.text == "정비", "보상 다음 정비 단계")
@@ -761,7 +761,7 @@ func _test_reward_flow() -> void:
 		# 칸을 골라 상세 패널에 동작 버튼이 생긴 상태도 검사한다.
 		await _check_preparation_layout(preparation)
 		await _click(give)
-		_check(party[1].get_armor_class() == 16 and party[1].hit_points == 0
+		_check(party[1].get_defense_bonus() == 2 and party[1].hit_points == 0
 			and party[1].get_max_hit_points() == 18,
 			"실제 분배 버튼은 전투 불능 궁수에게 방어구 장착")
 		_check_pixel_art(main, ["AnimatedSprite2D", "Sprite2D", "Button", "TextureRect"])
@@ -791,7 +791,7 @@ func _test_reward_flow() -> void:
 			and not preparation.visible and loot.bag.size() == 2
 			and loot.bag[0]["kind"] == "weapon" and loot.bag[1]["kind"] == "potion",
 			"미수령 장비와 물약을 공용 가방에 보관한 뒤 다음 전투")
-		_check(party[1].hit_points == 0 and party[1].get_armor_class() == 16,
+		_check(party[1].hit_points == 0 and party[1].get_defense_bonus() == 2,
 			"같은 막 다음 전투는 전투 불능과 장비 유지")
 		_check(party[0].weapon["name"] != "버릴 무기", "미수령 장비는 자동 장착하지 않음")
 		var actions: CombatActions = battle.get("actions") as CombatActions
@@ -813,7 +813,7 @@ func _test_reward_flow() -> void:
 		_check((battle.get("progress") as CombatActProgress).rewards.is_empty(), "패배는 드랍을 주지 않음")
 		await _click(hud.restart_button)
 		_check((battle.get("progress") as CombatActProgress).stage_index == 0 and party[0].potion_left == 2
-			and party[1].potion_left == 1 and party[1].get_armor_class() == 16,
+			and party[1].potion_left == 1 and party[1].get_defense_bonus() == 2,
 			"막 재시작은 장비·남은 물약 유지, 소비한 물약 복구 없음")
 		_check(party[1].hit_points == 18, "실제 막 재시작에서 방어구 최대 HP 포함 부활")
 		_check(loot.bag.size() == 2 and loot.bag[0]["name"] == "버릴 무기"
@@ -1065,36 +1065,39 @@ func _test_scaled_combat() -> void:
 	actor.cell = Vector2i(4, 3)
 	target.cell = Vector2i(4, 4)
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
-	var initiative: Array[int] = []
-	for unit: CombatUnit in units:
-		initiative.append(20 if unit == actor else 1)
-	turns.start(units, ScriptedDice.new(initiative))
-	_check(turns.current_unit == actor, "이니셔티브 d20 20으로 3막 적이 먼저 행동")
+	ScriptedDice.arrange_turns(turns, units, [actor, target])
+	_check(turns.current_unit == actor, "장비 전투 fixture는 검사 대상 적이 먼저 행동")
 	var preview: CombatChecks.AttackPreview = (battle.get("actions") as CombatActions).grid.attack_preview(actor, target)
-	_check(is_equal_approx(preview.chance, 0.5), "3막 풋내기 명중+5 대 아군 AC16 미리보기")
+	_check(is_equal_approx(preview.chance, 0.375), "3막 야만인 힘d10+3 대 아군 힘d20 미리보기")
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	target.reaction_left = 0
-	actions.dice = ScriptedDice.new([15], [20]).then_seeded()
+	actions.dice = ScriptedDice.new([10, 1, 2], [10, 20, 4])
 	var used: bool = await actions.attack(actor, target)
 	_check(used and actions.last_attack.success
-		and actions.last_attack.total == actions.last_attack.selected_roll + 5,
-		"3막 풋내기 공격도 명중+5 고정")
+		and actions.last_attack.total == actions.last_attack.selected_roll + 3,
+		"3막 야만인 공격 가산+3 고정")
 	var rolled_damage: int = 0
 	for rolled: int in actions.last_damage_rolls:
 		rolled_damage += rolled
 	_check(actions.last_damage == rolled_damage + 1, "3막 풋내기 피해도 고정값1 적용")
+	# 물약·보상 RNG는 명중·피해 fixture 밖이다.
+	actions.dice = CombatDice.new()
+	actions.dice.seed = 321
 	# 방어구 최대 HP를 실제 물약 회복 상한에 적용한다.
 	var loot: CombatLoot = battle.get("loot") as CombatLoot
 	loot.receive(units[1], {"kind": "armor", "name": "검사 방어구",
-		"stats": {"armor_class": 7, "max_hit_points": 14}})
+		"stats": {"defense_bonus": 7, "max_hit_points": 14}})
 	units[1].hit_points = 26
 	units[1].potion_left = 1
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, [units[0], units[1]])
 	turns.current_unit = units[1]
 	_check(actions.use_self(units[1], "potion") and units[1].hit_points == 28,
 		"실제 물약 회복은 방어구 포함 최대 HP에서 제한")
+	# 다음 승리의 보상 RNG는 공격 굴림 fixture와 분리한다.
+	actions.dice = CombatDice.new()
+	actions.dice.seed = 321
 	loot.data["extra_drop_chance"] = 0.0
 	loot.data["items"] = [loot.data["items"][1]]
 	for unit: CombatUnit in units:
@@ -1104,7 +1107,7 @@ func _test_scaled_combat() -> void:
 	var rewards: Array[Dictionary] = (battle.get("progress") as CombatActProgress).rewards
 	_check(rewards.size() == 1 and rewards[0]["stats"]["max_hit_points"] >= 9
 		and rewards[0]["stats"]["max_hit_points"] <= 14
-		and rewards[0]["stats"]["armor_class"] >= 5,
+		and rewards[0]["stats"]["defense_bonus"] >= 5,
 		"실제3막 승리는 얻은3막의 방어구 수치로 보상 생성")
 	# 오디오 믹서가 재생 참조를 정리한 뒤 장면을 해제한다.
 	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
@@ -1125,22 +1128,25 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, [units[0], units[1]])
 	turns.select_unit(party[0])
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	target.reaction_left = 0
-	actions.dice = ScriptedDice.new([19], [20]).then_seeded()
+	actions.dice = ScriptedDice.new([19, 1, 2], [20, 10, 8])
 	await actions.attack(party[0], target)
-	_check(actions.last_attack.success and actions.last_attack.total == actions.last_attack.selected_roll + 7,
+	_check(actions.last_attack.success and actions.last_attack.total == actions.last_attack.selected_roll + 2,
 		"실제 공격 판정은 무기 명중+2 포함")
 	var damage_dice: int = 0
 	for value: int in actions.last_damage_rolls:
 		damage_dice += value
 	_check(actions.last_damage == damage_dice + 6, "실제 피해 판정은 무기 피해+3을 한 번 포함")
+	# 이후 보상·다음 전투의 RNG는 엄격한 공격 fixture 밖이다.
+	actions.dice = CombatDice.new()
+	actions.dice.seed = 321
 	party[0].cell = Vector2i(4, 1)
 	units[3].cell = Vector2i(4, 0)
 	var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(party[0], units[3])
-	_check(is_equal_approx(preview.chance, 0.85), "명중 미리보기도 장비 포함+7 대 AC11")
+	_check(is_equal_approx(preview.chance, 0.9625), "명중 미리보기도 힘d20 장비+2 대 힘d4")
 
 
 func _enter_dialog(dialog: ConfirmationDialog) -> void:

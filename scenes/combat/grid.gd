@@ -295,10 +295,10 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 	if target.is_stunned:
 		advantages = 1
 		preview.reasons.append(tr("기절한 대상"))
-	if attacker.get_attack_range() > 1 and height_at(attacker.cell) - height_at(target.cell) >= 2:
+	if attacker.is_ranged_attack() and height_at(attacker.cell) - height_at(target.cell) >= 2:
 		advantages = 1
 		preview.reasons.append(tr("고지대"))
-	if attacker.kind == CombatUnit.Kind.ARCHER:
+	if attacker.is_ranged_attack():
 		for unit: CombatUnit in opponents_in_range(attacker, 1):
 			if not unit.is_stunned and are_adjacent(attacker.cell, unit.cell):
 				disadvantages = 1
@@ -306,5 +306,7 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 				break
 	preview.mode = CombatChecks.roll_mode(advantages, disadvantages)
 	if preview.in_range and preview.blocked_reason.is_empty():
-		preview.chance = CombatChecks.hit_chance(attacker.get_attack_bonus(), target.get_armor_class(), preview.mode)
+		var defense: CombatUnit.Ability = CombatUnit.Ability.DEXTERITY if attacker.is_ranged_attack() else CombatUnit.Ability.STRENGTH
+		preview.chance = CombatChecks.opposed_chance(attacker.get_ability_sides(attacker.get_attack_ability()),
+			target.get_ability_sides(defense), attacker.get_attack_bonus(), target.get_defense_bonus(), preview.mode)
 	return preview

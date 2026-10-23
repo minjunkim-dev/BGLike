@@ -5,7 +5,7 @@ extends RefCounted
 const DATA_PATH: String = "res://scenes/combat/item_data.json"
 const ICON_PATH: String = "res://scenes/combat/art/icons/items/%s.png"
 static var STAT_NAMES: Dictionary = {
-	"attack_bonus": TranslationServer.tr("명중"), "damage_bonus": TranslationServer.tr("피해"), "armor_class": TranslationServer.tr("AC"),
+	"attack_bonus": TranslationServer.tr("공격 가산"), "damage_bonus": TranslationServer.tr("피해"), "defense_bonus": TranslationServer.tr("방어"),
 	"max_hit_points": TranslationServer.tr("최대 HP")
 }
 

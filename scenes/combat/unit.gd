@@ -4,7 +4,11 @@ extends Node2D
 
 enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
-enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
+enum Ability { STRENGTH, DEXTERITY, CRAFT, INTELLIGENCE, WILL, NATURE }
+
+const ALLY_ABILITY_SIDES: Array[Array] = [[20, 8, 6, 4, 12, 6], [8, 20, 12, 6, 4, 6]]
+static var ABILITY_NAMES: Array[String] = [TranslationServer.tr("힘"), TranslationServer.tr("민첩"),
+	TranslationServer.tr("솜씨"), TranslationServer.tr("지능"), TranslationServer.tr("의지"), TranslationServer.tr("자연")]
 
 const MOVEMENT_PER_TURN: int = 6
 const FEEDBACK_RISE: float = 12.0
@@ -16,7 +20,6 @@ const ALLY_COLOR: Color = Color("509be0")
 const ENEMY_COLOR: Color = Color("df6256")
 const OUTLINE_COLOR: Color = Color("202b35")
 const WEAPON_COLOR: Color = Color("f4ead1")
-const CRITICAL_COLOR: Color = Color("f4cf69")
 const HEAL_COLOR: Color = Color("70c76d")
 ## 이어하기가 그대로 되돌리는 값. 저장 파일의 값은 이 변수와 같은 타입이어야 한다.
 const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initiative_roll", "movement_left",
@@ -31,13 +34,13 @@ class StatusEffect extends RefCounted:
 	var kind: String
 	var source: CombatUnit
 	var turns_left: int
-	var save_dc: int
+	var strength: int
 
-	func _init(effect_kind: String, caster: CombatUnit, duration: int) -> void:
+	func _init(effect_kind: String, caster: CombatUnit, duration: int, intensity: int = 0) -> void:
 		kind = effect_kind
 		source = caster
 		turns_left = duration
-		save_dc = caster.get_save_dc()
+		strength = intensity if kind == "poison" else 0
 
 
 @export var kind: Kind = Kind.WARRIOR
@@ -124,26 +127,30 @@ var _attacking: bool = false
 var _art_top_y: float = -28.0
 
 
-func get_dexterity() -> int:
-	if not is_ally:
-		return int(CombatEnemyDefinitions.for_kind(kind)["dexterity"])
-	return 1 if kind == Kind.WARRIOR else 3
+## 능력치의 면은 1~n이다. 값은 능력치 점수나 d20 보정값이 아닌 면 수다 (#321).
+func get_ability_sides(ability: Ability) -> int:
+	if is_ally and kind in [Kind.WARRIOR, Kind.ARCHER]:
+		return ALLY_ABILITY_SIDES[kind][ability]
+	return int(CombatEnemyDefinitions.for_kind(kind)["abilities"][ability])
 
 
-func get_attribute(attribute: Attribute) -> int:
+static func ability_name(ability: Ability) -> String:
+	return ABILITY_NAMES[ability]
+
+
+## 현재 일반 무기는 직업의 기본 대검·활을 강화하는 장비다. 실제 대상 거리로 유형을 바꾸지 않는다.
+func get_attack_ability() -> Ability:
+	return Ability.DEXTERITY if kind == Kind.ARCHER else Ability.STRENGTH
+
+
+func is_ranged_attack() -> bool:
+	return kind == Kind.ARCHER
+
+
+func get_defense_bonus() -> int:
 	if not is_ally:
-		var key: String = ["strength", "dexterity", "constitution", "mental"][attribute]
-		return int(CombatEnemyDefinitions.for_kind(kind)[key])
-	match attribute:
-		Attribute.STRENGTH:
-			return 3 if kind == Kind.WARRIOR else 0
-		Attribute.DEXTERITY:
-			return get_dexterity()
-		Attribute.CONSTITUTION:
-			return 2 if kind == Kind.WARRIOR else 1
-		Attribute.MENTAL:
-			return -1 if kind == Kind.WARRIOR else 1
-	return 0
+		return int(CombatEnemyDefinitions.for_kind(kind)["defense_bonus"])
+	return _equipment_stat("defense_bonus")
 
 
 func get_max_hit_points() -> int:
@@ -153,16 +160,10 @@ func get_max_hit_points() -> int:
 	return base + _equipment_stat("max_hit_points")
 
 
-func get_armor_class() -> int:
-	if not is_ally:
-		return int(CombatEnemyDefinitions.for_kind(kind)["armor_class"])
-	return (16 if kind == Kind.WARRIOR else 14) + _equipment_stat("armor_class")
-
-
 func get_attack_bonus() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["attack_bonus"])
-	return 5 + _equipment_stat("attack_bonus")
+	return _equipment_stat("attack_bonus")
 
 
 func get_damage_bonus() -> int:
@@ -177,10 +178,6 @@ func get_damage_sides() -> int:
 	return 8 if kind == Kind.WARRIOR else 6
 
 
-func get_save_dc() -> int:
-	return 13 if is_ally else int(CombatEnemyDefinitions.for_kind(kind)["save_dc"])
-
-
 func _equipment_stat(stat: String) -> int:
 	return int(weapon.get("stats", {}).get(stat, 0)) + int(armor.get("stats", {}).get(stat, 0))
 
@@ -192,7 +189,7 @@ func get_attack_range() -> int:
 
 
 func get_initiative() -> int:
-	return initiative_roll + get_dexterity()
+	return initiative_roll
 
 
 func get_display_name() -> String:
@@ -286,7 +283,7 @@ func begin_stage(restore_act: bool) -> void:
 func save_state(units: Array[CombatUnit]) -> Dictionary:
 	var statuses: Array = []
 	for effect: StatusEffect in status_effects:
-		statuses.append([effect.kind, units.find(effect.source), effect.turns_left, effect.save_dc])
+		statuses.append([effect.kind, units.find(effect.source), effect.turns_left, effect.strength])
 	var data: Dictionary = {"kind": kind, "ally": is_ally, "weapon": weapon, "armor": armor,
 		"hit_points": hit_points, "lost_hit_points": _lost_hit_points, "stunned": is_stunned,
 		"stun_source": units.find(stun_source), "marked_target": units.find(marked_target), "statuses": statuses}
@@ -308,8 +305,7 @@ func load_state(data: Dictionary, units: Array[CombatUnit]) -> void:
 	marked_target = units[data.marked_target] if data.marked_target >= 0 else null
 	status_effects.clear()
 	for saved: Array in data.statuses:
-		var effect: StatusEffect = StatusEffect.new(saved[0], units[saved[1]], saved[2])
-		effect.save_dc = saved[3]
+		var effect: StatusEffect = StatusEffect.new(saved[0], units[saved[1]], saved[2], saved[3])
 		status_effects.append(effect)
 
 
@@ -335,7 +331,8 @@ func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 	return (data.statuses as Array).all(func(saved: Variant) -> bool:
 		return (saved is Array and saved.size() == 4 and saved[0] in ["burn", "poison"]
 			and _valid_index(saved[1], count, false) and saved[2] is int and saved[2] >= 1 and saved[2] <= 4
-			and saved[3] is int and saved[3] >= 0 and saved[3] <= SAVED_INT_LIMIT))
+			and saved[3] is int and saved[3] >= 0 and saved[3] <= SAVED_INT_LIMIT
+			and (saved[3] == 0 if saved[0] == "burn" else saved[3] > 0)))
 
 
 static func _valid_index(value: Variant, count: int, optional: bool) -> bool:
@@ -484,8 +481,8 @@ func show_feedback(text: String, obstacles: Array[Rect2] = [], color: Color = WE
 	popup.z_index = 10
 	popup.text = text
 	popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	popup.add_theme_font_size_override("font_size", 14 if text == tr("치명타!") else 10)
-	popup.add_theme_color_override("font_color", CRITICAL_COLOR if text == tr("치명타!") else color)
+	popup.add_theme_font_size_override("font_size", 10)
+	popup.add_theme_color_override("font_color", color)
 	popup.add_theme_color_override("font_outline_color", OUTLINE_COLOR)
 	popup.add_theme_constant_override("outline_size", 2)
 	popup.set_meta("feedback_unit", get_instance_id())

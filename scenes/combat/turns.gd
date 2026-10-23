@@ -28,14 +28,14 @@ var _deferred_units: Array[CombatUnit] = []
 func start(combat_units: Array[CombatUnit], dice: CombatDice) -> void:
 	ordered_units = combat_units.duplicate()
 	for unit: CombatUnit in ordered_units:
-		unit.initiative_roll = dice.roll(20)
+		unit.initiative_roll = dice.roll(unit.get_ability_sides(CombatUnit.Ability.DEXTERITY))
 	# sort_custom은 안정 정렬이 아니므로 완전히 같은 값은 배치 순서를 보존한다.
 	var placement_order: Array[CombatUnit] = ordered_units.duplicate()
 	ordered_units.sort_custom(func(a: CombatUnit, b: CombatUnit) -> bool:
 		if a.get_initiative() != b.get_initiative():
 			return a.get_initiative() > b.get_initiative()
-		if a.get_dexterity() != b.get_dexterity():
-			return a.get_dexterity() > b.get_dexterity()
+		if a.get_ability_sides(CombatUnit.Ability.DEXTERITY) != b.get_ability_sides(CombatUnit.Ability.DEXTERITY):
+			return a.get_ability_sides(CombatUnit.Ability.DEXTERITY) > b.get_ability_sides(CombatUnit.Ability.DEXTERITY)
 		if a.is_ally != b.is_ally:
 			return a.is_ally
 		return placement_order.find(a) < placement_order.find(b)

@@ -42,9 +42,7 @@ func _fixture() -> Fixture:
 		unit.hit_points = unit.get_max_hit_points()
 		f.units.append(unit)
 		_created.append(unit)
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 33
-	f.turns.start(f.units, dice)
+	ScriptedDice.arrange_turns(f.turns, f.units, f.units)
 	f.actions.initialize(f.units, f.turns)
 	f.actions.hit_landed.connect(f.hits.append.bind(true))
 	return f
@@ -52,6 +50,13 @@ func _fixture() -> Fixture:
 
 func _dice_for(expected: Array[int], sides: Array[int]) -> ScriptedDice:
 	return ScriptedDice.new(expected, sides)
+
+
+func _ability_sides(unit: CombatUnit) -> Array[int]:
+	var sides: Array[int] = []
+	for ability: CombatUnit.Ability in CombatUnit.Ability.values():
+		sides.append(unit.get_ability_sides(ability))
+	return sides
 
 
 func _test_rock_roll() -> void:
@@ -323,7 +328,7 @@ func _test_rock_pit_reset_callbacks() -> void:
 			target.visible = true
 			f.turns = CombatTurns.new()
 			f.actions.initialize(f.units, f.turns)
-			f.turns.start(f.units, _dice_for([20, 1, 1, 1], [20, 20, 20, 20]))
+			ScriptedDice.arrange_turns(f.turns, f.units, f.units)
 			f.actions.create_prop(Vector2i(1, 1), "rock")
 		var on_log: Callable = func(message: String) -> void:
 			if reset_at == "ground_log" and "장판 해제" in message:
@@ -432,9 +437,7 @@ func _test_rock_scene_input() -> void:
 	var selection: CombatSelection = battle.get("selection") as CombatSelection
 	var map: CombatMap = battle.get("map") as CombatMap
 	var hud: CombatTurnHud = battle.get("hud") as CombatTurnHud
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, units)
 	units[1].cell = Vector2i(1, 2)
 	# 밀치기를 허용하는 인접 적은 바위 그림을 가리지 않는 쪽에 둔다.
 	units[2].cell = Vector2i(1, 5)
@@ -589,9 +592,7 @@ func _test_crate_scene_input() -> void:
 	var selection: CombatSelection = battle.get("selection") as CombatSelection
 	var map: CombatMap = battle.get("map") as CombatMap
 	var hud: CombatTurnHud = battle.get("hud") as CombatTurnHud
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, units)
 	var crate: CombatGrid.Prop = actions.grid.prop_at(Vector2i(1, 3))
 	var point: Vector2 = map.get_global_transform_with_canvas() * (map.map_to_surface(crate.cell) + Vector2(0, -7))
 	await _click(point)
@@ -695,7 +696,7 @@ func _test_crate_ai_path() -> void:
 	f.units[3].hit_points = 0
 	f.actions.grid.map_size = Vector2i(5, 1)
 	var crate: CombatGrid.Prop = f.actions.create_prop(Vector2i(2, 0), "crate")
-	f.turns.start([enemy, ally], _dice_for([20, 1], [20, 20]))
+	ScriptedDice.arrange_turns(f.turns, [enemy, ally], [enemy, ally])
 	f.actions.dice = _dice_for([], [])
 	var ai: CombatEnemyAi = CombatEnemyAi.new()
 	await ai.play_turn(enemy, f.actions)
@@ -706,7 +707,7 @@ func _test_crate_ai_path() -> void:
 	f.actions.dice = _dice_for([3], [8])
 	_check(f.actions.attack_prop(ally, crate), "아군의 기본 공격으로 좁은 길의 상자를 부순다")
 	f.turns.end_turn()
-	f.actions.dice = _dice_for([1], [20])
+	f.actions.dice = _dice_for([1, 20], [4, 20])
 	await ai.play_turn(enemy, f.actions)
 	_check(enemy.cell == Vector2i(2, 0) and enemy.action_left == 0 and ally.hit_points == 12,
 		"기존 적 AI는 파괴 후 열린 상자 칸으로 이동하고 기존 유닛 공격을 실행한다")
@@ -876,15 +877,12 @@ func _test_scrap_robot_stats() -> void:
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
 	boss.hit_points = boss.get_max_hit_points()
 	boss.begin_turn()
-	_check(boss.get_max_hit_points() == 40 and boss.get_armor_class() == 14
-		and boss.get_attack_bonus() == 5 and boss.get_damage_bonus() == 2
+	_check(boss.get_max_hit_points() == 40 and boss.get_defense_bonus() == 2
+		and boss.get_attack_bonus() == 3 and boss.get_damage_bonus() == 2
 		and boss.get_damage_sides() == 8 and boss.get_attack_range() == 1
-		and boss.get_save_dc() == 13 and boss.movement_left == 4,
+		and boss.movement_left == 4,
 		"고철로봇-1000 전투 수치는 모든 막에서 고정")
-	_check(boss.get_attribute(CombatUnit.Attribute.STRENGTH) == 3
-		and boss.get_dexterity() == -1
-		and boss.get_attribute(CombatUnit.Attribute.CONSTITUTION) == 3
-		and boss.get_attribute(CombatUnit.Attribute.MENTAL) == 0,
+	_check(_ability_sides(boss) == [12, 4, 8, 4, 12, 4],
 		"고철로봇-1000 능력치")
 	_check(boss.is_boss() and boss.get_display_name() == "고철로봇-1000"
 		and CombatActionRules.belongs_to(boss, "opportunity")
@@ -899,11 +897,11 @@ func _test_scrap_robot_2000_stats() -> void:
 	boss.hit_points = boss.get_max_hit_points()
 	boss.begin_turn()
 	_check(boss.is_boss() and boss.get_display_name() == "고철로봇-2000"
-		and boss.get_max_hit_points() == 45 and boss.get_armor_class() == 15
-		and boss.get_attack_bonus() == 5 and boss.get_damage_sides() == 8
+		and boss.get_max_hit_points() == 45 and boss.get_defense_bonus() == 3
+		and boss.get_attack_bonus() == 3 and boss.get_damage_sides() == 8
 		and boss.get_damage_bonus() == 2 and boss.get_attack_range() == 1
-		and boss.get_save_dc() == 13 and boss.movement_left == 4
-		and boss.can_drop_extra_reward(), "고철로봇-2000은 모든 막에서 HP45·AC15와 공통 보스 수치")
+		and boss.movement_left == 4
+		and boss.can_drop_extra_reward(), "고철로봇-2000은 모든 막에서 HP45·방어 가산3와 공통 보스 수치")
 	boss.hit_points = 23
 	boss.begin_turn()
 	_check(not boss.overloaded and boss.action_left == 1, "2000은 HP23에서 과부하 없음")
@@ -923,11 +921,11 @@ func _test_scrap_robot_3000_stats() -> void:
 	boss.hit_points = boss.get_max_hit_points()
 	boss.begin_turn()
 	_check(boss.is_boss() and boss.get_display_name() == "고철로봇-3000"
-		and boss.get_max_hit_points() == 50 and boss.get_armor_class() == 16
-		and boss.get_attack_bonus() == 5 and boss.get_damage_sides() == 8
+		and boss.get_max_hit_points() == 50 and boss.get_defense_bonus() == 4
+		and boss.get_attack_bonus() == 3 and boss.get_damage_sides() == 8
 		and boss.get_damage_bonus() == 2 and boss.get_attack_range() == 1
-		and boss.get_save_dc() == 13 and boss.movement_left == 4
-		and boss.can_drop_extra_reward(), "고철로봇-3000은 모든 막에서 HP50·AC16과 공통 보스 수치")
+		and boss.movement_left == 4
+		and boss.can_drop_extra_reward(), "고철로봇-3000은 모든 막에서 HP50·방어 가산4과 공통 보스 수치")
 	boss.hit_points = 26
 	boss.begin_turn()
 	_check(not boss.overloaded and boss.action_left == 1, "3000은 HP26에서 과부하 없음")
@@ -949,11 +947,12 @@ func _test_spin_attacks() -> void:
 	f.turns.current_unit = boss
 	f.units[1].cell = Vector2i(5, 3)
 	f.units[0].parry_left = 0
-	f.actions.dice = _dice_for([1, 10, 6], [20, 20, 8])
+	f.actions.dice = _dice_for([6, 9, 2, 6], [12, 20, 8, 8])
 	_check(await f.actions.spin(boss), "회전회오리 실행")
 	_check(f.units[0].hit_points == 12 and f.units[1].hit_points == 6,
-		"인접 아군마다 개별 명중 판정과 1d8+2 피해, 첫 대상 빗나감은 다음 대상과 독립")
-	_check(f.units[0].cell == Vector2i(4, 4) and f.units[1].cell == Vector2i(5, 3),
+		"공통 힘 d12의6+3에 각 대상이 방어해 첫 동점은 빗나가고 두 번째만 1d8+2 피해")
+	_check(f.actions.last_attack.rolls == [6] and f.actions.last_attack.defender_roll == 2
+		and f.units[0].cell == Vector2i(4, 4) and f.units[1].cell == Vector2i(5, 3),
 		"회전회오리는 대상을 밀어내지 않음")
 	_check(boss.action_left == 0 and boss.bonus_action_left == 1 and boss.reaction_left == 1
 		and boss.movement_left == 4 and not f.actions.busy, "여러 대상이어도 행동1개만 소비하고 입력 잠금을 해제")
@@ -1005,7 +1004,7 @@ func _test_spin_height_recheck() -> void:
 		attacked.append(target)
 		f.actions.grid.heights[f.units[1].cell] = 2
 		await process_frame
-	f.actions.dice = _dice_for([11, 1], [20, 8])
+	f.actions.dice = _dice_for([11, 1, 1], [12, 20, 8])
 	_check(await f.actions.spin(boss) and attacked == [f.units[0]]
 		and f.units[0].hit_points == 9 and f.units[1].hit_points == 14,
 		"첫 공격 대기 뒤 두 번째 대상의 높이가 바뀌면 주사위·피해 없이 제외")
@@ -1051,17 +1050,17 @@ func _test_spin_reactions_and_reuse() -> void:
 			and not f.actions.can_use(boss, "spin"), "첫 대상의 반응을 기다리는 동안 다음 대상 판정과 중복 입력을 잠금")
 		f.actions.resolve_reaction(true)
 	)
-	f.actions.dice = _dice_for([11, 12, 10, 1], [20, 20, 20, 8])
+	f.actions.dice = _dice_for([5, 1, 5, 1, 1], [12, 20, 8, 8, 8])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 12 and f.units[1].hit_points == 11
 		and f.units[0].reaction_left == 0 and f.units[0].parry_left == 1,
-		"첫 대상은 DC13 흘려내기로 막고 다음 대상은 독립 피해를 받음")
-	f.actions.dice = _dice_for([20, 1, 2, 10, 1], [20, 8, 8, 20, 8])
+		"첫 대상은 같은 공격 합계8을 민첩5+3 흘려내기로 막고 다음 대상은 독립 피해를 받음")
+	f.actions.dice = _dice_for([12, 1, 3, 1, 1], [12, 20, 8, 8, 8])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 7 and f.units[1].hit_points == 8
 		and prompts == ["parry"] and boss.action_left == 0,
-		"과부하 같은 턴에 회전회오리를 다시 쓰며 대상별 치명타와 소비한 반응을 유지")
+		"과부하 같은 턴에 회전회오리를 다시 쓰며 공통 최댓값에도 피해를 한 번씩 굴리고 소비한 반응을 유지")
 	boss.begin_turn()
 	f.units[1].cell = Vector2i(9, 9)
-	f.actions.dice = _dice_for([11, 1], [20, 8])
+	f.actions.dice = _dice_for([11, 1, 1], [12, 20, 8])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 4 and f.units[1].hit_points == 8
 		and CombatActionRules.uses_left(boss, "spin") == -1,
 		"다음 턴에도 횟수·대기 제한 없이 쓰며 사거리 밖 아군은 공격하지 않음")
@@ -1075,8 +1074,8 @@ func _test_spin_incapacitation() -> void:
 	f.units[0].hit_points = 3
 	f.units[0].parry_left = 0
 	f.units[1].cell = Vector2i(5, 3)
-	f.turns.start(f.units, _dice_for([4, 3, 20, 1], [20, 20, 20, 20]))
-	f.actions.dice = _dice_for([11, 1, 10, 2], [20, 8, 20, 8])
+	ScriptedDice.arrange_turns(f.turns, f.units, [f.units[2], f.units[1], f.units[0], f.units[3]])
+	f.actions.dice = _dice_for([11, 1, 1, 1, 2], [12, 20, 8, 8, 8])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 0
 		and f.units[1].hit_points == 10 and boss.action_left == 0,
 		"첫 대상 전투 불능 뒤 남은 대상 공격과 한 번 소비한 행동을 유지")
@@ -1086,14 +1085,14 @@ func _test_spin_incapacitation() -> void:
 	boss.hit_points = 50
 	interrupted.units[0].parry_left = 0
 	interrupted.units[1].cell = Vector2i(5, 3)
-	interrupted.turns.start(interrupted.units, _dice_for([4, 3, 20, 1], [20, 20, 20, 20]))
+	ScriptedDice.arrange_turns(interrupted.turns, interrupted.units, [interrupted.units[2], interrupted.units[1], interrupted.units[0], interrupted.units[3]])
 	interrupted.actions.attack_animation = func(actor: CombatUnit, _target: CombatUnit) -> void:
 		interrupted.actions.incapacitate(actor)
 		await process_frame
-	interrupted.actions.dice = _dice_for([], [])
+	interrupted.actions.dice = _dice_for([11], [12])
 	_check(await interrupted.actions.spin(boss) and boss.hit_points == 0
 		and interrupted.units[0].hit_points == 12 and interrupted.units[1].hit_points == 14
-		and not interrupted.actions.busy, "연출 대기 중 공격자가 전투 불능이면 판정 없이 중단하고 입력 잠금 해제")
+		and not interrupted.actions.busy, "연출 대기 중 공격자가 전투 불능이면 공통 공격 굴림 뒤 대상 방어·피해 없이 중단하고 입력 잠금 해제")
 	interrupted.actions.attack_animation = Callable()
 
 
@@ -1113,7 +1112,7 @@ func _test_pull_success() -> void:
 	reactor.cell = Vector2i(7, 3)
 	_check(CombatGrid.distance(reactor.cell, target.cell) == 1,
 		"만능팔 검사 대상은 다른 적의 기회 공격 위협 칸에서 시작")
-	f.actions.dice = _dice_for([12, 10], [20, 20])
+	f.actions.dice = _dice_for([12, 1], [12, 8])
 	_check(f.actions.pull(boss, target), "거리3 만능팔 실행")
 	_check(target.cell == Vector2i(5, 4) and target.hit_points == 14
 		and target.movement_left == 6 and reactor.reaction_left == 1,
@@ -1132,10 +1131,10 @@ func _test_pull_contest_and_cooldown() -> void:
 	var target: CombatUnit = f.units[1]
 	target.cell = Vector2i(7, 4)
 	f.units[3].cell = Vector2i(9, 9)
-	f.turns.start(f.units, _dice_for([5, 4, 20, 1], [20, 20, 20, 20]))
-	f.actions.dice = _dice_for([10, 10], [20, 20])
+	ScriptedDice.arrange_turns(f.turns, f.units, [f.units[2], f.units[1], f.units[0], f.units[3]])
+	f.actions.dice = _dice_for([5, 8], [12, 8])
 	_check(f.actions.pull(boss, target) and target.cell == Vector2i(7, 4),
-		"만능팔은 대상 민첩을 사용하며 대결 동점은 방어자 승리")
+		"만능팔은 대상 힘 d8을 사용하며 대결 동점은 방어자 승리")
 	_check(boss.action_left == 1 and not f.actions.can_use(boss, "pull")
 		and not f.actions.pull(boss, target), "실패해도 과부하 두 번째 행동으로 만능팔 재사용 불가")
 	for turn: int in range(4):
@@ -1149,9 +1148,9 @@ func _test_pull_contest_and_cooldown() -> void:
 		"그다음 실제 보스 턴부터 만능팔 재사용 가능")
 	target.kind = CombatUnit.Kind.WARRIOR
 	target.hit_points = 12
-	f.actions.dice = _dice_for([10, 11], [20, 20])
+	f.actions.dice = _dice_for([10, 14], [12, 20])
 	_check(f.actions.pull(boss, target) and target.cell == Vector2i(7, 4)
-		and target.hit_points == 12, "대상의 힘이 민첩보다 높으면 힘으로 저항하고 실패 시 위치·HP 유지")
+		and target.hit_points == 12, "전사도 힘 d20으로 저항하고 실패 시 위치·HP 유지")
 
 
 func _test_pull_destinations() -> void:
@@ -1165,7 +1164,7 @@ func _test_pull_destinations() -> void:
 		f.units[0].cell = Vector2i(1, 1)
 		f.units[1].cell = Vector2i(6, 5)
 		f.units[3].cell = Vector2i(9, 9)
-		f.actions.dice = _dice_for([12, 10, choice], [20, 20, 2])
+		f.actions.dice = _dice_for([12, 1, choice], [12, 8, 2])
 		_check(f.actions.pull(boss, f.units[1])
 			and f.units[1].cell == [Vector2i(5, 4), Vector2i(4, 5)][choice - 1],
 			"대상에게 같은 거리인 인접 빈 칸 두 곳을 d2로 선택")
@@ -1183,7 +1182,7 @@ func _test_pull_destinations() -> void:
 			"만능팔은 거리2~3만 대상")
 	f.units[1].cell = Vector2i(6, 5)
 	f.units[3].cell = Vector2i(5, 4)
-	f.actions.dice = _dice_for([12, 10], [20, 20])
+	f.actions.dice = _dice_for([12, 1], [12, 8])
 	_check(f.actions.pull(boss, f.units[1]) and f.units[1].cell == Vector2i(4, 5),
 		"가장 가까운 한 칸이 차 있으면 남은 가까운 빈 칸을 선택")
 	boss.begin_stage(false)
@@ -1223,7 +1222,7 @@ func _test_scrap_robot_turn_damage() -> void:
 	var boss: CombatUnit = f.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
 	boss.hit_points = 20
-	f.turns.start(f.units, _dice_for([19, 14, 2, 7], [20, 20, 20, 20]))
+	ScriptedDice.arrange_turns(f.turns, f.units, [f.units[0], f.units[1], f.units[3], f.units[2]])
 	f.turns.end_turn()
 	f.turns.end_turn()
 	_check(f.turns.current_unit == f.units[3] and boss.hit_points == 20,
@@ -1247,13 +1246,11 @@ func _test_scrap_robot_turn_damage() -> void:
 		if not remaining_enemy:
 			dying.actions.incapacitate(dying.units[3])
 		var living: Array[CombatUnit] = dying.units.duplicate()
-		var rolls: Array[int] = [19, 14, 2, 7]
-		var sides: Array[int] = [20, 20, 20, 20]
+		var order: Array[CombatUnit] = [living[0], living[1], living[3], living[2]]
 		if not remaining_enemy:
 			living.erase(dying.units[3])
-			rolls.pop_back()
-			sides.pop_back()
-		dying.turns.start(living, _dice_for(rolls, sides))
+			order.erase(dying.units[3])
+		ScriptedDice.arrange_turns(dying.turns, living, order)
 		dying.turns.end_turn()
 		dying.turns.end_turn()
 		if remaining_enemy:
@@ -1276,7 +1273,7 @@ func _test_scrap_robot_stun_immunity() -> void:
 	boss.cell = Vector2i(6, 4)
 	var archer: CombatUnit = f.units[1]
 	f.turns.select_unit(archer)
-	f.actions.dice = _dice_for([10, 3], [20, 6])
+	f.actions.dice = _dice_for([10, 1, 3], [20, 4, 6])
 	_check(await f.actions.attack(archer, boss, true), "보스에게 충격 화살 공격 가능")
 	_check(boss.hit_points == 36 and not boss.is_stunned and archer.shock_left == 0,
 		"보스는 충격 화살 피해를 받지만 내성 굴림 없이 기절에 면역")
@@ -1288,10 +1285,10 @@ func _test_scrap_robot_opportunity() -> void:
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
 	boss.hit_points = 40
 	f.units[0].parry_left = 0
-	f.actions.dice = _dice_for([11, 8], [20, 8])
+	f.actions.dice = _dice_for([11, 1, 8], [12, 20, 8])
 	_check(await f.actions.move_to(f.units[0], Vector2i(3, 5)), "보스 인접 칸에서 이동")
 	_check(f.units[0].hit_points == 2 and boss.reaction_left == 0,
-		"보스 기회 공격은 명중 +5·피해 1d8+2로 반응을 소비")
+		"보스 기회 공격은 힘 d12 +3·피해 1d8+2로 반응을 소비")
 
 
 func _test_novice_stats() -> void:
@@ -1299,13 +1296,10 @@ func _test_novice_stats() -> void:
 	for index: int in [2, 3]:
 		var enemy: CombatUnit = f.units[index]
 		_check(enemy.get_max_hit_points() == (12 if index == 2 else 14)
-			and enemy.get_armor_class() == (12 if index == 2 else 11)
-			and enemy.get_attack_bonus() == 5 and enemy.get_damage_bonus() == 1,
-			"풋내기 HP·AC·명중·피해는 모든 막에서 고정")
-		_check(enemy.get_attribute(CombatUnit.Attribute.STRENGTH) == (3 if index == 2 else 0)
-			and enemy.get_dexterity() == (1 if index == 2 else 3)
-			and enemy.get_attribute(CombatUnit.Attribute.CONSTITUTION) == (2 if index == 2 else 1)
-			and enemy.get_attribute(CombatUnit.Attribute.MENTAL) == (-2 if index == 2 else 0)
+			and enemy.get_defense_bonus() == 0
+			and enemy.get_attack_bonus() == (3 if index == 2 else 0) and enemy.get_damage_bonus() == 1,
+			"풋내기 HP·방어 가산·공격 가산·피해는 모든 막에서 고정")
+		_check(_ability_sides(enemy) == ([10, 6, 4, 4, 4, 4] if index == 2 else [4, 10, 4, 4, 4, 4])
 			and enemy.get_attack_range() == (1 if index == 2 else 6)
 			and enemy.movement_left == 6, "풋내기 능력치·이동력·사거리")
 	_check(CombatActionRules.belongs_to(f.units[2], "second_wind")
@@ -1316,16 +1310,16 @@ func _test_novice_stats() -> void:
 		and not CombatActionRules.belongs_to(f.units[3], "opportunity")
 		and not CombatActionRules.belongs_to(f.units[3], "mark")
 		and not CombatActionRules.belongs_to(f.units[3], "shock"), "풋내기 궁수는 물러서며 쏘기만 사용")
-	_check(f.units[0].get_armor_class() == 16 and f.units[0].get_damage_bonus() == 3
-		and f.units[0].get_attribute(CombatUnit.Attribute.MENTAL) == -1
-		and f.units[1].get_armor_class() == 14 and f.units[1].get_damage_bonus() == 1
-		and f.units[1].get_attribute(CombatUnit.Attribute.MENTAL) == 1,
-		"아군 전사·궁수의 기존 수치 보존")
+	_check(_ability_sides(f.units[0]) == [20, 8, 6, 4, 12, 6]
+		and f.units[0].get_defense_bonus() == 0 and f.units[0].get_damage_bonus() == 3
+		and _ability_sides(f.units[1]) == [8, 20, 12, 6, 4, 6]
+		and f.units[1].get_defense_bonus() == 0 and f.units[1].get_damage_bonus() == 1,
+		"아군 전사·궁수의 여섯 주사위와 기존 피해 가산")
 
 
 func _test_novice_damage() -> void:
 	for index: int in [2, 3]:
-		for critical: bool in [false, true]:
+		for maximum: bool in [false, true]:
 			var f: Fixture = _fixture()
 			var actor: CombatUnit = f.units[index]
 			var target: CombatUnit = f.units[0]
@@ -1334,40 +1328,37 @@ func _test_novice_damage() -> void:
 			if index == 3:
 				f.turns.end_turn()
 			target.reaction_left = 0
-			f.actions.dice = (_dice_for([20, 4, 2], [20, 4, 4]) if critical
-				else _dice_for([11, 4], [20, 4]))
+			var attack_sides: int = actor.get_ability_sides(actor.get_attack_ability())
+			var defense_sides: int = 20 if index == 2 else 8
+			f.actions.dice = _dice_for([attack_sides if maximum else 5, 1, 4], [attack_sides, defense_sides, 4])
 			_check(await f.actions.attack(actor, target), "풋내기 기본 공격 실행")
-			_check(f.actions.last_damage == (7 if critical else 5)
-				and target.hit_points == (5 if critical else 7),
-				"풋내기 피해는 일반1d4+1·치명타2d4+1")
+			_check(f.actions.last_damage == 5 and target.hit_points == 7
+				and not f.actions.last_attack.critical and f.actions.last_damage_rolls == [4],
+				"풋내기 피해는 최대 면에서도 주사위 한 번의 1d4+1")
 
 
 func _test_spiderling_stats_and_damage() -> void:
-	for critical: bool in [false, true]:
+	for attack_roll: int in [1, 4]:
 		var f: Fixture = _fixture()
 		var spiderling: CombatUnit = f.units[2]
 		spiderling.kind = CombatUnit.Kind.SPIDERLING
-		_check(spiderling.get_max_hit_points() == 1 and spiderling.get_armor_class() == 6
-			and spiderling.get_attack_bonus() == 4 and spiderling.get_damage_bonus() == 1
+		_check(spiderling.get_max_hit_points() == 1 and spiderling.get_defense_bonus() == 0
+			and spiderling.get_attack_bonus() == 3 and spiderling.get_damage_bonus() == 1
 			and spiderling.get_damage_sides() == 0 and spiderling.get_attack_range() == 1
-			and spiderling.get_save_dc() == 10, "새끼 거미의 HP·방어·공격은 모든 막에서 고정")
-		_check(spiderling.get_attribute(CombatUnit.Attribute.STRENGTH) == 0
-			and spiderling.get_dexterity() == 2
-			and spiderling.get_attribute(CombatUnit.Attribute.CONSTITUTION) == -2
-			and spiderling.get_attribute(CombatUnit.Attribute.MENTAL) == -2
-			and spiderling.movement_left == 6, "새끼 거미의 능력치·이동력")
+			and _ability_sides(spiderling) == [4, 8, 4, 4, 4, 4], "새끼 거미의 HP·방어·공격은 모든 막에서 고정")
+		_check(spiderling.movement_left == 6, "새끼 거미의 능력치·이동력")
 		for action: String in CombatActionRules.NAMES:
 			_check(CombatActionRules.belongs_to(spiderling, action) == (action in ["attack", "jump"]),
 				"새끼 거미는 기본 공격과 공용 점프만 사용: " + action)
 		f.turns.end_turn()
 		f.turns.end_turn()
 		f.units[0].reaction_left = 0
-		f.actions.dice = _dice_for([20 if critical else 12], [20])
+		f.actions.dice = _dice_for([attack_roll, 1], [4, 20])
 		var logs: Array[String] = []
 		f.actions.logged.connect(func(line: String) -> void: logs.append(line))
 		_check(await f.actions.attack(spiderling, f.units[0]), "새끼 거미 기본 공격 실행")
 		_check(f.actions.last_damage == 1 and f.units[0].hit_points == 11
-			and f.actions.last_damage_rolls.is_empty(), "새끼 거미는 치명타도 피해1이며 피해 주사위를 굴리지 않음")
+			and f.actions.last_damage_rolls.is_empty(), "새끼 거미는 최솟값·최댓값 명중 모두 피해1이며 피해 주사위를 굴리지 않음")
 		_check(logs[-1] == "%s 피해: 1 · HP 11" % f.units[0].get_display_name(),
 			"주사위 없는 고정 피해 로그는 빈 괄호 없이 고정값만 표시: " + logs[-1])
 
@@ -1377,24 +1368,21 @@ func _test_mother_stats_and_damage() -> void:
 	var mother: CombatUnit = f.units[2]
 	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
 	mother.begin_turn()
-	_check(mother.get_max_hit_points() == 20 and mother.get_armor_class() == 13
-		and mother.get_attack_bonus() == 4 and mother.get_damage_bonus() == 2
+	_check(mother.get_max_hit_points() == 20 and mother.get_defense_bonus() == 1
+		and mother.get_attack_bonus() == 3 and mother.get_damage_bonus() == 2
 		and mother.get_damage_sides() == 6 and mother.get_attack_range() == 1
-		and mother.get_save_dc() == 12 and mother.movement_left == 4,
+		and mother.movement_left == 4,
 		"엄마 거미의 HP·방어·공격·이동력은 모든 막에서 고정")
-	_check(mother.get_attribute(CombatUnit.Attribute.STRENGTH) == 2
-		and mother.get_dexterity() == 0
-		and mother.get_attribute(CombatUnit.Attribute.CONSTITUTION) == 2
-		and mother.get_attribute(CombatUnit.Attribute.MENTAL) == 1,
-		"엄마 거미의 힘·민첩·건강·정신")
+	_check(_ability_sides(mother) == [8, 6, 4, 4, 6, 8],
+		"엄마 거미의 여섯 능력치 주사위")
 	_check(CombatActionRules.belongs_to(mother, "opportunity")
 		and not CombatActionRules.belongs_to(mother, "parry"), "엄마 거미는 기회 공격을 하고 흘려내기는 하지 않음")
 	f.turns.end_turn()
 	f.turns.end_turn()
 	f.units[0].reaction_left = 0
-	f.actions.dice = _dice_for([12, 6], [20, 6])
+	f.actions.dice = _dice_for([8, 1, 6], [8, 20, 6])
 	_check(await f.actions.attack(mother, f.units[0]) and f.actions.last_damage == 8
-		and f.units[0].hit_points == 4, "엄마 거미 기본 공격은 명중+4와 피해1d6+2 적용")
+		and f.units[0].hit_points == 4, "엄마 거미 기본 공격은 힘 d8+3와 피해1d6+2 적용")
 
 
 func _test_spawn_spiderling() -> void:
@@ -1612,8 +1600,8 @@ func _test_jump_opportunity() -> void:
 			_check(f.actions.busy and f.actions.jump_cells(actor).is_empty(), "점프 반응 대기 중 입력 잠금")
 			f.actions.resolve_reaction(scenario[0])
 		)
-		f.actions.dice = (_dice_for([20], [20]).then_seeded() if scenario[1]
-			else _dice_for([1], [20]) if scenario[0] else _dice_for([], []))
+		f.actions.dice = (_dice_for([20, 1, 1], [20, 4, 8]) if scenario[1]
+			else _dice_for([1, 4], [20, 4]) if scenario[0] else _dice_for([], []))
 		_check(await f.actions.jump_to(actor, destination), "기회 공격을 포함한 점프 시도 처리")
 		_check(asked == ["opportunity"]
 			and (scenario[1] or f.units[0].reaction_left == (0 if scenario[0] else 1)),
@@ -1687,7 +1675,7 @@ func _test_high_ground() -> void:
 			and preview.reasons.has("고지대") == (height >= 2),
 			"고지대 유리는 높이 차2부터 원거리 미리보기에 표시")
 	f.actions.grid.heights[archer.cell] = 2
-	f.actions.dice = _dice_for([3, 15, 1], [20, 20, 6])
+	f.actions.dice = _dice_for([3, 15, 1, 1], [20, 20, 6, 6])
 	await f.actions.attack(archer, target)
 	_check(f.actions.last_attack.mode == CombatChecks.RollMode.ADVANTAGE
 		and f.actions.last_attack.rolls == [3, 15] and archer.action_left == 0,
@@ -1746,7 +1734,7 @@ func _test_fall_damage() -> void:
 	target.hit_points = 7
 	pulled.units[3].cell = Vector2i(9, 9)
 	pulled.actions.grid.heights[target.cell] = 3
-	pulled.actions.dice = _dice_for([20, 1], [20, 20])
+	pulled.actions.dice = _dice_for([12, 1], [12, 20])
 	_check(pulled.actions.pull(boss, target)
 		and target.cell == Vector2i(5, 4) and target.hit_points == 5,
 		"끌기 착지에도 같은 최대HP기준 고정 낙하 피해 적용")
@@ -1830,7 +1818,7 @@ func _test_pit_forced_movement() -> void:
 	pulled.units[3].cell = Vector2i(9, 9)
 	pulled.actions.grid.heights = {boss.cell: -2, Vector2i(4, 5): -1}
 	pulled.actions.grid.pits = [Vector2i(5, 4)]
-	pulled.actions.dice = _dice_for([20, 1], [20, 20])
+	pulled.actions.dice = _dice_for([12, 1], [12, 20])
 	_check(pulled.actions.grid.pull_cells(boss, target) == [Vector2i(5, 4)]
 		and pulled.actions.pull(boss, target) and target.hit_points == 0,
 		"끌기도 시전자 옆 낭떠러지의 없는 바닥 높이와 비교하지 않고 즉시 낙사")
@@ -1966,7 +1954,7 @@ func _test_height_pull() -> void:
 		_check(f.actions.grid.pull_cells(boss, target) == expected
 			and f.actions.can_target(boss, target, "pull") == available,
 			"끌기는 보스에 높이 포함 인접하고 대상보다 높지 않은 칸만 선택")
-		f.actions.dice = _dice_for([12, 10], [20, 20]) if available else _dice_for([], [])
+		f.actions.dice = _dice_for([12, 1], [12, 8]) if available else _dice_for([], [])
 		_check(f.actions.pull(boss, target) == available, "높이 착지 조건에 따른 실제 만능팔 실행")
 		_check(target.cell == (Vector2i(4, 5) if available else Vector2i(7, 4))
 			and boss.action_left == (0 if available else 1)
@@ -2124,28 +2112,29 @@ func _test_attacks() -> void:
 	var actor: CombatUnit = f.units[0]
 	var target: CombatUnit = f.units[2]
 	target.parry_left = 0
-	f.actions.dice = _dice_for([1], [20])
+	f.actions.dice = _dice_for([1, 1], [20, 10])
 	_check(await f.actions.attack(actor, target), "빗나간 공격도 실행 성공")
 	_check(actor.action_left == 0 and target.hit_points == 12 and f.actions.last_damage == 0,
-		"자연1 공격은 행동을 소비하고 피해 없음")
+		"동점 공격은 행동을 소비하고 피해 없음")
 	_check(f.hits.is_empty(), "빗나감은 타격음을 요청하지 않음")
 	_check(not await f.actions.attack(actor, target), "행동 없는 재공격 거부")
 	actor.action_left = 1
-	f.actions.dice = _dice_for([20], [20]).then_seeded()
-	_check(await f.actions.attack(actor, target), "치명타 공격")
-	_check(f.actions.last_attack.critical and f.actions.last_damage_rolls.size() == 2,
-		"치명타는 무기 주사위 두 개")
+	f.actions.dice = _dice_for([20, 10, 1], [20, 10, 8])
+	_check(await f.actions.attack(actor, target), "최댓값 공격")
+	_check(not f.actions.last_attack.critical and f.actions.last_damage_rolls == [1]
+		and f.actions.last_attack.rolls == [20] and f.actions.last_attack.defender_roll == 10,
+		"최댓값도 치명타 없이 무기 주사위 한 개")
 	var total: int = 3
 	for rolled: int in f.actions.last_damage_rolls:
 		total += rolled
-	_check(f.actions.last_damage == total, "능력치3은 치명타에서도 한 번만 더함")
+	_check(f.actions.last_damage == total, "기존 피해 가산3은 최댓값에서도 한 번만 더함")
 	_check(target.hit_points == maxi(0, 12 - total), "피해와 HP0 하한")
-	_check(f.hits.size() == 1, "치명타 주사위가 여러 개여도 타격음은 한 번")
+	_check(f.hits.size() == 1, "최댓값 명중 타격음은 한 번")
 	var killed: Fixture = _fixture()
 	killed.units[2].hit_points = 1
 	killed.units[2].parry_left = 0
 	killed.units[1].marked_target = killed.units[2]
-	killed.actions.dice = _dice_for([11], [20]).then_seeded()
+	killed.actions.dice = _dice_for([11, 1, 1], [20, 10, 8])
 	await killed.actions.attack(killed.units[0], killed.units[2])
 	_check(killed.units[2].hit_points == 0 and killed.units[2] not in killed.turns.ordered_units,
 		"HP0은 즉시 전투 불능과 턴 순서 제거")
@@ -2170,7 +2159,7 @@ func _test_archer_balance() -> void:
 		for marked: bool in [false, true]:
 			if actor_index == 3 and marked:
 				continue
-			for attack_roll: int in [11, 20]:
+			for maximum: bool in [false, true]:
 				var f: Fixture = _fixture()
 				var actor: CombatUnit = f.units[actor_index]
 				var target: CombatUnit = f.units[3 if actor_index == 1 else 1]
@@ -2181,20 +2170,27 @@ func _test_archer_balance() -> void:
 					actor.cell = Vector2i(7, 4)
 					f.units[0].cell = Vector2i(9, 9)
 					target.cell = Vector2i(3, 4)
-				if not marked and attack_roll == 11:
+				var attack_sides: int = 20 if actor.is_ally else 10
+				var attack_roll: int = attack_sides if maximum else 5
+				if not marked and not maximum:
 					_check(actor.hit_points == 14 and actor.get_max_hit_points() == 14,
 						"아군과 적 궁수의 시작·최대 HP는14")
-					_check(actor.get_dexterity() == 3 and actor.get_attack_bonus() == 5
-						and actor.get_save_dc() == (13 if actor.is_ally else 11),
-						"아군 DC13·풋내기 DC11은 피해 고정값과 별개")
+					_check(actor.get_ability_sides(CombatUnit.Ability.DEXTERITY) == attack_sides
+						and actor.get_attack_bonus() == 0,
+						"아군 민첩d20·풋내기d10은 피해 고정값과 별개")
 				if marked:
 					_check(f.actions.mark(actor, target), "궁수 피해 검사에서 표식 사용")
 				var logs: Array[String] = []
 				f.actions.logged.connect(func(line: String) -> void: logs.append(line))
-				f.actions.dice = _dice_for([attack_roll], [20]).then_seeded()
+				var rolls: Array[int] = [attack_roll, 1, 4]
+				var sides: Array[int] = [attack_sides, 10 if actor.is_ally else 20, 6 if actor.is_ally else 4]
+				if marked:
+					rolls.append(2)
+					sides.append(6)
+				f.actions.dice = _dice_for(rolls, sides)
 				_check(await f.actions.attack(actor, target), "양쪽 궁수 기본 공격 실행")
 				_check(f.hits.size() == 1, "아군·적 궁수와 표식 공격도 타격음 한 번")
-				var count: int = (2 if attack_roll == 20 else 1) * (2 if marked else 1)
+				var count: int = 2 if marked else 1
 				var total: int = 1
 				for rolled: int in f.actions.last_damage_rolls:
 					total += rolled
@@ -2245,7 +2241,7 @@ func _test_shove() -> void:
 	var f: Fixture = _fixture()
 	var actor: CombatUnit = f.units[0]
 	var target: CombatUnit = f.units[2]
-	f.actions.dice = _dice_for([20, 1], [20, 20])
+	f.actions.dice = _dice_for([20, 1], [20, 10])
 	_check(f.actions.shove(actor, target), "밀치기 실행")
 	_check(target.cell == Vector2i(6, 4) and actor.bonus_action_left == 0, "대결 승리 시1칸 이동과 자원 소비")
 	_check(target.reaction_left == 1, "강제 이동은 기회 공격 없음")
@@ -2254,7 +2250,7 @@ func _test_shove() -> void:
 	f.units[3].cell = Vector2i(6, 4)
 	_check(not f.actions.shove(actor, target) and actor.bonus_action_left == 1, "막힌 밀림 칸은 선택·소비 거부")
 	f.units[3].cell = Vector2i(7, 4)
-	f.actions.dice = _dice_for([10, 10], [20, 20])
+	f.actions.dice = _dice_for([10, 10], [20, 10])
 	f.actions.shove(actor, target)
 	_check(target.cell == Vector2i(5, 4), "대결 동점은 방어 승")
 	actor.bonus_action_left = 1
@@ -2274,7 +2270,7 @@ func _test_stun_landing_incapacitation() -> void:
 		var target: CombatUnit = f.units[2]
 		f.turns.select_unit(source)
 		target.reaction_left = 0
-		f.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+		f.actions.dice = _dice_for([11, 1, 1], [20, 6, 6])
 		await f.actions.attack(source, target, true)
 		if pit:
 			f.actions.grid.pits.append(Vector2i(2, 4))
@@ -2293,7 +2289,7 @@ func _test_finished_stun_removal() -> void:
 	var target: CombatUnit = f.units[2]
 	f.turns.select_unit(source)
 	target.reaction_left = 0
-	f.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+	f.actions.dice = _dice_for([11, 1, 1], [20, 6, 6])
 	await f.actions.attack(source, target, true)
 	f.turns.end_turn()
 	f.turns.end_turn()
@@ -2313,11 +2309,11 @@ func _test_stun_reapplication() -> void:
 	latest.cell = Vector2i(2, 4)
 	f.turns.select_unit(first)
 	target.reaction_left = 0
-	f.actions.dice = _dice_for([11, 1, 1], [20, 6, 20])
+	f.actions.dice = _dice_for([11, 1, 1], [20, 6, 6])
 	_check(await f.actions.attack(first, target, true) and target.is_stunned and target.hit_points > 0,
 		"첫 시전자의 충격 화살")
 	f.turns.select_unit(latest)
-	f.actions.dice = _dice_for([11, 11, 1, 1], [20, 20, 6, 20])
+	f.actions.dice = _dice_for([11, 11, 1, 1], [20, 20, 6, 6])
 	_check(await f.actions.attack(latest, target, true) and target.is_stunned and target.hit_points > 0,
 		"기절 대상 재적용은 중첩 없이 최신 시전자로 갱신")
 	f.actions.incapacitate(first)
@@ -2388,10 +2384,10 @@ func _test_poison_tick() -> void:
 	var target: CombatUnit = f.units[2]
 	f.turns.select_unit(f.units[1])
 	_check(f.actions.apply_status(f.units[1], target, "poison"), "독 부여")
-	f.actions.dice = _dice_for([10], [20])
+	f.actions.dice = _dice_for([3], [4])
 	f.turns.end_turn()
 	f.turns.end_turn()
-	_check(target.hit_points == 11, "건강 내성10+2는 DC13 실패 후 독 고정1 피해")
+	_check(target.hit_points == 11, "자연 d4의3은 강도4 미달이라 독 고정1 피해")
 
 
 func _test_status_fifo() -> void:
@@ -2407,11 +2403,11 @@ func _test_status_fifo() -> void:
 		if unit == target:
 			messages.append(text)
 	)
-	f.actions.dice = _dice_for([2, 10, 3], [4, 20, 4])
+	f.actions.dice = _dice_for([2, 3, 3], [4, 4, 4])
 	f.turns.end_turn()
 	f.turns.end_turn()
 	_check(target.hit_points == 5 and messages == ["화상 2", "독 1", "화상 3", "독 1"],
-		"다른 상태도 전체 FIFO: 첫 독DC13으로 내성 한 번만 굴리고 각 중첩 피해")
+		"다른 상태도 전체 FIFO: 첫 독 강도4로 자연 판정 한 번만 굴리고 각 중첩 피해")
 
 
 func _test_poison_save_oldest() -> void:
@@ -2423,7 +2419,7 @@ func _test_poison_save_oldest() -> void:
 	f.actions.apply_status(f.units[1], target, "poison")
 	_check(not f.actions.apply_status(f.units[1], target, "poison"), "독도 상한3 이후 거부")
 	f.units[3].kind = CombatUnit.Kind.SCRAP_ROBOT_1000
-	f.actions.dice = _dice_for([9], [20])
+	f.actions.dice = _dice_for([4], [4])
 	var messages: Array[String] = []
 	var record: Callable = func(unit: CombatUnit, text: String) -> void:
 		if unit == target:
@@ -2432,15 +2428,15 @@ func _test_poison_save_oldest() -> void:
 	f.turns.end_turn()
 	f.turns.end_turn()
 	f.actions.feedback.disconnect(record)
-	_check(target.hit_points == 10, "독 내성9+2는 부여 때DC11 성공: 가장 오래된 하나만 제거 후 두 틱")
-	_check(messages == ["독 내성", "독 1", "독 1"], "내성 성공은 이름만, 남은 틱은 원인과 피해: %s" % str(messages))
+	_check(target.hit_points == 10, "자연4는 강도4 동점 성공: 가장 오래된 하나만 제거 후 두 틱")
+	_check(messages == ["독 제거", "독 1", "독 1"], "제거 성공은 이름만, 남은 틱은 원인과 피해: %s" % str(messages))
 	# 내성으로 없어진 시전자를 제거해도 남은 두 독은 그대로다.
 	f.actions.incapacitate(f.units[3])
-	f.actions.dice = _dice_for([10], [20])
+	f.actions.dice = _dice_for([3], [4])
 	f.turns.end_turn()
 	f.turns.end_turn()
 	f.turns.end_turn()
-	_check(target.hit_points == 8, "제거한 독의 다음 내성은 새 가장 오래된DC13으로 한 번만 판정")
+	_check(target.hit_points == 8, "제거한 독의 다음 제거도 새 가장 오래된 강도4로 한 번만 판정")
 
 
 func _test_status_caster_incapacitation() -> void:
@@ -2450,7 +2446,7 @@ func _test_status_caster_incapacitation() -> void:
 	f.actions.apply_status(f.units[0], target, "poison")
 	f.actions.incapacitate(f.units[1])
 	_check(not f.actions.apply_status(f.units[1], target, "burn"), "전투 불능 시전자의 새 부여 거부")
-	f.actions.dice = _dice_for([1], [20])
+	f.actions.dice = _dice_for([1], [4])
 	f.turns.end_turn()
 	_check(f.turns.current_unit == target and target.hit_points == 11,
 		"시전자 전투 불능은 자기 화상만 즉시 제거하고 다른 시전자의 독은 유지")
@@ -2473,7 +2469,7 @@ func _test_poison_caster_duration() -> void:
 	var target: CombatUnit = f.units[2]
 	f.turns.select_unit(source)
 	f.actions.apply_status(source, target, "poison")
-	f.actions.dice = _dice_for([1, 1, 1, 1], [20, 20, 20, 20])
+	f.actions.dice = _dice_for([1, 1, 1, 1], [4, 4, 4, 4])
 	for expected_hp: int in [11, 10, 9, 8, 8]:
 		f.turns.end_turn()
 		f.turns.end_turn()
@@ -2490,9 +2486,7 @@ func _test_status_lethal_tick() -> void:
 	f.actions.apply_status(f.units[3], target, "burn")
 	f.actions.apply_status(f.units[2], target, "poison")
 	f.actions.dice = _dice_for([2], [4])
-	var order_dice: CombatDice = CombatDice.new()
-	order_dice.seed = 33
-	f.turns.start(f.units, order_dice)
+	ScriptedDice.arrange_turns(f.turns, f.units, f.units)
 	_check(target.hit_points == 0 and not target.visible and f.turns.current_unit == f.units[1],
 		"시작 화상으로 전투 불능이면 남은 독 내성/피해 없이 동료로 진행")
 
@@ -2538,7 +2532,7 @@ func _test_ground_start_and_expiry() -> void:
 	var target: CombatUnit = f.units[2]
 	f.actions.create_ground(f.units[1], target.cell, "burn")
 	f.actions.create_ground(f.units[1], target.cell, "poison")
-	f.actions.dice = _dice_for([2, 1, 2, 1], [4, 20, 4, 20])
+	f.actions.dice = _dice_for([2, 1, 2, 1], [4, 4, 4, 4])
 	f.turns.end_turn()
 	_check(f.actions.get_grounds()[0].turns_left == 1 and f.actions.get_grounds()[1].turns_left == 3,
 		"시전자의 실제 시작에 장판 기간 감소")
@@ -2628,7 +2622,7 @@ func _test_ground_landings() -> void:
 	pulling.actions.create_ground(pulling.units[3], Vector2i(4, 4), "burn")
 	pulling.turns.end_turn()
 	pulling.turns.end_turn()
-	pulling.actions.dice = _dice_for([20, 1], [20, 20])
+	pulling.actions.dice = _dice_for([12, 1], [12, 20])
 	_check(pulling.actions.pull(pulling.units[2], pulling.units[0])
 		and pulling.units[0].get_status_count("burn") == 1, "끌기 착지도 장판 적용")
 
@@ -2682,10 +2676,7 @@ func _test_deferred_ground_start() -> void:
 	target.cell = Vector2i(3, 4)
 	actor.cell = Vector2i(4, 4)
 	var order: Array[CombatUnit] = [target, f.units[2], f.units[3], actor]
-	var rolls: Array[int] = []
-	for unit: CombatUnit in f.units:
-		rolls.append(20 - 3 * order.find(unit) - unit.get_dexterity())
-	f.turns.start(f.units, _dice_for(rolls, [20, 20, 20, 20]))
+	ScriptedDice.arrange_turns(f.turns, f.units, order)
 	f.actions.create_ground(f.units[2], Vector2i(2, 4), "burn")
 	f.actions.dice = _dice_for([2, 3], [4, 4])
 	for index: int in range(3):
@@ -2725,7 +2716,7 @@ func _test_ground_fifo() -> void:
 	var target: CombatUnit = f.units[2]
 	f.actions.create_ground(f.units[3], target.cell, "poison")
 	f.actions.create_ground(f.units[1], target.cell, "burn")
-	f.actions.dice = _dice_for([1, 2], [20, 4])
+	f.actions.dice = _dice_for([1, 2], [4, 4])
 	var messages: Array[String] = []
 	f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
 		if unit == target:
@@ -2764,7 +2755,7 @@ func _test_ground_fall_and_water() -> void:
 	wet.actions.grid.water_cells = [target.cell]
 	wet.actions.create_ground(wet.units[3], target.cell, "burn")
 	wet.actions.create_ground(wet.units[3], target.cell, "poison")
-	wet.actions.dice = _dice_for([1], [20])
+	wet.actions.dice = _dice_for([1], [4])
 	wet.turns.end_turn()
 	wet.turns.end_turn()
 	_check(target.hit_points == 11 and target.get_status_count("burn") == 0
@@ -2835,7 +2826,7 @@ func _test_water_shove() -> void:
 	f.actions.grid.water_cells = [Vector2i(2, 4)]
 	f.actions.apply_status(f.units[3], target, "burn")
 	f.actions.apply_status(f.units[2], target, "poison")
-	f.actions.dice = _dice_for([1], [20])
+	f.actions.dice = _dice_for([1], [6])
 	_check(f.actions.shove(f.units[0], target), "동료를 물로 밀치기")
 	_check(target.cell == Vector2i(2, 4) and target.get_status_count("burn") == 0
 		and target.get_status_count("poison") == 1 and target.hit_points == 14,
@@ -2860,7 +2851,7 @@ func _test_water_turn_start() -> void:
 	f.actions.apply_status(f.units[1], target, "burn")
 	f.actions.grid.water_cells = [target.cell]
 	f.actions.apply_status(f.units[3], target, "poison")
-	f.actions.dice = _dice_for([1], [20])
+	f.actions.dice = _dice_for([1], [4])
 	var messages: Array[String] = []
 	f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
 		if unit == target:
@@ -2897,7 +2888,7 @@ func _test_water_pull() -> void:
 	f.actions.grid.water_cells = [Vector2i(4, 4)]
 	f.turns.end_turn()
 	f.turns.end_turn()
-	f.actions.dice = _dice_for([20, 1], [20, 20])
+	f.actions.dice = _dice_for([12, 1], [12, 20])
 	_check(f.actions.pull(robot, target) and target.cell == Vector2i(4, 4)
 		and target.get_status_count("burn") == 0, "로봇의 실제 끌기 도착 물에서 화상 해제")
 
@@ -2909,10 +2900,7 @@ func _test_deferred_water_shove() -> void:
 	target.cell = Vector2i(3, 4)
 	actor.cell = Vector2i(4, 4)
 	var order: Array[CombatUnit] = [target, f.units[2], f.units[3], actor]
-	var rolls: Array[int] = []
-	for unit: CombatUnit in f.units:
-		rolls.append(20 - 3 * order.find(unit) - unit.get_dexterity())
-	f.turns.start(f.units, _dice_for(rolls, [20, 20, 20, 20]))
+	ScriptedDice.arrange_turns(f.turns, f.units, order)
 	f.turns.end_turn()
 	f.actions.apply_status(f.units[2], target, "burn")
 	f.turns.end_turn()
@@ -2961,9 +2949,9 @@ func _test_poison_removed_during_save() -> void:
 		f.turns.select_unit(f.units[1])
 		f.actions.apply_status(f.units[1] if boundary == 0 else f.units[3], target, "poison")
 		var damage_messages: Array[String] = []
-		# 내성 실패는 팝업이 없으므로 같은 시점의 내성 로그에서 끼어든다.
+		# 제거 실패는 팝업이 없으므로 같은 시점의 제거 로그에서 끼어든다.
 		var interrupt: Callable = func(message: String) -> void:
-			if not message.begins_with("%s 독 건강 내성" % target.get_display_name()):
+			if not message.begins_with("%s 독 제거" % target.get_display_name()):
 				return
 			if boundary == 0:
 				f.actions.incapacitate(f.units[1])
@@ -2977,14 +2965,14 @@ func _test_poison_removed_during_save() -> void:
 				damage_messages.append(text)
 		f.actions.logged.connect(interrupt)
 		f.actions.feedback.connect(record)
-		f.actions.dice = _dice_for([1], [20])
+		f.actions.dice = _dice_for([1], [4])
 		f.turns.end_turn()
 		f.turns.end_turn()
 		# 픽스처를 잡은 콜백이 순환 참조로 남지 않게 끊는다.
 		f.actions.logged.disconnect(interrupt)
 		f.actions.feedback.disconnect(record)
 		_check(target.hit_points == (0 if boundary == 1 else 12) and damage_messages.is_empty(),
-			"독 내성 로그 중 시전자·대상 탈락 또는 전투 종료 뒤 독 피해를 실행하지 않음: " + str(boundary))
+			"독 제거 로그 중 시전자·대상 탈락 또는 전투 종료 뒤 독 피해를 실행하지 않음: " + str(boundary))
 
 
 func _test_water_stage() -> void:
@@ -3028,13 +3016,10 @@ func _test_deferred_stun_caster() -> void:
 	var target: CombatUnit = f.units[3]
 	f.turns.select_unit(source)
 	target.reaction_left = 0
-	f.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+	f.actions.dice = _dice_for([11, 1, 1], [20, 10, 6])
 	await f.actions.attack(source, target, true)
 	var order: Array[CombatUnit] = [f.units[0], f.units[2], source, target]
-	var rolls: Array[int] = []
-	for unit: CombatUnit in f.units:
-		rolls.append(20 - 3 * order.find(unit) - unit.get_dexterity())
-	f.turns.start(f.units, _dice_for(rolls, [20, 20, 20, 20]))
+	ScriptedDice.arrange_turns(f.turns, f.units, order)
 	f.actions.incapacitate(f.units[2])
 	_check(target.is_stunned and not f.turns.is_turn_started(source),
 		"묶음 결합만으로 지연된 시전자의 효과를 만료하지 않음")
@@ -3044,7 +3029,7 @@ func _test_deferred_stun_caster() -> void:
 		"지연된 시전자를 처음 조작할 때 기절 만료")
 	source.shock_left = 1
 	target.hit_points = target.get_max_hit_points()
-	f.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+	f.actions.dice = _dice_for([11, 1, 1], [20, 10, 6])
 	_check(await f.actions.attack(source, target, true) and target.is_stunned,
 		"시전자 턴 시작 뒤 새 충격 화살의 기절 부여")
 	f.turns.end_turn()
@@ -3061,7 +3046,7 @@ func _test_stunned_caster_expiry() -> void:
 	var target: CombatUnit = f.units[2]
 	f.turns.select_unit(source)
 	target.reaction_left = 0
-	f.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+	f.actions.dice = _dice_for([11, 1, 1], [20, 6, 6])
 	await f.actions.attack(source, target, true)
 	source.is_stunned = true
 	f.turns.end_turn()
@@ -3082,7 +3067,7 @@ func _test_stun_source_incapacitation() -> void:
 	var target: CombatUnit = f.units[3]
 	f.turns.select_unit(source)
 	target.reaction_left = 0
-	f.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+	f.actions.dice = _dice_for([11, 1, 1], [20, 10, 6])
 	_check(await f.actions.attack(source, target, true) and target.is_stunned,
 		"시전자 탈락 사례의 충격 화살")
 	f.turns.end_turn()
@@ -3106,17 +3091,18 @@ func _test_mark_and_stun() -> void:
 		"표식은 유닛별 대상·횟수·자원 기록")
 	actor.bonus_action_left = 1
 	_check(not f.actions.mark(actor, f.units[2]), "사용한 표식 대상 변경 거부")
-	f.actions.dice = _dice_for([20], [20]).then_seeded()
+	f.actions.dice = _dice_for([20, 1, 2, 3], [20, 10, 6, 6])
 	await f.actions.attack(actor, target)
-	_check(f.actions.last_damage_rolls.size() == 4, "표식 치명타는 무기와 표식 각각2개")
+	_check(f.actions.last_damage_rolls == [2, 3] and not f.actions.last_attack.critical,
+		"최댓값 표식도 무기와 표식을 각각 한 번만 굴림")
 	var shock: Fixture = _fixture()
-	_check(shock.units[1].get_save_dc() == 13, "아군 궁수 내성 DC는13")
+	_check(shock.units[1].get_ability_sides(CombatUnit.Ability.DEXTERITY) == 20, "아군 궁수는 민첩d20")
 	shock.turns.select_unit(shock.units[1])
 	shock.units[2].reaction_left = 0
-	shock.actions.dice = _dice_for([11, 0, 1], [20, 6, 20])
+	shock.actions.dice = _dice_for([11, 1, 1], [20, 6, 6])
 	_check(await shock.actions.attack(shock.units[1], shock.units[2], true), "충격 화살 실행")
 	_check(shock.units[1].shock_left == 0 and shock.units[1].action_left == 0, "충격 화살 횟수와 행동 소비")
-	_check(shock.units[2].is_stunned and shock.units[2].hit_points > 0, "명중·피해 후 정신 내성 실패 기절")
+	_check(shock.units[2].is_stunned and shock.units[2].hit_points > 0, "명중·피해 후 별도 방어 굴림 없이 기절")
 	_check(shock.hits.size() == 1, "충격 화살 피해와 기절은 타격음 한 번")
 	shock.turns.end_turn()
 	shock.turns.end_turn()
@@ -3127,20 +3113,19 @@ func _test_mark_and_stun() -> void:
 	_check(shock.units[2].is_stunned, "다른 아군 턴 시작은 시전자의 기절을 해제하지 않음")
 	shock.turns.select_unit(shock.units[1])
 	_check(not shock.units[2].is_stunned, "충격 화살 시전자의 실제 턴 시작에 기절 해제")
-	for roll: int in [14, 15]:
+	for attack_roll: int in [6, 7]:
 		var boundary: Fixture = _fixture()
 		boundary.turns.select_unit(boundary.units[1])
 		boundary.units[2].reaction_left = 0
-		boundary.actions.dice = _dice_for([11, 4, roll], [20, 6, 20])
+		boundary.actions.dice = (_dice_for([attack_roll, 6, 4], [20, 6, 6]) if attack_roll == 7
+			else _dice_for([attack_roll, 6], [20, 6]))
 		await boundary.actions.attack(boundary.units[1], boundary.units[2], true)
-		_check(boundary.units[2].hit_points == 7, "내성 성공 여부와 관계없이 충격 화살 피해 적용")
-		_check(boundary.units[2].is_stunned == (roll == 14),
-			"풋내기 정신-2의 DC13 경계: d20의14는 기절,15는 버팀")
+		_check(boundary.units[2].hit_points == (7 if attack_roll == 7 else 12), "충격 화살은 민첩 대결 승리 때만 피해 적용")
+		_check(boundary.units[2].is_stunned == (attack_roll == 7),
+			"풋내기 민첩6과 동점은 무효, 공격7 명중은 추가 판정 없이 기절")
 	var waiting: Fixture = _fixture()
 	waiting.units[1].is_stunned = true
-	var start_dice: CombatDice = CombatDice.new()
-	start_dice.seed = 33
-	waiting.turns.start(waiting.units, start_dice)
+	ScriptedDice.arrange_turns(waiting.turns, waiting.units, waiting.units)
 	_check(waiting.turns.current_unit == waiting.units[0] and waiting.units[1].is_stunned,
 		"두 번째 기절 유닛은 앞 유닛이 동작하는 동안 기절 유지")
 	_check(not waiting.turns.select_unit(waiting.units[1]), "아직 건너뛰지 않은 기절 유닛 선택 거부")
@@ -3152,7 +3137,7 @@ func _test_mark_and_stun() -> void:
 	var missed: Fixture = _fixture()
 	missed.turns.select_unit(missed.units[1])
 	var before_miss: int = missed.units[3].hit_points
-	missed.actions.dice = _dice_for([1], [20])
+	missed.actions.dice = _dice_for([1, 1], [20, 10])
 	await missed.actions.attack(missed.units[1], missed.units[3], true)
 	_check(missed.units[1].action_left == 0 and missed.units[1].shock_left == 0
 		and missed.units[3].hit_points == before_miss and not missed.units[3].is_stunned,
@@ -3183,12 +3168,12 @@ func _test_reactions() -> void:
 		_check(f.actions.busy and not f.actions.can_move(f.units[3], Vector2i(6, 4)), "반응 대기 중 새 동작 잠금")
 		f.actions.resolve_reaction(true)
 	)
-	f.actions.dice = _dice_for([1], [20])
+	f.actions.dice = _dice_for([1, 4], [20, 4])
 	await f.actions.move_to(f.units[3], Vector2i(6, 4))
 	_check(asked == ["opportunity"] and f.units[0].reaction_left == 0, "아군 기회 공격은 물어보고 반응 소비")
 	_check(f.units[3].cell == Vector2i(6, 4) and f.units[3].movement_left == 5, "빗나가면 이동 계속")
 	_check(not f.actions.busy and f.actions.pending_reactor == null, "반응 종료 후 대기 해제")
-	f.actions.dice = _dice_for([11], [20]).then_seeded()
+	f.actions.dice = _dice_for([10, 1, 4], [10, 8, 4])
 	await f.actions.attack(f.units[3], f.units[0])
 	_check(asked.size() == 1 and f.units[0].parry_left == 2 and f.units[0].hit_points < 12,
 		"기회 공격에 쓴 반응으로 흘려내기를 다시 쓸 수 없음")
@@ -3211,7 +3196,7 @@ func _test_reactions() -> void:
 	_enemy_archer(dead)
 	dead.units[3].hit_points = 1
 	dead.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: dead.actions.resolve_reaction(true))
-	dead.actions.dice = _dice_for([20], [20]).then_seeded()
+	dead.actions.dice = _dice_for([20, 1, 1], [20, 4, 8])
 	await dead.actions.move_to(dead.units[3], Vector2i(6, 4))
 	_check(dead.units[3].hit_points == 0 and dead.units[3].cell == Vector2i(5, 4)
 		and dead.units[3].movement_left == 6, "기회 공격으로 탈락하면 벗어나기 전 칸에서 이동 중단")
@@ -3223,26 +3208,26 @@ func _test_reactions() -> void:
 	parry.turns.end_turn()
 	parry.actions.reaction_requested.connect(func(kind: String, prompt: String) -> void:
 		_check(kind == "parry" and parry.actions.last_damage_rolls.is_empty(), "피해 굴림 전에 흘려내기 확인")
-		_check("55.0%" in prompt, "풋내기 DC11 흘려내기 확인은 성공률55%")
+		_check("50.0%" in prompt, "공격 합계8에 민첩d8+3 흘려내기 성공률50%")
 		parry.actions.resolve_reaction(true)
 	)
-	parry.actions.dice = _dice_for([20, 10], [20, 20])
+	parry.actions.dice = _dice_for([5, 1, 5], [10, 20, 8])
 	await parry.actions.attack(parry.units[2], parry.units[0])
-	_check(parry.units[0].hit_points == 12 and parry.actions.last_damage == 0, "흘려내기 성공은 치명타도 무효")
+	_check(parry.units[0].hit_points == 12 and parry.actions.last_damage == 0, "흘려내기는 이미 굴린 공격 합계와 동점이어도 무효화")
 	_check(parry.hits.is_empty(), "성공한 흘려내기는 타격음을 요청하지 않음")
 	_check(parry.units[0].reaction_left == 0 and parry.units[0].parry_left == 1, "흘려내기 반응과 막당 횟수 소비")
 	_check(parry.units[2].action_left == 0, "흘려내기 성공해도 공격자 행동 소비")
 	parry.units[2].action_left = 1
 	parry.units[0].reaction_left = 1
-	parry.actions.dice = _dice_for([20, 9], [20, 20]).then_seeded()
+	parry.actions.dice = _dice_for([5, 1, 4, 4], [10, 20, 8, 4])
 	await parry.actions.attack(parry.units[2], parry.units[0])
-	_check(parry.actions.last_damage > 0 and parry.actions.last_damage_rolls.size() == 2,
-		"민첩+1의 d20의9는 DC11 미달로 치명타 피해 적용")
+	_check(parry.actions.last_damage > 0 and parry.actions.last_damage_rolls == [4],
+		"민첩4+3은 이미 굴린 공격8 미달로 피해 주사위 한 번 적용")
 	_check(parry.hits.size() == 1, "실패한 흘려내기는 실제 피해 타격음 한 번")
 	_check(parry.units[0].reaction_left == 0 and parry.units[0].parry_left == 0,
-		"흘려내기 내성 실패도 반응과 횟수 소비")
+		"흘려내기 대결 실패도 반응과 횟수 소비")
 	var automatic: Fixture = _fixture()
-	automatic.actions.dice = _dice_for([11, 4], [20, 8])
+	automatic.actions.dice = _dice_for([11, 1, 4], [20, 10, 8])
 	await automatic.actions.attack(automatic.units[0], automatic.units[2])
 	_check(automatic.units[2].parry_left == 2 and automatic.units[2].reaction_left == 1
 		and automatic.units[2].hit_points == 5, "야만인은 흘려내기 없이 아군 피해를 받음")
@@ -3269,9 +3254,7 @@ func _test_own_turn_parry() -> void:
 		var turns: CombatTurns = battle.get("turns") as CombatTurns
 		var actions: CombatActions = battle.get("actions") as CombatActions
 		var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
-		var dice: CombatDice = CombatDice.new()
-		dice.seed = 33
-		turns.start(units, dice)
+		ScriptedDice.arrange_turns(turns, units, units)
 		units[0].cell = Vector2i(4, 4)
 		units[1].cell = Vector2i(0, 0)
 		units[2].cell = Vector2i(5, 4)
@@ -3286,19 +3269,19 @@ func _test_own_turn_parry() -> void:
 				and actions.pending_reactor == units[0], "자기 턴 기회 공격 명중에도 흘려내기 요청")
 			_check(hud.reaction_dialog.visible and hud.end_button.disabled
 				and actions.busy, "자기 턴 흘려내기 창과 입력 잠금")
-			_check("55.0%" in prompt and actions.last_damage_rolls.is_empty(),
-				"자기 턴에도 피해 굴림 전에 풋내기 DC11·55% 표시")
+			_check("50.0%" in prompt and actions.last_damage_rolls.is_empty(),
+				"자기 턴에도 피해 굴림 전에 공격 합계8·50% 표시")
 			if choice == 2:
 				hud.reaction_dialog.get_cancel_button().pressed.emit()
 			else:
 				hud.reaction_dialog.get_ok_button().pressed.emit()
 		actions.reaction_requested.connect(respond)
 		if choice == 0:
-			actions.dice = _dice_for([11, 10], [20, 20])
+			actions.dice = _dice_for([5, 1, 5], [10, 20, 8])
 		elif choice == 1:
-			actions.dice = _dice_for([11, 9, 4], [20, 20, 4])
+			actions.dice = _dice_for([5, 1, 4, 4], [10, 20, 8, 4])
 		else:
-			actions.dice = _dice_for([11, 4], [20, 4])
+			actions.dice = _dice_for([5, 1, 4], [10, 20, 4])
 		_check(await actions.move_to(units[0], Vector2i(3, 4)), "자기 턴 기회 공격 후 이동 완료")
 		await process_frame
 		_check(asked == ["parry"] and units[2].reaction_left == 0, "적 기회 공격은 자동이며 반응 소비")
@@ -3365,9 +3348,7 @@ func _test_scene_input() -> void:
 	var units: Array[CombatUnit] = battle.get("units")
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, units)
 	var destination: Vector2i = Vector2i(1, 6)
 	var screen: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(destination)
 	await _click(screen, MOUSE_BUTTON_RIGHT)
@@ -3377,7 +3358,7 @@ func _test_scene_input() -> void:
 	units[2].cell = Vector2i(2, 6)
 	units[2].parry_left = 0
 	battle.call("_update_turn_ui")
-	actions.dice = _dice_for([1], [20])
+	actions.dice = _dice_for([1, 1], [20, 10])
 	var point: Vector2 = units[2].get_global_transform_with_canvas() * Vector2(0, -10)
 	await _click(point)
 	_check(units[0].action_left == 1 and (battle.get("selection") as CombatSelection).preview_target == units[2], "공격 첫 클릭은 피해·자원 소비 없음")
@@ -3388,7 +3369,7 @@ func _test_scene_input() -> void:
 	hud.action_selected.emit("surge")
 	_check(units[0].surge_left == 0 and units[0].action_left == 1, "자기 대상 동작 두 번째 클릭 실행")
 	_check("몰아치기" in hud.message_label.text, "실행 결과 화면 피드백")
-	actions.dice = _dice_for([11], [20]).then_seeded()
+	actions.dice = _dice_for([11, 1, 1], [20, 10, 8])
 	await _click(point)
 	_check(units[0].action_left == 1 and units[2].hit_points == 12
 		and (battle.get("selection") as CombatSelection).preview_target == units[2], "몰아치기 뒤 추가 공격 첫 클릭은 미리보기")
@@ -3398,9 +3379,10 @@ func _test_scene_input() -> void:
 		"아군은 같은 턴에 몰아치기 뒤 두 번째 클릭으로 추가 공격")
 	turns.end_turn()
 	turns.end_turn()
-	_check(units[0].get_save_dc() == 13 and units[2].get_save_dc() == 11,
-		"실제 장면도 아군 DC13과 풋내기 DC11을 분리")
-	actions.dice = _dice_for([20, 12], [20, 20])
+	_check(units[0].get_ability_sides(CombatUnit.Ability.STRENGTH) == 20
+		and units[2].get_ability_sides(CombatUnit.Ability.STRENGTH) == 10,
+		"실제 장면도 전사 힘d20과 풋내기 힘d10을 사용")
+	actions.dice = _dice_for([5, 1, 5], [10, 20, 8])
 	actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
 		_check(kind == "parry" and hud.reaction_dialog.visible and hud.end_button.disabled,
 			"실제 확인 창이 뜨고 턴 종료가 잠김")
@@ -3422,8 +3404,7 @@ func _test_scene_input() -> void:
 	var overlap_turns: CombatTurns = overlap.get("turns") as CombatTurns
 	var overlap_hud: CombatTurnHud = overlap.get_node("UI/TurnHud") as CombatTurnHud
 	var overlap_map: TileMapLayer = overlap.get_node("Map") as TileMapLayer
-	dice.seed = 33
-	overlap_turns.start(overlap_units, dice)
+	ScriptedDice.arrange_turns(overlap_turns, overlap_units, overlap_units)
 	var hidden_cell: Vector2i = overlap_units[0].cell - Vector2i.ONE
 	var hidden_local: Vector2 = overlap_map.map_to_local(hidden_cell) + Vector2(5, 0)
 	var hidden_screen: Vector2 = overlap_map.get_global_transform_with_canvas() * hidden_local
@@ -3458,9 +3439,7 @@ func _test_scene_ally_shove() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, units)
 	units[1].cell = Vector2i(2, 4)
 	battle.call("_update_turn_ui")
 	actions.dice = _dice_for([], [])
@@ -3502,9 +3481,7 @@ func _test_isometric_unit_occlusion() -> void:
 	var map: CombatMap = battle.get_node("Map") as CombatMap
 	units[1].cell = Vector2i(1, 4)
 	units[2].cell = Vector2i(4, 4)
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, units)
 	turns.select_unit(units[1])
 	battle.call("_update_turn_ui")
 	var point: Vector2 = map.get_global_transform_with_canvas() * (
@@ -3513,14 +3490,13 @@ func _test_isometric_unit_occlusion() -> void:
 	_check((battle.get("selection") as CombatSelection).preview_target == units[2]
 		and units[1].action_left == 1 and units[2].hit_points == 12,
 		"높은 지형에 몸통이 가려져도 사거리 안 적의 윤곽을 눌러 공격 미리보기")
-	(battle.get("actions") as CombatActions).dice = _dice_for([1], [20])
+	(battle.get("actions") as CombatActions).dice = _dice_for([1, 1], [20, 6])
 	await _click(point)
 	_check(units[1].action_left == 0 and units[2].hit_points == 12,
 		"가린 적의 두 번째 클릭도 원거리 공격을 실행하고 행동1 소비")
 	(battle.get("actions") as CombatActions).grid.heights.clear()
 	map.build_grid((battle.get("actions") as CombatActions).grid, stage.tile_set)
-	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, units)
 	turns.select_unit(units[1])
 	(battle.get("selection") as CombatSelection).clear_preview()
 	battle.call("_update_turn_ui")
@@ -3566,7 +3542,7 @@ func _test_terrain_hidden_unit_outline() -> void:
 		var spider: CombatUnit = units[2]
 		archer.cell = Vector2i(2, 3)
 		spider.cell = Vector2i(5, 3)
-		(battle.get("turns") as CombatTurns).start([archer, spider], _dice_for([20, 1], [20, 20]))
+		ScriptedDice.arrange_turns(battle.get("turns") as CombatTurns, [archer, spider], [archer, spider])
 		battle.call("_update_turn_ui")
 		await process_frame
 		var body: Array[Vector2] = []
@@ -3590,7 +3566,7 @@ func _test_terrain_hidden_unit_outline() -> void:
 		await _click(click)
 		_check(selection.preview_target == spider and selection.preview_prop == null and archer.action_left == 1,
 			"%s에 가린 윤곽 첫 좌클릭은 공격 미리보기" % kind)
-		actions.dice = _dice_for([1], [20])
+		actions.dice = _dice_for([1, 1], [20, 8])
 		await _click(click)
 		var placed: Array[CombatGrid.Prop] = actions.get_props()
 		_check(archer.action_left == 0 and (placed.is_empty() or (placed[0].cell == front and placed[0].hit_points == 6)),
@@ -3725,7 +3701,7 @@ func _test_jump_scene_input() -> void:
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var map: CombatMap = battle.get_node("Map") as CombatMap
 	var selection: CombatSelection = battle.get("selection") as CombatSelection
-	turns.start(units, _dice_for([20, 20, 1, 1], [20, 20, 20, 20]))
+	ScriptedDice.arrange_turns(turns, units, [units[1], units[0], units[3], units[2]])
 	turns.select_unit(units[0])
 	actions.dice = _dice_for([], [])
 	var button: Button = (hud.get("_actions") as Dictionary)["jump"] as Button
@@ -3779,9 +3755,9 @@ func _test_jump_scene_animation() -> void:
 	var map: CombatMap = battle.get_node("Map") as CombatMap
 	units[2].cell = Vector2i(5, 4)
 	units[3].cell = Vector2i(9, 9)
-	turns.start(units, _dice_for([20, 20, 1, 1], [20, 20, 20, 20]))
+	ScriptedDice.arrange_turns(turns, units, [units[1], units[0], units[3], units[2]])
 	turns.select_unit(actor)
-	actions.dice = _dice_for([1], [20])
+	actions.dice = _dice_for([1, 4], [10, 20])
 	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(destination)
 	((hud.get("_actions") as Dictionary)["jump"] as Button).pressed.emit()
 	await _click(point, MOUSE_BUTTON_RIGHT)
@@ -3835,9 +3811,7 @@ func _test_height_scene_input() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, units)
 	_check(actions.grid.height_at(Vector2i(1, 4)) == 1
 		and not actions.can_move(units[0], Vector2i(3, 5)), "실제 스테이지 높이가 걷기 판정에 연결")
 	_check(units[0].position + Vector2(0, units[0].floor_offset_y) == map.map_to_local(Vector2i(1, 4)) - Vector2(0, 8),
@@ -3886,9 +3860,7 @@ func _test_blocked_scene_input() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var map: CombatMap = battle.get_node("Map") as CombatMap
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, units)
 	_check(actions.grid.blocked_cells == [blocked] and actions.grid.is_floor(blocked)
 		and map.get_used_cells().size() == 100, "실제 스테이지의 막힌 칸은 바닥을 유지하고 판정에 연결")
 	_check(map.has_node("BlockedCell") and (map.get_node_or_null("BlockedCell") as Node2D).visible,
@@ -3921,7 +3893,7 @@ func _test_scene_fall_feedback() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var map: CombatMap = battle.get_node("Map") as CombatMap
-	turns.start(units, _dice_for([20, 20, 1, 1], [20, 20, 20, 20]))
+	ScriptedDice.arrange_turns(turns, units, [units[1], units[0], units[3], units[2]])
 	turns.select_unit(units[0])
 	actions.dice = _dice_for([], [])
 	var feedback_feet: Array[Vector2] = []
@@ -3950,9 +3922,7 @@ func _test_pit_scene_input() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, units)
 	_check(actions.grid.pits == [pit] and not actions.can_move(units[0], pit)
 		and map.get_used_cells().size() == 99 and pit not in map.get_used_cells(),
 		"실제 낭떠러지 스테이지는 바닥을 그리지 않고 걷기도 금지")
@@ -3983,15 +3953,19 @@ func _test_pit_scene_victory() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, units)
 	units[2].cell = Vector2i(5, 4)
 	units[2].is_stunned = true
 	actions.incapacitate(units[3])
 	battle.call("_update_turn_ui")
-	# 승리 드랍도 전투 주사위로 굴린다.
-	actions.dice = _dice_for([], []).then_seeded()
+	# 무굴림 밀치기가 끝난 뒤 승리 보상에만 별도의 RNG를 쓴다.
+	actions.dice = _dice_for([], [])
+	var reward_dice: CombatDice = CombatDice.new()
+	reward_dice.seed = 321
+	var use_reward_dice: Callable = func(message: String) -> void:
+		if message == "밀치기 성공":
+			actions.dice = reward_dice
+	actions.logged.connect(use_reward_dice)
 	hud.action_selected.emit("shove")
 	var point: Vector2 = units[2].get_global_transform_with_canvas() * Vector2(0, -10)
 	await _click(point)
@@ -3999,6 +3973,7 @@ func _test_pit_scene_victory() -> void:
 	_check(actions.is_victory() and units[2].hit_points == 0 and not units[2].visible
 		and hud.get_node("Result").visible and "낙사" in hud.message_label.text,
 		"기절시킨 마지막 적을 실제 HUD·몸통 입력으로 밀면 낙사 로그와 승리 결과 표시")
+	actions.logged.disconnect(use_reward_dice)
 	battle.queue_free()
 	await process_frame
 
@@ -4014,9 +3989,7 @@ func _test_scene_shock() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, units)
 	units[3].cell = Vector2i(3, 5)
 	turns.select_unit(units[1])
 	var buttons: Dictionary = hud.get("_actions")
@@ -4024,7 +3997,7 @@ func _test_scene_shock() -> void:
 	_check(shock_button.visible and not shock_button.disabled, "실제 장면의 충격 화살 버튼 활성화")
 	shock_button.pressed.emit()
 	var before_miss: int = units[3].hit_points
-	actions.dice = _dice_for([1], [20])
+	actions.dice = _dice_for([1, 1], [20, 10])
 	var point: Vector2 = units[3].get_global_transform_with_canvas() * Vector2(0, -10)
 	await _click(point)
 	_check(units[1].action_left == 1 and units[1].shock_left == 1, "충격 화살 미리보기는 행동·횟수 유지")

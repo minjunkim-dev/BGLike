@@ -50,10 +50,7 @@ func _run() -> void:
 	turns = battle.get("turns") as CombatTurns
 	actions = battle.get("actions") as CombatActions
 	var units: Array[CombatUnit] = battle.get("units")
-	var initiative: Array[int] = []
-	for unit: CombatUnit in units:
-		initiative.append(20 if unit.is_ally else 1)
-	turns.start(units, ScriptedDice.new(initiative))
+	ScriptedDice.arrange_turns(turns, units, units)
 	# 자동 검사는 반응 선택을 기다리지 않는다. 직접 플레이는 반응 UI도 유지한다.
 	if not manual:
 		actions.dice.seed = 41
