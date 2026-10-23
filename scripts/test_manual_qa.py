@@ -467,6 +467,22 @@ class ManualQATests(unittest.TestCase):
             run.assert_not_called()
         alive.assert_called_with("bglike-qa-test")
 
+    def test_resume_docker_query_has_five_second_limit(self):
+        self.prepare_plan()
+        _, state = qa.session(self.plan, self.directory)
+        state["cases"]["compact"].update(status="failed", attempts=[
+            {"container": "bglike-qa-test", "directory": str(self.root)}])
+        qa.save(self.directory, state)
+
+        def query(argv, **kwargs):
+            self.assertEqual(argv[:2], ["docker", "ps"])
+            self.assertEqual(kwargs.get("timeout"), 5)
+            raise subprocess.TimeoutExpired(argv, 5)
+
+        with patch.object(qa.subprocess, "check_output", side_effect=query), patch.object(qa, "run_case") as run:
+            self.assertEqual(self.cli("run"), 1)
+            run.assert_not_called()
+
     def test_failure_stops_before_next_case(self):
         self.prepare_plan()
         second = dict(self.case, id="full", resolution=[1920, 1080])

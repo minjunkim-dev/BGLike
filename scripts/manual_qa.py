@@ -95,7 +95,7 @@ def frontmost_pid():
 
 
 def container_alive(name):
-    return bool(subprocess.check_output(["docker", "ps", "-q", "--filter", f"name=^{name}$"], text=True).strip())
+    return bool(subprocess.check_output(["docker", "ps", "-q", "--filter", f"name=^{name}$"], text=True, timeout=5).strip())
 
 
 def alive(record):
@@ -105,7 +105,7 @@ def alive(record):
 
 
 def stop_container(name):
-    subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
     if container_alive(name):
         raise RuntimeError("Owned QA container did not stop")
 
