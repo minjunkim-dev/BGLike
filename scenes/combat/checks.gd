@@ -100,5 +100,3 @@ static func _roll_die(sides: int, mode: RollMode, dice: CombatDice) -> RollResul
 		result.selected_roll = (maxi(result.rolls[0], result.rolls[1])
 			if mode == RollMode.ADVANTAGE else mini(result.rolls[0], result.rolls[1]))
 	return result
-
-
