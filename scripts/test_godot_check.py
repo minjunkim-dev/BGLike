@@ -22,19 +22,57 @@ esac
 
 
 class GodotCheckTests(unittest.TestCase):
-    def run_check(self, broken="no-such-step", error_line="", broken_exit="0"):
+    def run_check(self, broken="no-such-step", error_line="", broken_exit="0", selected=()):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             binary = root / "godot"
             log = root / "calls"
             binary.write_text(FAKE_GODOT)
             binary.chmod(0o755)
-            result = subprocess.run(["bash", "scripts/check_godot.sh"], cwd=ROOT,
+            result = subprocess.run(["bash", "scripts/check_godot.sh", *selected], cwd=ROOT,
                                     env=dict(os.environ, GODOT=str(binary), CALL_LOG=str(log),
                                              BROKEN=broken, ERROR_LINE=error_line,
                                              BROKEN_EXIT=broken_exit),
                                     text=True, capture_output=True)
-            return result, log.read_text().splitlines()
+            return result, log.read_text().splitlines() if log.exists() else []
+
+    def test_selected_script_runs_alone_after_common_setup(self):
+        result, calls = self.run_check(selected=("tests/combat_ai_test.gd",))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([call for call in calls if "--script" in call],
+                         ["--headless --path . --script tests/combat_ai_test.gd"])
+        self.assertTrue(any("--version" in call for call in calls))
+        self.assertTrue(any("--import" in call for call in calls))
+        self.assertTrue(any("--quit-after" in call for call in calls))
+
+    def test_selected_script_errors_and_nonzero_exit_fail(self):
+        for line, code in [(SCRIPT_ERROR, "0"), (LOAD_ERROR, "0"), ("", "3")]:
+            with self.subTest(line=line, code=code):
+                result, calls = self.run_check("combat_ai_test", line, code,
+                                               selected=("tests/combat_ai_test.gd",))
+                self.assertEqual(result.returncode, 1 if code == "0" else 3)
+                self.assertEqual(len([call for call in calls if "--script" in call]), 1)
+                if line:
+                    self.assertIn(line, result.stdout)
+                    self.assertIn("Godot script error during:", result.stderr)
+
+    def test_invalid_selection_is_rejected_before_running_godot(self):
+        for selected in [("tests/missing_test.gd",), ("../tests/combat_ai_test.gd",),
+                         ("--version",), ("tests/combat_ai_test.gd tests/save_test.gd",),
+                         ("tests/combat_ai_test.gd", "tests/save_test.gd")]:
+            with self.subTest(selected=selected):
+                result, calls = self.run_check(selected=selected)
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(calls, [])
+
+    def test_selected_script_keeps_common_setup_error_gate(self):
+        for step in ("--import", "--quit-after"):
+            with self.subTest(step=step):
+                result, calls = self.run_check(step, SCRIPT_ERROR,
+                                               selected=("tests/combat_ai_test.gd",))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(SCRIPT_ERROR, result.stdout)
+                self.assertFalse(any("--script" in call for call in calls))
 
     def test_clean_output_passes_every_step(self):
         result, calls = self.run_check()
