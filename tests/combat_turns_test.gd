@@ -61,19 +61,9 @@ func _ordered_fixture(units: Array[CombatUnit], order: Array[int]) -> CombatTurn
 	for index: int in order:
 		desired.append(units[index])
 	var turns: CombatTurns = CombatTurns.new()
-	turns.start(units, _dice_for_order(units, desired))
+	ScriptedDice.arrange_turns(turns, units, desired)
 	_check(turns.ordered_units == desired, "정해진 이니셔티브 순서 fixture")
 	return turns
-
-
-## 원하는 순서대로 이니셔티브가 3씩 내려가도록 d20 값을 준비한다.
-func _dice_for_order(units: Array[CombatUnit], desired: Array[CombatUnit]) -> CombatDice:
-	var rolls: Array[int] = []
-	var sides: Array[int] = []
-	for unit: CombatUnit in units:
-		rolls.append(20 - 3 * desired.find(unit) - unit.get_dexterity())
-		sides.append(20)
-	return ScriptedDice.new(rolls, sides)
 
 
 func _test_initiative() -> void:
@@ -81,27 +71,32 @@ func _test_initiative() -> void:
 	var turns: CombatTurns = CombatTurns.new()
 	var dice: CombatDice = CombatDice.new()
 	var saw_dexterity_tie: bool = false
-	var saw_team_tie: bool = false
 	for seed_value: int in range(200):
 		dice.seed = seed_value
 		var expected_dice: CombatDice = CombatDice.new()
 		expected_dice.seed = seed_value
 		turns.start(units, dice)
 		for unit: CombatUnit in units:
-			_check(unit.initiative_roll == expected_dice.roll(20), "유닛마다 d20 한 번")
-			_check(unit.initiative_roll >= 1 and unit.initiative_roll <= 20, "d20 범위")
+			var sides: int = unit.get_ability_sides(CombatUnit.Ability.DEXTERITY)
+			_check(unit.initiative_roll == expected_dice.roll(sides)
+				and unit.get_initiative() == unit.initiative_roll, "유닛마다 민첩 주사위 한 번, 가산 없는 원본 값")
+			_check(unit.initiative_roll >= 1 and unit.initiative_roll <= sides, "민첩 주사위 면 범위")
 		for index: int in range(3):
 			var first: CombatUnit = turns.ordered_units[index]
 			var next: CombatUnit = turns.ordered_units[index + 1]
 			_check(first.get_initiative() >= next.get_initiative(), "이니셔티브 내림차순")
 			if first.get_initiative() == next.get_initiative():
-				_check(first.get_dexterity() >= next.get_dexterity(), "동점: 민첩 높은 쪽 우선")
-				if first.get_dexterity() != next.get_dexterity():
-					saw_dexterity_tie = true
-				elif first.is_ally != next.is_ally:
-					saw_team_tie = true
-					_check(first.is_ally, "민첩도 동점: 아군 우선")
-	_check(saw_dexterity_tie and saw_team_tie, "동점 규칙 두 종류를 실제 주사위로 검증")
+				_check(first.get_ability_sides(CombatUnit.Ability.DEXTERITY)
+					>= next.get_ability_sides(CombatUnit.Ability.DEXTERITY), "동점: 민첩 주사위 면 수가 큰 쪽 우선")
+				saw_dexterity_tie = true
+	_check(saw_dexterity_tie, "동점의 면 수 규칙을 실제 주사위로 검증")
+	units[2].kind = CombatUnit.Kind.SPIDERLING
+	var another_ally: CombatUnit = CombatUnit.new()
+	units.append(another_ally)
+	_created_units.append(another_ally)
+	turns.start(units, ScriptedDice.new([4, 4, 4, 4, 4], [8, 20, 8, 10, 8]))
+	_check(turns.ordered_units == [units[1], units[3], units[0], another_ally, units[2]],
+		"같은 굴림은 민첩 면 수, 아군, 같은 편의 배치 순으로 정렬")
 	var empty: CombatTurns = CombatTurns.new()
 	empty.start([], dice)
 	_check(empty.current_unit == null and not empty.end_turn(), "빈 전투에서 턴 종료 불가")
@@ -372,7 +367,7 @@ func _test_scene() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var scene_units: Array[CombatUnit] = battle.get("units")
-	turns.start(scene_units, _dice_for_order(scene_units, scene_units))
+	ScriptedDice.arrange_turns(turns, scene_units, scene_units)
 	_check(turns.get_current_group().size() == 2, "장면 확인용 아군 묶음")
 	var panel: Node = hud.order_bar.get_child(0)
 	var portraits: Node = panel.get_child(0)
