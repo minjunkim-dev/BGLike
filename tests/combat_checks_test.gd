@@ -20,6 +20,7 @@ func _run() -> void:
 	_test_scripted_dice_leftovers()
 	_test_scripted_dice_shortfall()
 	_test_modes()
+	_test_ability_dice()
 	_test_opposed_rolls()
 	_test_opposed_chances()
 	_test_attacks()
@@ -84,6 +85,24 @@ func _unit(kind: CombatUnit.Kind, ally: bool, cell: Vector2i) -> CombatUnit:
 	unit.hit_points = unit.get_max_hit_points()
 	_created_units.append(unit)
 	return unit
+
+
+func _test_ability_dice() -> void:
+	for profile: Array in [
+		[CombatUnit.Kind.WARRIOR, true, [20, 8, 6, 4, 12, 6]],
+		[CombatUnit.Kind.ARCHER, true, [8, 20, 12, 6, 4, 6]],
+		[CombatUnit.Kind.WARRIOR, false, [10, 6, 4, 4, 4, 4]],
+		[CombatUnit.Kind.ARCHER, false, [4, 10, 4, 4, 4, 4]],
+		[CombatUnit.Kind.SPIDERLING, false, [4, 8, 4, 4, 4, 4]],
+		[CombatUnit.Kind.MOTHER_SPIDER, false, [8, 6, 4, 4, 6, 8]],
+		[CombatUnit.Kind.SCRAP_ROBOT_1000, false, [12, 4, 8, 4, 12, 4]],
+		[CombatUnit.Kind.SCRAP_ROBOT_2000, false, [12, 4, 8, 4, 12, 4]],
+		[CombatUnit.Kind.SCRAP_ROBOT_3000, false, [12, 4, 8, 4, 12, 4]],
+	]:
+		var unit: CombatUnit = _unit(profile[0], profile[1], Vector2i.ZERO)
+		for ability: CombatUnit.Ability in CombatUnit.Ability.values():
+			_check(unit.get_ability_sides(ability) == profile[2][ability],
+				"기획서의 여섯 능력치 주사위: %s %d" % [unit.get_display_name(), ability])
 
 
 func _test_modes() -> void:

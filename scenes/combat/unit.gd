@@ -5,6 +5,9 @@ extends Node2D
 enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
+enum Ability { STRENGTH, DEXTERITY, CRAFT, INTELLIGENCE, WILL, NATURE }
+
+const ALLY_ABILITY_SIDES: Array[Array] = [[20, 8, 6, 4, 12, 6], [8, 20, 12, 6, 4, 6]]
 
 const MOVEMENT_PER_TURN: int = 6
 const FEEDBACK_RISE: float = 12.0
@@ -122,6 +125,13 @@ var _silhouette: Sprite2D
 var _sprite: AnimatedSprite2D
 var _attacking: bool = false
 var _art_top_y: float = -28.0
+
+
+## 능력치의 면은 1~n이다. 값은 능력치 점수나 d20 보정값이 아닌 면 수다 (#321).
+func get_ability_sides(ability: Ability) -> int:
+	if is_ally and kind in [Kind.WARRIOR, Kind.ARCHER]:
+		return ALLY_ABILITY_SIDES[kind][ability]
+	return int(CombatEnemyDefinitions.for_kind(kind)["abilities"][ability])
 
 
 func get_dexterity() -> int:
