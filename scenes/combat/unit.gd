@@ -4,7 +4,6 @@ extends Node2D
 
 enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
-enum Attribute { STRENGTH, DEXTERITY, CONSTITUTION, MENTAL }
 enum Ability { STRENGTH, DEXTERITY, CRAFT, INTELLIGENCE, WILL, NATURE }
 
 const ALLY_ABILITY_SIDES: Array[Array] = [[20, 8, 6, 4, 12, 6], [8, 20, 12, 6, 4, 6]]
@@ -21,7 +20,6 @@ const ALLY_COLOR: Color = Color("509be0")
 const ENEMY_COLOR: Color = Color("df6256")
 const OUTLINE_COLOR: Color = Color("202b35")
 const WEAPON_COLOR: Color = Color("f4ead1")
-const CRITICAL_COLOR: Color = Color("f4cf69")
 const HEAL_COLOR: Color = Color("70c76d")
 ## 이어하기가 그대로 되돌리는 값. 저장 파일의 값은 이 변수와 같은 타입이어야 한다.
 const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initiative_roll", "movement_left",
@@ -36,14 +34,12 @@ class StatusEffect extends RefCounted:
 	var kind: String
 	var source: CombatUnit
 	var turns_left: int
-	var save_dc: int
 	var strength: int
 
 	func _init(effect_kind: String, caster: CombatUnit, duration: int, intensity: int = 0) -> void:
 		kind = effect_kind
 		source = caster
 		turns_left = duration
-		save_dc = caster.get_save_dc()
 		strength = intensity if kind == "poison" else 0
 
 
@@ -157,39 +153,11 @@ func get_defense_bonus() -> int:
 	return _equipment_stat("defense_bonus")
 
 
-func get_dexterity() -> int:
-	if not is_ally:
-		return int(CombatEnemyDefinitions.for_kind(kind)["dexterity"])
-	return 1 if kind == Kind.WARRIOR else 3
-
-
-func get_attribute(attribute: Attribute) -> int:
-	if not is_ally:
-		var key: String = ["strength", "dexterity", "constitution", "mental"][attribute]
-		return int(CombatEnemyDefinitions.for_kind(kind)[key])
-	match attribute:
-		Attribute.STRENGTH:
-			return 3 if kind == Kind.WARRIOR else 0
-		Attribute.DEXTERITY:
-			return get_dexterity()
-		Attribute.CONSTITUTION:
-			return 2 if kind == Kind.WARRIOR else 1
-		Attribute.MENTAL:
-			return -1 if kind == Kind.WARRIOR else 1
-	return 0
-
-
 func get_max_hit_points() -> int:
 	var base: int = 12 if kind == Kind.WARRIOR else 14
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["max_hit_points"])
 	return base + _equipment_stat("max_hit_points")
-
-
-func get_armor_class() -> int:
-	if not is_ally:
-		return int(CombatEnemyDefinitions.for_kind(kind)["armor_class"])
-	return (16 if kind == Kind.WARRIOR else 14) + _equipment_stat("armor_class")
 
 
 func get_attack_bonus() -> int:
@@ -208,10 +176,6 @@ func get_damage_sides() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["damage_sides"])
 	return 8 if kind == Kind.WARRIOR else 6
-
-
-func get_save_dc() -> int:
-	return 13 if is_ally else int(CombatEnemyDefinitions.for_kind(kind)["save_dc"])
 
 
 func _equipment_stat(stat: String) -> int:
@@ -517,8 +481,8 @@ func show_feedback(text: String, obstacles: Array[Rect2] = [], color: Color = WE
 	popup.z_index = 10
 	popup.text = text
 	popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	popup.add_theme_font_size_override("font_size", 14 if text == tr("치명타!") else 10)
-	popup.add_theme_color_override("font_color", CRITICAL_COLOR if text == tr("치명타!") else color)
+	popup.add_theme_font_size_override("font_size", 10)
+	popup.add_theme_color_override("font_color", color)
 	popup.add_theme_color_override("font_outline_color", OUTLINE_COLOR)
 	popup.add_theme_constant_override("outline_size", 2)
 	popup.set_meta("feedback_unit", get_instance_id())

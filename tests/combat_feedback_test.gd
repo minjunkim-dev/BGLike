@@ -53,10 +53,10 @@ func _run() -> void:
 	boss.cell = Vector2i(4, 4)
 	boss.hit_points = 25
 	turns = battle.get("turns") as CombatTurns
-	turns.start(units, ScriptedDice.new([20, 20, 1]))
+	ScriptedDice.arrange_turns(turns, units, units)
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	# 판정·피해·빗나감이 같은 반복 공격에서 발생하는 통제된 재현이다.
-	actions.dice = ScriptedDice.new([15, 1, 1, 20, 1, 1, 15, 2], [20, 8, 20, 20, 8, 8, 20, 8])
+	actions.dice = ScriptedDice.new([8, 1, 1, 1, 1, 1, 20, 8], [12, 20, 8, 8, 8, 12, 20, 8])
 	for unit: CombatUnit in units:
 		if unit.is_ally:
 			unit.reaction_left = 0
@@ -90,16 +90,16 @@ func _run() -> void:
 	await create_timer(1.0).timeout
 	_check(popup_samples > 0, "반복 공격에서 실제 팝업을 관찰함")
 	_check(collisions.is_empty(), "반복 공격 팝업 겹침 없음: %s" % str(collisions))
-	_check(popup_styles.get("치명타!", []) == [CombatUnit.CRITICAL_COLOR, 14], "치명타는 금색 큰 글씨 팝업")
+	_check(not popup_styles.has("치명타!"), "능력치 대결은 치명타 팝업을 생성하지 않음")
 	_check(popup_styles.get("빗나감", []) == [CombatUnit.WEAPON_COLOR, 10]
-		and not popup_styles.has("자동 실패"), "자연 1도 일반 빗나감 팝업")
+		and not popup_styles.has("자동 실패"), "방어 합계 이하의 공격은 빗나감 팝업")
 	_check(popup_styles.keys().all(func(text: String) -> bool:
 		return not text.begins_with("공격 ") and not text.begins_with("-")),
 		"공격자 판정 합계 팝업과 피해 부호 없음: %s" % str(popup_styles.keys()))
 	_check(messages.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 2,
 		"과부하 중 회전 공격 두 번 유지")
-	_check(units[0].hit_points == 5 and units[1].hit_points == 10 and boss.hit_points == 23,
-		"명중·빗나감·치명타 피해와 과부하 자해 유지")
+	_check(units[0].hit_points == 9 and units[1].hit_points == 11 and boss.hit_points == 23,
+		"공통 공격의 명중·빗나감 피해와 과부하 자해 유지")
 	_check(_popups().is_empty(), "마지막 피드백 이후 팝업 제거")
 	await _test_shock_feedback()
 	await _test_crowded_feedback()
@@ -160,12 +160,12 @@ func _test_shock_feedback() -> void:
 		archer.cell = Vector2i(2, 4)
 		target.cell = Vector2i(5, 4)
 		target.reaction_left = 0
-		turns.start(units, ScriptedDice.new([1, 20, 1]))
+		ScriptedDice.arrange_turns(turns, units, [archer, units[0], target])
 		var actions: CombatActions = battle.get("actions") as CombatActions
 		if marked:
 			_check(actions.mark(archer, target), "충격 화살 전 표식 적용")
-		actions.dice = (ScriptedDice.new([15, 2, 1, 1], [20, 6, 6, 20]) if marked
-			else ScriptedDice.new([15, 2, 1], [20, 6, 20]))
+		actions.dice = (ScriptedDice.new([15, 1, 2, 1], [20, 6, 6, 6]) if marked
+			else ScriptedDice.new([15, 1, 2], [20, 6, 6]))
 		battle.call("_update_turn_ui")
 		_check(await actions.attack(archer, target, true), "실제 충격 화살 실행")
 		_check(target.is_stunned and target.has_mark == marked, "기절·표식 상태 유지")
@@ -175,7 +175,7 @@ func _test_shock_feedback() -> void:
 		_check(_popups().is_empty(), "충격 화살 팝업 제거")
 
 
-## #260: 3-1에서 궁수를 여섯 유닛이 둘러싼 밀집 배치. 새끼 거미의 치명타 팝업이 대상 가까이에 순서대로 쌓여야 한다.
+## #260: 3-1에서 궁수를 여섯 유닛이 둘러싼 밀집 배치. 새끼 거미의 연속 피해 팝업이 대상 가까이에 순서대로 쌓여야 한다.
 func _test_crowded_feedback() -> void:
 	battle.set_process(false)  # 적 AI 대신 정해진 공격 한 번만 실행한다.
 	(battle.get("progress") as CombatActProgress).stage_index = 6
@@ -189,32 +189,35 @@ func _test_crowded_feedback() -> void:
 	# 위쪽 HUD와 떨어진 자리라 같은 대상의 팝업을 위로 쌓을 공간이 있다.
 	var cells: Array[Vector2i] = [Vector2i(7, 8), Vector2i(8, 7), Vector2i(8, 6), Vector2i(9, 7), Vector2i(7, 7),
 		Vector2i(8, 8), Vector2i(9, 6)]
-	var rolls: Array[int] = []
 	for index: int in range(units.size()):
 		units[index].cell = cells[index]
 		units[index].reaction_left = 0
-		rolls.append(20 if units[index] == attacker else 1)
-	turns.start(units, ScriptedDice.new(rolls))
+	ScriptedDice.arrange_turns(turns, units, [attacker])
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.dice = ScriptedDice.new([20], [20])
+	actions.dice = ScriptedDice.new([4, 1, 4, 1], [4, 8, 4, 8])
 	battle.call("_update_turn_ui")
 	_check(turns.current_unit == attacker and attacker.kind == CombatUnit.Kind.SPIDERLING
 		and archer.kind == CombatUnit.Kind.ARCHER, "밀집 팝업 전제조건: 새끼 거미 차례, 궁수 대상")
 	var parent: Node2D = battle.get_node("Units") as Node2D
 	var placed: Array[Dictionary] = []
+	var recorded: Array[int] = []
 	var record: Callable = func(unit: CombatUnit, text: String) -> void:
 		for child: Node in parent.get_children():
-			if child is Label and child.text == text and child.get_meta("feedback_unit", 0) == unit.get_instance_id():
+			if (child is Label and child.text == text and child.get_meta("feedback_unit", 0) == unit.get_instance_id()
+				and child.get_instance_id() not in recorded):
+				recorded.append(child.get_instance_id())
 				var canvas: Transform2D = parent.get_global_transform_with_canvas()
 				var scale: float = absf(canvas.get_scale().x)
 				placed.append({"unit": unit, "text": text, "rect": canvas * (child as Label).get_rect(),
 					"origin": canvas * (unit.position + Vector2(-16, unit.floor_offset_y + unit.get_status_label_y() - 5)),
 					"padding": 2.0 * scale, "near": CombatUnit.FEEDBACK_NEAR * scale})
 	actions.feedback.connect(record)
-	_check(await actions.attack(attacker, archer), "밀집 배치에서 새끼 거미 치명타 실행")
+	_check(await actions.attack(attacker, archer), "밀집 배치에서 새끼 거미 공격 실행")
+	attacker.begin_turn()
+	_check(await actions.attack(attacker, archer), "첫 팝업이 남아 있을 때 같은 대상 연속 공격")
 	actions.feedback.disconnect(record)
 	var texts: Array = placed.map(func(entry: Dictionary) -> String: return entry["text"])
-	_check(texts == ["치명타!", "1"], "밀집 배치의 치명타·피해 팝업: %s" % str(texts))
+	_check(texts == ["1", "1"], "밀집 배치의 연속 피해 팝업: %s" % str(texts))
 	# 기준 자리: 대상 상태 줄 기준점. 같은 대상의 이전 팝업이 있으면 그 팝업 바로 위가 더 위쪽일 때 그 자리.
 	var latest: Dictionary = {}
 	for entry: Dictionary in placed:

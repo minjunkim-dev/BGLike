@@ -790,6 +790,8 @@ func spin(actor: CombatUnit) -> bool:
 	busy = true
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	logged.emit(tr_n("%s 회전회오리: 인접 대상 %d명", "%s 회전회오리: 인접 대상 %d명", targets.size()) % [actor.get_display_name(), targets.size()])
+	logged.emit(tr("공통 공격: 힘 d%d %s %+d = %d") % [actor.get_ability_sides(CombatUnit.Ability.STRENGTH),
+		str(shared_roll.rolls), actor.get_attack_bonus(), shared_roll.total])
 	changed.emit()
 	for target: CombatUnit in targets:
 		if actor.hit_points <= 0 or actor.is_stunned or actor != turns.current_unit or is_over():
@@ -957,11 +959,17 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 		mode_name = tr("유리")
 	elif last_attack.mode == CombatChecks.RollMode.DISADVANTAGE:
 		mode_name = tr("불리")
-	logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / %s d%d %d %+d = %d · %s") % [
-		actor.get_display_name(), mode_name, CombatUnit.ability_name(attack_ability), attack_sides,
-		str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total,
-		CombatUnit.ability_name(defense_ability), defense_sides, last_attack.defender_roll,
-		target.get_defense_bonus(), last_attack.defender_total, tr("명중") if last_attack.success else tr("빗나감")])
+	if shared_roll == null:
+		logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / %s d%d %d %+d = %d · %s") % [
+			actor.get_display_name(), mode_name, CombatUnit.ability_name(attack_ability), attack_sides,
+			str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total,
+			CombatUnit.ability_name(defense_ability), defense_sides, last_attack.defender_roll,
+			target.get_defense_bonus(), last_attack.defender_total, tr("명중") if last_attack.success else tr("빗나감")])
+	else:
+		logged.emit(tr("%s 방어: %s d%d %d %+d = %d / 공통 공격 %d · %s") % [target.get_display_name(),
+			CombatUnit.ability_name(defense_ability), defense_sides, last_attack.defender_roll,
+			target.get_defense_bonus(), last_attack.defender_total, last_attack.total,
+			tr("명중") if last_attack.success else tr("빗나감")])
 	if not last_attack.success:
 		feedback.emit(target, tr("빗나감"))
 		return

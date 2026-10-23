@@ -138,15 +138,15 @@ func _test_spiderling_placement_and_turns() -> void:
 			and units[index + 2].cell == cells[index] and units[index + 2].hit_points == 1,
 			"처음 배치한 새끼 거미의 종류·HP·좌표 순서")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
-	turns.start(units, ScriptedDice.new([11, 9, 10, 10, 10, 10]))
-	_check(turns.ordered_units == [units[1], units[2], units[3], units[4], units[5], units[0]],
+	turns.start(units, ScriptedDice.new([8, 7, 8, 8, 8, 8], [8, 20, 8, 8, 8, 8]))
+	_check(turns.ordered_units == [units[0], units[2], units[3], units[4], units[5], units[1]],
 		"이니셔티브 동점은 민첩을 먼저 비교하고 새끼끼리는 배치 좌표 순서")
-	var rolls: Array[int] = [2, 1, 20, 18, 16, 14]
-	turns.start(units, ScriptedDice.new(rolls))
+	var rolls: Array[int] = [2, 1, 8, 7, 6, 5]
+	turns.start(units, ScriptedDice.new(rolls, [8, 20, 8, 8, 8, 8]))
 	for index: int in range(units.size()):
 		_check(units[index].initiative_roll == rolls[index]
-			and units[index].get_initiative() == rolls[index] + units[index].get_dexterity(),
-			"처음 배치한 새끼를 포함해 유닛마다 d20+민첩을 독립 적용")
+			and units[index].get_initiative() == rolls[index],
+			"처음 배치한 새끼를 포함해 유닛마다 민첩 주사위을 독립 적용")
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	for index: int in range(2, 6):
 		_check(turns.current_unit == units[index] and units[index].action_left == 1,
@@ -169,23 +169,23 @@ func _test_spiderling_placement_and_turns() -> void:
 
 func _check_enemy_values(battle: Node2D, act: int) -> void:
 	var expected: Dictionary = {
-		CombatUnit.Kind.WARRIOR: [12, 5, 12, 1], CombatUnit.Kind.ARCHER: [14, 5, 11, 1],
-		CombatUnit.Kind.SPIDERLING: [1, 4, 6, 1],
-		CombatUnit.Kind.MOTHER_SPIDER: [20, 4, 13, 2],
-		CombatUnit.Kind.SCRAP_ROBOT_1000: [40, 5, 14, 2],
-		CombatUnit.Kind.SCRAP_ROBOT_2000: [45, 5, 15, 2],
-		CombatUnit.Kind.SCRAP_ROBOT_3000: [50, 5, 16, 2]
+		CombatUnit.Kind.WARRIOR: [12, 3, 0, 1], CombatUnit.Kind.ARCHER: [14, 0, 0, 1],
+		CombatUnit.Kind.SPIDERLING: [1, 3, 0, 1],
+		CombatUnit.Kind.MOTHER_SPIDER: [20, 3, 1, 2],
+		CombatUnit.Kind.SCRAP_ROBOT_1000: [40, 3, 2, 2],
+		CombatUnit.Kind.SCRAP_ROBOT_2000: [45, 3, 3, 2],
+		CombatUnit.Kind.SCRAP_ROBOT_3000: [50, 3, 4, 2]
 	}
 	for unit: CombatUnit in battle.get("units"):
 		if unit.is_ally:
-			_check(unit.get_attack_bonus() == 5
-				and unit.get_armor_class() == (16 if unit.kind == CombatUnit.Kind.WARRIOR else 14),
-				"막 강화는 아군 기본 명중·AC를 바꾸지 않음")
+			_check(unit.get_attack_bonus() == 0
+				and unit.get_defense_bonus() == 0,
+				"막 강화는 아군 기본 공격·방어 가산를 바꾸지 않음")
 			continue
 		var values: Array = expected[unit.kind]
 		_check(unit.get_max_hit_points() == values[0] and unit.hit_points == values[0]
-			and unit.get_attack_bonus() == values[1] and unit.get_armor_class() == values[2]
-			and unit.get_damage_bonus() == values[3], "%d막 실제 적의 HP·명중·AC·피해" % act)
+			and unit.get_attack_bonus() == values[1] and unit.get_defense_bonus() == values[2]
+			and unit.get_damage_bonus() == values[3], "%d막 실제 적의 HP·공격·방어 가산·피해" % act)
 
 
 func _test_mother_stages() -> void:
@@ -218,10 +218,9 @@ func _test_mother_stages() -> void:
 				mothers.append(unit)
 				_check(unit.movement_left == 4 and unit.hit_points == 20, "실제 엄마는 이동력4·HP20에서 시작")
 		var turns: CombatTurns = battle.get("turns") as CombatTurns
-		var rolls: Array[int] = [20, 17, 1, 1, 1, 1, 18]
-		if stage == 6:
-			rolls = [20, 17, 1, 1, 1, 18, 17]
-		turns.start(units, ScriptedDice.new(rolls))
+		var desired: Array[CombatUnit] = [units[0], units[1]]
+		desired.append_array(mothers)
+		ScriptedDice.arrange_turns(turns, units, desired)
 		turns.end_turn()
 		turns.end_turn()
 		var actions: CombatActions = battle.get("actions") as CombatActions
@@ -331,10 +330,7 @@ func _start_three_one() -> Node:
 	(battle.get("progress") as CombatActProgress).stage_index = 6
 	battle.call("_start_stage", true)
 	var units: Array[CombatUnit] = battle.get("units")
-	var initiative: Array[int] = []
-	for unit: CombatUnit in units:
-		initiative.append(20 if unit.is_ally else 1)
-	(battle.get("turns") as CombatTurns).start(units, ScriptedDice.new(initiative))
+	ScriptedDice.arrange_turns(battle.get("turns") as CombatTurns, units, units)
 	(battle.get("actions") as CombatActions).dice.seed = 221
 	return main
 
@@ -418,7 +414,7 @@ func _test_scrap_robot_stage() -> void:
 	var boss: CombatUnit = units[2]
 	boss.hit_points = 2
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
-	turns.start(units, ScriptedDice.new([19, 14, 2], [20, 20, 20]))
+	ScriptedDice.arrange_turns(turns, units, units)
 	turns.end_turn()
 	turns.end_turn()
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
@@ -457,11 +453,14 @@ func _test_scrap_robot_2000_stage() -> void:
 	units[0].cell = Vector2i(1, 1)
 	units[1].cell = Vector2i(7, 4)
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
-	turns.start(units, ScriptedDice.new([5, 4, 20], [20, 20, 20]))
+	ScriptedDice.arrange_turns(turns, units, [units[2], units[0], units[1]])
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.dice = ScriptedDice.new([12, 10], [20, 20]).then_seeded()
+	actions.dice = ScriptedDice.new([12, 8], [12, 8])
 	_check(actions.pull(boss, units[1]) and units[1].cell == Vector2i(5, 4),
 		"실제 2000 보스 전투의 만능팔이 대상 위치와 화면 상태를 갱신")
+	# 이후 승리 보상은 판정 fixture와 별도 RNG로 생성한다.
+	actions.dice = CombatDice.new()
+	actions.dice.seed = 321
 	boss.hit_points = 2
 	for turn: int in range(3):
 		turns.end_turn()
@@ -499,12 +498,15 @@ func _test_scrap_robot_3000_stage() -> void:
 	units[0].parry_left = 0
 	units[1].cell = Vector2i(8, 5)
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
-	turns.start(units, ScriptedDice.new([5, 4, 20], [20, 20, 20]))
+	ScriptedDice.arrange_turns(turns, units, [units[2], units[0], units[1]])
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.dice = ScriptedDice.new([15, 3, 15, 3], [20, 8, 20, 8]).then_seeded()
+	actions.dice = ScriptedDice.new([12, 1, 3, 1, 3], [12, 20, 8, 8, 8])
 	_check(await actions.spin(boss) and units[0].hit_points == 7 and units[1].hit_points == 9
 		and boss.action_left == 1 and boss.hit_points == 23,
 		"실제 3000 과부하 턴 시작 자기 피해 뒤 회전회오리가 두 아군과 화면을 갱신")
+	# 이후 승리 보상은 판정 fixture와 별도 RNG로 생성한다.
+	actions.dice = CombatDice.new()
+	actions.dice.seed = 321
 	boss.hit_points = 2
 	for turn: int in range(3):
 		turns.end_turn()
