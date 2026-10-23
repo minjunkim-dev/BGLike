@@ -9,6 +9,8 @@ class RollResult extends RefCounted:
 	var rolls: Array[int] = []
 	var selected_roll: int = 0
 	var total: int = 0
+	var defender_roll: int = 0
+	var defender_total: int = 0
 	var success: bool = false
 	var critical: bool = false
 	var mode: RollMode = RollMode.NORMAL
@@ -42,7 +44,7 @@ static func roll_mode(advantage_count: int, disadvantage_count: int) -> RollMode
 static func attack(
 	attack_bonus: int, armor_class: int, mode: RollMode, dice: CombatDice
 ) -> RollResult:
-	var result: RollResult = _roll_d20(mode, dice)
+	var result: RollResult = _roll_die(20, mode, dice)
 	result.total = result.selected_roll + attack_bonus
 	result.critical = result.selected_roll == 20
 	result.success = _attack_hits(result.selected_roll, attack_bonus, armor_class)
@@ -50,7 +52,7 @@ static func attack(
 
 
 static func saving_throw(modifier: int, dc: int, dice: CombatDice) -> RollResult:
-	var result: RollResult = _roll_d20(RollMode.NORMAL, dice)
+	var result: RollResult = _roll_die(20, RollMode.NORMAL, dice)
 	result.total = result.selected_roll + modifier
 	# 내성은 1과 20도 합계로만 판단한다.
 	result.success = result.total >= dc
@@ -83,13 +85,42 @@ static func hit_chance(attack_bonus: int, armor_class: int, mode: RollMode) -> f
 	return normal
 
 
-static func _roll_d20(mode: RollMode, dice: CombatDice) -> RollResult:
+static func opposed_attack(attack_sides: int, defense_sides: int,
+	attack_bonus: int, defense_bonus: int, mode: RollMode, dice: CombatDice) -> RollResult:
+	assert(attack_sides > 0 and defense_sides > 0)
+	var result: RollResult = _roll_die(attack_sides, mode, dice)
+	result.total = result.selected_roll + attack_bonus
+	result.defender_roll = dice.roll(defense_sides)
+	result.defender_total = result.defender_roll + defense_bonus
+	result.success = result.total > result.defender_total
+	return result
+
+
+static func opposed_chance(attack_sides: int, defense_sides: int,
+	attack_bonus: int, defense_bonus: int, mode: RollMode) -> float:
+	assert(attack_sides > 0 and defense_sides > 0)
+	var hits: int = 0
+	for attack_roll: int in range(1, attack_sides + 1):
+		# 두 공격 주사위에서 이 면이 최대/최솟값이 되는 조합 수다.
+		var weight: int = 1
+		if mode == RollMode.ADVANTAGE:
+			weight = 2 * attack_roll - 1
+		elif mode == RollMode.DISADVANTAGE:
+			weight = 2 * (attack_sides - attack_roll) + 1
+		for defense_roll: int in range(1, defense_sides + 1):
+			if attack_roll + attack_bonus > defense_roll + defense_bonus:
+				hits += weight
+	var outcomes: int = attack_sides if mode == RollMode.NORMAL else attack_sides * attack_sides
+	return hits / float(outcomes * defense_sides)
+
+
+static func _roll_die(sides: int, mode: RollMode, dice: CombatDice) -> RollResult:
 	var result: RollResult = RollResult.new()
 	result.mode = mode
-	result.rolls.append(dice.roll(20))
+	result.rolls.append(dice.roll(sides))
 	result.selected_roll = result.rolls[0]
 	if mode != RollMode.NORMAL:
-		result.rolls.append(dice.roll(20))
+		result.rolls.append(dice.roll(sides))
 		result.selected_roll = (maxi(result.rolls[0], result.rolls[1])
 			if mode == RollMode.ADVANTAGE else mini(result.rolls[0], result.rolls[1]))
 	return result
