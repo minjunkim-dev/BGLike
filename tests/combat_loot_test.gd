@@ -38,10 +38,7 @@ func _run() -> void:
 		_test_armor_unequip()
 		_test_act_values(loot, dice)
 		_test_icons(loot)
-		# 다음 승리의 보상 RNG는 공격 굴림 fixture와 분리한다.
-	actions.dice = CombatDice.new()
-	actions.dice.seed = 321
-	loot.data["extra_drop_chance"] = 0.0
+		loot.data["extra_drop_chance"] = 0.0
 		_check(loot.roll_rewards(2, dice, 1).size() == 1, "추가 확률0이어도 보장1개")
 		loot.data["extra_drop_chance"] = 1.0
 		_check(loot.roll_rewards(2, dice, 1).size() == 3, "확률1이면 보장1개와 몬스터당1개")
@@ -526,9 +523,6 @@ func _test_finish_preference() -> void:
 	battle.set_process(false)
 	var preparation: CombatPreparation = battle.preparation
 	var loot: CombatLoot = battle.loot
-	# 다음 승리의 보상 RNG는 공격 굴림 fixture와 분리한다.
-	actions.dice = CombatDice.new()
-	actions.dice.seed = 321
 	loot.data["extra_drop_chance"] = 0.0
 	for unit: CombatUnit in battle.units:
 		if not unit.is_ally:
@@ -1086,6 +1080,9 @@ func _test_scaled_combat() -> void:
 	for rolled: int in actions.last_damage_rolls:
 		rolled_damage += rolled
 	_check(actions.last_damage == rolled_damage + 1, "3막 풋내기 피해도 고정값1 적용")
+	# 물약·보상 RNG는 명중·피해 fixture 밖이다.
+	actions.dice = CombatDice.new()
+	actions.dice.seed = 321
 	# 방어구 최대 HP를 실제 물약 회복 상한에 적용한다.
 	var loot: CombatLoot = battle.get("loot") as CombatLoot
 	loot.receive(units[1], {"kind": "armor", "name": "검사 방어구",
