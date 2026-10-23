@@ -28,6 +28,32 @@ GitHub API 오류와 조회 한계도 실패 처리합니다.
 main 밖 SHA와 실패한 CI는 source 실행 전에 차단합니다.
 `contents: read`만으로는 기본 브랜치 캐시 쓰기까지 차단하지 못하므로, source 검증을 생략하지 않습니다.
 
+## 기존 버전의 미공개 Draft 갱신
+
+위 실행 조건은 **신규 생성** 절차입니다. 같은 버전을 최신 source로 다시 만들 때는 기존 Draft를 백업으로 보존해 이름 충돌을 해소한 뒤 같은 workflow를 사용합니다. helper의 중복 거부·source·CI 검증과 권한은 그대로 유지합니다.
+
+### 대상 확인과 백업
+
+1. 사용자 승인 범위에 해당 버전의 재빌드와 미공개 Draft 갱신이 포함되는지 확인합니다. 버전·source 전체 SHA·산출물을 고정하고 해당 SHA의 `push main` CI와 필수 `CI` 성공을 확인합니다. 승인 범위가 부족하면 준비를 마친 뒤 workflow 실행 전에 승인을 받습니다.
+2. `gh api repos/<owner>/<repo>/releases --paginate`에서 정확한 버전의 `name` 또는 `tag_name`을 찾고 release ID를 기록합니다. 한 건이어야 하며 `draft: true`, `prerelease: true`를 확인합니다. 공개 Release나 실제 Git tag가 있으면 이 절차로 교체하지 않습니다.
+3. Draft 상세 조회는 `gh api repos/<owner>/<repo>/releases/<id>`를 사용합니다. `releases/tags/<version>`의 404만으로 Draft가 없다고 판단하지 않습니다.
+4. 원본 Release JSON과 asset 전부를 작업 폴더 밖의 새 백업 폴더에 저장합니다. asset 크기·제공된 GitHub digest·`SHA256SUMS`, ZIP metadata의 기존 source SHA·엔진 pin·내부 파일 hash를 확인합니다. 로컬 묶음 검증은 `scripts/draft_release.py`의 `verify_bundle()`을 재사용할 수 있습니다. 이 함수에 전달하는 폴더에는 ZIP과 `SHA256SUMS` 두 파일만 둡니다.
+5. 백업이 검증된 뒤에만 기존 Draft의 `name`과 `tag_name`을 고유한 백업 이름으로 바꿉니다. 예: `<version>-backup-<기존 source 앞 7자리>`. 기존 `target_commitish`와 asset을 보존하고 `draft: true`, `prerelease: true`를 유지합니다. 원래 버전과 백업 이름에 실제 Git tag가 없고, 다른 Release·Draft와 충돌하지 않는지 확인합니다.
+
+### 재빌드와 완료 확인
+
+1. 원래 버전과 승인된 새 source SHA로 `draft-release.yml`을 `main`에서 한 번 실행합니다. 요청이 성공하면 연결된 `Verification Draft Build`의 `build`·`draft` 완료를 기다립니다. 실행 중이면 같은 요청을 더 보내지 않고 기존 실행을 이어 확인합니다.
+2. 새 Draft를 목록에서 찾고 새 release ID로 조회합니다. 원래 버전의 Draft가 한 건인지, 미공개 상태와 `target_commitish`가 맞는지 확인합니다.
+3. 새 ZIP과 `SHA256SUMS`를 별도 폴더에 내려받습니다. source SHA·엔진 pin·내부 파일 hash와 asset 크기·제공된 GitHub digest를 다시 확인합니다. 저장소 밖의 임시 폴더에서 Godot 4.7.2 Standard `--headless --main-pack <PCK> --quit-after 3`으로 실행하고 종료 코드와 오류·경고 로그를 확인합니다.
+4. 검수 Issue에 새 Draft 링크·source SHA·체크섬·요청/Build 실행과 백업 위치를 기록합니다. 사람의 직접 플레이·청취·가독성 확인은 기존 체크리스트에서 따로 확인합니다. headless 성공으로 사람 확인을 완료 표시하지 않습니다.
+
+### 실패와 재시도
+
+- 기존 Draft 이름을 바꾸기 전에 실패하면 원본을 그대로 둡니다.
+- 이름을 바꾼 뒤 새 Draft가 생성되지 않았으면, 진행 중인 요청·Build와 실제 Git tag가 없고 이름 충돌도 없는 것을 확인한 뒤 백업 Draft의 원래 `name`·`tag_name`을 복원할 수 있습니다. asset은 검증한 백업과 대조합니다.
+- 일부 asset만 올라간 새 Draft가 있으면 그 ID·상태·남은 파일을 기록하고 복구 범위를 정합니다. 완성된 이전 백업을 보존합니다. 부분 Draft가 남아 있는 상태에서 같은 버전의 신규 생성 재시도를 반복하면 중복 검사에 막힙니다.
+- 원인과 현재 원격 상태를 확인한 뒤 재시도합니다. 이 절차는 공개 전환·실제 Git tag 교체·자동 덮어쓰기·자동 삭제를 허용하지 않습니다.
+
 ## 요청의 출처와 재실행
 
 요청 artifact 이름은 `verification-request-<run_attempt>`입니다. 보관 기간은 7일입니다.
