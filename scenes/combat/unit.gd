@@ -134,6 +134,21 @@ func get_ability_sides(ability: Ability) -> int:
 	return int(CombatEnemyDefinitions.for_kind(kind)["abilities"][ability])
 
 
+## 현재 일반 무기는 직업의 기본 대검·활을 강화하는 장비다. 실제 대상 거리로 유형을 바꾸지 않는다.
+func get_attack_ability() -> Ability:
+	return Ability.DEXTERITY if kind == Kind.ARCHER else Ability.STRENGTH
+
+
+func is_ranged_attack() -> bool:
+	return kind == Kind.ARCHER
+
+
+func get_defense_bonus() -> int:
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind)["defense_bonus"])
+	return _equipment_stat("defense_bonus")
+
+
 func get_dexterity() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["dexterity"])

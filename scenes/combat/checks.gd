@@ -87,13 +87,41 @@ static func hit_chance(attack_bonus: int, armor_class: int, mode: RollMode) -> f
 
 static func opposed_attack(attack_sides: int, defense_sides: int,
 	attack_bonus: int, defense_bonus: int, mode: RollMode, dice: CombatDice) -> RollResult:
-	assert(attack_sides > 0 and defense_sides > 0)
-	var result: RollResult = _roll_die(attack_sides, mode, dice)
-	result.total = result.selected_roll + attack_bonus
+	return defend_against(attack_roll(attack_sides, attack_bonus, mode, dice), defense_sides, defense_bonus, dice)
+
+
+## 광역 공격이 한 공격 굴림을 모든 대상에 공유한다.
+static func attack_roll(sides: int, bonus: int, mode: RollMode, dice: CombatDice) -> RollResult:
+	assert(sides > 0)
+	var result: RollResult = _roll_die(sides, mode, dice)
+	result.total = result.selected_roll + bonus
+	return result
+
+
+static func defend_against(attack_result: RollResult, defense_sides: int,
+	defense_bonus: int, dice: CombatDice) -> RollResult:
+	assert(defense_sides > 0)
+	var result: RollResult = RollResult.new()
+	result.rolls = attack_result.rolls.duplicate()
+	result.selected_roll = attack_result.selected_roll
+	result.total = attack_result.total
+	result.mode = attack_result.mode
 	result.defender_roll = dice.roll(defense_sides)
 	result.defender_total = result.defender_roll + defense_bonus
 	result.success = result.total > result.defender_total
 	return result
+
+
+## 흘려내기와 독 제거는 이미 정해진 공격값·강도 이상이면 성공한다.
+static func threshold(sides: int, bonus: int, target: int, dice: CombatDice) -> RollResult:
+	var result: RollResult = attack_roll(sides, bonus, RollMode.NORMAL, dice)
+	result.success = result.total >= target
+	return result
+
+
+static func threshold_chance(sides: int, bonus: int, target: int) -> float:
+	assert(sides > 0)
+	return clampi(sides + bonus - target + 1, 0, sides) / float(sides)
 
 
 static func opposed_chance(attack_sides: int, defense_sides: int,

@@ -141,6 +141,19 @@ func _test_opposed_rolls() -> void:
 		8, 12, 1, 2, CombatChecks.RollMode.ADVANTAGE, dice)
 	_check(result.rolls == replay.rolls and result.defender_roll == replay.defender_roll,
 		"난수 상태 복원 뒤 공격과 방어 굴림을 함께 재현")
+	result = CombatChecks.threshold(8, 3, 7, ScriptedDice.new([4], [8]))
+	_check(result.success and result.total == 7, "흘려내기 민첩 +3은 같은 공격값에도 성공")
+	result = CombatChecks.threshold(6, 0, 4, ScriptedDice.new([4], [6]))
+	_check(result.success, "자연 d6 대 독 강도4는 동점 제거 성공")
+	_check(is_equal_approx(CombatChecks.threshold_chance(6, 0, 4), 0.5), "독 제거 확률 50%")
+	_check(CombatChecks.threshold_chance(8, 3, 30) == 0.0
+		and CombatChecks.threshold_chance(8, 3, 1) == 1.0, "흘려내기 확률은 0~100%")
+	var shared: CombatChecks.RollResult = CombatChecks.attack_roll(12, 3, normal, ScriptedDice.new([8], [12]))
+	var first: CombatChecks.RollResult = CombatChecks.defend_against(shared, 20, 0, ScriptedDice.new([10], [20]))
+	var second: CombatChecks.RollResult = CombatChecks.defend_against(shared, 8, 4, ScriptedDice.new([8], [8]))
+	_check(first.total == 11 and second.total == 11 and first.success and not second.success,
+		"광역은 같은 공격 굴림과 대상별 방어를 비교")
+	_check(first.defender_roll == 10 and shared.defender_roll == 0, "다음 대상의 방어는 이전 대상·공통 공격을 변경하지 않음")
 
 
 func _test_opposed_chances() -> void:
