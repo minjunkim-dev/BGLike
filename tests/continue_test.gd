@@ -10,6 +10,7 @@ const LOGICAL: Dictionary[Vector2i, Vector2] = {Vector2i(1280, 720): Vector2(640
 ## ADR 0002의 레이아웃 자동 검사 창: 16:10 4배, 넓은 비율, 비정수 배율.
 const EXTRA_WINDOWS: Array[Vector2i] = [Vector2i(2560, 1600), Vector2i(2560, 1080), Vector2i(1366, 768)]
 const UNREADABLE: String = "저장을 읽을 수 없어\n이어할 수 없습니다."
+const ScriptedDice = preload("res://tests/scripted_dice.gd")
 ## 여러 worktree가 같은 user://를 쓰므로 실행마다 폴더를 나눈다. 사용자의 저장을 건드리지 않는다 (docs/adr/0003).
 var directory: String = "user://tests/continue/%d" % OS.get_process_id()
 var checks: int = 0
@@ -167,19 +168,24 @@ func _test_overwrite() -> void:
 
 ## 읽을 수 없는 저장은 없는 것처럼 이어하기를 숨기고 이유를 보인다. 새 게임은 그래도 덮어쓰기를 묻는다.
 func _test_unreadable() -> void:
-	var data: PackedByteArray = "BGLS".to_ascii_buffer()
-	data.resize(GameSave.HEADER_SIZE)
-	data.encode_u32(4, GameSave.FORMAT_VERSION + 1)
-	data.append_array(var_to_bytes({"act": 1, "stage": 1, "sections": {}}))
-	GameSave.write_atomic(GameSave.path, data)
-	var title: TitleScreen = await _open_title()
-	_check(not title.continue_button.visible and title.notice.visible and title.notice.text == UNREADABLE,
-		"다른 형식 버전의 저장: 이어하기 대신 안내")
+	var title: TitleScreen
+	for version: int in [1, GameSave.FORMAT_VERSION + 1]:
+		var data: PackedByteArray = "BGLS".to_ascii_buffer()
+		data.resize(GameSave.HEADER_SIZE)
+		data.encode_u32(4, version)
+		data.append_array(var_to_bytes({"act": 1, "stage": 1, "sections": {}}))
+		GameSave.write_atomic(GameSave.path, data)
+		title = await _open_title()
+		_check(not title.continue_button.visible and title.notice.visible and title.notice.text == UNREADABLE,
+			"형식 버전 %d의 저장: 이어하기 대신 안내" % version)
+		_check(not GameSave.autosave and FileAccess.get_file_as_bytes(GameSave.path) == data,
+			"형식 버전 %d의 저장은 안내 뒤에도 그대로 보존" % version)
+		title.new_game_button.pressed.emit()
+		_check(title.overwrite.visible and "저장을 읽을 수 없음" in title.overwrite.dialog_text,
+			"읽을 수 없는 형식 버전 %d도 덮어쓰기를 물음" % version)
+		title.overwrite.get_cancel_button().pressed.emit()
+		_check(FileAccess.get_file_as_bytes(GameSave.path) == data, "새 게임 취소 뒤 형식 버전 %d도 보존" % version)
 	await _check_menu_layout(title)
-	title.new_game_button.pressed.emit()
-	_check(title.overwrite.visible and "저장을 읽을 수 없음" in title.overwrite.dialog_text,
-		"읽을 수 없는 저장도 덮어쓰기를 물음")
-	title.overwrite.get_cancel_button().pressed.emit()
 	# 머리는 맞지만 전투 칸이 맞지 않는 저장은 이어하기를 누른 순간 거르고 타이틀에 남는다.
 	GameSave.write(2, 1, {"combat": {"stage": 99}})
 	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(GameSave.path)
@@ -258,16 +264,13 @@ func _open_title() -> TitleScreen:
 	return title
 
 
-## 새 게임이 바꾼 장면이 첫 프레임을 돌기 전에 아군 둘이 먼저인 턴 순서로 다시 굴린다. 적 턴 연출을 기다리지 않는다.
+## 새 게임이 바꾼 장면이 첫 프레임을 돌기 전에 입력 fixture의 아군 둘 순서만 고정한다.
 func _new_battle() -> Node2D:
 	await process_frame
 	var battle: Node2D = current_scene.get_node("Battle") as Node2D
 	_check(not battle.get("_enemy_turn_running"), "새 게임 장면의 첫 프레임 전")
 	var turns: CombatTurns = battle.get("turns")
-	var dice: CombatDice = CombatDice.new()
-	while not (turns.ordered_units[0].is_ally and turns.ordered_units[1].is_ally):
-		dice.seed += 1
-		turns.start(battle.get("units"), dice)
+	ScriptedDice.arrange_turns(turns, battle.get("units"), battle.get("party"))
 	return battle
 
 

@@ -38,6 +38,7 @@ func _run() -> void:
 	GameSave.path = directory + "/save.bin"
 	await _test_autosave_switch()
 	GameSave.autosave = true
+	await _test_format_two_state()
 	for stage_index: int in range(STAGE_COUNT):
 		await _test_stage(stage_index)
 	_check(reaction_stages >= 3, "여러 스테이지에서 아군 반응 답을 담은 적 턴 중간 저장을 복원함: %d" % reaction_stages)
@@ -74,7 +75,7 @@ func _battle(stage_index: int) -> Node2D:
 	var weapon: Dictionary = items[0].duplicate(true)
 	weapon["stats"] = {"attack_bonus": 1, "damage_bonus": 2}
 	var armor: Dictionary = items[1].duplicate(true)
-	armor["stats"] = {"armor_class": 1, "max_hit_points": 3}
+	armor["stats"] = {"defense_bonus": 1, "max_hit_points": 3}
 	loot.receive(party[0], weapon)
 	loot.receive(party[1], armor)
 	loot.bag.append(items[2].duplicate(true))
@@ -97,6 +98,34 @@ func _battle(stage_index: int) -> Node2D:
 func _free(battle: Node2D) -> void:
 	battle.get_parent().queue_free()
 	await process_frame
+
+
+## 형식 2의 강도·장비·이니셔티브를 실제 상태에서 저장하고 그대로 복원한다.
+func _test_format_two_state() -> void:
+	var battle: Node2D = _battle(0)
+	var actions: CombatActions = battle.get("actions")
+	var party: Array[CombatUnit] = battle.get("party")
+	var source: CombatUnit = actions.units.filter(func(unit: CombatUnit) -> bool: return not unit.is_ally)[0]
+	_check(actions.apply_status(source, party[0], "poison") and actions.apply_status(source, party[1], "burn"),
+		"형식 2 검사용 독·화상 부여")
+	var state: Dictionary = battle.call("combat_state")
+	_check(state.grounds.size() == 2 and state.grounds.all(func(ground: Array) -> bool:
+		return ground.size() == 6 and ground[5] == (4 if ground[2] == "poison" else 0)),
+		"장판은 여섯 값에 독 강도4·화상 강도0을 저장")
+	_check(state.units[0].statuses == [["poison", actions.units.find(source), 4, 4]]
+		and state.units[1].statuses == [["burn", actions.units.find(source), 2, 0]],
+		"상태 이상은 내성 DC 대신 독 강도4·화상 강도0을 저장")
+	_check(state.units[1].armor.stats == {"defense_bonus": 1, "max_hit_points": 3}, "방어 장비는 방어 가산으로 저장")
+	for index: int in range(actions.units.size()):
+		var unit: CombatUnit = actions.units[index]
+		_check(state.units[index].initiative_roll == unit.get_initiative()
+			and unit.initiative_roll >= 1 and unit.initiative_roll <= unit.get_ability_sides(CombatUnit.Ability.DEXTERITY),
+			"민첩 주사위의 원본 결과를 저장: %d" % index)
+	var restored: Node2D = _battle(-1)
+	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
+		"형식 2의 강도·장비·이니셔티브를 포함한 상태 왕복")
+	await _free(restored)
+	await _free(battle)
 
 
 ## 자동 저장마다 파일에서 다시 읽은 저장과 그 순간의 전투 상태를 모은다.
@@ -305,11 +334,18 @@ func _test_rejects_bad_saves() -> void:
 			extra.kind = CombatUnit.Kind.MOTHER_SPIDER
 			state.units.append(extra),
 		"없는 유닛을 가리키는 표식": func(state: Dictionary) -> void: state.units[0].marked_target = 99,
-		"모르는 상태 이상": func(state: Dictionary) -> void: state.units[0].statuses = [["curse", 0, 1, 10]],
+		"모르는 상태 이상": func(state: Dictionary) -> void: state.units[0].statuses = [["curse", 0, 1, 0]],
+		"독 강도가 정수가 아님": func(state: Dictionary) -> void: state.units[0].statuses = [["poison", 0, 1, 4.0]],
+		"독 강도가 없음": func(state: Dictionary) -> void: state.units[0].statuses = [["poison", 0, 1, 0]],
+		"한도 밖 독 강도": func(state: Dictionary) -> void: state.units[0].statuses = [["poison", 0, 1, 1 << 60]],
 		"턴 순서의 중복 유닛": func(state: Dictionary) -> void: state.turns.order.append(state.turns.order[0]),
 		"묶음 범위 밖": func(state: Dictionary) -> void: state.turns.group = Vector2i(0, 99),
 		"모르는 물체": func(state: Dictionary) -> void: state.props.append(["bomb", Vector2i.ZERO, 1]),
-		"장판의 유닛 번호 밖": func(state: Dictionary) -> void: state.grounds.append([99, Vector2i.ZERO, "burn", 2, []]),
+		"장판의 유닛 번호 밖": func(state: Dictionary) -> void: state.grounds.append([99, Vector2i.ZERO, "burn", 2, [], 0]),
+		"이전 형식의 장판": func(state: Dictionary) -> void: state.grounds.append([0, Vector2i.ZERO, "burn", 2, []]),
+		"장판 강도가 정수가 아님": func(state: Dictionary) -> void: state.grounds.append([0, Vector2i.ZERO, "poison", 4, [], 4.0]),
+		"장판 독 강도가 없음": func(state: Dictionary) -> void: state.grounds.append([0, Vector2i.ZERO, "poison", 4, [], 0]),
+		"한도 밖 장판 강도": func(state: Dictionary) -> void: state.grounds.append([0, Vector2i.ZERO, "poison", 4, [], 1 << 60]),
 		"난수 상태가 정수가 아님": func(state: Dictionary) -> void: state.dice = "seed",
 		"아이콘 경로를 바꾼 아이템": func(state: Dictionary) -> void: state.bag[0].icon = "../../../../project",
 		"수치가 정수가 아닌 장비": func(state: Dictionary) -> void: state.units[0].weapon.stats.attack_bonus = [1],
@@ -321,7 +357,7 @@ func _test_rejects_bad_saves() -> void:
 		"마지막 아군이 적": func(state: Dictionary) -> void: state.last_ally = enemy,
 		"끝나지 않는 행동 수": func(state: Dictionary) -> void: state.units[enemy].action_left = 1 << 40,
 		"한도 밖 HP": func(state: Dictionary) -> void: state.units[0].hit_points = 1 << 60,
-		"한도 밖 장비 수치": func(state: Dictionary) -> void: state.units[1].armor.stats.armor_class = 1 << 60,
+		"한도 밖 장비 수치": func(state: Dictionary) -> void: state.units[1].armor.stats.defense_bonus = 1 << 60,
 		"시전자 없는 기절": func(state: Dictionary) -> void:
 			state.units[0].stunned = true
 			state.units[0].stun_source = -1,

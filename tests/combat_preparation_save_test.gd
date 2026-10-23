@@ -42,7 +42,7 @@ func _won_battle() -> Node2D:
 	var party: Array[CombatUnit] = battle.get("party")
 	var actions: CombatActions = battle.get("actions")
 	loot.receive(party[0], _item("weapon", {"attack_bonus": 1, "damage_bonus": 1}))
-	loot.receive(party[1], _item("armor", {"armor_class": 1, "max_hit_points": 2}))
+	loot.receive(party[1], _item("armor", {"defense_bonus": 1, "max_hit_points": 2}))
 	loot.bag.append_array([_item("weapon", {"attack_bonus": 1, "damage_bonus": 2}), _item("potion", {})])
 	party[0].potion_left = 2
 	for unit: CombatUnit in actions.units:
@@ -50,7 +50,7 @@ func _won_battle() -> Node2D:
 			actions.incapacitate(unit)
 	actions.changed.emit()
 	var rewards: Array[Dictionary] = (battle.get("progress") as CombatActProgress).rewards
-	var armor: Dictionary = _item("armor", {"armor_class": 2, "max_hit_points": 2})
+	var armor: Dictionary = _item("armor", {"defense_bonus": 2, "max_hit_points": 2})
 	rewards.assign([_item("weapon", {"attack_bonus": 1, "damage_bonus": 3}), _item("potion", {}), armor, armor])
 	battle.call("_process", 0.0)
 	return battle
@@ -125,7 +125,7 @@ func _test_actions() -> void:
 	_check(party[1].potion_left == 1, "보상 물약 주기")
 	await _check_saved(battle, "보상 물약 주기")
 	preparation._receive(0, 0)
-	_check(party[0].armor.stats.armor_class == 2, "보상 방어구 장착")
+	_check(party[0].armor.stats.defense_bonus == 2, "보상 방어구 장착")
 	await _check_saved(battle, "보상 방어구 장착")
 	preparation._receive_bag(0, 0)
 	_check(party[0].weapon.stats.damage_bonus == 2, "가방 무기 장착")
