@@ -54,6 +54,33 @@ main 밖 SHA와 실패한 CI는 source 실행 전에 차단합니다.
 - 일부 asset만 올라간 새 Draft가 있으면 그 ID·상태·남은 파일을 기록하고 복구 범위를 정합니다. 완성된 이전 백업을 보존합니다. 부분 Draft가 남아 있는 상태에서 같은 버전의 신규 생성 재시도를 반복하면 중복 검사에 막힙니다.
 - 원인과 현재 원격 상태를 확인한 뒤 재시도합니다. 이 절차는 공개 전환·실제 Git tag 교체·자동 덮어쓰기·자동 삭제를 허용하지 않습니다.
 
+### 읽기 전용 로컬 검증 명령
+
+백업 다운로드와 새 Draft 완료 확인에는 `scripts/verify_draft.py`를 사용합니다.
+인증된 `gh`와 공식 Godot 4.7.2 Standard 실행 파일이 필요합니다. 저장소 밖의 새 폴더를 지정합니다.
+release ID·버전·source SHA는 상세 조회한 값을 명시합니다. 최신 실행이나 Draft를 자동 선택하지 않습니다.
+
+```sh
+python3 scripts/verify_draft.py \
+  --release-id RELEASE_ID --version v0.1.0-alpha.3 \
+  --source-sha SOURCE_FULL_SHA --output /absolute/backup/new-draft \
+  --godot /Applications/Godot.app/Contents/MacOS/Godot \
+  --request-run-id REQUEST_RUN_ID --build-run-id BUILD_RUN_ID
+```
+
+run ID 두 옵션은 함께 지정합니다. 요청 artifact의 버전·source·run/attempt와 요청·Build의 workflow·event·main·성공 상태, Build의 `build`·`draft` 작업 성공을 확인합니다.
+두 실행의 연결은 위 재빌드 절차에서 확인한 ID를 입력합니다. 이 명령은 API에 없는 부모 실행 관계를 추정하지 않습니다.
+오래된 Draft 백업으로 요청 artifact가 만료되었으면 run ID 두 옵션을 함께 생략합니다. 이때 Actions 출처는 검증하지 않으며 `runs.json`은 비어 있습니다.
+
+폴더에는 `identity.json`, `release.json`, `runs.json`, `assets/`, `runtime.log`, 성공 시 `result.json`을 남깁니다.
+같은 명령은 다운로드 파일을 재사용하고 모든 검사를 다시 수행합니다. 다른 대상·변경된 asset·손상 파일·symlink는 거부합니다.
+실패하면 이전 성공 결과를 지우고 종료 코드 1을 반환합니다. 손상 파일을 자동 덮어쓰지 않으므로 근거를 보존하고 새 폴더에서 다시 받습니다.
+
+검사는 asset 크기·제공된 GitHub digest, `verify_bundle()`의 ZIP·엔진 pin·metadata·내부 hash와 SRD 권리 고지를 확인합니다.
+PCK만 저장소 밖 임시 폴더에 꺼내 headless로 실행합니다. HOME·XDG 경로를 분리해 사용자 저장을 읽거나 덮어쓰지 않습니다.
+이 명령은 GitHub GET만 사용합니다. Draft 이름 변경·workflow 실행·공개·삭제는 수행하지 않습니다.
+성공 결과는 headless 실행 근거이며 사람의 직접 플레이·청취·가독성 확인을 대체하지 않습니다.
+
 ## 요청의 출처와 재실행
 
 요청 artifact 이름은 `verification-request-<run_attempt>`입니다. 보관 기간은 7일입니다.
