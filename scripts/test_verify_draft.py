@@ -190,6 +190,9 @@ class DraftVerificationTests(unittest.TestCase):
         with patch.object(verifier.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, b"{}")) as run:
             self.assertEqual(api.request("GET", "releases/10"), {})
             self.assertEqual(api.asset(2), b"{}")
+            api.download("actions/artifacts/3/zip")
+            self.assertIn("Accept: application/octet-stream", run.call_args_list[1].args[0])
+            self.assertIn("Accept: application/json", run.call_args_list[2].args[0])
             for call in run.call_args_list:
                 self.assertEqual(call.args[0][:4], ["gh", "api", "--method", "GET"])
                 self.assertNotIn("shell", call.kwargs)

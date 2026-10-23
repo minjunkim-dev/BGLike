@@ -25,10 +25,10 @@ class GitHub:
         return json.loads(result.stdout)
 
     def asset(self, asset_id):
-        return self.download(f"releases/assets/{asset_id}")
+        return self.download(f"releases/assets/{asset_id}", "application/octet-stream")
 
-    def download(self, path):
-        return subprocess.run(["gh", "api", "--method", "GET", "-H", "Accept: application/octet-stream",
+    def download(self, path, accept="application/json"):
+        return subprocess.run(["gh", "api", "--method", "GET", "-H", f"Accept: {accept}",
                                f"repos/{self.repo}/{path}"],
                               check=True, capture_output=True, timeout=60).stdout
 
