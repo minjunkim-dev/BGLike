@@ -223,6 +223,15 @@ func _test_battle_rolls() -> void:
 	actions.dice = ScriptedDice.new([8, 1, 2, 1, 3], [12, 20, 8, 8, 8])
 	var warrior_before: int = warrior.hit_points
 	var archer_before: int = archer.hit_points
+	# #326: 현재 콘텐츠에 없는 혼합 유리 조건은 기획 답 전까지 자원·난수를 쓰지 않는다.
+	warrior.is_stunned = true
+	var actions_before: int = boss.action_left
+	_check(not actions.can_use(boss, "spin") and not await actions.spin(boss)
+		and boss.action_left == actions_before and not actions.busy
+		and warrior.hit_points == warrior_before and archer.hit_points == archer_before
+		and (actions.dice as ScriptedDice).unused() == [8, 1, 2, 1, 3],
+		"혼합 유리 광역은 행동·HP·공통 공격·방어 굴림을 소비하지 않고 거부")
+	warrior.is_stunned = false
 	_check(await actions.spin(boss) and warrior.hit_points == warrior_before - 4
 		and archer.hit_points == archer_before - 5 and actions.last_attack.total == 11,
 		"실제 회전 베기는 공통 공격8+3과 두 대상의 방어를 비교하고 각각 피해")
