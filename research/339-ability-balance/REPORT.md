@@ -14,7 +14,7 @@
 - 전투와 이니셔티브의 독립 RNG를 검수 전용 subclass로 고정했다. 동일 seed 번호라도 정책의 행동/난수 소비가 다르므로 같은 대상에게 같은 굴림을 배정하지는 않는다.
 - 수정 전 다중 seed 시도는 사망 후 다음 AI의 busy를 읽은 하네스 경쟁으로 거부했다. 실패 로그와 원자료를 evidence/rejected-attempt에 보존하며 최종60회에 합치지 않았다. 수정 후 mother seed6·11의 반복에서 HP·보상·공격·이동 기록이 동일했다(시간 필드 제외). evidence/replay-check.json과 replay/를 참고한다.
 - source통제 headless 실행이다. Draft PCK·실제 창·음향·사람 체감·기획 검수 완료를 뜻하지 않는다. 과거 d20 통계와의 단순 수치 비교를 개편의 인과효과로 해석하지 않는다.
-- 독립 Standards·Spec·Security가 실행 하네스를 검토했다. 같은 상속 Codex 모델의 별도 컨텍스트이며 세부 모델ID는 런타임 미노출이다. 전체 표본·분모·집계는 추가 대조한다.
+- 독립 Standards·Spec·Security가 실행 하네스를 검토했다. 같은 상속 Codex 모델의 별도 컨텍스트이며 세부 모델ID는 런타임 미노출이다. 별도 Spec 컨텍스트에서60회·491개 전투 시도와 모든 집계표를 원자료에 대조해 불일치0을 확인했다. manifest의385개 추적 파일(자기 자신 제외)도 누락·추가·해시 불일치0이다.
 
 원자료: evidence/samples/{mother,nearest}/<seed>/ 의 runtime.log·run.json·attempts.csv·streaks.csv·enemy_segments.csv. 합친CSV는 evidence/samples/data/, 전체 표는 아래와 evidence/samples/tables.md다. 실패 기록은 삭제하지 않는다. #205의 기획 결정과 공급원·배치·수치 대기는 유지한다.
 
