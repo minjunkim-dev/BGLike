@@ -1,4 +1,9 @@
 {
+  "README.md": "7784cb49f309e43d9c23071e71494702969ecc3b5cc695c611101b7305377d69",
+  "REPORT.md": "723127ef55120ccb807af2eef228716219cdc08bc1aebf8656e6d0d7673bf624",
+  "aggregate.py": "ec9a00e53ce16ac3f92992616d1ac2c66252a302bc41c3083a326950c799c689",
+  "autoplay.gd": "cceb8c2d18f846a745ba46bd353a6b618af40453043f7fc75486251f794a4c58",
+  "autoplay.gd.uid": "a469e824b93f0675c4989f8afd82c09e00a2c3daa1cf3fc8a8e784dd155bf49c",
   "evidence/rejected-attempt/inputs.json": "6c49b48496f5f436d4602ca627e63c917128c71a47ca70f6cd637b18c134997b",
   "evidence/rejected-attempt/mother/1/attempts.csv": "473bb56c811bbede16471aa91b563d9bbf69f110ba55b6404172677626d1cd63",
   "evidence/rejected-attempt/mother/1/enemy_segments.csv": "c1ce6b308c0e968ca7dcc83b156421cceebd6323bc86ccb0cb7b71e9eb49acc1",
@@ -57,6 +62,7 @@
   "evidence/rejected-attempt/mother/9/streaks.csv": "69b25b344de6ac5e77baa45d8d0f38ae3cd4cb4b1f5a667aa2ad75476d82f15e",
   "evidence/rejected-attempt/parse.log": "6d1c065383a27c36804949b6ffa4b09714470b112e5dacc0bd5aeb7b9c147c4e",
   "evidence/rejected-attempt/plan.json": "63fe9402f7d165061b03987503db93d5f677c35e4405cd317e09cb87ba9f9d82",
+  "evidence/replay-check.json": "305057a86bc97a65e3335ef01ff73aaf4054521b1389b2fba6d294ba2812e2b1",
   "evidence/replay/mother/11/attempts.csv": "808814f5b6f4d777e5820b22674974f5a564c640466c322955f0b453b3806367",
   "evidence/replay/mother/11/enemy_segments.csv": "5451f5eb602c86d1d3b4e9105214a39f360db64bd2fbaaa327990511606e7f0d",
   "evidence/replay/mother/11/run.json": "a1ac93e6f44b0218541adbbdf971448c545741d6f6235e12c8b0b18f290af3d9",
@@ -67,7 +73,6 @@
   "evidence/replay/mother/6/run.json": "8e2d2a09f179d2e3403eec275f2ee24cef6cc78dd9c1fef1c4af4c357e588285",
   "evidence/replay/mother/6/runtime.log": "04d033c3ab45b7118c8e0c62d989b9719d524f9fc212b931fb3d8b9e7834949c",
   "evidence/replay/mother/6/streaks.csv": "ec4d61300863f2539a6b49bd1c9a3ea6c796cfa54a515400e9239b985eb59f92",
-  "evidence/replay-check.json": "305057a86bc97a65e3335ef01ff73aaf4054521b1389b2fba6d294ba2812e2b1",
   "evidence/samples/data/attempts.csv": "df1542b611ab9289c7ad6ae113757a8dfb24f5a5dfff64fa5c9700e0c8ff2bed",
   "evidence/samples/data/enemy_segments.csv": "820762730e0df97a6419682e6b0173806ded4dd4503669a9faab19a02aa25ea8",
   "evidence/samples/data/runs.csv": "5c4d40f999e99aecd74a9b6381d9991c44110cfdcf5854fe62cde7d835c0cb88",
@@ -376,5 +381,7 @@
   "evidence/samples/parse.log": "6d1c065383a27c36804949b6ffa4b09714470b112e5dacc0bd5aeb7b9c147c4e",
   "evidence/samples/plan.json": "6edbd21b6669e9b12ad8f7989cf10aa9ecd652f9dd8ec984de2e6a50dbd0a52c",
   "evidence/samples/result.json": "de27975605b9771945f177a24404473d81ec6393ea9710e148e0e008b05e014e",
-  "evidence/samples/tables.md": "742e3d9d695b836eaaa92c16e67570330143f003b1939b998fd7b4962b275318"
+  "evidence/samples/tables.md": "742e3d9d695b836eaaa92c16e67570330143f003b1939b998fd7b4962b275318",
+  "run.py": "37a3f732e42c087f3b19e9bb02ce6f5ad7ff31ebfefd6782fee5e2638f88e243",
+  "test_run.py": "5d247ce3a26f0ff6ce8a12828a928c8d64759281cf7681f7bdfe2514c504e244"
 }
