@@ -537,7 +537,8 @@ func _drag_item(control: Control, kind: String, index: int) -> Variant:
 
 func _can_drop_item(data: Variant, kind: String, index: int) -> bool:
 	if not visible or not maintaining or discard_dialog.visible or not data is Dictionary \
-		or data.get("owner") != get_instance_id() or not data.get("index") is int:
+		or data.get("owner") != get_instance_id() or not data.get("index") is int \
+		or not data.get("kind") is String or not data.get("item") is Dictionary:
 		return false
 	var source: String = data.get("kind", "")
 	var at: int = data.index

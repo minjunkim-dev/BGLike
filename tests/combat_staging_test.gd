@@ -81,6 +81,11 @@ func _run() -> void:
 	preparation._render()
 	await _settle()
 	await _capture("02-preparation")
+	for malformed: Variant in [[], {}]:
+		ck(not preparation._can_drop_item({"owner": preparation.get_instance_id(), "index": 0,
+			"kind": malformed, "item": {}}, "weapon", 0), "타입이 다른 드래그 kind 거부")
+	ck(not preparation._can_drop_item({"owner": preparation.get_instance_id(), "index": 0,
+		"kind": "bag", "item": []}, "weapon", 0), "타입이 다른 드래그 item 거부")
 	var bag_before: Array[Dictionary] = loot.bag.duplicate(true)
 	await _drag("BagItem0", "Armor0")
 	ck(loot.bag == bag_before and party[0].weapon.is_empty(), "잘못된 장비 칸은 아이템 보존")
