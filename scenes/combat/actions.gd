@@ -769,14 +769,17 @@ func attack(actor: CombatUnit, target: CombatUnit, shock: bool = false) -> bool:
 	return true
 
 
-# shortcut: 현재 콘텐츠에서 없는 혼합 유리 조건은 #326 기획 확정 뒤 지원한다.
 func _spin_mode(actor: CombatUnit, targets: Array[CombatUnit]) -> int:
 	if targets.is_empty():
 		return -1
-	var mode: int = grid.attack_preview(actor, targets[0]).mode
+	var mode: int = CombatChecks.RollMode.ADVANTAGE
 	for target: CombatUnit in targets:
-		if grid.attack_preview(actor, target).mode != mode:
-			return -1
+		var target_mode: CombatChecks.RollMode = grid.attack_preview(actor, target).mode
+		# 불리는 공격자 공통이므로 하나라도 불리면 유지하고, 유리는 전원 충족해야 한다.
+		if target_mode == CombatChecks.RollMode.DISADVANTAGE:
+			return target_mode
+		if target_mode == CombatChecks.RollMode.NORMAL:
+			mode = target_mode
 	return mode
 
 
