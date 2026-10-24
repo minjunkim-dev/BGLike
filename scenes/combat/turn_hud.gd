@@ -63,9 +63,9 @@ func feedback_obstacles() -> Array[Rect2]:
 func _ready() -> void:
 	# 기본 반투명 배경은 아래 지형에 따라 대비가 바뀐다. 불투명 패널로 WCAG AA를 고정한다.
 	$CombatLog.add_theme_stylebox_override("panel", _panel_style())
-	# 스킬 설명은 스킬 패널 위에 띄운다. 반응·결과 창이 열리면 숨긴다.
+	# 스킬 설명은 전투 로그 위에 띄워 판정 기록을 가리지 않는다.
 	_tooltip.top_of = func(target: Control) -> float:
-		return ($Skills as Control).get_global_rect().position.y if $Skills.is_ancestor_of(target) \
+		return ($CombatLog as Control).get_global_rect().position.y if $Skills.is_ancestor_of(target) \
 			else target.get_global_rect().position.y
 	_tooltip.hidden_when = func() -> bool: return reaction_dialog.visible or $Result.visible
 	add_child(_tooltip)
