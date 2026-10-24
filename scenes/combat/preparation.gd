@@ -292,8 +292,10 @@ func _render_card(index: int) -> void:
 	_drag_slot(card, "ally", index)
 	# 목업 좌표를 그대로 쓰려고 카드 안은 고정 배치한다.
 	var area: Control = Control.new()
+	area.mouse_filter = Control.MOUSE_FILTER_PASS
 	card.add_child(area)
 	var portrait: TextureRect = TextureRect.new()
+	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	portrait.texture = load(UNIT_FRAME % unit.get_art_id()) as Texture2D
 	portrait.material = preload("res://scenes/combat/art/pixel_art.tres")
 	portrait.position = Vector2(6, 4)
@@ -309,11 +311,13 @@ func _render_card(index: int) -> void:
 		hit_points.add_theme_color_override("font_color", DOWN_COLOR)
 	hit_points.position = Vector2(76, 18)
 	var bar: ColorRect = ColorRect.new()
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.color = Color("2a1513")
 	bar.position = Vector2(76, 36)
 	bar.size = Vector2(120, 4)
 	area.add_child(bar)
 	var fill: ColorRect = ColorRect.new()
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fill.color = Color("c0544d")
 	fill.size = Vector2(120.0 * clampf(float(unit.hit_points) / unit.get_max_hit_points(), 0.0, 1.0), 4)
 	bar.add_child(fill)

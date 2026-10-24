@@ -123,12 +123,21 @@ func _run() -> void:
 	bag_before = loot.bag.duplicate(true)
 	await _drag("BagItem1", "Potions1")
 	ck(loot.bag == bag_before and party[1].potion_left == int(loot.data["potion_limit"]), "물약 한도면 드롭 거부")
+	await _drag("BagItem1", "Card0")
+	ck(party[0].potion_left == 1 and loot.bag.size() == 1, "캐릭터 카드의 본문에 놓아 물약 분배")
+	for point: Vector2 in [Vector2(30, 30), Vector2(90, 38)]:
+		party[0].potion_left = 0
+		loot.bag.append(_item("potion"))
+		preparation._render()
+		await _settle()
+		await _drag("BagItem1", "Card0", point)
+		ck(party[0].potion_left == 1 and loot.bag.size() == 1, "초상화·HP 막대에 놓아 물약 분배")
 	# 보상 직접 수령과 꽉 찬 가방의 장착/교환 경계.
 	preparation.rewards.assign([_item("weapon")])
 	preparation._render()
 	await _settle()
 	await _drag("Item0", "EmptyBag2")
-	ck(preparation.rewards.is_empty() and loot.bag.size() == 3, "보상을 빈 가방에 직접 수령")
+	ck(preparation.rewards.is_empty() and loot.bag.size() == 2, "보상을 빈 가방에 직접 수령")
 	var weapon: Dictionary = _item("weapon")
 	while loot.bag.size() < int(loot.data["bag_limit"]):
 		loot.bag.append(weapon.duplicate(true))
@@ -191,9 +200,12 @@ func _settle() -> void:
 	for step: int in range(3):
 		await process_frame
 
-func _point(node_name: String) -> Vector2:
-	var control: Control = preparation.find_child(node_name, true, false)
+func _point(node_name: String, offset: Vector2 = Vector2.INF) -> Vector2:
+	var control: Control = (preparation.cards.get_child(int(node_name.trim_prefix("Card")))
+		if node_name.begins_with("Card") else preparation.find_child(node_name, true, false))
 	var point: Vector2 = control.get_global_rect().get_center()
+	if offset != Vector2.INF:
+		point = control.global_position + offset
 	if node_name.begins_with("Potions"):
 		point = control.global_position + Vector2(8, 8)
 	return root.get_final_transform() * point
@@ -225,9 +237,9 @@ func _begin_drag(source: String) -> void:
 	if source == "BagItem0" and party[0].weapon.is_empty():
 		await _capture("03-drag-valid-targets-" + str(checks))
 
-func _drag(source: String, target: String) -> void:
+func _drag(source: String, target: String, offset: Vector2 = Vector2.INF) -> void:
 	await _begin_drag(source)
-	var point: Vector2 = _point(target)
+	var point: Vector2 = _point(target, offset)
 	await _motion(point, Vector2(30, 30))
 	await _mouse(point, false)
 
