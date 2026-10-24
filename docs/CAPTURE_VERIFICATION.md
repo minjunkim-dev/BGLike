@@ -140,6 +140,25 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 
 유닛 몸통 클릭과 초상 클릭의 계약도 구분한다. 아군 몸통 클릭은 공격 선택을 취소한다. 밀치기를 선택했을 때는 아군 몸통도 대상 미리보기·확정을 받는다. 조작 유닛 전환은 아군 초상으로 확인한다. 빈 영역의 좌표는 실제 초상·스크롤 영역을 읽어 정한다.
 
+## PCK 이동 후조건의 재현
+
+`tests/movement_qa.gd`와 `scripts/qa_movement.py`는 [#336](https://github.com/minjunkim-dev/BGLike/issues/336)의 검수 전용 하네스다. 정상 이동, 기회 공격 빗나감, 기회 공격으로 전투 불능, 이동 중 전투 종료, 확인 클릭 누락의 5개 통제 사례를 한 번 실행한다. 마지막 사례는 이동 검사기가 실패를 검출해야 통과한다. 초기화만 확인하고 성공하는 별도 fixture precheck는 없다. 기존 `ScriptedDice.finish()`가 면수·미소비·부족 난수를 확인한다.
+
+먼저 [Draft 검증](DRAFT_RELEASE.md)의 `verify_draft.py`로 대상 artifact를 확인한다. 그 출력의 `assets/`와 전체 source SHA를 전달한다. 하네스는 기존 `verify_bundle()`로 bundle을 다시 확인하고 `manual_qa.load_plan()`으로 하네스 checkout·입력의 fingerprint를 기록한다. artifact source와 하네스 HEAD는 별도 식별자다.
+
+```sh
+python3 ~/.agents/tools/agent_workflow.py check -- \
+  python3 scripts/qa_movement.py \
+    --bundle /path/to/verified-draft/assets \
+    --version v0.1.0-alpha.3 --source-sha <artifact의 전체 SHA> \
+    --output /path/to/new-movement-evidence \
+    --godot /Applications/Godot.app/Contents/MacOS/Godot
+```
+
+출력은 checkout 밖의 새 폴더만 받으며 기존 기록을 덮어쓰지 않는다. 복사한 하네스와 PCK를 headless·임시 HOME/XDG에서 실행한다. `inputs.json`, 엔진·문법·실행 로그, `fixtures.json`을 남기고, 다섯 사례와 negative control까지 통과해야 `result.json`을 만든다. 실패 원인과 로그는 보존하고 다른 폴더로 재시도한다. 고정 `/tmp` 경로나 원래 세션의 파일은 필요 없다.
+
+이 결과는 통제된 배치의 이동 경로·비용·잠금 해제 증거다. 자연 진행·졸업·밸런스·실제 창 해상도·픽셀·사람의 직접 플레이 검수를 대신하지 않는다. 새 제품 입력·화면 변경의 검수는 위 실행 기록 절차를 따른다.
+
 ## 증거의 완료 기준
 
 | 항목 | 필요한 증거 |
