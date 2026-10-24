@@ -2,9 +2,11 @@
 
 > 기획이 개발 담당에게 넘기는 문서입니다. **무엇을, 왜, 어디까지** 만들지 적었습니다. 작업 분할, 순서, 일정은 개발 담당이 이 문서를 보고 개발 계획으로 씁니다.
 >
-> - 기준일: 2026-10-23
+> - 규칙 기준일: 2026-10-23 · 구현 상태 갱신일: 2026-10-24
 > - 규칙 기준: [능력치와 주사위 대결 기획서](ABILITY_SYSTEM.md)
-> - 상태: **개발 담당에게 넘길 수 있습니다.** 확정된 범위는 구현 Issue로 바로 열 수 있습니다. 육성 관련 개발은 막아 둡니다(5장).
+> - 상태: **확정 범위의 구현·병합을 완료했습니다.** [Issue #321](https://github.com/minjunkim-dev/BGLike/issues/321)의 구현 [PR #327](https://github.com/minjunkim-dev/BGLike/pull/327)을 `7d39beaa882cd92f053aa8cb828b0187aeacc92a`로 병합했고 alpha.3에 반영했습니다.
+> - 실행 검수: [#307 사용자 위임 에이전트 검수](https://github.com/minjunkim-dev/BGLike/issues/307#issuecomment-6378380493)와 [이동 후조건 추가 검수](https://github.com/minjunkim-dev/BGLike/issues/307#issuecomment-6378544532)를 완료했습니다. 사람의 직접 기획 검수는 7장과 구분합니다.
+> - 남은 기획: 육성·절대면·치명타 재도입은 [#322](https://github.com/minjunkim-dev/BGLike/issues/322), 혼합된 광역 유리 조건은 [#326](https://github.com/minjunkim-dev/BGLike/issues/326)의 답을 기다립니다. 해당 범위는 구현하지 않습니다.
 > - 배경: [M7까지 남은 작업 지도](https://github.com/minjunkim-dev/BGLike/issues/200) · [기획 현황](DESIGN_STATUS.md) · [주사위 육성 논의](DICE_GROWTH.md)
 
 ---
@@ -22,11 +24,11 @@
 
 ---
 
-## 2. 시작 전에 확인할 것
+## 2. 착수 조건의 현재 상태
 
 | 조건 | 내용 | 대기하는 범위 |
 |---|---|---|
-| 일정 | [#307 alpha.3 직접 플레이 확인](https://github.com/minjunkim-dev/BGLike/issues/307)과 M7 범위 안에서 이 변경을 언제 할지 기획자가 정함 ❓. 판정이 전부 바뀌므로 alpha.3 확인 뒤 시작하는 것을 권장 🟡 | 없음 (시작 시기만 정함) |
+| 일정 | 2026-10-23 [PR #327](https://github.com/minjunkim-dev/BGLike/pull/327) 병합으로 확정 범위의 구현을 마쳤고 [#307](https://github.com/minjunkim-dev/BGLike/issues/307)의 alpha.3에 반영함 | 없음 (완료된 구현의 착수 시기를 다시 정하지 않음) |
 | 임시 규칙 | 충격 화살(민첩 하나만 비교), 흘려내기(스킬 방어 가산 +3), 독 제거(독 장판 고정 강도 4)를 확정함 ✅ ([기획서 8장](ABILITY_SYSTEM.md#8-현재-동작에-적용하는-임시-규칙)) | 없음 |
 | 치명타 임시 비활성 | 치명타·자동 실패가 사라지는 것을 확정함 ✅ | 없음 |
 
@@ -82,7 +84,7 @@
 
 ## 6. 개발 결정 후보
 
-개발 담당이 정하고 구현 Issue의 `개발 결정` 항목에 선택·근거·대안을 적습니다.
+아래는 요청 당시의 후보입니다. 선택한 방식과 근거는 [#321](https://github.com/minjunkim-dev/BGLike/issues/321)과 [기획서의 구현 개발 결정](ABILITY_SYSTEM.md#구현의-개발-결정-321)에 기록했습니다.
 
 - 코드 식별자. 제안: `STRENGTH`, `DEXTERITY`, `CRAFT`(솜씨), `INTELLIGENCE`, `WILL`(의지), `NATURE`. "스킬(Skill)"과 겹치는 이름은 피함
 - 능력치 주사위 값 객체의 설계와 `CombatDice`의 확장 방식
@@ -95,7 +97,7 @@
 
 ## 7. 기획 검수 기준
 
-기획 담당이 아래 상황을 직접 만들어 확인합니다.
+기획 담당이 아래 상황을 직접 만들어 확인합니다. 아래 체크박스는 사람의 직접 기획 검수용이며 에이전트의 자동 검사·실행 검수 결과로 대신 체크하지 않습니다. 구현과 에이전트 검수 근거는 문서 상단의 #321·#307을 따릅니다.
 
 ### 판정
 
