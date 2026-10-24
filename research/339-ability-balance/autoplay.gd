@@ -364,7 +364,7 @@ func _settle() -> void:
 		for unit: CombatUnit in actions.units:
 			moving = moving or (is_instance_valid(unit) and unit.is_moving)
 		if not moving and not battle.has_node("Arrow") and not actions.busy:
-			await process_frame
+			# 다음 프레임에는 사망한 아군 대신 적 AI가 새 행동을 시작할 수 있다.
 			return
 		await process_frame
 
