@@ -72,12 +72,28 @@ func _run() -> void:
 			units[2].cell = Vector2i(4, 4)
 			_check(units[2].kind == CombatUnit.Kind.WARRIOR and not units[2].is_ally, "enemy warrior fixture")
 		ScriptedDice.arrange_turns(turns, units, [actor])
-		# 적 전사 STR d10 / 아군 궁수 STR d8, 적 기본 공격 피해 d4.
-		if case == "opportunity_incapacitated":
-			actor.hit_points = 1
-			actions.dice = ScriptedDice.new([10, 1, 1], [10, 8, 4])
-		elif case == "opportunity_miss":
-			actions.dice = ScriptedDice.new([1, 8], [10, 8])
+		if reaction_case:
+			var enemy: CombatUnit = units[2]
+			var attack_sides: int = enemy.get_ability_sides(enemy.get_attack_ability())
+			var defense_sides: int = actor.get_ability_sides(CombatUnit.Ability.STRENGTH)
+			var lethal: bool = case == "opportunity_incapacitated"
+			var attack_roll: int = attack_sides if lethal else 1
+			var defense_roll: int = 1 if lethal else defense_sides
+			var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(enemy, actor)
+			var hit: bool = attack_roll + enemy.get_attack_bonus() > defense_roll + actor.get_defense_bonus()
+			_check(preview.valid_target and preview.mode == CombatChecks.RollMode.NORMAL and hit == lethal
+				and 1 + enemy.get_damage_bonus() > 0, "opportunity dice produce intended hit/miss before movement")
+			if failures > 0:
+				await _free_fixture()
+				quit(1)
+				return
+			# 소비 순서: 공격 능력치 → 방어 힘 → 명중일 때만 피해 주사위.
+			if lethal:
+				actor.hit_points = 1
+				actions.dice = ScriptedDice.new([attack_roll, defense_roll, 1],
+					[attack_sides, defense_sides, enemy.get_damage_sides()])
+			else:
+				actions.dice = ScriptedDice.new([attack_roll, defense_roll], [attack_sides, defense_sides])
 		elif case == "battle_end":
 			# 전투 종료는 보상 d7 1회와 추가 드랍 확률 2회까지 실행한다.
 			actions.dice = ScriptedDice.new([7], [7], [0.99, 0.99])
