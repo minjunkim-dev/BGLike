@@ -2,11 +2,12 @@
 
 > 기획이 개발 담당에게 넘기는 문서입니다. **무엇을, 왜, 어디까지** 만들지 적었습니다. 작업 분할, 순서, 일정은 개발 담당이 이 문서를 보고 개발 계획으로 씁니다.
 >
-> - 규칙 기준일: 2026-10-23 · 구현 상태 갱신일: 2026-10-24
+> - 규칙 기준일: 2026-10-24 · 구현 상태 갱신일: 2026-10-24
 > - 규칙 기준: [능력치와 주사위 대결 기획서](ABILITY_SYSTEM.md)
-> - 상태: **확정 범위의 구현·병합을 완료했습니다.** [Issue #321](https://github.com/minjunkim-dev/BGLike/issues/321)의 구현 [PR #327](https://github.com/minjunkim-dev/BGLike/pull/327)을 `7d39beaa882cd92f053aa8cb828b0187aeacc92a`로 병합했고 alpha.3에 반영했습니다.
+> - 상태: **#321 확정 범위의 구현·병합을 완료했습니다.** [Issue #321](https://github.com/minjunkim-dev/BGLike/issues/321)의 구현 [PR #327](https://github.com/minjunkim-dev/BGLike/pull/327)을 `7d39beaa882cd92f053aa8cb828b0187aeacc92a`로 병합했고 alpha.3에 반영했습니다.
 > - 실행 검수: [#307 사용자 위임 에이전트 검수](https://github.com/minjunkim-dev/BGLike/issues/307#issuecomment-6378380493)와 [이동 후조건 추가 검수](https://github.com/minjunkim-dev/BGLike/issues/307#issuecomment-6378544532)를 완료했습니다. 사람의 직접 기획 검수는 7장과 구분합니다.
-> - 남은 기획: 육성·절대면·치명타 재도입은 [#322](https://github.com/minjunkim-dev/BGLike/issues/322), 혼합된 광역 유리 조건은 [#326](https://github.com/minjunkim-dev/BGLike/issues/326)에서 확정했고(모든 대상이 유리 조건을 충족할 때만 유리) 구현은 후속입니다. 육성 범위는 구현하지 않습니다.
+> - 후속 구현: 혼합된 광역 유리 조건은 [#326](https://github.com/minjunkim-dev/BGLike/issues/326)에서 확정했고 [#341](https://github.com/minjunkim-dev/BGLike/issues/341)에서 지원했습니다(모든 대상이 유리 조건을 충족할 때만 유리).
+> - 남은 기획: 육성·절대면·치명타 재도입은 [#322](https://github.com/minjunkim-dev/BGLike/issues/322)의 답을 기다립니다. 육성 범위는 구현하지 않습니다.
 > - 배경: [M7까지 남은 작업 지도](https://github.com/minjunkim-dev/BGLike/issues/200) · [기획 현황](DESIGN_STATUS.md) · [주사위 육성 논의](DICE_GROWTH.md)
 
 ---
