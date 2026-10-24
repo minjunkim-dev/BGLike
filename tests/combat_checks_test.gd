@@ -412,6 +412,7 @@ func _test_scene_input() -> void:
 	battle.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(battle)
 	battle.set_process(false)
+	battle.call("start_battle")
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var units: Array[CombatUnit] = battle.get("units")
@@ -478,6 +479,7 @@ func _test_scene_mixed_spin() -> void:
 	battle.stages[0] = load("res://scenes/combat/stage.tres")
 	root.add_child(battle)
 	battle.set_process(false)
+	battle.call("start_battle")
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var actions: CombatActions = battle.get("actions")

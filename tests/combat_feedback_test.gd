@@ -42,6 +42,7 @@ func _run() -> void:
 	battle = main.get_node("Battle") as Node2D
 	(battle.get("progress") as CombatActProgress).stage_index = 8
 	battle.call("_start_stage", true)
+	battle.call("start_battle")
 	var units: Array[CombatUnit] = battle.get("units")
 	_check(units.size() == 3, "반복 공격 전제조건: 3-3 유닛 3개")
 	if units.size() != 3:
@@ -153,6 +154,7 @@ func _test_shock_feedback() -> void:
 	for marked: bool in [false, true]:
 		(battle.get("progress") as CombatActProgress).stage_index = 1
 		battle.call("_start_stage", true)
+		battle.call("start_battle")
 		var units: Array[CombatUnit] = battle.get("units")
 		var archer: CombatUnit = units[1]
 		var target: CombatUnit = units[2]
@@ -178,8 +180,10 @@ func _test_shock_feedback() -> void:
 ## #260: 3-1에서 궁수를 여섯 유닛이 둘러싼 밀집 배치. 새끼 거미의 연속 피해 팝업이 대상 가까이에 순서대로 쌓여야 한다.
 func _test_crowded_feedback() -> void:
 	battle.set_process(false)  # 적 AI 대신 정해진 공격 한 번만 실행한다.
+	battle.call("start_battle")
 	(battle.get("progress") as CombatActProgress).stage_index = 6
 	battle.call("_start_stage", true)
+	battle.call("start_battle")
 	var units: Array[CombatUnit] = battle.get("units")
 	_check(units.size() == 7, "밀집 팝업 전제조건: 3-1 유닛 7개")
 	if units.size() != 7:

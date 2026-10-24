@@ -753,6 +753,7 @@ func _test_scene() -> void:
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	root.add_child(main)
 	battle.set_process(false)
+	battle.call("start_battle")
 	current_scene = main
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -842,6 +843,7 @@ func _test_default_scene() -> void:
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	root.add_child(main)
 	battle.set_process(false)
+	battle.call("start_battle")
 	current_scene = main
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns

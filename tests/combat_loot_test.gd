@@ -71,6 +71,7 @@ func _test_spiderling_rewards() -> void:
 		root.add_child(main)
 		var battle: Node2D = main.get_node("Battle") as Node2D
 		battle.set_process(false)
+		battle.call("start_battle")
 		var units: Array[CombatUnit] = battle.get("units")
 		var actions: CombatActions = battle.get("actions") as CombatActions
 		var progress: CombatActProgress = battle.get("progress") as CombatActProgress
@@ -103,9 +104,11 @@ func _test_boss_reward_boundary() -> void:
 			root.add_child(main)
 			var battle: Node2D = main.get_node("Battle") as Node2D
 			battle.set_process(false)
+			battle.call("start_battle")
 			var progress: CombatActProgress = battle.get("progress") as CombatActProgress
 			progress.stage_index = stage
 			battle.call("_start_stage", true)
+			battle.call("start_battle")
 			var units: Array[CombatUnit] = battle.get("units")
 			_check(units.size() == 3 and units[2].is_boss(), "각 막의 실제3스테이지는 보스1마리")
 			if units.size() != 3 or not units[2].is_boss():
@@ -400,6 +403,7 @@ func _test_bag_scene_use() -> void:
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	var loot: CombatLoot = battle.loot
 	var party: Array[CombatUnit] = battle.party
 	var old: Dictionary = {"kind": "armor", "name": "이전 방어구", "stats": {"max_hit_points": 2}}
@@ -441,6 +445,7 @@ func _test_armor_unequip_scene() -> void:
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	var loot: CombatLoot = battle.loot
 	var party: Array[CombatUnit] = battle.party
 	var warrior_armor: Dictionary = {"kind": "armor", "name": "전사 방어구", "stats": {"max_hit_points": 5}}
@@ -521,6 +526,7 @@ func _test_finish_preference() -> void:
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	var preparation: CombatPreparation = battle.preparation
 	var loot: CombatLoot = battle.loot
 	loot.data["extra_drop_chance"] = 0.0
@@ -584,6 +590,7 @@ func _test_finish_preference() -> void:
 		await _enter_dialog(preparation.discard_dialog)
 		_check(not preparation.visible and battle.progress.stage_index == 1 and loot.bag.size() == 12,
 			"성공한 명시적 확인에서만 생략 설정 적용")
+		battle.call("start_battle")
 		for unit: CombatUnit in battle.units:
 			if not unit.is_ally:
 				battle.actions.incapacitate(unit)
@@ -607,6 +614,7 @@ func _test_finish_preference() -> void:
 		await _click(preparation.continue_button)
 		_check(not preparation.visible and battle.progress.stage_index == 2
 			and loot.bag.size() == 12, "설정한 다음 정비는 확인 없이 전부 보관하고 한 번 진행")
+		battle.call("start_battle")
 		for unit: CombatUnit in battle.units:
 			if not unit.is_ally:
 				battle.actions.incapacitate(unit)
@@ -632,6 +640,7 @@ func _test_finish_preference() -> void:
 	current_scene = main
 	battle = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	_check(battle.loot.bag.is_empty(), "새 실행은 공용 가방이 비어 있음")
 	for unit: CombatUnit in battle.units:
 		if not unit.is_ally:
@@ -652,6 +661,7 @@ func _test_full_bag_finish() -> void:
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	var loot: CombatLoot = battle.loot
 	var progress: CombatActProgress = battle.progress
 	var potion: Dictionary = {"kind": "potion", "name": "보관 물약", "stats": {}}
@@ -719,6 +729,7 @@ func _test_reward_flow() -> void:
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	await process_frame
 	_check(battle.has_node("UI/Preparation"), "전투 사이 보상·정비 화면")
 	if battle.has_node("UI/Preparation"):
@@ -1057,8 +1068,10 @@ func _test_scaled_combat() -> void:
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	(battle.get("progress") as CombatActProgress).stage_index = 6
 	battle.call("_start_stage", true)
+	battle.call("start_battle")
 	var units: Array[CombatUnit] = battle.get("units")
 	var actor: CombatUnit = units[2]
 	var target: CombatUnit = units[0]
@@ -1215,6 +1228,7 @@ func _test_accidental_advance() -> void:
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	for unit: CombatUnit in battle.get("units"):
 		if not unit.is_ally:
 			(battle.get("actions") as CombatActions).incapacitate(unit)

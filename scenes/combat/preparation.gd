@@ -1,6 +1,6 @@
 class_name CombatPreparation
 extends ColorRect
-## 전투 사이 보상 확인과 정비. 칸을 클릭해 고르고 아래 상세 패널의 버튼으로 실행한다 (#229 A안).
+## 보상 확인과 정비. 드래그로 옮기거나 칸 선택·상세 버튼으로 같은 동작을 실행한다 (#345).
 
 signal finished
 ## 화면 단계·보상·가방·장비·물약이 바뀌어 다시 그린 뒤. 전투가 자동 저장한다(#282). 칸 선택과 확인 창은 바꾸지 않는다.
@@ -24,6 +24,7 @@ var rewards: Array[Dictionary] = []
 var maintaining: bool = false
 var final_stage: bool = false
 var last_in_act: bool = false
+var before_battle: bool = false
 var title_label: Label
 var hint_label: Label
 var enable_button: Button
@@ -47,6 +48,7 @@ var _selected_kind: String = ""
 var _selected_index: int = -1
 ## 칸과 버튼의 설명. 호버와 키보드·컨트롤러 포커스에 스킬 바와 같은 모양·시점으로 띄운다(#274).
 var _tooltip: HoverTooltip = HoverTooltip.new()
+var _drag_targets: Array[Control] = []
 
 
 func _ready() -> void:
@@ -128,14 +130,14 @@ func _ready() -> void:
 	skip_confirmation.add_theme_font_size_override("font_size", 12)
 	confirmation_content.add_child(skip_confirmation)
 	add_child(discard_dialog)
-	_tooltip.hidden_when = func() -> bool: return discard_dialog.visible
+	_tooltip.hidden_when = func() -> bool: return discard_dialog.visible or get_viewport().gui_is_dragging()
 	add_child(_tooltip)
 	hide()
 
 
 func open_rewards(
 	model: CombatLoot, allies: Array[CombatUnit], drops: Array[Dictionary],
-	is_final: bool, is_last_in_act: bool, is_maintaining: bool = false
+	is_final: bool, is_last_in_act: bool, is_maintaining: bool = false, is_before_battle: bool = false
 ) -> void:
 	if visible:
 		return
@@ -145,6 +147,7 @@ func open_rewards(
 	final_stage = is_final
 	last_in_act = is_last_in_act
 	maintaining = is_maintaining
+	before_battle = is_before_battle
 	show()
 	_render()
 	continue_button.grab_focus()
@@ -231,6 +234,7 @@ func _finish() -> void:
 
 func _render() -> void:
 	bag_notice.hide()
+	_drag_targets.clear()
 	for parent: Node in [cards, content]:
 		for child: Node in parent.get_children():
 			parent.remove_child(child)
@@ -239,10 +243,12 @@ func _render() -> void:
 	_exits.clear()
 	_selected_kind = ""
 	title_label.text = tr("정비") if maintaining else tr_n("보상 · %d개", "보상 · %d개", rewards.size()) % rewards.size()
-	hint_label.text = (tr("칸을 클릭해 고르고 아래 버튼으로 장착·해제·폐기합니다.") if maintaining
+	hint_label.text = (tr("아이템을 맞는 칸으로 끌거나, 선택 후 아래 버튼을 누르세요.") if maintaining
 		else tr("받은 보상을 확인합니다. 정비에서 캐릭터에게 나눠 줍니다."))
 	continue_button.text = (tr("3막 졸업") if final_stage else tr("다음 막 시작") if last_in_act
 		else tr("다음 스테이지")) if maintaining else tr("정비하기")
+	if before_battle:
+		continue_button.text = tr("지도로 돌아가기")
 	enable_button.visible = maintaining
 	enable_button.disabled = _confirm_finish
 	for index: int in range(party.size()):
@@ -253,6 +259,7 @@ func _render() -> void:
 	var reward_grid: GridContainer = _grid(content, 7)
 	for index: int in range(rewards.size()):
 		var reward: Button = _cell(reward_grid, rewards[index], "", "Item%d" % index, GOLD_COLOR)
+		_drag_slot(reward, "reward", index)
 		reward.pressed.connect(func() -> void: _select("reward", index))
 		if loot.bag.is_empty() and index + reward_grid.columns >= rewards.size():
 			_exits.append(reward)
@@ -261,6 +268,7 @@ func _render() -> void:
 	for index: int in range(int(loot.data["bag_limit"])):
 		if index < loot.bag.size():
 			var bag_cell: Button = _cell(bag_grid, loot.bag[index], "", "BagItem%d" % index, LINE_COLOR)
+			_drag_slot(bag_cell, "bag", index)
 			bag_cell.pressed.connect(func() -> void: _select("bag", index))
 			if index + bag_grid.columns >= loot.bag.size():
 				_exits.append(bag_cell)
@@ -269,6 +277,8 @@ func _render() -> void:
 			empty.custom_minimum_size = Vector2(36, 36)
 			empty.add_theme_stylebox_override("panel", _style(LINE_COLOR, 0, 1, CELL_COLOR))
 			bag_grid.add_child(empty)
+			empty.name = "EmptyBag%d" % index
+			_drag_slot(empty, "empty_bag", index)
 	_label(content, tr("교체·해제한 장비와 받지 않은 보상은 공용 가방에 보관합니다."), DIM_COLOR)
 	_render_detail()
 	# 상태를 바꾸는 동작과 화면 단계 전환만 다시 그린다.
@@ -279,6 +289,7 @@ func _render_card(index: int) -> void:
 	var unit: CombatUnit = party[index]
 	var card: PanelContainer = _panel(cards, LINE_COLOR, 0)
 	card.custom_minimum_size = Vector2(300, 97)
+	_drag_slot(card, "ally", index)
 	# 목업 좌표를 그대로 쓰려고 카드 안은 고정 배치한다.
 	var area: Control = Control.new()
 	card.add_child(area)
@@ -316,6 +327,7 @@ func _render_card(index: int) -> void:
 		var cell: Button = _cell(area, item, unit.get_art_id(), ("Armor%d" if slot == 1 else "Weapon%d") % index,
 			LINE_COLOR)
 		cell.position = Vector2(x, 2)
+		_drag_slot(cell, "armor" if slot == 1 else "weapon", index)
 		cell.pressed.connect(func() -> void: _select("armor" if slot == 1 else "weapon", index))
 		var caption: Label = _label(area, tr("방어구") if slot == 1 else tr("무기"), DIM_COLOR, false)
 		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -325,10 +337,14 @@ func _render_card(index: int) -> void:
 	potions.position = Vector2(6, 74)
 	potions.add_theme_constant_override("separation", 2)
 	area.add_child(potions)
+	potions.name = "Potions%d" % index
+	potions.mouse_filter = Control.MOUSE_FILTER_STOP
+	_drag_slot(potions, "potion", index)
 	var potion_icon: Texture2D = load(CombatLoot.icon_path({"icon": "potion"})) as Texture2D
 	for slot: int in range(int(loot.data["potion_limit"])):
 		var pip: TextureRect = TextureRect.new()
 		pip.texture = potion_icon
+		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pip.material = preload("res://scenes/combat/art/pixel_art.tres")
 		pip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		pip.custom_minimum_size = Vector2(16, 16)
@@ -336,7 +352,7 @@ func _render_card(index: int) -> void:
 		if slot >= unit.potion_left:
 			pip.modulate = Color(1, 1, 1, 0.18)
 		potions.add_child(pip)
-	_label(potions, tr("물약 %d/%d") % [unit.potion_left, int(loot.data["potion_limit"])], DIM_COLOR, false)
+	_label(potions, tr("물약 %d/%d") % [unit.potion_left, int(loot.data["potion_limit"])], DIM_COLOR, false).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for target: int in range(party.size()):
 		if target == index or not maintaining:
 			continue
@@ -489,6 +505,89 @@ func _transfer(source: int, target: int) -> void:
 	if visible and maintaining and not discard_dialog.visible and loot.transfer_potion(party[source], party[target]):
 		_render()
 		continue_button.grab_focus()
+
+
+func _drag_slot(control: Control, kind: String, index: int) -> void:
+	control.set_meta("drop_kind", kind)
+	control.set_meta("drop_index", index)
+	_drag_targets.append(control)
+	control.set_drag_forwarding(
+		func(_point: Vector2) -> Variant: return _drag_item(control, kind, index),
+		func(_point: Vector2, data: Variant) -> bool: return _can_drop_item(data, kind, index),
+		func(_point: Vector2, data: Variant) -> void: _drop_item(data, kind, index))
+
+
+func _drag_item(control: Control, kind: String, index: int) -> Variant:
+	if not visible or not maintaining or discard_dialog.visible:
+		return null
+	var item: Dictionary = (rewards[index] if kind == "reward" else loot.bag[index] if kind == "bag"
+		else party[index].armor if kind == "armor" else {"icon": "potion"} if kind == "potion"
+		and party[index].potion_left > 0 else {})
+	if item.is_empty():
+		return null
+	var preview: TextureRect = TextureRect.new()
+	preview.texture = _icon(item, "")
+	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	preview.custom_minimum_size = Vector2(32, 32)
+	preview.material = preload("res://scenes/combat/art/pixel_art.tres")
+	control.set_drag_preview(preview)
+	# 시작 때는 원본을 옮기지 않는다. 취소·잘못된 목적지는 아무것도 바꾸지 않는다.
+	return {"owner": get_instance_id(), "kind": kind, "index": index, "item": item.duplicate(true)}
+
+
+func _can_drop_item(data: Variant, kind: String, index: int) -> bool:
+	if not visible or not maintaining or discard_dialog.visible or not data is Dictionary \
+		or data.get("owner") != get_instance_id() or not data.get("index") is int:
+		return false
+	var source: String = data.get("kind", "")
+	var at: int = data.index
+	if source in ["reward", "bag"]:
+		var items: Array[Dictionary] = rewards if source == "reward" else loot.bag
+		if at < 0 or at >= items.size() or data.get("item") != items[at]:
+			return false
+		var item: Dictionary = items[at]
+		if kind == "empty_bag":
+			return source == "reward" and loot.bag.size() < int(loot.data["bag_limit"])
+		return kind in [item.kind, "ally"] and index >= 0 and index < party.size() and (
+			loot.can_receive(party[index], item) if source == "reward" else
+			party[index].potion_left < int(loot.data["potion_limit"]) if item.kind == "potion" else true)
+	if at < 0 or at >= party.size():
+		return false
+	if source == "armor":
+		return kind == "empty_bag" and data.get("item") == party[at].armor \
+			and loot.armor_unequip_blocker(party[at]).is_empty()
+	return (source == "potion" and kind in ["potion", "ally"] and index >= 0 and index < party.size()
+		and at != index and party[at].potion_left > 0 and party[index].potion_left < int(loot.data["potion_limit"]))
+
+
+func _drop_item(data: Variant, kind: String, index: int) -> void:
+	if not _can_drop_item(data, kind, index):
+		return
+	match data.kind:
+		"reward":
+			if kind == "empty_bag":
+				loot.bag.append(rewards.pop_at(data.index))
+				_render()
+				continue_button.grab_focus()
+			else:
+				_receive(data.index, index)
+		"bag": _receive_bag(data.index, index)
+		"armor": _unequip_armor(data.index)
+		"potion": _transfer(data.index, index)
+
+
+func _notification(what: int) -> void:
+	if what not in [NOTIFICATION_DRAG_BEGIN, NOTIFICATION_DRAG_END] or not is_inside_tree():
+		return
+	for control: Control in _drag_targets:
+		if control is Button or control is Panel or control is PanelContainer:
+			var key: String = "normal" if control is Button else "panel"
+			if what == NOTIFICATION_DRAG_BEGIN:
+				control.set_meta("drag_style", control.get_theme_stylebox(key))
+				if _can_drop_item(get_viewport().gui_get_drag_data(), control.get_meta("drop_kind"), control.get_meta("drop_index")):
+					control.add_theme_stylebox_override(key, _style(Color("72c88b"), 0, 2, CELL_COLOR))
+			elif control.has_meta("drag_style"):
+				control.add_theme_stylebox_override(key, control.get_meta("drag_style"))
 
 
 func _short_name(unit: CombatUnit) -> String:

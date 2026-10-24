@@ -33,6 +33,7 @@ func _run() -> void:
 	# 화면 fixture는 턴을 직접 고정한다. 자동 실행은 AI 장면 검사에서 확인한다.
 	root.add_child(main)
 	main.get_node("Battle").set_process(false)
+	main.get_node("Battle").call("start_battle")
 	current_scene = main
 	await process_frame
 	battle = current_scene.get_node("Battle") as Node2D
@@ -1499,8 +1500,10 @@ func _test_spawned_portrait_input() -> void:
 	current_scene = main
 	battle = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	(battle.get("progress") as CombatActProgress).stage_index = 6
 	battle.call("_start_stage", true)
+	battle.call("start_battle")
 	units = battle.get("units")
 	turns = battle.get("turns") as CombatTurns
 	actions = battle.get("actions") as CombatActions
