@@ -758,8 +758,9 @@ func _test_guidance() -> void:
 			var tooltip: PanelContainer = hud.get("_tooltip") as PanelContainer
 			_check(hud.get_global_rect().encloses(tooltip.get_global_rect())
 				and not tooltip.get_global_rect().intersects((hud.get_node("Skills") as Control).get_global_rect())
+				and not tooltip.get_global_rect().intersects((hud.get_node("CombatLog") as Control).get_global_rect())
 				and tooltip.z_index > (hud.get_node("Skills") as Control).z_index,
-				"호버 전체 설명은 화면 안에서 스킬 패널 위에 표시: " + action)
+				"호버 전체 설명은 화면 안에서 스킬 패널·전투 로그를 가리지 않음: " + action)
 			_check(button.tooltip_text.begins_with(CombatActionRules.NAMES[action] + "\n"),
 				"호버에 동작 이름 유지: " + action)
 			for removed: String in ["비용", "막당 ", "횟수 제한", "\n보유 물약", "오른쪽 기호",
@@ -851,8 +852,9 @@ func _test_focus_tooltips(buttons: Dictionary) -> void:
 				var rect: Rect2 = tooltip.get_global_rect()
 				_check(tooltip.visible and _has_tooltip(root, button.tooltip_text)
 					and screen.encloses(rect) and hud.get_global_rect().encloses(rect)
-					and not rect.intersects((hud.get_node("Skills") as Control).get_global_rect()),
-					"%s 포커스 호버는 화면·HUD 안, 스킬 패널 위: %s" % [size, action])
+					and not rect.intersects((hud.get_node("Skills") as Control).get_global_rect())
+					and not rect.intersects((hud.get_node("CombatLog") as Control).get_global_rect()),
+					"%s 포커스 호버는 화면·HUD 안, 스킬 패널·전투 로그를 가리지 않음: %s" % [size, action])
 				button.release_focus()
 				_check(not tooltip.visible, "포커스를 잃으면 설명 숨김: " + action)
 	root.size = Vector2i(1280, 720)
