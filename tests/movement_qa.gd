@@ -47,6 +47,7 @@ func _run() -> void:
 		root.add_child(battle)
 		current_scene = battle
 		battle.set_process(false)
+		battle.call("start_battle")
 		await _frames(2)
 		hud = battle.get_node("UI/TurnHud")
 		actions = battle.get("actions")

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 tests=(
-  tests/combat_{hud,ai,turns,checks,actions,progression,loot,capture,feedback,save,preparation_save}_test.gd
+  tests/combat_{hud,ai,turns,checks,actions,progression,loot,capture,feedback,save,preparation_save,staging}_test.gd
   tests/{save,title,pause,continue}_test.gd
 )
 if [ "$#" -gt 0 ]; then

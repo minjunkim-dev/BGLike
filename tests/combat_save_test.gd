@@ -67,6 +67,7 @@ func _battle(stage_index: int) -> Node2D:
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	if stage_index < 0:
 		return battle
 	var loot: CombatLoot = battle.get("loot")
@@ -82,6 +83,7 @@ func _battle(stage_index: int) -> Node2D:
 	party[0].potion_left = 1
 	(battle.get("progress") as CombatActProgress).stage_index = stage_index
 	battle.call("_start_stage", true)
+	battle.call("start_battle")
 	# 같은 시드로 이니셔티브와 굴림을 정해 검사가 늘 같은 진행을 거친다.
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 281 + stage_index

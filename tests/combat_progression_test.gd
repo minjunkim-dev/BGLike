@@ -33,6 +33,7 @@ func _run() -> void:
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	await process_frame
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	_check(hud.has_node("Progress"), "현재 막과 스테이지를 화면에 표시")
@@ -126,6 +127,7 @@ func _test_spiderling_placement_and_turns() -> void:
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	var units: Array[CombatUnit] = battle.get("units")
 	_check(units.size() == 6, "1막 1스테이지는 아군2명과 새끼 거미4마리")
 	if units.size() != 6:
@@ -198,9 +200,11 @@ func _test_mother_stages() -> void:
 		root.add_child(main)
 		var battle: Node2D = main.get_node("Battle") as Node2D
 		battle.set_process(false)
+		battle.call("start_battle")
 		var progress: CombatActProgress = battle.get("progress") as CombatActProgress
 		progress.stage_index = stage
 		battle.call("_start_stage", true)
+		battle.call("start_battle")
 		var units: Array[CombatUnit] = battle.get("units")
 		_check(units.size() == 7, "%d막 1스테이지의 처음 배치한 적5마리" % progress.act_number())
 		if units.size() != 7:
@@ -262,6 +266,7 @@ func _test_novice_placements() -> void:
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
 	var expected: Dictionary = {
 		1: [[CombatUnit.Kind.WARRIOR, Vector2i(7, 4)]],
@@ -275,6 +280,7 @@ func _test_novice_placements() -> void:
 			ally.facing_left = true
 		progress.stage_index = index
 		battle.call("_start_stage", true)
+		battle.call("start_battle")
 		_check(party[0].cell == Vector2i(1, 4) and party[1].cell == Vector2i(0, 5)
 			and not party[0].facing_left and not party[1].facing_left,
 			"모든 스테이지에서 아군이 왼쪽 두 칸에서 오른쪽을 보고 시작")
@@ -327,8 +333,10 @@ func _start_three_one() -> Node:
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	(battle.get("progress") as CombatActProgress).stage_index = 6
 	battle.call("_start_stage", true)
+	battle.call("start_battle")
 	var units: Array[CombatUnit] = battle.get("units")
 	ScriptedDice.arrange_turns(battle.get("turns") as CombatTurns, units, units)
 	(battle.get("actions") as CombatActions).dice.seed = 221
@@ -405,9 +413,11 @@ func _test_scrap_robot_stage() -> void:
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
 	progress.stage_index = 2
 	battle.call("_start_stage", true)
+	battle.call("start_battle")
 	var units: Array[CombatUnit] = battle.get("units")
 	_check(units.size() == 3 and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_1000
 		and units[2].cell == Vector2i(8, 4), "1막 3스테이지에 고철로봇-1000 한 마리 배치")
@@ -437,9 +447,11 @@ func _test_scrap_robot_2000_stage() -> void:
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
 	progress.stage_index = 5
 	battle.call("_start_stage", true)
+	battle.call("start_battle")
 	var units: Array[CombatUnit] = battle.get("units")
 	_check(units.size() == 3 and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_2000
 		and units[2].cell == Vector2i(8, 4) and units[2].hit_points == 45,
@@ -481,9 +493,11 @@ func _test_scrap_robot_3000_stage() -> void:
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
 	progress.stage_index = 8
 	battle.call("_start_stage", true)
+	battle.call("start_battle")
 	var units: Array[CombatUnit] = battle.get("units")
 	_check(units.size() == 3 and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_3000
 		and units[2].cell == Vector2i(8, 4) and units[2].hit_points == 50,
@@ -531,6 +545,7 @@ func _test_async_transition() -> void:
 	current_scene = main
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var dice: CombatDice = CombatDice.new()
@@ -548,6 +563,7 @@ func _test_async_transition() -> void:
 	_check(hud.progress_label.text == "1막 · 1스테이지", "실제 AI await 중 전환 신호 거부")
 	await create_timer(0.6).timeout
 	battle.set_process(false)
+	battle.call("start_battle")
 	_check(not battle.get("_enemy_turn_running") and not hud.restart_button.disabled,
 		"적 턴 await 완료 뒤 결과 버튼 잠금 해제")
 	hud.restart_button.pressed.emit()
@@ -590,6 +606,7 @@ func _test_act_progress() -> void:
 
 
 func _win(battle: Node2D) -> void:
+	battle.call("start_battle")
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	for unit: CombatUnit in battle.get("units"):
 		if not unit.is_ally:
@@ -777,6 +794,7 @@ func _test_graduation(battle: Node2D) -> void:
 		"3-3 승리 뒤 졸업 화면과 추가 스테이지 없음, 버튼은 타이틀로")
 	# 타이틀로 전환은 tests/continue_test.gd가 본다. 여기서는 다시 온 진행 신호를 무시하는지 본다.
 	battle.call("_finish_preparation")
+	battle.call("start_battle")
 	_check(hud.progress_label.text == "3막 · 3스테이지"
 		and hud.result_label.text == "3막 졸업", "졸업 뒤 진행 신호 무시")
 

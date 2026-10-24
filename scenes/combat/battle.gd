@@ -34,6 +34,9 @@ var _turn_start: Dictionary = {}
 var _turn_actions: int = 0
 ## 이어하기가 연출 없이 다시 실행할 적 행동 수.
 var _replay_actions: int = 0
+## #345: 지도를 보고 정비한 뒤 명시적으로 전투를 시작한다. 적 선공도 이때까지 기다린다.
+var waiting_for_start: bool = true
+var staging: HBoxContainer
 
 @onready var map: CombatMap = $Map
 @onready var camera: Camera2D = $Camera
@@ -52,6 +55,28 @@ func _ready() -> void:
 	$UI.add_child(preparation)
 	preparation.finished.connect(_finish_preparation)
 	preparation.changed.connect(func() -> void: _save_pending = true)
+	staging = HBoxContainer.new()
+	staging.name = "Staging"
+	staging.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	staging.offset_left = 8
+	staging.offset_right = -8
+	staging.offset_top = -58
+	staging.offset_bottom = -8
+	staging.add_theme_constant_override("separation", 8)
+	hud.add_child(staging)
+	var hint: Label = Label.new()
+	hint.text = tr("전투 준비 · 지형과 적을 확인하고 정비하세요.")
+	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hint.add_theme_font_size_override("font_size", 12)
+	staging.add_child(hint)
+	for caption: String in [tr("정비"), tr("전투 시작")]:
+		var button: Button = Button.new()
+		button.text = caption
+		button.custom_minimum_size.x = 96
+		button.add_theme_font_size_override("font_size", 14)
+		staging.add_child(button)
+	(staging.get_child(1) as Button).pressed.connect(_open_staging_preparation)
+	(staging.get_child(2) as Button).pressed.connect(start_battle)
 
 	hud.unit_selected.connect(_on_unit_selected)
 	hud.end_turn_requested.connect(_end_turn)
@@ -87,6 +112,7 @@ func _exit_tree() -> void:
 
 
 func _start_stage(restore_act: bool) -> void:
+	waiting_for_start = true
 	_replay_actions = 0
 	actions.replay_answers.clear()
 	for unit: CombatUnit in party:
@@ -109,6 +135,23 @@ func _start_stage(restore_act: bool) -> void:
 	for cell: Vector2i in stage.rock_cells:
 		var prop: CombatGrid.Prop = actions.create_prop(cell, "rock")
 		assert(prop != null, "바위 시작 칸이 유효하지 않습니다: %s %s" % [stage.resource_path, cell])
+	_update_turn_ui()
+	(staging.get_child(2) as Button).grab_focus()
+
+
+func start_battle() -> void:
+	if not waiting_for_start or preparation.visible:
+		return
+	waiting_for_start = false
+	_save_pending = true
+	get_viewport().gui_release_focus()
+	_update_turn_ui()
+
+
+func _open_staging_preparation() -> void:
+	if not waiting_for_start or preparation.visible:
+		return
+	preparation.open_rewards(loot, party, [], false, false, true, true)
 
 
 ## 지금 스테이지의 지도와 처음 배치의 적을 새로 만든다. 아군 상태와 턴 순서는 건드리지 않는다.
@@ -150,6 +193,7 @@ func _build_stage() -> CombatStage:
 ## 이어하기에 필요한 전투 상태 전체. Object 없이 GameSave에 그대로 쓸 수 있는 값이다 (docs/adr/0003).
 func combat_state() -> Dictionary:
 	var state: Dictionary = progress.save_state()
+	state["waiting_for_start"] = waiting_for_start
 	state.merge(actions.save_state())
 	state["bag"] = loot.bag
 	state["units"] = units.map(func(unit: CombatUnit) -> Dictionary: return unit.save_state(units))
@@ -168,6 +212,7 @@ func restore_combat(state: Variant) -> bool:
 	progress.stage_index = state.stage
 	_build_stage()
 	progress.load_state(state)
+	waiting_for_start = state.get("waiting_for_start", false)
 	loot.bag.assign(state.bag)
 	for saved: Dictionary in state.units.slice(units.size()):
 		var child: CombatUnit = (preload("res://scenes/combat/unit.tscn") as PackedScene).instantiate() as CombatUnit
@@ -192,10 +237,14 @@ func restore_combat(state: Variant) -> bool:
 
 ## 저장 파일의 값은 신뢰하지 않는다. 스테이지·유닛 구성·번호·칸·아이템을 모두 확인한다.
 func _is_valid_state(state: Dictionary) -> bool:
+	if not state.get("waiting_for_start", false) is bool:
+		return false
 	if not (state.get("stage") is int and state.stage >= 0 and state.stage < stages.size()
 			and state.get("rewarded") is bool and state.get("units") is Array and state.get("last_ally") is int
 			and _valid_items(state.get("rewards")) and _valid_items(state.get("bag"))
 			and state.rewards.size() <= CombatUnit.SAVED_INT_LIMIT and state.bag.size() <= int(loot.data["bag_limit"])):
+		return false
+	if state.get("waiting_for_start", false) and state.rewarded:
 		return false
 	var stage: CombatStage = stages[state.stage]
 	var identities: Array = party.map(func(unit: CombatUnit) -> Array: return [unit.kind, true])
@@ -242,6 +291,8 @@ func _is_valid_state(state: Dictionary) -> bool:
 			and replay.get("reactions", []).all(func(answer: Variant) -> bool: return answer is bool)
 			and (replay.get("actions", 0) > 0 or replay.get("reactions", []).is_empty())):
 		return false
+	if state.get("waiting_for_start", false) and (state.turns.round != 1 or replay.get("actions", 0) != 0):
+		return false
 	if replay.get("actions", 0) == 0:
 		return true
 	# 적 턴 중간 저장은 살아 있는 적의 차례이고 양편이 남아 있을 때만 있다.
@@ -256,17 +307,25 @@ func _is_valid_state(state: Dictionary) -> bool:
 func restore_save(sections: Variant) -> bool:
 	var combat: Variant = sections.get("combat") if sections is Dictionary else null
 	var screen: Variant = sections.get("preparation", {}) if sections is Dictionary else null
-	# 정비·보상 화면은 드랍을 굴린 승리 뒤에만 열린다.
-	if not (screen is Dictionary and (screen.is_empty() or screen.keys() == ["maintaining"]
-			and screen.maintaining is bool and combat is Dictionary and _is_valid_state(combat) and combat.rewarded
-			and combat.units.all(func(unit: Dictionary) -> bool: return unit.ally or unit.hit_points <= 0))):
+	if not (screen is Dictionary and combat is Dictionary and _is_valid_state(combat)):
 		push_warning("저장을 읽을 수 없음")
 		return false
+	var before_battle: bool = screen.get("before_battle") is bool and screen.before_battle
+	if not screen.is_empty():
+		var valid: bool = screen.get("maintaining") is bool
+		if before_battle:
+			valid = valid and screen.size() == 2 and screen.maintaining and combat.get("waiting_for_start", false)
+		else:
+			valid = valid and screen.keys() == ["maintaining"] and combat.rewarded
+			valid = valid and combat.units.all(func(unit: Dictionary) -> bool: return unit.ally or unit.hit_points <= 0)
+		if not valid:
+			push_warning("저장한 정비 단계가 전투 상태와 맞지 않음")
+			return false
 	if not restore_combat(combat):
 		return false
 	if not screen.is_empty():
 		preparation.open_rewards(loot, party, progress.rewards, progress.is_final_stage(),
-			progress.is_last_in_act(), screen.maintaining)
+			progress.is_last_in_act(), screen.maintaining, before_battle)
 		hud.hide_result()
 		# 방금 읽은 저장과 같은 상태다.
 		_save_pending = false
@@ -306,6 +365,11 @@ func _give_up() -> void:
 
 
 func _finish_preparation() -> void:
+	if waiting_for_start:
+		_save_pending = true
+		_update_turn_ui()
+		(staging.get_child(2) as Button).grab_focus()
+		return
 	if not actions.is_over() or actions.busy or _enemy_turn_running or not actions.is_victory():
 		return
 	progress.advance()
@@ -326,7 +390,7 @@ func _process(_delta: float) -> void:
 	Engine.time_scale = ENEMY_FAST_SPEED if (_enemy_turn_running and not hud.reaction_dialog.visible
 		and Input.is_key_pressed(KEY_SPACE)) else 1.0
 	var actor: CombatUnit = turns.current_unit
-	if (actor != null and not actor.is_ally and not actions.busy
+	if (not waiting_for_start and actor != null and not actor.is_ally and not actions.busy
 		and not actions.is_over() and not _enemy_turn_running):
 		_play_enemy_turn(actor)
 
@@ -390,6 +454,8 @@ func _autosave(state: Dictionary) -> void:
 	# 선택한 칸과 열린 확인 창은 저장하지 않는다. 이어하기는 같은 화면 단계에서 아무것도 고르지 않은 채 시작한다.
 	if preparation.visible:
 		sections["preparation"] = {"maintaining": preparation.maintaining}
+		if preparation.before_battle:
+			sections["preparation"]["before_battle"] = true
 	if GameSave.write(progress.act_number(), progress.stage_in_act(), sections) == OK:
 		autosaved.emit()
 
@@ -403,6 +469,9 @@ func _on_unit_selected(unit: CombatUnit) -> void:
 	if actions.busy or actions.is_over() or unit not in units or unit.hit_points <= 0:
 		return
 	selection.clear_preview()
+	if waiting_for_start:
+		hud.show_unit(unit)
+		return
 	# 조작 가능한 아군만 전환한다. 다른 초상은 정보만 표시한다.
 	turns.select_unit(unit)
 	selection.inspect(unit)
@@ -410,14 +479,14 @@ func _on_unit_selected(unit: CombatUnit) -> void:
 
 
 func _end_turn() -> void:
-	if (turns.current_unit != null and turns.current_unit.is_ally
+	if (not waiting_for_start and turns.current_unit != null and turns.current_unit.is_ally
 		and not actions.busy and not actions.is_over()):
 		turns.end_turn()
 
 
 func _on_action_selected(action: String) -> void:
 	var actor: CombatUnit = turns.current_unit
-	if actor == null or not actor.is_ally or not actions.can_use(actor, action):
+	if waiting_for_start or actor == null or not actor.is_ally or not actions.can_use(actor, action):
 		return
 	if selection.select_action(action):
 		actions.use_self(actor, action)
@@ -429,13 +498,16 @@ func _input(event: InputEvent) -> void:
 	# 반응·정비 확인 창이 떠 있으면 그 창이 Esc·Start를 먼저 받는다. Esc는 지금처럼 반응을 넘긴다.
 	if event.is_action_pressed("pause"):
 		get_viewport().set_input_as_handled()
+		if get_viewport().gui_is_dragging():
+			get_viewport().gui_cancel_drag()
+			return
 		# 졸업 화면에는 `타이틀로`만 둔다.
 		if progress.graduated:
 			return
 		# 멈추면 _process가 돌지 않는다. 메뉴에서 바로 타이틀로·종료해도 끝난 행동이 남게 먼저 쓴다.
 		if _save_pending and GameSave.autosave and _can_save():
 			_autosave(combat_state())
-		pause_menu.open(not actions.is_over())
+		pause_menu.open(not actions.is_over() and not waiting_for_start)
 		return
 	if event is InputEventKey and event.keycode == KEY_SPACE and not actions.is_over():
 		# Space는 적 턴 가속 키다. 포커스된 버튼(턴 종료 등)을 누르지 않게 소비한다.
@@ -453,7 +525,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		hud.focus_action_slot(0, false)
 		return
-	if event is not InputEventKey or event.keycode != KEY_TAB or preparation.visible:
+	if event is not InputEventKey or event.keycode != KEY_TAB or preparation.visible or waiting_for_start:
 		return
 	# GUI보다 먼저 소비해 전투 중 기본 Tab 포커스 이동을 막는다.
 	get_viewport().set_input_as_handled()
@@ -474,7 +546,7 @@ func _input(event: InputEvent) -> void:
 ## 아군 턴의 키보드 조작을 받을 수 있는지. 연출·반응 확인·결과·정비 화면에서는 잠근다.
 func _ally_input_open() -> bool:
 	var actor: CombatUnit = turns.current_unit
-	return (actor != null and actor.is_ally and not actions.busy and not actions.is_over()
+	return (not waiting_for_start and actor != null and actor.is_ally and not actions.busy and not actions.is_over()
 		and not hud.reaction_dialog.visible and not hud.get_node("Result").visible and not preparation.visible)
 
 
@@ -486,6 +558,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var world_position: Vector2 = get_canvas_transform().affine_inverse() * event.position
 	var cell: Vector2i = map.surface_to_map(map.to_local(world_position))
+	if waiting_for_start:
+		for unit: CombatUnit in units:
+			if unit.visible and unit.hit_points > 0 and unit.contains_body_point(unit.to_local(world_position)):
+				hud.show_unit(unit)
+				get_viewport().set_input_as_handled()
+				break
+		return
 	var actor: CombatUnit = turns.current_unit
 	if actor == null or not actor.is_ally:
 		return
@@ -748,6 +827,11 @@ func _update_turn_ui() -> void:
 		hud.show_unit(selection.inspected_unit)
 	var showing_move: bool = selection.selected_action == "move" or not selection.preview_path.is_empty()
 	hud.refresh_actions(actions, selection.selected_action, _last_ally)
+	staging.visible = waiting_for_start
+	if waiting_for_start:
+		hud.get_node("Round").text = tr("전투 준비")
+	hud.get_node("Skills").visible = not waiting_for_start
+	hud.get_node("EndTurn").visible = not waiting_for_start
 	hud.show_move_mode(showing_move)
 	if selection.selected_action == "jump":
 		hud.show_move_mode(false)

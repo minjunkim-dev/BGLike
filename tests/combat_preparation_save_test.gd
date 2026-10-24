@@ -61,6 +61,7 @@ func _battle() -> Node2D:
 	root.add_child(main)
 	var battle: Node2D = main.get_node("Battle") as Node2D
 	battle.set_process(false)
+	battle.call("start_battle")
 	return battle
 
 

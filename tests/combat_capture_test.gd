@@ -47,6 +47,7 @@ func _run() -> void:
 	# 3-3 진입만 고정한다. 전투 스크립트와 AI·연출 콜백은 원본을 유지한다.
 	(battle.get("progress") as CombatActProgress).stage_index = 8
 	battle.call("_start_stage", true)
+	battle.call("start_battle")
 	turns = battle.get("turns") as CombatTurns
 	actions = battle.get("actions") as CombatActions
 	var units: Array[CombatUnit] = battle.get("units")

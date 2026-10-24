@@ -209,6 +209,7 @@ func _test_graduation() -> void:
 	var progress: CombatActProgress = battle.get("progress")
 	progress.stage_index = 8
 	battle.call("_start_stage", false)
+	battle.call("start_battle")
 	var actions: CombatActions = battle.get("actions")
 	for unit: CombatUnit in actions.units:
 		if not unit.is_ally:
@@ -271,6 +272,7 @@ func _new_battle() -> Node2D:
 	_check(not battle.get("_enemy_turn_running"), "새 게임 장면의 첫 프레임 전")
 	var turns: CombatTurns = battle.get("turns")
 	ScriptedDice.arrange_turns(turns, battle.get("units"), battle.get("party"))
+	battle.call("start_battle")
 	return battle
 
 

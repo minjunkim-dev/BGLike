@@ -58,6 +58,7 @@ func _open_game() -> Node2D:
 	var battle: Node2D = game.get_node("Battle") as Node2D
 	# 적 턴은 검사가 직접 시작한다. 아군이 먼저인 시드로 턴 순서를 다시 굴린다.
 	battle.set_process(false)
+	battle.call("start_battle")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var dice: CombatDice = CombatDice.new()
 	while turns.current_unit == null or not turns.current_unit.is_ally:
@@ -195,6 +196,7 @@ func _check_give_up(battle: Node2D, menu: PauseMenu) -> void:
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	progress.stage_index = 4
 	battle.call("_start_stage", false)
+	battle.call("start_battle")
 	await process_frame
 	_check(hud.progress_label.text == "2막 · 2스테이지", "검사 시작은 2-2")
 	var party: Array[CombatUnit] = battle.get("party")

@@ -363,6 +363,7 @@ func _test_scene() -> void:
 	battle.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(battle)
 	battle.set_process(false)
+	battle.call("start_battle")
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
