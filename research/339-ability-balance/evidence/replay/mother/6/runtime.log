@@ -1,0 +1,22 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+[R278 mother#6    0.2s] start policy=mother display=headless
+[R278 mother#6    0.2s] stage 1-1 attempt 1 아군 전사 HP12/12 물약0, 아군 궁수 HP14/14 물약0
+[R278 mother#6    0.7s] win 1-1 rounds=2 아군 전사 HP12/12 물약0, 아군 궁수 HP13/14 물약0
+[R278 mother#6    0.7s] stage 1-2 attempt 1 아군 전사 HP16/16 물약0, 아군 궁수 HP13/14 물약0
+[R278 mother#6    0.8s] win 1-2 rounds=1 아군 전사 HP16/16 물약0, 아군 궁수 HP13/14 물약0
+[R278 mother#6    0.9s] stage 1-3 attempt 1 아군 전사 HP16/16 물약1, 아군 궁수 HP13/14 물약0
+[R278 mother#6    1.2s] win 1-3 rounds=4 아군 전사 HP16/16 물약1, 아군 궁수 HP13/14 물약0
+[R278 mother#6    1.3s] stage 2-1 attempt 1 아군 전사 HP16/16 물약1, 아군 궁수 HP14/14 물약1
+[R278 mother#6    2.3s] win 2-1 rounds=5 아군 전사 HP16/16 물약1, 아군 궁수 HP11/14 물약1
+[R278 mother#6    2.4s] stage 2-2 attempt 1 아군 전사 HP16/16 물약2, 아군 궁수 HP11/14 물약2
+[R278 mother#6    2.6s] win 2-2 rounds=2 아군 전사 HP16/16 물약2, 아군 궁수 HP9/14 물약2
+[R278 mother#6    2.7s] stage 2-3 attempt 1 아군 전사 HP16/16 물약3, 아군 궁수 HP9/14 물약3
+[R278 mother#6    3.2s] win 2-3 rounds=5 아군 전사 HP11/16 물약3, 아군 궁수 HP0/14 물약2
+[R278 mother#6    3.5s] stage 3-1 attempt 1 아군 전사 HP16/16 물약3, 아군 궁수 HP14/14 물약3
+[R278 mother#6   10.6s] win 3-1 rounds=13 아군 전사 HP15/16 물약3, 아군 궁수 HP9/14 물약2
+[R278 mother#6   10.8s] stage 3-2 attempt 1 아군 전사 HP15/16 물약3, 아군 궁수 HP9/14 물약3
+[R278 mother#6   11.4s] win 3-2 rounds=3 아군 전사 HP11/16 물약3, 아군 궁수 HP1/14 물약2
+[R278 mother#6   11.5s] stage 3-3 attempt 1 아군 전사 HP11/16 물약3, 아군 궁수 HP1/14 물약3
+[R278 mother#6   11.9s] win 3-3 rounds=3 아군 전사 HP11/16 물약3, 아군 궁수 HP10/14 물약0
+[R278 mother#6   11.9s] DONE code=0 graduated wall=11.9s game=157.3s

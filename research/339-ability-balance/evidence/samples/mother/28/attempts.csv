@@ -1,0 +1,10 @@
+policy,run,stage,attempt,result,rounds,game_s,warrior_hp,warrior_max,archer_hp,archer_max,downed,start_potions,potions_used,potions_warrior,potions_archer,rewards,rewards_weapon,rewards_armor,rewards_potion,extra_eligible,spawned,enemy_time_s,enemy_segment_max_s,enemy_segments,ally_attacks,ally_misses,ally_streak_max,enemy_attacks,enemy_misses,enemy_streak_max,bag_end,discarded
+mother,28,1-1,1,win,2,7.117,12,12,13,14,0,0,0,0,0,1,0,1,0,0,0,4.683,3.367,2,4,0,0,2,0,0,0,0
+mother,28,1-2,1,win,2,2.267,15,15,13,14,0,0,0,0,0,1,0,0,1,1,0,0.000,0.000,0,4,0,0,0,0,0,0,0
+mother,28,1-3,1,win,4,7.100,15,15,13,14,0,1,0,1,0,1,0,0,1,1,0,3.300,1.467,3,8,2,1,4,4,4,0,0
+mother,28,2-1,1,win,8,36.633,15,15,7,14,0,2,0,1,1,2,0,0,2,1,3,28.700,5.967,7,15,4,2,21,13,5,0,0
+mother,28,2-2,1,win,3,6.933,15,15,6,14,0,4,2,2,0,2,1,0,1,2,0,3.567,0.917,4,6,0,0,4,1,1,0,0
+mother,28,2-3,1,win,4,5.150,15,15,11,14,0,3,1,2,0,1,0,1,0,1,0,1.483,1.467,2,6,1,1,3,2,2,0,0
+mother,28,3-1,1,win,14,64.817,12,15,19,19,0,2,0,2,0,1,0,0,1,2,13,54.933,5.650,15,27,3,1,41,36,19,0,0
+mother,28,3-2,1,win,5,16.383,15,15,19,19,0,3,0,2,1,2,0,2,0,3,0,12.233,4.567,5,10,2,1,11,10,10,2,0
+mother,28,3-3,1,win,4,6.067,26,26,15,25,0,3,0,2,1,1,0,1,0,1,0,2.033,1.100,3,8,1,1,3,2,2,3,0

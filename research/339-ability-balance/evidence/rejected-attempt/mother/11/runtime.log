@@ -1,0 +1,28 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+[R278 mother#11    0.2s] start policy=mother display=headless
+[R278 mother#11    0.2s] stage 1-1 attempt 1 아군 전사 HP12/12 물약0, 아군 궁수 HP14/14 물약0
+[R278 mother#11    0.7s] win 1-1 rounds=2 아군 전사 HP12/12 물약0, 아군 궁수 HP13/14 물약0
+[R278 mother#11    0.8s] stage 1-2 attempt 1 아군 전사 HP12/12 물약0, 아군 궁수 HP13/14 물약0
+[R278 mother#11    0.9s] win 1-2 rounds=2 아군 전사 HP12/12 물약0, 아군 궁수 HP13/14 물약0
+[R278 mother#11    1.0s] stage 1-3 attempt 1 아군 전사 HP12/12 물약0, 아군 궁수 HP13/14 물약0
+[R278 mother#11    1.3s] win 1-3 rounds=4 아군 전사 HP0/12 물약0, 아군 궁수 HP13/14 물약0
+[R278 mother#11    1.4s] stage 2-1 attempt 1 아군 전사 HP12/12 물약0, 아군 궁수 HP14/14 물약0
+[R278 mother#11    2.2s] win 2-1 rounds=4 아군 전사 HP12/12 물약0, 아군 궁수 HP11/14 물약0
+[R278 mother#11    2.2s] stage 2-2 attempt 1 아군 전사 HP12/12 물약1, 아군 궁수 HP11/14 물약0
+[R278 mother#11    2.5s] win 2-2 rounds=2 아군 전사 HP12/12 물약1, 아군 궁수 HP11/14 물약0
+[R278 mother#11    2.6s] stage 2-3 attempt 1 아군 전사 HP12/12 물약2, 아군 궁수 HP11/14 물약1
+[R278 mother#11    2.8s] win 2-3 rounds=3 아군 전사 HP12/12 물약2, 아군 궁수 HP11/14 물약1
+[R278 mother#11    2.9s] stage 3-1 attempt 1 아군 전사 HP12/12 물약2, 아군 궁수 HP14/14 물약1
+[R278 mother#11    8.8s] win 3-1 rounds=11 아군 전사 HP8/12 물약2, 아군 궁수 HP6/14 물약0
+[R278 mother#11    8.9s] stage 3-2 attempt 1 아군 전사 HP8/12 물약2, 아군 궁수 HP6/14 물약1
+[R278 mother#11    9.9s] win 3-2 rounds=5 아군 전사 HP5/12 물약1, 아군 궁수 HP0/14 물약0
+[R278 mother#11   10.0s] stage 3-3 attempt 1 아군 전사 HP5/12 물약1, 아군 궁수 HP0/14 물약0
+[R278 mother#11   10.3s] wipe 3-3 rounds=4 아군 전사 HP0/12 물약0, 아군 궁수 HP0/14 물약0
+[R278 mother#11   10.4s] stage 3-1 attempt 2 아군 전사 HP12/12 물약0, 아군 궁수 HP14/14 물약0
+[R278 mother#11   11.9s] win 3-1 rounds=6 아군 전사 HP12/12 물약0, 아군 궁수 HP12/14 물약0
+[R278 mother#11   11.9s] stage 3-2 attempt 2 아군 전사 HP12/12 물약1, 아군 궁수 HP12/14 물약0
+[R278 mother#11   12.3s] win 3-2 rounds=2 아군 전사 HP12/12 물약1, 아군 궁수 HP5/14 물약0
+[R278 mother#11   12.3s] stage 3-3 attempt 2 아군 전사 HP12/12 물약1, 아군 궁수 HP5/14 물약1
+[R278 mother#11   12.6s] win 3-3 rounds=2 아군 전사 HP12/12 물약1, 아군 궁수 HP4/14 물약0
+[R278 mother#11   12.6s] DONE code=7 movement postcondition failure wall=12.6s game=177.4s

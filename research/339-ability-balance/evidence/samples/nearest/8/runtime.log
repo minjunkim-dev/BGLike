@@ -1,0 +1,18 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+[R278 nearest#8    0.2s] start policy=nearest display=headless
+[R278 nearest#8    0.2s] stage 1-1 attempt 1 아군 전사 HP12/12 물약0, 아군 궁수 HP14/14 물약0
+[R278 nearest#8    0.7s] win 1-1 rounds=3 아군 전사 HP12/12 물약0, 아군 궁수 HP13/14 물약0
+[R278 nearest#8    0.8s] stage 1-2 attempt 1 아군 전사 HP12/12 물약0, 아군 궁수 HP13/14 물약0
+[R278 nearest#8    1.0s] win 1-2 rounds=2 아군 전사 HP12/12 물약0, 아군 궁수 HP13/14 물약0
+[R278 nearest#8    1.1s] stage 1-3 attempt 1 아군 전사 HP12/12 물약1, 아군 궁수 HP13/14 물약0
+[R278 nearest#8    1.4s] win 1-3 rounds=4 아군 전사 HP9/12 물약1, 아군 궁수 HP13/14 물약0
+[R278 nearest#8    1.4s] stage 2-1 attempt 1 아군 전사 HP12/12 물약1, 아군 궁수 HP14/14 물약1
+[R278 nearest#8    4.4s] win 2-1 rounds=7 아군 전사 HP10/12 물약1, 아군 궁수 HP14/14 물약1
+[R278 nearest#8    4.6s] stage 2-2 attempt 1 아군 전사 HP16/18 물약2, 아군 궁수 HP14/14 물약1
+[R278 nearest#8    5.4s] win 2-2 rounds=3 아군 전사 HP16/18 물약2, 아군 궁수 HP14/14 물약1
+[R278 nearest#8    5.5s] stage 2-3 attempt 1 아군 전사 HP16/18 물약3, 아군 궁수 HP14/14 물약2
+[R278 nearest#8    5.9s] win 2-3 rounds=4 아군 전사 HP5/18 물약3, 아군 궁수 HP14/14 물약2
+[R278 nearest#8    6.0s] stage 3-1 attempt 1 아군 전사 HP18/18 물약3, 아군 궁수 HP14/14 물약3
+[R278 nearest#8   46.4s] timeout 3-1 rounds=61 아군 전사 HP12/18 물약3, 아군 궁수 HP11/14 물약3
+[R278 nearest#8   46.4s] DONE code=4 round cap 60 at 3-1 wall=46.4s game=394.0s

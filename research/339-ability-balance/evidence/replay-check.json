@@ -1,0 +1,16 @@
+[
+  {
+    "policy": "mother",
+    "seed": 6,
+    "attempts": 9,
+    "movement_records": 38,
+    "result": "identical gameplay, movement and RNG metadata; timing excluded"
+  },
+  {
+    "policy": "mother",
+    "seed": 11,
+    "attempts": 12,
+    "movement_records": 52,
+    "result": "identical gameplay, movement and RNG metadata; timing excluded"
+  }
+]
