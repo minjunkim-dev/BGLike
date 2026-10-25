@@ -677,16 +677,16 @@ msgid "적 피해4: %s"
 msgstr "적 피해4: %s"
 
 #: scenes/combat/battle.gd:729
-msgid "행동1 · 주사위 없음 · 재클릭\n방향 %d,%d · %d칸 · %s\n%s"
-msgstr "행동1 · 주사위 없음 · 재클릭\n방향 %d,%d · %d칸 · %s\n%s"
+msgid "행동1 · 주사위 없음\n%s · %d칸 · %s\n%s\n같은 바위를 다시 좌클릭하면 굴립니다."
+msgstr "행동1 · 주사위 없음\n%s · %d칸 · %s\n%s\n같은 바위를 다시 좌클릭하면 굴립니다."
 
 #: scenes/combat/battle.gd:731
 msgid "충돌 없음"
 msgstr "충돌 없음"
 
 #: scenes/combat/battle.gd:736
-msgid "피해 %d~%d · 행동1 · 자동 명중\n같은 상자 재클릭"
-msgstr "피해 %d~%d · 행동1 · 자동 명중\n같은 상자 재클릭"
+msgid "피해 %d~%d · 행동1 · 자동 명중\n같은 상자를 다시 좌클릭하면 공격합니다."
+msgstr "피해 %d~%d · 행동1 · 자동 명중\n같은 상자를 다시 좌클릭하면 공격합니다."
 
 #: scenes/combat/battle.gd:739
 msgid "행동 없음"
@@ -702,8 +702,8 @@ msgid "사거리 또는 높이 조건을 확인"
 msgstr "사거리 또는 높이 조건을 확인"
 
 #: scenes/combat/battle.gd:754
-msgid "점프 · 착지 칸 우클릭\n같은 칸 재클릭으로 확정"
-msgstr "점프 · 착지 칸 우클릭\n같은 칸 재클릭으로 확정"
+msgid "점프 · 착지할 칸을 우클릭합니다.\n같은 칸을 다시 우클릭하면 확정합니다."
+msgstr "점프 · 착지할 칸을 우클릭합니다.\n같은 칸을 다시 우클릭하면 확정합니다."
 
 #: scenes/combat/battle.gd:760
 msgid "점프 · 이동 %d · 보조 행동1\n%s · %s"
@@ -848,9 +848,9 @@ msgid "%s\n아이템 한 개를 버리시겠습니까?"
 msgstr "%s\n아이템 한 개를 버리시겠습니까?"
 
 #: scenes/combat/preparation.gd:221
-msgid "가방 공간이 %d칸 부족합니다. 장착·물약 분배 또는 가방 아이템 폐기로 공간을 확보하세요."
-msgid_plural "가방 공간이 %d칸 부족합니다. 장착·물약 분배 또는 가방 아이템 폐기로 공간을 확보하세요."
-msgstr[0] "가방 공간이 %d칸 부족합니다. 장착·물약 분배 또는 가방 아이템 폐기로 공간을 확보하세요."
+msgid "가방 공간이 %d칸 부족합니다.\n장착·물약 분배 또는 가방 아이템의 ‘버리기’로 공간을 확보합니다."
+msgid_plural "가방 공간이 %d칸 부족합니다.\n장착·물약 분배 또는 가방 아이템의 ‘버리기’로 공간을 확보합니다."
+msgstr[0] "가방 공간이 %d칸 부족합니다.\n장착·물약 분배 또는 가방 아이템의 ‘버리기’로 공간을 확보합니다."
 
 #: scenes/combat/preparation.gd:241
 msgid "정비"
@@ -887,9 +887,9 @@ msgid "정비하기"
 msgstr "정비하기"
 
 #: scenes/combat/preparation.gd:250
-msgid "받지 않은 보상 %d · 정비를 마치면 공용 가방에 보관"
-msgid_plural "받지 않은 보상 %d · 정비를 마치면 공용 가방에 보관"
-msgstr[0] "받지 않은 보상 %d · 정비를 마치면 공용 가방에 보관"
+msgid "받지 않은 보상 %d개"
+msgid_plural "받지 않은 보상 %d개"
+msgstr[0] "받지 않은 보상 %d개"
 
 #: scenes/combat/preparation.gd:252
 msgid "남은 보상 없음"
@@ -900,8 +900,8 @@ msgid "공용 가방 · %d/%d칸"
 msgstr "공용 가방 · %d/%d칸"
 
 #: scenes/combat/preparation.gd:272
-msgid "교체·해제한 장비와 받지 않은 보상은 공용 가방에 보관합니다."
-msgstr "교체·해제한 장비와 받지 않은 보상은 공용 가방에 보관합니다."
+msgid "남은 보상은 정비를 마칠 때 공용 가방에 보관합니다."
+msgstr "남은 보상은 정비를 마칠 때 공용 가방에 보관합니다."
 
 #: scenes/combat/preparation.gd:294
 msgid "HP %d / %d"
@@ -959,8 +959,8 @@ msgid "공용 가방 · 장착하면 지금 장비는 이 칸으로 옵니다."
 msgstr "공용 가방 · 장착하면 지금 장비는 이 칸으로 옵니다."
 
 #: scenes/combat/preparation.gd:394
-msgid "받지 않은 보상 · 정비를 마치면 공용 가방에 보관합니다."
-msgstr "받지 않은 보상 · 정비를 마치면 공용 가방에 보관합니다."
+msgid "받지 않은 보상 · 교체한 장비는 가방에 보관합니다."
+msgstr "받지 않은 보상 · 교체한 장비는 가방에 보관합니다."
 
 #: scenes/combat/preparation.gd:395
 msgid "정비하기를 누른 뒤 캐릭터에게 나눠 줍니다."
@@ -1198,8 +1198,8 @@ msgid "스킬 바 버튼: 스킬·밀치기·물약을 고릅니다. 자기에�
 msgstr "스킬 바 버튼: 스킬·밀치기·물약을 고릅니다. 자기에게 쓰는 동작은 같은 버튼을 다시 누르면 씁니다."
 
 #: scenes/help.tscn:78
-msgid "초상: HP·방어·6능력치 주사위·상태를 봅니다. 지금 조작할 수 있는 아군의 초상은 그 유닛으로 바꿉니다."
-msgstr "초상: HP·방어·6능력치 주사위·상태를 봅니다. 지금 조작할 수 있는 아군의 초상은 그 유닛으로 바꿉니다."
+msgid "초상: HP·방어·6능력치 주사위·상태를 봅니다. 현재 턴 묶음에서 조작 가능한 아군 초상을 누르면 해당 유닛을 조작합니다."
+msgstr "초상: HP·방어·6능력치 주사위·상태를 봅니다. 현재 턴 묶음에서 조작 가능한 아군 초상을 누르면 해당 유닛을 조작합니다."
 
 #: scenes/help.tscn:83
 msgid "턴 종료 버튼: 지금 유닛의 턴을 끝냅니다."
@@ -1270,8 +1270,8 @@ msgid "기회 공격(전사·일부 적): 상대가 스스로 인접 칸을 벗�
 msgstr "기회 공격(전사·일부 적): 상대가 스스로 인접 칸을 벗어날 때 기본 공격을 합니다. 밀치기와 물러서며 쏘기의 이동은 기회 공격을 받지 않습니다."
 
 #: scenes/help.tscn:173
-msgid "흘려내기(전사): 공격에 명중당했을 때 피해를 굴리기 전에 씁니다. 민첩 주사위 +3이 맞은 공격의 공격 굴림 이상이면 그 공격을 피합니다."
-msgstr "흘려내기(전사): 공격에 명중당했을 때 피해를 굴리기 전에 씁니다. 민첩 주사위 +3이 맞은 공격의 공격 굴림 이상이면 그 공격을 피합니다."
+msgid "흘려내기(전사): 공격이 명중하면 피해를 굴리기 전에 씁니다. 민첩 주사위 +3이 그 공격의 공격 굴림 이상이면 공격을 피합니다."
+msgstr "흘려내기(전사): 공격이 명중하면 피해를 굴리기 전에 씁니다. 민첩 주사위 +3이 그 공격의 공격 굴림 이상이면 공격을 피합니다."
 
 #: scenes/help.tscn:178
 msgid "아군의 반응은 확인 창에서 쓸지 고릅니다. 적의 반응은 자동입니다."
@@ -1316,8 +1316,8 @@ msgid "종료"
 msgstr "종료"
 
 #: scenes/main.tscn:87
-msgid "저장을 읽을 수 없어\n이어할 수 없습니다."
-msgstr "저장을 읽을 수 없어\n이어할 수 없습니다."
+msgid "저장 파일을 읽을 수 없어\n게임을 이어서 할 수 없습니다."
+msgstr "저장 파일을 읽을 수 없어\n게임을 이어서 할 수 없습니다."
 
 #: scenes/main.tscn:138
 msgid "게임 규칙"
@@ -1421,8 +1421,8 @@ msgid "%s\n1개를 버립니다. 되돌릴 수 없습니다."
 msgstr "%s\n1개를 버립니다. 되돌릴 수 없습니다."
 
 #: scenes/combat/preparation.gd
-msgid "아이템을 맞는 칸으로 끌거나, 선택 후 아래 버튼을 누르세요."
-msgstr "아이템을 맞는 칸으로 끌거나, 선택 후 아래 버튼을 누르세요."
+msgid "아이템을 끌거나, 선택 후 아래 버튼으로 옮깁니다."
+msgstr "아이템을 끌거나, 선택 후 아래 버튼으로 옮깁니다."
 
 #: scenes/combat/preparation.gd
 msgid "지도로 돌아가기"
@@ -1471,3 +1471,19 @@ msgstr "공용 가방 · 교체하면 기존 장비는 이 칸으로 옵니다."
 #: scenes/combat/preparation.gd
 msgid "놓을 수 없는 위치 · Esc: 취소"
 msgstr "놓을 수 없는 위치 · Esc: 취소"
+
+#: scenes/combat/battle.gd
+msgid "오른쪽 아래"
+msgstr "오른쪽 아래"
+
+#: scenes/combat/battle.gd
+msgid "왼쪽 아래"
+msgstr "왼쪽 아래"
+
+#: scenes/combat/battle.gd
+msgid "왼쪽 위"
+msgstr "왼쪽 위"
+
+#: scenes/combat/battle.gd
+msgid "오른쪽 위"
+msgstr "오른쪽 위"

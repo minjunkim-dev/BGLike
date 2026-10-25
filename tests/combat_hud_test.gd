@@ -85,6 +85,7 @@ func _run() -> void:
 	await _test_action_animations()
 	Engine.max_fps = previous_fps
 	Engine.time_scale = previous_scale
+	await _test_rock_preview_guidance()
 	await _test_rock_presentation()
 	await _test_results_and_restart()
 	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
@@ -1844,6 +1845,38 @@ func _test_action_animations() -> void:
 		_check(saw_impact[0] and not battle.map.has_node("PropAnimation"), "물체 피격 연출을 보이고 임시 노드를 정리")
 		_check(actor.action_left == 0 and crate.hit_points < 6 and not battle.has_node("Arrow"),
 			"상자 공격 연출 뒤 기존 피해·행동 비용과 화살 정리를 유지한다")
+	actions.grid.props.clear()
+	_reset_units()
+
+
+func _test_rock_preview_guidance() -> void:
+	_reset_units()
+	var actor: CombatUnit = units[0]
+	var origin: Vector2i = Vector2i(5, 5)
+	var directions: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
+	var labels: Array[String] = ["오른쪽 아래", "왼쪽 아래", "왼쪽 위", "오른쪽 위"]
+	for index: int in range(directions.size()):
+		actions.grid.props.clear()
+		var direction: Vector2i = directions[index]
+		actor.cell = origin - direction
+		units[1].cell = Vector2i.ZERO
+		units[2].cell = origin + direction * 2
+		units[3].cell = Vector2i(9, 9)
+		var rock: CombatGrid.Prop = actions.create_prop(origin, "rock")
+		battle.call("_on_action_selected", "attack")
+		await _click(battle.map.get_global_transform_with_canvas() * (battle.map.map_to_surface(origin) + Vector2(0, -8)))
+		_check(labels[index] in hud.preview_label.text and "방향 " not in hud.preview_label.text,
+			"바위 미리보기는 화면 방향을 표시: " + labels[index])
+		_check("3칸 · 최대3칸" in hud.preview_label.text and "적 피해4: " + units[2].get_display_name() in hud.preview_label.text
+			and "행동1" in hud.preview_label.text and "주사위 없음" in hud.preview_label.text,
+			"네 방향에서 기존 거리·충돌 대상·피해·비용·판정 정보 유지")
+		_check(actor.action_left == 1 and rock.cell == origin and units[2].hit_points == units[2].get_max_hit_points(),
+			"첫 클릭은 바위·HP·행동을 변경하지 않음")
+		actions.grid.blocked_cells.append(origin + direction)
+		battle.call("_update_turn_ui")
+		_check(labels[index] in hud.preview_label.text and "0칸 · 장벽" in hud.preview_label.text
+			and "충돌 없음" in hud.preview_label.text, "즉시 정지해도 방향·거리·정지 원인 보존")
+		actions.grid.blocked_cells.erase(origin + direction)
 	actions.grid.props.clear()
 	_reset_units()
 

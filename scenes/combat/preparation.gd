@@ -221,8 +221,8 @@ func _finish() -> void:
 	_hide_discard()
 	var missing: int = loot.bag.size() + rewards.size() - int(loot.data["bag_limit"])
 	if missing > 0:
-		bag_notice.text = tr_n("가방 공간이 %d칸 부족합니다. 장착·물약 분배 또는 가방 아이템 폐기로 공간을 확보하세요.",
-			"가방 공간이 %d칸 부족합니다. 장착·물약 분배 또는 가방 아이템 폐기로 공간을 확보하세요.", missing) % missing
+		bag_notice.text = tr_n("가방 공간이 %d칸 부족합니다.\n장착·물약 분배 또는 가방 아이템의 ‘버리기’로 공간을 확보합니다.",
+			"가방 공간이 %d칸 부족합니다.\n장착·물약 분배 또는 가방 아이템의 ‘버리기’로 공간을 확보합니다.", missing) % missing
 		bag_notice.show()
 		continue_button.grab_focus()
 		return
@@ -243,7 +243,7 @@ func _render() -> void:
 	_exits.clear()
 	_selected_kind = ""
 	title_label.text = tr("정비") if maintaining else tr_n("보상 · %d개", "보상 · %d개", rewards.size()) % rewards.size()
-	hint_label.text = (tr("아이템을 맞는 칸으로 끌거나, 선택 후 아래 버튼을 누르세요.") if maintaining
+	hint_label.text = (tr("아이템을 끌거나, 선택 후 아래 버튼으로 옮깁니다.") if maintaining
 		else tr("받은 보상을 확인합니다. 정비에서 캐릭터에게 나눠 줍니다."))
 	continue_button.text = (tr("3막 졸업") if final_stage else tr("다음 막 시작") if last_in_act
 		else tr("다음 스테이지")) if maintaining else tr("정비하기")
@@ -253,8 +253,8 @@ func _render() -> void:
 	enable_button.disabled = _confirm_finish
 	for index: int in range(party.size()):
 		_render_card(index)
-	_label(content, tr_n("받지 않은 보상 %d · 정비를 마치면 공용 가방에 보관",
-		"받지 않은 보상 %d · 정비를 마치면 공용 가방에 보관", rewards.size()) % rewards.size()
+	_label(content, tr_n("받지 않은 보상 %d개",
+		"받지 않은 보상 %d개", rewards.size()) % rewards.size()
 		if not rewards.is_empty() else tr("남은 보상 없음"), GOLD_COLOR, false)
 	var reward_grid: GridContainer = _grid(content, 7)
 	for index: int in range(rewards.size()):
@@ -279,7 +279,7 @@ func _render() -> void:
 			bag_grid.add_child(empty)
 			empty.name = "EmptyBag%d" % index
 			_drag_slot(empty, "empty_bag", index)
-	_label(content, tr("교체·해제한 장비와 받지 않은 보상은 공용 가방에 보관합니다."), DIM_COLOR)
+	_label(content, tr("남은 보상은 정비를 마칠 때 공용 가방에 보관합니다."), DIM_COLOR)
 	_render_detail()
 	# 상태를 바꾸는 동작과 화면 단계 전환만 다시 그린다.
 	changed.emit()
@@ -412,7 +412,7 @@ func _render_detail() -> void:
 		"reward", "bag":
 			var from_bag: bool = _selected_kind == "bag"
 			_label(info, ((tr("공용 가방 · 물약은 한 개씩 전달합니다.") if item.kind == "potion" else tr("공용 가방 · 교체하면 기존 장비는 이 칸으로 옵니다.")) if from_bag
-				else tr("받지 않은 보상 · 정비를 마치면 공용 가방에 보관합니다.")) if maintaining
+				else tr("받지 않은 보상 · 교체한 장비는 가방에 보관합니다.")) if maintaining
 				else tr("정비하기를 누른 뒤 캐릭터에게 나눠 줍니다."), DIM_COLOR)
 			if maintaining:
 				for ally: int in range(party.size()):

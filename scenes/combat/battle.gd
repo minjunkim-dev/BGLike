@@ -813,19 +813,23 @@ func _update_turn_ui() -> void:
 			if prop.kind == "rock":
 				var roll: CombatActions.RockRoll = actions.preview_rock(actor, prop)
 				map.show_rock_roll(prop.cell, roll)
+				var direction: String = {
+					Vector2i.RIGHT: tr("오른쪽 아래"), Vector2i.DOWN: tr("왼쪽 아래"),
+					Vector2i.LEFT: tr("왼쪽 위"), Vector2i.UP: tr("오른쪽 위")
+				}.get(roll.direction, tr("방향 없음"))
 				var collisions: Array[String] = []
 				for unit: CombatUnit in roll.collisions:
 					var landing: String = actions.rock_landing(roll, unit)
 					collisions.append((tr("아군 피해4: %s") if unit.is_ally else tr("적 피해4: %s")) % unit.get_display_name()
 						+ ("" if landing.is_empty() else " · " + landing))
-				note = tr("행동1 · 주사위 없음 · 재클릭\n방향 %d,%d · %d칸 · %s\n%s") % [
-					roll.direction.x, roll.direction.y, roll.cells.size(), roll.reason,
+				note = tr("행동1 · 주사위 없음\n%s · %d칸 · %s\n%s\n같은 바위를 다시 좌클릭하면 굴립니다.") % [
+					direction, roll.cells.size(), roll.reason,
 					", ".join(collisions) if not collisions.is_empty() else tr("충돌 없음")]
 			else:
 				var sides: int = actor.get_damage_sides()
 				var minimum: int = maxi(1, actor.get_damage_bonus() + (1 if sides > 0 else 0))
 				var maximum: int = maxi(1, actor.get_damage_bonus() + sides)
-				note = tr("피해 %d~%d · 행동1 · 자동 명중\n같은 상자 재클릭") % [minimum, maximum]
+				note = tr("피해 %d~%d · 행동1 · 자동 명중\n같은 상자를 다시 좌클릭하면 공격합니다.") % [minimum, maximum]
 			if not actions.can_attack_prop(actor, prop):
 				if actor.action_left <= 0:
 					note = tr("행동 없음")
@@ -848,7 +852,7 @@ func _update_turn_ui() -> void:
 	hud.show_move_mode(showing_move)
 	if selection.selected_action == "jump":
 		hud.show_move_mode(false)
-		var note: String = tr("점프 · 착지 칸 우클릭\n같은 칸 재클릭으로 확정")
+		var note: String = tr("점프 · 착지할 칸을 우클릭합니다.\n같은 칸을 다시 우클릭하면 확정합니다.")
 		if not selection.preview_path.is_empty():
 			var actor: CombatUnit = turns.current_unit
 			var cell: Vector2i = selection.preview_cell

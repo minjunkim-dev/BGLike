@@ -9,7 +9,7 @@ const LOGICAL: Dictionary[Vector2i, Vector2] = {Vector2i(1280, 720): Vector2(640
 	Vector2i(1920, 1080): Vector2(640, 360), Vector2i(1440, 900): Vector2(640, 400)}
 ## ADR 0002의 레이아웃 자동 검사 창: 16:10 4배, 넓은 비율, 비정수 배율.
 const EXTRA_WINDOWS: Array[Vector2i] = [Vector2i(2560, 1600), Vector2i(2560, 1080), Vector2i(1366, 768)]
-const UNREADABLE: String = "저장을 읽을 수 없어\n이어할 수 없습니다."
+const UNREADABLE: String = "저장 파일을 읽을 수 없어\n게임을 이어서 할 수 없습니다."
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
 ## 여러 worktree가 같은 user://를 쓰므로 실행마다 폴더를 나눈다. 사용자의 저장을 건드리지 않는다 (docs/adr/0003).
 var directory: String = "user://tests/continue/%d" % OS.get_process_id()
