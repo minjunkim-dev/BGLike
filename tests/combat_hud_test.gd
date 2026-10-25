@@ -77,6 +77,14 @@ func _run() -> void:
 	await _test_reaction_flow()
 	await _test_reaction_focus()
 	await _test_action_animations()
+	var previous_fps: int = Engine.max_fps
+	var previous_scale: float = Engine.time_scale
+	# 긴 프레임에서는 짧은 Tween이 프레임 관찰 사이에 끝날 수 있다.
+	Engine.max_fps = 5
+	Engine.time_scale = 3.0
+	await _test_action_animations()
+	Engine.max_fps = previous_fps
+	Engine.time_scale = previous_scale
 	await _test_rock_presentation()
 	await _test_results_and_restart()
 	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
@@ -1813,6 +1821,12 @@ func _test_action_animations() -> void:
 		event.pressed = true
 		event.position = battle.map.get_global_transform_with_canvas() * (
 			battle.map.map_to_surface(crate.cell) + Vector2(0, -8))
+		var saw_impact: Array[bool] = [false]
+		var on_impact: Callable = func(node: Node) -> void:
+			if node.name == &"PropAnimation":
+				saw_impact[0] = true
+				_check(crate.hit_points == 6 and actor.action_left == 1, "상자 연출 생성은 피해·비용 확정 전")
+		battle.map.child_entered_tree.connect(on_impact)
 		battle.call("_unhandled_input", event)
 		battle.call("_unhandled_input", event)
 		var sprite: AnimatedSprite2D = actor.get_node("Sprite") as AnimatedSprite2D
@@ -1820,15 +1834,14 @@ func _test_action_animations() -> void:
 			and crate.hit_points == 6, "상자 공격은 방향·공격 자세를 먼저 표시하고 입력을 잠근다")
 		if actor.kind == CombatUnit.Kind.ARCHER:
 			_check(battle.has_node("Arrow"), "궁수의 상자 공격에도 실제 화살이 비행한다")
-		var saw_impact: bool = false
 		while actions.busy:
 			if battle.map.has_node("PropAnimation"):
-				saw_impact = true
 				_check(crate.hit_points == 6 and actor.action_left == 1, "상자 연출 중 판정·비용은 아직 적용하지 않음")
 				battle.call("_unhandled_input", event)
 			await process_frame
 		await process_frame
-		_check(saw_impact and not battle.map.has_node("PropAnimation"), "물체 피격 연출을 보이고 임시 노드를 정리")
+		battle.map.child_entered_tree.disconnect(on_impact)
+		_check(saw_impact[0] and not battle.map.has_node("PropAnimation"), "물체 피격 연출을 보이고 임시 노드를 정리")
 		_check(actor.action_left == 0 and crate.hit_points < 6 and not battle.has_node("Arrow"),
 			"상자 공격 연출 뒤 기존 피해·행동 비용과 화살 정리를 유지한다")
 	actions.grid.props.clear()
