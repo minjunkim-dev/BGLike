@@ -448,7 +448,7 @@ func _test_rock_scene_input() -> void:
 	_check(selection.preview_prop == rock and units[0].action_left == 1 and units[1].hit_points == 14,
 		"실제 바위 몸통 첫 클릭은 비용/충돌 피해 없이 미리보기를 연다")
 	_check("바위" in hud.preview_label.text and "아군 피해4" in hud.preview_label.text
-		and "주사위 없음" in hud.preview_label.text and "방향 0,-1" in hud.preview_label.text
+		and "주사위 없음" in hud.preview_label.text and "오른쪽 위" in hud.preview_label.text
 		and "밀기 막힘" in hud.preview_label.text,
 		"바위 안내는 같은 충돌규칙의 방향/경로/정지와 아군 피해4/무굴림을 표시한다")
 	actions.grid.pits.append(Vector2i(1, 1))

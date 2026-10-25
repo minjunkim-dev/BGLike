@@ -75,7 +75,7 @@ autowrap_mode = 3
 
 [node name="Mouse4" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
-text = "초상: HP·방어·6능력치 주사위·상태를 봅니다. 지금 조작할 수 있는 아군의 초상은 그 유닛으로 바꿉니다."
+text = "초상: HP·방어·6능력치 주사위·상태를 봅니다. 현재 턴 묶음에서 조작 가능한 아군 초상을 누르면 해당 유닛을 조작합니다."
 autowrap_mode = 3
 
 [node name="Mouse5" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
@@ -170,7 +170,7 @@ autowrap_mode = 3
 
 [node name="Reactions3" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
-text = "흘려내기(전사): 공격에 명중당했을 때 피해를 굴리기 전에 씁니다. 민첩 주사위 +3이 맞은 공격의 공격 굴림 이상이면 그 공격을 피합니다."
+text = "흘려내기(전사): 공격이 명중하면 피해를 굴리기 전에 씁니다. 민첩 주사위 +3이 그 공격의 공격 굴림 이상이면 공격을 피합니다."
 autowrap_mode = 3
 
 [node name="Reactions4" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
