@@ -1,0 +1,49 @@
+{
+  "product_source": "7d533b636e7db0bd39ac5e82463611ab7921d15e",
+  "attempts": [
+    {
+      "path": "samples",
+      "run_id": "a1db38cccf9a4ec7aee08855aee6cffa",
+      "driver_exit": 1,
+      "included": false,
+      "reason": "59 validated; nearest25 exceeded240s wall timeout"
+    },
+    {
+      "path": "retry25",
+      "run_id": "ca37ad7661b247eebf6e96d90d785bf8",
+      "driver_exit": 1,
+      "game_exit": 4,
+      "included": false,
+      "reason": "round cap, but1 field click failure rejects sample"
+    },
+    {
+      "path": "diagnostic25",
+      "run_id": "ca3b0cd7a9434fe0b18359fa7438b259",
+      "driver_exit": 130,
+      "included": false,
+      "reason": "stopped after first diagnostic event; not outcome data"
+    },
+    {
+      "path": "diagnostic2",
+      "run_id": "88530e57952a4a6e936179740e58924c",
+      "driver_exit": 1,
+      "game_exit": 7,
+      "included": false,
+      "reason": "deliberate stop at click failure with body candidates and snapshot"
+    },
+    {
+      "path": "corrected25",
+      "run_id": "7a54e957049447a4b24c945180adf360",
+      "driver_exit": 130,
+      "included": false,
+      "reason": "single-seed pilot superseded by full fresh60 rerun"
+    },
+    {
+      "path": "samples-v2",
+      "run_id": "9fef006d65a749d99f2b413c1a8a7b3d",
+      "driver_exit": 0,
+      "included": true,
+      "reason": "full fresh60 with stable body pixels and wall1200; validated"
+    }
+  ]
+}

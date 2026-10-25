@@ -1,0 +1,44 @@
+{
+  "source_sha": "7d533b636e7db0bd39ac5e82463611ab7921d15e",
+  "inputs": [
+    "res://.cache/native-edges/probe.gd"
+  ],
+  "cases": [
+    {
+      "id": "limits",
+      "script": "res://.cache/native-edges/probe.gd",
+      "resolution": [
+        1280,
+        720
+      ],
+      "timeout": 1800,
+      "args": [
+        "--case=limits"
+      ],
+      "preflight_args": [
+        "--fixture-precheck"
+      ],
+      "preflight_success_marker": "[NATIVE_FIXTURE_READY]",
+      "success_marker": "[NATIVE_CASE_DONE]",
+      "acceptance": "Native Esc drag cancellation; potion cap; full bag exchange/armor block; discard modal blocks underlying drag; cancel preserves then confirm removes only selected item; native inventory state autosaved"
+    },
+    {
+      "id": "resume",
+      "script": "res://.cache/native-edges/probe.gd",
+      "resolution": [
+        1280,
+        720
+      ],
+      "timeout": 1800,
+      "args": [
+        "--case=resume"
+      ],
+      "preflight_args": [
+        "--fixture-precheck"
+      ],
+      "preflight_success_marker": "[NATIVE_FIXTURE_READY]",
+      "success_marker": "[NATIVE_CASE_DONE]",
+      "acceptance": "Fresh Godot process: native title Continue restores preparation inventory, equipment, potions and waiting state from previous case; return to map and start"
+    }
+  ]
+}

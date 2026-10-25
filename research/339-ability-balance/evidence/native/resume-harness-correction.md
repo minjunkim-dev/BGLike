@@ -1,0 +1,1 @@
+First resume session failed before input because the probe referred to nonexistent scenes/title.tscn. Product title is scenes/main.tscn. Preserved failed logs. New resume script and new session fingerprint use the actual startup scene and preflight loads it. Product files unchanged. Same isolated saved file from accepted limits attempt 2 is reused.

@@ -1,0 +1,26 @@
+{
+  "source_sha": "7d533b636e7db0bd39ac5e82463611ab7921d15e",
+  "inputs": [
+    "res://.cache/native-edges/resume.gd"
+  ],
+  "cases": [
+    {
+      "id": "resume",
+      "script": "res://.cache/native-edges/resume.gd",
+      "resolution": [
+        1280,
+        720
+      ],
+      "timeout": 1800,
+      "args": [
+        "--case=resume"
+      ],
+      "preflight_args": [
+        "--fixture-precheck"
+      ],
+      "preflight_success_marker": "[NATIVE_FIXTURE_READY]",
+      "success_marker": "[NATIVE_CASE_DONE]",
+      "acceptance": "Fresh Godot process: native title Continue restores preparation inventory, equipment, potions and waiting state from previous case; return to map and start"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{"event": "started", "run_id": "a1285e40732646f0b4cfed479d6c6e82", "head_sha": "7d533b636e7db0bd39ac5e82463611ab7921d15e", "dirty": true, "child_pid": 89174, "record": "/Users/swifty/.local/state/agent-workflow/c188e267f2353b647388becf412c15c20b3b19a8c631effefed5c16a09e18465.lock"}
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+{"event": "finished", "run_id": "a1285e40732646f0b4cfed479d6c6e82", "exit_code": 0, "record": "/Users/swifty/.local/state/agent-workflow/c188e267f2353b647388becf412c15c20b3b19a8c631effefed5c16a09e18465.lock"}

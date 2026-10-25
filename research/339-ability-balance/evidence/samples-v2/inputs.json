@@ -1,0 +1,61 @@
+{
+  "plan": {
+    "source_sha": "7d533b636e7db0bd39ac5e82463611ab7921d15e",
+    "inputs": [
+      "research/339-ability-balance/aggregate.py",
+      "research/339-ability-balance/run.py",
+      "research/339-ability-balance/test_run.py"
+    ],
+    "cases": [
+      {
+        "id": "balance",
+        "script": "res://research/339-ability-balance/autoplay.gd",
+        "resolution": [
+          1280,
+          720
+        ],
+        "timeout": 1200,
+        "acceptance": "Two unchanged policies; valid movement; graduation or classified cap",
+        "success_marker": "DONE code="
+      }
+    ]
+  },
+  "fingerprint": "2dce162970223fe24302c9fe2f50d7713b0b359bd50fc84543a8b8e8afd69dcb",
+  "godot": "/Applications/Godot.app/Contents/MacOS/Godot",
+  "engine_version": "4.7.2.stable.official.ed1daf0bf",
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30
+  ],
+  "action_seed": "run * 100000 + stage-entry ordinal (zero-based)",
+  "initiative_seed": "run * 100000 + 50000 + stage-entry ordinal (zero-based)",
+  "policy_source": "research/278-balance-stats + movement-postcondition-20261024"
+}

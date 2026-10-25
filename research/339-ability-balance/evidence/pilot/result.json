@@ -1,0 +1,14 @@
+[
+  {
+    "policy": "mother",
+    "seed": 1,
+    "exit_code": 0,
+    "reason": "graduated"
+  },
+  {
+    "policy": "nearest",
+    "seed": 1,
+    "exit_code": 4,
+    "reason": "round cap 60 at 3-1"
+  }
+]

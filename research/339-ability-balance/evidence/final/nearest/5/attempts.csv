@@ -1,0 +1,11 @@
+policy,run,stage,attempt,result,rounds,game_s,warrior_hp,warrior_max,archer_hp,archer_max,downed,start_potions,potions_used,potions_warrior,potions_archer,rewards,rewards_weapon,rewards_armor,rewards_potion,extra_eligible,spawned,enemy_time_s,enemy_segment_max_s,enemy_segments,ally_attacks,ally_misses,ally_streak_max,enemy_attacks,enemy_misses,enemy_streak_max,bag_end,discarded
+nearest,5,1-1,1,win,3,12.300,12,12,12,14,0,0,0,0,0,1,1,0,0,0,0,8.750,4.650,3,6,2,1,5,3,3,0,0
+nearest,5,1-2,1,win,1,1.867,12,12,12,14,0,0,0,0,0,2,0,0,2,1,0,0.000,0.000,0,2,0,0,0,0,0,0,0
+nearest,5,1-3,1,wipe,4,9.550,0,12,0,14,2,2,1,1,0,0,0,0,0,1,0,5.883,1.550,4,5,1,1,8,0,0,0,0
+nearest,5,1-1,2,win,2,9.850,12,12,14,14,0,1,0,1,0,1,0,0,1,0,0,8.217,5.083,2,4,0,0,2,2,2,0,0
+nearest,5,1-2,2,win,1,3.217,12,12,14,14,0,2,0,1,1,1,1,0,0,1,0,1.367,1.367,1,2,0,0,1,1,1,0,0
+nearest,5,1-3,2,win,3,5.883,6,12,14,14,0,2,0,1,1,2,0,2,0,1,0,3.167,1.700,2,4,0,0,3,2,2,0,0
+nearest,5,2-1,1,win,5,14.050,16,16,16,17,0,2,0,1,1,1,0,0,1,1,2,9.050,4.700,5,9,0,0,6,5,5,0,0
+nearest,5,2-2,1,win,3,8.767,12,16,16,17,0,3,0,2,1,1,0,1,0,2,0,4.967,1.400,5,6,1,1,5,4,3,1,0
+nearest,5,2-3,1,win,5,7.617,15,19,16,17,0,3,0,2,1,1,0,1,0,1,0,3.867,1.467,4,8,2,1,5,5,5,2,0
+nearest,5,3-1,1,timeout,61,359.600,11,19,20,20,0,3,0,2,1,0,0,0,0,2,120,323.667,7.483,61,120,15,1,175,165,37,2,0

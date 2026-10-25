@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "source_sha": "7d533b636e7db0bd39ac5e82463611ab7921d15e",
+  "accepted_pngs": 33,
+  "restore_equal_fields": [
+    "bag",
+    "party",
+    "units",
+    "props",
+    "waiting",
+    "preparation"
+  ],
+  "limits_attempt": 2,
+  "resume_session": "resume-session",
+  "excluded": "original limits attempt1 user interaction; original resume1 harness scene path error",
+  "product_changes": false
+}

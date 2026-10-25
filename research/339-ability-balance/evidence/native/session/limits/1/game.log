@@ -1,0 +1,237 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Metal 4.0 - Forward+ - Using Device #0: Apple - Apple M4 Pro (Apple9)
+
+[NATIVE_READY] limits display=macOS window=(1280, 720)
+[NATIVE_FRAME] 1 initial action=1 move=6
+[NATIVE_INPUT] msec=9871 Command
+[NATIVE_FRAME] 2 Command action=1 move=6
+[NATIVE_INPUT] msec=9969 Command
+[NATIVE_FRAME] 3 Command action=1 move=6
+[RAW_BUTTON] msec=12017 pressed=true button=1 pos=(355.0, 282.0)
+[NATIVE_INPUT] msec=12017 Left Mouse Button
+[RAW_BUTTON] msec=12017 pressed=false button=1 pos=(355.0, 282.0)
+[NATIVE_INPUT] msec=12017 Left Mouse Button
+[NATIVE_FRAME] 4 Left Mouse Button action=1 move=6
+[NATIVE_FRAME] 5 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=13833 pressed=true button=1 pos=(289.5, 277.5)
+[NATIVE_INPUT] msec=13833 Left Mouse Button
+[RAW_BUTTON] msec=13833 pressed=false button=1 pos=(289.5, 277.5)
+[NATIVE_INPUT] msec=13833 Left Mouse Button
+[NATIVE_FRAME] 6 Left Mouse Button action=1 move=6
+[NATIVE_FRAME] 7 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=37633 pressed=true button=1 pos=(173.4, 144.4)
+[NATIVE_INPUT] msec=37633 Left Mouse Button
+[RAW_BUTTON] msec=37636 pressed=false button=1 pos=(173.4, 144.4)
+[NATIVE_INPUT] msec=37636 Left Mouse Button
+[NATIVE_FRAME] 8 Left Mouse Button action=1 move=6
+[NATIVE_FRAME] 9 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=39700 pressed=true button=1 pos=(462.8, 352.0)
+[NATIVE_INPUT] msec=39700 Left Mouse Button
+[NATIVE_FRAME] 10 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=39840 pressed=false button=1 pos=(462.8, 352.0)
+[NATIVE_INPUT] msec=39840 Left Mouse Button
+[NATIVE_FRAME] 11 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=47833 pressed=true button=1 pos=(377.4, 106.2)
+[NATIVE_INPUT] msec=47833 Left Mouse Button
+[RAW_BUTTON] msec=47833 pressed=false button=1 pos=(377.4, 106.2)
+[NATIVE_INPUT] msec=47833 Left Mouse Button
+[NATIVE_FRAME] 12 Left Mouse Button action=1 move=6
+[NATIVE_FRAME] 13 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=48462 pressed=true button=1 pos=(377.4, 106.2)
+[NATIVE_INPUT] msec=48462 Left Mouse Button
+[RAW_BUTTON] msec=48462 pressed=false button=1 pos=(377.4, 106.2)
+[NATIVE_INPUT] msec=48462 Left Mouse Button
+[NATIVE_FRAME] 14 Left Mouse Button action=1 move=6
+[NATIVE_FRAME] 15 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=48679 pressed=true button=1 pos=(377.4, 106.2)
+[NATIVE_INPUT] msec=48679 Left Mouse Button
+[RAW_DRAG_MOTION] msec=48680 mask=1 pos=(377.0, 106.2) relative=(-0.4, -0.4)
+[NATIVE_FRAME] 16 Left Mouse Button action=1 move=6
+[RAW_DRAG_MOTION] msec=48794 mask=1 pos=(312.0, 75.99999) relative=(-64.8, -30.0)
+[GUI_DRAG] true
+[RAW_DRAG_MOTION] msec=48809 mask=1 pos=(307.0, 73.6) relative=(-5.2, -2.4)
+[RAW_DRAG_MOTION] msec=48818 mask=1 pos=(302.6, 71.39999) relative=(-4.4, -2.0)
+[RAW_DRAG_MOTION] msec=48826 mask=1 pos=(297.8, 69.2) relative=(-4.8, -2.4)
+[RAW_DRAG_MOTION] msec=48835 mask=1 pos=(294.2, 67.8) relative=(-3.6, -1.2)
+[RAW_DRAG_MOTION] msec=48843 mask=1 pos=(291.4, 66.8) relative=(-2.8, -1.2)
+[RAW_DRAG_MOTION] msec=48851 mask=1 pos=(288.8, 65.99999) relative=(-2.4, -0.8)
+[RAW_DRAG_MOTION] msec=48859 mask=1 pos=(287.2, 65.6) relative=(-1.6, -0.4)
+[RAW_DRAG_MOTION] msec=48868 mask=1 pos=(285.6, 65.2) relative=(-1.6, -0.4)
+[RAW_DRAG_MOTION] msec=48876 mask=1 pos=(283.8, 64.8) relative=(-2.0, -0.4)
+[RAW_DRAG_MOTION] msec=48884 mask=1 pos=(282.6, 64.6) relative=(-1.2, 0.0)
+[RAW_DRAG_MOTION] msec=48892 mask=1 pos=(281.2, 64.2) relative=(-1.2, -0.4)
+[RAW_DRAG_MOTION] msec=48901 mask=1 pos=(280.0, 64.2) relative=(-1.2, 0.0)
+[RAW_DRAG_MOTION] msec=48910 mask=1 pos=(277.4, 64.0) relative=(-2.4, -0.4)
+[RAW_DRAG_MOTION] msec=48926 mask=1 pos=(276.6, 64.0) relative=(-1.2, 0.0)
+[RAW_DRAG_MOTION] msec=48933 mask=1 pos=(275.6, 64.2) relative=(-0.8, 0.0)
+[RAW_DRAG_MOTION] msec=48951 mask=1 pos=(273.6, 64.39999) relative=(-2.0, 0.0)
+[RAW_DRAG_MOTION] msec=48961 mask=1 pos=(272.4, 64.6) relative=(-1.2, 0.4)
+[RAW_DRAG_MOTION] msec=48968 mask=1 pos=(271.6, 64.6) relative=(-0.8, 0.0)
+[RAW_DRAG_MOTION] msec=48975 mask=1 pos=(270.8, 64.6) relative=(-0.8, 0.0)
+[RAW_DRAG_MOTION] msec=48986 mask=1 pos=(269.8, 64.6) relative=(-1.2, 0.0)
+[RAW_DRAG_MOTION] msec=48992 mask=1 pos=(268.8, 64.6) relative=(-0.8, 0.0)
+[RAW_DRAG_MOTION] msec=49000 mask=1 pos=(268.0, 64.6) relative=(-0.8, 0.0)
+[RAW_DRAG_MOTION] msec=49016 mask=1 pos=(266.2, 64.6) relative=(-2.0, 0.0)
+[RAW_DRAG_MOTION] msec=49025 mask=1 pos=(265.4, 64.39999) relative=(-0.8, 0.0)
+[RAW_DRAG_MOTION] msec=49033 mask=1 pos=(264.4, 64.39999) relative=(-0.8, 0.0)
+[RAW_DRAG_MOTION] msec=49043 mask=1 pos=(262.0, 64.0) relative=(-2.4, -0.4)
+[RAW_DRAG_MOTION] msec=49050 mask=1 pos=(260.8, 63.6) relative=(-1.2, -0.4)
+[RAW_DRAG_MOTION] msec=49068 mask=1 pos=(259.2, 63.39999) relative=(-1.6, -0.4)
+[RAW_DRAG_MOTION] msec=49075 mask=1 pos=(255.8, 62.6) relative=(-3.6, -0.4)
+[RAW_DRAG_MOTION] msec=49083 mask=1 pos=(254.2, 62.2) relative=(-1.6, -0.4)
+[RAW_DRAG_MOTION] msec=49100 mask=1 pos=(250.6, 61.39999) relative=(-3.6, -0.8)
+[RAW_DRAG_MOTION] msec=49108 mask=1 pos=(249.0, 60.8) relative=(-1.6, -0.8)
+[RAW_DRAG_MOTION] msec=49116 mask=1 pos=(247.6, 60.39999) relative=(-1.2, -0.4)
+[RAW_DRAG_MOTION] msec=49125 mask=1 pos=(246.4, 60.0) relative=(-1.2, -0.4)
+[RAW_DRAG_MOTION] msec=49133 mask=1 pos=(245.2, 59.39999) relative=(-1.2, -0.4)
+[RAW_DRAG_MOTION] msec=49142 mask=1 pos=(244.2, 59.0) relative=(-1.2, -0.4)
+[RAW_DRAG_MOTION] msec=49158 mask=1 pos=(242.4, 58.2) relative=(-1.6, -0.8)
+[RAW_DRAG_MOTION] msec=49166 mask=1 pos=(241.6, 57.8) relative=(-0.8, -0.4)
+[RAW_DRAG_MOTION] msec=49175 mask=1 pos=(241.0, 57.6) relative=(-0.8, -0.4)
+[RAW_DRAG_MOTION] msec=49186 mask=1 pos=(240.2, 57.2) relative=(-0.4, -0.4)
+[RAW_DRAG_MOTION] msec=49208 mask=1 pos=(239.0, 56.2) relative=(-1.6, -0.8)
+[RAW_DRAG_MOTION] msec=49216 mask=1 pos=(238.8, 56.0) relative=(0.0, -0.4)
+[RAW_DRAG_MOTION] msec=49225 mask=1 pos=(238.6, 55.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=49233 mask=1 pos=(238.6, 55.6) relative=(-0.4, -0.4)
+[RAW_DRAG_MOTION] msec=49249 mask=1 pos=(238.6, 55.6) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=49266 mask=1 pos=(238.6, 55.39999) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=49274 mask=1 pos=(238.6, 55.39999) relative=(0.0, 0.0)
+[RAW_BUTTON] msec=49534 pressed=false button=1 pos=(238.6, 55.39999)
+[NATIVE_INPUT] msec=49537 Left Mouse Button
+[GUI_DRAG] false
+[NATIVE_FRAME] 17 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=57297 pressed=true button=1 pos=(152.0, 105.8)
+[NATIVE_INPUT] msec=57297 Left Mouse Button
+[NATIVE_FRAME] 18 Left Mouse Button action=1 move=6
+[RAW_DRAG_MOTION] msec=57459 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57475 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57501 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57526 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57543 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57568 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57583 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57609 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57626 mask=1 pos=(152.0, 105.8) relative=(-378.0, -58.4)
+[RAW_DRAG_MOTION] msec=57643 mask=1 pos=(121.0, 102.8) relative=(-28.0, -2.8)
+[RAW_DRAG_MOTION] msec=57660 mask=1 pos=(92.2, 99.8) relative=(-28.8, -3.2)
+[RAW_DRAG_MOTION] msec=57676 mask=1 pos=(152.0, 105.8) relative=(-33.2, -0.8)
+[RAW_DRAG_MOTION] msec=57693 mask=1 pos=(38.0, 104.8) relative=(-20.8, 5.599999)
+[RAW_DRAG_MOTION] msec=57701 mask=1 pos=(137.4, 105.8) relative=(98.8, 0.8)
+[RAW_DRAG_MOTION] msec=57709 mask=1 pos=(105.8, 105.8) relative=(-31.2, 0.0)
+[RAW_DRAG_MOTION] msec=57717 mask=1 pos=(96.39999, 105.8) relative=(-9.599999, 0.0)
+[RAW_DRAG_MOTION] msec=57726 mask=1 pos=(131.0, 105.8) relative=(34.4, 0.0)
+[RAW_DRAG_MOTION] msec=57735 mask=1 pos=(125.6, 105.4) relative=(-5.2, 0.0)
+[RAW_DRAG_MOTION] msec=57742 mask=1 pos=(113.2, 103.6) relative=(-12.4, -1.6)
+[RAW_DRAG_MOTION] msec=57751 mask=1 pos=(133.6, 97.39999) relative=(20.4, -6.4)
+[RAW_DRAG_MOTION] msec=57775 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57792 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57817 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57834 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57859 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57884 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57909 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57926 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57950 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=57975 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=58000 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=58025 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=58051 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=58068 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=58093 mask=1 pos=(152.0, 105.8) relative=(18.4, 8.0)
+[RAW_DRAG_MOTION] msec=58110 mask=1 pos=(165.2, 107.2) relative=(13.2, 1.6)
+[RAW_DRAG_MOTION] msec=58126 mask=1 pos=(152.0, 105.8) relative=(0.0, 0.0)
+[RAW_BUTTON] msec=58144 pressed=false button=1 pos=(152.0, 105.8)
+[NATIVE_INPUT] msec=58144 Left Mouse Button
+[NATIVE_FRAME] 19 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=59458 pressed=true button=1 pos=(338.2, 102.4)
+[NATIVE_INPUT] msec=59458 Left Mouse Button
+[RAW_DRAG_MOTION] msec=59458 mask=1 pos=(337.4, 102.4) relative=(-0.4, 0.0)
+[NATIVE_FRAME] 20 Left Mouse Button action=1 move=6
+[RAW_DRAG_MOTION] msec=59564 mask=1 pos=(148.0, 118.8) relative=(-189.2, 16.4)
+[GUI_DRAG] true
+[RAW_DRAG_MOTION] msec=59568 mask=1 pos=(136.0, 121.4) relative=(-12.0, 2.8)
+[RAW_DRAG_MOTION] msec=59584 mask=1 pos=(127.2, 123.4) relative=(-8.799999, 1.6)
+[RAW_DRAG_MOTION] msec=59592 mask=1 pos=(120.4, 124.6) relative=(-6.8, 1.6)
+[RAW_DRAG_MOTION] msec=59601 mask=1 pos=(113.4, 126.0) relative=(-7.2, 1.2)
+[RAW_DRAG_MOTION] msec=59609 mask=1 pos=(107.0, 127.2) relative=(-6.4, 1.2)
+[RAW_DRAG_MOTION] msec=59617 mask=1 pos=(101.4, 128.4) relative=(-5.599999, 1.2)
+[RAW_DRAG_MOTION] msec=59625 mask=1 pos=(96.99998, 129.0) relative=(-4.4, 0.4)
+[RAW_DRAG_MOTION] msec=59634 mask=1 pos=(93.59999, 129.4) relative=(-3.2, 0.4)
+[RAW_DRAG_MOTION] msec=59642 mask=1 pos=(90.59999, 129.8) relative=(-3.2, 0.4)
+[RAW_DRAG_MOTION] msec=59651 mask=1 pos=(87.59999, 129.8) relative=(-2.8, 0.4)
+[RAW_DRAG_MOTION] msec=59667 mask=1 pos=(82.59999, 130.2) relative=(-5.2, 0.4)
+[RAW_DRAG_MOTION] msec=59675 mask=1 pos=(80.2, 130.4) relative=(-2.4, 0.0)
+[RAW_DRAG_MOTION] msec=59684 mask=1 pos=(77.39999, 130.6) relative=(-2.8, 0.4)
+[RAW_DRAG_MOTION] msec=59692 mask=1 pos=(74.39999, 131.0) relative=(-2.8, 0.0)
+[RAW_DRAG_MOTION] msec=59701 mask=1 pos=(71.2, 131.0) relative=(-3.6, 0.4)
+[RAW_DRAG_MOTION] msec=59709 mask=1 pos=(68.0, 131.2) relative=(-2.8, 0.0)
+[RAW_DRAG_MOTION] msec=59717 mask=1 pos=(64.8, 131.4) relative=(-3.2, 0.4)
+[RAW_DRAG_MOTION] msec=59725 mask=1 pos=(61.8, 131.4) relative=(-3.2, 0.0)
+[RAW_DRAG_MOTION] msec=59734 mask=1 pos=(59.4, 131.4) relative=(-2.4, 0.0)
+[RAW_DRAG_MOTION] msec=59743 mask=1 pos=(57.8, 131.4) relative=(-1.6, 0.0)
+[RAW_DRAG_MOTION] msec=59751 mask=1 pos=(56.0, 131.4) relative=(-1.6, 0.0)
+[RAW_DRAG_MOTION] msec=59759 mask=1 pos=(54.2, 131.2) relative=(-2.0, 0.0)
+[RAW_DRAG_MOTION] msec=59768 mask=1 pos=(53.0, 131.0) relative=(-1.2, -0.4)
+[RAW_DRAG_MOTION] msec=59776 mask=1 pos=(52.0, 130.6) relative=(-0.8, -0.4)
+[RAW_DRAG_MOTION] msec=59784 mask=1 pos=(51.2, 130.0) relative=(-0.8, -0.4)
+[RAW_DRAG_MOTION] msec=59792 mask=1 pos=(50.8, 129.6) relative=(-0.4, -0.4)
+[RAW_DRAG_MOTION] msec=59800 mask=1 pos=(50.4, 129.0) relative=(-0.4, -0.4)
+[RAW_DRAG_MOTION] msec=59809 mask=1 pos=(50.4, 128.8) relative=(0.0, -0.4)
+[RAW_DRAG_MOTION] msec=59817 mask=1 pos=(50.4, 128.6) relative=(-0.4, 0.0)
+[RAW_DRAG_MOTION] msec=59826 mask=1 pos=(50.2, 128.6) relative=(0.0, -0.4)
+[RAW_DRAG_MOTION] msec=59842 mask=1 pos=(50.0, 128.2) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=59851 mask=1 pos=(50.0, 128.2) relative=(-0.4, -0.4)
+[RAW_DRAG_MOTION] msec=59859 mask=1 pos=(49.8, 128.0) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=59867 mask=1 pos=(49.59999, 127.8) relative=(0.0, -0.4)
+[RAW_DRAG_MOTION] msec=59892 mask=1 pos=(49.4, 127.6) relative=(-0.4, 0.0)
+[RAW_DRAG_MOTION] msec=59902 mask=1 pos=(48.4, 127.2) relative=(-0.8, -0.4)
+[RAW_DRAG_MOTION] msec=59908 mask=1 pos=(48.0, 126.8) relative=(-0.4, -0.4)
+[RAW_DRAG_MOTION] msec=59916 mask=1 pos=(47.6, 126.6) relative=(-0.4, 0.0)
+[RAW_DRAG_MOTION] msec=59924 mask=1 pos=(47.4, 126.4) relative=(-0.4, -0.4)
+[RAW_DRAG_MOTION] msec=59936 mask=1 pos=(47.2, 126.2) relative=(0.0, -0.4)
+[RAW_DRAG_MOTION] msec=59949 mask=1 pos=(46.8, 125.8) relative=(-0.4, 0.0)
+[RAW_DRAG_MOTION] msec=59958 mask=1 pos=(46.8, 125.6) relative=(0.0, -0.4)
+[RAW_DRAG_MOTION] msec=59966 mask=1 pos=(46.8, 125.4) relative=(0.0, 0.0)
+[RAW_DRAG_MOTION] msec=59975 mask=1 pos=(46.6, 125.2) relative=(-0.4, -0.4)
+[RAW_DRAG_MOTION] msec=59983 mask=1 pos=(46.6, 124.8) relative=(0.0, -0.4)
+[RAW_DRAG_MOTION] msec=59993 mask=1 pos=(46.8, 124.2) relative=(0.0, -0.4)
+[RAW_BUTTON] msec=60161 pressed=false button=1 pos=(46.8, 124.2)
+[NATIVE_INPUT] msec=60161 Left Mouse Button
+[GUI_DRAG] false
+[NATIVE_FRAME] 21 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=61537 pressed=true button=1 pos=(547.8, 371.8)
+[NATIVE_INPUT] msec=61537 Left Mouse Button
+[NATIVE_FRAME] 22 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=61653 pressed=false button=1 pos=(547.8, 371.8)
+[NATIVE_INPUT] msec=61653 Left Mouse Button
+[NATIVE_FRAME] 23 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=63712 pressed=true button=1 pos=(543.8, 347.0)
+[NATIVE_INPUT] msec=63712 Left Mouse Button
+[NATIVE_FRAME] 24 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=63860 pressed=false button=1 pos=(543.8, 347.0)
+[NATIVE_INPUT] msec=63860 Left Mouse Button
+[NATIVE_FRAME] 25 Left Mouse Button action=1 move=6
+[RAW_BUTTON] msec=65354 pressed=true button=2 pos=(204.0, 200.6)
+[NATIVE_INPUT] msec=65354 Right Mouse Button
+[RAW_BUTTON] msec=65371 pressed=false button=2 pos=(204.0, 200.6)
+[NATIVE_INPUT] msec=65371 Right Mouse Button
+[NATIVE_FRAME] 26 Right Mouse Button action=1 move=6
+[NATIVE_FRAME] 27 Right Mouse Button action=1 move=6
+[RAW_BUTTON] msec=66231 pressed=true button=2 pos=(204.0, 200.6)
+[NATIVE_INPUT] msec=66231 Right Mouse Button
+[RAW_BUTTON] msec=66244 pressed=false button=2 pos=(204.0, 200.6)
+[NATIVE_INPUT] msec=66244 Right Mouse Button
+[NATIVE_FRAME] 28 Right Mouse Button action=1 move=6
+[NATIVE_FRAME] 29 Right Mouse Button action=1 move=6
+[RAW_BUTTON] msec=68479 pressed=true button=1 pos=(221.0, 200.4)
+[NATIVE_INPUT] msec=68479 Left Mouse Button
+[RAW_BUTTON] msec=68490 pressed=false button=1 pos=(221.0, 200.4)
+[NATIVE_INPUT] msec=68490 Left Mouse Button
+[NATIVE_FRAME] 30 Left Mouse Button action=1 move=0
+[NATIVE_FRAME] 31 Left Mouse Button action=1 move=0
+[RAW_BUTTON] msec=68812 pressed=true button=1 pos=(221.0, 200.4)
+[NATIVE_INPUT] msec=68812 Left Mouse Button
+[RAW_BUTTON] msec=68817 pressed=false button=1 pos=(221.0, 200.4)
+[NATIVE_INPUT] msec=68817 Left Mouse Button
+[NATIVE_FRAME] 32 Left Mouse Button action=1 move=0
+[NATIVE_FRAME] 33 Left Mouse Button action=1 move=0

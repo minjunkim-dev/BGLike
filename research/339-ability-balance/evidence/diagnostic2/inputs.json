@@ -1,0 +1,13 @@
+{
+  "source_sha": "7d533b636e7db0bd39ac5e82463611ab7921d15e",
+  "policy": "nearest",
+  "seed": 25,
+  "timeout": 1200,
+  "reason": "Original 240-second wall timeout; unchanged round/attempt caps and RNG policy",
+  "initial": "samples/nearest/25",
+  "script_sha256": {
+    "run.py": "2b1003d9a7329858e43d850189b7259fd7fb0ee653dcf50136f48820c506ce6d",
+    "autoplay.gd": "ffdd3745b388fe3392ea3e65afe26829f850b8f1ed07971c3e39bfb37ab02e15",
+    "aggregate.py": "ec9a00e53ce16ac3f92992616d1ac2c66252a302bc41c3083a326950c799c689"
+  }
+}

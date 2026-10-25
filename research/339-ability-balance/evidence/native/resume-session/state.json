@@ -1,0 +1,21 @@
+{
+  "source_sha": "7d533b636e7db0bd39ac5e82463611ab7921d15e",
+  "fingerprint": "6e41a40ea0acbcf35afae9bffdebc22252d229c6e71cb58b34e82be030d350de",
+  "mode": "macos",
+  "cases": {
+    "resume": {
+      "status": "passed",
+      "attempts": [
+        {
+          "directory": "/Users/swifty/.codex/visualizations/2026/10/25/bglike-native-edges-7d533b6/resume-session/resume/1",
+          "started": 1792907265.643074,
+          "app": "/Applications/Godot.app",
+          "launcher_pid": 21506,
+          "finished": 1792907395.167372,
+          "status": "passed",
+          "review": "/Users/swifty/.codex/visualizations/2026/10/25/bglike-native-edges-7d533b6/resume-review.md"
+        }
+      ]
+    }
+  }
+}

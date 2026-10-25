@@ -1,0 +1,21 @@
+{
+  "source_sha": "7d533b636e7db0bd39ac5e82463611ab7921d15e",
+  "inputs": [
+    "research/339-ability-balance/aggregate.py",
+    "research/339-ability-balance/run.py",
+    "research/339-ability-balance/test_run.py"
+  ],
+  "cases": [
+    {
+      "id": "balance",
+      "script": "res://research/339-ability-balance/autoplay.gd",
+      "resolution": [
+        1280,
+        720
+      ],
+      "timeout": 1200,
+      "acceptance": "Two unchanged policies; valid movement; graduation or classified cap",
+      "success_marker": "DONE code="
+    }
+  ]
+}

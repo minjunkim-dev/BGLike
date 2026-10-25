@@ -1,0 +1,43 @@
+{
+  "source_sha": "7d533b636e7db0bd39ac5e82463611ab7921d15e",
+  "fingerprint": "3ee09d1db9ec5cb6a44fa49372eaa60df75c5d462211de51de6cf1bd097bba78",
+  "mode": "macos",
+  "cases": {
+    "limits": {
+      "status": "passed",
+      "attempts": [
+        {
+          "directory": "/Users/swifty/.codex/visualizations/2026/10/25/bglike-native-edges-7d533b6/session/limits/1",
+          "started": 1792906601.2425442,
+          "app": "/Applications/Godot.app",
+          "launcher_pid": 81915,
+          "finished": 1792906742.407905,
+          "status": "interrupted"
+        },
+        {
+          "directory": "/Users/swifty/.codex/visualizations/2026/10/25/bglike-native-edges-7d533b6/session/limits/2",
+          "started": 1792906748.5422668,
+          "app": "/Applications/Godot.app",
+          "launcher_pid": 87770,
+          "finished": 1792907215.511656,
+          "status": "passed",
+          "review": "/Users/swifty/.codex/visualizations/2026/10/25/bglike-native-edges-7d533b6/limits-review.md"
+        }
+      ]
+    },
+    "resume": {
+      "status": "failed",
+      "attempts": [
+        {
+          "directory": "/Users/swifty/.codex/visualizations/2026/10/25/bglike-native-edges-7d533b6/session/resume/1",
+          "started": 1792907226.650657,
+          "app": "/Applications/Godot.app",
+          "launcher_pid": 20278,
+          "reason": "Godot error; discard this attempt's success events: /Users/swifty/.codex/visualizations/2026/10/25/bglike-native-edges-7d533b6/session/resume/1/game.log",
+          "finished": 1792907229.2476952,
+          "status": "failed"
+        }
+      ]
+    }
+  }
+}

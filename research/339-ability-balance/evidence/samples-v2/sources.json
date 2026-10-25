@@ -1,0 +1,362 @@
+[
+  {
+    "policy": "mother",
+    "seed": 1,
+    "path": "samples-v2/mother/1",
+    "run_sha256": "61190ff89429dda7b637579ac4eea86f7f4253784046a240ce7bca2d67354f7d"
+  },
+  {
+    "policy": "mother",
+    "seed": 2,
+    "path": "samples-v2/mother/2",
+    "run_sha256": "8b4de0d0ae9f6c18133733734bbdccea9657fea569148a7d9ad7c5b6aaa03d3e"
+  },
+  {
+    "policy": "mother",
+    "seed": 3,
+    "path": "samples-v2/mother/3",
+    "run_sha256": "3ef22a98d047c1877df10e3836d789e68f68fff6bd80f274f4017b25efd2d1f5"
+  },
+  {
+    "policy": "mother",
+    "seed": 4,
+    "path": "samples-v2/mother/4",
+    "run_sha256": "98357e7d4d23f7bde05c86117eafca7904c64280a52c91e5e9e24255b1ec5a9f"
+  },
+  {
+    "policy": "mother",
+    "seed": 5,
+    "path": "samples-v2/mother/5",
+    "run_sha256": "4f3bc8ce245c86200faa5bb6bda24dbe5891a145e9109de86b09c43e8b9ceab6"
+  },
+  {
+    "policy": "mother",
+    "seed": 6,
+    "path": "samples-v2/mother/6",
+    "run_sha256": "aca7d50dd87ada5fff48fee0176bba0bfb44468251bcbf3df65df182e73e6835"
+  },
+  {
+    "policy": "mother",
+    "seed": 7,
+    "path": "samples-v2/mother/7",
+    "run_sha256": "af505ac1058986f87ffc83cab314dd6d02e91ceda6f5f2e15aabc973b9e6a4ec"
+  },
+  {
+    "policy": "mother",
+    "seed": 8,
+    "path": "samples-v2/mother/8",
+    "run_sha256": "645f73861ebc546749ce694a3d69e2a96b5dea38a60bbe3bfc79af770396f6fd"
+  },
+  {
+    "policy": "mother",
+    "seed": 9,
+    "path": "samples-v2/mother/9",
+    "run_sha256": "70023f1a8b93fabf7f5cafc9f49170dc4d20f6c9235158c8cbc786b6ff3eee84"
+  },
+  {
+    "policy": "mother",
+    "seed": 10,
+    "path": "samples-v2/mother/10",
+    "run_sha256": "3bc44d470152ea58410e914511b78393e4549757429bfc6b0ffed73ebd954c84"
+  },
+  {
+    "policy": "mother",
+    "seed": 11,
+    "path": "samples-v2/mother/11",
+    "run_sha256": "ef04909b65c5627a9fdeccf668aa074026873af02e88959a5909b86de0f12b8f"
+  },
+  {
+    "policy": "mother",
+    "seed": 12,
+    "path": "samples-v2/mother/12",
+    "run_sha256": "4d1ab64491566bb51dbcaed39520ff420e332faec68c4c06949456b038d109d5"
+  },
+  {
+    "policy": "mother",
+    "seed": 13,
+    "path": "samples-v2/mother/13",
+    "run_sha256": "e585536419b0d5f2a366cfec589282a814b7d61d8d560921326fe1d5ac4ce5d7"
+  },
+  {
+    "policy": "mother",
+    "seed": 14,
+    "path": "samples-v2/mother/14",
+    "run_sha256": "a9c7e80be1261092b742eaf7deb2e58fa456cc8f2fb29c5aa25c28124158c620"
+  },
+  {
+    "policy": "mother",
+    "seed": 15,
+    "path": "samples-v2/mother/15",
+    "run_sha256": "bab7adf42f228126dd64f2b8d8969141d3ac3e0f9fdcbde183242b40e10c4c4b"
+  },
+  {
+    "policy": "mother",
+    "seed": 16,
+    "path": "samples-v2/mother/16",
+    "run_sha256": "1718ef6607cdc7bbed3925e539d421c5d00063f44b84b8b725e8b1e75a86fff3"
+  },
+  {
+    "policy": "mother",
+    "seed": 17,
+    "path": "samples-v2/mother/17",
+    "run_sha256": "676c1de870dba1d5899d882e096031f613dc7b14326fa1e9a8cf96eed5eb922d"
+  },
+  {
+    "policy": "mother",
+    "seed": 18,
+    "path": "samples-v2/mother/18",
+    "run_sha256": "e8fa3b678e3cc75fc09887eaf0349354d3dd99ffe0415be434f86af1abb75056"
+  },
+  {
+    "policy": "mother",
+    "seed": 19,
+    "path": "samples-v2/mother/19",
+    "run_sha256": "71203ba9859344bbcc763497c3e0ab69a5e6ea941bb3e9e15db5bfcfe134a169"
+  },
+  {
+    "policy": "mother",
+    "seed": 20,
+    "path": "samples-v2/mother/20",
+    "run_sha256": "635c091e88154282abc13eaaf5db427ed393646fd8f19cb36c459f013281130a"
+  },
+  {
+    "policy": "mother",
+    "seed": 21,
+    "path": "samples-v2/mother/21",
+    "run_sha256": "5a3496924431d9c8040a767fb816cd6a4a680391f0b8034f04e451ec26b10092"
+  },
+  {
+    "policy": "mother",
+    "seed": 22,
+    "path": "samples-v2/mother/22",
+    "run_sha256": "a5807958e4acec10f0d27b892bee18c1a10c070f7df5d717684f9c8bd04bfa4d"
+  },
+  {
+    "policy": "mother",
+    "seed": 23,
+    "path": "samples-v2/mother/23",
+    "run_sha256": "e47c3bd2a163699e5a2349e93438ba4638c98d77d8dca749fabe0198307fcf66"
+  },
+  {
+    "policy": "mother",
+    "seed": 24,
+    "path": "samples-v2/mother/24",
+    "run_sha256": "334d9e54f0eb62fa188633ba89b70b51bde6259b6c6605a1961ea7c2700ec21d"
+  },
+  {
+    "policy": "mother",
+    "seed": 25,
+    "path": "samples-v2/mother/25",
+    "run_sha256": "983fc780c4618f83e9b9768c016e5ddd434cd5d3b1b89e2d088e27d0b76be227"
+  },
+  {
+    "policy": "mother",
+    "seed": 26,
+    "path": "samples-v2/mother/26",
+    "run_sha256": "a8d3a26cb20ae583ab18b8108438603ae9137c41656a72f16e571fe235dd63c1"
+  },
+  {
+    "policy": "mother",
+    "seed": 27,
+    "path": "samples-v2/mother/27",
+    "run_sha256": "87318c5d438e9e40737b5612804b79354ba2c7a7b7231fecf0cc1f8872e5a748"
+  },
+  {
+    "policy": "mother",
+    "seed": 28,
+    "path": "samples-v2/mother/28",
+    "run_sha256": "a46352f22c11a6926b9c62ef33d61cc4f701c708821b956bd8d28d5bac59d626"
+  },
+  {
+    "policy": "mother",
+    "seed": 29,
+    "path": "samples-v2/mother/29",
+    "run_sha256": "eb763f9182015b44cf5cfa562f303f918d4056d45c478b4b7019bca43dca1ea0"
+  },
+  {
+    "policy": "mother",
+    "seed": 30,
+    "path": "samples-v2/mother/30",
+    "run_sha256": "61bb35ba48ab9c5893e758996b94827dd2f0ce12b23474e0fbf2a4c8c02d291a"
+  },
+  {
+    "policy": "nearest",
+    "seed": 1,
+    "path": "samples-v2/nearest/1",
+    "run_sha256": "cb2bb43598b680725e89651b2e5a0c65e2bdec19a413e6d1e97919de122bb40e"
+  },
+  {
+    "policy": "nearest",
+    "seed": 2,
+    "path": "samples-v2/nearest/2",
+    "run_sha256": "b72a9c5dc8134f47f4f2031cff87fab0c7e854ad8e6f549b8be1f3b079f574f7"
+  },
+  {
+    "policy": "nearest",
+    "seed": 3,
+    "path": "samples-v2/nearest/3",
+    "run_sha256": "4f41c12739337de8b528217a8028dbdfdea7b5a04273f413b10a4745b3a579fe"
+  },
+  {
+    "policy": "nearest",
+    "seed": 4,
+    "path": "samples-v2/nearest/4",
+    "run_sha256": "0460d98c9586b3b61d618a4ed741443ca9dfdb429e91c721767940436009cbaa"
+  },
+  {
+    "policy": "nearest",
+    "seed": 5,
+    "path": "samples-v2/nearest/5",
+    "run_sha256": "c802b30e9729e51ead3960968f6c1cd5db33606f7846e23cb8f16d5722a0acab"
+  },
+  {
+    "policy": "nearest",
+    "seed": 6,
+    "path": "samples-v2/nearest/6",
+    "run_sha256": "e7acb7259982b6b7d96d230280baee5eacb39fcfe386c46378660d4d245e3224"
+  },
+  {
+    "policy": "nearest",
+    "seed": 7,
+    "path": "samples-v2/nearest/7",
+    "run_sha256": "99a39470875d572b965f513b3286a302837069c1af56f764aaa59a1ef74d51ad"
+  },
+  {
+    "policy": "nearest",
+    "seed": 8,
+    "path": "samples-v2/nearest/8",
+    "run_sha256": "735eac7a57786350f5a7e56a4a2597f3a213c4cd6b8a41c164736526423f072d"
+  },
+  {
+    "policy": "nearest",
+    "seed": 9,
+    "path": "samples-v2/nearest/9",
+    "run_sha256": "5f838ab46677f2b797f0b1bf22daf2e5aa1a43a6acc67b511a419942f99d53e2"
+  },
+  {
+    "policy": "nearest",
+    "seed": 10,
+    "path": "samples-v2/nearest/10",
+    "run_sha256": "ab8a28d6a0e97b29ba7023f56c4dc30fe619bc6181fd91b857d05bdc70423675"
+  },
+  {
+    "policy": "nearest",
+    "seed": 11,
+    "path": "samples-v2/nearest/11",
+    "run_sha256": "42548ced7aa8eb804885f6b222b3fbe4f719bdf76ad835273d4b847c5854623f"
+  },
+  {
+    "policy": "nearest",
+    "seed": 12,
+    "path": "samples-v2/nearest/12",
+    "run_sha256": "4191125f78462750909f55dc2b80b6a04eb0983b0e243291a22ddc0e190c2d06"
+  },
+  {
+    "policy": "nearest",
+    "seed": 13,
+    "path": "samples-v2/nearest/13",
+    "run_sha256": "15ab8c499c90c74834bda0b885ef9aaa3f8451fa0c0045df3d2ad7e4061211cb"
+  },
+  {
+    "policy": "nearest",
+    "seed": 14,
+    "path": "samples-v2/nearest/14",
+    "run_sha256": "29e77b15a1642c79a475098b3b3b879d5028f0c89ba909f16142f446d3672463"
+  },
+  {
+    "policy": "nearest",
+    "seed": 15,
+    "path": "samples-v2/nearest/15",
+    "run_sha256": "6aeaebb061de5c8044f6655bc2094af85b29d1934c57b1bf511fbd200d8d8bf3"
+  },
+  {
+    "policy": "nearest",
+    "seed": 16,
+    "path": "samples-v2/nearest/16",
+    "run_sha256": "ea99dc369643c1e399a92e38a382f0e95f6fba65e76ae713f2466cec4702caeb"
+  },
+  {
+    "policy": "nearest",
+    "seed": 17,
+    "path": "samples-v2/nearest/17",
+    "run_sha256": "5e1fcf58c76626597d2beabca99e7fe4bb8176dc4b43e77e56a774f1a792d64d"
+  },
+  {
+    "policy": "nearest",
+    "seed": 18,
+    "path": "samples-v2/nearest/18",
+    "run_sha256": "c4cec4529d8c44a4457d05376b65bb76473c41de3b645f4ff103da7f27fe683e"
+  },
+  {
+    "policy": "nearest",
+    "seed": 19,
+    "path": "samples-v2/nearest/19",
+    "run_sha256": "b6970684eb036073aca512c887e113880953c86e5850f438e5581d45f35dd8e2"
+  },
+  {
+    "policy": "nearest",
+    "seed": 20,
+    "path": "samples-v2/nearest/20",
+    "run_sha256": "ca0de87f8e655c9f0997ea938aad2a390be1bb2926245c59c2b89fd85a6b5344"
+  },
+  {
+    "policy": "nearest",
+    "seed": 21,
+    "path": "samples-v2/nearest/21",
+    "run_sha256": "564a431430b46038d8a097cfd23225a675a7ec95cb892ed3d780fb60610b8827"
+  },
+  {
+    "policy": "nearest",
+    "seed": 22,
+    "path": "samples-v2/nearest/22",
+    "run_sha256": "ddb5a258169b800fc45dc11a39f29b0b715700b3dc0c9b164349ec51b4978b7c"
+  },
+  {
+    "policy": "nearest",
+    "seed": 23,
+    "path": "samples-v2/nearest/23",
+    "run_sha256": "d80325480af289caca53ae88d68dbcf78acb4bcffbb1febbae5c5b4928bf4de0"
+  },
+  {
+    "policy": "nearest",
+    "seed": 24,
+    "path": "samples-v2/nearest/24",
+    "run_sha256": "d0c90a1b447e86c0101b79e09db91301134355e321275b82e20e61bd5a0f5bd8"
+  },
+  {
+    "policy": "nearest",
+    "seed": 25,
+    "path": "samples-v2/nearest/25",
+    "run_sha256": "be5e27975301ec4453d3f26b748b1f450316eff8435f29d20b1698c42fe92d62"
+  },
+  {
+    "policy": "nearest",
+    "seed": 26,
+    "path": "samples-v2/nearest/26",
+    "run_sha256": "d05c443e899ee030018fc7381be4850449a2bd169d10dc575e18386f31346d94"
+  },
+  {
+    "policy": "nearest",
+    "seed": 27,
+    "path": "samples-v2/nearest/27",
+    "run_sha256": "87ec9232f94fff559debee1eeedcbd08022053a388efe0d1c1fdc24c8cb76824"
+  },
+  {
+    "policy": "nearest",
+    "seed": 28,
+    "path": "samples-v2/nearest/28",
+    "run_sha256": "394bcd0c046bf4ea645d414aa0741cc35338b5b19352e345d7d2a8c59cc170de"
+  },
+  {
+    "policy": "nearest",
+    "seed": 29,
+    "path": "samples-v2/nearest/29",
+    "run_sha256": "95d79eaf6852f64e5b61dcfa6308a59a157cd5dbedb14b9ecfd415ab94a32a3c"
+  },
+  {
+    "policy": "nearest",
+    "seed": 30,
+    "path": "samples-v2/nearest/30",
+    "run_sha256": "8de9f4c77b607b5b0c5d26d151a9193b95c64ed036465226adb88eac1d31a822"
+  }
+]

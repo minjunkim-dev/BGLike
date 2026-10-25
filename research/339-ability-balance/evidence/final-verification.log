@@ -1,0 +1,54 @@
+{"event": "started", "run_id": "129d90f08e7d410b9db2b06508ef0c6c", "head_sha": "7d533b636e7db0bd39ac5e82463611ab7921d15e", "dirty": true, "child_pid": 89165, "record": "/Users/swifty/.local/state/agent-workflow/c188e267f2353b647388becf412c15c20b3b19a8c631effefed5c16a09e18465.lock"}
+{
+  "source_sha": "7d533b636e7db0bd39ac5e82463611ab7921d15e",
+  "runs": 60,
+  "attempts": 554,
+  "outcomes": {
+    "mother": {
+      "graduated": 28,
+      "round cap 60 at 3-1": 2
+    },
+    "nearest": {
+      "round cap 60 at 3-1": 25,
+      "graduated": 5
+    }
+  },
+  "stage3_1": {
+    "mother": {
+      "attempts": 31,
+      "outcomes": {
+        "win": 29,
+        "timeout": 2
+      },
+      "round_mean": 15.580645161290322,
+      "round_max": 61,
+      "spawn_max": 121
+    },
+    "nearest": {
+      "attempts": 32,
+      "outcomes": {
+        "timeout": 25,
+        "win": 5,
+        "wipe": 2
+      },
+      "round_mean": 52.5,
+      "round_max": 61,
+      "spawn_max": 121
+    }
+  },
+  "movement_total": 2470,
+  "movement_outcomes": {
+    "arrived": 2457,
+    "interrupted_death": 13
+  },
+  "movement_failures": 0,
+  "field_click_failures": 0,
+  "pointer_fallbacks": 0,
+  "source_fingerprint_verified": "2dce162970223fe24302c9fe2f50d7713b0b359bd50fc84543a8b8e8afd69dcb",
+  "merged_csv_verified": [
+    "attempts",
+    "streaks",
+    "enemy_segments"
+  ]
+}
+{"event": "finished", "run_id": "129d90f08e7d410b9db2b06508ef0c6c", "exit_code": 0, "record": "/Users/swifty/.local/state/agent-workflow/c188e267f2353b647388becf412c15c20b3b19a8c631effefed5c16a09e18465.lock"}
