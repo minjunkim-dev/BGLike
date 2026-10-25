@@ -115,11 +115,43 @@ func _test_terrain_layouts() -> void:
 					and not grid.path_to(actor, unit.start_cell).is_empty(), label + " 적 스폰과 보행 교전 경로")
 				if unit.kind == CombatUnit.Kind.MOTHER_SPIDER:
 					_check(grid.empty_neighbors(unit.start_cell).size() >= 2, label + " 엄마 거미 소환 여유")
+			_check_prop_routes(stage, grid, actor, enemies, label)
 			enemies.free()
 			actor.free()
 			var signature: String = var_to_str([stage.heights, paths, stones, scenery])
 			_check(not layouts.has(signature), label + " 독립적으로 배치한 지형")
 			layouts[signature] = true
+
+
+func _check_prop_routes(stage: CombatStage, grid: CombatGrid, actor: CombatUnit,
+		enemies: Node, label: String) -> void:
+	_check(stage.crate_cells.size() == 1 and stage.rock_cells.size() == 1, label + " 기존 상자·바위 각1개 유지")
+	if stage.crate_cells.size() != 1 or stage.rock_cells.size() != 1:
+		return
+	for enemy: CombatUnit in enemies.get_children():
+		enemy.cell = enemy.start_cell
+		grid.units.append(enemy)
+		if enemy.kind == CombatUnit.Kind.MOTHER_SPIDER:
+			_check(grid.empty_neighbors(enemy.cell).size() == 3, label + " 기존 엄마 거미의 초기 소환 여유3칸 유지")
+	var crate: CombatGrid.Prop = grid.prop_at(stage.crate_cells[0])
+	var gate: Vector2i = crate.cell + Vector2i.RIGHT
+	var detour: Array[Vector2i] = grid.path_to(actor, gate)
+	grid.props.erase(crate)
+	var opened: Array[Vector2i] = grid.path_to(actor, gate)
+	_check(not detour.is_empty() and not opened.is_empty() and opened.has(crate.cell)
+		and opened.size() < detour.size(), label + " 상자를 부수면 우회보다 짧은 진입로가 열림")
+	grid.props.append(crate)
+	var rock: CombatGrid.Prop = grid.prop_at(stage.rock_cells[0])
+	var stand: Vector2i = rock.cell + Vector2i.LEFT
+	_check(not grid.path_to(actor, stand).is_empty() and grid.are_adjacent(stand, rock.cell),
+		label + " 바위 공격 위치까지 보행 가능하며 기존 근접 높이 조건 충족")
+	var actions: CombatActions = CombatActions.new()
+	actions.grid = grid
+	actor.cell = stand
+	var roll: CombatActions.RockRoll = actions.preview_rock(actor, rock)
+	_check(not roll.collisions.is_empty() and not roll.destroyed,
+		label + " 실제 적 배치에 닿는 평지·내리막 굴림 각도")
+	actor.cell = stage.ally_cells[0]
 
 
 func _test_spiderling_placement_and_turns() -> void:
@@ -153,7 +185,10 @@ func _test_spiderling_placement_and_turns() -> void:
 	for index: int in range(2, 6):
 		_check(turns.current_unit == units[index] and units[index].action_left == 1,
 			"새끼 거미는 각자 이니셔티브 순서의 자기 턴으로 진입")
-		_check(await actions.move_to(units[index], cells[index - 2] + Vector2i(-1, 0))
+		var destination: Vector2i = cells[index - 2] + Vector2i.UP
+		_check(actions.grid.is_floor(destination) and not actions.grid.is_blocked(destination),
+			"새끼 이동 fixture의 목적지는 장애물이 없는 바닥")
+		_check(await actions.move_to(units[index], destination)
 			and units[index].movement_left == 5, "새끼 거미는 자기 턴에 자기 이동력으로 이동")
 		for waiting: int in range(index + 1, 6):
 			_check(units[waiting].cell == cells[waiting - 2] and units[waiting].movement_left == 6,
@@ -508,12 +543,15 @@ func _test_scrap_robot_3000_stage() -> void:
 		return
 	var boss: CombatUnit = units[2]
 	boss.hit_points = 25
-	units[0].cell = Vector2i(7, 4)
+	units[0].cell = Vector2i(8, 3)
 	units[0].parry_left = 0
 	units[1].cell = Vector2i(8, 5)
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	ScriptedDice.arrange_turns(turns, units, [units[2], units[0], units[1]])
 	var actions: CombatActions = battle.get("actions") as CombatActions
+	_check(not actions.grid.is_blocked(units[0].cell) and not actions.grid.is_blocked(units[1].cell)
+		and actions.grid.are_adjacent(boss.cell, units[0].cell) and actions.grid.are_adjacent(boss.cell, units[1].cell),
+		"3000 회전 fixture의 두 아군은 장애물 없는 인접 바닥에 배치")
 	actions.dice = ScriptedDice.new([12, 1, 3, 1, 3], [12, 20, 8, 8, 8])
 	_check(await actions.spin(boss) and units[0].hit_points == 7 and units[1].hit_points == 9
 		and boss.action_left == 1 and boss.hit_points == 23,
