@@ -185,7 +185,10 @@ func _test_spiderling_placement_and_turns() -> void:
 	for index: int in range(2, 6):
 		_check(turns.current_unit == units[index] and units[index].action_left == 1,
 			"새끼 거미는 각자 이니셔티브 순서의 자기 턴으로 진입")
-		_check(await actions.move_to(units[index], cells[index - 2] + Vector2i(-1, 0))
+		var destination: Vector2i = cells[index - 2] + Vector2i.UP
+		_check(actions.grid.is_floor(destination) and not actions.grid.is_blocked(destination),
+			"새끼 이동 fixture의 목적지는 장애물이 없는 바닥")
+		_check(await actions.move_to(units[index], destination)
 			and units[index].movement_left == 5, "새끼 거미는 자기 턴에 자기 이동력으로 이동")
 		for waiting: int in range(index + 1, 6):
 			_check(units[waiting].cell == cells[waiting - 2] and units[waiting].movement_left == 6,
@@ -540,12 +543,15 @@ func _test_scrap_robot_3000_stage() -> void:
 		return
 	var boss: CombatUnit = units[2]
 	boss.hit_points = 25
-	units[0].cell = Vector2i(7, 4)
+	units[0].cell = Vector2i(8, 3)
 	units[0].parry_left = 0
 	units[1].cell = Vector2i(8, 5)
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	ScriptedDice.arrange_turns(turns, units, [units[2], units[0], units[1]])
 	var actions: CombatActions = battle.get("actions") as CombatActions
+	_check(not actions.grid.is_blocked(units[0].cell) and not actions.grid.is_blocked(units[1].cell)
+		and actions.grid.are_adjacent(boss.cell, units[0].cell) and actions.grid.are_adjacent(boss.cell, units[1].cell),
+		"3000 회전 fixture의 두 아군은 장애물 없는 인접 바닥에 배치")
 	actions.dice = ScriptedDice.new([12, 1, 3, 1, 3], [12, 20, 8, 8, 8])
 	_check(await actions.spin(boss) and units[0].hit_points == 7 and units[1].hit_points == 9
 		and boss.action_left == 1 and boss.hit_points == 23,

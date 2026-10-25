@@ -49,9 +49,9 @@ func _run() -> void:
 		await _abort_fixture()
 		return
 	var boss: CombatUnit = units[2]
-	units[0].cell = Vector2i(3, 4)
-	units[1].cell = Vector2i(5, 4)
-	boss.cell = Vector2i(4, 4)
+	units[0].cell = Vector2i(3, 5)
+	units[1].cell = Vector2i(5, 5)
+	boss.cell = Vector2i(4, 5)
 	boss.hit_points = 25
 	turns = battle.get("turns") as CombatTurns
 	ScriptedDice.arrange_turns(turns, units, units)
@@ -124,6 +124,10 @@ func _run() -> void:
 func _fixture_ready(units: Array[CombatUnit]) -> bool:
 	var previous_failures: int = failures
 	var boss: CombatUnit = units[2]
+	var grid: CombatGrid = (battle.get("actions") as CombatActions).grid
+	for unit: CombatUnit in units:
+		_check(grid.is_floor(unit.cell) and not grid.is_blocked(unit.cell) and grid.unit_at(unit.cell) == unit,
+			"반복 공격 전제조건: 장애물·다른 유닛과 겹치지 않는 바닥")
 	_check(units[0].is_ally and units[0].kind == CombatUnit.Kind.WARRIOR
 		and units[1].is_ally and units[1].kind == CombatUnit.Kind.ARCHER
 		and not boss.is_ally and boss.kind == CombatUnit.Kind.SCRAP_ROBOT_3000,
