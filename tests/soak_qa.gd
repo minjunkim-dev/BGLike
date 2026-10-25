@@ -55,16 +55,15 @@ func _run() -> void:
 	root.add_child(listener)
 	print("[SOAK_READY] native Start required; current loot maximum rolls, normal HP/AI/spawn; automatic nearest policy")
 	await capture("initial")
-	while battle.get("waiting_for_start"):
-		await process_frame
-	started = Time.get_ticks_msec()
-	while (Time.get_ticks_msec() - started) / 1000 < DURATION_SECONDS:
+	started = -1
+	while started < 0 or (Time.get_ticks_msec() - started) / 1000 < DURATION_SECONDS:
 		await create_timer(0.1).timeout
-		if paused or battle.get("waiting_for_start"): continue
-		if FileAccess.file_exists(directory.path_join("hold")): continue
 		if FileAccess.file_exists(directory.path_join("capture")):
 			DirAccess.remove_absolute(directory.path_join("capture"))
 			await capture("checkpoint")
+		if paused or battle.get("waiting_for_start"): continue
+		if started < 0: started = Time.get_ticks_msec()
+		if FileAccess.file_exists(directory.path_join("hold")): continue
 		if (Time.get_ticks_msec() - started) / 1000 >= next_capture:
 			await capture("periodic")
 			next_capture += 30
