@@ -2,15 +2,28 @@ class_name CombatMap
 extends TileMapLayer
 ## 바닥 높이의 표시 위치와 필드 입력을 같은 좌표로 변환한다.
 
+var revision: int = 0
+var _animating_prop: CombatGrid.Prop
+var _animation_marker: Node2D
+var _prop_effects: Array[Node2D] = []
 var grid: CombatGrid
 var _overlays: Array[Node2D] = []
 var _blocked_markers: Array[Node2D] = []
 var _ground_markers: Array[Node2D] = []
 var _prop_markers: Array[Node2D] = []
+var _unit_markers: Array[Node2D] = []
 
 
 func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = null) -> void:
+	revision += 1
+	# Tween의 완료 대기를 끊지 않는다. 이전 호출은 깨어난 뒤 세대가 다르면 정리만 한다.
+	if is_instance_valid(_animation_marker):
+		_animation_marker.hide()
+	_animating_prop = null
+	for effect: Node2D in _prop_effects.duplicate():
+		effect.free()
 	grid = combat_grid
+	reveal_units([])
 	clear()
 	show_movement([], [], [], Vector2i.ZERO)
 	show_grounds([])
@@ -87,6 +100,98 @@ func occludes(unit_cell: Vector2i, point: Vector2) -> bool:
 			if _contains_surface(cell, point) or _contains_sides(cell, point):
 				return true
 	return false
+
+## 가림 판정·클릭은 원래 픽셀을 쓰고 표시만 옅게 한다(#349).
+func reveal_units(units: Array[CombatUnit]) -> void:
+	for marker: Node2D in _unit_markers:
+		marker.free()
+	_unit_markers.clear()
+	for unit: CombatUnit in units:
+		var foot: Vector2 = to_local(unit.to_global(Vector2(0, unit.floor_offset_y)))
+		if not unit.visible or not (occludes(unit.cell, foot) or occludes(unit.cell, foot + Vector2(0, -10))):
+			continue
+		var marker: Line2D = Line2D.new()
+		marker.position = foot
+		marker.z_index = 1
+		marker.points = PackedVector2Array([Vector2(-8, 0), Vector2(0, -4), Vector2(8, 0), Vector2(0, 4)])
+		marker.closed = true
+		marker.width = 0.7
+		marker.default_color = CombatUnit.ALLY_COLOR if unit.is_ally else CombatUnit.ENEMY_COLOR
+		add_child(marker)
+		_unit_markers.append(marker)
+	for marker: Node2D in _blocked_markers + _prop_markers:
+		marker.modulate.a = 1.0
+		for unit: CombatUnit in units:
+			if not unit.visible or marker.position.y <= map_to_local(unit.cell).y:
+				continue
+			var foot: Vector2 = to_local(unit.to_global(Vector2(0, unit.floor_offset_y)))
+			if _art_contains(marker, foot) or _art_contains(marker, foot + Vector2(0, -10)):
+				marker.modulate.a = 0.32
+				break
+
+
+## 판정 직전의 경로만 표시한다. 호출자가 입력을 잠그고 끝난 뒤 기존 판정을 실행한다.
+func animate_prop(prop: CombatGrid.Prop, roll: CombatActions.RockRoll, can_continue: Callable) -> void:
+	var generation: int = revision
+	var marker: Node2D = _art_marker(prop.cell, prop.kind, 4.0)
+	marker.name = "PropAnimation"
+	_animating_prop = prop
+	_animation_marker = marker
+	add_child(marker)
+	for original: Node2D in _prop_markers:
+		if original.get_meta("prop") == prop:
+			original.hide()
+	var sprite: Sprite2D = marker.get_node("Sprite") as Sprite2D
+	if roll == null:
+		var tween: Tween = create_tween()
+		var origin: float = sprite.position.x
+		for offset: float in [-1.5, 1.5, -1.0, 0.0]:
+			tween.tween_property(sprite, "position:x", origin + offset, 0.035)
+		await tween.finished
+	else:
+		for step: CombatActions.RockStep in roll.steps:
+			if generation != revision or not can_continue.call():
+				break
+			var destination: Vector2 = map_to_local(step.cell) if step.advance else marker.position
+			var tween: Tween = create_tween().set_parallel(true)
+			tween.tween_property(marker, "position", destination, 0.14)
+			tween.tween_property(sprite, "position:y", map_to_surface(step.cell).y - destination.y + 4.0
+				if step.advance else sprite.position.y, 0.14)
+			tween.tween_property(sprite, "skew", 0.15, 0.07)
+			await tween.finished
+			if generation != revision or not can_continue.call():
+				break
+			sprite.skew = 0.0
+			if step.target != null:
+				prop_impact(step.cell, false)
+			if step.destroyed or not step.advance:
+				break
+	if _animation_marker == marker:
+		_animation_marker = null
+		_animating_prop = null
+		for original: Node2D in _prop_markers:
+			original.show()
+	marker.free()
+
+
+func prop_impact(cell: Vector2i, broken: bool) -> void:
+	var effect: Node2D = Node2D.new()
+	effect.position = map_to_local(cell)
+	effect.z_index = 2
+	var center: Vector2 = map_to_surface(cell) - effect.position
+	effect.draw.connect(func() -> void:
+		var color: Color = Color("d8bc85") if broken else Color("f4cf69")
+		effect.draw_arc(center, 6.0, 0, TAU, 16, color, 1.0)
+		if broken:
+			for offset: Vector2 in [Vector2(-5, -4), Vector2(5, -3), Vector2(-3, 2), Vector2(4, 3)]:
+				effect.draw_line(center + offset, center + offset * 1.7, color, 1.5))
+	add_child(effect)
+	_prop_effects.append(effect)
+	effect.tree_exiting.connect(func() -> void: _prop_effects.erase(effect))
+	var tween: Tween = effect.create_tween()
+	tween.tween_property(effect, "modulate:a", 0.0, 0.3)
+	tween.tween_callback(effect.queue_free)
+
 
 func _contains_surface(cell: Vector2i, point: Vector2) -> bool:
 	var offset: Vector2 = (point - map_to_surface(cell)).abs() / (Vector2(tile_set.tile_size) / 2.0)
@@ -264,6 +369,8 @@ func show_props(props: Array[CombatGrid.Prop], preview: CombatGrid.Prop = null) 
 				marker.draw_line(Vector2(-6, top), Vector2(-6 + prop.hit_points * 2, top), Color("e7bf6d"), 2.0))
 		add_child(marker)
 		_prop_markers.append(marker)
+		if prop == _animating_prop:
+			marker.hide()
 
 
 func _add_height_source(height: int) -> int:
@@ -286,7 +393,12 @@ func _add_height_source(height: int) -> int:
 				for x: int in range(size.x):
 					if Geometry2D.is_point_in_polygon(Vector2(x + 0.5, y + 0.5), side):
 						var color: Color = wall.get_pixel(x % wall.get_width(), y % wall.get_height())
-						image.set_pixel(left + x, y, color.darkened(0.28 if direction > 0 else 0.12))
+						var top: float = center.y + size.y / 2.0 - absf(x + 0.5 - center.x) * 0.5
+						var depth: int = maxi(0, int(y + 0.5 - top))
+						color = color.darkened((0.44 if direction > 0 else 0.22) + minf(depth * 0.003, 0.12))
+						if depth % (size.y / 2) == 0:
+							color = color.darkened(0.25)
+						image.set_pixel(left + x, y, color)
 	image.blend_rect(floor_image, Rect2i(Vector2i.ZERO, Vector2i(size.x * 8, size.y)), Vector2i(0, maxi(-rise, 0)))
 	var detail: ShaderMaterial = ShaderMaterial.new()
 	detail.shader = preload("res://scenes/combat/art/terrain_detail.gdshader")

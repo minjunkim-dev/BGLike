@@ -460,6 +460,7 @@ func _draw() -> void:
 	var edge: Color = Color("f4cf69") if is_selected else (
 		Color("f4ead1") if is_previewed else (ALLY_COLOR if is_ally else ENEMY_COLOR))
 	(_silhouette.material as ShaderMaterial).set_shader_parameter("outline_color", edge)
+	(_silhouette.material as ShaderMaterial).set_shader_parameter("fill_alpha", 0.22 if is_occluded else 0.0)
 	_silhouette.position = Vector2(0, floor_offset_y + body_offset_y)
 	_sprite.position = _silhouette.position
 	draw_set_transform(Vector2(0, floor_offset_y))

@@ -592,10 +592,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		if selection.select_prop(prop, selection.selected_action == "attack" and actions.can_attack_prop(actor, prop)):
 			selection.begin_execution()
+			var generation: int = map.revision
 			actions.busy = true
 			await _animate_attack_at(actor, map.map_to_surface(prop.cell) + Vector2(0, -8))
+			if generation != map.revision:
+				return
+			var origin: Vector2i = prop.cell
+			var roll: CombatActions.RockRoll = actions.preview_rock(actor, prop) if prop.kind == "rock" else null
+			if not actions.is_over():
+				await map.animate_prop(prop, roll, func() -> bool: return not actions.is_over())
+			if generation != map.revision:
+				return
 			actions.busy = false
-			actions.attack_prop(actor, prop)
+			if actions.attack_prop(actor, prop):
+				map.prop_impact(prop.cell, prop.hit_points == 0)
+				if prop.cell != origin:
+					map.prop_impact(origin, false)
 			selection.finish_execution()
 		_update_turn_ui()
 		return
@@ -773,6 +785,7 @@ func _update_turn_ui() -> void:
 		turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO)
 	map.show_grounds(actions.get_grounds())
 	map.show_props(actions.get_props(), selection.preview_prop)
+	map.reveal_units(units)
 	# 가림 판정은 방금 그린 사물 위치를 사용한다.
 	for unit: CombatUnit in units:
 		unit.is_occluded = map.occludes(unit.cell,

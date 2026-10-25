@@ -3567,6 +3567,12 @@ func _test_terrain_hidden_unit_outline() -> void:
 			and hidden.size() >= body.size() - (config[3] as int), "%s 뒤 새끼 거미의 몸통이 가려짐" % kind)
 		_check(spider.is_occluded and (spider.get("_silhouette") as Sprite2D).visible,
 			"%s에 몸통이 가린 유닛은 팀색 윤곽을 표시" % kind)
+		_check(((spider.get("_silhouette") as Sprite2D).material as ShaderMaterial).get_shader_parameter("fill_alpha") > 0.0
+			and not (map.get("_unit_markers") as Array).is_empty(), "가린 몸통의 채움과 발밑 위치를 표시")
+		var faded: bool = false
+		for marker: Node2D in (map.get("_blocked_markers") as Array) + (map.get("_prop_markers") as Array):
+			faded = faded or marker.modulate.a < 1.0
+		_check(faded, "가리는 사물만 옅게 표시하고 지형은 윤곽·발밑으로 보완")
 		if hidden.is_empty():
 			battle.queue_free()
 			await process_frame
