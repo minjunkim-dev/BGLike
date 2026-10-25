@@ -1419,3 +1419,55 @@ msgstr ""
 #: scenes/title.gd:64
 msgid "%s\n이 저장을 지우고 새 게임을 시작하시겠습니까?"
 msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "가방 아이템 버리기"
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "버리기"
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "%s\n1개를 버립니다. 되돌릴 수 없습니다."
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "아이템을 맞는 칸으로 끌거나, 선택 후 아래 버튼을 누르세요."
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "지도로 돌아가기"
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "가방에서 1개를 영구 제거합니다. 장비 교체·해제가 아닙니다."
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "가방으로 해제"
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "%s: 물약 1개 전달"
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "%s: 장착"
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "%s: 교체"
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "놓을 칸을 고르세요 · Esc: 취소"
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "가방에 보관"
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid " · 기존 장비는 가방으로"
+msgstr ""

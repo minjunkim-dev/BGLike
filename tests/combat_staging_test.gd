@@ -81,6 +81,11 @@ func _run() -> void:
 	preparation._render()
 	await _settle()
 	await _capture("02-preparation")
+	preparation._select("bag", 0)
+	var receive: Button = preparation.find_child("Ally0", true, false)
+	var discard: Button = preparation.find_child("DiscardItem", true, false)
+	ck(receive.text == "전사: 장착" and discard.text == "버리기"
+		and discard.get_parent() != receive.get_parent(), "장착과 버리기는 문구·배치 분리")
 	for malformed: Variant in [[], {}]:
 		ck(not preparation._can_drop_item({"owner": preparation.get_instance_id(), "index": 0,
 			"kind": malformed, "item": {}}, "weapon", 0), "타입이 다른 드래그 kind 거부")
@@ -146,6 +151,8 @@ func _run() -> void:
 	await _settle()
 	bag_before = loot.bag.duplicate(true)
 	var equipped: Dictionary = party[0].weapon.duplicate(true)
+	preparation._select("bag", 2)
+	ck((preparation.find_child("Ally0", true, false) as Button).text == "전사: 교체", "장비가 있으면 교체로 표시")
 	await _drag("Item0", "Weapon0")
 	ck(loot.bag == bag_before and preparation.rewards.size() == 1 and party[0].weapon == equipped,
 		"가방이 가득 차면 보상 장비 교체 거부·원본 보존")
@@ -153,6 +160,9 @@ func _run() -> void:
 	ck(loot.bag.size() == int(loot.data["bag_limit"]) and loot.bag[2] == equipped,
 		"가방이 가득 차도 가방 장비는 이전 장비와 같은 칸 교환")
 	preparation._discard(0)
+	ck(preparation.discard_dialog.ok_button_text == "버리기"
+		and "되돌릴 수 없습니다" in preparation.confirmation_text.text
+		and preparation.discard_dialog.get_cancel_button().has_focus(), "버리기는 영구 제거 안내·취소 기본 선택")
 	var source: Control = preparation.find_child("Item0", true, false)
 	ck(preparation._drag_item(source, "reward", 0) == null, "확인 창에서 드래그 시작 차단")
 	ck(not preparation._can_drop_item({"owner": preparation.get_instance_id(), "kind": "reward", "index": 0,
@@ -241,6 +251,8 @@ func _drag(source: String, target: String, offset: Vector2 = Vector2.INF) -> voi
 	await _begin_drag(source)
 	var point: Vector2 = _point(target, offset)
 	await _motion(point, Vector2(30, 30))
+	if source == "BagItem0" and target == "Armor0" and loot.bag[0].kind == "weapon":
+		ck("놓을 수 없는 위치" in preparation.hint_label.text, "잘못된 칸에 장착 안내를 표시하지 않음")
 	await _mouse(point, false)
 
 func _key(code: Key, shift: bool = false) -> void:

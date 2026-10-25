@@ -184,9 +184,9 @@ func _discard(index: int) -> void:
 	if not visible or not maintaining or discard_dialog.visible or index < 0 or index >= loot.bag.size():
 		return
 	_discard_index = index
-	discard_dialog.title = tr("가방 아이템 폐기")
-	discard_dialog.ok_button_text = tr("폐기")
-	discard_dialog.dialog_text = tr("%s\n아이템 한 개를 버리시겠습니까?") % CombatLoot.describe(loot.bag[index])
+	discard_dialog.title = tr("가방 아이템 버리기")
+	discard_dialog.ok_button_text = tr("버리기")
+	discard_dialog.dialog_text = tr("%s\n1개를 버립니다. 되돌릴 수 없습니다.") % CombatLoot.describe(loot.bag[index])
 	skip_confirmation.hide()
 	_show_confirmation()
 
@@ -405,19 +405,23 @@ func _render_detail() -> void:
 	info.add_theme_constant_override("separation", 0)
 	row.add_child(info)
 	_label(info, _equipment_text(item, tr("무기 없음") if _selected_kind == "weapon" else tr("방어구 없음")))
+	var discard: Button
 	var actions: HBoxContainer = HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 6)
 	match _selected_kind:
 		"reward", "bag":
 			var from_bag: bool = _selected_kind == "bag"
-			_label(info, (tr("공용 가방 · 장착하면 지금 장비는 이 칸으로 옵니다.") if from_bag
+			_label(info, ((tr("공용 가방 · 물약은 한 개씩 전달합니다.") if item.kind == "potion" else tr("공용 가방 · 교체하면 기존 장비는 이 칸으로 옵니다.")) if from_bag
 				else tr("받지 않은 보상 · 정비를 마치면 공용 가방에 보관합니다.")) if maintaining
 				else tr("정비하기를 누른 뒤 캐릭터에게 나눠 줍니다."), DIM_COLOR)
 			if maintaining:
 				for ally: int in range(party.size()):
 					_receive_button(actions, item, _selected_index, ally, from_bag)
 				if from_bag:
-					var discard: Button = _button(actions, tr("폐기"), "DiscardItem")
+					discard = _button(row, tr("버리기"), "DiscardItem")
+					discard.size_flags_vertical = Control.SIZE_SHRINK_END
+					_style_button(discard, DOWN_COLOR)
+					discard.tooltip_text = tr("가방에서 1개를 영구 제거합니다. 장비 교체·해제가 아닙니다.")
 					var index: int = _selected_index
 					discard.pressed.connect(func() -> void: _discard(index))
 		"weapon":
@@ -427,7 +431,7 @@ func _render_detail() -> void:
 				else tr("%s의 방어구 · 정비에서 해제할 수 있습니다.")) % _short_name(owner_unit), DIM_COLOR)
 			var ally: int = _selected_index
 			if maintaining:
-				var unequip: Button = _button(actions, tr("방어구 해제"), "UnequipArmor%d" % ally)
+				var unequip: Button = _button(actions, tr("가방으로 해제"), "UnequipArmor%d" % ally)
 				unequip.tooltip_text = loot.armor_unequip_blocker(owner_unit)
 				unequip.disabled = not unequip.tooltip_text.is_empty()
 				unequip.pressed.connect(func() -> void: _unequip_armor(ally))
@@ -437,6 +441,8 @@ func _render_detail() -> void:
 		buttons.assign(actions.get_children().filter(func(child: Node) -> bool: return child is Button))
 	else:
 		actions.free()
+	if discard != null:
+		buttons.append(discard)
 	_link_detail_focus(buttons)
 
 
@@ -462,7 +468,7 @@ func _link_detail_focus(buttons: Array[Button]) -> void:
 func _receive_button(parent: Node, item: Dictionary, index: int, ally: int, from_bag: bool) -> void:
 	var unit: CombatUnit = party[ally]
 	var potion: bool = item["kind"] == "potion"
-	var button: Button = _button(parent, (tr("%s에게 주기") if potion else tr("%s에게 장착")) % _short_name(unit),
+	var button: Button = _button(parent, _receive_label(unit, item),
 		"Ally%d" % ally)
 	var full: bool = (potion and unit.potion_left >= int(loot.data["potion_limit"])) if from_bag \
 		else not loot.can_receive(unit, item)
@@ -482,6 +488,41 @@ func _receive_button(parent: Node, item: Dictionary, index: int, ally: int, from
 				int(item["stats"].get(stat, 0))])
 		compare = " · ".join(parts)
 	_label(parent, compare, DIM_COLOR, false)
+
+
+func _receive_label(unit: CombatUnit, item: Dictionary) -> String:
+	if item.kind == "potion":
+		return tr("%s: 물약 1개 전달") % _short_name(unit)
+	var current: Dictionary = unit.weapon if item.kind == "weapon" else unit.armor
+	return (tr("%s: 장착") if current.is_empty() else tr("%s: 교체")) % _short_name(unit)
+
+
+func _process(_delta: float) -> void:
+	if not visible or not get_viewport().gui_is_dragging():
+		return
+	var data: Variant = get_viewport().gui_get_drag_data()
+	if not data is Dictionary or data.get("owner") != get_instance_id():
+		return
+	hint_label.text = tr("놓을 수 없는 위치 · Esc: 취소")
+	var control: Control = get_viewport().gui_get_hovered_control()
+	while control != null and control not in _drag_targets:
+		control = control.get_parent_control()
+	if control == null:
+		return
+	var kind: String = control.get_meta("drop_kind")
+	var index: int = control.get_meta("drop_index")
+	if not _can_drop_item(data, kind, index):
+		return
+	if kind == "empty_bag":
+		hint_label.text = tr("가방으로 해제") if data.kind == "armor" else tr("가방에 보관")
+	elif data.kind == "potion":
+		hint_label.text = tr("%s: 물약 1개 전달") % _short_name(party[index])
+	else:
+		hint_label.text = _receive_label(party[index], data.item)
+		if data.item.kind != "potion":
+			var current: Dictionary = party[index].weapon if data.item.kind == "weapon" else party[index].armor
+			if not current.is_empty():
+				hint_label.text += tr(" · 기존 장비는 가방으로")
 
 
 func _receive(index: int, ally: int) -> void:
@@ -584,6 +625,10 @@ func _drop_item(data: Variant, kind: String, index: int) -> void:
 func _notification(what: int) -> void:
 	if what not in [NOTIFICATION_DRAG_BEGIN, NOTIFICATION_DRAG_END] or not is_inside_tree():
 		return
+	if what == NOTIFICATION_DRAG_BEGIN:
+		hint_label.set_meta("before_drag", hint_label.text)
+	elif hint_label.has_meta("before_drag"):
+		hint_label.text = hint_label.get_meta("before_drag")
 	for control: Control in _drag_targets:
 		if control is Button or control is Panel or control is PanelContainer:
 			var key: String = "normal" if control is Button else "panel"

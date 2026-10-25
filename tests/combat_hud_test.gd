@@ -77,6 +77,7 @@ func _run() -> void:
 	await _test_reaction_flow()
 	await _test_reaction_focus()
 	await _test_action_animations()
+	await _test_rock_presentation()
 	await _test_results_and_restart()
 	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
 	await create_timer(0.08).timeout
@@ -1819,11 +1820,51 @@ func _test_action_animations() -> void:
 			and crate.hit_points == 6, "상자 공격은 방향·공격 자세를 먼저 표시하고 입력을 잠근다")
 		if actor.kind == CombatUnit.Kind.ARCHER:
 			_check(battle.has_node("Arrow"), "궁수의 상자 공격에도 실제 화살이 비행한다")
+		var saw_impact: bool = false
 		while actions.busy:
+			if battle.map.has_node("PropAnimation"):
+				saw_impact = true
+				_check(crate.hit_points == 6 and actor.action_left == 1, "상자 연출 중 판정·비용은 아직 적용하지 않음")
+				battle.call("_unhandled_input", event)
 			await process_frame
 		await process_frame
+		_check(saw_impact and not battle.map.has_node("PropAnimation"), "물체 피격 연출을 보이고 임시 노드를 정리")
 		_check(actor.action_left == 0 and crate.hit_points < 6 and not battle.has_node("Arrow"),
 			"상자 공격 연출 뒤 기존 피해·행동 비용과 화살 정리를 유지한다")
+	actions.grid.props.clear()
+	_reset_units()
+
+
+func _test_rock_presentation() -> void:
+	_reset_units()
+	actions.grid.props.clear()
+	var actor: CombatUnit = units[0]
+	actor.cell = Vector2i(5, 5)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(8, 5)
+	units[3].cell = Vector2i(9, 9)
+	turns.select_unit(actor)
+	var rock: CombatGrid.Prop = actions.create_prop(Vector2i(6, 5), "rock")
+	var preview: CombatActions.RockRoll = actions.preview_rock(actor, rock)
+	var hp: int = units[2].hit_points
+	battle.call("_update_turn_ui")
+	var event: InputEventMouseButton = InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = true
+	event.position = battle.map.get_global_transform_with_canvas() * (battle.map.map_to_surface(rock.cell) + Vector2(0, -8))
+	battle.call("_unhandled_input", event)
+	battle.call("_unhandled_input", event)
+	var seen: bool = false
+	while actions.busy:
+		if battle.map.has_node("PropAnimation"):
+			seen = true
+			_check(rock.cell == Vector2i(6, 5) and units[2].hit_points == hp and actor.action_left == 1,
+				"바위 연출 중 위치·피해·비용은 확정 전 상태")
+			battle.call("_unhandled_input", event)
+		await process_frame
+	_check(seen and rock.cell == preview.cells[-1] and units[2].hit_points == hp - 4
+		and actor.action_left == 0 and not battle.map.has_node("PropAnimation"),
+		"바위 연출 후 미리보기와 같은 위치·충돌4피해·비용1, 중복 입력 차단")
 	actions.grid.props.clear()
 	_reset_units()
 
