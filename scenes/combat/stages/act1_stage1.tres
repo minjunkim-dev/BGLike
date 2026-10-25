@@ -24,8 +24,8 @@ Vector2i(5, 5): 1
 })
 pits = Array[Vector2i]([Vector2i(6, 1)])
 water_cells = Array[Vector2i]([Vector2i(5, 1)])
-crate_cells = Array[Vector2i]([Vector2i(2, 1)])
-rock_cells = Array[Vector2i]([Vector2i(4, 1)])
+crate_cells = Array[Vector2i]([Vector2i(3, 4)])
+rock_cells = Array[Vector2i]([Vector2i(6, 6)])
 path_cells = Array[Vector2i]([Vector2i(1, 4), Vector2i(2, 4), Vector2i(3, 4), Vector2i(3, 3), Vector2i(3, 2), Vector2i(3, 1), Vector2i(4, 2), Vector2i(5, 2), Vector2i(6, 2), Vector2i(7, 2)])
 stone_cells = Array[Vector2i]([Vector2i(1, 2), Vector2i(2, 2), Vector2i(1, 3), Vector2i(2, 3), Vector2i(4, 3), Vector2i(4, 4), Vector2i(5, 4), Vector2i(4, 5)])
 scenery = Dictionary[Vector2i, String]({

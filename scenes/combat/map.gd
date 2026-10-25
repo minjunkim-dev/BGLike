@@ -122,7 +122,13 @@ func show_movement(cells: Array[Vector2i], attack_cells: Array[Vector2i],
 			center + Vector2(0, -half.y), center + Vector2(half.x, 0),
 			center + Vector2(0, half.y), center + Vector2(-half.x, 0)
 		])
-		overlay.color = Color(0.22, 0.8, 0.5, 0.45) if cell in attack_cells else Color(0.22, 0.56, 0.92, 0.4)
+		overlay.color = Color(0.22, 0.8, 0.5, 0.12) if cell in attack_cells else Color(0.22, 0.56, 0.92, 0.1)
+		var edge: Line2D = Line2D.new()
+		edge.points = overlay.polygon
+		edge.closed = true
+		edge.width = 0.5
+		edge.default_color = Color(overlay.color.r, overlay.color.g, overlay.color.b, 0.75)
+		overlay.add_child(edge)
 		add_child(overlay)
 		_overlays.append(overlay)
 	var previous: Vector2 = map_to_surface(origin)

@@ -130,6 +130,10 @@ func _test_format_two_state() -> void:
 		state.units[0].initiative_roll = value
 		_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
 			"전사 민첩 d8의 유효한 저장 경계: %d" % value)
+	state.props = [["crate", Vector2i(2, 1), 3], ["rock", Vector2i(4, 1), 6]]
+	state.units[0].cell = Vector2i(3, 4)
+	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
+		"재배치 전 저장의 물체 좌표·상자 HP와 새 초기 상자 칸의 유닛 위치를 그대로 복원")
 	await _free(restored)
 	await _free(battle)
 

@@ -52,6 +52,7 @@ func _run() -> void:
 	await process_frame
 	_check("이니셔티브" not in hud.message_label.text, "전투 시작 로그에 이니셔티브 계산식 없음")
 	_test_square_map()
+	_test_movement_overlay()
 	_test_unit_art()
 	_test_warrior()
 	await _test_resources()
@@ -86,6 +87,35 @@ func _run() -> void:
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat HUD: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_movement_overlay() -> void:
+	var grid: CombatGrid = CombatGrid.new()
+	grid.map_size = Vector2i(3, 2)
+	grid.heights[Vector2i(1, 0)] = 1
+	var map: CombatMap = CombatMap.new()
+	root.add_child(map)
+	map.build_grid(grid, load("res://scenes/combat/floor_tiles.tres") as TileSet)
+	map.show_movement([Vector2i.ZERO, Vector2i(1, 0)], [Vector2i(1, 0)], [Vector2i(1, 0)], Vector2i.ZERO)
+	_check(map._overlays.size() == 4, "이동 면2개·미리보기 선·도착점을 유지")
+	for index: int in range(2):
+		var overlay: Polygon2D = map._overlays[index] as Polygon2D
+		_check(overlay.color.a > 0.0 and overlay.color.a <= 0.16, "이동 면 채움이 바닥 재질을 가리지 않음")
+		_check(overlay.color.b > overlay.color.g if index == 0 else overlay.color.g > overlay.color.b,
+			"기존 파랑 이동·초록 이동 후 공격의 의미 유지")
+		_check(overlay.get_child_count() == 1 and overlay.get_child(0) is Line2D, "약한 면에 칸 윤곽을 함께 표시")
+		if overlay.get_child_count() == 1 and overlay.get_child(0) is Line2D:
+			var edge: Line2D = overlay.get_child(0) as Line2D
+			_check(edge.closed and edge.points == overlay.polygon and edge.width <= 1.0,
+				"윤곽은 기존 바닥 마름모를 닫고 측면을 칠하지 않음")
+		var center: Vector2 = Vector2.ZERO
+		for point: Vector2 in overlay.polygon:
+			center += point / overlay.polygon.size()
+		_check((overlay.position + center).is_equal_approx(map.map_to_surface(Vector2i(index, 0))),
+			"높이 있는 바닥 위에도 같은 좌표로 표시")
+	map.show_movement([], [], [], Vector2i.ZERO)
+	_check(map._overlays.is_empty(), "이동 표시를 닫으면 면·윤곽·경로를 함께 제거")
+	map.free()
 
 
 func _test_skill_icons() -> void:
