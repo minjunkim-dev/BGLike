@@ -12,6 +12,7 @@ class Inputs extends Node:
 	var tree: SceneTree
 	var dragging: bool = false
 	func _process(_delta: float) -> void:
+		tree.poll_capture()
 		if tree.has_method("sample"):
 			tree.sample(_delta)
 		if dragging != get_viewport().gui_is_dragging():
@@ -121,15 +122,19 @@ func _run() -> void:
 		battle = current_scene.get_node_or_null("Battle") if current_scene != null else null
 		if battle != null and (battle.get("actions") as CombatActions).busy:
 			await capture("animation")
-		if FileAccess.file_exists(directory.path_join("capture")):
-			DirAccess.remove_absolute(directory.path_join("capture"))
-			await capture("checkpoint")
 	await capture("final")
 	assert(ScriptedDice.finish().is_empty())
 	print("[NATIVE_CASE_DONE] ", kind)
 	current_scene.queue_free()
 	await create_timer(0.3).timeout
 	quit()
+
+## 아군 동작을 await하거나 일시정지해도 관찰 요청은 별도 Node가 처리한다.
+func poll_capture() -> void:
+	if current_scene == null: return
+	if FileAccess.file_exists(directory.path_join("capture")):
+		DirAccess.remove_absolute(directory.path_join("capture"))
+		capture.call_deferred("checkpoint")
 func record(event: String) -> void:
 	print("[NATIVE_INPUT] msec=%d %s" % [Time.get_ticks_msec(), event])
 	capture.call_deferred(event)

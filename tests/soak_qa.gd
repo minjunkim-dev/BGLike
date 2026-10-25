@@ -58,9 +58,6 @@ func _run() -> void:
 	started = -1
 	while started < 0 or (Time.get_ticks_msec() - started) / 1000 < DURATION_SECONDS:
 		await create_timer(0.1).timeout
-		if FileAccess.file_exists(directory.path_join("capture")):
-			DirAccess.remove_absolute(directory.path_join("capture"))
-			await capture("checkpoint")
 		if paused or battle.get("waiting_for_start"): continue
 		if started < 0: started = Time.get_ticks_msec()
 		if FileAccess.file_exists(directory.path_join("hold")): continue
