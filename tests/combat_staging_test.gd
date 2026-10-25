@@ -242,7 +242,9 @@ func _begin_drag(source: String) -> void:
 	var point: Vector2 = _point(source)
 	await _motion(point, Vector2.ZERO)
 	await _mouse(point, true)
-	await _motion(point + Vector2(24, 0), Vector2(24, 0))
+	# 위치와 이동 거리를 같은 창 배율로 보낸다. 2배 창에서도 논리 24px를 움직인다.
+	var distance: Vector2 = root.get_final_transform().basis_xform(Vector2(24, 0))
+	await _motion(point + distance, distance)
 	ck(root.gui_is_dragging(), "실제 GUI 드래그 시작: " + source)
 	if source == "BagItem0" and party[0].weapon.is_empty():
 		await _capture("03-drag-valid-targets-" + str(checks))
