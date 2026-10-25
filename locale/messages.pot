@@ -1471,3 +1471,15 @@ msgstr ""
 #: scenes/combat/preparation.gd
 msgid " · 기존 장비는 가방으로"
 msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "공용 가방 · 물약은 한 개씩 전달합니다."
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "공용 가방 · 교체하면 기존 장비는 이 칸으로 옵니다."
+msgstr ""
+
+#: scenes/combat/preparation.gd
+msgid "놓을 수 없는 위치 · Esc: 취소"
+msgstr ""

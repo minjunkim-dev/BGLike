@@ -2,6 +2,10 @@ class_name CombatMap
 extends TileMapLayer
 ## 바닥 높이의 표시 위치와 필드 입력을 같은 좌표로 변환한다.
 
+var revision: int = 0
+var _animating_prop: CombatGrid.Prop
+var _animation_marker: Node2D
+var _prop_effects: Array[Node2D] = []
 var grid: CombatGrid
 var _overlays: Array[Node2D] = []
 var _blocked_markers: Array[Node2D] = []
@@ -11,6 +15,13 @@ var _unit_markers: Array[Node2D] = []
 
 
 func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = null) -> void:
+	revision += 1
+	# Tween의 완료 대기를 끊지 않는다. 이전 호출은 깨어난 뒤 세대가 다르면 정리만 한다.
+	if is_instance_valid(_animation_marker):
+		_animation_marker.hide()
+	_animating_prop = null
+	for effect: Node2D in _prop_effects.duplicate():
+		effect.free()
 	grid = combat_grid
 	reveal_units([])
 	clear()
@@ -120,9 +131,12 @@ func reveal_units(units: Array[CombatUnit]) -> void:
 
 
 ## 판정 직전의 경로만 표시한다. 호출자가 입력을 잠그고 끝난 뒤 기존 판정을 실행한다.
-func animate_prop(prop: CombatGrid.Prop, roll: CombatActions.RockRoll = null) -> void:
+func animate_prop(prop: CombatGrid.Prop, roll: CombatActions.RockRoll, can_continue: Callable) -> void:
+	var generation: int = revision
 	var marker: Node2D = _art_marker(prop.cell, prop.kind, 4.0)
 	marker.name = "PropAnimation"
+	_animating_prop = prop
+	_animation_marker = marker
 	add_child(marker)
 	for original: Node2D in _prop_markers:
 		if original.get_meta("prop") == prop:
@@ -136,6 +150,8 @@ func animate_prop(prop: CombatGrid.Prop, roll: CombatActions.RockRoll = null) ->
 		await tween.finished
 	else:
 		for step: CombatActions.RockStep in roll.steps:
+			if generation != revision or not can_continue.call():
+				break
 			var destination: Vector2 = map_to_local(step.cell) if step.advance else marker.position
 			var tween: Tween = create_tween().set_parallel(true)
 			tween.tween_property(marker, "position", destination, 0.14)
@@ -143,14 +159,19 @@ func animate_prop(prop: CombatGrid.Prop, roll: CombatActions.RockRoll = null) ->
 				if step.advance else sprite.position.y, 0.14)
 			tween.tween_property(sprite, "skew", 0.15, 0.07)
 			await tween.finished
+			if generation != revision or not can_continue.call():
+				break
 			sprite.skew = 0.0
 			if step.target != null:
 				prop_impact(step.cell, false)
 			if step.destroyed or not step.advance:
 				break
+	if _animation_marker == marker:
+		_animation_marker = null
+		_animating_prop = null
+		for original: Node2D in _prop_markers:
+			original.show()
 	marker.free()
-	for original: Node2D in _prop_markers:
-		original.show()
 
 
 func prop_impact(cell: Vector2i, broken: bool) -> void:
@@ -165,6 +186,8 @@ func prop_impact(cell: Vector2i, broken: bool) -> void:
 			for offset: Vector2 in [Vector2(-5, -4), Vector2(5, -3), Vector2(-3, 2), Vector2(4, 3)]:
 				effect.draw_line(center + offset, center + offset * 1.7, color, 1.5))
 	add_child(effect)
+	_prop_effects.append(effect)
+	effect.tree_exiting.connect(func() -> void: _prop_effects.erase(effect))
 	var tween: Tween = effect.create_tween()
 	tween.tween_property(effect, "modulate:a", 0.0, 0.3)
 	tween.tween_callback(effect.queue_free)
@@ -346,6 +369,8 @@ func show_props(props: Array[CombatGrid.Prop], preview: CombatGrid.Prop = null) 
 				marker.draw_line(Vector2(-6, top), Vector2(-6 + prop.hit_points * 2, top), Color("e7bf6d"), 2.0))
 		add_child(marker)
 		_prop_markers.append(marker)
+		if prop == _animating_prop:
+			marker.hide()
 
 
 func _add_height_source(height: int) -> int:

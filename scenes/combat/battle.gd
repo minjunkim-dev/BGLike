@@ -592,11 +592,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		if selection.select_prop(prop, selection.selected_action == "attack" and actions.can_attack_prop(actor, prop)):
 			selection.begin_execution()
+			var generation: int = map.revision
 			actions.busy = true
 			await _animate_attack_at(actor, map.map_to_surface(prop.cell) + Vector2(0, -8))
+			if generation != map.revision:
+				return
 			var origin: Vector2i = prop.cell
 			var roll: CombatActions.RockRoll = actions.preview_rock(actor, prop) if prop.kind == "rock" else null
-			await map.animate_prop(prop, roll)
+			if not actions.is_over():
+				await map.animate_prop(prop, roll, func() -> bool: return not actions.is_over())
+			if generation != map.revision:
+				return
 			actions.busy = false
 			if actions.attack_prop(actor, prop):
 				map.prop_impact(prop.cell, prop.hit_points == 0)

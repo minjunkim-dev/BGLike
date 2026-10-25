@@ -1865,6 +1865,41 @@ func _test_rock_presentation() -> void:
 	_check(seen and rock.cell == preview.cells[-1] and units[2].hit_points == hp - 4
 		and actor.action_left == 0 and not battle.map.has_node("PropAnimation"),
 		"바위 연출 후 미리보기와 같은 위치·충돌4피해·비용1, 중복 입력 차단")
+	for cancel: String in ["giveup", "rebuild"]:
+		_reset_units()
+		actions.grid.props.clear()
+		actor.cell = Vector2i(5, 5)
+		units[2].cell = Vector2i(8, 5)
+		turns.select_unit(actor)
+		rock = actions.create_prop(Vector2i(6, 5), "rock")
+		hp = units[2].hit_points
+		battle.call("_update_turn_ui")
+		battle.call("_on_action_selected", "attack")
+		battle.call("_unhandled_input", event)
+		battle.call("_unhandled_input", event)
+		for frame: int in range(120):
+			if battle.map.has_node("PropAnimation"):
+				break
+			await process_frame
+		_check(battle.map.has_node("PropAnimation"), "중단 검수는 바위 연출 도중 시작")
+		if cancel == "giveup":
+			actions.give_up()
+			for marker: Node2D in battle.map.get("_prop_markers"):
+				_check(not marker.visible, "포기 후 UI를 다시 그려도 애니메이션과 원본을 중복 표시하지 않음")
+		else:
+			battle.map.prop_impact(rock.cell, false)
+			var effect: Node2D = battle.map.get_child(battle.map.get_child_count() - 1)
+			battle.map.build_grid(actions.grid, battle.stages[0].tile_set, battle.stages[0])
+			_check(not is_instance_valid(effect), "맵 재구축은 이전 충돌 효과를 즉시 제거")
+			(battle.get("selection") as CombatSelection).selected_action = "move"
+		for frame: int in range(30):
+			await process_frame
+		_check(not battle.map.has_node("PropAnimation") and rock.cell == Vector2i(6, 5)
+			and units[2].hit_points == hp, "중단한 연출은 이후 바위 이동·피해 없이 정리")
+		_check(actions.busy == (cancel == "rebuild"), "포기하면 잠금 해제, 새 세대의 잠금은 이전 호출이 변경하지 않음")
+		if cancel == "rebuild":
+			_check((battle.get("selection") as CombatSelection).selected_action == "move", "이전 호출은 새 세대의 선택을 변경하지 않음")
+		actions.busy = false
 	actions.grid.props.clear()
 	_reset_units()
 
