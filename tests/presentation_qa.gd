@@ -85,6 +85,7 @@ func _run() -> void:
 			loot.bag.append(loot.bag[0].duplicate(true))
 		elif kind == "crate":
 			assert(not actions.grid.path_to(party[0], Vector2i(2, 4)).is_empty())
+			assert(_cell_point(battle.get("map"), Vector2i(2, 4)) != Vector2.INF)
 			var sides: int = party[0].get_damage_sides()
 			assert(sides + party[0].get_damage_bonus() >= actions.grid.props[0].hit_points)
 			# 상자 공격은 명중 굴림 없이 현재 피해 주사위 한 번만 소비한다.
@@ -92,6 +93,7 @@ func _run() -> void:
 			print("[FIXTURE] crate current damage d%d +%d; transitions=%s" % [sides, party[0].get_damage_bonus(), transitions])
 		elif kind == "rock":
 			assert(not actions.grid.path_to(party[0], Vector2i(5, 4)).is_empty())
+			assert(_cell_point(battle.get("map"), Vector2i(5, 4)) != Vector2.INF)
 			assert(actions.grid.props[1].cell == Vector2i(6, 4))
 			actions.dice = ScriptedDice.new([])
 		if transitions:
@@ -164,8 +166,8 @@ func capture(label: String) -> void:
 		for prop: CombatGrid.Prop in actions.grid.props:
 			row.props.append({"kind": prop.kind, "cell": str(prop.cell), "hp": prop.hit_points})
 		for cell: Vector2i in [Vector2i(2, 4), Vector2i(5, 4)]:
-			var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(cell)
-			row.cells[str(cell)] = [point.x, point.y]
+			var point: Vector2 = _cell_point(map, cell)
+			if point != Vector2.INF: row.cells[str(cell)] = [point.x, point.y]
 		# 물체 몸통은 주변 유닛 픽셀에 가리지 않은 점만 입력 후보로 제공한다.
 		for prop: CombatGrid.Prop in actions.grid.props:
 			for y: int in range(-24, 1):
@@ -183,3 +185,11 @@ func capture(label: String) -> void:
 	file.seek_end()
 	file.store_line(JSON.stringify(row))
 	print("[NATIVE_FRAME] %s %s" % [shots, label])
+
+## movement_qa.gd와 같은 후보 순서. 높은 앞 타일과 겹치는 중심점은 건너뛴다.
+func _cell_point(map: CombatMap, cell: Vector2i) -> Vector2:
+	for offset: Vector2 in [Vector2.ZERO, Vector2(0, 2), Vector2(0, -2), Vector2(3, 0), Vector2(-3, 0), Vector2(0, 4)]:
+		var point: Vector2 = map.map_to_surface(cell) + offset
+		if map.surface_to_map(point) == cell:
+			return map.get_global_transform_with_canvas() * point
+	return Vector2.INF
