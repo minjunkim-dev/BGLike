@@ -38,11 +38,26 @@ func _run() -> void:
 	GameSettings.path = directory.path_join("qa-only-settings.cfg")
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--save-path="): GameSave.path = arg.trim_prefix("--save-path=")
-	if kind == "resume" and not preflight:
+	if kind == "resume":
 		assert(GameSave.has_save())
+		if preflight:
+			# 이어하기 초기화 검사는 원본 체크포인트를 덮어쓸 수 없다.
+			var copy: String = directory.path_join("preflight-save.bin")
+			assert(DirAccess.copy_absolute(GameSave.path, copy) == OK)
+			GameSave.path = copy
 		game = load("res://scenes/main.tscn").instantiate()
 		root.add_child(game)
 		current_scene = game
+		if preflight:
+			assert((game as TitleScreen).has_save())
+			(game as TitleScreen).continue_game()
+			game = current_scene
+			battle = game.get_node("Battle")
+			GameSave.autosave = false
+			battle.set_process(false)
+			var expected: Dictionary = GameSave.read().sections.combat.duplicate(true)
+			expected.erase("replay")
+			assert(battle.call("combat_state") == expected)
 	else:
 		game = load("res://scenes/game.tscn").instantiate()
 		root.add_child(game)
@@ -101,7 +116,7 @@ func _run() -> void:
 	await capture("initial")
 	while not FileAccess.file_exists(directory.path_join("finish")):
 		await create_timer(0.08).timeout
-		battle = current_scene.get_node_or_null("Battle")
+		battle = current_scene.get_node_or_null("Battle") if current_scene != null else null
 		if battle != null and (battle.get("actions") as CombatActions).busy:
 			await capture("animation")
 		if FileAccess.file_exists(directory.path_join("capture")):

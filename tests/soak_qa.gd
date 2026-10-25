@@ -33,6 +33,11 @@ func _run() -> void:
 	assert((battle.get("units") as Array).size() == 7 and battle.is_processing())
 	assert((battle.get("party") as Array).all(func(unit: CombatUnit) -> bool: return unit.hit_points == unit.get_max_hit_points()))
 	if preflight:
+		var bag: Array = (battle.get("loot") as CombatLoot).bag.duplicate(true)
+		for retry: int in range(5):
+			battle.call("_start_stage", true)
+			_equip()
+		assert((battle.get("loot") as CombatLoot).bag == bag)
 		print("[SOAK_FIXTURE_READY]")
 		game.queue_free()
 		await process_frame
@@ -43,14 +48,16 @@ func _run() -> void:
 	actions.logged.connect(func(message: String) -> void:
 		if " 새끼 낳기:" in message: spawned += 1)
 	frame_file = FileAccess.open(directory.path_join("performance.csv"), FileAccess.WRITE)
-	frame_file.store_line("usec,delta_s,static_memory_bytes,alive,enemy,paused")
+	frame_file.store_line("usec,delta_s,static_memory_bytes,alive,enemy,paused,waiting")
 	var listener: Inputs = Inputs.new()
 	listener.tree = self
 	listener.process_mode = Node.PROCESS_MODE_ALWAYS
 	root.add_child(listener)
-	started = Time.get_ticks_msec()
 	print("[SOAK_READY] native Start required; current loot maximum rolls, normal HP/AI/spawn; automatic nearest policy")
 	await capture("initial")
+	while battle.get("waiting_for_start"):
+		await process_frame
+	started = Time.get_ticks_msec()
 	while (Time.get_ticks_msec() - started) / 1000 < DURATION_SECONDS:
 		await create_timer(0.1).timeout
 		if paused or battle.get("waiting_for_start"): continue
@@ -75,7 +82,7 @@ func _run() -> void:
 	while (actions.busy or battle.get("_enemy_turn_running")) and Time.get_ticks_msec() < deadline:
 		if actions.pending_reactor != null: actions.resolve_reaction(true)
 		await process_frame
-	assert(battle.call("_can_save"))
+	assert(battle.call("_can_save") and enemy_frames > 0)
 	for probe: int in range(3):
 		var state: Dictionary = battle.call("combat_state")
 		var before: int = Time.get_ticks_usec()
@@ -95,6 +102,8 @@ func _equip() -> void:
 	var loot: CombatLoot = battle.get("loot")
 	for unit: CombatUnit in battle.get("party"):
 		for item_kind: String in ["weapon", "armor"]:
+			var equipped: Dictionary = unit.get(item_kind)
+			if not equipped.is_empty(): continue
 			var item: Dictionary = loot.data.items.filter(func(value: Dictionary) -> bool: return value.kind == item_kind)[0].duplicate(true)
 			for stat: String in item.stats: item.stats[stat] = int(item.stats[stat][-1][1])
 			assert(loot.receive(unit, item))
@@ -136,5 +145,5 @@ func sample(delta: float) -> void:
 	peak_alive = maxi(peak_alive, alive)
 	var enemy: bool = battle.get("_enemy_turn_running")
 	if enemy: enemy_frames += 1
-	frame_file.store_line("%d,%.6f,%d,%d,%d,%d" % [Time.get_ticks_usec(), delta,
-		int(Performance.get_monitor(Performance.MEMORY_STATIC)), alive, int(enemy), int(paused)])
+	frame_file.store_line("%d,%.6f,%d,%d,%d,%d,%d" % [Time.get_ticks_usec(), delta,
+		int(Performance.get_monitor(Performance.MEMORY_STATIC)), alive, int(enemy), int(paused), int(battle.get("waiting_for_start"))])
