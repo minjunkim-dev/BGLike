@@ -153,6 +153,12 @@ func capture(label: String) -> void:
 		var actions: CombatActions = battle.get("actions")
 		var actor: CombatUnit = (battle.get("turns") as CombatTurns).current_unit
 		var map: CombatMap = battle.get("map")
+		if not map.has_meta("qa_prop_observer"):
+			map.set_meta("qa_prop_observer", true)
+			map.child_entered_tree.connect(func(node: Node) -> void:
+				if node.name == "PropAnimation":
+					FileAccess.open(directory.path_join("prop-started"), FileAccess.WRITE).store_string(str(Time.get_ticks_usec()))
+					print("[NATIVE_PROP_STARTED] ", Time.get_ticks_msec()))
 		row.merge({"preparation": preparation.visible, "hint": preparation.hint_label.text, "busy": actions.busy, "waiting": battle.get("waiting_for_start"),
 			"bag": (battle.get("loot") as CombatLoot).bag, "party": [], "props": [], "units": [], "cells": {}, "selected_action": selection.selected_action,
 			"preview_path": str(selection.preview_path), "preview_prop": selection.preview_prop.kind if selection.preview_prop != null else "", "log": (battle.get("hud") as CombatTurnHud).message_label.text,
