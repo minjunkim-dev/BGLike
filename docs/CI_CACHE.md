@@ -3,7 +3,7 @@
 개발과 위험별 병합은 [협업 규칙](WORKFLOW.md#브랜치와-병합)을 따릅니다.
 내 PC에서는 Godot 4.7.2 Standard로 게임을 실행하고 직접 조작을 확인합니다.
 GitHub Actions는 PR의 코드와 리소스를 자동 검사합니다.
-코드 리뷰는 [로컬 독립 리뷰](agents/review.md)를 따릅니다. Bugbot은 수동 보조 리뷰입니다. 리뷰는 CI와 직접 플레이 확인을 대신하지 않습니다.
+코드 리뷰는 [로컬 독립 리뷰](agents/review.md)를 따릅니다. 리뷰는 CI와 직접 플레이 확인을 대신하지 않습니다.
 이 CI 캐시는 Codex 원격 구현용 환경이나 Cloud Publish를 사용하지 않습니다.
 
 Godot 워크플로는 공식 Linux x86_64 ZIP만 캐시합니다.

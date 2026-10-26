@@ -36,7 +36,7 @@
 - 코드를 바꾸는 일은 Issue부터 엽니다. 본문에 **목표, 완료 조건, 관련 문서 링크**를 적습니다. 양식이 자동으로 뜹니다. 문서나 설정만 바꾸는 작은 작업은 Issue 없이 PR만 열어도 됩니다.
 - 본문은 처음 합의한 기록이므로 **고치지 않습니다.** 바뀐 것은 코멘트로 쌓습니다. 범위가 크게 바뀌면 새 Issue를 열고 옛 Issue는 링크를 남기고 닫습니다.
 - 열린 Issue 목록이 곧 작업판입니다. 보드, 마일스톤은 쓰지 않습니다.
-- 실제 자동 AI 리뷰만 GitHub workflow·App·리뷰 설정에서 확인하고 이 저장소 범위에서 정리합니다. GitHub Claude workflow는 사용하지 않습니다. 로컬 독립 리뷰와 Bugbot 수동 보조 리뷰를 유지합니다. 계정 탐색과 다른 저장소 연결 변경은 제외합니다. [협업 규칙](docs/WORKFLOW.md)을 따릅니다.
+- 실제 자동 AI 리뷰만 GitHub workflow·App·리뷰 설정에서 확인하고 이 저장소 범위에서 정리합니다. GitHub Claude workflow는 사용하지 않습니다. 로컬 독립 리뷰와 직접 수정을 유지합니다. 계정 탐색과 다른 저장소 연결 변경은 제외합니다. [협업 규칙](docs/WORKFLOW.md)을 따릅니다.
 
 ## 5. 코멘트
 
@@ -83,7 +83,7 @@
 | [AGENTS.md](AGENTS.md) | 구현·리뷰 문서 길잡이와 승인 경계 |
 | [docs/WORKFLOW.md](docs/WORKFLOW.md) | Issue 운영, 검토와 병합, 에이전트 사용법 |
 | [docs/GIT_CONVENTIONS.md](docs/GIT_CONVENTIONS.md) | 브랜치 이름, 커밋 메시지 |
-| [코딩 규칙](docs/coding-standards.md), [독립 리뷰 절차](docs/agents/review.md) | Standards·Spec·Security 리뷰, 검사 근거와 Bugbot 수동 보조 리뷰 |
+| [코딩 규칙](docs/coding-standards.md), [독립 리뷰 절차](docs/agents/review.md) | Standards·Spec·Security 리뷰, 검사 근거와 사용자 요청 회고 |
 | [Draft Release 절차](docs/DRAFT_RELEASE.md) | 미공개 Draft CD와 최종 head 승인 |
 | `docs/` 기획 문서 | 기획 현황, 로드맵, 전투 기획서, 마일스톤별 개발 요청서 |
 | `CONTEXT.md` (M1 첫 PR에서 추가 예정) | 용어집. 코드, 문서, 대화에서 같은 말을 씁니다 |
@@ -111,8 +111,8 @@
 | squash merge만 허용, 병합 후 브랜치 삭제 | 저장소 설정 |
 | Godot import·메인 장면·전투 회귀 검사 | GitHub Actions `godot`. 문서만 바뀌면 엔진 작업은 생략 |
 | PR·CI 알림 | `#github-알림` Discord 웹훅 |
-| GitHub AI 리뷰 | Bugbot은 수동 보조 리뷰. GitHub Claude workflow는 사용하지 않음. 자동 리뷰는 현재 GitHub 연결·설정에서 실제 연결만 정리. 다른 저장소·계정 연결은 유지 |
-| 로컬 독립 리뷰 / Bugbot | Standards·Spec·필요한 Security / 필요한 PR에서 수동 보조 리뷰. 자동화 완료로 간주하지 않음 |
+| GitHub AI 리뷰 | GitHub Claude workflow는 사용하지 않음. 자동 리뷰는 현재 GitHub 연결·설정에서 실제 연결만 정리. 다른 저장소·계정 연결은 유지 |
+| 로컬 독립 리뷰 / 회고 | Standards·Spec·필요한 Security / 사용자 요청 시 Matt Pocock retro |
 | Issue·PR 양식 | `.github/` 템플릿 |
 
 동료 승인은 필수가 아닙니다. main 보호의 현재 적용 상태와 필수 검사 조건은 [협업 규칙](docs/WORKFLOW.md#현재-github-제약)을 참조합니다.

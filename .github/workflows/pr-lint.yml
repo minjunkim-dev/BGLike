@@ -49,18 +49,8 @@ jobs:
               git show --check --format= --diff-merges=first-parent HEAD
             fi
           fi
-      - name: Check Bugbot rule sizes and coverage
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          checker=scripts/check_bugbot_rules.py
-          test -f "$checker"
-          if [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] &&
-             git cat-file -e "$BASE_SHA:$checker" 2>/dev/null; then
-            git show "$BASE_SHA:$checker" > "$RUNNER_TEMP/trusted-bugbot-rules.py"
-            checker="$RUNNER_TEMP/trusted-bugbot-rules.py"
-          fi
-          python3 "$checker"
+      - name: Verify shared baseline copies
+        run: python3 -B scripts/check_repo_baseline.py
       - name: Test scope and review authorization
         env:
           PYTHONDONTWRITEBYTECODE: "1"
