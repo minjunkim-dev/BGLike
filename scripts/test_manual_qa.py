@@ -193,7 +193,7 @@ class ManualQATests(unittest.TestCase):
         with self.assertRaises(ProcessLookupError):
             os.kill(entry["attempts"][-1]["launcher_pid"], 0)
 
-    def test_native_command_never_activates_game(self):
+    def test_native_command_requests_background_launch(self):
         with patch.object(qa.subprocess, "Popen") as launch:
             qa.launch(self.app, self.case, self.root / "game.log", self.root / "frames")
         command = launch.call_args.args[0]
@@ -221,6 +221,39 @@ class ManualQATests(unittest.TestCase):
         with patch.object(qa, "frontmost_pid", return_value=1), patch.object(qa, "native_pids", return_value=[4242]):
             self.run_case("Metal - Forward+\n[CAPTURE_CHECK] PASS:\n")
         self.assertEqual(self.state["cases"]["compact"]["status"], "awaiting_review")
+
+    def test_approved_foreground_case_records_consent_and_still_requires_review(self):
+        self.case["foreground_approval"] = "User allowed focus for compact only, 2026-10-26"
+        self.prepare_plan()
+        with patch.object(qa, "launch", side_effect=self.native_fixture("Metal - Forward+\n[CAPTURE_CHECK] PASS:\n")) as launch, \
+                patch.object(qa, "frontmost_pid", return_value=4242), \
+                patch.object(qa, "native_pids", return_value=[4242]), patch.object(qa, "stop_native") as stop:
+            self.assertEqual(self.cli("run", "--mode", "macos", "--app", str(self.app)), 0)
+        self.assertEqual(launch.call_args.args[0], self.app.resolve())
+        _, state = qa.session(self.plan, self.directory, "macos")
+        entry = state["cases"]["compact"]
+        self.assertEqual(entry["status"], "awaiting_review")
+        self.assertEqual(entry["attempts"][-1]["foreground_approval"], self.case["foreground_approval"])
+        self.assertEqual(entry["attempts"][-1]["foreground_pid"], 4242)
+        stop.assert_called_once()
+
+    def test_foreground_approval_does_not_extend_to_another_case_or_hide_game_errors(self):
+        approved = dict(self.case, foreground_approval="User allowed compact only, 2026-10-26")
+        with patch.object(qa, "frontmost_pid", return_value=4242), \
+                patch.object(qa, "native_pids", return_value=[4242]), patch.object(qa, "stop_native") as stop:
+            with patch.object(qa, "launch", side_effect=self.native_fixture("Metal - Forward+\n[CAPTURE_CHECK] PASS:\n")):
+                qa.run_case(self.app, approved, self.directory, self.state)
+                other = dict(self.case, id="other")
+                self.state["cases"]["other"] = {"status": "not_run", "attempts": []}
+                with self.assertRaisesRegex(ValueError, "frontmost"):
+                    qa.run_case(self.app, other, self.directory, self.state)
+            with patch.object(qa, "launch", side_effect=self.native_fixture(
+                    "Metal - Forward+\nSCRIPT ERROR: fixture failed\n[CAPTURE_CHECK] PASS:\n")):
+                with self.assertRaisesRegex(ValueError, "Godot error"):
+                    qa.run_case(self.app, approved, self.directory, self.state)
+        self.assertEqual(self.state["cases"]["other"]["status"], "failed")
+        self.assertEqual(self.state["cases"]["compact"]["status"], "failed")
+        self.assertEqual(stop.call_count, 3)
 
     def test_frontmost_pid_reads_lsappinfo(self):
         outputs = ["ASN:0x0-0x62062:\n", '"Godot" ASN:0x0-0x62062: (in front)\n    pid = 1398 !cgsConnection\n']
@@ -377,6 +410,35 @@ class ManualQATests(unittest.TestCase):
         self.plan.write_text(json.dumps({"source_sha": "a" * 40, "cases": [self.case]}))
         with self.assertRaisesRegex(ValueError, "inputs changed"):
             qa.session(self.plan, self.directory)
+
+    def test_foreground_approval_requires_nonempty_user_consent(self):
+        self.prepare_plan()
+        for approval in (None, False, True, "", "  ", {"allowed": True}):
+            with self.subTest(approval=approval):
+                self.plan.write_text(json.dumps({"source_sha": "a" * 40, "cases": [
+                    dict(self.case, foreground_approval=approval)]}))
+                with patch.object(qa, "launch") as launch:
+                    self.assertEqual(self.cli("run", "--mode", "macos"), 1)
+                    launch.assert_not_called()
+
+    def test_foreground_approval_is_rejected_outside_macos_mode(self):
+        self.case["foreground_approval"] = "User allowed focus for compact only, 2026-10-26"
+        self.prepare_plan()
+        with patch.object(qa, "run_case") as run:
+            self.assertEqual(self.cli("run"), 1)
+            run.assert_not_called()
+
+    def test_changed_or_revoked_foreground_approval_refuses_evidence_reuse(self):
+        self.case["foreground_approval"] = "User allowed focus for compact only, 2026-10-26"
+        self.prepare_plan()
+        qa.session(self.plan, self.directory, "macos")
+        for fields in ({}, {"foreground_approval": "New authorization with another scope"}):
+            with self.subTest(fields=fields):
+                changed = {key: value for key, value in self.case.items() if key != "foreground_approval"}
+                changed.update(fields)
+                self.plan.write_text(json.dumps({"source_sha": "a" * 40, "cases": [changed]}))
+                with self.assertRaisesRegex(ValueError, "inputs changed"):
+                    qa.session(self.plan, self.directory, "macos")
 
     def test_ignored_helper_change_invalidates_evidence(self):
         self.prepare_plan()
