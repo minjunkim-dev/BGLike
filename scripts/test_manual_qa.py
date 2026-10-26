@@ -229,7 +229,7 @@ class ManualQATests(unittest.TestCase):
                 patch.object(qa, "frontmost_pid", return_value=4242), \
                 patch.object(qa, "native_pids", return_value=[4242]), patch.object(qa, "stop_native") as stop:
             self.assertEqual(self.cli("run", "--mode", "macos", "--app", str(self.app)), 0)
-        self.assertEqual(launch.call_args.args[0], self.app)
+        self.assertEqual(launch.call_args.args[0], self.app.resolve())
         _, state = qa.session(self.plan, self.directory, "macos")
         entry = state["cases"]["compact"]
         self.assertEqual(entry["status"], "awaiting_review")
