@@ -16,7 +16,7 @@ PR에서는 제목과 브랜치 규칙도 검사합니다.
 먼저 `git fetch origin main`으로 기준을 갱신합니다. 다른 기준은
 `python3 scripts/check_whitespace.py --base <ref>`로 지정합니다. 기준 ref를 찾지 못하면 실패합니다.
 
-policy와 `make repository-check`는 `scripts/check_bugbot_rules.py`를 실행합니다. 모든 추적된 root·영역 BUGBOT.md를 합산합니다. 개별 30,000자·총 95,000자 한도를 유지합니다. 필수 영역 파일 누락·빈 파일·symlink와 상세 문서의 로컬 링크를 거부합니다. 상세 문서는 크기 예산에 포함하지 않습니다. 로컬 상세 문서 선택은 `docs/agents/review.md`를 따릅니다. CI는 기준 SHA의 검사기를 사용하며 최초 도입에는 현재 검사기를 사용합니다. 서버 실제 포함과 계정 규칙은 수동 verbose 표로 확인합니다.
+policy와 `make repository-check`는 `python3 scripts/check_repo_baseline.py`로 공통 복사본 해시를 확인합니다. 남은 공통 테스트는 전체 scripts 탐색에서 실행하고 CodeQL blob pin 검사를 유지합니다. 자체 리뷰의 자료 선택과 사용자 요청 회고는 `docs/agents/review.md`를 따릅니다.
 
 - Markdown, `docs/` 자료와 `scripts/ci_scope.py`에 명시된 관리 파일만 바뀌면 Godot 작업을 선택하지 않습니다.
 - 게임 코드·장면·자산·프로젝트 설정, CI 선택기와 게임 검사 워크플로 변경은 모든 기존 Godot 검사를 선택합니다.
@@ -67,4 +67,4 @@ Godot 워크플로의 별도 알림 작업은 정책 또는 게임 검사 실패
 정상 실행마다 별도 runner를 할당하거나 제목 수정·검토자 요청마다 반복 알림을 보내지 않습니다.
 알림 작업은 PR 코드를 checkout하거나 실행하지 않습니다. 외부 fork에는 Secret 알림을 실행하지 않습니다.
 
-GitHub Claude workflow는 사용하지 않습니다. 로컬 독립 리뷰·필요한 보안 리뷰와 Bugbot 수동 보조 리뷰는 [협업 규칙](WORKFLOW.md)을 따릅니다.
+GitHub Claude workflow는 사용하지 않습니다. 로컬 독립 리뷰·필요한 보안 리뷰는 [협업 규칙](WORKFLOW.md)을 따릅니다.

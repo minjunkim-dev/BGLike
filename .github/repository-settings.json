@@ -107,7 +107,7 @@
       "sha": "a1a58f92dfcb6d8c5b1755d8c4ebc1da46f3e8fb"
     }
   },
-  "exceptions": [
+  "observations": [
     {
       "control": "release Environment",
       "status": "not_applicable",
