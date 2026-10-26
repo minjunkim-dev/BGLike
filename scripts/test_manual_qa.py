@@ -225,10 +225,11 @@ class ManualQATests(unittest.TestCase):
     def test_approved_foreground_case_records_consent_and_still_requires_review(self):
         self.case["foreground_approval"] = "User allowed focus for compact only, 2026-10-26"
         self.prepare_plan()
-        with patch.object(qa, "launch", side_effect=self.native_fixture("Metal - Forward+\n[CAPTURE_CHECK] PASS:\n")), \
+        with patch.object(qa, "launch", side_effect=self.native_fixture("Metal - Forward+\n[CAPTURE_CHECK] PASS:\n")) as launch, \
                 patch.object(qa, "frontmost_pid", return_value=4242), \
                 patch.object(qa, "native_pids", return_value=[4242]), patch.object(qa, "stop_native") as stop:
-            self.assertEqual(self.cli("run", "--mode", "macos"), 0)
+            self.assertEqual(self.cli("run", "--mode", "macos", "--app", str(self.app)), 0)
+        self.assertEqual(launch.call_args.args[0], self.app)
         _, state = qa.session(self.plan, self.directory, "macos")
         entry = state["cases"]["compact"]
         self.assertEqual(entry["status"], "awaiting_review")
