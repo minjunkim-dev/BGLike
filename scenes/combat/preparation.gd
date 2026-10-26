@@ -111,6 +111,13 @@ func _ready() -> void:
 	_style_button(continue_button, SELECT_COLOR)
 	continue_button.pressed.connect(_continue)
 	bottom.add_child(continue_button)
+	# 화면이 낮으면 상세의 예약 여백부터 줄이고, 실제 내용의 최소 높이는 보존한다.
+	var fit_detail: Callable = func() -> void:
+		var padding: int = margin.get_theme_constant("margin_top") + margin.get_theme_constant("margin_bottom")
+		var others: float = layout.get_combined_minimum_size().y - detail_panel.get_combined_minimum_size().y
+		detail_panel.custom_minimum_size.y = clampf(size.y - padding - others, 0.0, 74.0)
+	resized.connect(fit_detail)
+	layout.minimum_size_changed.connect(fit_detail)
 	discard_dialog = ConfirmationDialog.new()
 	discard_dialog.name = "Discard"
 	discard_dialog.theme = UI_THEME

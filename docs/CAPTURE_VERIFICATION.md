@@ -158,7 +158,7 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
   "script": "res://tests/preparation_qa.gd",
   "resolution": [1280, 720],
   "timeout": 60,
-  "acceptance": "보상·정비 상세·가득 찬 가방의 안내와 버리기 확인이 잘리거나 가려지지 않고 아이콘·취소 기본 선택이 보인다.",
+  "acceptance": "보상·정비 상세·가방 안내·버리기 확인이 읽히고, 하단 안내와 진행 버튼의 전체 영역이 화면 안에 있으며 아이콘·취소 기본 선택이 보인다.",
   "success_marker": "[PREPARATION_QA_PASS]",
   "preflight_args": ["--fixture-precheck"],
   "preflight_success_marker": "[PREPARATION_PREFLIGHT_PASS]"
@@ -168,6 +168,8 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 위 [실행 기록](#직접-확인-실행-기록)의 `run`·원본 검토·`accept`/`reject` 흐름을 그대로 쓴다. 첫 사례를 통과하면 변경 영향에 따라 대표 16:9·16:10 해상도를 추가한다. `--capture-dir`은 도우미가 전달한다. 사전 검사는 같은 초기화와 입력을 headless로 실행하고 PNG를 만들지 않는다.
 
 원본은 `reward-overview.png`, `maintenance-selected.png`, `finish-confirmation.png`, `bag-full-notice.png`, `bag-discard-button.png`, `discard-confirmation.png`다. `frames.json`은 캡처별 창·논리 화면 크기와 보이는 라벨의 문구·영역·줄 수를 남긴다. 공간 부족은 가방을 제품 한도까지 채우고 보상 2개를 남겨 재현한다. 확인 창의 취소 기본 선택과 버리기 취소 뒤 아이템 수 보존도 검사한다.
+
+#367부터 각 캡처에서 하단 안내와 진행 버튼의 전체 영역이 논리 화면 안에 있는지 검사한다. `frames.json`의 `footer`는 진행 버튼 영역이다. 글꼴·창 크기를 실제로 적용한 렌더링 사례에서 확인하며 headless 초기화 통과만으로 영역 검사를 완료 처리하지 않는다.
 
 자동 저장은 끄고 저장·설정 경로는 실행별 검사 경로로 격리한다. 글꼴은 실행 환경의 기본 대체 글꼴을 사용한다. 성공 표식은 화면 가독성 승인 전의 자동 검사 완료이며, 실제 macOS 입력·Retina·Metal·사람 플레이는 포함하지 않는다.
 
