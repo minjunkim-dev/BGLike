@@ -91,12 +91,19 @@ func _button(button: Button) -> void:
 
 func _capture(label: String) -> void:
 	await _settle()
+	var prep: CombatPreparation = current_scene.get_node("Battle").get("preparation")
+	var viewport: Rect2 = root.get_visible_rect()
+	assert(viewport.encloses(prep.continue_button.get_global_rect()),
+		"%s: footer %s outside %s" % [label, prep.continue_button.get_global_rect(), viewport])
+	assert(not prep.bag_notice.visible or viewport.encloses(prep.bag_notice.get_global_rect()),
+		"%s: notice %s outside %s" % [label, prep.bag_notice.get_global_rect(), viewport])
 	var labels: Array[Dictionary] = []
 	for node: Node in root.find_children("*", "Label", true, false):
 		if (node as Label).is_visible_in_tree():
 			labels.append({"path": str(node.get_path()), "text": node.text,
 				"rect": str(node.get_global_rect()), "lines": node.get_line_count()})
-	records.append({"id": label, "window": str(root.size), "viewport": str(root.get_visible_rect()), "labels": labels})
+	records.append({"id": label, "window": str(root.size), "viewport": str(viewport),
+		"footer": str(prep.continue_button.get_global_rect()), "labels": labels})
 	if preflight:
 		return
 	await RenderingServer.frame_post_draw
