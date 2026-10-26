@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Preflight and record bounded Forward+ QA offscreen in Docker, or in an inactive macOS window."""
+"""Preflight and record bounded Forward+ QA offscreen, or on macOS with case-scoped focus consent."""
 
 import argparse
 import fcntl
@@ -55,6 +55,9 @@ def load_plan(path):
             raise ValueError("Case resolution must be [width, height]")
         if not isinstance(case.get("args", []), list) or not all(isinstance(arg, str) for arg in case.get("args", [])):
             raise ValueError("Case args must be strings")
+        if "foreground_approval" in case and (not isinstance(case["foreground_approval"], str)
+                                               or not case["foreground_approval"].strip()):
+            raise ValueError("Foreground approval needs a nonempty record of the user's consent")
         if "preflight_args" in case or "preflight_success_marker" in case:
             args, marker = case.get("preflight_args"), case.get("preflight_success_marker")
             if (not isinstance(args, list) or not all(isinstance(arg, str) for arg in args)
@@ -210,6 +213,8 @@ def run_case(app, case, directory, state, offscreen=False):
         record["container"] = "bglike-qa-" + hashlib.sha256(f"{attempt}{record['started']}".encode()).hexdigest()[:16]
     else:
         record["app"] = str(app)
+        if case.get("foreground_approval"):
+            record["foreground_approval"] = case["foreground_approval"]
     entry["attempts"].append(record)
     entry["status"] = "running"
     save(directory, state)
@@ -237,11 +242,14 @@ def run_case(app, case, directory, state, offscreen=False):
         save(directory, state)
         deadline = time.monotonic() + case["timeout"]
         while True:
-            # macOS can still raise an `open -g` window; stop it rather than keep the user's focus.
+            # open -g may still activate Godot; only this case's recorded consent allows it.
             front = None if offscreen else frontmost_pid()
             if front is not None and front in native_pids(app, log):
-                record["foreground"] = "Godot became the frontmost app; stopping the owned instance"
-                raise ValueError(record["foreground"])
+                record["foreground_pid"] = front
+                if not case.get("foreground_approval"):
+                    record["foreground"] = "Godot became the frontmost app; stopping the owned instance"
+                    raise ValueError(record["foreground"])
+                record["foreground"] = "Owned Godot became frontmost under recorded user approval"
             # Poll before reading so a game that prints its marker and exits is not a false failure.
             exited = launcher.poll() is not None
             output = log.read_text(errors="replace") if log.exists() else ""
@@ -310,6 +318,8 @@ def session(plan_path, directory, mode="offscreen"):
     if directory.is_relative_to(ROOT):
         raise ValueError("Store session evidence outside the worktree")
     plan, fingerprint = load_plan(plan_path)
+    if mode != "macos" and any("foreground_approval" in case for case in plan["cases"]):
+        raise ValueError("Foreground approval is only valid in macos mode")
     path = directory / "state.json"
     if path.exists():
         state = json.loads(path.read_text())
@@ -331,7 +341,7 @@ def main():
     parser.add_argument("plan", type=Path)
     parser.add_argument("directory", type=Path)
     parser.add_argument("--mode", choices=("offscreen", "macos"), default="offscreen",
-                        help="offscreen: Docker Xvfb + llvmpipe (agent default); macos: inactive Godot.app window")
+                        help="offscreen: Docker Xvfb + llvmpipe (default); macos: Godot.app, focus requires case approval")
     parser.add_argument("--app", type=Path, default=Path("/Applications/Godot.app"))
     parser.add_argument("--case")
     parser.add_argument("--evidence", type=Path)
