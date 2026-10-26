@@ -1,5 +1,6 @@
 """QA must not launch broken scripts, take the user's focus or reuse incomplete evidence."""
 
+import base64
 import json
 import os
 from pathlib import Path
@@ -9,11 +10,13 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
+import zlib
 
 import manual_qa as qa
 
 frontmost_pid = qa.frontmost_pid
 docker_preflight = qa.docker_preflight
+PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jPxoAAAAASUVORK5CYII=")
 
 
 class ManualQATests(unittest.TestCase):
@@ -39,8 +42,11 @@ class ManualQATests(unittest.TestCase):
         front.start()
         self.addCleanup(front.stop)
 
-    def native_fixture(self, text, wait=True):
+    def native_fixture(self, text, wait=True, png=None):
         def launch(_app, _case, log, _frames):
+            if png is not None:
+                _frames.mkdir()
+                (_frames / "original.png").write_bytes(png)
             log.write_text(text)
             process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)" if wait else ""],
                                        start_new_session=True)
@@ -126,6 +132,7 @@ class ManualQATests(unittest.TestCase):
         self.run_case("Metal - Forward+\n[CAPTURE_CHECK] PASS: review original frames\n")
         saved = json.loads((self.directory / "state.json").read_text())
         self.assertEqual(saved["cases"]["compact"]["status"], "awaiting_review")
+        self.assertEqual(saved["cases"]["compact"]["attempts"][-1]["png_sizes"], {})
         pid = saved["cases"]["compact"]["attempts"][-1]["launcher_pid"]
         with self.assertRaises(ProcessLookupError):
             os.kill(pid, 0)
@@ -221,6 +228,43 @@ class ManualQATests(unittest.TestCase):
         with patch.object(qa, "frontmost_pid", return_value=1), patch.object(qa, "native_pids", return_value=[4242]):
             self.run_case("Metal - Forward+\n[CAPTURE_CHECK] PASS:\n")
         self.assertEqual(self.state["cases"]["compact"]["status"], "awaiting_review")
+
+    def test_run_records_png_pixel_size_and_accept_preserves_it(self):
+        self.prepare_plan()
+        with patch.object(qa, "launch", side_effect=self.native_fixture("Forward+\n[CAPTURE_CHECK] PASS:\n", png=PNG)), \
+                patch.object(qa, "stop_native"):
+            self.assertEqual(self.cli("run", "--mode", "macos", "--app", str(self.app)), 0)
+        _, state = qa.session(self.plan, self.directory, "macos")
+        entry = state["cases"]["compact"]
+        self.assertEqual(entry["status"], "awaiting_review")
+        self.assertEqual(entry["attempts"][-1]["png_sizes"], {"original.png": [1, 1]})
+        evidence = self.root / "review.md"
+        evidence.write_text("Original PNG reviewed; stored pixels differ from requested 1280x720 window")
+        self.assertEqual(self.cli("accept", "--mode", "macos", "--case", "compact", "--evidence", str(evidence)), 0)
+        _, state = qa.session(self.plan, self.directory, "macos")
+        self.assertEqual(state["cases"]["compact"]["status"], "passed")
+        self.assertEqual(state["cases"]["compact"]["attempts"][-1]["png_sizes"], {"original.png": [1, 1]})
+
+    def test_invalid_png_header_fails_after_cleanup_and_cannot_be_accepted(self):
+        self.prepare_plan()
+        invalid = [b"", PNG[:24], b"x" + PNG[1:], PNG[:32] + b"\0" + PNG[33:]]
+        for width in (0, 0x80000000):
+            image = bytearray(PNG)
+            image[16:20] = width.to_bytes(4, "big")
+            image[29:33] = zlib.crc32(image[12:29]).to_bytes(4, "big")
+            invalid.append(bytes(image))
+        evidence = self.root / "review.md"
+        evidence.write_text("A success marker cannot make an invalid PNG reviewable")
+        for png in invalid:
+            with self.subTest(png=png[:24]), patch.object(qa, "launch", side_effect=self.native_fixture(
+                    "Forward+\n[CAPTURE_CHECK] PASS:\n", png=png)), patch.object(qa, "stop_native") as stop:
+                self.assertEqual(self.cli("run", "--mode", "macos", "--app", str(self.app)), 1)
+                _, state = qa.session(self.plan, self.directory, "macos")
+                entry = state["cases"]["compact"]
+                self.assertEqual(entry["status"], "failed")
+                self.assertIn("Invalid PNG", entry["attempts"][-1]["reason"])
+                self.assertEqual(self.cli("accept", "--mode", "macos", "--case", "compact", "--evidence", str(evidence)), 1)
+                stop.assert_called_once()
 
     def test_approved_foreground_case_records_consent_and_still_requires_review(self):
         self.case["foreground_approval"] = "User allowed focus for compact only, 2026-10-26"

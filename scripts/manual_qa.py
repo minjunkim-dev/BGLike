@@ -9,9 +9,11 @@ import os
 from pathlib import Path
 import re
 import signal
+import struct
 import subprocess
 import sys
 import time
+import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
 ERROR = re.compile(r"SCRIPT ERROR|Failed to load script|^ERROR:|\b[1-9][0-9]* failures\b", re.M)
@@ -202,6 +204,21 @@ def launch(app, case, log, frames):
                             stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, start_new_session=True)
 
 
+def png_sizes(directory):
+    sizes = {}
+    for path in sorted(directory.glob("*.png")):
+        with path.open("rb") as stream:
+            header = stream.read(33)
+        if (len(header) != 33 or header[:16] != b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+                or zlib.crc32(header[12:29]) != int.from_bytes(header[29:33], "big")):
+            raise ValueError(f"Invalid PNG header: {path}")
+        size = list(struct.unpack(">II", header[16:24]))
+        if not all(0 < n <= 0x7fffffff for n in size):
+            raise ValueError(f"Invalid PNG size: {path}")
+        sizes[path.name] = size
+    return sizes
+
+
 def run_case(app, case, directory, state, offscreen=False):
     entry = state["cases"][case["id"]]
     attempt = directory / case["id"] / str(len(entry["attempts"]) + 1)
@@ -299,6 +316,8 @@ def run_case(app, case, directory, state, offscreen=False):
                 if entry["status"] == "awaiting_review" and ERROR.search(log.read_text(errors="replace")):
                     entry["status"] = "failed"
                     raise ValueError(f"Godot error at shutdown: {log}")
+            if entry["status"] == "awaiting_review":
+                record["png_sizes"] = png_sizes(attempt / "frames")
         except KeyboardInterrupt:
             entry["status"] = "interrupted"
             record["cleanup_error" if "reason" in record else "reason"] = "Interrupted during process cleanup"
