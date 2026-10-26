@@ -141,11 +141,35 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 | `presentation_qa.gd --transitions` | #351의 실제 Mac 입력 관찰. 정상 RNG seed351·자동 저장·실제 적 `_process`를 켠다. `--case=resume --save-path=<검수 저장>`은 새 프로세스 타이틀에서 이어하기를 기다린다. resume 사전 검사는 체크포인트의 복사본으로 실제 타이틀 복원 경로를 확인한다. 장면 전환 뒤 현재 장면을 다시 찾아 상태·원본·모달 버튼을 기록한다. 창 관리/OS 입력 도우미는 실행 입력 fingerprint와 함께 보존한다. 사용자 저장과 설정은 사용하지 않는다. |
 | `soak_qa.gd` | #351의 3-1 장기 관찰. 현재 loot 데이터의 최대 허용 장비·정상 최대 HP·물약 한도와 고정 seed를 사용한다. 첫 전투 시작은 실제 입력, 이후 아군은 가까운 적 자동 정책·반응 승인이다. 적 AI는 실제 전투 `_process`가 시작하며 정상 연출/속도를 유지한다. 첫 시작 입력 뒤 300초는 관찰 종료일 뿐 게임 규칙/성능 통과선이 아니다. CSV 프레임·정적 메모리·동시 생존 수, 누적 생성·저장 비용을 기록한다. 반복 전투의 기존 장비는 다시 받지 않는다. 사람 플레이/승률로 해석하지 않는다. |
 | `terrain_qa.gd` | #347의 실제9맵 초기/우클릭 이동 미리보기와1-1 상자 파괴·1-2 바위 충돌. 아군 차례/공격 위치만 통제하고 스크립트 GUI 입력·현재 피해 주사위 면수를 사용. `--fixture-precheck`로 같은 초기화/입력을 먼저 확인. 자연 진행·OS 입력은 제외. |
+| `preparation_qa.gd` | #366의 보상 2개·정비 상세·제품 한도까지 채운 가방·공간 부족·버리기 확인. 실제 아이템 정의와 `is_valid_item()`을 사용한다. 스크립트 포인터 입력·확인 창 신호로 취소 기본 선택과 아이템 수 보존을 확인하고 원본 PNG 6장을 남긴다. |
 | `combat_capture_test.gd` | 3-3의 전사·궁수·고철로봇 3000, 초상 3개, 정상 HP·아군 턴 자원. 자동 모드의 반응 0과 직접 확인 모드의 정상 반응을 구분한다. |
 | `combat_feedback_test.gd` | 유닛 3개와 초상 3개, 과부하 HP 25·행동 2, 인접 아군과 반응 0. 주사위·배치·HP를 고정한 재현이다. 자연 플레이나 정상 HP 표시의 증거로 사용하지 않는다. 밀집 사례는 3-1 유닛 7개, 새끼 거미 차례와 궁수 대상을 확인한다. |
 | `combat_hud_test.gd`의 소환 사례 | 시작 7개체의 구성, 소환 로그 6건·새 개체 6개·초상 13개, 초상 입력 전후 아군 턴 자원 보존. HP 1000과 직접 `ai.play_turn()` 호출을 사용한 자동 HUD 검사다. 비활성 창 입력이나 전투 `_process`가 AI를 시작한다는 증거로 사용하지 않는다. |
 
 유닛 몸통 클릭과 초상 클릭의 계약도 구분한다. 아군 몸통 클릭은 공격 선택을 취소한다. 밀치기를 선택했을 때는 아군 몸통도 대상 미리보기·확정을 받는다. 조작 유닛 전환은 아군 초상으로 확인한다. 빈 영역의 좌표는 실제 초상·스크롤 영역을 읽어 정한다.
+
+### 가방·보상 반복 검수
+
+[문구 변경 절차](WORKFLOW.md#화면-문구-변경)에서 가방·보상 화면을 바꾸면 `tests/preparation_qa.gd`를 기존 `manual_qa.py`로 실행한다. 아래 사례를 작업 폴더 밖 `plan.json`의 `cases`에 넣고 `source_sha`를 현재 HEAD로 정한다. `inputs`는 빈 배열이다.
+
+```json
+{
+  "id": "preparation-compact",
+  "script": "res://tests/preparation_qa.gd",
+  "resolution": [1280, 720],
+  "timeout": 60,
+  "acceptance": "보상·정비 상세·가득 찬 가방의 안내와 버리기 확인이 잘리거나 가려지지 않고 아이콘·취소 기본 선택이 보인다.",
+  "success_marker": "[PREPARATION_QA_PASS]",
+  "preflight_args": ["--fixture-precheck"],
+  "preflight_success_marker": "[PREPARATION_PREFLIGHT_PASS]"
+}
+```
+
+위 [실행 기록](#직접-확인-실행-기록)의 `run`·원본 검토·`accept`/`reject` 흐름을 그대로 쓴다. 첫 사례를 통과하면 변경 영향에 따라 대표 16:9·16:10 해상도를 추가한다. `--capture-dir`은 도우미가 전달한다. 사전 검사는 같은 초기화와 입력을 headless로 실행하고 PNG를 만들지 않는다.
+
+원본은 `reward-overview.png`, `maintenance-selected.png`, `finish-confirmation.png`, `bag-full-notice.png`, `bag-discard-button.png`, `discard-confirmation.png`다. `frames.json`은 캡처별 창·논리 화면 크기와 보이는 라벨의 문구·영역·줄 수를 남긴다. 공간 부족은 가방을 제품 한도까지 채우고 보상 2개를 남겨 재현한다. 확인 창의 취소 기본 선택과 버리기 취소 뒤 아이템 수 보존도 검사한다.
+
+자동 저장은 끄고 저장·설정 경로는 실행별 검사 경로로 격리한다. 글꼴은 실행 환경의 기본 대체 글꼴을 사용한다. 성공 표식은 화면 가독성 승인 전의 자동 검사 완료이며, 실제 macOS 입력·Retina·Metal·사람 플레이는 포함하지 않는다.
 
 ## PCK 이동 후조건의 재현
 
