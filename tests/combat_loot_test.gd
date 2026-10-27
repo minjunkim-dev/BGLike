@@ -474,10 +474,10 @@ func _test_armor_unequip_scene() -> void:
 	await _action("ui_accept")
 	_check(weapon_cell.button_pressed and preparation.detail.find_children("*", "Button", true, false).is_empty(),
 		"Enter로 무기 칸을 고르면 해제 버튼 없이 수치만 표시")
-	var detail_icon: TextureRect = preparation.detail.find_children("*", "TextureRect", true, false)[0]
-	_check(weapon_cell.get_theme_constant("icon_max_width") == CombatActionRules.ICON_SIZE
-		and weapon_cell.size == Vector2(36, 36) and detail_icon.size == Vector2.ONE * CombatActionRules.ICON_SIZE,
-		"#362 장비 칸과 선택 상세의 그림 크기 일치, 칸 입력 36×36 유지")
+	var detail_icon: TextureRect = preparation.detail.find_child("DetailIcon", true, false) as TextureRect
+	_check(weapon_cell.size == Vector2(36, 36), "#362 장비 칸 입력 36×36 유지")
+	_check(weapon_cell.get_theme_constant("icon_max_width") == 24 and detail_icon != null
+		and detail_icon.size == Vector2(24, 24), "#362 장비 칸과 선택 상세의 그림 24 논리px")
 	await _action("ui_right")
 	_check((preparation.find_child("Armor0", true, false) as Control).has_focus(), "방향키로 이웃 칸 이동")
 	await _check_preparation_focus(preparation, "Armor0")

@@ -48,8 +48,10 @@ const USE_COUNTERS: Dictionary[String, StringName] = {
 const USES_PER_ACT: Dictionary[String, int] = {
 	"second_wind": 1, "parry": 2, "surge": 1, "mark": 1, "shock": 1, "disengage": 2
 }
-## 아군 스킬과 공용 동작의 아이콘. 64px 원본을 scale 0.5(32 논리px)로 표시한다.
+## 아군 스킬과 공용 동작의 아이콘. 64px 원본이다.
 const ICON_PATH: String = "res://scenes/combat/art/icons/skills/%s.png"
+## #362: 스킬과 정비 아이템 그림의 표시 크기(논리 px). 버튼·칸의 입력 영역은 각 화면이 따로 유지한다.
+const ICON_SIZE: int = 24
 
 
 static func resource_of(action: String) -> CombatUnit.TurnResource:
@@ -85,10 +87,6 @@ static func spend_use(actor: CombatUnit, action: String) -> void:
 static func restore_uses(unit: CombatUnit) -> void:
 	for action: String in USES_PER_ACT:
 		unit.set(USE_COUNTERS[action], USES_PER_ACT[action])
-
-
-## #362: 스킬·아이템 그림의 표시 크기(논리 px). 버튼·칸의 입력 영역은 각 화면이 따로 유지한다.
-const ICON_SIZE: int = 24
 
 
 ## 적 전용 스킬처럼 아이콘이 없으면 null이다.
