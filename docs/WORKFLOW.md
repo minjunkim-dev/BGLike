@@ -73,7 +73,7 @@ Draft CD의 실행 승인은 [Draft Release 절차](DRAFT_RELEASE.md)를 따릅�
 
 모든 변경은 `git diff --check`와 `python3 -m unittest discover -s scripts -p 'test_*.py'`를 확인합니다. 워크플로 변경은 `actionlint`도 실행합니다.
 게임 코드·장면·리소스·프로젝트 설정 변경은 Godot headless import, 메인 장면과 기존 전투 회귀 검사를 실행합니다. 명령은 [README](https://github.com/minjunkim-dev/BGLike/blob/main/README.md), 검사 선택과 알 수 없는 변경의 전체 검사 경로는 [CI 구성](CI.md)을 따릅니다.
-플레이 변경은 편집기에서 변경한 입력과 화면 흐름을 직접 확인합니다. 에이전트의 화면 확인은 기본으로 [화면 밖 실행](CAPTURE_VERIFICATION.md#화면-밖-실행-기본)을 쓰고 사용자의 macOS 화면 포커스를 가져가지 않습니다. CI 성공으로 조작감이나 화면 가독성을 확인했다고 보고하지 않습니다.
+플레이 변경은 편집기에서 변경한 입력과 화면 흐름을 직접 확인합니다. 에이전트의 화면 확인은 기본으로 [화면 밖 실행](CAPTURE_VERIFICATION.md#화면-밖-실행-기본)을 쓰고 사용자의 macOS 화면 포커스를 가져가지 않습니다. 에이전트가 실제 OS 입력·Retina·Metal을 확인할 때는 `scripts/manual_qa.py --mode macos`와 [기존 사례](CAPTURE_VERIFICATION.md#실행-경로-선택)를 씁니다. 누가 체크박스를 처리하는지는 [확인 등급](CAPTURE_VERIFICATION.md#확인-등급)을 따릅니다. CI 성공으로 조작감이나 화면 가독성을 확인했다고 보고하지 않습니다.
 직접 확인을 시작하기 전에 대상 SHA·로컬 변경, 필수 사례·대표 해상도와 합격 기준을 고정합니다. 필수 사례의 입력·화면 증거가 모이면 종료합니다. 같은 입력에서 통과한 증거는 재사용합니다. 새 요청은 추가 범위로 기록하고 기존 사례를 전부 반복하지 않습니다. 임시 스크립트의 사전 검사와 실패·중단·재개는 [직접 확인 실행 기록](CAPTURE_VERIFICATION.md#직접-확인-실행-기록)을 따릅니다.
 문서·설정 변경은 해당 설정을 읽는 도구 또는 GitHub 흐름을 확인합니다. PR에는 실행한 검증과 미확인 범위를 구분합니다. 게임 동작 변경은 사람이 편집기에서 확인할 항목도 적습니다.
 [Issue 양식](../.github/ISSUE_TEMPLATE/task.md)과 [PR 양식](../.github/pull_request_template.md)은 CLI로 작성할 때도 제목 구조를 유지합니다. Issue 없는 문서·설정 작업은 관련 Issue를 "없음"으로 적습니다. 다른 사람의 PR 브랜치에 커밋을 추가하면 PR 코멘트로 알립니다.
@@ -120,7 +120,7 @@ GitHub Claude workflow와 전용 스크립트는 사용하지 않습니다. 댓�
 - App 상세 접근 설정은 GitHub sudo 인증이 필요하면 `미확인`으로 기록합니다. 인증·계정 탐색을 늘리지 않습니다. 현재 확인한 연결·실제 자동 리뷰가 있을 때만 이 저장소 설정을 정리합니다.
 - 외부 리뷰 서비스를 새로 연결하지 않습니다. Linear Code와 Semgrep App은 설치 사실만으로 자동 AI 리뷰라고 분류하지 않습니다. 결정적인 검사와 다른 용도는 보존합니다.
 
-두 에이전트 모두 [AGENTS.md](../AGENTS.md)를 읽고 위 규칙을 따릅니다. 플레이 변경은 사람이 직접 확인합니다. 병합은 위 위험별 정책을 따릅니다. main 보호는 [현재 GitHub 제약](#현재-github-제약)을 따릅니다. 동료 검토는 선택입니다. AI 리뷰가 위험한 변경의 사람 승인을 대신하지 않습니다.
+두 에이전트 모두 [AGENTS.md](../AGENTS.md)를 읽고 위 규칙을 따릅니다. 플레이 변경의 확인 항목은 [확인 등급](CAPTURE_VERIFICATION.md#확인-등급)을 따릅니다. 병합은 위 위험별 정책을 따릅니다. main 보호는 [현재 GitHub 제약](#현재-github-제약)을 따릅니다. 동료 검토는 선택입니다. AI 리뷰가 위험한 변경의 사람 승인을 대신하지 않습니다.
 
 ### 읽기 전용 Claude 리뷰의 사전 승인
 
