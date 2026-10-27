@@ -2,7 +2,7 @@
 
 [Issue #58](https://github.com/minjunkim-dev/BGLike/issues/58)의 [기획자 코멘트](https://github.com/minjunkim-dev/BGLike/issues/58#issuecomment-6100264025)와 [사용자 구현 결정](https://github.com/minjunkim-dev/BGLike/issues/58#issuecomment-6137867077)을 반영한다. 전투 규칙과 클릭 입력은 유지한다. 상세 표시 규칙은 [전투 시스템 기획서9장](COMBAT_DESIGN.md#9-화면과-조작)을 따른다.
 
-호버 내용은 [Issue #226](https://github.com/minjunkim-dev/BGLike/issues/226)의 개발 결정을 따른다. 2026-10-21 회의 결정으로 [Issue #68](https://github.com/minjunkim-dev/BGLike/issues/68)의 "이름·효과·사용 불가 이유만"을 넓혔다. 기획자가 나중에 바꿀 수 있다. 스킬 버튼은 이름 대신 [#225](https://github.com/minjunkim-dev/BGLike/issues/225)의 아이콘을 보인다. 공격·스킬 호버는 아래 순서로 표시한다.
+호버 내용은 [Issue #226](https://github.com/minjunkim-dev/BGLike/issues/226)의 개발 결정을 따른다. 2026-10-21 회의 결정으로 [Issue #68](https://github.com/minjunkim-dev/BGLike/issues/68)의 "이름·효과·사용 불가 이유만"을 넓혔다. 기획자가 나중에 바꿀 수 있다. 스킬 버튼은 이름 대신 아이콘을 보인다([#225](https://github.com/minjunkim-dev/BGLike/issues/225), 도트 이미지는 [#384](https://github.com/minjunkim-dev/BGLike/issues/384)). 공격·스킬 호버는 아래 순서로 표시한다.
 
 1. 이름
 2. 효과
