@@ -147,13 +147,16 @@ def outlined(draw):
 
 
 ICONS = {"sword": sword, "bow": bow, "armor": armor, "potion": potion}
-parser = argparse.ArgumentParser()
-parser.add_argument("destination", type=Path)
-args = parser.parse_args()
-args.destination.mkdir(parents=True, exist_ok=True)
-for name, draw in ICONS.items():
-    image = outlined(draw)
-    bounds = image.getbbox()
-    assert bounds and bounds[0] >= 2 and bounds[1] >= 2 and bounds[2] <= 62 and bounds[3] <= 62, (name, bounds)
-    image.save(args.destination / f"{name}.png")
-    print(json.dumps({"icon": name, "canvas": [SIZE, SIZE], "content": bounds}))
+
+# draw_skill_icons.py imports the palette, sword, potion and outlined from this file.
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("destination", type=Path)
+    args = parser.parse_args()
+    args.destination.mkdir(parents=True, exist_ok=True)
+    for name, draw in ICONS.items():
+        image = outlined(draw)
+        bounds = image.getbbox()
+        assert bounds and bounds[0] >= 2 and bounds[1] >= 2 and bounds[2] <= 62 and bounds[3] <= 62, (name, bounds)
+        image.save(args.destination / f"{name}.png")
+        print(json.dumps({"icon": name, "canvas": [SIZE, SIZE], "content": bounds}))
