@@ -1499,3 +1499,7 @@ msgstr ""
 #: scenes/combat/battle.gd
 msgid "오른쪽 위"
 msgstr ""
+
+#: scenes/combat/battle.gd
+msgid "전투 준비 · 지형과 적을 확인하고 전투를 시작합니다."
+msgstr ""
