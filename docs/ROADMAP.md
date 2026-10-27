@@ -3,7 +3,7 @@
 > 무엇을 어떤 순서로 기획할지 정리한 문서입니다. 개발 일정은 다루지 않습니다.
 > 각 단계의 기획 결과는 **개발 요청서**로 개발 담당에게 넘기고, 개발 담당이 그 문서를 보고 개발 계획을 씁니다.
 >
-> - 기준일: 2026-10-22 (2026-10-02 작성, 2026-10-22 기획자 확인 [#209](https://github.com/minjunkim-dev/BGLike/issues/209)·[#210](https://github.com/minjunkim-dev/BGLike/issues/210)·[#220](https://github.com/minjunkim-dev/BGLike/issues/220)·[#237](https://github.com/minjunkim-dev/BGLike/issues/237) 답변 반영)
+> - 기준일: 2026-10-22 (2026-10-02 작성, 2026-10-22 기획자 확인 [#209](https://github.com/minjunkim-dev/BGLike/issues/209)·[#210](https://github.com/minjunkim-dev/BGLike/issues/210)·[#220](https://github.com/minjunkim-dev/BGLike/issues/220)·[#237](https://github.com/minjunkim-dev/BGLike/issues/237) 답변 반영, 2026-10-27 능력치·동작 유형 기획서 색인 반영)
 > - 남은 작업: [M7까지 남은 작업 지도](https://github.com/minjunkim-dev/BGLike/issues/200)
 > - 관련 문서: [기획 현황](DESIGN_STATUS.md) · [전투 시스템 기획서](COMBAT_DESIGN.md) · [M1 개발 요청서](DEV_REQUEST_M1.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) 또는 일부만 정해짐 · ❓ 정해야 함 · ⏸ 보류
@@ -67,7 +67,7 @@ flowchart LR
 |---|---|---|---|
 | **M1 전투 프로토타입** | BG3 전투를 구현해 프로젝트의 느낌을 확인 | 전투 시스템 기획서, 개발 요청서, 프로토타입 회고 | ✅ 범위 확정. 구현 완료 ([Issue #12](https://github.com/minjunkim-dev/BGLike/issues/12), [M1 검수 기록](M1_VERIFICATION.md)) |
 | **M2 게임 구조** | 무엇을 반복하는 게임인지 정함 | 게임 비전, [게임 구조 기획서](GAME_STRUCTURE.md) (코어 루프, 씬 흐름, 자원, 아이템 구조, 사각 높이 격자) | ✅ 구조 확정, 비전 ⏸ 보류 |
-| **M3 전투 확장** | 전투의 깊이와 전투 화면 | 맵, 공격 타입, 전투 UI 기획서 | 🟡 맵·높이·환경 규칙 확정(#136·#137), 구현(#163~#166, [#195](https://github.com/minjunkim-dev/BGLike/issues/195)). 전투 UI는 [#58](https://github.com/minjunkim-dev/BGLike/issues/58) 반영. 주사위 결과 피드백은 [#220](https://github.com/minjunkim-dev/BGLike/issues/220)에서 일부 정함(2026-10-22). 명칭·색 규칙은 기획자 정리 대기. 공격 타입은 후속 기획 |
+| **M3 전투 확장** | 전투의 깊이와 전투 화면 | 맵, 공격 타입, 전투 UI 기획서 | 🟡 맵·높이·환경 규칙 확정(#136·#137), 구현(#163~#166, [#195](https://github.com/minjunkim-dev/BGLike/issues/195)). 전투 UI는 [#58](https://github.com/minjunkim-dev/BGLike/issues/58) 반영. 주사위 결과 피드백은 [#220](https://github.com/minjunkim-dev/BGLike/issues/220)에서 일부 정함(2026-10-22). 명칭·색 규칙은 기획자 정리 대기. 주사위·판정은 [능력치 기획서](ABILITY_SYSTEM.md)(2026-10-27 개정, 구현 대기). 공격 타입 규칙은 [동작 유형 기획서](SKILL_TYPES.md) 초안, 도입은 후속 |
 | **M4 성장과 경제** | 전투 사이에 강해지는 구조 | 아이템 수치·드랍 기획 (육성은 아이템뿐, 2026-10-07) | 🟡 수치·드랍([#61](https://github.com/minjunkim-dev/BGLike/issues/61))과 공용 가방([#175](https://github.com/minjunkim-dev/BGLike/issues/175)) 구현. 장비 수치 재검토는 [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
 | **M5 콘텐츠** | 실제로 만들 것의 목록 | 캐릭터, 몬스터, 레벨 디자인 문서 | 🟡 몬스터7종·9개 배치 구현 (#107~[#113](https://github.com/minjunkim-dev/BGLike/issues/113)). 캐릭터 컨셉·스킬셋, 몬스터 성향은 기획자가 정리 중([#210](https://github.com/minjunkim-dev/BGLike/issues/210)·[#237](https://github.com/minjunkim-dev/BGLike/issues/237), 2026-10-22) |
 | **M6 밸런스와 연출** | 수치와 손맛 | 밸런스 표, 사운드·이펙트 목록 | 🟡 밸런스 재검토 [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
@@ -92,7 +92,7 @@ flowchart LR
 | | 성장 재화와 경제 | M4 (구조), M6 (밸런스) |
 | **전투** | 전투 규칙 | M1 |
 | | 공격 타입: 근거리/원거리, 대상/공간 조준, 직사/곡사, 속성 ([동작 유형 기획서](SKILL_TYPES.md)) | M1 (근거리/원거리), M3 |
-| | 주사위 종류, 대성공/대실패 | M1 (d20 치명타·자동 실패), M3 |
+| | 주사위 종류, 절대성공/절대실패 ([능력치와 주사위 판정 기획서](ABILITY_SYSTEM.md)) | M1 (d20 치명타·자동 실패), M3 |
 | **UI/UX** | 전투 화면 레이아웃 | M1 (씬 구성, 화면 배치, 스킬 패널), M3 (완성) |
 | | 주사위 결과 피드백 | M1 (로그와 숫자 팝업), M3 (설계) |
 | | 전투 외 화면 (정비, 보상, 메뉴) | M2 (흐름), M7 (완성) |
@@ -173,7 +173,7 @@ flowchart LR
 | 1 | 맵 기획 | 맵 크기, 장애물, 지형 요소, 높이 | 시야·엄폐와 직사/곡사의 전제 |
 | 2 | 공격 타입 | 대상/공간 조준, 직사/곡사. 규칙은 [동작 유형 기획서](SKILL_TYPES.md)에서 정했고 칸 조준과 직사/곡사는 이 단계에서 도입 | 장애물이 있어야 의미가 생김 |
 | 3 | 공격 속성 | 물리/마법 2종 또는 다양한 속성, 저항·취약·면역 | M5 몬스터 기획과 함께 확정 |
-| 4 | 주사위와 판정 확장 | 주사위 종류, 대성공/대실패 체계 | M1의 치명타·자동 실패를 확장 |
+| 4 | 주사위와 판정 확장 | 주사위 종류, 절대면 체계. 규칙은 [능력치와 주사위 판정 기획서](ABILITY_SYSTEM.md)에서 정했고 치명타·절대성공의 추가 이점은 ⏸ | M1의 치명타·자동 실패를 확장 |
 | 5 | 전투 UI 기획 | M1 배치를 바탕으로 레이아웃 완성, 정보 표시, 주사위 결과 피드백 | 규칙이 늘어난 뒤 한 번에 설계 |
 
 ### 주사위 결과 피드백 🟡
@@ -183,9 +183,9 @@ flowchart LR
 | 질문 | 결정 |
 |---|---|
 | 굴림을 어디에 보여주나 | ✅ 유닛 머리 위 팝업(결과 중심)과 전투 로그. 주사위 굴리는 연출은 개발 결정([#222](https://github.com/minjunkim-dev/BGLike/issues/222))으로 넣지 않음 |
-| 수식을 얼마나 보여주나 | ✅ 팝업은 결과만(명중이면 피해 합계, 빗나가면 `빗나감`). 로그는 전체 수식(`d20 12 + 5 = 17 / AC 16 · 명중`) |
-| 유리/불리는 어떻게 보여주나 | ✅ 팝업에서는 보이지 않음. 명중률 미리보기와 로그의 두 d20로 확인 |
-| 치명타·자동 실패 연출 | 🟡 금색 `치명타!` 유지. 자동 실패는 `빗나감`으로 통일하고, 주사위 시스템을 정리할 때 기획자가 명칭을 정립 |
+| 수식을 얼마나 보여주나 | ✅ 팝업은 결과만(명중이면 피해 합계, 빗나가면 `빗나감`). 로그는 전체 수식([팝업 문구 규칙](COMBAT_UIUX.md#팝업-문구-규칙)의 예) |
+| 유리/불리는 어떻게 보여주나 | ✅ 팝업에서는 보이지 않음. 명중률 미리보기와 로그의 두 주사위로 확인 |
+| 치명타·자동 실패 연출 | ⏸ 치명타는 비활성, 팝업 없음([#321](https://github.com/minjunkim-dev/BGLike/issues/321), [팝업 문구 규칙](COMBAT_UIUX.md#팝업-문구-규칙)). 빗나감은 `빗나감`. 절대성공의 추가 이점은 [능력치 기획서 4-12](ABILITY_SYSTEM.md#4-12-치명타와-절대성공의-이점-) ⏸ |
 | 연출이 턴 속도를 늦추면 | ✅ 빠르게 보기([#221](https://github.com/minjunkim-dev/BGLike/issues/221), 개발 결정) |
 | 회복 수치 | ✅ 초록색, 부호 없음. 나머지 이로운/해로운 수치의 색은 ❓ |
 
@@ -195,7 +195,7 @@ flowchart LR
 
 | 순서 | 영역 | 정할 내용 |
 |---|---|---|
-| 1 | 캐릭터 육성 | 레벨업, 능력치 성장, 스킬 습득 |
+| 1 | 캐릭터 육성 | 레벨업, 능력치 성장, 스킬 습득. 능력치 성장은 ⏸ [주사위 육성 논의](DICE_GROWTH.md)(단위는 주사위 레벨) |
 | 2 | 장비 | 무기와 방어구. 무기가 공격 타입을 정하는지 |
 | 3 | 아이템 | 소모품 종류, 획득 경로, 소지 한도 |
 | 4 | 성장 재화 | 재화 종류, 얻는 곳, 쓰는 곳 (재화 흐름도) |
@@ -254,7 +254,7 @@ flowchart LR
 | 게임 비전 | M2 | ⏸ 보류 |
 | [맵 기준](TERRAIN_MAPS.md)과 [게임 구조 기획서 6장](GAME_STRUCTURE.md#6-사각-높이-격자) (맵·높이·환경) | M3 | ✅ 9개 지형 맵 구현 ([#195](https://github.com/minjunkim-dev/BGLike/issues/195)) |
 | [전투 화면 정보 정리](COMBAT_UIUX.md) (전투 UI) | M3 | 🟡 [#58](https://github.com/minjunkim-dev/BGLike/issues/58) 반영. 후속 표시 Issue 진행 |
-| 공격 타입 기획서 | M3 | ❓ |
+| [동작 유형 기획서](SKILL_TYPES.md) (공격 타입) | M3 | 🟡 초안. 칸 조준·직사/곡사는 M3 공격 타입 단계에서 도입 |
 | [아이템 안내](ITEM_LOOT.md)와 [게임 구조 기획서 4장](GAME_STRUCTURE.md#4-아이템) (아이템·드랍·정비) | M4 | 🟡 수치·공용 가방 구현. 장비 수치 재검토 ❓ [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
 | [캐릭터 디자인 기획서](characters/README.md) (뼈대), [전사](characters/warrior.md), [궁수](characters/archer.md) | M5 | 🟡 항목 확정. 캐릭터 컨셉·스킬셋은 기획자가 정리 중([#210](https://github.com/minjunkim-dev/BGLike/issues/210)) |
 | [몬스터 디자인 기획서](monsters/README.md) | M5 | ✅ 몬스터7종을 #107~#112에서 구현. #113 [통합 검수](M5_VERIFICATION.md) 완료 |
