@@ -34,11 +34,29 @@ HP·상태·피해 팝업은 그 유닛의 실제 그림 높이를 기준으로 
 
 ## 스킬 아이콘
 
-[#225](https://github.com/minjunkim-dev/BGLike/issues/225)의 임시 스킬 아이콘은 아군 스킬과 공용 동작11종이다. 런타임 파일은 `scenes/combat/art/icons/skills/<동작 id>.png`다. 동작 id는 `CombatActionRules.NAMES`의 키다. `CombatActionRules.icon_of(id)`로 찾는다. 적 전용 스킬은 아이콘이 없어 null을 돌려준다. HUD 배치는 [#226](https://github.com/minjunkim-dev/BGLike/issues/226)에서 한다.
+스킬 아이콘은 아군 스킬과 공용 동작11종이다. [#225](https://github.com/minjunkim-dev/BGLike/issues/225)의 임시 도형 아이콘을 [#384](https://github.com/minjunkim-dev/BGLike/issues/384)에서 도트 이미지로 다시 그렸다. 런타임 파일은 `scenes/combat/art/icons/skills/<동작 id>.png`다. 동작 id는 `CombatActionRules.NAMES`의 키다. `CombatActionRules.icon_of(id)`로 찾는다. 적 전용 스킬은 아이콘이 없어 null을 돌려준다. HUD 배치는 [#226](https://github.com/minjunkim-dev/BGLike/issues/226)에서 한다.
 
 개발 결정: 64×64 RGBA 원본을 scale 0.5로 표시해32×32 논리px로 쓴다. 유닛과 같은 2배 원본 규칙이다. 테두리에 비용 자원 색을 넣지 않는다. 배경은 투명하다. 기획자가 나중에 바꿀 수 있다.
 
-이 런타임에는 유닛 제작에 쓴 내장 `image_gen`이 없다. 그래서 `scenes/combat/art/sources/icons/draw_skill_icons.py`가 Pillow 도형을64px 격자에 직접 배치한다. 안티앨리어싱·축소 없이 그리고, 모든 도형 바깥에2px 어두운 윤곽을 더한다. 640×360 표시에서 윤곽이1px로 남는다. 색은 유닛의 강철·나무·금색·인디고·청록·적색 계열을 쓴다. 아이콘별 설명은 `skill_icon_generation.json`에 기록한다. 실제 생성 모델로 교체하면 같은 경로와 규격을 유지한다.
+`개발 결정`([#384](https://github.com/minjunkim-dev/BGLike/issues/384)): `scenes/combat/art/sources/icons/draw_skill_icons.py`가 [아이템 아이콘](#아이템-아이콘)과 같은 방식으로 픽셀을 찍는다. 팔레트·2px 어두운 윤곽·윤곽 함수를 `draw_item_icons.py`에서 가져오고, 광원은 왼쪽 위다. 안티앨리어싱·축소·생성 모델을 쓰지 않으며 같은 명령은 같은 파일을 만든다. 공격과 물약은 장비의 검·물약과 같은 그림이다. 나머지는 효과를 그림으로 옮긴다.
+
+| 동작 | 효과 | 그림 |
+|---|---|---|
+| 숨 고르기 | HP 회복 | 붉은 하트와 흰 숨결 |
+| 몰아치기 | 쓴 행동을 다시 채움 | 짧은 검을 감싼 금색 순환 화살표 |
+| 흘려내기 | 맞은 공격을 피함 | 둥근 방패, 테두리에서 튕기는 칼날과 불꽃 |
+| 기회 공격 | 떠나는 적을 침 | 지켜보는 눈과 내리치는 검 |
+| 표식 | 그 대상에 추가 피해 | 과녁에 꽂힌 화살 |
+| 충격 화살 | 명중하면 기절 | 화살과 번개 |
+| 물러서며 쏘기 | 기회 공격 없이 빠짐 | 왼쪽 화살표와 뒤로 미끄러지는 장화 |
+| 밀치기 | 1칸 밀기 | 펼친 장갑 손바닥과 미는 선 |
+| 점프 | 1~2칸의 빈 바닥으로 점프 | 낮은 단의 장화에서 높은 단으로 가는 호 |
+
+아이콘별 설명은 `skill_icon_generation.json`에 기록한다. 기획자가 나중에 바꿀 수 있다.
+
+![스킬 아이콘11종: 위 #225 도형, 아래 #384 도트, 2배 확대](assets/skill_icons_384.png)
+
+![1280×720 실제 HUD의 스킬 버튼: 위 #225, 아래 #384](assets/skill_icons_384_hud_1280x720.png)
 
 ## 아이템 아이콘
 
