@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="CombatStage" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scenes/combat/stage.gd" id="1_stage"]
+[ext_resource type="TileSet" path="res://scenes/combat/floor_tiles.tres" id="2_tiles"]
+[ext_resource type="PackedScene" path="res://scenes/combat/stages/act3_stage1_enemies.tscn" id="3_enemies"]
+
+[resource]
+script = ExtResource("1_stage")
+heights = Dictionary[Vector2i, int]({
+Vector2i(4, 1): 1,
+Vector2i(5, 1): 2,
+Vector2i(6, 1): 2,
+Vector2i(7, 1): 1,
+Vector2i(4, 2): 1,
+Vector2i(5, 2): 2,
+Vector2i(6, 2): 2,
+Vector2i(7, 2): 1,
+Vector2i(4, 3): 1,
+Vector2i(5, 3): 1,
+Vector2i(6, 3): 1,
+Vector2i(7, 3): 1,
+Vector2i(4, 4): 1,
+Vector2i(5, 4): 1,
+Vector2i(6, 4): 1,
+Vector2i(7, 4): 1
+})
+pits = Array[Vector2i]([Vector2i(4, 5), Vector2i(4, 6)])
+water_cells = Array[Vector2i]([Vector2i(3, 5), Vector2i(3, 6), Vector2i(3, 7)])
+crate_cells = Array[Vector2i]([Vector2i(4, 4)])
+rock_cells = Array[Vector2i]([Vector2i(6, 4)])
+path_cells = Array[Vector2i]([Vector2i(1, 4), Vector2i(2, 4), Vector2i(3, 4), Vector2i(4, 4), Vector2i(5, 4), Vector2i(6, 4), Vector2i(7, 4), Vector2i(8, 4), Vector2i(9, 4)])
+stone_cells = Array[Vector2i]([Vector2i(5, 2), Vector2i(6, 2), Vector2i(5, 3), Vector2i(6, 3), Vector2i(6, 4), Vector2i(7, 4)])
+scenery = Dictionary[Vector2i, String]({
+Vector2i(0, 8): "tree",
+Vector2i(9, 0): "tree",
+Vector2i(2, 7): "tree",
+Vector2i(8, 5): "tree",
+Vector2i(2, 2): "ruin_wall"
+})
+tile_set = ExtResource("2_tiles")
+enemies = ExtResource("3_enemies")
