@@ -12,6 +12,12 @@ var _blocked_markers: Array[Node2D] = []
 var _ground_markers: Array[Node2D] = []
 var _prop_markers: Array[Node2D] = []
 var _unit_markers: Array[Node2D] = []
+var _height_edges: Array[Node2D] = []
+static var _edge_textures: Dictionary[String, Texture2D] = {}
+const EDGE_FRONT: int = 2
+const EDGE_LIGHT: Color = Color(1.0, 0.95, 0.8, 0.55)
+const EDGE_DARK: Color = Color(0.06, 0.05, 0.04, 0.7)
+const EDGE_CONTACT_ALPHA: float = 0.55
 
 
 func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = null) -> void:
@@ -28,9 +34,10 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = n
 	show_movement([], [], [], Vector2i.ZERO)
 	show_grounds([])
 	show_props([])
-	for marker: Node2D in _blocked_markers:
+	for marker: Node2D in _blocked_markers + _height_edges:
 		marker.free()
 	_blocked_markers.clear()
+	_height_edges.clear()
 	tile_set = floors.duplicate(true) as TileSet
 	var sources: Dictionary[int, int] = {}
 	for y: int in range(grid.map_size.y):
@@ -50,6 +57,7 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = n
 			if grid.water_cells.has(cell):
 				material = 6
 			set_cell(cell, sources[height], Vector2i(material + (x + y) % 2, 0))
+	_show_height_edges()
 	var occupied: Array[Vector2i] = []
 	if stage != null:
 		for anchor: Vector2i in stage.scenery:
@@ -371,6 +379,67 @@ func show_props(props: Array[CombatGrid.Prop], preview: CombatGrid.Prop = null) 
 		_prop_markers.append(marker)
 		if prop == _animating_prop:
 			marker.hide()
+
+
+## 이웃과 높이가 다른 윗면 가장자리를 칸마다 표시한다(#392). 판정·좌표에는 쓰지 않는다.
+## 뒤쪽 내리막은 높이 단위마다 어두운 선과 밝은 선 한 쌍(차2 이상은 두 쌍), 앞쪽 내리막은 밝은 윗면 끝선,
+## 뒤쪽 높은 이웃의 발치는 접지 그림자다. 맵 밖·낭떠러지 이웃은 기존 표시를 그대로 둔다.
+func _show_height_edges() -> void:
+	for cell: Vector2i in get_used_cells():
+		var edges: Array[int] = [0, 0, 0, 0]
+		for direction: Vector2i in CombatGrid.neighbors(Vector2i.ZERO):
+			var neighbor: Vector2i = cell + direction
+			if not grid.is_floor(neighbor):
+				continue
+			var delta: Vector2 = map_to_local(neighbor) - map_to_local(cell)
+			var edge: int = (EDGE_FRONT if delta.y > 0 else 0) + (1 if delta.x > 0 else 0)
+			var step: int = clampi(grid.height_at(cell) - grid.height_at(neighbor), -2, 2)
+			# 앞쪽 이웃이 더 높으면 그 윗면이 이 가장자리를 덮는다.
+			edges[edge] = step if step > 0 or edge < EDGE_FRONT else 0
+		if edges == [0, 0, 0, 0]:
+			continue
+		var key: String = str(tile_set.tile_size, edges)
+		if not _edge_textures.has(key):
+			_edge_textures[key] = _height_edge_texture(edges)
+		var marker: Node2D = Node2D.new()
+		marker.name = "HeightEdge"
+		marker.position = map_to_local(cell)
+		marker.set_meta("edges", edges)
+		var sprite: Sprite2D = Sprite2D.new()
+		sprite.name = "Sprite"
+		sprite.texture = _edge_textures[key]
+		sprite.scale = Vector2.ONE * 0.5
+		sprite.material = preload("res://scenes/combat/art/pixel_art.tres")
+		sprite.position = map_to_surface(cell) - marker.position
+		marker.add_child(sprite)
+		add_child(marker)
+		_height_edges.append(marker)
+
+
+## edges는 왼쪽 위·오른쪽 위·왼쪽 아래·오른쪽 아래 가장자리의 높이 차(-2..2)다.
+## 바닥 원본과 같은 두 배 밀도 마름모에 그려 정수 배율과 sharp bilinear에서 도트 격자를 따른다.
+func _height_edge_texture(edges: Array[int]) -> Texture2D:
+	var size: Vector2i = tile_set.tile_size * 2
+	var image: Image = Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+	var slope: int = size.x / size.y
+	for y: int in range(size.y):
+		var front: bool = y >= size.y / 2
+		var row: int = size.y - 1 - y if front else y
+		for x: int in range(size.x):
+			var right: bool = x >= size.x / 2
+			var inset: int = (size.x / 2 + slope * row - x) if right else (x - (size.x / 2 - 1 - slope * row))
+			if inset < 0:
+				continue
+			# 가장자리에서 안쪽으로 센 도트 줄. 2:1 마름모라 한 줄은 가로 slope 도트다.
+			var band: int = inset / slope
+			var step: int = edges[(EDGE_FRONT if front else 0) + (1 if right else 0)]
+			if step > 0 and front and band == 0:
+				image.set_pixel(x, y, EDGE_LIGHT)
+			elif step > 0 and not front and band < step * 2:
+				image.set_pixel(x, y, EDGE_DARK if band % 2 == 0 else EDGE_LIGHT)
+			elif step < 0 and band < 1 - step:
+				image.set_pixel(x, y, Color(EDGE_DARK, EDGE_CONTACT_ALPHA * (1.0 - band / (1.0 - step))))
+	return ImageTexture.create_from_image(image)
 
 
 func _add_height_source(height: int) -> int:
