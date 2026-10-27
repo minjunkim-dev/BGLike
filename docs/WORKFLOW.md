@@ -73,7 +73,7 @@ Draft CD의 실행 승인은 [Draft Release 절차](DRAFT_RELEASE.md)를 따릅�
 
 모든 변경은 `git diff --check`와 `python3 -m unittest discover -s scripts -p 'test_*.py'`를 확인합니다. 워크플로 변경은 `actionlint`도 실행합니다.
 게임 코드·장면·리소스·프로젝트 설정 변경은 Godot headless import, 메인 장면과 기존 전투 회귀 검사를 실행합니다. 명령은 [README](https://github.com/minjunkim-dev/BGLike/blob/main/README.md), 검사 선택과 알 수 없는 변경의 전체 검사 경로는 [CI 구성](CI.md)을 따릅니다.
-플레이 변경은 편집기에서 변경한 입력과 화면 흐름을 직접 확인합니다. 에이전트의 화면 확인은 기본으로 [화면 밖 실행](CAPTURE_VERIFICATION.md#화면-밖-실행-기본)을 쓰고 사용자의 macOS 화면 포커스를 가져가지 않습니다. 에이전트가 실제 OS 입력·Retina·Metal을 확인할 때는 `scripts/manual_qa.py --mode macos`와 [기존 사례](CAPTURE_VERIFICATION.md#실행-경로-선택)를 씁니다. 누가 체크박스를 처리하는지는 [확인 등급](CAPTURE_VERIFICATION.md#확인-등급)을 따릅니다. CI 성공으로 조작감이나 화면 가독성을 확인했다고 보고하지 않습니다.
+플레이 변경은 편집기 또는 macOS 창 실행에서 변경한 입력과 화면 흐름을 직접 확인합니다. 에이전트의 화면 확인은 기본으로 [화면 밖 실행](CAPTURE_VERIFICATION.md#화면-밖-실행-기본)을 쓰고 사용자의 macOS 화면 포커스를 가져가지 않습니다. 에이전트가 실제 OS 입력·Retina·Metal을 확인할 때는 `scripts/manual_qa.py --mode macos`와 [기존 사례](CAPTURE_VERIFICATION.md#실행-경로-선택)를 씁니다. 누가 체크박스를 처리하는지는 [확인 등급](CAPTURE_VERIFICATION.md#확인-등급)을 따릅니다. CI 성공으로 조작감이나 화면 가독성을 확인했다고 보고하지 않습니다.
 직접 확인을 시작하기 전에 대상 SHA·로컬 변경, 필수 사례·대표 해상도와 합격 기준을 고정합니다. 필수 사례의 입력·화면 증거가 모이면 종료합니다. 같은 입력에서 통과한 증거는 재사용합니다. 새 요청은 추가 범위로 기록하고 기존 사례를 전부 반복하지 않습니다. 임시 스크립트의 사전 검사와 실패·중단·재개는 [직접 확인 실행 기록](CAPTURE_VERIFICATION.md#직접-확인-실행-기록)을 따릅니다.
 문서·설정 변경은 해당 설정을 읽는 도구 또는 GitHub 흐름을 확인합니다. PR에는 실행한 검증과 미확인 범위를 구분합니다. 게임 동작 변경은 사람이 편집기에서 확인할 항목도 적습니다.
 [Issue 양식](../.github/ISSUE_TEMPLATE/task.md)과 [PR 양식](../.github/pull_request_template.md)은 CLI로 작성할 때도 제목 구조를 유지합니다. Issue 없는 문서·설정 작업은 관련 Issue를 "없음"으로 적습니다. 다른 사람의 PR 브랜치에 커밋을 추가하면 PR 코멘트로 알립니다.
@@ -149,7 +149,7 @@ Issue #72는 기존 두 check를 보존하고 필수 aggregate `CI`를 추가합
 ## 검증의 경계
 
 - CI: [검사 선택 규칙](CI.md)에 따라 공백·PR 규칙·Python 검사와 필요한 Godot 4.7.2 import·실행·전투 테스트를 확인합니다.
-- 작성자: 변경된 게임 흐름을 Godot 편집기에서 직접 조작하고 결과를 PR에 적습니다.
+- 작성자: 변경된 게임 흐름을 Godot 편집기 또는 `manual_qa.py --mode macos`에서 직접 조작하고 결과를 PR에 적습니다. 체크는 [확인 등급](CAPTURE_VERIFICATION.md#확인-등급)을 따릅니다.
 - 검토자: 코드와 장면 변경을 읽고, 플레이에 영향을 주는 변경은 가능한 한 직접 실행합니다.
 - 플랫폼 내보내기와 실제 기기 검증은 대상 플랫폼을 정한 뒤 추가합니다. 현재 CI 성공은 게임 플레이 품질이나 패키지 완성을 뜻하지 않습니다.
 
