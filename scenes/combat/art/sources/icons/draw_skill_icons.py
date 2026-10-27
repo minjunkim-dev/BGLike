@@ -69,7 +69,7 @@ def attack(x, y):
 def second_wind(x, y):
     px, py = x + 0.5, y + 0.5
     # Two breath curls at the upper left.
-    for oy, color, length in ((11, WHITE, 18), (21, STEEL[3], 12)):
+    for oy, color, length in ((14, WHITE, 18), (23, STEEL[3], 12)):
         if abs(py - oy) <= 1.6 and 3 <= px <= 3 + length:
             return color
         cx, cy = 3 + length, oy - 5
@@ -102,7 +102,7 @@ def surge(x, y):
     angle = math.degrees(math.atan2(py - 32, px - 32)) % 360
     if 24 <= distance <= 29.5 and not 290 <= angle <= 345:
         return BRASS[2] if distance < 25.6 else BRASS[1] if distance < 28 else BRASS[0]
-    if inside(px, py, [(47, 6), (63, 9), (55, 22)]):
+    if inside(px, py, [(45, 7), (60, 10), (53, 22)]):
         return BRASS[2] if px + py < 66 else BRASS[1]
     return None
 
@@ -110,8 +110,8 @@ def surge(x, y):
 def parry(x, y):
     px, py = x + 0.5, y + 0.5
     # Enemy sword coming from the upper right; its tip glances off the rim with sparks.
-    u, v = rotated(x, y, 50, 14)
-    blade = short_sword(-u, v, 17)
+    u, v = rotated(x, y, 46, 18)
+    blade = short_sword(-u, v, 15)
     if blade is not None:
         return blade
     for segment in ((32, 12, 36, 4), (46, 30, 54, 34), (28, 18, 22, 14)):
@@ -193,7 +193,7 @@ def disengage(x, y):
     # Teal arrow pointing back to the left.
     if inside(px, py, [(2, 16), (18, 4), (18, 11), (44, 11), (44, 21), (18, 21), (18, 28)]):
         return TEAL[1] if py < 15 else TEAL[0]
-    # Boot sliding back, with speed lines behind the heel.
+    # Boot sliding back to the left, with speed lines trailing on the toe side.
     shoe = boot(px, py, 12, 34)
     if shoe is not None:
         return shoe
@@ -241,9 +241,15 @@ def jump(x, y):
     return None
 
 
-ICONS = {"attack": attack, "second_wind": second_wind, "surge": surge, "parry": parry,
-         "opportunity": opportunity, "mark": mark, "shock": shock, "disengage": disengage,
-         "shove": shove, "jump": jump, "potion": potion}
+def fitted(draw):
+    """Shrink a full-canvas drawing about the centre so it and its outline stay inside 60x60 like the items."""
+    scale = 31.5 / 28
+    return lambda x, y: draw(32 + (x + 0.5 - 32) * scale - 0.5, 32 + (y + 0.5 - 32) * scale - 0.5)
+
+
+ICONS = {"attack": attack, "second_wind": fitted(second_wind), "surge": fitted(surge), "parry": fitted(parry),
+         "opportunity": fitted(opportunity), "mark": fitted(mark), "shock": fitted(shock),
+         "disengage": fitted(disengage), "shove": fitted(shove), "jump": fitted(jump), "potion": potion}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -254,6 +260,7 @@ if __name__ == "__main__":
     args.destination.mkdir(parents=True, exist_ok=True)
     for action, draw in ICONS.items():
         image = outlined(draw)
-        assert image.getbbox(), action
+        bounds = image.getbbox()
+        assert bounds and bounds[0] >= 2 and bounds[1] >= 2 and bounds[2] <= 62 and bounds[3] <= 62, (action, bounds)
         image.save(args.destination / f"{action}.png")
     print(json.dumps({"icons": len(ICONS), "canvas": [SIZE, SIZE]}))
