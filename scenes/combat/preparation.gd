@@ -401,7 +401,7 @@ func _render_detail() -> void:
 	row.add_theme_constant_override("separation", 8)
 	detail.add_child(row)
 	var icon: TextureRect = TextureRect.new()
-	icon.custom_minimum_size = Vector2(32, 32)
+	icon.custom_minimum_size = Vector2.ONE * CombatActionRules.ICON_SIZE
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	icon.texture = _icon(item, owner_unit.get_art_id() if owner_unit else "")
@@ -580,7 +580,7 @@ func _drag_item(control: Control, kind: String, index: int) -> Variant:
 	var preview: TextureRect = TextureRect.new()
 	preview.texture = _icon(item, "")
 	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	preview.custom_minimum_size = Vector2(32, 32)
+	preview.custom_minimum_size = Vector2.ONE * CombatActionRules.ICON_SIZE
 	preview.material = preload("res://scenes/combat/art/pixel_art.tres")
 	control.set_drag_preview(preview)
 	# 시작 때는 원본을 옮기지 않는다. 취소·잘못된 목적지는 아무것도 바꾸지 않는다.
@@ -669,7 +669,7 @@ func _cell(parent: Node, item: Dictionary, unit_id: String, node_name: String, b
 	cell.toggle_mode = true
 	cell.button_group = _cells
 	cell.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cell.add_theme_constant_override("icon_max_width", 32)
+	cell.add_theme_constant_override("icon_max_width", CombatActionRules.ICON_SIZE)
 	cell.icon = _icon(item, unit_id)
 	cell.material = preload("res://scenes/combat/art/pixel_art.tres")
 	if not item.is_empty():

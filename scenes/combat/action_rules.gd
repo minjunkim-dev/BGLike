@@ -87,6 +87,10 @@ static func restore_uses(unit: CombatUnit) -> void:
 		unit.set(USE_COUNTERS[action], USES_PER_ACT[action])
 
 
+## #362: 스킬·아이템 그림의 표시 크기(논리 px). 버튼·칸의 입력 영역은 각 화면이 따로 유지한다.
+const ICON_SIZE: int = 24
+
+
 ## 적 전용 스킬처럼 아이콘이 없으면 null이다.
 static func icon_of(action: String) -> Texture2D:
 	var path: String = ICON_PATH % action
