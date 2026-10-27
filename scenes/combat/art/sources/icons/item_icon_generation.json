@@ -12,6 +12,7 @@
     "display_scale": 0.5,
     "logical_size": [24, 24],
     "max_content": [44, 44],
+    "potion_pip": "potion_pip.png: the same potion on a 32px canvas for the 16 logical px counter on the preparation cards",
     "outline": "2 source px (1 logical px) of #120d16, like the unit frames",
     "palette": "warm steel, indigo, leather, brass, wood, teal and rust red sampled from the warrior, archer and scrap robot frames by median-cut quantize",
     "light": "upper left",

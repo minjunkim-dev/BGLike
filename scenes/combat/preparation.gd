@@ -351,7 +351,8 @@ func _render_card(index: int) -> void:
 	potions.name = "Potions%d" % index
 	potions.mouse_filter = Control.MOUSE_FILTER_STOP
 	_drag_slot(potions, "potion", index)
-	var potion_icon: Texture2D = load(CombatLoot.icon_path({"icon": "potion"})) as Texture2D
+	# 16 논리px 물약 칸은 같은 0.5배 규칙의 32px 원본을 쓴다(#362).
+	var potion_icon: Texture2D = load(CombatLoot.ICON_PATH % "potion_pip") as Texture2D
 	for slot: int in range(int(loot.data["potion_limit"])):
 		var pip: TextureRect = TextureRect.new()
 		pip.texture = potion_icon

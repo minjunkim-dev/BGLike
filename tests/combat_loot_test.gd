@@ -476,6 +476,9 @@ func _test_armor_unequip_scene() -> void:
 		"Enter로 무기 칸을 고르면 해제 버튼 없이 수치만 표시")
 	var detail_icon: TextureRect = preparation.detail.find_child("DetailIcon", true, false) as TextureRect
 	_check(weapon_cell.size == Vector2(36, 36), "#362 장비 칸 입력 36×36 유지")
+	var pip: TextureRect = (preparation.find_child("Potions0", true, false) as Node).get_child(0) as TextureRect
+	_check(pip.size == Vector2(16, 16) and pip.texture.get_size() == Vector2(32, 32),
+		"#362 물약 칸16은 0.5배인 32px 원본")
 	_check(weapon_cell.get_theme_constant("icon_max_width") == 24 and detail_icon != null
 		and detail_icon.size == Vector2(24, 24), "#362 장비 칸과 선택 상세의 그림 24 논리px")
 	await _action("ui_right")

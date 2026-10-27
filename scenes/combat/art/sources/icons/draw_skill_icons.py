@@ -242,7 +242,7 @@ def jump(x, y):
 
 
 def fitted(draw):
-    """Shrink a full-canvas drawing about the centre so it and its outline stay inside the 60x60 design area like the items."""
+    """Shrink a full-canvas drawing about the centre so it and its outline fit the item margin (asserted below)."""
     scale = 31.5 / 28
     return lambda x, y: draw(32 + (x + 0.5 - 32) * scale - 0.5, 32 + (y + 0.5 - 32) * scale - 0.5)
 
