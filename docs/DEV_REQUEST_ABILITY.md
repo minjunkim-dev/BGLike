@@ -7,7 +7,7 @@
 > - 상태: **개정 규칙(0장)의 구현은 시작 전입니다.** 개정 전 요청(공격자 대 방어자 주사위 대결)은 [Issue #321](https://github.com/minjunkim-dev/BGLike/issues/321)의 구현 [PR #327](https://github.com/minjunkim-dev/BGLike/pull/327)을 `7d39beaa882cd92f053aa8cb828b0187aeacc92a`로 병합했고 alpha.3에 반영했습니다. 1~8장은 그 개정 전 요청의 기록이며, 충돌하면 0장과 능력치 기획서가 우선합니다.
 > - 실행 검수(개정 전 요청): [#307 사용자 위임 에이전트 검수](https://github.com/minjunkim-dev/BGLike/issues/307#issuecomment-6378380493)와 [이동 후조건 추가 검수](https://github.com/minjunkim-dev/BGLike/issues/307#issuecomment-6378544532)를 완료했습니다. 개정 규칙의 사람 직접 기획 검수는 0-5장입니다.
 > - 후속 구현(개정 전): 혼합된 광역 유리 조건은 [#326](https://github.com/minjunkim-dev/BGLike/issues/326)에서 확정하고 [#341](https://github.com/minjunkim-dev/BGLike/issues/341)에서 지원했으나, 개정에서 대상별 내성굴림으로 바뀌어 정리 대상입니다.
-> - 남은 기획: 성장·절대성공면 획득·치명타 재도입은 [#322](https://github.com/minjunkim-dev/BGLike/issues/322)에서 정합니다. 스킬별 내성 능력치, 무기별 능력치 배정, 최대 HP·회복의 건강 연동은 후속 기획입니다. 성장은 구현하지 않습니다.
+> - 남은 기획: 성장·절대성공면 획득·절대성공의 추가 이점(치명타)은 [#322](https://github.com/minjunkim-dev/BGLike/issues/322)에서 정합니다. 스킬별 내성 능력치, 무기별 능력치 배정, 최대 HP·회복의 건강 연동은 후속 기획입니다. 성장은 구현하지 않습니다.
 > - 배경: [M7까지 남은 작업 지도](https://github.com/minjunkim-dev/BGLike/issues/200) · [기획 현황](DESIGN_STATUS.md) · [주사위 육성 논의](DICE_GROWTH.md)
 
 ---
@@ -51,7 +51,7 @@
 | 항목 | 이유 |
 |---|---|
 | 능력치 성장, 면 업그레이드, 절대성공면 획득, 성장 UI | [주사위 육성 논의](DICE_GROWTH.md) 확정 전. **육성 개발은 막아 둠** |
-| 치명타 재도입 | 절대성공 = 치명타 안은 확정 전 |
+| 치명타 재도입, 절대성공의 추가 이점 | 나중에 다룸. 지금은 비활성 |
 | 최대 HP 보정, 회복량의 건강 연동 | 수치 설계 때 정함 (4-9) |
 | 무기별 능력치 배정 변경 | 무기 기획 때 정함. 지금은 현행 지정을 유지 |
 | 스킬별 내성 능력치 재설계 | 스킬을 만들거나 고칠 때 정함. 기존 동작은 현행 능력치(힘)를 유지 |
