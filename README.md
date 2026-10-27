@@ -32,6 +32,14 @@ make check
 플랫폼별 설치, 버전 검사와 캐시 없는 실행은 [공통 환경](docs/ENVIRONMENT.md)을 따릅니다.
 전투 캡처의 차례 복귀 검사와 에이전트의 Forward+ 직접 확인(기본은 Docker 화면 밖 실행)은 [캡처 검증](docs/CAPTURE_VERIFICATION.md)을 따릅니다.
 
+카메라·경로 탐색·많은 유닛은 기능 테스트용 큰 맵(28×20)에서 바로 확인합니다. 저장소 루트에서 실행합니다.
+
+```sh
+godot --path . --script res://tests/large_map_battle.gd
+```
+
+`godot`은 설치한 Godot 4.7.2 실행 파일입니다. 이 세션만 1-1 자리에 큰 맵을 넣고 자동 저장을 끕니다. 규칙과 배치는 [맵 기준](docs/TERRAIN_MAPS.md#기능-테스트용-큰-맵-394)을 따릅니다.
+
 문서·관리 파일만 바뀌면 공백과 Python 검사를 수행합니다. CI의 엔진 선택과 알림 조건은 [CI 구성](docs/CI.md)을 따릅니다.
 
 전투 코드에서 공간 판단은 [CombatGrid](scenes/combat/grid.gd)가 맡습니다. 경로·도달 비용·점유·사거리와 공격 미리보기를 같은 유닛 배열에서 계산합니다.
