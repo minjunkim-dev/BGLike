@@ -1,170 +1,259 @@
-"""Draw the temporary 64px skill icons with Pillow. Shapes are placed by hand; no generator is used."""
+"""Draw the skill and common action icons pixel by pixel in the item icon style (#384).
+
+Same rules as draw_item_icons.py: 64px canvas, the item palette, upper-left light, 2px dark outline,
+no anti-aliasing and no generative model. Attack and potion reuse the item sword and potion.
+"""
 import argparse
 import json
+import math
 from pathlib import Path
-from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
-OUTLINE = (26, 18, 28, 255)
-STEEL = ((236, 240, 244), (176, 186, 200), (104, 112, 134))
-WOOD = ((184, 122, 68), (130, 80, 42), (82, 48, 30))
-GOLD = ((255, 228, 124), (236, 176, 48), (168, 102, 26))
-INDIGO = ((118, 118, 204), (66, 62, 146), (38, 34, 92))
-TEAL = ((126, 220, 204), (46, 152, 142), (24, 92, 90))
-GREEN = ((156, 226, 112), (78, 170, 64), (40, 104, 44))
-RED = ((246, 112, 96), (202, 46, 46), (124, 24, 36))
-CYAN = ((214, 250, 255), (96, 202, 242), (40, 120, 192))
-SKIN = ((252, 216, 172), (222, 166, 120), (160, 104, 76))
-STONE = ((200, 180, 142), (150, 128, 98), (98, 82, 66))
-WHITE = (250, 248, 236)
+from draw_item_icons import BRASS, INDIGO, LEATHER, RED, SIZE, STEEL, TEAL, WOOD, outlined, potion, sword
+
+WHITE = STEEL[4]
 
 
-def attack(d):
-    d.line([(19, 45), (50, 14)], STEEL[1], 9)
-    d.line([(17, 43), (48, 12)], STEEL[0], 3)
-    d.line([(23, 47), (52, 18)], STEEL[2], 2)
-    d.polygon([(46, 9), (58, 6), (55, 18)], STEEL[1])
-    d.line([(49, 10), (57, 7)], STEEL[0], 2)
-    d.line([(11, 37), (27, 53)], GOLD[1], 6)
-    d.line([(11, 37), (19, 45)], GOLD[0], 2)
-    d.line([(17, 47), (8, 56)], WOOD[1], 6)
-    d.ellipse((3, 52, 11, 60), GOLD[1])
-    d.point([(5, 54), (6, 54), (5, 55)], GOLD[0])
+def inside(px, py, polygon):
+    hit = False
+    for (x1, y1), (x2, y2) in zip(polygon, polygon[1:] + polygon[:1]):
+        if (y1 > py) != (y2 > py) and px < (x2 - x1) * (py - y1) / (y2 - y1) + x1:
+            hit = not hit
+    return hit
 
 
-def second_wind(d):
-    for y, length, color in ((18, 22, WHITE), (31, 14, CYAN[0])):
-        d.line([(4, y - 1), (4 + length, y - 1)], color, 4)
-        d.arc((length - 6, y - 15, length + 12, y + 1), 180, 450, color, 4)
-    d.rectangle((35, 26, 47, 60), GREEN[1])
-    d.rectangle((25, 37, 57, 49), GREEN[1])
-    d.rectangle((35, 26, 38, 60), GREEN[0])
-    d.rectangle((25, 37, 57, 39), GREEN[0])
-    d.rectangle((45, 41, 47, 60), GREEN[2])
-    d.rectangle((40, 47, 57, 49), GREEN[2])
+def near_segment(px, py, segment, width):
+    sx, sy, ex, ey = segment
+    t = max(0.0, min(1.0, ((px - sx) * (ex - sx) + (py - sy) * (ey - sy)) / ((ex - sx) ** 2 + (ey - sy) ** 2)))
+    return math.hypot(px - (sx + t * (ex - sx)), py - (sy + t * (ey - sy))) <= width
 
 
-def surge(d):
-    bolt = [(40, 3), (12, 36), (29, 36), (20, 61), (52, 24), (34, 24), (46, 3)]
-    d.polygon(bolt, GOLD[1])
-    d.line([(40, 4), (14, 35)], GOLD[0], 3)
-    d.line([(29, 37), (22, 56)], GOLD[0], 2)
-    d.line([(51, 25), (24, 56)], GOLD[2], 2)
+def rotated(x, y, cx, cy):
+    """Diagonal frame around (cx, cy): u points to the upper right, v to the lower right."""
+    dx, dy = x + 0.5 - cx, y + 0.5 - cy
+    return (dx - dy) / math.sqrt(2), (dx + dy) / math.sqrt(2)
 
 
-def parry(d):
-    d.ellipse((4, 14, 44, 58), STEEL[2])
-    d.ellipse((8, 18, 40, 54), INDIGO[1])
-    d.pieslice((8, 18, 40, 54), 180, 270, INDIGO[0])
-    d.ellipse((19, 30, 29, 42), STEEL[1])
-    d.point([(21, 32), (22, 32), (21, 33)], STEEL[0])
-    d.arc((22, 2, 62, 42), 230, 350, WHITE, 4)
-    d.polygon([(54, 12), (62, 22), (52, 26)], WHITE)
-    d.line([(46, 32), (58, 40)], CYAN[0], 3)
-    d.line([(44, 40), (52, 50)], CYAN[0], 3)
+def short_sword(u, v, length):
+    """Steel blade along +u from a brass guard at u=0, leather grip below. None outside."""
+    if 0 <= u <= length and abs(v) <= min(3.0, (length - u) * 0.7):
+        return STEEL[4] if v < -1.6 else STEEL[3] if v < 0.4 else STEEL[2]
+    if -3.5 <= u < 0 and abs(v) <= 8:
+        return BRASS[2] if u >= -1.5 else BRASS[1] if u >= -2.5 else BRASS[0]
+    if -13 <= u < -3.5 and abs(v) <= 2.2:
+        return LEATHER[1] if int((u + 13) // 3) % 2 else LEATHER[0]
+    if math.hypot(u + 15.5, v) <= 3:
+        return BRASS[2] if v < 0 else BRASS[1]
+    return None
 
 
-def opportunity(d):
-    blade = Image.new("L", (64, 64))
-    shape = ImageDraw.Draw(blade)
-    shape.ellipse((2, 4, 46, 60), 255)
-    shape.ellipse((12, 2, 54, 52), 0)
-    d.bitmap((0, 0), blade, STEEL[0])
-    d.arc((2, 4, 46, 60), 110, 200, STEEL[1], 3)
-    d.rectangle((47, 6, 57, 38), RED[1])
-    d.rectangle((47, 6, 49, 38), RED[0])
-    d.rectangle((47, 45, 57, 55), RED[1])
-    d.rectangle((47, 45, 49, 47), RED[0])
+def boot(px, py, left, top):
+    """Leather boot 22 wide and 24 tall with a rounded toe to the right and a dark sole."""
+    lx, ly = px - left, py - top
+    shaft = 1 <= lx <= 12 and 0 <= ly <= 16
+    instep = 1 <= lx <= 16 and 12 <= ly <= 21
+    toe = math.hypot((lx - 15) / 7, (ly - 17) / 5) <= 1 and ly <= 21
+    sole = 0 <= lx <= 21 and 21 < ly <= 24 and not (lx > 19 and ly > 23)
+    if sole:
+        return LEATHER[0]
+    if not (shaft or instep or toe):
+        return None
+    if ly < 4:
+        return BRASS[2] if lx < 6 else BRASS[1]
+    return LEATHER[2] if lx < 4 or (toe and ly < 15) else LEATHER[1]
 
 
-def mark(d):
-    d.ellipse((7, 7, 57, 57), outline=RED[1], width=6)
-    d.arc((7, 7, 57, 57), 180, 270, RED[0], 3)
-    d.ellipse((22, 22, 42, 42), outline=RED[1], width=4)
-    for line in ([(32, 2), (32, 18)], [(32, 46), (32, 62)], [(2, 32), (18, 32)], [(46, 32), (62, 32)]):
-        d.line(line, RED[2], 5)
-    d.rectangle((30, 30, 34, 34), RED[0])
+def attack(x, y):
+    return sword(x, y)
 
 
-def shock(d):
-    d.line([(10, 54), (44, 20)], WOOD[1], 4)
-    d.line([(10, 53), (43, 20)], WOOD[0], 1)
-    d.polygon([(59, 5), (40, 14), (50, 24)], STEEL[1])
-    d.line([(58, 6), (42, 14)], STEEL[0], 2)
-    d.polygon([(6, 46), (16, 44), (14, 52)], TEAL[1])
-    d.polygon([(18, 58), (20, 48), (12, 50)], TEAL[2])
-    for zigzag in ([(30, 4), (38, 10), (32, 14), (40, 20)], [(60, 26), (52, 32), (58, 36), (50, 44)],
-                   [(24, 24), (28, 32), (20, 32)]):
-        d.line(zigzag, CYAN[1], 4, joint="curve")
-        d.line(zigzag, CYAN[0], 1)
+def second_wind(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Two breath curls at the upper left.
+    for oy, color, length in ((11, WHITE, 18), (21, STEEL[3], 12)):
+        if abs(py - oy) <= 1.6 and 3 <= px <= 3 + length:
+            return color
+        cx, cy = 3 + length, oy - 5
+        distance = math.hypot(px - cx, py - cy)
+        if 3.4 <= distance <= 6.6 and not (px < cx and py < cy + 1):
+            return color
+    # Heart: two lobes and a point, lit from the upper left.
+    left = math.hypot(px - 30, py - 30) <= 11.5
+    right = math.hypot(px - 50, py - 30) <= 11.5
+    point = py >= 30 and abs(px - 40) <= (60 - py) * 0.75
+    if not (left or right or point):
+        return None
+    inner = (math.hypot(px - 30, py - 30) <= 9.5 or math.hypot(px - 50, py - 30) <= 9.5
+             or (py >= 30 and abs(px - 40) <= (57 - py) * 0.75))
+    if not inner:
+        return RED[0]
+    if math.hypot(px - 27, py - 27) < 3.5:
+        return RED[3]
+    return RED[2] if px + py < 72 else RED[1]
 
 
-def disengage(d):
-    d.arc((26, 2, 62, 62), 270, 450, WOOD[1], 5)
-    d.arc((26, 2, 62, 62), 300, 340, WOOD[0], 2)
-    d.line([(44, 4), (44, 60)], WHITE, 1)
-    d.polygon([(2, 32), (18, 18), (18, 26), (40, 26), (40, 38), (18, 38), (18, 46)], TEAL[1])
-    d.polygon([(4, 31), (17, 20), (17, 27), (39, 27), (39, 29), (16, 29)], TEAL[0])
-    d.rectangle((18, 36, 40, 38), TEAL[2])
-    for y in (16, 48):
-        d.line([(28, y), (40, y)], WHITE, 3)
+def surge(x, y):
+    px, py = x + 0.5, y + 0.5
+    u, v = rotated(x, y, 31, 33)
+    blade = short_sword(u + 4, v, 22)
+    if blade is not None:
+        return blade
+    # Refill ring: three quarters of a circle that ends in an arrow head at the upper right.
+    distance = math.hypot(px - 32, py - 32)
+    angle = math.degrees(math.atan2(py - 32, px - 32)) % 360
+    if 24 <= distance <= 29.5 and not 290 <= angle <= 345:
+        return BRASS[2] if distance < 25.6 else BRASS[1] if distance < 28 else BRASS[0]
+    if inside(px, py, [(47, 6), (63, 9), (55, 22)]):
+        return BRASS[2] if px + py < 66 else BRASS[1]
+    return None
 
 
-def shove(d):
-    d.rounded_rectangle((10, 24, 38, 54), 5, SKIN[1])
-    for x in (10, 17, 24, 31):
-        d.rounded_rectangle((x, 8 + abs(x - 21) // 2, x + 6, 30), 3, SKIN[1])
-        d.line([(x + 1, 11 + abs(x - 21) // 2), (x + 1, 28)], SKIN[0], 2)
-    d.polygon([(38, 34), (48, 24), (52, 28), (40, 46)], SKIN[1])
-    d.line([(14, 50), (36, 50)], SKIN[2], 3)
-    for start, end in (((44, 8), (56, 2)), ((46, 50), (60, 56)), ((52, 38), (62, 38))):
-        d.line([start, end], WHITE, 3)
+def parry(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Enemy sword coming from the upper right; its tip glances off the rim with sparks.
+    u, v = rotated(x, y, 50, 14)
+    blade = short_sword(-u, v, 17)
+    if blade is not None:
+        return blade
+    for segment in ((32, 12, 36, 4), (46, 30, 54, 34), (28, 18, 22, 14)):
+        if near_segment(px, py, segment, 1.3):
+            return BRASS[2]
+    # Round shield: steel rim, indigo face, brass boss.
+    distance = math.hypot(px - 26, py - 38)
+    if distance > 22:
+        return None
+    if distance > 18.5:
+        return STEEL[4] if px + py < 58 else STEEL[3] if px + py < 70 else STEEL[2]
+    if distance <= 4.5:
+        return BRASS[2] if px + py < 63 else BRASS[1]
+    if abs(px - 26) <= 1.2 or abs(py - 38) <= 1.2:
+        return STEEL[2]
+    return INDIGO[1] if px + py < 64 else INDIGO[0]
 
 
-def jump(d):
-    d.rectangle((4, 44, 26, 60), STONE[1])
-    d.rectangle((4, 44, 26, 47), STONE[0])
-    d.rectangle((38, 30, 60, 60), STONE[1])
-    d.rectangle((38, 30, 60, 33), STONE[0])
-    d.rectangle((38, 46, 60, 47), STONE[2])
-    d.arc((12, 6, 52, 58), 190, 330, WHITE, 5)
-    d.polygon([(42, 14), (56, 18), (46, 28)], WHITE)
+def opportunity(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Watching eye at the upper left.
+    ex, ey = 17, 14
+    if abs(px - ex) <= 14 and abs(py - ey) <= 8 * max(0.0, 1 - ((px - ex) / 14) ** 2) ** 0.5:
+        iris = math.hypot(px - ex, py - ey)
+        if iris <= 3:
+            return INDIGO[0]
+        if iris <= 6.5:
+            return TEAL[1] if px + py < ex + ey else TEAL[0]
+        return WHITE if py < ey else STEEL[3]
+    # Sword swinging down to the lower right with a white slash.
+    u, v = rotated(x, y, 46, 30)
+    blade = short_sword(-u, v, 26)
+    if blade is not None:
+        return blade
+    arc = math.hypot(px - 28, py - 28)
+    if 30 <= arc <= 33 and px > 36 and py > 36 and px + py < 100:
+        return WHITE
+    return None
 
 
-def potion(d):
-    d.rectangle((26, 10, 38, 28), STEEL[1])
-    d.rectangle((23, 3, 41, 11), WOOD[1])
-    d.rectangle((23, 3, 41, 5), WOOD[0])
-    d.ellipse((10, 22, 54, 62), STEEL[1])
-    d.ellipse((13, 25, 51, 59), RED[1])
-    d.chord((13, 25, 51, 59), 200, 340, STEEL[0])
-    d.pieslice((13, 25, 51, 59), 20, 160, RED[2])
-    d.ellipse((18, 36, 24, 44), RED[0])
+def mark(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Arrow stuck in the centre, coming from the upper right.
+    u, v = rotated(x, y, 30, 34)
+    if 2 <= u <= 30 and abs(v) <= 1.3:
+        return WOOD[2] if v < 0 else WOOD[1]
+    if 22 <= u <= 31 and 1.3 < abs(v) <= 5.5 - (u - 22) * 0.35:
+        return TEAL[1] if v < 0 else TEAL[0]
+    # Target board.
+    distance = math.hypot(px - 30, py - 34)
+    if distance > 26:
+        return None
+    ring = int(distance // 5.2)
+    if ring == 0:
+        return RED[3] if px + py < 63 else RED[2]
+    if ring % 2:
+        return WHITE if px + py < 64 else STEEL[3]
+    return RED[2] if px + py < 64 else RED[1]
 
 
-DRAWERS = {function.__name__: function for function in
-           (attack, second_wind, surge, parry, opportunity, mark, shock, disengage, shove, jump, potion)}
+def shock(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Arrow flying to the upper right.
+    u, v = rotated(x, y, 30, 34)
+    if -26 <= u <= 14 and abs(v) <= 1.4:
+        return WOOD[3] if v < 0 else WOOD[1]
+    if 14 < u <= 26 and abs(v) <= (26 - u) * 0.55:
+        return STEEL[4] if v < 0 else STEEL[2]
+    if -28 <= u <= -16 and 1.4 < abs(v) <= 6 - (u + 28) * 0.25:
+        return TEAL[1] if v < 0 else TEAL[0]
+    # Lightning bolt beside the head.
+    if inside(px, py, [(36, 30), (50, 30), (44, 40), (54, 40), (34, 62), (40, 46), (30, 46)]):
+        return BRASS[2] if px < 42 else BRASS[1]
+    return None
 
 
-def outlined(drawer):
-    """Draw one icon and add the 2px dark contour that survives the 0.5 display scale."""
-    image = Image.new("RGBA", (64, 64))
-    drawer(ImageDraw.Draw(image))
-    alpha = image.getchannel("A").point(lambda value: 255 if value else 0)
-    ring = ImageChops.subtract(alpha.filter(ImageFilter.MaxFilter(5)), alpha)
-    result = Image.new("RGBA", (64, 64))
-    result.paste(OUTLINE, mask=ring)
-    result.alpha_composite(image)
-    return result
+def disengage(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Teal arrow pointing back to the left.
+    if inside(px, py, [(2, 16), (18, 4), (18, 11), (44, 11), (44, 21), (18, 21), (18, 28)]):
+        return TEAL[1] if py < 15 else TEAL[0]
+    # Boot sliding back, with speed lines behind the heel.
+    shoe = boot(px, py, 12, 34)
+    if shoe is not None:
+        return shoe
+    for line_y, start in ((40, 38), (48, 40), (56, 38)):
+        if abs(py - line_y) <= 1.2 and start <= px <= start + 18:
+            return WHITE
+    return None
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("destination", type=Path)
-args = parser.parse_args()
-record = json.loads((Path(__file__).parent / "skill_icon_generation.json").read_text())
-assert [icon["id"] for icon in record["icons"]] == list(DRAWERS)
-args.destination.mkdir(parents=True, exist_ok=True)
-for action, drawer in DRAWERS.items():
-    icon = outlined(drawer)
-    assert icon.size == (64, 64) and icon.getbbox()
-    icon.save(args.destination / f"{action}.png")
-print(json.dumps({"icons": len(DRAWERS), "canvas": [64, 64], "display_scale": 0.5}))
+def shove(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Open leather glove, palm forward: four fingers split by 1px gaps, a thumb and a brass cuff.
+    if 10 <= px <= 34 and 54 <= py <= 61:
+        return BRASS[2] if py < 56 else BRASS[1]
+    for left, top in ((10, 14), (16, 9), (22, 8), (28, 12)):
+        if left <= px <= left + 5 and top <= py <= 32:
+            if py < top + 3 and (px < left + 1 or px > left + 4):
+                return None
+            return LEATHER[2] if px < left + 2 else LEATHER[1]
+    if 10 <= px <= 34 and 30 <= py < 54:
+        return LEATHER[2] if px < 15 else LEATHER[1] if py < 47 else LEATHER[0]
+    if inside(px, py, [(34, 36), (44, 28), (47, 32), (36, 46)]):
+        return LEATHER[1]
+    for segment in ((46, 14, 56, 8), (48, 42, 60, 42), (44, 56, 54, 61)):
+        if near_segment(px, py, segment, 1.5):
+            return WHITE
+    return None
+
+
+def jump(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Low step on the left, high step on the right.
+    for left, top, right in ((3, 52, 22), (42, 40, 61)):
+        if left <= px <= right and top <= py <= 61:
+            return WOOD[3] if py < top + 3 else WOOD[0] if px > right - 3 else WOOD[2]
+    shoe = boot(px, py, 2, 24)
+    if shoe is not None:
+        return shoe
+    # Arc from the boot to the high step.
+    ring = math.hypot((px - 37) / 21, (py - 32) / 22)
+    if 0.84 <= ring <= 1.0 and py < 32 and px > 22:
+        return WHITE
+    if inside(px, py, [(50, 24), (63, 30), (54, 38)]):
+        return WHITE
+    return None
+
+
+ICONS = {"attack": attack, "second_wind": second_wind, "surge": surge, "parry": parry,
+         "opportunity": opportunity, "mark": mark, "shock": shock, "disengage": disengage,
+         "shove": shove, "jump": jump, "potion": potion}
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("destination", type=Path)
+    args = parser.parse_args()
+    record = json.loads((Path(__file__).parent / "skill_icon_generation.json").read_text())
+    assert [icon["id"] for icon in record["icons"]] == list(ICONS)
+    args.destination.mkdir(parents=True, exist_ok=True)
+    for action, draw in ICONS.items():
+        image = outlined(draw)
+        assert image.getbbox(), action
+        image.save(args.destination / f"{action}.png")
+    print(json.dumps({"icons": len(ICONS), "canvas": [SIZE, SIZE]}))
