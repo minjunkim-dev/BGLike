@@ -53,6 +53,7 @@ func _run() -> void:
 	_check("이니셔티브" not in hud.message_label.text, "전투 시작 로그에 이니셔티브 계산식 없음")
 	_test_square_map()
 	_test_movement_overlay()
+	_test_height_edges()
 	_test_unit_art()
 	_test_warrior()
 	await _test_resources()
@@ -126,6 +127,76 @@ func _test_movement_overlay() -> void:
 	map.show_movement([], [], [], Vector2i.ZERO)
 	_check(map._overlays.is_empty(), "이동 표시를 닫으면 면·윤곽·경로를 함께 제거")
 	map.free()
+
+
+## #392: 높이가 다른 이웃 칸의 윗면 경계. 실제로 그린 두 배 밀도 텍스처의 가장자리 도트를 읽는다.
+func _test_height_edges() -> void:
+	var grid: CombatGrid = CombatGrid.new()
+	grid.map_size = Vector2i(4, 4)
+	grid.heights[Vector2i(1, 1)] = 1
+	grid.heights[Vector2i(2, 2)] = 2
+	grid.heights[Vector2i(3, 1)] = 1
+	grid.pits.append(Vector2i(3, 0))
+	var map: CombatMap = CombatMap.new()
+	root.add_child(map)
+	map.build_grid(grid, load("res://scenes/combat/floor_tiles.tres") as TileSet)
+	var markers: Dictionary[Vector2i, Node2D] = {}
+	for marker: Node2D in map._height_edges:
+		markers[map.local_to_map(marker.position)] = marker
+	_check(not markers.has(Vector2i(0, 3)) and not markers.has(Vector2i.ZERO),
+		"같은 높이와 맵 밖 가장자리에는 경계를 더하지 않음")
+	for cell: Vector2i in markers:
+		var sprite: Sprite2D = markers[cell].get_node("Sprite") as Sprite2D
+		_check((markers[cell].position + sprite.position).is_equal_approx(map.map_to_surface(cell))
+			and sprite.texture.get_size() == Vector2(map.tile_set.tile_size * 2) and sprite.scale == Vector2.ONE * 0.5
+			and sprite.material == preload("res://scenes/combat/art/pixel_art.tres"),
+			"경계는 바닥 원본과 같은 두 배 밀도로 윗면에 맞춤: %s" % cell)
+	var up: Vector2i = Vector2i(0, -1)
+	var dark: Callable = func(color: Color) -> bool: return color.a > 0.0 and color.get_luminance() < 0.2
+	var light: Callable = func(color: Color) -> bool: return color.a > 0.0 and color.get_luminance() > 0.8
+	var one: Array[Color] = _edge_bands(map, markers, Vector2i(1, 1), up)
+	_check(dark.call(one[0]) and light.call(one[1]) and one[2].a == 0.0,
+		"뒤쪽 높이 차1은 어두운 선과 밝은 선 한 쌍")
+	var two: Array[Color] = _edge_bands(map, markers, Vector2i(2, 2), up)
+	_check(dark.call(two[0]) and light.call(two[1]) and dark.call(two[2]) and light.call(two[3]) and two[4].a == 0.0,
+		"뒤쪽 높이 차2 이상은 두 쌍으로 차1과 구분")
+	var front: Array[Color] = _edge_bands(map, markers, Vector2i(1, 1), Vector2i(1, 0))
+	_check(light.call(front[0]) and front[1].a == 0.0, "앞쪽 내리막은 옆면 위에 밝은 윗면 끝선")
+	var foot: Array[Color] = _edge_bands(map, markers, Vector2i(1, 2), up)
+	var tall: Array[Color] = _edge_bands(map, markers, Vector2i(2, 3), up)
+	_check(dark.call(foot[0]) and foot[1].a < foot[0].a and foot[2].a == 0.0 and tall[2].a > 0.0 and tall[3].a == 0.0,
+		"뒤쪽 높은 이웃의 발치에 접지 그림자, 차2 이상은 더 넓음")
+	_check(_edge_bands(map, markers, Vector2i(2, 1), Vector2i(0, 1))[0].a == 0.0,
+		"앞쪽 높은 이웃이 덮는 가장자리는 그리지 않음")
+	_check(_edge_bands(map, markers, Vector2i(3, 1), up)[0].a == 0.0
+		and dark.call(_edge_bands(map, markers, Vector2i(3, 1), Vector2i(-1, 0))[0]),
+		"낭떠러지 쪽은 기존 표시를 유지하고 바닥 이웃만 경계 표시")
+	map.show_movement([Vector2i(1, 1)], [], [], Vector2i(1, 1))
+	_check(map._overlays[0].get_index() > markers[Vector2i(1, 1)].get_index(),
+		"같은 칸의 이동 범위 면·윤곽은 높이 경계 위에 그림")
+	var old: Node2D = markers[Vector2i(1, 1)]
+	map.build_grid(CombatGrid.new(), load("res://scenes/combat/floor_tiles.tres") as TileSet)
+	_check(map._height_edges.is_empty() and not is_instance_valid(old), "맵을 다시 만들면 이전 높이 경계를 제거")
+	map.free()
+
+
+## cell에서 direction 이웃 쪽 윗면 가장자리의 도트를 바깥 줄부터 다섯 줄 읽는다. 마름모 가로 기울기는 2도트/줄이다.
+func _edge_bands(map: CombatMap, markers: Dictionary[Vector2i, Node2D], cell: Vector2i,
+		direction: Vector2i) -> Array[Color]:
+	var bands: Array[Color] = []
+	bands.resize(5)
+	bands.fill(Color.TRANSPARENT)
+	if not markers.has(cell):
+		return bands
+	var image: Image = (markers[cell].get_node("Sprite") as Sprite2D).texture.get_image()
+	var delta: Vector2 = map.map_to_local(cell + direction) - map.map_to_local(cell)
+	var half: Vector2i = image.get_size() / 2
+	var row: int = half.y / 2
+	var y: int = image.get_height() - 1 - row if delta.y > 0 else row
+	for band: int in range(5):
+		var x: int = half.x + row * 2 - band * 2 if delta.x > 0 else half.x - 1 - row * 2 + band * 2
+		bands[band] = image.get_pixel(x, y)
+	return bands
 
 
 func _test_skill_icons() -> void:
