@@ -141,7 +141,7 @@ def opportunity(x, y):
         if iris <= 6.5:
             return TEAL[1] if px + py < ex + ey else TEAL[0]
         return WHITE if py < ey else STEEL[3]
-    # Sword swinging down to the lower right with a white slash.
+    # Sword with its blade pointing down-left and a white slash arc at the lower right.
     u, v = rotated(x, y, 46, 30)
     blade = short_sword(-u, v, 26)
     if blade is not None:
