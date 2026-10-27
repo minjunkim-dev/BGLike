@@ -90,11 +90,11 @@ func _ready() -> void:
 		column.add_child(buttons)
 		for action: String in CombatActionRules.GROUPS[index]:
 			var button: Button = HoverTooltip.HoverButton.new()
-			# 아이콘 오른쪽에 비용 마크 자리를 남긴다.
-			button.custom_minimum_size.x = 52
+			# 아이콘 오른쪽에 비용 마크 자리를 남긴다. 높이는 그림을 줄이기 전(#362)의 입력 영역이다.
+			button.custom_minimum_size = Vector2(52, 34)
 			button.icon = CombatActionRules.icon_of(action)
 			button.material = preload("res://scenes/combat/art/pixel_art.tres")
-			button.add_theme_constant_override("icon_max_width", 32)
+			button.add_theme_constant_override("icon_max_width", CombatActionRules.ICON_SIZE)
 			# 곱셈 색은 채도를 빼지 못해 반투명으로 어둡게 눌러 회색 배경에 묻는다.
 			button.add_theme_color_override("icon_disabled_color", Color("8a939b", 0.55))
 			button.accessibility_name = CombatActionRules.NAMES[action]

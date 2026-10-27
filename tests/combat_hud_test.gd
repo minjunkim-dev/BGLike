@@ -135,7 +135,7 @@ func _test_skill_icons() -> void:
 		if action in ["spawn", "pull", "spin"]:
 			_check(icon == null, "적 전용 스킬은 아이콘 범위 밖: " + action)
 		else:
-			_check(icon != null and icon.get_size() == Vector2(64, 64), "스킬 아이콘 64px 원본: " + action)
+			_check(icon != null and icon.get_size() == Vector2(48, 48), "#362 스킬 아이콘 48px 원본: " + action)
 
 
 func _test_selection() -> void:
@@ -294,6 +294,10 @@ func _test_warrior() -> void:
 		_check((buttons[action] as Button).is_visible_in_tree(), "전사 동작 표시: " + action)
 	for action: String in ["mark", "shock", "disengage"]:
 		_check(not (buttons[action] as Button).visible, "궁수 동작 숨김: " + action)
+	for action: String in ["attack", "second_wind", "surge", "shove", "potion", "opportunity", "parry"]:
+		var button: Button = buttons[action]
+		_check(button.size == Vector2(52, 34), "#362 스킬 버튼 입력 52×34 유지: " + action)
+		_check(button.get_theme_constant("icon_max_width") == 24, "#362 스킬 그림 24 논리px: " + action)
 	_check((titles[0] as Label).text == "행동 ●" and (titles[1] as Label).text == "보조 행동 ▲"
 		and (titles[2] as Label).text == "반응 ◆", "컨테이너 제목이 자원 표시")
 	_check(not (badges["attack"] as Label).visible and not (badges["shove"] as Label).visible,

@@ -279,9 +279,9 @@ func _test_icons(loot: CombatLoot) -> void:
 	var expected: Dictionary = {"weapon": "sword", "armor": "armor", "potion": "potion"}
 	for item: Dictionary in loot.data["items"]:
 		var texture: Texture2D = load(CombatLoot.icon_path(item)) as Texture2D
-		_check(texture != null and texture.get_size() == Vector2(64, 64)
+		_check(texture != null and texture.get_size() == Vector2(48, 48)
 			and CombatLoot.icon_path(item).get_file() == expected[item["kind"]] + ".png",
-			"실제 아이템 데이터의 64px 아이콘: " + str(item["id"]))
+			"#362 실제 아이템 데이터의 48px 아이콘: " + str(item["id"]))
 		_check(CombatLoot.icon_path(item, "warrior") == CombatLoot.icon_path(item),
 			"전사는 공용 아이콘: " + str(item["id"]))
 		var archer_path: String = CombatLoot.icon_path(item, "archer")
@@ -474,6 +474,13 @@ func _test_armor_unequip_scene() -> void:
 	await _action("ui_accept")
 	_check(weapon_cell.button_pressed and preparation.detail.find_children("*", "Button", true, false).is_empty(),
 		"Enter로 무기 칸을 고르면 해제 버튼 없이 수치만 표시")
+	var detail_icon: TextureRect = preparation.detail.find_child("DetailIcon", true, false) as TextureRect
+	_check(weapon_cell.size == Vector2(36, 36), "#362 장비 칸 입력 36×36 유지")
+	var pip: TextureRect = (preparation.find_child("Potions0", true, false) as Node).get_child(0) as TextureRect
+	_check(pip.size == Vector2(16, 16) and pip.texture.get_size() == Vector2(32, 32),
+		"#362 물약 칸16은 0.5배인 32px 원본")
+	_check(weapon_cell.get_theme_constant("icon_max_width") == 24 and detail_icon != null
+		and detail_icon.size == Vector2(24, 24), "#362 장비 칸과 선택 상세의 그림 24 논리px")
 	await _action("ui_right")
 	_check((preparation.find_child("Armor0", true, false) as Control).has_focus(), "방향키로 이웃 칸 이동")
 	await _check_preparation_focus(preparation, "Armor0")

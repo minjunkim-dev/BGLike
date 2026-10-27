@@ -16,7 +16,11 @@ TEAL = [(34, 57, 64), (54, 93, 97)]
 STRING = (241, 210, 169)
 RED = [(68, 27, 25), (118, 38, 28), (174, 76, 46), (200, 110, 66)]
 CORK = [(110, 67, 52), (160, 108, 70)]
-SIZE = 64
+# Shapes are drawn in a 64px design grid and sampled onto the 48px canvas (#362: 24 logical px at 0.5).
+DESIGN = 64
+SIZE = 48
+# The 16 logical px potion counter on the preparation cards keeps the same 0.5 rule with its own canvas.
+PIP_SIZE = 32
 ROOT2 = math.sqrt(2)
 
 
@@ -129,17 +133,19 @@ def potion(x, y):
     return INDIGO[1] if px < 36 else INDIGO[0]
 
 
-def outlined(draw):
-    image = Image.new("RGBA", (SIZE, SIZE))
+def outlined(draw, size=SIZE):
+    image = Image.new("RGBA", (size, size))
     filled = set()
-    for y in range(SIZE):
-        for x in range(SIZE):
-            color = draw(x, y)
+    step = DESIGN / size
+    for y in range(size):
+        for x in range(size):
+            # Sample the design grid at this canvas pixel's centre; nothing is resampled afterwards.
+            color = draw((x + 0.5) * step - 0.5, (y + 0.5) * step - 0.5)
             if color is not None:
                 image.putpixel((x, y), (*color, 255))
                 filled.add((x, y))
     # 2 source px equals the 1 logical px outline of the unit frames at scale 0.5.
-    for x, y in [(x, y) for y in range(SIZE) for x in range(SIZE) if (x, y) not in filled]:
+    for x, y in [(x, y) for y in range(size) for x in range(size) if (x, y) not in filled]:
         if any((x + dx, y + dy) in filled for dx in range(-2, 3) for dy in range(-2, 3)
                if abs(dx) + abs(dy) <= 3):
             image.putpixel((x, y), (*OUTLINE, 255))
@@ -157,6 +163,14 @@ if __name__ == "__main__":
     for name, draw in ICONS.items():
         image = outlined(draw)
         bounds = image.getbbox()
-        assert bounds and bounds[0] >= 2 and bounds[1] >= 2 and bounds[2] <= 62 and bounds[3] <= 62, (name, bounds)
+        assert bounds and min(bounds[:2]) >= 2 and max(bounds[2:]) <= SIZE - 2, (name, bounds)
         image.save(args.destination / f"{name}.png")
         print(json.dumps({"icon": name, "canvas": [SIZE, SIZE], "content": bounds}))
+    pip = outlined(potion, PIP_SIZE)
+    # The tiny counter has no extra margin; only the 2px outline itself must stay on the canvas.
+    fill = [(x, y) for y in range(PIP_SIZE) for x in range(PIP_SIZE)
+            if pip.getpixel((x, y))[3] and pip.getpixel((x, y))[:3] != OUTLINE]
+    bounds = (min(x for x, _ in fill), min(y for _, y in fill), max(x for x, _ in fill) + 1, max(y for _, y in fill) + 1)
+    assert bounds and min(bounds[:2]) >= 2 and max(bounds[2:]) <= PIP_SIZE - 2, ("potion_pip", bounds)
+    pip.save(args.destination / "potion_pip.png")
+    print(json.dumps({"icon": "potion_pip", "canvas": [PIP_SIZE, PIP_SIZE], "content": bounds}))

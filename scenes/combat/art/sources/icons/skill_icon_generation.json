@@ -8,10 +8,11 @@
     "command": "python3 scenes/combat/art/sources/icons/draw_skill_icons.py scenes/combat/art/icons/skills"
   },
   "spec": {
-    "canvas": [64, 64],
-    "max_content": [60, 60],
+    "canvas": [48, 48],
+    "design_grid": [64, 64],
+    "max_content": [44, 44],
     "display_scale": 0.5,
-    "logical_size": [32, 32],
+    "logical_size": [24, 24],
     "outline": "2 source px (1 logical px) of #120d16, shared with draw_item_icons.py",
     "palette": "the item icon palette (steel, indigo, leather, brass, wood, teal, rust red) imported from draw_item_icons.py",
     "light": "upper left",
