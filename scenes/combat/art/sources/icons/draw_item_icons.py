@@ -16,7 +16,9 @@ TEAL = [(34, 57, 64), (54, 93, 97)]
 STRING = (241, 210, 169)
 RED = [(68, 27, 25), (118, 38, 28), (174, 76, 46), (200, 110, 66)]
 CORK = [(110, 67, 52), (160, 108, 70)]
-SIZE = 64
+# Shapes are drawn in a 64px design grid and sampled onto the 48px canvas (#362: 24 logical px at 0.5).
+DESIGN = 64
+SIZE = 48
 ROOT2 = math.sqrt(2)
 
 
@@ -132,9 +134,11 @@ def potion(x, y):
 def outlined(draw):
     image = Image.new("RGBA", (SIZE, SIZE))
     filled = set()
+    step = DESIGN / SIZE
     for y in range(SIZE):
         for x in range(SIZE):
-            color = draw(x, y)
+            # Sample the design grid at this canvas pixel's centre; nothing is resampled afterwards.
+            color = draw((x + 0.5) * step - 0.5, (y + 0.5) * step - 0.5)
             if color is not None:
                 image.putpixel((x, y), (*color, 255))
                 filled.add((x, y))
@@ -157,6 +161,6 @@ if __name__ == "__main__":
     for name, draw in ICONS.items():
         image = outlined(draw)
         bounds = image.getbbox()
-        assert bounds and bounds[0] >= 2 and bounds[1] >= 2 and bounds[2] <= 62 and bounds[3] <= 62, (name, bounds)
+        assert bounds and min(bounds[:2]) >= 2 and max(bounds[2:]) <= SIZE - 2, (name, bounds)
         image.save(args.destination / f"{name}.png")
         print(json.dumps({"icon": name, "canvas": [SIZE, SIZE], "content": bounds}))

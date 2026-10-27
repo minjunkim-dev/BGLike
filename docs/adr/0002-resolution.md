@@ -6,7 +6,7 @@
 
 ## 맥락
 
-화면 배치의 기준은 640×360 논리 화면이다. `canvas_items`는 2D와 글꼴을 실제 창 해상도에서 그린다. 유닛·지형·사물·아이콘은 64px 원본을 0.5배로 쓴다([도트 아트 기준](../PIXEL_ART.md)). 그래서 그림 1텍셀은 논리 화면의 0.5px이다.
+화면 배치의 기준은 640×360 논리 화면이다. `canvas_items`는 2D와 글꼴을 실제 창 해상도에서 그린다. 유닛·지형·사물은 64px, 스킬·아이템 아이콘은 48px 원본([#362](https://github.com/minjunkim-dev/BGLike/issues/362))을 0.5배로 쓴다([도트 아트 기준](../PIXEL_ART.md)). 그래서 그림 1텍셀은 논리 화면의 0.5px이다.
 
 [Godot 4.7 다중 해상도 문서](https://docs.godotengine.org/en/4.7/tutorials/rendering/multiple_resolutions.html)에 따르면 `integer` 배율은 자동 배율을 정수로 내린다. 남는 자리는 검은 테두리가 된다. 2026-10-22 Godot 4.7.2 Forward+ 창의 원본 Viewport에서 다음 값을 측정했다. 640×360 행만 계산값이다.
 

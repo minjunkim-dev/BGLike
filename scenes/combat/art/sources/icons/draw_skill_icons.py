@@ -1,6 +1,6 @@
 """Draw the skill and common action icons pixel by pixel in the item icon style (#384).
 
-Same rules as draw_item_icons.py: 64px canvas, the item palette, upper-left light, 2px dark outline,
+Same rules as draw_item_icons.py: 64px design grid on the 48px canvas, the item palette, upper-left light, 2px dark outline,
 no anti-aliasing and no generative model. Attack and potion reuse the item sword and potion.
 """
 import argparse
@@ -242,7 +242,7 @@ def jump(x, y):
 
 
 def fitted(draw):
-    """Shrink a full-canvas drawing about the centre so it and its outline stay inside 60x60 like the items."""
+    """Shrink a full-canvas drawing about the centre so it and its outline stay inside the 60x60 design area like the items."""
     scale = 31.5 / 28
     return lambda x, y: draw(32 + (x + 0.5 - 32) * scale - 0.5, 32 + (y + 0.5 - 32) * scale - 0.5)
 
@@ -261,6 +261,6 @@ if __name__ == "__main__":
     for action, draw in ICONS.items():
         image = outlined(draw)
         bounds = image.getbbox()
-        assert bounds and bounds[0] >= 2 and bounds[1] >= 2 and bounds[2] <= 62 and bounds[3] <= 62, (action, bounds)
+        assert bounds and min(bounds[:2]) >= 2 and max(bounds[2:]) <= SIZE - 2, (action, bounds)
         image.save(args.destination / f"{action}.png")
     print(json.dumps({"icons": len(ICONS), "canvas": [SIZE, SIZE]}))

@@ -135,7 +135,7 @@ func _test_skill_icons() -> void:
 		if action in ["spawn", "pull", "spin"]:
 			_check(icon == null, "적 전용 스킬은 아이콘 범위 밖: " + action)
 		else:
-			_check(icon != null and icon.get_size() == Vector2(64, 64), "스킬 아이콘 64px 원본: " + action)
+			_check(icon != null and icon.get_size() == Vector2(48, 48), "#362 스킬 아이콘 48px 원본: " + action)
 
 
 func _test_selection() -> void:

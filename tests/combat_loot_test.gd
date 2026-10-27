@@ -279,9 +279,9 @@ func _test_icons(loot: CombatLoot) -> void:
 	var expected: Dictionary = {"weapon": "sword", "armor": "armor", "potion": "potion"}
 	for item: Dictionary in loot.data["items"]:
 		var texture: Texture2D = load(CombatLoot.icon_path(item)) as Texture2D
-		_check(texture != null and texture.get_size() == Vector2(64, 64)
+		_check(texture != null and texture.get_size() == Vector2(48, 48)
 			and CombatLoot.icon_path(item).get_file() == expected[item["kind"]] + ".png",
-			"실제 아이템 데이터의 64px 아이콘: " + str(item["id"]))
+			"#362 실제 아이템 데이터의 48px 아이콘: " + str(item["id"]))
 		_check(CombatLoot.icon_path(item, "warrior") == CombatLoot.icon_path(item),
 			"전사는 공용 아이콘: " + str(item["id"]))
 		var archer_path: String = CombatLoot.icon_path(item, "archer")
