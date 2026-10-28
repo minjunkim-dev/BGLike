@@ -23,7 +23,7 @@ Refs # (Issue를 끝내는 마지막 PR이면 Closes #)
 - [ ] Godot headless import와 메인 장면 실행
 - [ ] 필요한 Godot 회귀 검사 (문서·관리 파일만 변경하면 범위 규칙과 생략 이유 기록)
 - [ ] 최종 head의 필수 CI 통과
-- [ ] 플레이 변경 시 편집기에서 직접 조작 확인 (해당 없음이면 이유 기록)
+- [ ] 플레이 변경 시 편집기 또는 `manual_qa.py --mode macos`에서 직접 조작 확인 (체크 기준: `docs/CAPTURE_VERIFICATION.md`의 확인 등급, 해당 없음이면 이유 기록)
 
 실제 명령, 결과와 로그 링크:
 
