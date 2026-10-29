@@ -123,7 +123,7 @@ static func details(actor: CombatUnit, action: String) -> String:
 		"surge", "disengage":
 			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("판정: 없음")]
 		"parry":
-			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("판정: 민첩 d%d +3이 공격 굴림 이상") % actor.get_ability_sides(CombatUnit.Ability.DEXTERITY)]
+			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("판정: 민첩 d%d +3이 공격 굴림 이상") % actor.get_ability_sides(CombatUnit.Ability.AGILITY)]
 	return "\n".join(lines)
 
 

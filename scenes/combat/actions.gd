@@ -380,10 +380,10 @@ func _on_turn_started(unit: CombatUnit) -> void:
 		var name: String = tr("화상") if effect.kind == "burn" else tr("독")
 		if effect.kind == "poison" and not poison_checked:
 			poison_checked = true
-			var nature_sides: int = unit.get_ability_sides(CombatUnit.Ability.NATURE)
-			var saved: CombatChecks.RollResult = CombatChecks.threshold(nature_sides, 0, effect.strength, dice)
-			logged.emit(tr("%s 독 제거: 자연 d%d %d / 강도 %d · %s") % [unit.get_display_name(),
-				nature_sides, saved.selected_roll, effect.strength, tr("성공") if saved.success else tr("실패")])
+			var health_sides: int = unit.get_ability_sides(CombatUnit.Ability.HEALTH)
+			var saved: CombatChecks.RollResult = CombatChecks.threshold(health_sides, 0, effect.strength, dice)
+			logged.emit(tr("%s 독 제거: 건강 d%d %d / 강도 %d · %s") % [unit.get_display_name(),
+				health_sides, saved.selected_roll, effect.strength, tr("성공") if saved.success else tr("실패")])
 			# 실패는 뒤따르는 `독 1` 틱 팝업이 효과 이름을 보인다.
 			if saved.success:
 				feedback.emit(unit, tr("독 제거"))
@@ -946,7 +946,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
 		return
 	var attack_ability: CombatUnit.Ability = actor.get_attack_ability()
-	var defense_ability: CombatUnit.Ability = CombatUnit.Ability.DEXTERITY if actor.is_ranged_attack() else CombatUnit.Ability.STRENGTH
+	var defense_ability: CombatUnit.Ability = CombatUnit.Ability.AGILITY if actor.is_ranged_attack() else CombatUnit.Ability.STRENGTH
 	var attack_sides: int = actor.get_ability_sides(attack_ability)
 	var defense_sides: int = target.get_ability_sides(defense_ability)
 	if shared_roll == null:
@@ -978,7 +978,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 		return
 	if (CombatActionRules.has_uses(target, "parry") and not target.is_stunned
 		and target.reaction_left > 0):
-		var parry_sides: int = target.get_ability_sides(CombatUnit.Ability.DEXTERITY)
+		var parry_sides: int = target.get_ability_sides(CombatUnit.Ability.AGILITY)
 		var chance: float = CombatChecks.threshold_chance(parry_sides, 3, last_attack.total)
 		if await _ask_reaction(target, "parry", tr("%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)") % [target.get_display_name(), chance * 100.0, target.parry_left]):
 			target.spend_resource(CombatUnit.TurnResource.REACTION)

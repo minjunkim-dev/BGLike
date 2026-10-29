@@ -5,7 +5,7 @@ extends RefCounted
 
 const MAGIC: String = "BGLS"
 ## 본문 모양을 호환되지 않게 바꾸면 올린다. 다른 버전의 파일은 읽지 않는다.
-const FORMAT_VERSION: int = 2
+const FORMAT_VERSION: int = 3
 const HEADER_SIZE: int = 8
 
 ## 테스트는 다른 경로로 바꾼다.

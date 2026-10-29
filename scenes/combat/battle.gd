@@ -258,10 +258,10 @@ func _is_valid_state(state: Dictionary) -> bool:
 				or not (saved.weapon.is_empty() or loot.is_valid_item(saved.weapon) and saved.weapon.kind == "weapon")
 				or not (saved.armor.is_empty() or loot.is_valid_item(saved.armor) and saved.armor.kind == "armor")):
 			return false
-		var dexterity_sides: int = (CombatUnit.ALLY_ABILITY_SIDES[saved.kind][CombatUnit.Ability.DEXTERITY]
-			if saved.ally else CombatEnemyDefinitions.for_kind(saved.kind)["abilities"][CombatUnit.Ability.DEXTERITY])
+		var agility_sides: int = (CombatUnit.ALLY_ABILITY_SIDES[saved.kind][CombatUnit.Ability.AGILITY]
+			if saved.ally else CombatEnemyDefinitions.for_kind(saved.kind)["abilities"][CombatUnit.Ability.AGILITY])
 		# 생성한 새끼는 굴리지 않고 엄마 앞에 삽입되므로 원본 값 0을 보존한다.
-		if saved.initiative_roll < (1 if index < identities.size() else 0) or saved.initiative_roll > dexterity_sides:
+		if saved.initiative_roll < (1 if index < identities.size() else 0) or saved.initiative_roll > agility_sides:
 			return false
 	if not (state.last_ally >= 0 and state.last_ally < count and saved_units[state.last_ally].ally
 			and CombatTurns.is_valid_state(state.get("turns"), count)
