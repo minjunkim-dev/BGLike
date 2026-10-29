@@ -946,31 +946,31 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
 		return
 	var attack_ability: CombatUnit.Ability = actor.get_attack_ability()
-	var defense_ability: CombatUnit.Ability = CombatUnit.Ability.AGILITY if actor.is_ranged_attack() else CombatUnit.Ability.STRENGTH
 	var attack_sides: int = actor.get_ability_sides(attack_ability)
-	var defense_sides: int = target.get_ability_sides(defense_ability)
-	if shared_roll == null:
-		var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
-		last_attack = CombatChecks.opposed_attack(attack_sides, defense_sides,
-			actor.get_attack_bonus(), target.get_defense_bonus(), preview.mode, dice)
-	else:
-		last_attack = CombatChecks.defend_against(shared_roll, defense_sides, target.get_defense_bonus(), dice)
 	last_damage = 0
 	last_damage_rolls.clear()
-	var mode_name: String = tr("일반")
-	if last_attack.mode == CombatChecks.RollMode.ADVANTAGE:
-		mode_name = tr("유리")
-	elif last_attack.mode == CombatChecks.RollMode.DISADVANTAGE:
-		mode_name = tr("불리")
 	if shared_roll == null:
-		logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / %s d%d %d %+d = %d · %s") % [
+		var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
+		last_attack = CombatChecks.hit_roll(attack_sides, actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
+		var mode_name: String = tr("일반")
+		if last_attack.mode == CombatChecks.RollMode.ADVANTAGE:
+			mode_name = tr("유리")
+		elif last_attack.mode == CombatChecks.RollMode.DISADVANTAGE:
+			mode_name = tr("불리")
+		var outcome: String = tr("명중") if last_attack.success else tr("빗나감")
+		if last_attack.face == CombatChecks.Face.ABSOLUTE_SUCCESS:
+			outcome += tr("(절대성공)")
+		elif last_attack.face == CombatChecks.Face.ABSOLUTE_FAILURE:
+			outcome += tr("(절대실패)")
+		logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / AC %d · %s") % [
 			actor.get_display_name(), mode_name, CombatUnit.ability_name(attack_ability), attack_sides,
-			str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total,
-			CombatUnit.ability_name(defense_ability), defense_sides, last_attack.defender_roll,
-			target.get_defense_bonus(), last_attack.defender_total, tr("명중") if last_attack.success else tr("빗나감")])
+			str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total, target.get_armor_class(), outcome])
 	else:
+		# 회전회오리는 내성굴림 티켓(#389)까지 공통 공격 대 대상 방어 대결을 유지한다.
+		var defense_sides: int = target.get_ability_sides(CombatUnit.Ability.STRENGTH)
+		last_attack = CombatChecks.defend_against(shared_roll, defense_sides, target.get_defense_bonus(), dice)
 		logged.emit(tr("%s 방어: %s d%d %d %+d = %d / 공통 공격 %d · %s") % [target.get_display_name(),
-			CombatUnit.ability_name(defense_ability), defense_sides, last_attack.defender_roll,
+			CombatUnit.ability_name(CombatUnit.Ability.STRENGTH), defense_sides, last_attack.defender_roll,
 			target.get_defense_bonus(), last_attack.defender_total, last_attack.total,
 			tr("명중") if last_attack.success else tr("빗나감")])
 	if not last_attack.success:
