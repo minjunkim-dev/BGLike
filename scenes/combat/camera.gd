@@ -37,6 +37,7 @@ func frame(map: TileMapLayer, map_size: Vector2i) -> void:
 
 func reset() -> void:
 	zoom = Vector2.ONE * ZOOMS[0]
+	_magnify = 1.0
 	_focus = _grid * (_last_cell / 2.0)
 	_apply()
 
@@ -88,9 +89,10 @@ func _input(event: InputEvent) -> void:
 		_dragging = false
 
 
-## HUD가 받지 않은 입력만 쓴다. 패널은 휠을 소비하지 않으므로 HUD 위의 휠은 직접 거른다.
+## HUD가 받지 않은 입력만 쓴다. 패널은 휠·제스처를 소비하지 않으므로 HUD 위의 입력은 직접 거른다.
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and get_viewport().gui_get_hovered_control() != null:
+	if ((event is InputEventMouseButton and event.pressed or event is InputEventGesture)
+			and get_viewport().gui_get_hovered_control() != null):
 		return
 	if event is InputEventMouseButton and event.pressed:
 		match event.button_index:

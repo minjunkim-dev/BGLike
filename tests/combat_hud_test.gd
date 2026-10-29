@@ -1633,6 +1633,8 @@ func _test_camera() -> void:
 		await _wheel((portraits[units[0]] as Button).get_global_rect().get_center(), MOUSE_BUTTON_WHEEL_UP)
 		await _wheel((hud.get_node("CombatLog") as Control).get_global_rect().get_center(), MOUSE_BUTTON_WHEEL_UP)
 		_check(camera.zoom == Vector2.ONE, "턴 순서 바 초상·전투 로그 위의 휠은 맵을 확대하지 않음: %s" % window_size)
+		var hud_rects: Array = ["OrderScroll", "UnitDetails", "CombatLog", "Skills", "EndTurn"].map(
+			func(path: String) -> Rect2: return (hud.get_node(path) as Control).get_global_rect())
 		await _wheel(anchor, MOUSE_BUTTON_WHEEL_UP)
 		_check(camera.zoom == Vector2(2, 2) and (cell_point.call(Vector2i(5, 4)) as Vector2).distance_to(anchor) <= 1.0
 			and _camera_snapped(camera), "휠 위는 포인터 아래 칸을 그대로 둔 채 2배: %s" % window_size)
@@ -1657,6 +1659,15 @@ func _test_camera() -> void:
 		await _click(map.get_global_transform_with_canvas() * (map.map_to_surface(crate.cell) + Vector2(0, -8)))
 		_check(selection.preview_prop == crate and crate.hit_points == 6,
 			"확대·이동 뒤 상자 몸통 좌클릭은 상자 미리보기: %s" % window_size)
+		actions.grid.props.clear()
+		var rock: CombatGrid.Prop = actions.create_prop(Vector2i(3, 5), "rock")
+		battle.call("_update_turn_ui")
+		await _click(map.get_global_transform_with_canvas() * (map.map_to_surface(rock.cell) + Vector2(0, -8)))
+		_check(selection.preview_prop == rock and rock.cell == Vector2i(3, 5),
+			"확대·이동 뒤 바위 몸통 좌클릭은 바위 미리보기: %s" % window_size)
+		_check(["OrderScroll", "UnitDetails", "CombatLog", "Skills", "EndTurn"].map(
+			func(path: String) -> Rect2: return (hud.get_node(path) as Control).get_global_rect()) == hud_rects,
+			"확대·이동해도 HUD는 같은 화면 자리: %s" % window_size)
 		actions.grid.props.assign(saved_props)
 		selection.clear_preview()
 		await _click(enemy_point)
@@ -1696,6 +1707,17 @@ func _test_camera() -> void:
 		root.push_input(magnify)
 		await process_frame
 		_check(camera.zoom == Vector2(2, 2), "집기 배율이 1.25배 쌓이면 2배: %s" % window_size)
+		var over_hud: InputEventPanGesture = gesture.duplicate() as InputEventPanGesture
+		over_hud.position = root.get_final_transform() * (hud.get_node("CombatLog") as Control).get_global_rect().get_center()
+		var zoomed: Vector2 = camera.position
+		# 제스처에는 포인터 이동이 없다. HUD 판정은 마지막 포인터 위치를 따르므로 먼저 로그 위로 옮긴다.
+		var hover: InputEventMouseMotion = InputEventMouseMotion.new()
+		hover.position = over_hud.position
+		hover.global_position = over_hud.position
+		root.push_input(hover)
+		root.push_input(over_hud)
+		await process_frame
+		_check(camera.position == zoomed, "전투 로그 위의 트랙패드 이동은 맵을 옮기지 않음: %s" % window_size)
 		await _key(KEY_C)
 	var start: Vector2 = camera.position
 	var key: InputEventKey = InputEventKey.new()
@@ -1712,6 +1734,11 @@ func _test_camera() -> void:
 	await process_frame
 	_check(camera.position.x > start.x and camera.position.y == start.y and _camera_snapped(camera),
 		"D를 누르고 있으면 맵이 오른쪽을 보도록 이동")
+	# 2560×1080은 논리 폭이 홀수라 화면 가운데가 0.5 논리 px다.
+	root.size = Vector2i(2560, 1080)
+	await process_frame
+	await process_frame
+	_check(_camera_snapped(camera), "창 크기가 바뀌면 화면 원점을 다시 정수 px에 맞춤")
 	root.size = Vector2i(1280, 720)
 	camera.reset()
 	_reset_units()
