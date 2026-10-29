@@ -1629,6 +1629,10 @@ func _test_camera() -> void:
 		var cell_point: Callable = func(cell: Vector2i) -> Vector2:
 			return map.get_global_transform_with_canvas() * map.map_to_local(cell)
 		var anchor: Vector2 = cell_point.call(Vector2i(5, 4))
+		var portraits: Dictionary = hud.get("_portraits")
+		await _wheel((portraits[units[0]] as Button).get_global_rect().get_center(), MOUSE_BUTTON_WHEEL_UP)
+		await _wheel((hud.get_node("CombatLog") as Control).get_global_rect().get_center(), MOUSE_BUTTON_WHEEL_UP)
+		_check(camera.zoom == Vector2.ONE, "턴 순서 바 초상·전투 로그 위의 휠은 맵을 확대하지 않음: %s" % window_size)
 		await _wheel(anchor, MOUSE_BUTTON_WHEEL_UP)
 		_check(camera.zoom == Vector2(2, 2) and (cell_point.call(Vector2i(5, 4)) as Vector2).distance_to(anchor) <= 1.0
 			and _camera_snapped(camera), "휠 위는 포인터 아래 칸을 그대로 둔 채 2배: %s" % window_size)
@@ -1646,12 +1650,27 @@ func _test_camera() -> void:
 		await _click(enemy_point)
 		_check(selection.preview_target == units[2] and units[2].is_previewed,
 			"확대·이동 뒤 적 몸통 좌클릭은 공격 미리보기: %s" % window_size)
+		var saved_props: Array[CombatGrid.Prop] = actions.grid.props.duplicate()
+		actions.grid.props.clear()
+		var crate: CombatGrid.Prop = actions.create_prop(Vector2i(3, 5), "crate")
+		battle.call("_on_action_selected", "attack")
+		await _click(map.get_global_transform_with_canvas() * (map.map_to_surface(crate.cell) + Vector2(0, -8)))
+		_check(selection.preview_prop == crate and crate.hit_points == 6,
+			"확대·이동 뒤 상자 몸통 좌클릭은 상자 미리보기: %s" % window_size)
+		actions.grid.props.assign(saved_props)
+		selection.clear_preview()
+		await _click(enemy_point)
 		units[2].show_feedback("-3", hud.feedback_obstacles())
 		var popup: Label = units[2].get_parent().get_child(-1) as Label
 		var popup_rect: Rect2 = popup.get_global_transform_with_canvas() * Rect2(Vector2.ZERO, popup.size)
 		_check(popup_rect.size.y >= 2.0 * popup.size.y - 1.0 and popup_rect.get_center().distance_to(enemy_point) <= 64.0,
 			"피해 팝업은 확대한 맵의 대상 위에 2배로 뜸: %s" % window_size)
 		popup.free()
+		var before: Vector2 = cell_point.call(Vector2i(5, 4))
+		var panel: Vector2 = (hud.get_node("UnitDetails") as Control).get_global_rect().get_center()
+		await _drag(anchor, panel - anchor)
+		_check((cell_point.call(Vector2i(5, 4)) as Vector2).distance_to(before) > 100.0,
+			"HUD 위로 끌어 놓아도 드래그가 이어짐: %s" % window_size)
 		await _drag(anchor, Vector2(4000, 3000))
 		var visible: Rect2 = root.get_visible_rect()
 		_check(_camera_snapped(camera) and map.get_used_cells().any(func(cell: Vector2i) -> bool:
@@ -1660,12 +1679,32 @@ func _test_camera() -> void:
 		_check(camera.zoom == Vector2.ONE and camera.position == home, "C는 1배 가운데로 되돌림: %s" % window_size)
 		await _wheel(anchor, MOUSE_BUTTON_WHEEL_DOWN)
 		_check(camera.zoom == Vector2.ONE and camera.position == home, "1배보다 축소하지 않음: %s" % window_size)
+		var gesture: InputEventPanGesture = InputEventPanGesture.new()
+		gesture.position = root.get_final_transform() * anchor
+		gesture.delta = Vector2(1, 0)
+		# Godot 4.7.2의 Input.parse_input_event는 제스처를 두 번 보낸다. 창 입력 경로(push_input)로 한 번만 넣는다.
+		root.push_input(gesture)
+		await process_frame
+		_check(camera.position.is_equal_approx(home + Vector2(CombatCamera.PAN_GESTURE_SPEED, 0)),
+			"트랙패드 두 손가락 이동: %s" % window_size)
+		var magnify: InputEventMagnifyGesture = InputEventMagnifyGesture.new()
+		magnify.position = gesture.position
+		magnify.factor = 1.15
+		root.push_input(magnify)
+		await process_frame
+		_check(camera.zoom == Vector2.ONE, "집기 배율이 덜 쌓이면 그대로: %s" % window_size)
+		root.push_input(magnify)
+		await process_frame
+		_check(camera.zoom == Vector2(2, 2), "집기 배율이 1.25배 쌓이면 2배: %s" % window_size)
+		await _key(KEY_C)
 	var start: Vector2 = camera.position
 	var key: InputEventKey = InputEventKey.new()
 	key.physical_keycode = KEY_D
 	key.pressed = true
 	Input.parse_input_event(key)
-	for frame: int in range(5):
+	# 짧은 프레임에서도 반 논리 px 이상 움직이도록 0.1초를 기다린다.
+	var pressed_at: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - pressed_at < 100:
 		await process_frame
 	key = key.duplicate() as InputEventKey
 	key.pressed = false

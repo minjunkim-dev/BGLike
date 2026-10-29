@@ -29,6 +29,9 @@ func frame(map: TileMapLayer, map_size: Vector2i) -> void:
 	_grid = Transform2D(map.map_to_local(Vector2i.RIGHT) - origin, map.map_to_local(Vector2i.DOWN) - origin, origin)
 	_last_cell = Vector2(map_size - Vector2i.ONE)
 	_dragging = false
+	# 창 크기가 바뀌면 화면 가운데가 0.5 논리 px 움직일 수 있어 원점을 다시 맞춘다.
+	if not get_viewport().size_changed.is_connected(_apply):
+		get_viewport().size_changed.connect(_apply)
 	reset()
 
 
@@ -76,14 +79,19 @@ func _input(event: InputEvent) -> void:
 	# 드래그는 HUD 위를 지나거나 HUD 위에서 놓아도 이어서 받는다.
 	if not _dragging:
 		return
-	if event is InputEventMouseMotion:
+	# 일시정지 중이나 창 밖에서 버튼을 떼면 그 이벤트가 오지 않는다. 이동 이벤트의 버튼 상태로 끝낸다.
+	if event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_MIDDLE == 0:
+		_dragging = false
+	elif event is InputEventMouseMotion:
 		pan(-event.relative)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_MIDDLE and not event.pressed:
 		_dragging = false
 
 
-## HUD가 받지 않은 입력만 쓴다. 휠은 턴 순서 바 스크롤과 겹치지 않는다.
+## HUD가 받지 않은 입력만 쓴다. 패널은 휠을 소비하지 않으므로 HUD 위의 휠은 직접 거른다.
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and get_viewport().gui_get_hovered_control() != null:
+		return
 	if event is InputEventMouseButton and event.pressed:
 		match event.button_index:
 			MOUSE_BUTTON_WHEEL_UP:
@@ -101,7 +109,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _magnify >= MAGNIFY_STEP or _magnify <= 1.0 / MAGNIFY_STEP:
 			zoom_at(event.position, 1 if _magnify > 1.0 else -1)
 			_magnify = 1.0
-	elif event is InputEventKey and event.physical_keycode == KEY_C and event.pressed and not event.echo:
+	elif event is InputEventKey and event.physical_keycode == KEY_C and event.pressed and not event.echo \
+			and not event.is_command_or_control_pressed():
 		reset()
 	else:
 		return
