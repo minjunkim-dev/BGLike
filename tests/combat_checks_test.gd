@@ -107,8 +107,9 @@ func _test_modes() -> void:
 	_check(CombatChecks.roll_mode(0, 0) == CombatChecks.RollMode.NORMAL, "조건 없으면 일반")
 	_check(CombatChecks.roll_mode(3, 0) == CombatChecks.RollMode.ADVANTAGE, "유리 여러 개는 한 번의 유리")
 	_check(CombatChecks.roll_mode(0, 3) == CombatChecks.RollMode.DISADVANTAGE, "불리 여러 개는 한 번의 불리")
-	_check(CombatChecks.roll_mode(3, 1) == CombatChecks.RollMode.NORMAL, "유리 수가 많아도 불리와 서로 취소")
-	_check(CombatChecks.roll_mode(1, 3) == CombatChecks.RollMode.NORMAL, "불리 수가 많아도 유리와 서로 취소")
+	_check(CombatChecks.roll_mode(3, 1) == CombatChecks.RollMode.ADVANTAGE, "유리 요인이 더 많으면 유리")
+	_check(CombatChecks.roll_mode(1, 3) == CombatChecks.RollMode.DISADVANTAGE, "불리 요인이 더 많으면 불리")
+	_check(CombatChecks.roll_mode(2, 2) == CombatChecks.RollMode.NORMAL, "요인 수가 같으면 일반")
 
 
 func _test_opposed_rolls() -> void:
@@ -463,6 +464,12 @@ func _test_preview_conditions() -> void:
 	preview = grid.attack_preview(archer, target)
 	_check(preview.mode == CombatChecks.RollMode.NORMAL and is_equal_approx(preview.chance, 0.75)
 		and preview.reasons.size() == 2, "기절 대상과 인접 적이 함께 있으면 상쇄")
+	# 인접 적은 높이 차1이어야 높이를 포함한 인접으로 남는다.
+	grid.heights = {archer.cell: 2, nearby.cell: 1}
+	preview = grid.attack_preview(archer, target)
+	_check(preview.mode == CombatChecks.RollMode.ADVANTAGE and is_equal_approx(preview.chance, 0.9375)
+		and preview.reasons.size() == 3, "고지대·기절 대상의 유리 둘이 인접 적의 불리 하나보다 많으면 유리")
+	grid.heights = {}
 	archer.is_stunned = true
 	preview = grid.attack_preview(archer, target)
 	_check(preview.chance == 0.0 and not preview.blocked_reason.is_empty(), "기절한 공격자는 공격 불가")

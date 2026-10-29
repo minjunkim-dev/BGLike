@@ -27,10 +27,11 @@ class AttackPreview extends RefCounted:
 	var blocked_reason: String = ""
 
 
+## 그 굴림의 유리 요인 수와 불리 요인 수를 비교한다. 같으면 일반이다 (능력치 기획서 4-7).
 static func roll_mode(advantage_count: int, disadvantage_count: int) -> RollMode:
-	if advantage_count > 0 and disadvantage_count == 0:
+	if advantage_count > disadvantage_count:
 		return RollMode.ADVANTAGE
-	if disadvantage_count > 0 and advantage_count == 0:
+	if disadvantage_count > advantage_count:
 		return RollMode.DISADVANTAGE
 	return RollMode.NORMAL
 

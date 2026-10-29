@@ -293,15 +293,15 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 	var advantages: int = 0
 	var disadvantages: int = 0
 	if target.is_stunned:
-		advantages = 1
+		advantages += 1
 		preview.reasons.append(tr("기절한 대상"))
 	if attacker.is_ranged_attack() and height_at(attacker.cell) - height_at(target.cell) >= 2:
-		advantages = 1
+		advantages += 1
 		preview.reasons.append(tr("고지대"))
 	if attacker.is_ranged_attack():
 		for unit: CombatUnit in opponents_in_range(attacker, 1):
 			if not unit.is_stunned and are_adjacent(attacker.cell, unit.cell):
-				disadvantages = 1
+				disadvantages += 1
 				preview.reasons.append(tr("옆에 적"))
 				break
 	preview.mode = CombatChecks.roll_mode(advantages, disadvantages)

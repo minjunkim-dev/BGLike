@@ -254,7 +254,7 @@ msgid "대상 없음"
 msgstr ""
 
 #: scenes/combat/actions.gd:209
-#: scenes/combat/battle.gd:809
+#: scenes/combat/battle.gd:808
 msgid "방향 없음"
 msgstr ""
 
@@ -428,7 +428,7 @@ msgstr ""
 
 #: scenes/combat/actions.gd:609
 #: scenes/combat/actions.gd:621
-#: scenes/combat/battle.gd:853
+#: scenes/combat/battle.gd:852
 msgid "낙하 피해 %d"
 msgstr ""
 
@@ -654,106 +654,106 @@ msgstr ""
 msgid "전투 시작"
 msgstr ""
 
-#: scenes/combat/battle.gd:788
+#: scenes/combat/battle.gd:787
 msgid "표식 대상"
 msgstr ""
 
-#: scenes/combat/battle.gd:788
+#: scenes/combat/battle.gd:787
 msgid "표식을 사용할 수 없음"
 msgstr ""
 
-#: scenes/combat/battle.gd:793
+#: scenes/combat/battle.gd:792
 msgid "밀려날 칸: %d, %d"
 msgstr ""
 
-#: scenes/combat/battle.gd:796
+#: scenes/combat/battle.gd:795
 msgid "밀치기를 사용할 수 없음"
 msgstr ""
 
-#: scenes/combat/battle.gd:800
+#: scenes/combat/battle.gd:799
 msgid "기본 공격만 가능"
 msgstr ""
 
-#: scenes/combat/battle.gd:801
+#: scenes/combat/battle.gd:800
 msgid "바위"
 msgstr ""
 
-#: scenes/combat/battle.gd:801
+#: scenes/combat/battle.gd:800
 msgid "나무 상자 · 내구도 %d/6"
 msgstr ""
 
-#: scenes/combat/battle.gd:807
+#: scenes/combat/battle.gd:806
 msgid "오른쪽 아래"
 msgstr ""
 
-#: scenes/combat/battle.gd:807
+#: scenes/combat/battle.gd:806
 msgid "왼쪽 아래"
 msgstr ""
 
-#: scenes/combat/battle.gd:808
+#: scenes/combat/battle.gd:807
 msgid "왼쪽 위"
 msgstr ""
 
-#: scenes/combat/battle.gd:808
+#: scenes/combat/battle.gd:807
 msgid "오른쪽 위"
 msgstr ""
 
-#: scenes/combat/battle.gd:813
+#: scenes/combat/battle.gd:812
 msgid "아군 피해4: %s"
 msgstr ""
 
-#: scenes/combat/battle.gd:813
+#: scenes/combat/battle.gd:812
 msgid "적 피해4: %s"
 msgstr ""
 
-#: scenes/combat/battle.gd:815
+#: scenes/combat/battle.gd:814
 msgid "행동1 · 주사위 없음\n%s · %d칸 · %s\n%s\n같은 바위를 다시 좌클릭하면 굴립니다."
 msgstr ""
 
-#: scenes/combat/battle.gd:817
+#: scenes/combat/battle.gd:816
 msgid "충돌 없음"
 msgstr ""
 
-#: scenes/combat/battle.gd:822
+#: scenes/combat/battle.gd:821
 msgid "피해 %d~%d · 행동1 · 자동 명중\n같은 상자를 다시 좌클릭하면 공격합니다."
 msgstr ""
 
-#: scenes/combat/battle.gd:825
+#: scenes/combat/battle.gd:824
 msgid "행동 없음"
 msgstr ""
 
-#: scenes/combat/battle.gd:827
+#: scenes/combat/battle.gd:826
 #: scenes/combat/grid.gd:291
 msgid "기절하여 공격 불가"
 msgstr ""
 
-#: scenes/combat/battle.gd:831
+#: scenes/combat/battle.gd:830
 msgid "사거리 또는 높이 조건을 확인"
 msgstr ""
 
-#: scenes/combat/battle.gd:839
+#: scenes/combat/battle.gd:838
 msgid "전투 준비"
 msgstr ""
 
-#: scenes/combat/battle.gd:845
+#: scenes/combat/battle.gd:844
 msgid "점프 · 착지할 칸을 우클릭합니다.\n같은 칸을 다시 우클릭하면 확정합니다."
 msgstr ""
 
-#: scenes/combat/battle.gd:851
+#: scenes/combat/battle.gd:850
 msgid "점프 · 이동 %d · 보조 행동1\n%s · %s"
 msgstr ""
 
-#: scenes/combat/battle.gd:852
+#: scenes/combat/battle.gd:851
 msgid "기회 공격 %d명"
 msgid_plural "기회 공격 %d명"
 msgstr[0] ""
 msgstr[1] ""
 
-#: scenes/combat/battle.gd:852
+#: scenes/combat/battle.gd:851
 msgid "기회 공격 없음"
 msgstr ""
 
-#: scenes/combat/battle.gd:853
+#: scenes/combat/battle.gd:852
 msgid "낙하 없음"
 msgstr ""
 
@@ -1302,7 +1302,7 @@ msgid "유리 / 불리"
 msgstr ""
 
 #: scenes/help.tscn
-msgid "유리는 공격 능력치 주사위를 두 번 굴려 높은 값을, 불리는 낮은 값을 씁니다. 둘이 함께 있으면 서로 지워져 한 번만 굴립니다. 같은 쪽이 여러 개여도 두 번만 굴립니다."
+msgid "유리는 공격 능력치 주사위를 두 번 굴려 높은 값을, 불리는 낮은 값을 씁니다. 유리 요인과 불리 요인의 수를 비교해 많은 쪽을 쓰고, 같으면 한 번만 굴립니다. 요인이 여러 개여도 두 번만 굴립니다."
 msgstr ""
 
 #: scenes/help.tscn

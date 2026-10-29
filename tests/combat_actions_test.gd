@@ -1688,8 +1688,8 @@ func _test_high_ground() -> void:
 	_check(f.actions.grid.attack_preview(archer, target).mode == CombatChecks.RollMode.NORMAL,
 		"고지대 유리와 높이포함 인접 적 불리는 상쇄")
 	target.is_stunned = true
-	_check(f.actions.grid.attack_preview(archer, target).mode == CombatChecks.RollMode.NORMAL,
-		"고지대와 기절 유리가 함께 있어도 인접 불리와 기존방식으로 상쇄")
+	_check(f.actions.grid.attack_preview(archer, target).mode == CombatChecks.RollMode.ADVANTAGE,
+		"고지대와 기절의 유리 둘은 인접 불리 하나보다 많아 유리")
 	archer.kind = CombatUnit.Kind.WARRIOR
 	target.is_stunned = false
 	target.cell = Vector2i(5, 4)

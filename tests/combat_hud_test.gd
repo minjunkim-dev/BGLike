@@ -728,9 +728,9 @@ func _test_high_ground_guidance() -> void:
 	units[3].cell = Vector2i(4, 5)
 	actions.grid.heights = {units[1].cell: 2, units[3].cell: 1}
 	battle.call("preview_enemy", units[2])
-	_check("유리/불리 상쇄" in hud.preview_label.text and "기절한 대상" in hud.preview_label.text
-		and "고지대" in hud.preview_label.text and "옆에 적" in hud.preview_label.text,
-		"고지대·기절 유리와 인접 불리의 세 원인을 실제 HUD에서 상쇄로 표시")
+	_check(" · 유리\n" in hud.preview_label.text and "상쇄" not in hud.preview_label.text
+		and "기절한 대상" in hud.preview_label.text and "고지대" in hud.preview_label.text and "옆에 적" in hud.preview_label.text,
+		"고지대·기절 유리 둘과 인접 불리 하나의 세 원인을 실제 HUD에서 유리로 표시")
 	units[3].is_stunned = true
 	battle.call("preview_enemy", units[2])
 	_check(" · 유리\n" in hud.preview_label.text and "상쇄" not in hud.preview_label.text,
