@@ -75,6 +75,7 @@ func _run() -> void:
 	await _test_boundary_incapacitated_portrait_join()
 	await _test_order_bar_input()
 	await _test_transparent_order_input()
+	await _test_camera()
 	await _test_reaction_flow()
 	await _test_reaction_focus()
 	await _test_action_animations()
@@ -1605,6 +1606,113 @@ func _test_transparent_order_input() -> void:
 	_reset_units()
 	battle.call("_update_turn_ui")
 	await process_frame
+	await process_frame
+
+
+## #393: 확대·이동 뒤에도 클릭·미리보기·피해 팝업이 같은 맵 위치에 맞고, 화면 원점은 정수 논리 px에 남는다.
+func _test_camera() -> void:
+	var camera: CombatCamera = battle.get_node("Camera") as CombatCamera
+	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	for window_size: Vector2i in [Vector2i(1280, 720), Vector2i(1440, 900), Vector2i(1920, 1080)]:
+		root.size = window_size
+		_reset_units()
+		units[0].cell = Vector2i(4, 4)
+		units[1].cell = Vector2i(0, 0)
+		units[2].cell = Vector2i(6, 3)
+		units[3].cell = Vector2i(9, 9)
+		units[2].reaction_left = 0
+		battle.call("_update_turn_ui")
+		camera.reset()
+		await process_frame
+		var home: Vector2 = camera.position
+		var cell_point: Callable = func(cell: Vector2i) -> Vector2:
+			return map.get_global_transform_with_canvas() * map.map_to_local(cell)
+		var anchor: Vector2 = cell_point.call(Vector2i(5, 4))
+		await _wheel(anchor, MOUSE_BUTTON_WHEEL_UP)
+		_check(camera.zoom == Vector2(2, 2) and (cell_point.call(Vector2i(5, 4)) as Vector2).distance_to(anchor) <= 1.0
+			and _camera_snapped(camera), "휠 위는 포인터 아래 칸을 그대로 둔 채 2배: %s" % window_size)
+		await _wheel(anchor, MOUSE_BUTTON_WHEEL_UP)
+		_check(camera.zoom == Vector2(2, 2), "2배보다 더 확대하지 않음: %s" % window_size)
+		var delta: Vector2 = Vector2(13.5, -7.25)
+		await _drag(anchor, delta)
+		_check((cell_point.call(Vector2i(5, 4)) as Vector2).distance_to(anchor + delta) <= 1.0 and _camera_snapped(camera),
+			"가운데 버튼 드래그는 맵을 포인터와 함께 옮기고 원점을 정수 px에 맞춤: %s" % window_size)
+		var destination: Vector2i = Vector2i(4, 5)
+		await _click(cell_point.call(destination), MOUSE_BUTTON_RIGHT)
+		_check(selection.preview_cell == destination and units[0].cell == Vector2i(4, 4),
+			"확대·이동 뒤 우클릭은 포인터 아래 칸의 이동 미리보기: %s" % window_size)
+		var enemy_point: Vector2 = units[2].get_global_transform_with_canvas() * Vector2(0, -10)
+		await _click(enemy_point)
+		_check(selection.preview_target == units[2] and units[2].is_previewed,
+			"확대·이동 뒤 적 몸통 좌클릭은 공격 미리보기: %s" % window_size)
+		units[2].show_feedback("-3", hud.feedback_obstacles())
+		var popup: Label = units[2].get_parent().get_child(-1) as Label
+		var popup_rect: Rect2 = popup.get_global_transform_with_canvas() * Rect2(Vector2.ZERO, popup.size)
+		_check(popup_rect.size.y >= 2.0 * popup.size.y - 1.0 and popup_rect.get_center().distance_to(enemy_point) <= 64.0,
+			"피해 팝업은 확대한 맵의 대상 위에 2배로 뜸: %s" % window_size)
+		popup.free()
+		await _drag(anchor, Vector2(4000, 3000))
+		var visible: Rect2 = root.get_visible_rect()
+		_check(_camera_snapped(camera) and map.get_used_cells().any(func(cell: Vector2i) -> bool:
+			return visible.has_point(cell_point.call(cell))), "맵을 멀리 끌어도 칸이 화면에 남음: %s" % window_size)
+		await _key(KEY_C)
+		_check(camera.zoom == Vector2.ONE and camera.position == home, "C는 1배 가운데로 되돌림: %s" % window_size)
+		await _wheel(anchor, MOUSE_BUTTON_WHEEL_DOWN)
+		_check(camera.zoom == Vector2.ONE and camera.position == home, "1배보다 축소하지 않음: %s" % window_size)
+	var start: Vector2 = camera.position
+	var key: InputEventKey = InputEventKey.new()
+	key.physical_keycode = KEY_D
+	key.pressed = true
+	Input.parse_input_event(key)
+	for frame: int in range(5):
+		await process_frame
+	key = key.duplicate() as InputEventKey
+	key.pressed = false
+	Input.parse_input_event(key)
+	await process_frame
+	_check(camera.position.x > start.x and camera.position.y == start.y and _camera_snapped(camera),
+		"D를 누르고 있으면 맵이 오른쪽을 보도록 이동")
+	root.size = Vector2i(1280, 720)
+	camera.reset()
+	_reset_units()
+	battle.call("_update_turn_ui")
+	await process_frame
+
+
+func _camera_snapped(camera: Camera2D) -> bool:
+	var origin: Vector2 = camera.get_canvas_transform().origin
+	return origin.is_equal_approx(origin.round())
+
+
+func _wheel(point: Vector2, button_index: MouseButton) -> void:
+	var event: InputEventMouseButton = InputEventMouseButton.new()
+	event.position = root.get_final_transform() * point
+	event.global_position = event.position
+	event.button_index = button_index
+	await _press(event)
+
+
+func _drag(point: Vector2, delta: Vector2) -> void:
+	var event: InputEventMouseButton = InputEventMouseButton.new()
+	event.position = root.get_final_transform() * point
+	event.global_position = event.position
+	event.button_index = MOUSE_BUTTON_MIDDLE
+	event.pressed = true
+	Input.parse_input_event(event)
+	await process_frame
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = root.get_final_transform() * (point + delta)
+	motion.global_position = motion.position
+	motion.relative = root.get_final_transform().basis_xform(delta)
+	motion.button_mask = MOUSE_BUTTON_MASK_MIDDLE
+	Input.parse_input_event(motion)
+	await process_frame
+	event = event.duplicate() as InputEventMouseButton
+	event.pressed = false
+	event.position = motion.position
+	event.global_position = motion.position
+	Input.parse_input_event(event)
 	await process_frame
 
 

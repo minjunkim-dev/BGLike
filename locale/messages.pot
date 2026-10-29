@@ -1022,7 +1022,7 @@ msgstr ""
 
 #: scenes/combat/turn_hud.gd:137
 #: scenes/combat/turn_hud.gd:151
-#: scenes/help.tscn:159
+#: scenes/help.tscn:169
 msgid "반응"
 msgstr ""
 
@@ -1217,79 +1217,87 @@ msgstr ""
 msgid "턴 종료 버튼: 지금 유닛의 턴을 끝냅니다."
 msgstr ""
 
-#: scenes/help.tscn:89
+#: scenes/help.tscn:88
+msgid "휠: 포인터 자리를 중심으로 맵을 2배로 확대하고 다시 1배로 줄입니다. 가운데 버튼 드래그로 맵을 옮깁니다. 트랙패드는 두 손가락으로 옮기고 집기로 확대합니다."
+msgstr ""
+
+#: scenes/help.tscn:94
 msgid "키보드·컨트롤러"
 msgstr ""
 
-#: scenes/help.tscn:93
+#: scenes/help.tscn:98
 msgid "숫자 키 1~9: 아군 턴에 스킬 바의 버튼을 왼쪽부터 고릅니다."
 msgstr ""
 
-#: scenes/help.tscn:98
+#: scenes/help.tscn:103
 msgid "방향키·D-pad: 버튼 사이를 옮깁니다. 전투에서 포커스가 없으면 좌우 입력으로 스킬 바 첫 버튼에 들어갑니다. 도움말·출처 화면에서는 위아래로 글을 스크롤합니다."
 msgstr ""
 
-#: scenes/help.tscn:103
+#: scenes/help.tscn:108
 msgid "Enter·컨트롤러 A: 포커스된 버튼을 누릅니다."
 msgstr ""
 
-#: scenes/help.tscn:108
+#: scenes/help.tscn:113
 msgid "Tab: 같은 묶음의 다음 아군으로 바꿉니다. Shift+Tab은 이전 아군입니다. 바꿔도 자원은 회복하지 않습니다."
 msgstr ""
 
-#: scenes/help.tscn:113
+#: scenes/help.tscn:118
 msgid "Space 누르고 있기: 적 턴을 4배로 빠르게 봅니다. 손을 떼면 보통 속도로 돌아옵니다."
 msgstr ""
 
-#: scenes/help.tscn:118
+#: scenes/help.tscn:123
 msgid "Esc·컨트롤러 Start: 전투·정비 중에 일시정지 메뉴를 열고 닫습니다. 메뉴가 열려 있는 동안 전투가 멈춥니다. 반응 확인 창에서 Esc는 반응을 넘깁니다. 다른 확인 창과 설정·도움말·출처 화면은 Esc로 닫습니다."
 msgstr ""
 
-#: scenes/help.tscn:124
+#: scenes/help.tscn:128
+msgid "WASD: 맵을 옮깁니다. C: 맵을 1배로 줄이고 가운데로 되돌립니다. 맵이 화면 밖으로 나가지 않고, 적 턴에도 움직일 수 있습니다."
+msgstr ""
+
+#: scenes/help.tscn:134
 msgid "유리 / 불리"
 msgstr ""
 
-#: scenes/help.tscn:128
+#: scenes/help.tscn:138
 msgid "유리는 공격 능력치 주사위를 두 번 굴려 높은 값을, 불리는 낮은 값을 씁니다. 둘이 함께 있으면 서로 지워져 한 번만 굴립니다. 같은 쪽이 여러 개여도 두 번만 굴립니다."
 msgstr ""
 
-#: scenes/help.tscn:133
+#: scenes/help.tscn:143
 msgid "기절한 대상을 공격하면 유리입니다. 원거리 공격자의 인접 칸에 기절하지 않은 적이 있으면 불리입니다."
 msgstr ""
 
-#: scenes/help.tscn:138
+#: scenes/help.tscn:148
 msgid "공격 굴림이 방어 굴림보다 높으면 명중합니다. 동점은 방어자 승입니다. 명중률에는 유리/불리와 장비 가산이 반영됩니다."
 msgstr ""
 
-#: scenes/help.tscn:144
+#: scenes/help.tscn:154
 msgid "능력치 주사위 대결"
 msgstr ""
 
-#: scenes/help.tscn:148
+#: scenes/help.tscn:158
 msgid "힘·민첩·솜씨·지능·의지·자연은 각각 능력치 주사위입니다. 공격 능력치는 무기·스킬이 정하고, 기본 근접 공격은 힘으로, 원거리 공격은 민첩으로 막습니다. 실제 거리가 가까워도 원거리 유형은 그대로입니다."
 msgstr ""
 
-#: scenes/help.tscn:153
+#: scenes/help.tscn:163
 msgid "무기의 공격 가산과 방어구의 방어 가산은 굴림 결과에 더합니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 자연 주사위가 독의 강도 이상이면 성공합니다."
 msgstr ""
 
-#: scenes/help.tscn:163
+#: scenes/help.tscn:173
 msgid "반응은 조건이 맞으면 누구의 턴이든 쓰는 실행 기회입니다. 하나뿐이고 자기 턴 시작에 회복합니다. 기회 공격과 흘려내기가 함께 씁니다."
 msgstr ""
 
-#: scenes/help.tscn:168
+#: scenes/help.tscn:178
 msgid "기회 공격(전사·일부 적): 상대가 스스로 인접 칸을 벗어날 때 기본 공격을 합니다. 밀치기와 물러서며 쏘기의 이동은 기회 공격을 받지 않습니다."
 msgstr ""
 
-#: scenes/help.tscn:173
+#: scenes/help.tscn:183
 msgid "흘려내기(전사): 공격이 명중하면 피해를 굴리기 전에 씁니다. 민첩 주사위 +3이 그 공격의 공격 굴림 이상이면 공격을 피합니다."
 msgstr ""
 
-#: scenes/help.tscn:178
+#: scenes/help.tscn:188
 msgid "아군의 반응은 확인 창에서 쓸지 고릅니다. 적의 반응은 자동입니다."
 msgstr ""
 
-#: scenes/help.tscn:186
+#: scenes/help.tscn:196
 #: scenes/main.tscn:192
 #: scenes/settings.tscn:97
 msgid "뒤로"

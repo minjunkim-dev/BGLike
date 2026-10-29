@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scenes/combat/battle.gd" id="1_battle"]
 [ext_resource type="PackedScene" path="res://scenes/combat/unit.tscn" id="2_unit"]
@@ -19,6 +19,7 @@
 [ext_resource type="Resource" path="res://scenes/combat/stages/act3_stage3.tres" id="14_stage3"]
 [ext_resource type="Script" path="res://scenes/combat/map.gd" id="16_map"]
 [ext_resource type="PackedScene" path="res://scenes/pause_menu.tscn" id="17_pause"]
+[ext_resource type="Script" path="res://scenes/combat/camera.gd" id="18_camera"]
 
 [sub_resource type="Theme" id="Theme_legend"]
 default_font_size = 12
@@ -59,6 +60,7 @@ start_cell = Vector2i(0, 5)
 [node name="Camera" type="Camera2D" parent="."]
 position_smoothing_enabled = false
 offset = Vector2(100, 12)
+script = ExtResource("18_camera")
 
 [node name="UI" type="CanvasLayer" parent="."]
 
