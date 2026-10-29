@@ -145,7 +145,7 @@ text = "능력치 주사위 대결"
 
 [node name="Saves1" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
-text = "힘·민첩·솜씨·지능·의지·건강은 각각 능력치 주사위입니다. 공격 능력치는 무기·스킬이 정하고(전사 힘, 궁수 솜씨), 기본 근접 공격은 힘으로, 원거리 공격은 민첩으로 막습니다. 실제 거리가 가까워도 원거리 유형은 그대로입니다."
+text = "힘·민첩·솜씨·지능·의지·건강은 각각 능력치 주사위입니다. 공격 능력치는 무기·스킬이 정하고(전사 힘, 아군 궁수 솜씨), 기본 근접 공격은 힘으로, 원거리 공격은 민첩으로 막습니다. 실제 거리가 가까워도 원거리 유형은 그대로입니다."
 autowrap_mode = 3
 
 [node name="Saves2" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
