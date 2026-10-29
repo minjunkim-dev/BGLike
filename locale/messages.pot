@@ -585,12 +585,12 @@ msgstr ""
 msgid "빗나감"
 msgstr ""
 
-#: scenes/combat/actions.gd
-msgid "(절대성공)"
+#: scenes/combat/actions.gd:962
+msgid "명중(절대성공)"
 msgstr ""
 
-#: scenes/combat/actions.gd
-msgid "(절대실패)"
+#: scenes/combat/actions.gd:964
+msgid "빗나감(절대실패)"
 msgstr ""
 
 #: scenes/combat/actions.gd:972
@@ -1258,7 +1258,7 @@ msgid "스킬 바 버튼: 스킬·밀치기·물약을 고릅니다. 자기에�
 msgstr ""
 
 #: scenes/help.tscn
-msgid "초상: HP·방어·6능력치 주사위·상태를 봅니다. 현재 턴 묶음에서 조작 가능한 아군 초상을 누르면 해당 유닛을 조작합니다."
+msgid "초상: HP·AC·6능력치 주사위·상태를 봅니다. 현재 턴 묶음에서 조작 가능한 아군 초상을 누르면 해당 유닛을 조작합니다."
 msgstr ""
 
 #: scenes/help.tscn

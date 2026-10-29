@@ -959,9 +959,9 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 			mode_name = tr("불리")
 		var outcome: String = tr("명중") if last_attack.success else tr("빗나감")
 		if last_attack.face == CombatChecks.Face.ABSOLUTE_SUCCESS:
-			outcome += tr("(절대성공)")
+			outcome = tr("명중(절대성공)")
 		elif last_attack.face == CombatChecks.Face.ABSOLUTE_FAILURE:
-			outcome += tr("(절대실패)")
+			outcome = tr("빗나감(절대실패)")
 		logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / AC %d · %s") % [
 			actor.get_display_name(), mode_name, CombatUnit.ability_name(attack_ability), attack_sides,
 			str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total, target.get_armor_class(), outcome])

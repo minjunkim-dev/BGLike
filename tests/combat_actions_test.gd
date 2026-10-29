@@ -6,6 +6,7 @@ class Fixture extends RefCounted:
 	var turns: CombatTurns = CombatTurns.new()
 	var actions: CombatActions = CombatActions.new()
 	var hits: Array[bool] = []
+	var logs: Array[String] = []
 
 
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
@@ -45,6 +46,7 @@ func _fixture() -> Fixture:
 	ScriptedDice.arrange_turns(f.turns, f.units, f.units)
 	f.actions.initialize(f.units, f.turns)
 	f.actions.hit_landed.connect(f.hits.append.bind(true))
+	f.actions.logged.connect(f.logs.append)
 	return f
 
 
@@ -2124,6 +2126,8 @@ func _test_attacks() -> void:
 	_check(actor.action_left == 0 and target.hit_points == 12 and f.actions.last_damage == 0
 		and f.actions.last_attack.face == CombatChecks.Face.ABSOLUTE_FAILURE,
 		"절대실패면 1은 빗나가고 행동을 소비하며 피해 없음")
+	_check(f.logs.any(func(line: String) -> bool: return "힘 d20 [1] +0 = 1 / AC 4 · 빗나감(절대실패)" in line),
+		"절대실패 빗나감은 로그에 절대실패로 표시")
 	_check(f.hits.is_empty(), "빗나감은 타격음을 요청하지 않음")
 	_check(not await f.actions.attack(actor, target), "행동 없는 재공격 거부")
 	actor.action_left = 1
@@ -2132,6 +2136,9 @@ func _test_attacks() -> void:
 	_check(f.actions.last_damage_rolls == [1] and f.actions.last_attack.rolls == [20]
 		and f.actions.last_attack.face == CombatChecks.Face.ABSOLUTE_SUCCESS,
 		"절대성공 최댓값도 치명타 없이 무기 주사위 한 개")
+	_check(f.logs.any(func(line: String) -> bool: return "힘 d20 [20] +0 = 20 / AC 4 · 명중(절대성공)" in line)
+		and not f.logs.any(func(line: String) -> bool: return "치명타" in line),
+		"절대성공 명중은 로그에 절대성공으로 표시하고 치명타 문구 없음")
 	var total: int = 3
 	for rolled: int in f.actions.last_damage_rolls:
 		total += rolled

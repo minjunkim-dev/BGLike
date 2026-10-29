@@ -115,7 +115,7 @@ static func defend_against(attack_result: RollResult, defense_sides: int,
 	result.selected_roll = attack_result.selected_roll
 	result.total = attack_result.total
 	result.mode = attack_result.mode
-	result.defender_roll = dice.roll(defense_sides)
+	result.defender_roll = face_value(defense_sides, dice.roll(defense_sides))
 	result.defender_total = result.defender_roll + defense_bonus
 	result.success = result.total > result.defender_total
 	return result
