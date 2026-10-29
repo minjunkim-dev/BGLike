@@ -37,6 +37,11 @@ static func arrange_turns(turns: CombatTurns, units: Array[CombatUnit], desired:
 	turns.turn_started.emit(ordered[0])
 
 
+## 공격 fixture의 면 수. 굴리는 유닛의 공격 능력치에서 읽어 주사위가 바뀌어도 fixture 의도를 유지한다 (#387).
+static func attack_sides(unit: CombatUnit) -> int:
+	return unit.get_ability_sides(unit.get_attack_ability())
+
+
 func _init(values: Array[int], sides: Array[int] = [], chances: Array[float] = []) -> void:
 	_values = values.duplicate()
 	_sides = sides.duplicate()

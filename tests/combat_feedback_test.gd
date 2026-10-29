@@ -91,9 +91,9 @@ func _run() -> void:
 	await create_timer(1.0).timeout
 	_check(popup_samples > 0, "반복 공격에서 실제 팝업을 관찰함")
 	_check(collisions.is_empty(), "반복 공격 팝업 겹침 없음: %s" % str(collisions))
-	_check(not popup_styles.has("치명타!"), "능력치 대결은 치명타 팝업을 생성하지 않음")
+	_check(not popup_styles.has("치명타!"), "치명타 팝업을 생성하지 않음")
 	_check(popup_styles.get("빗나감", []) == [CombatUnit.WEAPON_COLOR, 10]
-		and not popup_styles.has("자동 실패"), "방어 합계 이하의 공격은 빗나감 팝업")
+		and not popup_styles.has("자동 실패"), "방어 합계 이하의 공격은 자동 실패 대신 빗나감 팝업")
 	_check(popup_styles.keys().all(func(text: String) -> bool:
 		return not text.begins_with("공격 ") and not text.begins_with("-")),
 		"공격자 판정 합계 팝업과 피해 부호 없음: %s" % str(popup_styles.keys()))
@@ -170,8 +170,13 @@ func _test_shock_feedback() -> void:
 		var actions: CombatActions = battle.get("actions") as CombatActions
 		if marked:
 			_check(actions.mark(archer, target), "충격 화살 전 표식 적용")
-		actions.dice = (ScriptedDice.new([15, 1, 2, 1], [20, 6, 6, 6]) if marked
-			else ScriptedDice.new([15, 1, 2], [20, 6, 6]))
+		var sides: Array[int] = [ScriptedDice.attack_sides(archer), archer.get_damage_sides()]
+		if marked:
+			sides.append(6)  # 표식 추가 피해 1d6
+		var values: Array[int] = [15, 2]
+		if marked:
+			values.append(1)
+		actions.dice = ScriptedDice.new(values, sides)
 		battle.call("_update_turn_ui")
 		_check(await actions.attack(archer, target, true), "실제 충격 화살 실행")
 		_check(target.is_stunned and target.has_mark == marked, "기절·표식 상태 유지")
@@ -202,7 +207,8 @@ func _test_crowded_feedback() -> void:
 		units[index].reaction_left = 0
 	ScriptedDice.arrange_turns(turns, units, [attacker])
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.dice = ScriptedDice.new([4, 1, 4, 1], [4, 6, 4, 6])
+	# 새끼 거미 힘 최댓값4 + 3은 궁수 AC7과 같아 두 번 모두 명중하고, 피해 주사위가 없다.
+	actions.dice = ScriptedDice.new([4, 4], [ScriptedDice.attack_sides(attacker), ScriptedDice.attack_sides(attacker)])
 	battle.call("_update_turn_ui")
 	_check(turns.current_unit == attacker and attacker.kind == CombatUnit.Kind.SPIDERLING
 		and archer.kind == CombatUnit.Kind.ARCHER, "밀집 팝업 전제조건: 새끼 거미 차례, 궁수 대상")

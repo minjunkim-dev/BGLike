@@ -75,7 +75,7 @@ autowrap_mode = 3
 
 [node name="Mouse4" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
-text = "초상: HP·방어·6능력치 주사위·상태를 봅니다. 현재 턴 묶음에서 조작 가능한 아군 초상을 누르면 해당 유닛을 조작합니다."
+text = "초상: HP·AC·6능력치 주사위·상태를 봅니다. 현재 턴 묶음에서 조작 가능한 아군 초상을 누르면 해당 유닛을 조작합니다."
 autowrap_mode = 3
 
 [node name="Mouse5" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
@@ -135,22 +135,22 @@ autowrap_mode = 3
 
 [node name="Advantage3" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
-text = "공격 굴림이 방어 굴림보다 높으면 명중합니다. 동점은 방어자 승입니다. 명중률에는 유리/불리와 장비 가산이 반영됩니다."
+text = "명중굴림: 공격자만 공격 능력치 주사위를 굴리고, 공격 굴림이 대상의 AC 이상이면 명중합니다. 대상은 굴리지 않습니다. 명중률에는 유리/불리, 절대면, 장비 가산이 반영됩니다."
 autowrap_mode = 3
 
 [node name="SavesHeading" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
-text = "능력치 주사위 대결"
+text = "능력치 주사위와 AC"
 
 [node name="Saves1" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
-text = "힘·민첩·솜씨·지능·의지·건강은 각각 능력치 주사위입니다. 공격 능력치는 무기·스킬이 정하고(전사 힘, 아군 궁수 솜씨), 기본 근접 공격은 힘으로, 원거리 공격은 민첩으로 막습니다. 실제 거리가 가까워도 원거리 유형은 그대로입니다."
+text = "힘·민첩·솜씨·지능·의지·건강은 각각 능력치 주사위입니다. 공격 능력치는 무기·스킬이 정합니다(전사 힘, 아군 궁수 솜씨). AC는 민첩 주사위의 표준값(d4 3, d6 4, d8 5, d10 6, d12 7, d20 11)에 방어 가산을 더한 고정값입니다."
 autowrap_mode = 3
 
 [node name="Saves2" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
-text = "무기의 공격 가산과 방어구의 방어 가산은 굴림 결과에 더합니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 주사위가 독의 강도 이상이면 성공합니다."
+text = "모든 주사위의 1은 절대실패, d12의 12와 d20의 18~20은 절대성공입니다. 절대성공은 AC와 무관하게 명중하고, 절대실패는 가산이 있어도 빗나갑니다. 무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC에 더합니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 밀치기·만능팔·회전회오리는 아직 양쪽이 주사위를 굴리는 대결입니다. 독 제거는 건강 주사위가 독의 강도 이상이면 성공합니다."
 autowrap_mode = 3
 
 [node name="ReactionsHeading" type="Label" parent="Margin/Layout/HelpScroll/Topics"]

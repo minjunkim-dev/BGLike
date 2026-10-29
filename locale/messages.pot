@@ -172,78 +172,68 @@ msgid "피해: 1d%d%s"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:103
-msgid "%s d%d %+d 대 %s"
+msgid "%s d%d %+d 대 AC"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:105
-#: scenes/combat/unit.gd:11
-msgid "민첩"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:105
-#: scenes/combat/unit.gd:11
-msgid "힘"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:109
-#: scenes/combat/action_rules.gd:116
+#: scenes/combat/action_rules.gd:108
+#: scenes/combat/action_rules.gd:115
 msgid "사거리: 인접1칸"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:109
-#: scenes/combat/action_rules.gd:112
-#: scenes/combat/action_rules.gd:114
+#: scenes/combat/action_rules.gd:108
+#: scenes/combat/action_rules.gd:111
+#: scenes/combat/action_rules.gd:113
 msgid "사거리: 1~%d칸"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:110
+#: scenes/combat/action_rules.gd:109
 msgid "판정: %s"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:112
+#: scenes/combat/action_rules.gd:111
 msgid "판정: %s, 명중하면 기절"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:114
-#: scenes/combat/action_rules.gd:118
-#: scenes/combat/action_rules.gd:120
-#: scenes/combat/action_rules.gd:122
-#: scenes/combat/action_rules.gd:124
+#: scenes/combat/action_rules.gd:113
+#: scenes/combat/action_rules.gd:117
+#: scenes/combat/action_rules.gd:119
+#: scenes/combat/action_rules.gd:121
+#: scenes/combat/action_rules.gd:123
 msgid "판정: 없음"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:116
+#: scenes/combat/action_rules.gd:115
 msgid "판정: 힘 d%d %+d 대 힘"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:118
+#: scenes/combat/action_rules.gd:117
 msgid "사거리: 1~2칸"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:120
-#: scenes/combat/action_rules.gd:122
-#: scenes/combat/action_rules.gd:124
-#: scenes/combat/action_rules.gd:126
+#: scenes/combat/action_rules.gd:119
+#: scenes/combat/action_rules.gd:121
+#: scenes/combat/action_rules.gd:123
+#: scenes/combat/action_rules.gd:125
 msgid "사거리: 자신"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:120
+#: scenes/combat/action_rules.gd:119
 msgid "회복: 1d10+1"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:122
+#: scenes/combat/action_rules.gd:121
 msgid "회복: 2d4+2"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:126
+#: scenes/combat/action_rules.gd:125
 msgid "판정: 민첩 d%d +3이 공격 굴림 이상"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:132
+#: scenes/combat/action_rules.gd:131
 msgid "인접한 적을 기본 공격합니다."
 msgstr ""
 
-#: scenes/combat/action_rules.gd:132
+#: scenes/combat/action_rules.gd:131
 msgid "1~6칸 원거리 공격.\n옆에 적이 있으면 불리."
 msgstr ""
 
@@ -345,7 +335,7 @@ msgstr ""
 #: scenes/combat/actions.gd:445
 #: scenes/combat/actions.gd:477
 #: scenes/combat/actions.gd:1033
-#: scenes/combat/unit.gd:248
+#: scenes/combat/unit.gd:256
 msgid "독"
 msgstr ""
 
@@ -359,7 +349,7 @@ msgstr ""
 
 #: scenes/combat/actions.gd:380
 #: scenes/combat/actions.gd:1033
-#: scenes/combat/unit.gd:248
+#: scenes/combat/unit.gd:256
 msgid "화상"
 msgstr ""
 
@@ -570,22 +560,28 @@ msgstr ""
 msgid "불리"
 msgstr ""
 
-#: scenes/combat/actions.gd:966
-msgid "%s 공격(%s): %s d%d %s %+d = %d / %s d%d %d %+d = %d · %s"
-msgstr ""
-
-#: scenes/combat/actions.gd:970
-#: scenes/combat/actions.gd:975
+#: scenes/combat/actions.gd:965
 msgid "명중"
 msgstr ""
 
-#: scenes/combat/actions.gd:970
-#: scenes/combat/actions.gd:975
+#: scenes/combat/actions.gd:965
 #: scenes/combat/actions.gd:977
 msgid "빗나감"
 msgstr ""
 
-#: scenes/combat/actions.gd:972
+#: scenes/combat/actions.gd:968
+msgid "절대성공"
+msgstr ""
+
+#: scenes/combat/actions.gd:968
+msgid "절대실패"
+msgstr ""
+
+#: scenes/combat/actions.gd:969
+msgid "%s 공격(%s): %s d%d %s %+d = %d / AC %d · %s"
+msgstr ""
+
+#: scenes/combat/actions.gd:973
 msgid "%s 방어: %s d%d %d %+d = %d / 공통 공격 %d · %s"
 msgstr ""
 
@@ -624,8 +620,8 @@ msgstr ""
 
 #: scenes/combat/actions.gd:1017
 #: scenes/combat/turn_hud.gd:343
-#: scenes/combat/unit.gd:220
-#: scenes/combat/unit.gd:524
+#: scenes/combat/unit.gd:228
+#: scenes/combat/unit.gd:532
 msgid "기절"
 msgstr ""
 
@@ -1176,7 +1172,7 @@ msgid "기회 공격 면제"
 msgstr ""
 
 #: scenes/combat/turn_hud.gd:357
-msgid "HP %d / %d   방어 %+d\n힘 d%d · 민첩 d%d · 솜씨 d%d\n지능 d%d · 의지 d%d · 건강 d%d\n공격 %+d · 사거리 %d칸\n상태: %s"
+msgid "HP %d / %d   AC %d\n힘 d%d · 민첩 d%d · 솜씨 d%d\n지능 d%d · 의지 d%d · 건강 d%d\n공격 %+d · 사거리 %d칸\n상태: %s"
 msgstr ""
 
 #: scenes/combat/turn_hud.gd:374
@@ -1199,6 +1195,14 @@ msgstr ""
 msgid "⌛"
 msgstr ""
 
+#: scenes/combat/unit.gd:11
+msgid "힘"
+msgstr ""
+
+#: scenes/combat/unit.gd:11
+msgid "민첩"
+msgstr ""
+
 #: scenes/combat/unit.gd:12
 msgid "솜씨"
 msgstr ""
@@ -1215,11 +1219,11 @@ msgstr ""
 msgid "건강"
 msgstr ""
 
-#: scenes/combat/unit.gd:202
+#: scenes/combat/unit.gd:210
 msgid "아군 전사"
 msgstr ""
 
-#: scenes/combat/unit.gd:202
+#: scenes/combat/unit.gd:210
 msgid "아군 궁수"
 msgstr ""
 
@@ -1250,7 +1254,7 @@ msgid "스킬 바 버튼: 스킬·밀치기·물약을 고릅니다. 자기에�
 msgstr ""
 
 #: scenes/help.tscn
-msgid "초상: HP·방어·6능력치 주사위·상태를 봅니다. 현재 턴 묶음에서 조작 가능한 아군 초상을 누르면 해당 유닛을 조작합니다."
+msgid "초상: HP·AC·6능력치 주사위·상태를 봅니다. 현재 턴 묶음에서 조작 가능한 아군 초상을 누르면 해당 유닛을 조작합니다."
 msgstr ""
 
 #: scenes/help.tscn
@@ -1298,19 +1302,19 @@ msgid "기절한 대상을 공격하면 유리입니다. 원거리 공격자의 
 msgstr ""
 
 #: scenes/help.tscn
-msgid "공격 굴림이 방어 굴림보다 높으면 명중합니다. 동점은 방어자 승입니다. 명중률에는 유리/불리와 장비 가산이 반영됩니다."
+msgid "명중굴림: 공격자만 공격 능력치 주사위를 굴리고, 공격 굴림이 대상의 AC 이상이면 명중합니다. 대상은 굴리지 않습니다. 명중률에는 유리/불리, 절대면, 장비 가산이 반영됩니다."
 msgstr ""
 
 #: scenes/help.tscn
-msgid "능력치 주사위 대결"
+msgid "능력치 주사위와 AC"
 msgstr ""
 
 #: scenes/help.tscn
-msgid "힘·민첩·솜씨·지능·의지·건강은 각각 능력치 주사위입니다. 공격 능력치는 무기·스킬이 정하고(전사 힘, 아군 궁수 솜씨), 기본 근접 공격은 힘으로, 원거리 공격은 민첩으로 막습니다. 실제 거리가 가까워도 원거리 유형은 그대로입니다."
+msgid "힘·민첩·솜씨·지능·의지·건강은 각각 능력치 주사위입니다. 공격 능력치는 무기·스킬이 정합니다(전사 힘, 아군 궁수 솜씨). AC는 민첩 주사위의 표준값(d4 3, d6 4, d8 5, d10 6, d12 7, d20 11)에 방어 가산을 더한 고정값입니다."
 msgstr ""
 
 #: scenes/help.tscn
-msgid "무기의 공격 가산과 방어구의 방어 가산은 굴림 결과에 더합니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 주사위가 독의 강도 이상이면 성공합니다."
+msgid "모든 주사위의 1은 절대실패, d12의 12와 d20의 18~20은 절대성공입니다. 절대성공은 AC와 무관하게 명중하고, 절대실패는 가산이 있어도 빗나갑니다. 무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC에 더합니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 밀치기·만능팔·회전회오리는 아직 양쪽이 주사위를 굴리는 대결입니다. 독 제거는 건강 주사위가 독의 강도 이상이면 성공합니다."
 msgstr ""
 
 #: scenes/help.tscn

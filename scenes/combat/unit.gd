@@ -151,6 +151,14 @@ func is_ranged_attack() -> bool:
 	return kind == Kind.ARCHER
 
 
+## AC = 민첩 표준값 + 방어 가산 (능력치 기획서 4-3). 몬스터 정의의 armor_class가 있으면 그 값을 쓴다.
+func get_armor_class() -> int:
+	var definition: Dictionary = {} if is_ally else CombatEnemyDefinitions.for_kind(kind)
+	if definition.has("armor_class"):
+		return int(definition["armor_class"])
+	return CombatChecks.standard_value(get_ability_sides(Ability.AGILITY)) + get_defense_bonus()
+
+
 func get_defense_bonus() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["defense_bonus"])

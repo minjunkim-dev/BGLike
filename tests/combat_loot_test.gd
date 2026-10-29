@@ -1088,10 +1088,10 @@ func _test_scaled_combat() -> void:
 	ScriptedDice.arrange_turns(turns, units, [actor, target])
 	_check(turns.current_unit == actor, "장비 전투 fixture는 검사 대상 적이 먼저 행동")
 	var preview: CombatChecks.AttackPreview = (battle.get("actions") as CombatActions).grid.attack_preview(actor, target)
-	_check(is_equal_approx(preview.chance, 0.375), "3막 야만인 힘d10+3 대 아군 힘d20 미리보기")
+	_check(target.get_armor_class() == 5 and is_equal_approx(preview.chance, 0.9), "3막 야만인 힘d10+3 대 장비 없는 전사 AC5 미리보기")
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	target.reaction_left = 0
-	actions.dice = ScriptedDice.new([10, 1, 2], [10, 20, 4])
+	actions.dice = ScriptedDice.new([10, 2], [ScriptedDice.attack_sides(actor), actor.get_damage_sides()])
 	var used: bool = await actions.attack(actor, target)
 	_check(used and actions.last_attack.success
 		and actions.last_attack.total == actions.last_attack.selected_roll + 3,
@@ -1152,7 +1152,7 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	turns.select_unit(party[0])
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	target.reaction_left = 0
-	actions.dice = ScriptedDice.new([19, 1, 2], [20, 10, 8])
+	actions.dice = ScriptedDice.new([16, 2], [ScriptedDice.attack_sides(party[0]), party[0].get_damage_sides()])
 	await actions.attack(party[0], target)
 	_check(actions.last_attack.success and actions.last_attack.total == actions.last_attack.selected_roll + 2,
 		"실제 공격 판정은 무기 명중+2 포함")
@@ -1166,7 +1166,7 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	party[0].cell = Vector2i(4, 1)
 	units[3].cell = Vector2i(4, 0)
 	var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(party[0], units[3])
-	_check(is_equal_approx(preview.chance, 0.9625), "명중 미리보기도 힘d20 장비+2 대 힘d4")
+	_check(units[3].get_armor_class() == 6 and is_equal_approx(preview.chance, 0.85), "명중 미리보기도 힘d20 장비+2 대 풋내기 궁수 AC6")
 
 
 func _enter_dialog(dialog: ConfirmationDialog) -> void:

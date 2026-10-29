@@ -100,9 +100,8 @@ static func details(actor: CombatUnit, action: String) -> String:
 	var melee: bool = actor.get_attack_range() == 1
 	var weapon: String = TranslationServer.tr("피해: 1d%d%s") % [actor.get_damage_sides(),
 		"" if actor.get_damage_bonus() == 0 else "%+d" % actor.get_damage_bonus()]
-	var hit: String = TranslationServer.tr("%s d%d %+d 대 %s") % [CombatUnit.ability_name(actor.get_attack_ability()),
-		actor.get_ability_sides(actor.get_attack_ability()), actor.get_attack_bonus(),
-		TranslationServer.tr("민첩") if actor.is_ranged_attack() else TranslationServer.tr("힘")]
+	var hit: String = TranslationServer.tr("%s d%d %+d 대 AC") % [CombatUnit.ability_name(actor.get_attack_ability()),
+		actor.get_ability_sides(actor.get_attack_ability()), actor.get_attack_bonus()]
 	var lines: Array[String] = []
 	match action:
 		"attack", "opportunity":

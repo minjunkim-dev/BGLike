@@ -946,13 +946,13 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
 		return
 	var attack_ability: CombatUnit.Ability = actor.get_attack_ability()
-	var defense_ability: CombatUnit.Ability = CombatUnit.Ability.AGILITY if actor.is_ranged_attack() else CombatUnit.Ability.STRENGTH
 	var attack_sides: int = actor.get_ability_sides(attack_ability)
+	# 회전회오리의 공통 공격은 내성굴림 이관 전까지 대상의 방어 굴림과 대결한다.
+	var defense_ability: CombatUnit.Ability = CombatUnit.Ability.AGILITY if actor.is_ranged_attack() else CombatUnit.Ability.STRENGTH
 	var defense_sides: int = target.get_ability_sides(defense_ability)
 	if shared_roll == null:
 		var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
-		last_attack = CombatChecks.opposed_attack(attack_sides, defense_sides,
-			actor.get_attack_bonus(), target.get_defense_bonus(), preview.mode, dice)
+		last_attack = CombatChecks.hit_roll(attack_sides, actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
 	else:
 		last_attack = CombatChecks.defend_against(shared_roll, defense_sides, target.get_defense_bonus(), dice)
 	last_damage = 0
@@ -962,17 +962,17 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 		mode_name = tr("유리")
 	elif last_attack.mode == CombatChecks.RollMode.DISADVANTAGE:
 		mode_name = tr("불리")
+	var outcome: String = tr("명중") if last_attack.success else tr("빗나감")
 	if shared_roll == null:
-		logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / %s d%d %d %+d = %d · %s") % [
+		if last_attack.absolute != 0:
+			outcome += " · " + (tr("절대성공") if last_attack.absolute > 0 else tr("절대실패"))
+		logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / AC %d · %s") % [
 			actor.get_display_name(), mode_name, CombatUnit.ability_name(attack_ability), attack_sides,
-			str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total,
-			CombatUnit.ability_name(defense_ability), defense_sides, last_attack.defender_roll,
-			target.get_defense_bonus(), last_attack.defender_total, tr("명중") if last_attack.success else tr("빗나감")])
+			str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total, target.get_armor_class(), outcome])
 	else:
 		logged.emit(tr("%s 방어: %s d%d %d %+d = %d / 공통 공격 %d · %s") % [target.get_display_name(),
 			CombatUnit.ability_name(defense_ability), defense_sides, last_attack.defender_roll,
-			target.get_defense_bonus(), last_attack.defender_total, last_attack.total,
-			tr("명중") if last_attack.success else tr("빗나감")])
+			target.get_defense_bonus(), last_attack.defender_total, last_attack.total, outcome])
 	if not last_attack.success:
 		feedback.emit(target, tr("빗나감"))
 		return
