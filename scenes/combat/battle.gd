@@ -41,7 +41,7 @@ var staging: HBoxContainer
 var start_button: Button
 
 @onready var map: CombatMap = $Map
-@onready var camera: Camera2D = $Camera
+@onready var camera: CombatCamera = $Camera
 @onready var hud: CombatTurnHud = $UI/TurnHud
 @onready var pause_menu: PauseMenu = $Pause/PauseMenu
 
@@ -177,8 +177,7 @@ func _build_stage() -> CombatStage:
 		unit.reparent($Units, false)
 		units.append(unit)
 	enemies.free()
-	camera.position = (map.map_to_local(Vector2i.ZERO)
-		+ map.map_to_local(map_size - Vector2i.ONE)) / 2.0
+	camera.frame(map, map_size)
 	selection.reset()
 	hud.begin_stage(progress.act_number(), progress.stage_in_act())
 	actions.initialize(units, turns)
