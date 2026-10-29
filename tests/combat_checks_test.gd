@@ -84,8 +84,8 @@ func _unit(kind: CombatUnit.Kind, ally: bool, cell: Vector2i) -> CombatUnit:
 
 func _test_ability_dice() -> void:
 	for profile: Array in [
-		[CombatUnit.Kind.WARRIOR, true, [20, 8, 6, 4, 12, 6]],
-		[CombatUnit.Kind.ARCHER, true, [8, 20, 12, 6, 4, 6]],
+		[CombatUnit.Kind.WARRIOR, true, [20, 8, 6, 4, 6, 12]],
+		[CombatUnit.Kind.ARCHER, true, [6, 12, 20, 6, 4, 8]],
 		[CombatUnit.Kind.WARRIOR, false, [10, 6, 4, 4, 4, 4]],
 		[CombatUnit.Kind.ARCHER, false, [4, 10, 4, 4, 4, 4]],
 		[CombatUnit.Kind.SPIDERLING, false, [4, 8, 4, 4, 4, 4]],
@@ -139,7 +139,7 @@ func _test_opposed_rolls() -> void:
 	result = CombatChecks.threshold(8, 3, 7, ScriptedDice.new([4], [8]))
 	_check(result.success and result.total == 7, "흘려내기 민첩 +3은 같은 공격값에도 성공")
 	result = CombatChecks.threshold(6, 0, 4, ScriptedDice.new([4], [6]))
-	_check(result.success, "자연 d6 대 독 강도4는 동점 제거 성공")
+	_check(result.success, "건강 d6 대 독 강도4는 동점 제거 성공")
 	_check(is_equal_approx(CombatChecks.threshold_chance(6, 0, 4), 0.5), "독 제거 확률 50%")
 	_check(CombatChecks.threshold_chance(8, 3, 30) == 0.0
 		and CombatChecks.threshold_chance(8, 3, 1) == 1.0, "흘려내기 확률은 0~100%")
@@ -212,10 +212,10 @@ func _test_battle_rolls() -> void:
 		and actions.last_attack.total == 10 and warrior.parry_left == 1,
 		"흘려내기 민첩7+3이 이미 굴린 공격10과 같으면 방어, 피해 주사위 없음")
 	_check(actions.apply_status(barbarian, warrior, "poison"), "강도4 독 부여")
-	actions.dice = ScriptedDice.new([4], [6])
+	actions.dice = ScriptedDice.new([4], [12])
 	turns.end_turn()
 	_check(warrior.get_status_count("poison") == 0 and warrior.hit_points == before,
-		"턴 시작 자연d6의4로 독 강도4 제거 후 독 피해 없음")
+		"턴 시작 건강d12의4로 독 강도4 제거 후 독 피해 없음")
 	var boss: CombatUnit = _unit(CombatUnit.Kind.SCRAP_ROBOT_3000, false, Vector2i(4, 4))
 	warrior.cell = Vector2i(4, 3)
 	archer.cell = Vector2i(4, 5)
@@ -223,7 +223,7 @@ func _test_battle_rolls() -> void:
 	actions.initialize(units, turns)
 	ScriptedDice.arrange_turns(turns, units, [boss, warrior, archer])
 	actions.replay_answers = [false]
-	actions.dice = ScriptedDice.new([8, 1, 2, 1, 3], [12, 20, 8, 8, 8])
+	actions.dice = ScriptedDice.new([8, 1, 2, 1, 3], [12, 20, 8, 6, 8])
 	var warrior_before: int = warrior.hit_points
 	var archer_before: int = archer.hit_points
 	_check(await actions.spin(boss) and warrior.hit_points == warrior_before - 4
@@ -402,7 +402,7 @@ func _test_preview_conditions() -> void:
 	target.is_ally = false
 	target.hit_points = 0
 	_check(not grid.attack_preview(archer, target).valid_target, "전투 불능 대상 거부")
-	_check(archer.get_ability_sides(CombatUnit.Ability.WILL) == 12, "전사 의지 d12")
+	_check(archer.get_ability_sides(CombatUnit.Ability.WILL) == 6, "전사 의지 d6")
 	_check(target.get_ability_sides(CombatUnit.Ability.WILL) == 4, "풋내기 궁수 의지 d4")
 
 

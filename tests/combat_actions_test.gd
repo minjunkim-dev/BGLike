@@ -950,7 +950,7 @@ func _test_spin_attacks() -> void:
 	f.turns.current_unit = boss
 	f.units[1].cell = Vector2i(5, 3)
 	f.units[0].parry_left = 0
-	f.actions.dice = _dice_for([6, 9, 2, 6], [12, 20, 8, 8])
+	f.actions.dice = _dice_for([6, 9, 2, 6], [12, 20, 6, 8])
 	_check(await f.actions.spin(boss), "회전회오리 실행")
 	_check(f.units[0].hit_points == 12 and f.units[1].hit_points == 6,
 		"공통 힘 d12의6+3에 각 대상이 방어해 첫 동점은 빗나가고 두 번째만 1d8+2 피해")
@@ -1053,11 +1053,11 @@ func _test_spin_reactions_and_reuse() -> void:
 			and not f.actions.can_use(boss, "spin"), "첫 대상의 반응을 기다리는 동안 다음 대상 판정과 중복 입력을 잠금")
 		f.actions.resolve_reaction(true)
 	)
-	f.actions.dice = _dice_for([5, 1, 5, 1, 1], [12, 20, 8, 8, 8])
+	f.actions.dice = _dice_for([5, 1, 5, 1, 1], [12, 20, 8, 6, 8])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 12 and f.units[1].hit_points == 11
 		and f.units[0].reaction_left == 0 and f.units[0].parry_left == 1,
 		"첫 대상은 같은 공격 합계8을 민첩5+3 흘려내기로 막고 다음 대상은 독립 피해를 받음")
-	f.actions.dice = _dice_for([12, 1, 3, 1, 1], [12, 20, 8, 8, 8])
+	f.actions.dice = _dice_for([12, 1, 3, 1, 1], [12, 20, 8, 6, 8])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 7 and f.units[1].hit_points == 8
 		and prompts == ["parry"] and boss.action_left == 0,
 		"과부하 같은 턴에 회전회오리를 다시 쓰며 공통 최댓값에도 피해를 한 번씩 굴리고 소비한 반응을 유지")
@@ -1078,7 +1078,7 @@ func _test_spin_incapacitation() -> void:
 	f.units[0].parry_left = 0
 	f.units[1].cell = Vector2i(5, 3)
 	ScriptedDice.arrange_turns(f.turns, f.units, [f.units[2], f.units[1], f.units[0], f.units[3]])
-	f.actions.dice = _dice_for([11, 1, 1, 1, 2], [12, 20, 8, 8, 8])
+	f.actions.dice = _dice_for([11, 1, 1, 1, 2], [12, 20, 8, 6, 8])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 0
 		and f.units[1].hit_points == 10 and boss.action_left == 0,
 		"첫 대상 전투 불능 뒤 남은 대상 공격과 한 번 소비한 행동을 유지")
@@ -1115,7 +1115,7 @@ func _test_pull_success() -> void:
 	reactor.cell = Vector2i(7, 3)
 	_check(CombatGrid.distance(reactor.cell, target.cell) == 1,
 		"만능팔 검사 대상은 다른 적의 기회 공격 위협 칸에서 시작")
-	f.actions.dice = _dice_for([12, 1], [12, 8])
+	f.actions.dice = _dice_for([12, 1], [12, 6])
 	_check(f.actions.pull(boss, target), "거리3 만능팔 실행")
 	_check(target.cell == Vector2i(5, 4) and target.hit_points == 14
 		and target.movement_left == 6 and reactor.reaction_left == 1,
@@ -1135,9 +1135,9 @@ func _test_pull_contest_and_cooldown() -> void:
 	target.cell = Vector2i(7, 4)
 	f.units[3].cell = Vector2i(9, 9)
 	ScriptedDice.arrange_turns(f.turns, f.units, [f.units[2], f.units[1], f.units[0], f.units[3]])
-	f.actions.dice = _dice_for([5, 8], [12, 8])
+	f.actions.dice = _dice_for([3, 6], [12, 6])
 	_check(f.actions.pull(boss, target) and target.cell == Vector2i(7, 4),
-		"만능팔은 대상 힘 d8을 사용하며 대결 동점은 방어자 승리")
+		"만능팔은 대상 힘 d6을 사용하며 대결 동점은 방어자 승리")
 	_check(boss.action_left == 1 and not f.actions.can_use(boss, "pull")
 		and not f.actions.pull(boss, target), "실패해도 과부하 두 번째 행동으로 만능팔 재사용 불가")
 	for turn: int in range(4):
@@ -1167,7 +1167,7 @@ func _test_pull_destinations() -> void:
 		f.units[0].cell = Vector2i(1, 1)
 		f.units[1].cell = Vector2i(6, 5)
 		f.units[3].cell = Vector2i(9, 9)
-		f.actions.dice = _dice_for([12, 1, choice], [12, 8, 2])
+		f.actions.dice = _dice_for([12, 1, choice], [12, 6, 2])
 		_check(f.actions.pull(boss, f.units[1])
 			and f.units[1].cell == [Vector2i(5, 4), Vector2i(4, 5)][choice - 1],
 			"대상에게 같은 거리인 인접 빈 칸 두 곳을 d2로 선택")
@@ -1185,7 +1185,7 @@ func _test_pull_destinations() -> void:
 			"만능팔은 거리2~3만 대상")
 	f.units[1].cell = Vector2i(6, 5)
 	f.units[3].cell = Vector2i(5, 4)
-	f.actions.dice = _dice_for([12, 1], [12, 8])
+	f.actions.dice = _dice_for([12, 1], [12, 6])
 	_check(f.actions.pull(boss, f.units[1]) and f.units[1].cell == Vector2i(4, 5),
 		"가장 가까운 한 칸이 차 있으면 남은 가까운 빈 칸을 선택")
 	boss.begin_stage(false)
@@ -1313,9 +1313,9 @@ func _test_novice_stats() -> void:
 		and not CombatActionRules.belongs_to(f.units[3], "opportunity")
 		and not CombatActionRules.belongs_to(f.units[3], "mark")
 		and not CombatActionRules.belongs_to(f.units[3], "shock"), "풋내기 궁수는 물러서며 쏘기만 사용")
-	_check(_ability_sides(f.units[0]) == [20, 8, 6, 4, 12, 6]
+	_check(_ability_sides(f.units[0]) == [20, 8, 6, 4, 6, 12]
 		and f.units[0].get_defense_bonus() == 0 and f.units[0].get_damage_bonus() == 3
-		and _ability_sides(f.units[1]) == [8, 20, 12, 6, 4, 6]
+		and _ability_sides(f.units[1]) == [6, 12, 20, 6, 4, 8]
 		and f.units[1].get_defense_bonus() == 0 and f.units[1].get_damage_bonus() == 1,
 		"아군 전사·궁수의 여섯 주사위와 기존 피해 가산")
 
@@ -1957,7 +1957,7 @@ func _test_height_pull() -> void:
 		_check(f.actions.grid.pull_cells(boss, target) == expected
 			and f.actions.can_target(boss, target, "pull") == available,
 			"끌기는 보스에 높이 포함 인접하고 대상보다 높지 않은 칸만 선택")
-		f.actions.dice = _dice_for([12, 1], [12, 8]) if available else _dice_for([], [])
+		f.actions.dice = _dice_for([12, 1], [12, 6]) if available else _dice_for([], [])
 		_check(f.actions.pull(boss, target) == available, "높이 착지 조건에 따른 실제 만능팔 실행")
 		_check(target.cell == (Vector2i(4, 5) if available else Vector2i(7, 4))
 			and boss.action_left == (0 if available else 1)
@@ -2178,15 +2178,15 @@ func _test_archer_balance() -> void:
 				if not marked and not maximum:
 					_check(actor.hit_points == 14 and actor.get_max_hit_points() == 14,
 						"아군과 적 궁수의 시작·최대 HP는14")
-					_check(actor.get_ability_sides(CombatUnit.Ability.DEXTERITY) == attack_sides
+					_check(actor.get_ability_sides(actor.get_attack_ability()) == attack_sides
 						and actor.get_attack_bonus() == 0,
-						"아군 민첩d20·풋내기d10은 피해 고정값과 별개")
+						"아군 솜씨d20·풋내기 민첩d10은 피해 고정값과 별개")
 				if marked:
 					_check(f.actions.mark(actor, target), "궁수 피해 검사에서 표식 사용")
 				var logs: Array[String] = []
 				f.actions.logged.connect(func(line: String) -> void: logs.append(line))
 				var rolls: Array[int] = [attack_roll, 1, 4]
-				var sides: Array[int] = [attack_sides, 10 if actor.is_ally else 20, 6 if actor.is_ally else 4]
+				var sides: Array[int] = [attack_sides, 10 if actor.is_ally else 12, 6 if actor.is_ally else 4]
 				if marked:
 					rolls.append(2)
 					sides.append(6)
@@ -2390,7 +2390,7 @@ func _test_poison_tick() -> void:
 	f.actions.dice = _dice_for([3], [4])
 	f.turns.end_turn()
 	f.turns.end_turn()
-	_check(target.hit_points == 11, "자연 d4의3은 강도4 미달이라 독 고정1 피해")
+	_check(target.hit_points == 11, "건강 d4의3은 강도4 미달이라 독 고정1 피해")
 
 
 func _test_status_fifo() -> void:
@@ -2410,7 +2410,7 @@ func _test_status_fifo() -> void:
 	f.turns.end_turn()
 	f.turns.end_turn()
 	_check(target.hit_points == 5 and messages == ["화상 2", "독 1", "화상 3", "독 1"],
-		"다른 상태도 전체 FIFO: 첫 독 강도4로 자연 판정 한 번만 굴리고 각 중첩 피해")
+		"다른 상태도 전체 FIFO: 첫 독 강도4로 건강 판정 한 번만 굴리고 각 중첩 피해")
 
 
 func _test_poison_save_oldest() -> void:
@@ -2431,7 +2431,7 @@ func _test_poison_save_oldest() -> void:
 	f.turns.end_turn()
 	f.turns.end_turn()
 	f.actions.feedback.disconnect(record)
-	_check(target.hit_points == 10, "자연4는 강도4 동점 성공: 가장 오래된 하나만 제거 후 두 틱")
+	_check(target.hit_points == 10, "건강4는 강도4 동점 성공: 가장 오래된 하나만 제거 후 두 틱")
 	_check(messages == ["독 제거", "독 1", "독 1"], "제거 성공은 이름만, 남은 틱은 원인과 피해: %s" % str(messages))
 	# 내성으로 없어진 시전자를 제거해도 남은 두 독은 그대로다.
 	f.actions.incapacitate(f.units[3])
@@ -2829,7 +2829,7 @@ func _test_water_shove() -> void:
 	f.actions.grid.water_cells = [Vector2i(2, 4)]
 	f.actions.apply_status(f.units[3], target, "burn")
 	f.actions.apply_status(f.units[2], target, "poison")
-	f.actions.dice = _dice_for([1], [6])
+	f.actions.dice = _dice_for([1], [8])
 	_check(f.actions.shove(f.units[0], target), "동료를 물로 밀치기")
 	_check(target.cell == Vector2i(2, 4) and target.get_status_count("burn") == 0
 		and target.get_status_count("poison") == 1 and target.hit_points == 14,
@@ -3099,7 +3099,7 @@ func _test_mark_and_stun() -> void:
 	_check(f.actions.last_damage_rolls == [2, 3] and not f.actions.last_attack.critical,
 		"최댓값 표식도 무기와 표식을 각각 한 번만 굴림")
 	var shock: Fixture = _fixture()
-	_check(shock.units[1].get_ability_sides(CombatUnit.Ability.DEXTERITY) == 20, "아군 궁수는 민첩d20")
+	_check(shock.units[1].get_ability_sides(CombatUnit.Ability.FINESSE) == 20, "아군 궁수는 솜씨d20")
 	shock.turns.select_unit(shock.units[1])
 	shock.units[2].reaction_left = 0
 	shock.actions.dice = _dice_for([11, 1, 1], [20, 6, 6])
