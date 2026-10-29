@@ -934,6 +934,7 @@ func _test_large_map_layout() -> void:
 func _test_large_map_battle() -> void:
 	var label: String = "큰 테스트 맵 전투"
 	var stage: CombatStage = load(LargeMapBattle.STAGE_PATH) as CombatStage
+	GameSave.autosave = true
 	var game: Node = LargeMapBattle.instantiate_game()
 	root.add_child(game)
 	var battle: Node2D = game.get_node("Battle") as Node2D

@@ -1437,10 +1437,6 @@ msgid "아이템을 끌거나, 선택 후 아래 버튼으로 옮깁니다."
 msgstr ""
 
 #: scenes/combat/preparation.gd
-msgid "지도로 돌아가기"
-msgstr ""
-
-#: scenes/combat/preparation.gd
 msgid "가방에서 1개를 영구 제거합니다. 장비 교체·해제가 아닙니다."
 msgstr ""
 

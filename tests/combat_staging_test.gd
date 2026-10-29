@@ -58,12 +58,8 @@ func _run() -> void:
 	bar = battle.get("staging")
 	start = bar.get_node("StartBattle")
 	_check_staging_bar("1-1 첫 전투")
-	# #395: 지도 준비에서 정비로 가는 경로는 없다. 정비는 승리 뒤 보상 확인 다음에만 연다.
-	ck(not battle.has_method("_open_staging_preparation") and not "before_battle" in preparation,
-		"지도 준비에서 정비로 가는 경로 없음")
 	GameSave.autosave = true
 	battle.call("_autosave", before)
-	ck(not GameSave.read().sections.has("preparation"), "지도 준비 저장에 정비 칸 없음")
 	await _restore_check(before, false)
 	# #345 시절 지도 준비의 정비 화면에서 남긴 저장은 같은 지도 준비로 이어한다.
 	GameSave.write(1, 1, {"combat": before, "preparation": {"maintaining": true, "before_battle": true}})

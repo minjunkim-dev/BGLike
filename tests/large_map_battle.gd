@@ -7,8 +7,9 @@ const STAGE_PATH: String = "res://tests/large_map.tres"
 const GAME_SCENE: String = "res://scenes/game.tscn"
 
 
-## 첫 스테이지를 큰 맵으로 바꾼 게임 장면. 새 배열을 넣어 장면 파일의 실제9개 진행은 그대로 둔다.
+## 첫 스테이지를 큰 맵으로 바꾼 게임 장면. 새 배열을 넣어 장면 파일의 실제9개 진행은 그대로 두고 자동 저장을 끈다.
 static func instantiate_game() -> Node:
+	GameSave.autosave = false
 	var game: Node = (load(GAME_SCENE) as PackedScene).instantiate()
 	var battle: Node = game.get_node("Battle")
 	var stages: Array[CombatStage] = []
@@ -24,7 +25,6 @@ func _initialize() -> void:
 
 
 func _start() -> void:
-	GameSave.autosave = false
 	GameSettings.apply()
 	var game: Node = instantiate_game()
 	root.add_child(game)
