@@ -934,6 +934,9 @@ func _test_large_map_layout() -> void:
 func _test_large_map_battle() -> void:
 	var label: String = "큰 테스트 맵 전투"
 	var stage: CombatStage = load(LargeMapBattle.STAGE_PATH) as CombatStage
+	# 진입점이 자동 저장을 끄는지 보려고 켠다. 회귀해도 실제 저장을 덮지 않게 경로를 옮긴다.
+	var save_path: String = GameSave.path
+	GameSave.path = "user://tests/large_map/%d/save.bin" % OS.get_process_id()
 	GameSave.autosave = true
 	var game: Node = LargeMapBattle.instantiate_game()
 	root.add_child(game)
@@ -986,8 +989,10 @@ func _test_large_map_battle() -> void:
 	_check(starts.keys().any(func(unit: CombatUnit) -> bool: return unit.cell != starts[unit]),
 		label + " 먼 적이 큰 맵에서 경로를 찾아 이동")
 	_check(saves[0] == 0 and not GameSave.autosave, label + " 자동 저장 없음")
+	GameSave.autosave = false
 	game.queue_free()
 	await process_frame
+	GameSave.path = save_path
 	# 새 게임·이어하기가 여는 전투 장면 데이터를 진입점을 연 뒤에 읽는다.
 	var state: SceneState = (load("res://scenes/combat/battle.tscn") as PackedScene).get_state()
 	var real: Array = []
