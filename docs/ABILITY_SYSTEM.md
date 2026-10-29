@@ -494,7 +494,7 @@
 
 > 개정 전(공격자 대 방어자 주사위 대결) 구현의 기록입니다. 개정 규칙의 구현은 후속 Issue에서 새로 결정합니다.
 
-- 식별자는 `CombatUnit.Ability`의 `STRENGTH`, `DEXTERITY`, `CRAFT`, `INTELLIGENCE`, `WILL`, `NATURE`다. 균등한 1~n만 필요하므로 기존 CombatDice의 면 수 인자를 재사용하며 별도 주사위 값 객체는 만들지 않는다.
+- 식별자는 `CombatUnit.Ability`의 `STRENGTH`, `DEXTERITY`, `CRAFT`, `INTELLIGENCE`, `WILL`, `NATURE`였다. [#386](https://github.com/minjunkim-dev/BGLike/issues/386#issuecomment-6498750300)에서 `AGILITY`, `FINESSE`, `HEALTH`로 바꿨다. 균등한 1~n만 필요하므로 기존 CombatDice의 면 수 인자를 재사용하며 별도 주사위 값 객체는 만들지 않는다.
 - UI는 현재 모양을 `힘 d20`처럼 표시한다. 기존 무기는 직업의 대검·활 강화 장비이므로 현재 공격 유형은 직업의 무기 유형에 따른다. 대상까지의 실제 거리로 바꾸지 않는다. 새 무기 유형을 추가하면 그 무기의 지정값으로 확장한다.
 - 유리/불리는 공격자만 두 번, 이니셔티브는 원본 민첩 굴림으로 정하며 동점은 최대 면 값·아군·배치 순서다.
 - 기존 입력·연출 fixture의 임의 순서는 공개 저장 복원 API로 고정한다. 실제 이니셔티브 검사는 유효한 능력치 면 수의 원본 굴림으로 따로 검사한다. ScriptedDice의 면 수·범위·남은 값 검사는 유지한다.
