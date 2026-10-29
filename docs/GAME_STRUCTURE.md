@@ -2,7 +2,7 @@
 
 > M2에서 정한 게임 전체 구조입니다. 전투 밖의 진행, 막 단위 자원, 아이템, 격자 변경을 다룹니다.
 >
-> - 기준일: 2026-10-22 ([Issue #288](https://github.com/minjunkim-dev/BGLike/issues/288) 저장·전투 밖 화면 반영, [Issue #284](https://github.com/minjunkim-dev/BGLike/issues/284) 새 게임·이어하기·졸업 구현), 2026-10-21 ([Issue #214](https://github.com/minjunkim-dev/BGLike/issues/214) 드랍 기대값과 8장 정리, [Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136) 사각 높이 격자 반영, 2026-10-07 기획 논의, Issue #61 아이템 수치 결정, [Issue #99](https://github.com/minjunkim-dev/BGLike/issues/99) 막별 적 강화 제거 반영)
+> - 기준일: 2026-10-28 (2026-10-28 육성에 막 최초 클리어 레벨업 반영, [Issue #288](https://github.com/minjunkim-dev/BGLike/issues/288) 저장·전투 밖 화면 반영, [Issue #284](https://github.com/minjunkim-dev/BGLike/issues/284) 새 게임·이어하기·졸업 구현), 2026-10-21 ([Issue #214](https://github.com/minjunkim-dev/BGLike/issues/214) 드랍 기대값과 8장 정리, [Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136) 사각 높이 격자 반영, 2026-10-07 기획 논의, Issue #61 아이템 수치 결정, [Issue #99](https://github.com/minjunkim-dev/BGLike/issues/99) 막별 적 강화 제거 반영)
 > - 관련 문서: [기획 현황](DESIGN_STATUS.md) · [기획 로드맵](ROADMAP.md) · [전투 시스템 기획서](COMBAT_DESIGN.md)
 > - 이 문서와 전투 시스템 기획서가 다르면 이 문서가 기준입니다. 바뀌는 전투 규칙은 [7장](#7-전투-시스템-기획서에서-바뀌는-규칙)에 모았습니다.
 > - 표시: ✅ 정해짐 · ❓ 정해야 함
@@ -26,7 +26,7 @@
 
 **캐릭터를 육성하면서 3막의 모든 스테이지를 깨는 것(3막 졸업)이 목표입니다.** ✅
 
-- 육성 수단은 **아이템뿐**입니다. 레벨업, 능력치 성장, 재화는 두지 않습니다.
+- 육성 수단은 **아이템**과 **막 최초 클리어마다 오르는 파티 레벨**(6개 능력치 주사위 레벨 +1, 모든 캐릭터 공유, 2026-10-28)입니다. 재화는 두지 않습니다. 레벨업 구현은 [주사위 육성 논의](DICE_GROWTH.md)가 Issue로 넘어온 뒤입니다 ⏸.
 - 이야기와 세계관은 이 구조 위에 나중에 얹습니다 ([로드맵 M7](ROADMAP.md#10-m7-첫-플레이-가능-구간-기획)).
 
 ---
