@@ -24,7 +24,6 @@ var rewards: Array[Dictionary] = []
 var maintaining: bool = false
 var final_stage: bool = false
 var last_in_act: bool = false
-var before_battle: bool = false
 var title_label: Label
 var hint_label: Label
 var enable_button: Button
@@ -144,7 +143,7 @@ func _ready() -> void:
 
 func open_rewards(
 	model: CombatLoot, allies: Array[CombatUnit], drops: Array[Dictionary],
-	is_final: bool, is_last_in_act: bool, is_maintaining: bool = false, is_before_battle: bool = false
+	is_final: bool, is_last_in_act: bool, is_maintaining: bool = false
 ) -> void:
 	if visible:
 		return
@@ -154,7 +153,6 @@ func open_rewards(
 	final_stage = is_final
 	last_in_act = is_last_in_act
 	maintaining = is_maintaining
-	before_battle = is_before_battle
 	show()
 	_render()
 	continue_button.grab_focus()
@@ -254,8 +252,6 @@ func _render() -> void:
 		else tr("받은 보상을 확인합니다. 정비에서 캐릭터에게 나눠 줍니다."))
 	continue_button.text = (tr("3막 졸업") if final_stage else tr("다음 막 시작") if last_in_act
 		else tr("다음 스테이지")) if maintaining else tr("정비하기")
-	if before_battle:
-		continue_button.text = tr("지도로 돌아가기")
 	enable_button.visible = maintaining
 	enable_button.disabled = _confirm_finish
 	for index: int in range(party.size()):

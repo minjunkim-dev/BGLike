@@ -1425,10 +1425,6 @@ msgid "아이템을 끌거나, 선택 후 아래 버튼으로 옮깁니다."
 msgstr "아이템을 끌거나, 선택 후 아래 버튼으로 옮깁니다."
 
 #: scenes/combat/preparation.gd
-msgid "지도로 돌아가기"
-msgstr "지도로 돌아가기"
-
-#: scenes/combat/preparation.gd
 msgid "가방에서 1개를 영구 제거합니다. 장비 교체·해제가 아닙니다."
 msgstr "가방에서 1개를 영구 제거합니다. 장비 교체·해제가 아닙니다."
 
@@ -1487,3 +1483,7 @@ msgstr "왼쪽 위"
 #: scenes/combat/battle.gd
 msgid "오른쪽 위"
 msgstr "오른쪽 위"
+
+#: scenes/combat/battle.gd
+msgid "전투 준비 · 지형과 적을 확인하고 전투를 시작합니다."
+msgstr "전투 준비 · 지형과 적을 확인하고 전투를 시작합니다."

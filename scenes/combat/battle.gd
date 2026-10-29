@@ -34,9 +34,11 @@ var _turn_start: Dictionary = {}
 var _turn_actions: int = 0
 ## 이어하기가 연출 없이 다시 실행할 적 행동 수.
 var _replay_actions: int = 0
-## #345: 지도를 보고 정비한 뒤 명시적으로 전투를 시작한다. 적 선공도 이때까지 기다린다.
+## #345: 지도를 보고 명시적으로 전투를 시작한다. 적 선공도 이때까지 기다린다.
+## #395: 지도 준비에서는 정비를 열지 않는다. 정비는 승리 뒤 보상 확인 다음에만 연다.
 var waiting_for_start: bool = true
 var staging: HBoxContainer
+var start_button: Button
 
 @onready var map: CombatMap = $Map
 @onready var camera: Camera2D = $Camera
@@ -65,18 +67,17 @@ func _ready() -> void:
 	staging.add_theme_constant_override("separation", 8)
 	hud.add_child(staging)
 	var hint: Label = Label.new()
-	hint.text = tr("전투 준비 · 지형과 적을 확인하고 정비하세요.")
+	hint.text = tr("전투 준비 · 지형과 적을 확인하고 전투를 시작합니다.")
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hint.add_theme_font_size_override("font_size", 12)
 	staging.add_child(hint)
-	for caption: String in [tr("정비"), tr("전투 시작")]:
-		var button: Button = Button.new()
-		button.text = caption
-		button.custom_minimum_size.x = 96
-		button.add_theme_font_size_override("font_size", 14)
-		staging.add_child(button)
-	(staging.get_child(1) as Button).pressed.connect(_open_staging_preparation)
-	(staging.get_child(2) as Button).pressed.connect(start_battle)
+	start_button = Button.new()
+	start_button.name = "StartBattle"
+	start_button.text = tr("전투 시작")
+	start_button.custom_minimum_size.x = 96
+	start_button.add_theme_font_size_override("font_size", 14)
+	start_button.pressed.connect(start_battle)
+	staging.add_child(start_button)
 
 	hud.unit_selected.connect(_on_unit_selected)
 	hud.end_turn_requested.connect(_end_turn)
@@ -136,22 +137,16 @@ func _start_stage(restore_act: bool) -> void:
 		var prop: CombatGrid.Prop = actions.create_prop(cell, "rock")
 		assert(prop != null, "바위 시작 칸이 유효하지 않습니다: %s %s" % [stage.resource_path, cell])
 	_update_turn_ui()
-	(staging.get_child(2) as Button).grab_focus()
+	start_button.grab_focus()
 
 
 func start_battle() -> void:
-	if not waiting_for_start or preparation.visible:
+	if not waiting_for_start:
 		return
 	waiting_for_start = false
 	_save_pending = true
 	get_viewport().gui_release_focus()
 	_update_turn_ui()
-
-
-func _open_staging_preparation() -> void:
-	if not waiting_for_start or preparation.visible:
-		return
-	preparation.open_rewards(loot, party, [], false, false, true, true)
 
 
 ## 지금 스테이지의 지도와 처음 배치의 적을 새로 만든다. 아군 상태와 턴 순서는 건드리지 않는다.
@@ -310,6 +305,8 @@ func restore_save(sections: Variant) -> bool:
 	if not (screen is Dictionary and combat is Dictionary and _is_valid_state(combat)):
 		push_warning("저장을 읽을 수 없음")
 		return false
+	# #345의 지도 준비 정비 화면 저장(`before_battle`)은 #395 뒤에 만들지 않는다. 그 화면의 변경은 이미 combat에 있어
+	# 같은 지도 준비로 이어한다.
 	var before_battle: bool = screen.get("before_battle") is bool and screen.before_battle
 	if not screen.is_empty():
 		var valid: bool = screen.get("maintaining") is bool
@@ -323,9 +320,9 @@ func restore_save(sections: Variant) -> bool:
 			return false
 	if not restore_combat(combat):
 		return false
-	if not screen.is_empty():
+	if not screen.is_empty() and not before_battle:
 		preparation.open_rewards(loot, party, progress.rewards, progress.is_final_stage(),
-			progress.is_last_in_act(), screen.maintaining, before_battle)
+			progress.is_last_in_act(), screen.maintaining)
 		hud.hide_result()
 		# 방금 읽은 저장과 같은 상태다.
 		_save_pending = false
@@ -365,11 +362,6 @@ func _give_up() -> void:
 
 
 func _finish_preparation() -> void:
-	if waiting_for_start:
-		_save_pending = true
-		_update_turn_ui()
-		(staging.get_child(2) as Button).grab_focus()
-		return
 	if not actions.is_over() or actions.busy or _enemy_turn_running or not actions.is_victory():
 		return
 	progress.advance()
@@ -454,8 +446,6 @@ func _autosave(state: Dictionary) -> void:
 	# 선택한 칸과 열린 확인 창은 저장하지 않는다. 이어하기는 같은 화면 단계에서 아무것도 고르지 않은 채 시작한다.
 	if preparation.visible:
 		sections["preparation"] = {"maintaining": preparation.maintaining}
-		if preparation.before_battle:
-			sections["preparation"]["before_battle"] = true
 	if GameSave.write(progress.act_number(), progress.stage_in_act(), sections) == OK:
 		autosaved.emit()
 
