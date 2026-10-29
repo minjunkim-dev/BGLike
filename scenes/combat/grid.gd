@@ -306,7 +306,7 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 				break
 	preview.mode = CombatChecks.roll_mode(advantages, disadvantages)
 	if preview.in_range and preview.blocked_reason.is_empty():
-		var defense: CombatUnit.Ability = CombatUnit.Ability.DEXTERITY if attacker.is_ranged_attack() else CombatUnit.Ability.STRENGTH
+		var defense: CombatUnit.Ability = CombatUnit.Ability.AGILITY if attacker.is_ranged_attack() else CombatUnit.Ability.STRENGTH
 		preview.chance = CombatChecks.opposed_chance(attacker.get_ability_sides(attacker.get_attack_ability()),
 			target.get_ability_sides(defense), attacker.get_attack_bonus(), target.get_defense_bonus(), preview.mode)
 	return preview

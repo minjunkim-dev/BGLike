@@ -357,9 +357,9 @@ func _test_warrior() -> void:
 		and "방어 +0" in hud.resource_label.text and "이동" not in hud.resource_label.text,
 		"현재 유닛 정보: HP·방어 가산 유지, 남은 이동 제거")
 	_check(hud.health_bar.value == 12, "현재 유닛 HP 바")
-	for ability: String in ["힘 d20", "민첩 d8", "솜씨 d6", "지능 d4", "의지 d12", "자연 d6"]:
+	for ability: String in ["힘 d20", "민첩 d8", "솜씨 d6", "지능 d4", "의지 d6", "건강 d12"]:
 		_check(ability in hud.resource_label.text, "현재 전사의 능력치 주사위 표시: " + ability)
-	_check("건강" not in hud.resource_label.text and "정신" not in hud.resource_label.text
+	_check("자연" not in hud.resource_label.text and "정신" not in hud.resource_label.text
 		and "AC" not in hud.resource_label.text, "폐지한 능력치와 AC는 유닛 정보에서 제거")
 	for action: String in ["attack", "second_wind", "surge", "shove", "potion", "opportunity", "parry"]:
 		_check((buttons[action] as Button).is_visible_in_tree(), "전사 동작 표시: " + action)
@@ -425,7 +425,7 @@ func _test_archer_and_enemy() -> void:
 	var before: int = units[0].movement_left
 	hud.unit_selected.emit(units[1])
 	_check(turns.current_unit == units[1] and units[0].movement_left == before, "초상 전환 자원 유지")
-	for ability: String in ["힘 d8", "민첩 d20", "솜씨 d12", "지능 d6", "의지 d4", "자연 d6"]:
+	for ability: String in ["힘 d6", "민첩 d12", "솜씨 d20", "지능 d6", "의지 d4", "건강 d8"]:
 		_check(ability in hud.resource_label.text, "궁수로 전환하면 능력치 주사위 갱신: " + ability)
 	_check(not (containers[2] as PanelContainer).visible, "궁수 반응 컨테이너 숨김")
 	_check((buttons["shock"] as Button).visible and not (buttons["surge"] as Button).visible,
@@ -653,7 +653,7 @@ func _test_roll_popups() -> void:
 
 
 func _has_two_dice_log(mode: String) -> bool:
-	var marker: String = "공격(%s): 민첩 d20 [" % mode
+	var marker: String = "공격(%s): 솜씨 d20 [" % mode
 	for line: String in hud.message_label.text.split("\n"):
 		if marker not in line:
 			continue
@@ -811,7 +811,7 @@ func _test_guidance() -> void:
 	for unit: CombatUnit in portraits:
 		var portrait: Button = portraits[unit] as Button
 		_check(portrait.text.split("\n").size() == 2
-			and "민첩 d%d" % unit.get_ability_sides(CombatUnit.Ability.DEXTERITY) in portrait.tooltip_text
+			and "민첩 d%d" % unit.get_ability_sides(CombatUnit.Ability.AGILITY) in portrait.tooltip_text
 			and str(unit.get_initiative()) == portrait.tooltip_text.get_slice(" = ", 1),
 			"초상 숫자 제거, 호버에 실제 민첩 주사위와 원본 값 유지")
 	await battle.call("_select_move_cell", Vector2i(2, 1))
@@ -884,8 +884,8 @@ func _test_guidance() -> void:
 				_check(removed not in button.tooltip_text, "호버에서 안내 제거: %s / %s" % [action, removed])
 			_check(unit.hit_points == hp and unit.surge_left == uses,
 				"호버는 동작 실행·자원 소비 없음: " + action)
-	_check("사거리: 1~6칸\n피해: 1d6+1\n판정: 민첩 d20 +0 대 민첩, 명중하면 기절" in (buttons["shock"] as Button).tooltip_text
-		and "판정: 힘 d8 +0 대 힘" in (buttons["shove"] as Button).tooltip_text,
+	_check("사거리: 1~6칸\n피해: 1d6+1\n판정: 솜씨 d20 +0 대 민첩, 명중하면 기절" in (buttons["shock"] as Button).tooltip_text
+		and "판정: 힘 d6 +0 대 힘" in (buttons["shove"] as Button).tooltip_text,
 		"궁수 충격 화살·밀치기 호버에 능력치 대결과 명중 시 기절 표시")
 	await _test_focus_tooltips(buttons)
 	# 비활성 버튼은 비용 소진·횟수 소진·효과 없음의 이유를 호버에 유지한다.
@@ -1090,8 +1090,8 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check(hud.unit_label.text == "풋내기 야만인" and hud.actor_label.text == "조작: 아군 전사"
 		and "힘 d10" in hud.resource_label.text and "민첩 d6" in hud.resource_label.text
 		and "솜씨 d4" in hud.resource_label.text and "지능 d4" in hud.resource_label.text
-		and "의지 d4" in hud.resource_label.text and "자연 d4" in hud.resource_label.text
-		and "건강" not in hud.resource_label.text and "정신" not in hud.resource_label.text
+		and "의지 d4" in hud.resource_label.text and "건강 d4" in hud.resource_label.text
+		and "자연" not in hud.resource_label.text and "정신" not in hud.resource_label.text
 		and "공격 +3" in hud.resource_label.text and "사거리 1칸" in hud.resource_label.text,
 		"정보 대상·조작 유닛을 구분하고 실제 능력치·공격 수치 표시")
 	_check("행동" not in hud.resource_label.text and "반응" not in hud.resource_label.text
@@ -1107,7 +1107,7 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check(units[0].action_left == 0, "필드 적 두 번째 좌클릭은 공격 확정")
 	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
 	_check(turns.current_unit == units[1] and units[0].action_left == 0
-		and "힘 d8" in hud.resource_label.text and "사거리 6칸" in hud.resource_label.text,
+		and "힘 d6" in hud.resource_label.text and "사거리 6칸" in hud.resource_label.text,
 		"조작 가능한 아군 초상은 정보와 조작 전환, 기존 자원 유지")
 	turns.select_unit(units[0])
 	turns.end_turn()

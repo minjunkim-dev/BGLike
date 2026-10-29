@@ -4,11 +4,12 @@ extends Node2D
 
 enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
-enum Ability { STRENGTH, DEXTERITY, CRAFT, INTELLIGENCE, WILL, NATURE }
+enum Ability { STRENGTH, AGILITY, FINESSE, INTELLIGENCE, WILL, HEALTH }
 
-const ALLY_ABILITY_SIDES: Array[Array] = [[20, 8, 6, 4, 12, 6], [8, 20, 12, 6, 4, 6]]
+## 능력치 기획서(ABILITY_SYSTEM.md) 6-1의 전사·궁수 주사위 (#386).
+const ALLY_ABILITY_SIDES: Array[Array] = [[20, 8, 6, 4, 6, 12], [6, 12, 20, 6, 4, 8]]
 static var ABILITY_NAMES: Array[String] = [TranslationServer.tr("힘"), TranslationServer.tr("민첩"),
-	TranslationServer.tr("솜씨"), TranslationServer.tr("지능"), TranslationServer.tr("의지"), TranslationServer.tr("자연")]
+	TranslationServer.tr("솜씨"), TranslationServer.tr("지능"), TranslationServer.tr("의지"), TranslationServer.tr("건강")]
 
 const MOVEMENT_PER_TURN: int = 6
 const FEEDBACK_RISE: float = 12.0
@@ -139,8 +140,11 @@ static func ability_name(ability: Ability) -> String:
 
 
 ## 현재 일반 무기는 직업의 기본 대검·활을 강화하는 장비다. 실제 대상 거리로 유형을 바꾸지 않는다.
+## 아군 궁수는 임시로 솜씨, 풋내기 궁수는 민첩이다 (능력치 기획서 4-2·7장, #386).
 func get_attack_ability() -> Ability:
-	return Ability.DEXTERITY if kind == Kind.ARCHER else Ability.STRENGTH
+	if kind != Kind.ARCHER:
+		return Ability.STRENGTH
+	return Ability.FINESSE if is_ally else Ability.AGILITY
 
 
 func is_ranged_attack() -> bool:

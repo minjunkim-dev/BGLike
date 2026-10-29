@@ -53,7 +53,7 @@ func _test_round_trip() -> void:
 	_check(not GameSave.has_save() and GameSave.read().is_empty(), "저장이 없으면 없음으로 조회")
 	_check(GameSave.write(3, 2, _sections()) == OK, "저장 쓰기 성공")
 	_check(GameSave.has_save(), "쓴 뒤 저장 있음")
-	_check(FileAccess.get_file_as_bytes(GameSave.path).decode_u32(4) == 2, "현재 형식 2의 머리로 저장")
+	_check(FileAccess.get_file_as_bytes(GameSave.path).decode_u32(4) == 3, "현재 형식 3의 머리로 저장")
 	var save: Dictionary = GameSave.read()
 	_check(save.get("act") == 3 and save.get("stage") == 2, "막과 스테이지를 그대로 읽음")
 	_check(save.get("sections") == _sections(), "64비트 난수 상태, Vector2i 키, 배열을 그대로 읽음")
@@ -66,7 +66,7 @@ func _test_round_trip() -> void:
 func _test_version_mismatch() -> void:
 	GameSave.write(1, 1, _sections())
 	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(GameSave.path)
-	for version: int in [0, 1, GameSave.FORMAT_VERSION + 1]:
+	for version: int in [0, 1, 2, GameSave.FORMAT_VERSION + 1]:
 		bytes.encode_u32(4, version)
 		_write_raw(GameSave.path, bytes)
 		_check(GameSave.has_save() and GameSave.read().is_empty(), "형식 버전 %d은 읽지 않음" % version)

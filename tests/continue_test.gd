@@ -169,7 +169,7 @@ func _test_overwrite() -> void:
 ## 읽을 수 없는 저장은 없는 것처럼 이어하기를 숨기고 이유를 보인다. 새 게임은 그래도 덮어쓰기를 묻는다.
 func _test_unreadable() -> void:
 	var title: TitleScreen
-	for version: int in [1, GameSave.FORMAT_VERSION + 1]:
+	for version: int in [1, 2, GameSave.FORMAT_VERSION + 1]:
 		var data: PackedByteArray = "BGLS".to_ascii_buffer()
 		data.resize(GameSave.HEADER_SIZE)
 		data.encode_u32(4, version)

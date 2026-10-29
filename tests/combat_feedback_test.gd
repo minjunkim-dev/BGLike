@@ -57,7 +57,7 @@ func _run() -> void:
 	ScriptedDice.arrange_turns(turns, units, units)
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	# 판정·피해·빗나감이 같은 반복 공격에서 발생하는 통제된 재현이다.
-	actions.dice = ScriptedDice.new([8, 1, 1, 1, 1, 1, 20, 8], [12, 20, 8, 8, 8, 12, 20, 8])
+	actions.dice = ScriptedDice.new([8, 1, 1, 1, 1, 1, 20, 6], [12, 20, 8, 6, 8, 12, 20, 6])
 	for unit: CombatUnit in units:
 		if unit.is_ally:
 			unit.reaction_left = 0
@@ -202,7 +202,7 @@ func _test_crowded_feedback() -> void:
 		units[index].reaction_left = 0
 	ScriptedDice.arrange_turns(turns, units, [attacker])
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.dice = ScriptedDice.new([4, 1, 4, 1], [4, 8, 4, 8])
+	actions.dice = ScriptedDice.new([4, 1, 4, 1], [4, 6, 4, 6])
 	battle.call("_update_turn_ui")
 	_check(turns.current_unit == attacker and attacker.kind == CombatUnit.Kind.SPIDERLING
 		and archer.kind == CombatUnit.Kind.ARCHER, "밀집 팝업 전제조건: 새끼 거미 차례, 궁수 대상")
