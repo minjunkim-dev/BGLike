@@ -46,3 +46,7 @@ rtk proxy gh issue close <번호> --repo minjunkim-dev/BGLike
 ## When a skill says "fetch the relevant ticket"
 
 `rtk proxy gh issue view <번호> --repo minjunkim-dev/BGLike --json number,title,body,labels,comments,state`를 실행합니다. 코멘트의 결정 기록과 연결된 기획 문서도 읽습니다.
+
+## 명세·티켓 의존성
+
+`to-spec`·`to-tickets`·`implement-spec`는 [개발 절차](development.md)로 연결한다. 승인된 티켓은 부모 명세와 연결하고 GitHub native sub-issue·dependency를 사용한다. 지원되지 않으면 부모 참조와 명시적인 `Blocked by`를 기록한다. 선행 티켓의 실제 완료 상태와 담당자를 확인하고 준비된 작업만 선택한다. 기존 본문·코멘트·착수 소유권 규칙을 유지한다. 명세 작성·티켓 분해만으로 부모를 닫지 않으며, 구현·통합 검증·기존 병합 조건을 충족한 뒤 tracker의 완료 관례를 따른다.

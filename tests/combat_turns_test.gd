@@ -25,6 +25,9 @@ func _run() -> void:
 	_test_resources_and_groups()
 	_test_available_actions()
 	_test_removal()
+	_test_deferred_stun()
+	_test_deferred_start_removal()
+	_test_boundary_prefix()
 	_test_rounds()
 	await _test_scene()
 	for unit: CombatUnit in _created_units:
@@ -58,19 +61,9 @@ func _ordered_fixture(units: Array[CombatUnit], order: Array[int]) -> CombatTurn
 	for index: int in order:
 		desired.append(units[index])
 	var turns: CombatTurns = CombatTurns.new()
-	turns.start(units, _dice_for_order(units, desired))
+	ScriptedDice.arrange_turns(turns, units, desired)
 	_check(turns.ordered_units == desired, "정해진 이니셔티브 순서 fixture")
 	return turns
-
-
-## 원하는 순서대로 이니셔티브가 3씩 내려가도록 d20 값을 준비한다.
-func _dice_for_order(units: Array[CombatUnit], desired: Array[CombatUnit]) -> CombatDice:
-	var rolls: Array[int] = []
-	var sides: Array[int] = []
-	for unit: CombatUnit in units:
-		rolls.append(20 - 3 * desired.find(unit) - unit.get_dexterity())
-		sides.append(20)
-	return ScriptedDice.new(rolls, sides)
 
 
 func _test_initiative() -> void:
@@ -78,27 +71,32 @@ func _test_initiative() -> void:
 	var turns: CombatTurns = CombatTurns.new()
 	var dice: CombatDice = CombatDice.new()
 	var saw_dexterity_tie: bool = false
-	var saw_team_tie: bool = false
 	for seed_value: int in range(200):
 		dice.seed = seed_value
 		var expected_dice: CombatDice = CombatDice.new()
 		expected_dice.seed = seed_value
 		turns.start(units, dice)
 		for unit: CombatUnit in units:
-			_check(unit.initiative_roll == expected_dice.roll(20), "유닛마다 d20 한 번")
-			_check(unit.initiative_roll >= 1 and unit.initiative_roll <= 20, "d20 범위")
+			var sides: int = unit.get_ability_sides(CombatUnit.Ability.DEXTERITY)
+			_check(unit.initiative_roll == expected_dice.roll(sides)
+				and unit.get_initiative() == unit.initiative_roll, "유닛마다 민첩 주사위 한 번, 가산 없는 원본 값")
+			_check(unit.initiative_roll >= 1 and unit.initiative_roll <= sides, "민첩 주사위 면 범위")
 		for index: int in range(3):
 			var first: CombatUnit = turns.ordered_units[index]
 			var next: CombatUnit = turns.ordered_units[index + 1]
 			_check(first.get_initiative() >= next.get_initiative(), "이니셔티브 내림차순")
 			if first.get_initiative() == next.get_initiative():
-				_check(first.get_dexterity() >= next.get_dexterity(), "동점: 민첩 높은 쪽 우선")
-				if first.get_dexterity() != next.get_dexterity():
-					saw_dexterity_tie = true
-				elif first.is_ally != next.is_ally:
-					saw_team_tie = true
-					_check(first.is_ally, "민첩도 동점: 아군 우선")
-	_check(saw_dexterity_tie and saw_team_tie, "동점 규칙 두 종류를 실제 주사위로 검증")
+				_check(first.get_ability_sides(CombatUnit.Ability.DEXTERITY)
+					>= next.get_ability_sides(CombatUnit.Ability.DEXTERITY), "동점: 민첩 주사위 면 수가 큰 쪽 우선")
+				saw_dexterity_tie = true
+	_check(saw_dexterity_tie, "동점의 면 수 규칙을 실제 주사위로 검증")
+	units[2].kind = CombatUnit.Kind.SPIDERLING
+	var another_ally: CombatUnit = CombatUnit.new()
+	units.append(another_ally)
+	_created_units.append(another_ally)
+	turns.start(units, ScriptedDice.new([4, 4, 4, 4, 4], [8, 20, 8, 10, 8]))
+	_check(turns.ordered_units == [units[1], units[3], units[0], another_ally, units[2]],
+		"같은 굴림은 민첩 면 수, 아군, 같은 편의 배치 순으로 정렬")
 	var empty: CombatTurns = CombatTurns.new()
 	empty.start([], dice)
 	_check(empty.current_unit == null and not empty.end_turn(), "빈 전투에서 턴 종료 불가")
@@ -173,9 +171,16 @@ func _test_resources_and_groups() -> void:
 		and units[0].bonus_action_left == 0 and units[0].reaction_left == 0, "선택 전환으로 자원 회복 없음")
 	_check(not turns.select_unit(units[2]), "다른 묶음 선택 거부")
 	turns.select_unit(units[1])
+	units[1].spend_movement(2)
+	units[1].spend_resource(CombatUnit.TurnResource.ACTION)
 	turns.end_turn()
 	_check(turns.current_unit == units[0], "현재 유닛만 종료하고 남은 아군으로 전환")
-	_check(not turns.select_unit(units[1]), "이미 끝낸 유닛은 다시 조작하지 못함")
+	_check(turns.select_unit(units[1]) and not turns.is_turn_finished(units[1]),
+		"묶음 확정 전에는 종료한 아군을 다시 골라 종료 해제")
+	_check(units[1].movement_left == 4 and units[1].action_left == 0
+		and units[1].bonus_action_left == 1 and units[1].reaction_left == 1,
+		"턴 종료 취소로 이미 쓴 자원을 회복하지 않음")
+	turns.end_turn()
 	units[2].spend_resource(CombatUnit.TurnResource.REACTION)
 	turns.end_turn()
 	_check(turns.current_unit == units[2], "묶음 전원이 종료한 뒤 적으로 진행")
@@ -222,9 +227,15 @@ func _test_removal() -> void:
 	turns = _ordered_fixture(units, [0, 2, 1, 3])
 	_check(turns.get_turn_groups().size() == 4, "편이 번갈아 있으면 네 묶음")
 	units[0].spend_movement(2)
+	units[1].movement_left = 2
+	units[1].action_left = 0
 	turns.remove_unit(units[2])
 	_check(turns.get_current_group() == [units[0], units[1]], "중간 적 탈락 후 연속한 아군 묶음 결합")
-	_check(units[0].movement_left == 4 and units[1].movement_left == 6, "결합 시 진행 중 자원 유지와 새 유닛 턴 시작")
+	_check(units[0].movement_left == 4 and units[1].movement_left == 2
+		and units[1].action_left == 0, "결합만으로 새 유닛의 턴을 시작하지 않음")
+	_check(turns.select_unit(units[1]) and units[1].movement_left == 6
+		and units[1].action_left == 1, "새로 합류한 아군은 처음 조작할 때 자원 회복")
+	turns.select_unit(units[0])
 	turns.end_turn()
 	turns.end_turn()
 	units[3].spend_movement(2)
@@ -232,6 +243,79 @@ func _test_removal() -> void:
 	_check(turns.current_unit == units[3] and units[3].movement_left == 4, "지나간 유닛 탈락은 현재 적 자원 유지")
 	turns.remove_unit(units[3])
 	_check(turns.round_number == 2 and turns.current_unit == units[1], "마지막 묶음 탈락 후 다음 라운드")
+	units = _make_units()
+	turns = _ordered_fixture(units, [0, 2, 1, 3])
+	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
+	turns.end_turn()
+	turns.end_turn()
+	turns.remove_unit(units[2])
+	_check(not turns.select_unit(units[0]) and turns.is_turn_finished(units[0])
+		and turns.current_unit == units[1] and units[0].action_left == 0,
+		"적 탈락으로 같은 묶음에 붙어도 이전에 확정한 턴 종료는 해제하지 않음")
+
+
+func _test_deferred_stun() -> void:
+	var units: Array[CombatUnit] = _make_units()
+	var third: CombatUnit = CombatUnit.new()
+	third.is_ally = true
+	units.append(third)
+	_created_units.append(third)
+	var turns: CombatTurns = _ordered_fixture(units, [0, 2, 1, 4, 3])
+	var starts: Array[CombatUnit] = []
+	turns.turn_started.connect(func(unit: CombatUnit) -> void: starts.append(unit))
+	units[1].is_stunned = true
+	units[1].action_left = 0
+	turns.remove_unit(units[2])
+	turns.end_turn()
+	_check(turns.current_unit == third and units[1].is_stunned
+		and units[1].action_left == 0 and units[1] not in starts,
+		"새로 결합한 기절 유닛은 다른 조작 가능한 유닛보다 먼저 시작하지 않음")
+	turns.end_turn()
+	_check(turns.current_unit == units[3] and units[1].is_stunned
+		and turns.is_turn_finished(units[1]) and units[1].action_left == 1
+		and starts.count(units[1]) == 1,
+		"다른 유닛 종료 뒤 기절 유닛의 턴 시작 효과를 한 번 처리하고 자동 진행")
+
+
+func _test_deferred_start_removal() -> void:
+	for stunned: bool in [false, true]:
+		var units: Array[CombatUnit] = _make_units()
+		var turns: CombatTurns = _ordered_fixture(units, [0, 2, 1, 3])
+		units[1].is_stunned = stunned
+		var knockout: Callable = func(unit: CombatUnit) -> void:
+			if unit == units[1]:
+				turns.remove_unit(unit)
+		turns.turn_started.connect(knockout)
+		turns.remove_unit(units[2])
+		turns.end_turn()
+		_check(turns.current_unit == units[3] and turns.round_number == 1
+			and units[1] not in turns.ordered_units,
+			"지연된 시작 효과에서 탈락해도 다음 적의 턴을 건너뛰지 않음: " + str(stunned))
+		turns.turn_started.disconnect(knockout)
+
+
+func _test_boundary_prefix() -> void:
+	var units: Array[CombatUnit] = _make_units()
+	var third: CombatUnit = CombatUnit.new()
+	third.is_ally = true
+	units.append(third)
+	_created_units.append(third)
+	var turns: CombatTurns = _ordered_fixture(units, [0, 1, 2, 3, 4])
+	units[0].spend_movement(2)
+	units[1].spend_movement(3)
+	for i: int in range(4):
+		turns.end_turn()
+	_check(turns.get_current_group() == [third, units[0], units[1]]
+		and turns.ordered_units == [units[2], units[3], third, units[0], units[1]],
+		"앞 유닛이 여럿이면 묶음 단위로 뒤에 옮기고 기존 내부 순서 유지")
+	_check(units[0].movement_left == 4 and units[1].movement_left == 3,
+		"경계에 합류한 여러 유닛도 각각 조작 전 자원 유지")
+	var allies: Array[CombatUnit] = [units[0], units[1]]
+	turns = _ordered_fixture(allies, [0, 1])
+	turns.end_turn()
+	turns.end_turn()
+	_check(turns.round_number == 2 and turns.get_current_group() == [units[0], units[1]],
+		"한 편만 남은 일반 묶음은 순서를 중복 연결하지 않고 라운드 반복")
 
 
 func _test_rounds() -> void:
@@ -246,7 +330,31 @@ func _test_rounds() -> void:
 	_check(turns.ordered_units == initial_order, "라운드마다 이니셔티브를 다시 굴리지 않음")
 	turns = _ordered_fixture(units, [0, 2, 3, 1])
 	_check(turns.get_turn_groups().size() == 3 and turns.get_current_group() == [units[0]],
-		"라운드 끝과 처음의 아군을 순서를 넘어서 묶지 않음")
+		"처음 차례는 기존 이니셔티브 순서로 시작")
+	units[0].spend_movement(3)
+	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
+	turns.end_turn()
+	turns.end_turn()
+	turns.end_turn()
+	_check(turns.get_current_group() == [units[1], units[0]]
+		and turns.ordered_units == [units[2], units[3], units[1], units[0]],
+		"라운드 경계의 아군을 중복 없이 묶고 앞 초상을 묶음 뒤로 이동")
+	_check(units[0].movement_left == 3 and units[0].action_left == 0,
+		"경계에서 합류한 다음 턴 유닛은 조작 전 자원 유지")
+	_check(turns.select_unit(units[0]) and units[0].movement_left == 6
+		and units[0].action_left == 1, "경계 묶음의 새 턴은 첫 조작에 시작")
+	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
+	turns.end_turn()
+	turns.select_unit(units[0])
+	_check(units[0].action_left == 0, "경계 유닛의 종료 취소도 턴을 중복 시작하지 않음")
+	turns.end_turn()
+	turns.end_turn()
+	_check(turns.round_number == 2 and turns.current_unit == units[2], "새 순서의 시작에서 다음 라운드")
+	turns.end_turn()
+	turns.end_turn()
+	_check(turns.get_current_group() == [units[1], units[0]]
+		and units[0].action_left == 1 and units[1].action_left == 1,
+		"다음 라운드에도 옮긴 순서와 일반 묶음의 동시 자원 회복 유지")
 
 
 func _test_scene() -> void:
@@ -255,11 +363,12 @@ func _test_scene() -> void:
 	battle.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(battle)
 	battle.set_process(false)
+	battle.call("start_battle")
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var scene_units: Array[CombatUnit] = battle.get("units")
-	turns.start(scene_units, _dice_for_order(scene_units, scene_units))
+	ScriptedDice.arrange_turns(turns, scene_units, scene_units)
 	_check(turns.get_current_group().size() == 2, "장면 확인용 아군 묶음")
 	var panel: Node = hud.order_bar.get_child(0)
 	var portraits: Node = panel.get_child(0)
@@ -276,8 +385,9 @@ func _test_scene() -> void:
 	hud.end_button.pressed.emit()
 	var current: CombatUnit = turns.current_unit
 	archer_button.pressed.emit()
-	_check(not archer_button.disabled and turns.current_unit == current
-		and hud.unit_label.text == "아군 궁수", "턴을 끝낸 초상은 정보만 조회하며 조작 전환 없음")
+	_check(not archer_button.disabled and turns.current_unit == scene_units[1]
+		and not turns.is_turn_finished(scene_units[1]) and hud.unit_label.text == "아군 궁수",
+		"턴을 끝낸 초상을 누르면 조작을 전환하고 턴 종료 해제")
 	hud.unit_selected.emit(current)
 	var old_round: int = turns.round_number
 	_check(hud.unit_label.text == current.get_display_name(), "장면 연결: 현재 유닛 표시")

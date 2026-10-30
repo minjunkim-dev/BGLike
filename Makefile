@@ -4,8 +4,8 @@ SHELL := /bin/bash
 check: repository-check godot-check
 
 repository-check:
-	git diff --check
-	python3 scripts/check_bugbot_rules.py
+	python3 scripts/check_whitespace.py
+	python3 scripts/check_repo_baseline.py
 	python3 -m unittest discover -s scripts -p 'test_*.py'
 
 godot-install:

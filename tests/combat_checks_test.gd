@@ -20,11 +20,16 @@ func _run() -> void:
 	_test_scripted_dice_leftovers()
 	_test_scripted_dice_shortfall()
 	_test_modes()
-	_test_attacks()
-	_test_saves_and_contests()
-	_test_probabilities()
+	_test_ability_dice()
+	_test_opposed_rolls()
+	_test_opposed_chances()
+	await _test_battle_rolls()
+	await _test_spin_shared_modes()
+	_test_spin_disadvantage()
+	_test_strength_validation()
 	_test_preview_conditions()
 	await _test_scene_input()
+	await _test_scene_mixed_spin()
 	for unit: CombatUnit in _created_units:
 		unit.free()
 	var dice_problems: Array[String] = ScriptedDice.finish()
@@ -67,13 +72,6 @@ func _test_scripted_dice_shortfall() -> void:
 		"준비값보다 더 굴리면 보고하고 then_seeded()는 seed 굴림을 허용 " + str(problems))
 
 
-func _dice_for(expected: Array[int]) -> CombatDice:
-	var sides: Array[int] = []
-	sides.resize(expected.size())
-	sides.fill(20)
-	return ScriptedDice.new(expected, sides)
-
-
 func _unit(kind: CombatUnit.Kind, ally: bool, cell: Vector2i) -> CombatUnit:
 	var unit: CombatUnit = CombatUnit.new()
 	unit.kind = kind
@@ -84,6 +82,24 @@ func _unit(kind: CombatUnit.Kind, ally: bool, cell: Vector2i) -> CombatUnit:
 	return unit
 
 
+func _test_ability_dice() -> void:
+	for profile: Array in [
+		[CombatUnit.Kind.WARRIOR, true, [20, 8, 6, 4, 12, 6]],
+		[CombatUnit.Kind.ARCHER, true, [8, 20, 12, 6, 4, 6]],
+		[CombatUnit.Kind.WARRIOR, false, [10, 6, 4, 4, 4, 4]],
+		[CombatUnit.Kind.ARCHER, false, [4, 10, 4, 4, 4, 4]],
+		[CombatUnit.Kind.SPIDERLING, false, [4, 8, 4, 4, 4, 4]],
+		[CombatUnit.Kind.MOTHER_SPIDER, false, [8, 6, 4, 4, 6, 8]],
+		[CombatUnit.Kind.SCRAP_ROBOT_1000, false, [12, 4, 8, 4, 12, 4]],
+		[CombatUnit.Kind.SCRAP_ROBOT_2000, false, [12, 4, 8, 4, 12, 4]],
+		[CombatUnit.Kind.SCRAP_ROBOT_3000, false, [12, 4, 8, 4, 12, 4]],
+	]:
+		var unit: CombatUnit = _unit(profile[0], profile[1], Vector2i.ZERO)
+		for ability: CombatUnit.Ability in CombatUnit.Ability.values():
+			_check(unit.get_ability_sides(ability) == profile[2][ability],
+				"기획서의 여섯 능력치 주사위: %s %d" % [unit.get_display_name(), ability])
+
+
 func _test_modes() -> void:
 	_check(CombatChecks.roll_mode(0, 0) == CombatChecks.RollMode.NORMAL, "조건 없으면 일반")
 	_check(CombatChecks.roll_mode(3, 0) == CombatChecks.RollMode.ADVANTAGE, "유리 여러 개는 한 번의 유리")
@@ -92,54 +108,241 @@ func _test_modes() -> void:
 	_check(CombatChecks.roll_mode(1, 3) == CombatChecks.RollMode.NORMAL, "불리 수가 많아도 유리와 서로 취소")
 
 
-func _test_attacks() -> void:
+func _test_opposed_rolls() -> void:
 	var normal: CombatChecks.RollMode = CombatChecks.RollMode.NORMAL
-	var result: CombatChecks.RollResult = CombatChecks.attack(100, 1, normal, _dice_for([1]))
-	_check(not result.success and not result.critical, "공격 보너스가 커도 자연1 자동 실패")
-	result = CombatChecks.attack(-100, 999, normal, _dice_for([20]))
-	_check(result.success and result.critical, "AC가 커도 자연20 명중과 치명타")
-	result = CombatChecks.attack(5, 16, normal, _dice_for([11]))
-	_check(result.success and not result.critical and result.total == 16, "AC와 합계가 같으면 명중")
-	_check(result.rolls == [11], "일반은 주사위 하나를 보존")
-	result = CombatChecks.attack(5, 16, normal, _dice_for([10]))
-	_check(not result.success, "AC 바로 아래는 실패")
-	result = CombatChecks.attack(5, 16, CombatChecks.RollMode.ADVANTAGE, _dice_for([1, 20]))
-	_check(result.success and result.critical and result.selected_roll == 20, "유리는 선택된20으로 치명타")
-	_check(result.rolls == [1, 20] and result.total == 25, "주사위 두 개와 선택값 합계 보존")
-	result = CombatChecks.attack(100, 1, CombatChecks.RollMode.DISADVANTAGE, _dice_for([20, 1]))
-	_check(not result.success and not result.critical and result.selected_roll == 1, "불리는 선택된1으로 실패")
-	result = CombatChecks.attack(5, 16, CombatChecks.roll_mode(2, 1), _dice_for([11]))
-	_check(result.rolls == [11], "상쇄되면 주사위를 하나만 굴림")
+	var result: CombatChecks.RollResult = CombatChecks.opposed_attack(
+		20, 10, 1, 2, normal, ScriptedDice.new([7, 6], [20, 10]))
+	_check(result.rolls == [7] and result.total == 8
+		and result.defender_roll == 6 and result.defender_total == 8
+		and not result.success and not result.critical, "대결의 원본 굴림과 장비 가산을 보존, 동점 방어자 승")
+	result = CombatChecks.opposed_attack(
+		4, 20, 30, 0, normal, ScriptedDice.new([1, 20], [4, 20]))
+	_check(result.success and not result.critical, "최솟값도 합계가 높으면 성공, 자동 실패 없음")
+	result = CombatChecks.opposed_attack(
+		20, 4, 0, 30, normal, ScriptedDice.new([20, 1], [20, 4]))
+	_check(not result.success and not result.critical, "최댓값도 합계가 낮으면 실패, 치명타 없음")
+	for mode: CombatChecks.RollMode in [CombatChecks.RollMode.ADVANTAGE, CombatChecks.RollMode.DISADVANTAGE]:
+		result = CombatChecks.opposed_attack(
+			20, 10, 0, 0, mode, ScriptedDice.new([3, 17, 9], [20, 20, 10]))
+		_check(result.rolls == [3, 17] and result.defender_roll == 9
+			and result.mode == mode and result.success == (mode == CombatChecks.RollMode.ADVANTAGE),
+			"유리/불리는 공격 주사위만 두 번, 방어 주사위는 한 번")
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 321
+	var saved_state: int = dice.state
+	result = CombatChecks.opposed_attack(8, 12, 1, 2, CombatChecks.RollMode.ADVANTAGE, dice)
+	dice.state = saved_state
+	var replay: CombatChecks.RollResult = CombatChecks.opposed_attack(
+		8, 12, 1, 2, CombatChecks.RollMode.ADVANTAGE, dice)
+	_check(result.rolls == replay.rolls and result.defender_roll == replay.defender_roll,
+		"난수 상태 복원 뒤 공격과 방어 굴림을 함께 재현")
+	result = CombatChecks.threshold(8, 3, 7, ScriptedDice.new([4], [8]))
+	_check(result.success and result.total == 7, "흘려내기 민첩 +3은 같은 공격값에도 성공")
+	result = CombatChecks.threshold(6, 0, 4, ScriptedDice.new([4], [6]))
+	_check(result.success, "자연 d6 대 독 강도4는 동점 제거 성공")
+	_check(is_equal_approx(CombatChecks.threshold_chance(6, 0, 4), 0.5), "독 제거 확률 50%")
+	_check(CombatChecks.threshold_chance(8, 3, 30) == 0.0
+		and CombatChecks.threshold_chance(8, 3, 1) == 1.0, "흘려내기 확률은 0~100%")
+	var shared: CombatChecks.RollResult = CombatChecks.attack_roll(12, 3, normal, ScriptedDice.new([8], [12]))
+	var first: CombatChecks.RollResult = CombatChecks.defend_against(shared, 20, 0, ScriptedDice.new([10], [20]))
+	var second: CombatChecks.RollResult = CombatChecks.defend_against(shared, 8, 4, ScriptedDice.new([8], [8]))
+	_check(first.total == 11 and second.total == 11 and first.success and not second.success,
+		"광역은 같은 공격 굴림과 대상별 방어를 비교")
+	_check(first.defender_roll == 10 and shared.defender_roll == 0, "다음 대상의 방어는 이전 대상·공통 공격을 변경하지 않음")
 
 
-func _test_saves_and_contests() -> void:
-	var save: CombatChecks.RollResult = CombatChecks.saving_throw(20, 10, _dice_for([1]))
-	_check(save.success and save.total == 21, "내성 자연1도 합계가 높으면 성공")
-	save = CombatChecks.saving_throw(-20, 10, _dice_for([20]))
-	_check(not save.success and not save.critical, "내성 자연20도 합계가 낮으면 실패")
-	save = CombatChecks.saving_throw(1, 10, _dice_for([9]))
-	_check(save.success, "내성 합계가 DC와 같으면 성공")
-	save = CombatChecks.saving_throw(1, 13, _dice_for([9]))
-	_check(not save.success, "호출자가 준 DC에 따라 판정하고 고정값을 선택하지 않음")
-	var opposed: CombatChecks.ContestResult = CombatChecks.contest(3, 1, _dice_for([10, 12]))
-	_check(not opposed.attacker_wins and opposed.attacker_total == 13 and opposed.defender_total == 13,
-		"대결 보정값 포함 동점은 방어 승")
-	opposed = CombatChecks.contest(3, 1, _dice_for([11, 12]))
-	_check(opposed.attacker_wins and opposed.attacker_roll == 11 and opposed.defender_roll == 12,
-		"대결 높은 합계 승리와 양쪽 주사위 보존")
-	opposed = CombatChecks.contest(30, 0, _dice_for([1, 20]))
-	_check(opposed.attacker_wins, "대결은 공격의 자연1/20 특례를 적용하지 않음")
+func _test_opposed_chances() -> void:
+	var normal: CombatChecks.RollMode = CombatChecks.RollMode.NORMAL
+	_check(is_equal_approx(CombatChecks.opposed_chance(20, 10, 0, 0, normal), 0.725),
+		"전사 힘 d20 대 야만인 힘 d10의 명중률 72.5%")
+	for sides: Array in [[4, 4], [20, 10], [4, 20], [8, 12], [12, 6], [20, 20]]:
+		for bonuses: Array in [[0, 0], [1, 0], [0, 1], [-3, 4], [30, 0], [0, 30]]:
+			for mode: CombatChecks.RollMode in [normal, CombatChecks.RollMode.ADVANTAGE, CombatChecks.RollMode.DISADVANTAGE]:
+				var expected: float = _enumerated_opposed_chance(sides[0], sides[1], bonuses[0], bonuses[1], mode)
+				var actual: float = CombatChecks.opposed_chance(sides[0], sides[1], bonuses[0], bonuses[1], mode)
+				_check(is_equal_approx(actual, expected), "모든 실제 굴림 조합과 명중률 일치 %s %s %s" % [sides, bonuses, mode])
 
 
-func _test_probabilities() -> void:
-	_check(is_equal_approx(CombatChecks.hit_chance(5, 16, CombatChecks.RollMode.NORMAL), 0.5), "전사 AC16에 일반50%")
-	_check(is_equal_approx(CombatChecks.hit_chance(5, 14, CombatChecks.RollMode.NORMAL), 0.6), "궁수 AC14에 일반60%")
-	_check(is_equal_approx(CombatChecks.hit_chance(5, 14, CombatChecks.RollMode.ADVANTAGE), 0.84), "유리84%")
-	_check(is_equal_approx(CombatChecks.hit_chance(5, 14, CombatChecks.RollMode.DISADVANTAGE), 0.36), "불리36%")
-	_check(is_equal_approx(CombatChecks.hit_chance(-100, 999, CombatChecks.RollMode.NORMAL), 0.05), "자연20의 최소5%")
-	_check(is_equal_approx(CombatChecks.hit_chance(100, 1, CombatChecks.RollMode.NORMAL), 0.95), "자연1로 최대95%")
-	_check(is_equal_approx(CombatChecks.hit_chance(-100, 999, CombatChecks.RollMode.DISADVANTAGE), 0.0025), "불리 최소0.25%")
-	_check(is_equal_approx(CombatChecks.hit_chance(100, 1, CombatChecks.RollMode.ADVANTAGE), 0.9975), "유리 최대99.75%")
+func _enumerated_opposed_chance(attack_sides: int, defense_sides: int,
+	attack_bonus: int, defense_bonus: int, mode: CombatChecks.RollMode) -> float:
+	var hits: int = 0
+	var count: int = 0
+	for first: int in range(1, attack_sides + 1):
+		for second: int in range(1, (1 if mode == CombatChecks.RollMode.NORMAL else attack_sides) + 1):
+			var attack: int = first
+			if mode == CombatChecks.RollMode.ADVANTAGE:
+				attack = maxi(first, second)
+			elif mode == CombatChecks.RollMode.DISADVANTAGE:
+				attack = mini(first, second)
+			for defense: int in range(1, defense_sides + 1):
+				count += 1
+				if attack + attack_bonus > defense + defense_bonus:
+					hits += 1
+	return hits / float(count)
+
+
+func _test_battle_rolls() -> void:
+	var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 4))
+	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(3, 4))
+	var barbarian: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(5, 4))
+	var units: Array[CombatUnit] = [warrior, archer, barbarian]
+	var turns: CombatTurns = CombatTurns.new()
+	var actions: CombatActions = CombatActions.new()
+	actions.initialize(units, turns)
+	ScriptedDice.arrange_turns(turns, units, [warrior, archer, barbarian])
+	actions.dice = ScriptedDice.new([11, 10, 2], [20, 10, 8])
+	var before: int = barbarian.hit_points
+	_check(await actions.attack(warrior, barbarian) and barbarian.hit_points == before - 5
+		and actions.last_attack.total == 11 and actions.last_attack.defender_total == 10
+		and not actions.last_attack.critical and actions.last_damage_rolls == [2],
+		"실제 기본 공격이 양쪽 능력치 주사위를 비교하고 피해를 한 번 굴림")
+	barbarian.cell = Vector2i(3, 7)
+	turns.select_unit(archer)
+	actions.dice = ScriptedDice.new([10, 6, 1], [20, 6, 6])
+	_check(await actions.attack(archer, barbarian, true) and barbarian.is_stunned
+		and actions.last_attack.defender_roll == 6 and actions.last_damage == 2,
+		"충격 화살은 원거리 민첩 대결 명중 후 추가 굴림 없이 기절")
+	barbarian.is_stunned = false
+	barbarian.cell = Vector2i(5, 4)
+	ScriptedDice.arrange_turns(turns, units, [barbarian, warrior, archer])
+	actions.replay_answers = [true]
+	actions.dice = ScriptedDice.new([7, 3, 7], [10, 20, 8])
+	before = warrior.hit_points
+	_check(await actions.attack(barbarian, warrior) and warrior.hit_points == before
+		and actions.last_attack.total == 10 and warrior.parry_left == 1,
+		"흘려내기 민첩7+3이 이미 굴린 공격10과 같으면 방어, 피해 주사위 없음")
+	_check(actions.apply_status(barbarian, warrior, "poison"), "강도4 독 부여")
+	actions.dice = ScriptedDice.new([4], [6])
+	turns.end_turn()
+	_check(warrior.get_status_count("poison") == 0 and warrior.hit_points == before,
+		"턴 시작 자연d6의4로 독 강도4 제거 후 독 피해 없음")
+	var boss: CombatUnit = _unit(CombatUnit.Kind.SCRAP_ROBOT_3000, false, Vector2i(4, 4))
+	warrior.cell = Vector2i(4, 3)
+	archer.cell = Vector2i(4, 5)
+	units = [boss, warrior, archer]
+	actions.initialize(units, turns)
+	ScriptedDice.arrange_turns(turns, units, [boss, warrior, archer])
+	actions.replay_answers = [false]
+	actions.dice = ScriptedDice.new([8, 1, 2, 1, 3], [12, 20, 8, 8, 8])
+	var warrior_before: int = warrior.hit_points
+	var archer_before: int = archer.hit_points
+	_check(await actions.spin(boss) and warrior.hit_points == warrior_before - 4
+		and archer.hit_points == archer_before - 5 and actions.last_attack.total == 11,
+		"실제 회전 베기는 공통 공격8+3과 두 대상의 방어를 비교하고 각각 피해")
+	# 신호가 actions와 turns를 함께 붙잡지 않게 연결을 해제한다.
+	turns.turn_started.disconnect(actions._on_turn_started)
+
+
+func _test_spin_shared_modes() -> void:
+	for reversed: bool in [false, true]:
+		for stunned: int in [1, 2, 3]:
+			var boss: CombatUnit = _unit(CombatUnit.Kind.SCRAP_ROBOT_3000, false, Vector2i(4, 4))
+			var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 3))
+			var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 5))
+			var units: Array[CombatUnit] = [boss, warrior, archer]
+			if reversed:
+				units = [boss, archer, warrior]
+			var turns: CombatTurns = CombatTurns.new()
+			var actions: CombatActions = CombatActions.new()
+			actions.initialize(units, turns)
+			ScriptedDice.arrange_turns(turns, units, [boss])
+			warrior.is_stunned = (stunned & 1) != 0
+			archer.is_stunned = (stunned & 2) != 0
+			warrior.parry_left = 0
+			var advantaged: bool = stunned == 3
+			var attack_sides: int = boss.get_ability_sides(CombatUnit.Ability.STRENGTH)
+			var damage_sides: int = boss.get_damage_sides()
+			var total: int = 8 + boss.get_attack_bonus()
+			var damage: int = 1 + boss.get_damage_bonus()
+			var ready: bool = (attack_sides >= 8 and damage_sides >= 1 and damage > 0
+				and total > 1 + warrior.get_defense_bonus() and total > 1 + archer.get_defense_bonus()
+				and warrior.hit_points > damage and archer.hit_points > damage)
+			_check(ready, "실제 능력치·가산값에서 공통 공격8이 명중하고 피해1은 전투를 끝내지 않음")
+			if not ready:
+				turns.turn_started.disconnect(actions._on_turn_started)
+				return
+			var rolls: Array[int] = [8]
+			var sides: Array[int] = [attack_sides]
+			if advantaged:
+				rolls.push_front(2)
+				sides.push_front(attack_sides)
+			var values: Array[int] = rolls.duplicate()
+			values.append_array([1, 1, 1, 1])
+			var defenders: Array[CombatUnit] = [warrior, archer]
+			if reversed:
+				defenders.reverse()
+			# 소비 순서: 공통 힘(유리면2회) → 대상별 방어 힘 → 명중 피해.
+			for defender: CombatUnit in defenders:
+				sides.append_array([defender.get_ability_sides(CombatUnit.Ability.STRENGTH), damage_sides])
+			actions.dice = ScriptedDice.new(values, sides)
+			var attacks: Array[Dictionary] = []
+			var observe: Callable = func(message: String) -> void:
+				if " 방어:" in message:
+					attacks.append({"rolls": actions.last_attack.rolls.duplicate(),
+						"total": actions.last_attack.total, "mode": actions.last_attack.mode})
+			actions.logged.connect(observe)
+			_check(actions.can_use(boss, "spin") and (actions.dice as ScriptedDice).unused() == values,
+				"혼합 조건도 사용 가능하며 사용 가능 확인은 난수를 쓰지 않음")
+			_check(await actions.spin(boss), "확정된 혼합/전원 유리 광역 실행")
+			var mode: CombatChecks.RollMode = CombatChecks.RollMode.ADVANTAGE if advantaged else CombatChecks.RollMode.NORMAL
+			_check(attacks.size() == 2 and attacks.all(func(record: Dictionary) -> bool:
+				return record.rolls == rolls and record.total == total and record.mode == mode),
+				"정순·역순 모두 공통 값 하나: 혼합은 일반, 전원이 기절하면 유리")
+			_check(warrior.hit_points == warrior.get_max_hit_points() - damage
+				and archer.hit_points == archer.get_max_hit_points() - damage,
+				"각 대상 방어·피해는 독립적으로 한 번씩 처리")
+			_check(boss.action_left == 0 and boss.bonus_action_left == 1 and boss.reaction_left == 1
+				and boss.movement_left == 4 and not actions.busy and actions.pending_reactor == null,
+				"공통 광역은 행동 하나만 쓰고 반응·연출 잠금을 해제")
+			_check((actions.dice as ScriptedDice).unused().is_empty(), "준비한 공통 공격·대상별 방어·피해를 정확히 소비")
+			actions.logged.disconnect(observe)
+			turns.turn_started.disconnect(actions._on_turn_started)
+
+
+func _test_spin_disadvantage() -> void:
+	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 4))
+	var first: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(6, 4))
+	var second: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(7, 4))
+	var nearby: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(4, 5))
+	var actions: CombatActions = CombatActions.new()
+	actions.grid.units = [archer, first, second, nearby]
+	for disadvantage: bool in [false, true]:
+		nearby.is_stunned = not disadvantage
+		for stunned: int in [0, 1, 3]:
+			first.is_stunned = (stunned & 1) != 0
+			second.is_stunned = (stunned & 2) != 0
+			var mode: CombatChecks.RollMode = CombatChecks.RollMode.NORMAL
+			if stunned == 3 and not disadvantage:
+				mode = CombatChecks.RollMode.ADVANTAGE
+			elif stunned != 3 and disadvantage:
+				mode = CombatChecks.RollMode.DISADVANTAGE
+			var targets: Array[CombatUnit] = [first, second]
+			_check(actions._spin_mode(archer, targets) == mode,
+				"공격자 공통 불리는 혼합 대상에서도 유지하고 전원 유리와는 상쇄")
+			targets.reverse()
+			_check(actions._spin_mode(archer, targets) == mode, "불리·상쇄도 대상 순서와 무관")
+	var empty: Array[CombatUnit] = []
+	_check(actions._spin_mode(archer, empty) == -1, "공통 공격 대상이 없으면 기존대로 사용 불가")
+
+
+func _test_strength_validation() -> void:
+	var source: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(4, 4))
+	var target: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 5))
+	var units: Array[CombatUnit] = [source, target]
+	target.status_effects.append(CombatUnit.StatusEffect.new("burn", source, 2, 0))
+	var saved: Dictionary = target.save_state(units)
+	_check(target.is_valid_state(saved, 2, Vector2i(10, 10)), "화상 강도0 저장 허용")
+	saved.statuses[0][3] = 5
+	_check(not target.is_valid_state(saved, 2, Vector2i(10, 10)), "복원 때 사라질 잘못된 화상 강도 거부")
+	var actions: CombatActions = CombatActions.new()
+	var turns: CombatTurns = CombatTurns.new()
+	actions.initialize(units, turns)
+	actions.create_ground(source, Vector2i(5, 4), "burn")
+	saved = actions.save_state()
+	_check(CombatActions.is_valid_state(saved, 2, Vector2i(10, 10)), "불 장판 강도0 저장 허용")
+	saved.grounds[0][5] = 5
+	_check(not CombatActions.is_valid_state(saved, 2, Vector2i(10, 10)), "불 장판의 잘못된 강도 거부")
+	turns.turn_started.disconnect(actions._on_turn_started)
 
 
 func _test_preview_conditions() -> void:
@@ -147,11 +350,11 @@ func _test_preview_conditions() -> void:
 	var target: CombatUnit = _unit(CombatUnit.Kind.ARCHER, false, Vector2i(7, 4))
 	var nearby: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(4, 5))
 	var units: Array[CombatUnit] = [archer, target, nearby]
-	var grid: CombatHexGrid = CombatHexGrid.new()
+	var grid: CombatGrid = CombatGrid.new()
 	grid.units = units
 	var preview: CombatChecks.AttackPreview = grid.attack_preview(archer, target)
 	_check(preview.in_range and preview.mode == CombatChecks.RollMode.DISADVANTAGE
-		and is_equal_approx(preview.chance, 0.5625) and "옆에 적" in preview.reasons, "헥사 인접 적도 원거리 불리")
+		and is_equal_approx(preview.chance, 0.54625) and "옆에 적" in preview.reasons, "헥사 인접 적도 원거리 불리")
 	nearby.cell = Vector2i(5, 5)
 	preview = grid.attack_preview(archer, target)
 	_check(preview.mode == CombatChecks.RollMode.NORMAL, "사각 대각선의 헥사 거리2는 불리를 주지 않음")
@@ -169,10 +372,10 @@ func _test_preview_conditions() -> void:
 	_check(preview.mode == CombatChecks.RollMode.NORMAL, "인접한 아군은 불리 아님")
 	target.is_stunned = true
 	preview = grid.attack_preview(archer, target)
-	_check(preview.mode == CombatChecks.RollMode.ADVANTAGE and is_equal_approx(preview.chance, 0.9375), "기절 대상은 유리")
+	_check(preview.mode == CombatChecks.RollMode.ADVANTAGE and is_equal_approx(preview.chance, 0.90375), "기절 대상은 유리")
 	nearby.is_ally = false
 	preview = grid.attack_preview(archer, target)
-	_check(preview.mode == CombatChecks.RollMode.NORMAL and is_equal_approx(preview.chance, 0.75)
+	_check(preview.mode == CombatChecks.RollMode.NORMAL and is_equal_approx(preview.chance, 0.725)
 		and preview.reasons.size() == 2, "기절 대상과 인접 적이 함께 있으면 상쇄")
 	archer.is_stunned = true
 	preview = grid.attack_preview(archer, target)
@@ -199,8 +402,8 @@ func _test_preview_conditions() -> void:
 	target.is_ally = false
 	target.hit_points = 0
 	_check(not grid.attack_preview(archer, target).valid_target, "전투 불능 대상 거부")
-	_check(archer.get_attribute(CombatUnit.Attribute.MENTAL) == -1, "전사 정신 -1")
-	_check(target.get_attribute(CombatUnit.Attribute.MENTAL) == 0, "풋내기 궁수 정신0")
+	_check(archer.get_ability_sides(CombatUnit.Ability.WILL) == 12, "전사 의지 d12")
+	_check(target.get_ability_sides(CombatUnit.Ability.WILL) == 4, "풋내기 궁수 의지 d4")
 
 
 func _test_scene_input() -> void:
@@ -209,6 +412,7 @@ func _test_scene_input() -> void:
 	battle.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(battle)
 	battle.set_process(false)
+	battle.call("start_battle")
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var units: Array[CombatUnit] = battle.get("units")
@@ -216,15 +420,13 @@ func _test_scene_input() -> void:
 	units[0].cell = Vector2i(4, 9)
 	units[1].cell = Vector2i(5, 9)
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 33
-	turns.start(units, dice)
+	ScriptedDice.arrange_turns(turns, units, [units[0], units[1], units[2], units[3]])
 	var hp_before: int = units[2].hit_points
 	var movement_before: int = units[0].movement_left
 	var action_before: int = units[0].action_left
 	await _click_unit(units[2])
 	_check((battle.get("selection") as CombatSelection).preview_target == units[2], "실제 입력 경로로 적 도형 선택")
-	_check(hud.unit_label.text == "풋내기 야만인" and "AC 12" in hud.resource_label.text, "클릭하면 적 HP/AC/상태 표시")
+	_check(hud.unit_label.text == "풋내기 야만인" and "방어 +0" in hud.resource_label.text, "클릭하면 적 HP/방어/상태 표시")
 	_check("사거리 밖" in hud.preview_label.text and "0.0%" in hud.preview_label.text, "기본 배치의 사거리 밖 안내")
 	await _click_unit(units[2])
 	_check(units[2].hit_points == hp_before and units[0].movement_left == movement_before
@@ -244,23 +446,23 @@ func _test_scene_input() -> void:
 	units[3].position = map.map_to_local(units[3].cell)
 	(battle.get("selection") as CombatSelection).clear_preview()
 	await _click_unit(units[3])
-	_check("75.0%" in hud.preview_label.text and "AC 11" in hud.resource_label.text
+	_check("72.5%" in hud.preview_label.text and "방어 +0" in hud.resource_label.text
 		and "HP 14 / 14" in hud.resource_label.text, "사거리 안 대상의 명중률과 능력치 표시")
 	units[3].is_stunned = true
 	(battle.get("selection") as CombatSelection).clear_preview()
 	await _click_unit(units[3])
-	_check("93.8% · 유리" in hud.preview_label.text and "기절한 대상" in hud.preview_label.text,
+	_check("90.4% · 유리" in hud.preview_label.text and "기절한 대상" in hud.preview_label.text,
 		"기절 대상의 유리 확률과 이유 표시")
 	units[2].cell = Vector2i(6, 9)
 	units[2].position = map.map_to_local(units[2].cell)
 	(battle.get("selection") as CombatSelection).clear_preview()
 	await _click_unit(units[3])
-	_check("75.0% · 유리/불리 상쇄" in hud.preview_label.text
+	_check("72.5% · 유리/불리 상쇄" in hud.preview_label.text
 		and "기절한 대상, 옆에 적" in hud.preview_label.text, "상쇄 확률과 양쪽 이유 표시")
 	units[3].is_stunned = false
 	(battle.get("selection") as CombatSelection).clear_preview()
 	await _click_unit(units[3])
-	_check("56.2% · 불리" in hud.preview_label.text and "옆에 적" in hud.preview_label.text,
+	_check("54.6% · 불리" in hud.preview_label.text and "옆에 적" in hud.preview_label.text,
 		"인접 적에 따른 불리 확률과 이유 표시")
 	hud.end_button.pressed.emit()
 	_check((battle.get("selection") as CombatSelection).preview_target == null and hud.unit_label.text == "아군 전사", "턴 종료 후 미리보기 해제")
@@ -268,6 +470,72 @@ func _test_scene_input() -> void:
 	_check((battle.get("selection") as CombatSelection).preview_target == null, "아군 도형 클릭은 공격 미리보기 대상 아님")
 	turns.end_turn()
 	_check(not battle.call("preview_enemy", units[0]), "적 턴에는 아군 조작 미리보기 불가")
+	battle.queue_free()
+	await process_frame
+
+
+func _test_scene_mixed_spin() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate()
+	battle.stages[0] = load("res://scenes/combat/stage.tres")
+	root.add_child(battle)
+	battle.set_process(false)
+	battle.call("start_battle")
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var actions: CombatActions = battle.get("actions")
+	var turns: CombatTurns = battle.get("turns")
+	_check(units.size() == 4, "장면 fixture의 아군2·적2 구성")
+	if units.size() != 4:
+		battle.queue_free()
+		await process_frame
+		return
+	var boss: CombatUnit = units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = boss.get_max_hit_points()
+	boss.cell = Vector2i(4, 4)
+	units[0].cell = Vector2i(4, 3)
+	units[1].cell = Vector2i(4, 5)
+	units[3].cell = Vector2i(9, 9)
+	ScriptedDice.arrange_turns(turns, units, [boss])
+	units[0].is_stunned = true
+	units[0].parry_left = 0
+	units[0].reaction_left = 0
+	units[1].reaction_left = 0
+	var attack_sides: int = boss.get_ability_sides(CombatUnit.Ability.STRENGTH)
+	var damage_sides: int = boss.get_damage_sides()
+	var damage: int = 1 + boss.get_damage_bonus()
+	var ready: bool = (boss.action_left == 1 and actions.grid.opponents_in_area(boss, 1).size() == 2
+		and attack_sides >= 8 and damage_sides >= 1 and damage > 0
+		and 8 + boss.get_attack_bonus() > 1 + units[0].get_defense_bonus()
+		and 8 + boss.get_attack_bonus() > 1 + units[1].get_defense_bonus()
+		and units[0].hit_points > damage and units[1].hit_points > damage)
+	_check(ready, "행동1개·인접 아군2명, 실제 능력치·가산값에서 명중·생존하는 통제 장면")
+	if not ready:
+		battle.queue_free()
+		await process_frame
+		return
+	# 소비 순서: 공통 힘 → 전사 방어 힘·피해 → 궁수 방어 힘·피해.
+	actions.dice = ScriptedDice.new([8, 1, 1, 1, 1], [attack_sides,
+		units[0].get_ability_sides(CombatUnit.Ability.STRENGTH), damage_sides,
+		units[1].get_ability_sides(CombatUnit.Ability.STRENGTH), damage_sides])
+	var logs: Array[String] = []
+	var observe: Callable = func(message: String) -> void: logs.append(message)
+	actions.logged.connect(observe)
+	await CombatEnemyAi.new().play_turn(boss, actions)
+	_check(logs.filter(func(message: String) -> bool: return "회전회오리:" in message).size() == 1
+		and logs.filter(func(message: String) -> bool: return message.begins_with("공통 공격:")).size() == 1,
+		"실제 장면의 직접 AI 호출이 혼합 대상 회전회오리와 공통 공격을 한 번 실행")
+	_check(units[0].hit_points == units[0].get_max_hit_points() - damage
+		and units[1].hit_points == units[1].get_max_hit_points() - damage
+		and actions.last_attack.rolls == [8] and actions.last_attack.mode == CombatChecks.RollMode.NORMAL,
+		"실제 장면·연출에서도 혼합 대상은 같은 일반 공격으로 각각 피해")
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud")
+	_check(boss.action_left == 0 and not actions.busy and not hud.reaction_dialog.visible
+		and actions.pending_reactor == null and not battle.has_node("Arrow"), "AI 실행 후 행동 소비·입력 잠금 해제")
+	_check((actions.dice as ScriptedDice).unused().is_empty(), "실제 장면에서도 준비 난수를 정확히 소비")
+	actions.logged.disconnect(observe)
+	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	await create_timer(0.15).timeout
 	battle.queue_free()
 	await process_frame
 

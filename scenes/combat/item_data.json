@@ -1,4 +1,5 @@
 {
+  "bag_limit": 12,
   "potion_limit": 3,
   "extra_drop_chance": 0.35,
   "items": [
@@ -6,6 +7,8 @@
       "id": "trial_weapon",
       "name": "무기",
       "kind": "weapon",
+      "icon": "sword",
+      "unit_icons": {"archer": "bow"},
       "weight": 2,
       "stats": {"attack_bonus": [[1, 2], [3, 4], [5, 7]], "damage_bonus": [[1, 3], [4, 6], [7, 10]]}
     },
@@ -13,13 +16,15 @@
       "id": "trial_armor",
       "name": "방어구",
       "kind": "armor",
+      "icon": "armor",
       "weight": 2,
-      "stats": {"armor_class": [[1, 2], [3, 4], [5, 7]], "max_hit_points": [[2, 4], [5, 8], [9, 14]]}
+      "stats": {"defense_bonus": [[1, 2], [3, 4], [5, 7]], "max_hit_points": [[2, 4], [5, 8], [9, 14]]}
     },
     {
       "id": "healing_potion",
       "name": "회복 물약",
       "kind": "potion",
+      "icon": "potion",
       "weight": 3,
       "stats": {}
     }

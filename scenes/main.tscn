@@ -1,7 +1,207 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=5 format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/combat/battle.tscn" id="1_battle"]
+[ext_resource type="Theme" path="res://scenes/ui_theme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scenes/title.gd" id="2_title"]
+[ext_resource type="PackedScene" path="res://scenes/settings.tscn" id="3_settings"]
+[ext_resource type="PackedScene" path="res://scenes/help.tscn" id="4_help"]
 
-[node name="Main" type="Node2D"]
+[node name="Title" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_title")
 
-[node name="Battle" parent="." instance=ExtResource("1_battle")]
+[node name="Menu" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -70.0
+offset_top = -80.0
+offset_right = 70.0
+offset_bottom = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="Name" type="Label" parent="Menu"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "BGLike"
+horizontal_alignment = 1
+
+[node name="Gap" type="Control" parent="Menu"]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+
+[node name="NewGame" type="Button" parent="Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "새 게임"
+
+[node name="Continue" type="Button" parent="Menu"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "이어하기"
+
+[node name="Settings" type="Button" parent="Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "설정"
+
+[node name="HelpButton" type="Button" parent="Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "도움말"
+
+[node name="CreditsButton" type="Button" parent="Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "출처"
+
+[node name="Quit" type="Button" parent="Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+text = "종료"
+
+[node name="Notice" type="Label" parent="Menu"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "저장 파일을 읽을 수 없어
+게임을 이어서 할 수 없습니다."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Credits" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.06, 0.08, 1)
+
+[node name="Margin" type="MarginContainer" parent="Credits"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 10
+
+[node name="Layout" type="VBoxContainer" parent="Credits/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Heading" type="Label" parent="Credits/Margin/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "출처"
+
+[node name="CreditsScroll" type="ScrollContainer" parent="Credits/Margin/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Notices" type="VBoxContainer" parent="Credits/Margin/Layout/CreditsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="RulesHeading" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "게임 규칙"
+
+[node name="Rules" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+layout_mode = 2
+text = "전투 규칙은 SRD 5.1을 근거로 하며 게임에 맞게 수정해 사용합니다."
+autowrap_mode = 3
+
+[node name="SrdNotice" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+auto_translate_mode = 2
+layout_mode = 2
+text = "This work includes material taken from the System Reference Document 5.1 (“SRD 5.1”) by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode."
+autowrap_mode = 3
+
+[node name="EngineHeading" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "엔진"
+
+[node name="Engine" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="EngineLicense" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+auto_translate_mode = 2
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="ArtHeading" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "그림"
+
+[node name="Art" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+layout_mode = 2
+text = "유닛·지형·사물 그림은 이미지 생성 도구로 독자 생성했습니다. 스킬·아이템 아이콘은 코드로 그렸습니다."
+autowrap_mode = 3
+
+[node name="SoundHeading" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "효과음"
+
+[node name="Sound" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+layout_mode = 2
+text = "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
+autowrap_mode = 3
+
+[node name="Back" type="Button" parent="Credits/Margin/Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 20)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "뒤로"
+
+[node name="Overwrite" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+theme = ExtResource("1_theme")
+title = "새 게임"
+dialog_hide_on_ok = false
+dialog_autowrap = true
+
+[node name="SettingsScreen" parent="." instance=ExtResource("3_settings")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="Help" parent="." instance=ExtResource("4_help")]
+unique_name_in_owner = true
+layout_mode = 1

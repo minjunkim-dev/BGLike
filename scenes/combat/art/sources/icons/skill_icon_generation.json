@@ -1,0 +1,35 @@
+{
+  "issue": "https://github.com/minjunkim-dev/BGLike/issues/384",
+  "generator": {
+    "tool": "draw_skill_icons.py",
+    "mode": "pixels placed by code from the briefs below with the item icon palette and outline; no generative image model and no input image",
+    "author": "Claude Code (claude-opus-5-5) for Issue #384, replacing the #225 shape icons",
+    "date": "2026-10-27",
+    "command": "python3 scenes/combat/art/sources/icons/draw_skill_icons.py scenes/combat/art/icons/skills"
+  },
+  "spec": {
+    "canvas": [48, 48],
+    "design_grid": [64, 64],
+    "max_content": [44, 44],
+    "display_scale": 0.5,
+    "logical_size": [24, 24],
+    "outline": "2 source px (1 logical px) of #120d16, shared with draw_item_icons.py",
+    "palette": "the item icon palette (steel, indigo, leather, brass, wood, teal, rust red) imported from draw_item_icons.py",
+    "light": "upper left",
+    "background": "transparent; no action/bonus/reaction cost colour border",
+    "filter": "nearest; no resampling after drawing"
+  },
+  "icons": [
+    {"id": "attack", "name": "공격", "effect": "기본 공격", "brief": "The item sword: steel blade up-right, brass guard, leather grip. Same picture as the weapon slot."},
+    {"id": "second_wind", "name": "숨 고르기", "effect": "HP 1d10+1 회복", "brief": "Red heart for HP with two white breath curls at the upper left."},
+    {"id": "surge", "name": "몰아치기", "effect": "이미 쓴 행동을 다시 채워 한 번 더 공격", "brief": "Short sword inside a brass refill ring that ends in an arrow head: the action comes back."},
+    {"id": "parry", "name": "흘려내기", "effect": "맞았을 때 피해와 추가 효과를 피함", "brief": "Indigo round shield with steel rim and brass boss; an enemy sword from the upper right glances off the rim with brass sparks."},
+    {"id": "opportunity", "name": "기회 공격", "effect": "적이 인접 칸을 벗어나면 기본 공격", "brief": "Watching eye at the upper left; a sword with its blade pointing down-left and a white slash arc at the lower right."},
+    {"id": "mark", "name": "표식", "effect": "맞히면 피해 +1d6", "brief": "Red and white target board with a wooden arrow stuck in the bullseye."},
+    {"id": "shock", "name": "충격 화살", "effect": "명중하면 기절", "brief": "Wooden arrow with steel head and teal fletching flying up-right, a brass lightning bolt beside the head."},
+    {"id": "disengage", "name": "물러서며 쏘기", "effect": "남은 이동에서 기회 공격을 받지 않음", "brief": "Teal arrow pointing back to the left above a leather boot; white speed lines trail on the toe side as it slides left."},
+    {"id": "shove", "name": "밀치기", "effect": "1칸 밀기", "brief": "Open leather glove, palm forward with split fingers and thumb, brass cuff, white push lines to the right."},
+    {"id": "jump", "name": "점프", "effect": "1~2칸의 빈 바닥으로 점프", "brief": "Leather boot on a low wooden step, white arc arrow to a higher step on the right."},
+    {"id": "potion", "name": "물약", "effect": "HP 2d4+2 회복", "brief": "The item potion: round red flask with cork and glint. Same picture as the potion slot."}
+  ]
+}

@@ -14,6 +14,29 @@ static var _mismatches: Array[String] = []
 static var _created: Array = []
 
 
+## 입력·연출 fixture의 순서만 저장 복원 API로 고정한다. 자연 이니셔티브의 증거로 쓰지 않는다.
+## 모든 굴림 값은 유효한 1이며, 이니셔티브 수학은 combat_turns_test에서 실제 start()로 검사한다.
+static func arrange_turns(turns: CombatTurns, units: Array[CombatUnit], desired: Array[CombatUnit]) -> void:
+	var ordered: Array[CombatUnit] = desired.duplicate()
+	for unit: CombatUnit in units:
+		if unit not in ordered and unit.hit_points > 0:
+			ordered.append(unit)
+	ordered = ordered.filter(func(unit: CombatUnit) -> bool: return unit.hit_points > 0)
+	assert(not ordered.is_empty())
+	for unit: CombatUnit in ordered:
+		unit.initiative_roll = 1
+	var group: Array[int] = []
+	for unit: CombatUnit in ordered:
+		if unit.is_ally != ordered[0].is_ally:
+			break
+		unit.begin_turn()
+		group.append(units.find(unit))
+	turns.load_state({"order": ordered.map(func(unit: CombatUnit) -> int: return units.find(unit)),
+		"current": units.find(ordered[0]), "round": 1, "group": Vector2i(0, group.size() - 1),
+		"finished": [], "pending": [], "started": group, "activated": [units.find(ordered[0])], "deferred": []}, units)
+	turns.turn_started.emit(ordered[0])
+
+
 func _init(values: Array[int], sides: Array[int] = [], chances: Array[float] = []) -> void:
 	_values = values.duplicate()
 	_sides = sides.duplicate()

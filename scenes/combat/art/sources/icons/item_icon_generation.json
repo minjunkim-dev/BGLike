@@ -1,0 +1,43 @@
+{
+  "issue": "https://github.com/minjunkim-dev/BGLike/issues/224",
+  "generator": {
+    "tool": "draw_item_icons.py",
+    "mode": "pixels placed by code from the briefs below; no generative image model and no input image",
+    "date": "2026-10-21",
+    "command": "python3 scenes/combat/art/sources/icons/draw_item_icons.py scenes/combat/art/icons/items"
+  },
+  "spec": {
+    "canvas": [48, 48],
+    "design_grid": [64, 64],
+    "display_scale": 0.5,
+    "logical_size": [24, 24],
+    "max_content": [44, 44],
+    "potion_pip": "potion_pip.png: the same potion on a 32px canvas for the 16 logical px counter on the preparation cards",
+    "outline": "2 source px (1 logical px) of #120d16, like the unit frames",
+    "palette": "warm steel, indigo, leather, brass, wood, teal and rust red sampled from the warrior, archer and scrap robot frames by median-cut quantize",
+    "light": "upper left",
+    "filter": "nearest; no resampling after drawing"
+  },
+  "icons": [
+    {
+      "id": "sword",
+      "used_by": "trial_weapon (default and warrior)",
+      "brief": "Original pixel-art item icon, transparent background: a straight steel sword on the diagonal, tip upper right. Light steel edge highlight on the upper-left side, darker lower edge, brass crossguard and round brass pommel, dark leather grip with wrap bands. Warm stone/indigo/steel palette of the unit sprites, dark outline, no gradients or anti-aliasing."
+    },
+    {
+      "id": "bow",
+      "used_by": "trial_weapon when equipped by archer",
+      "brief": "Original pixel-art item icon, transparent background: a wooden recurve bow on the diagonal, belly toward the upper left, ivory string on the lower right, teal wrapped grip matching the archer cloak. Same palette, dark outline, no gradients or anti-aliasing."
+    },
+    {
+      "id": "armor",
+      "used_by": "trial_armor",
+      "brief": "Original pixel-art item icon, transparent background: a front-facing steel cuirass with rounded pauldrons, indigo neckline trim matching the warrior cloak, leather belt with brass buckle, banded tassets split in the middle. Highlight stripe left of center, darker right side. Same palette, dark outline."
+    },
+    {
+      "id": "potion",
+      "used_by": "healing_potion",
+      "brief": "Original pixel-art item icon, transparent background: a round glass flask filled two-thirds with rust-red healing liquid, lighter surface line, dark indigo empty glass, light steel lip, brown cork, curved glass shine at the upper left. Same palette, dark outline."
+    }
+  ]
+}
