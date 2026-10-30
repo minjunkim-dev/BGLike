@@ -37,6 +37,19 @@ static func arrange_turns(turns: CombatTurns, units: Array[CombatUnit], desired:
 	turns.turn_started.emit(ordered[0])
 
 
+## 명중굴림의 면 수: 굴리는 유닛의 공격 능력치 주사위. 유리/불리면 count 2다 (#387).
+static func attack_sides(attacker: CombatUnit, count: int = 1) -> Array[int]:
+	var sides: Array[int] = []
+	sides.resize(count)
+	sides.fill(attacker.get_ability_sides(attacker.get_attack_ability()))
+	return sides
+
+
+## 명중 뒤 피해 굴림의 면 수. 피해가 능력치 주사위로 바뀌면(#388) 여기만 고친다.
+static func damage_sides(attacker: CombatUnit) -> Array[int]:
+	return [attacker.get_damage_sides()]
+
+
 func _init(values: Array[int], sides: Array[int] = [], chances: Array[float] = []) -> void:
 	_values = values.duplicate()
 	_sides = sides.duplicate()

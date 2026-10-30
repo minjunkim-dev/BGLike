@@ -2,6 +2,7 @@ extends SceneTree
 ## 실제 메인 장면과 결과 버튼에서 막 진행과 자원 유지 규칙을 검사한다.
 
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
+const LargeMapBattle = preload("res://tests/large_map_battle.gd")
 
 var checks: int = 0
 var failures: int = 0
@@ -21,6 +22,8 @@ func _check(condition: bool, message: String) -> void:
 func _run() -> void:
 	_test_act_progress()
 	_test_terrain_layouts()
+	_test_large_map_layout()
+	await _test_large_map_battle()
 	await _test_spiderling_placement_and_turns()
 	await _test_mother_stages()
 	await _test_novice_placements()
@@ -172,11 +175,11 @@ func _test_spiderling_placement_and_turns() -> void:
 			and units[index + 2].cell == cells[index] and units[index + 2].hit_points == 1,
 			"처음 배치한 새끼 거미의 종류·HP·좌표 순서")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
-	turns.start(units, ScriptedDice.new([8, 7, 8, 8, 8, 8], [8, 20, 8, 8, 8, 8]))
+	turns.start(units, ScriptedDice.new([8, 7, 8, 8, 8, 8], [8, 12, 8, 8, 8, 8]))
 	_check(turns.ordered_units == [units[0], units[2], units[3], units[4], units[5], units[1]],
 		"이니셔티브 동점은 민첩을 먼저 비교하고 새끼끼리는 배치 좌표 순서")
 	var rolls: Array[int] = [2, 1, 8, 7, 6, 5]
-	turns.start(units, ScriptedDice.new(rolls, [8, 20, 8, 8, 8, 8]))
+	turns.start(units, ScriptedDice.new(rolls, [8, 12, 8, 8, 8, 8]))
 	for index: int in range(units.size()):
 		_check(units[index].initiative_roll == rolls[index]
 			and units[index].get_initiative() == rolls[index],
@@ -502,7 +505,7 @@ func _test_scrap_robot_2000_stage() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	ScriptedDice.arrange_turns(turns, units, [units[2], units[0], units[1]])
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.dice = ScriptedDice.new([12, 8], [12, 8])
+	actions.dice = ScriptedDice.new([12, 6], [12, 6])
 	_check(actions.pull(boss, units[1]) and units[1].cell == Vector2i(5, 4),
 		"실제 2000 보스 전투의 만능팔이 대상 위치와 화면 상태를 갱신")
 	# 이후 승리 보상은 판정 fixture와 별도 RNG로 생성한다.
@@ -552,7 +555,7 @@ func _test_scrap_robot_3000_stage() -> void:
 	_check(not actions.grid.is_blocked(units[0].cell) and not actions.grid.is_blocked(units[1].cell)
 		and actions.grid.are_adjacent(boss.cell, units[0].cell) and actions.grid.are_adjacent(boss.cell, units[1].cell),
 		"3000 회전 fixture의 두 아군은 장애물 없는 인접 바닥에 배치")
-	actions.dice = ScriptedDice.new([12, 1, 3, 1, 3], [12, 20, 8, 8, 8])
+	actions.dice = ScriptedDice.new([12, 1, 3, 1, 3], [12, 20, 8, 6, 8])
 	_check(await actions.spin(boss) and units[0].hit_points == 7 and units[1].hit_points == 9
 		and boss.action_left == 1 and boss.hit_points == 23,
 		"실제 3000 과부하 턴 시작 자기 피해 뒤 회전회오리가 두 아군과 화면을 갱신")
@@ -847,3 +850,155 @@ func _test_usage_text(battle: Node2D) -> void:
 	_check("HP 2d4+2 회복" in hud.action_details(actions, party[0], "potion")
 		and "\n보유 물약" not in hud.action_details(actions, party[0], "potion"),
 		"물약 호버에는 효과만 남기고 보유 개수 줄 제거")
+
+
+## #394 기능 테스트용 큰 맵. 실제9개 맵보다 크고 높이0~3·계단·물·낭떠러지·물체·장식과 보행 연결을 갖는다.
+func _test_large_map_layout() -> void:
+	var label: String = "큰 테스트 맵"
+	var stage: CombatStage = load(LargeMapBattle.STAGE_PATH) as CombatStage
+	_check(stage != null, label + " 자원을 읽음")
+	if stage == null:
+		return
+	_check(stage.map_size == Vector2i(28, 20), label + " 개발 결정 크기28×20")
+	for act: int in range(1, 4):
+		for number: int in range(1, 4):
+			var real: CombatStage = load("res://scenes/combat/stages/act%d_stage%d.tres" % [act, number]) as CombatStage
+			_check(stage.map_size.x > real.map_size.x and stage.map_size.y > real.map_size.y,
+				label + " 가로·세로가 실제 맵보다 큼: %d-%d" % [act, number])
+	_check(not stage.water_cells.is_empty() and not stage.pits.is_empty(), label + " 물과 낭떠러지")
+	_check(not stage.crate_cells.is_empty() and not stage.rock_cells.is_empty(), label + " 상자와 바위")
+	_check(not stage.path_cells.is_empty() and not stage.stone_cells.is_empty(), label + " 길·석재 재질")
+	var kinds: Array = stage.scenery.values()
+	_check(kinds.has("tree") and kinds.has("ruin_wall") and kinds.has("cottage"), label + " 나무·무너진 벽·집 장식")
+	var grid: CombatGrid = CombatGrid.new()
+	grid.map_size = stage.map_size
+	grid.heights = stage.heights.duplicate()
+	grid.pits = stage.pits.duplicate()
+	grid.blocked_cells = stage.get_blocked_cells()
+	for anchor: Vector2i in stage.scenery:
+		var size: Vector2i = CombatStage.SCENERY_SIZE[stage.scenery[anchor]]
+		for y: int in range(size.y):
+			for x: int in range(size.x):
+				var footprint: Vector2i = anchor + Vector2i(x, y)
+				_check(grid.is_floor(footprint) and grid.height_at(footprint) == grid.height_at(anchor),
+					label + " 장식 footprint는 같은 높이의 바닥: " + str(footprint))
+	for list: Array[Vector2i] in [stage.path_cells, stage.stone_cells, stage.water_cells,
+		stage.crate_cells, stage.rock_cells, stage.ally_cells]:
+		for cell: Vector2i in list:
+			_check(grid.is_floor(cell), label + " 재질·물체·아군 칸은 유효한 바닥: " + str(cell))
+	for cell: Vector2i in stage.crate_cells:
+		grid.props.append(CombatGrid.Prop.new(cell, "crate"))
+	for cell: Vector2i in stage.rock_cells:
+		grid.props.append(CombatGrid.Prop.new(cell, "rock"))
+	_check(stage.ally_cells.size() == 2 and stage.ally_cells.all(func(cell: Vector2i) -> bool:
+		return not grid.is_blocked(cell)), label + " 아군 두 명의 시작 칸")
+	var levels: Array[int] = []
+	var cliff: bool = false
+	var actor: CombatUnit = CombatUnit.new()
+	actor.cell = stage.ally_cells[0]
+	var unreachable: Array[Vector2i] = []
+	for y: int in range(stage.map_size.y):
+		for x: int in range(stage.map_size.x):
+			var cell: Vector2i = Vector2i(x, y)
+			if not grid.is_floor(cell):
+				continue
+			if not levels.has(grid.height_at(cell)):
+				levels.append(grid.height_at(cell))
+			for next: Vector2i in [cell + Vector2i.RIGHT, cell + Vector2i.DOWN]:
+				cliff = cliff or grid.is_floor(next) and absi(grid.height_at(next) - grid.height_at(cell)) >= 2
+			if not grid.is_blocked(cell) and cell != actor.cell and grid.path_to(actor, cell).is_empty():
+				unreachable.append(cell)
+	levels.sort()
+	_check(levels == [0, 1, 2, 3], label + " 높이0~3 " + str(levels))
+	_check(cliff, label + " 걸어서 넘을 수 없는 높이 차2 이상의 면")
+	# 높이3까지 걸어서 닿으므로 높이1 계단이 이어져 있다.
+	_check(unreachable.is_empty(), label + " 모든 열린 바닥의 보행 연결 " + str(unreachable))
+	var enemies: Node = stage.enemies.instantiate()
+	_check(enemies.get_child_count() >= 10, label + " 많은 유닛을 위한 적10명 이상")
+	var spawns: Array[Vector2i] = []
+	for unit: CombatUnit in enemies.get_children():
+		_check(grid.is_floor(unit.start_cell) and not grid.is_blocked(unit.start_cell)
+			and not spawns.has(unit.start_cell) and not stage.ally_cells.has(unit.start_cell)
+			and not grid.path_to(actor, unit.start_cell).is_empty(), label + " 적 스폰과 보행 교전 경로: " + unit.name)
+		spawns.append(unit.start_cell)
+		unit.cell = unit.start_cell
+		grid.units.append(unit)
+	for unit: CombatUnit in enemies.get_children():
+		if unit.kind == CombatUnit.Kind.MOTHER_SPIDER:
+			_check(grid.empty_neighbors(unit.cell).size() >= 2, label + " 엄마 거미 소환 여유: " + unit.name)
+	enemies.free()
+	actor.free()
+
+
+## 개발자 진입점과 같은 장면으로 큰 맵 전투를 열고 한 라운드를 진행한다. 저장과 실제 진행에는 남지 않는다.
+func _test_large_map_battle() -> void:
+	var label: String = "큰 테스트 맵 전투"
+	var stage: CombatStage = load(LargeMapBattle.STAGE_PATH) as CombatStage
+	# 진입점이 자동 저장을 끄는지 보려고 켠다. 회귀해도 실제 저장을 덮지 않게 경로를 옮긴다.
+	var save_path: String = GameSave.path
+	GameSave.path = "user://tests/large_map/%d/save.bin" % OS.get_process_id()
+	GameSave.autosave = true
+	var game: Node = LargeMapBattle.instantiate_game()
+	root.add_child(game)
+	var battle: Node2D = game.get_node("Battle") as Node2D
+	battle.set_process(false)
+	var saves: Array[int] = [0]
+	battle.connect("autosaved", func() -> void: saves[0] += 1)
+	var units: Array[CombatUnit] = battle.get("units")
+	var party: Array[CombatUnit] = battle.get("party")
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var map: CombatMap = battle.get("map") as CombatMap
+	var enemies: Node = stage.enemies.instantiate()
+	var enemy_count: int = enemies.get_child_count()
+	enemies.free()
+	_check(battle.get("map_size") == stage.map_size and actions.grid.map_size == stage.map_size
+		and party[0].cell == stage.ally_cells[0] and party[1].cell == stage.ally_cells[1], label + " 큰 맵과 아군 시작 칸")
+	_check(map.get_used_cells().size() == stage.map_size.x * stage.map_size.y - stage.pits.size(),
+		label + " 낭떠러지를 뺀 모든 바닥 표시")
+	_check(units.size() == party.size() + enemy_count, label + " 아군2명과 적 전원 배치")
+	_check(actions.grid.props.size() == stage.crate_cells.size() + stage.rock_cells.size(), label + " 상자·바위 배치")
+	_check(battle.get("waiting_for_start"), label + " 전투 준비 단계로 시작")
+	battle.call("start_battle")
+	actions.movement_animation = Callable()
+	actions.jump_animation = Callable()
+	actions.attack_animation = Callable()
+	actions.dice.seed = 394
+	ScriptedDice.arrange_turns(turns, units, party)
+	var warrior: CombatUnit = party[0]
+	var destination: Vector2i = stage.crate_cells[0] + Vector2i(-1, -1)
+	_check(await actions.move_to(warrior, destination) and warrior.cell == destination,
+		label + " 아군이 상자 앞까지 걸어서 이동")
+	var starts: Dictionary[CombatUnit, Vector2i] = {}
+	for unit: CombatUnit in units:
+		unit.reaction_left = 0
+		if not unit.is_ally:
+			starts[unit] = unit.cell
+	var enemy_ai: CombatEnemyAi = battle.get("enemy_ai") as CombatEnemyAi
+	var guard: int = 0
+	while not actions.is_over() and turns.round_number == 1 and guard < 64:
+		guard += 1
+		var actor: CombatUnit = turns.current_unit
+		if actor == null:
+			break
+		if not actor.is_ally:
+			await enemy_ai.play_turn(actor, actions)
+		if not actions.is_over() and turns.current_unit == actor:
+			turns.end_turn()
+	_check(turns.round_number == 2 and not actions.is_over(), label + " 첫 라운드의 모든 차례를 진행")
+	_check(starts.keys().any(func(unit: CombatUnit) -> bool: return unit.cell != starts[unit]),
+		label + " 먼 적이 큰 맵에서 경로를 찾아 이동")
+	_check(saves[0] == 0 and not GameSave.autosave, label + " 자동 저장 없음")
+	GameSave.autosave = false
+	game.queue_free()
+	await process_frame
+	GameSave.path = save_path
+	# 새 게임·이어하기가 여는 전투 장면 데이터를 진입점을 연 뒤에 읽는다.
+	var state: SceneState = (load("res://scenes/combat/battle.tscn") as PackedScene).get_state()
+	var real: Array = []
+	for index: int in range(state.get_node_property_count(0)):
+		if state.get_node_property_name(0, index) == "stages":
+			real = state.get_node_property_value(0, index)
+	_check(real.size() == 9 and real.all(func(item: CombatStage) -> bool:
+		return item.resource_path.begins_with("res://scenes/combat/stages/act")),
+		label + " 새 게임의 실제9개 진행에 큰 맵이 없음")

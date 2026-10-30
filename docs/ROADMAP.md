@@ -67,8 +67,8 @@ flowchart LR
 |---|---|---|---|
 | **M1 전투 프로토타입** | BG3 전투를 구현해 프로젝트의 느낌을 확인 | 전투 시스템 기획서, 개발 요청서, 프로토타입 회고 | ✅ 범위 확정. 구현 완료 ([Issue #12](https://github.com/minjunkim-dev/BGLike/issues/12), [M1 검수 기록](M1_VERIFICATION.md)) |
 | **M2 게임 구조** | 무엇을 반복하는 게임인지 정함 | 게임 비전, [게임 구조 기획서](GAME_STRUCTURE.md) (코어 루프, 씬 흐름, 자원, 아이템 구조, 사각 높이 격자) | ✅ 구조 확정, 비전 ⏸ 보류 |
-| **M3 전투 확장** | 전투의 깊이와 전투 화면 | 맵, 공격 타입, 전투 UI 기획서 | 🟡 맵·높이·환경 규칙 확정(#136·#137), 구현(#163~#166, [#195](https://github.com/minjunkim-dev/BGLike/issues/195)). 전투 UI는 [#58](https://github.com/minjunkim-dev/BGLike/issues/58) 반영. 주사위 결과 피드백은 [#220](https://github.com/minjunkim-dev/BGLike/issues/220)에서 일부 정함(2026-10-22). 명칭·색 규칙은 기획자 정리 대기. 주사위·판정은 [능력치 기획서](ABILITY_SYSTEM.md)(2026-10-27 개정, 구현 대기 [#377](https://github.com/minjunkim-dev/BGLike/issues/377)). 공격 타입 규칙은 [동작 유형 기획서](SKILL_TYPES.md) 초안, 도입은 후속 |
-| **M4 성장과 경제** | 전투 사이에 강해지는 구조 | 아이템 수치·드랍 기획 (육성은 아이템뿐, 2026-10-07) | 🟡 수치·드랍([#61](https://github.com/minjunkim-dev/BGLike/issues/61))과 공용 가방([#175](https://github.com/minjunkim-dev/BGLike/issues/175)) 구현. 장비 수치 재검토는 [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
+| **M3 전투 확장** | 전투의 깊이와 전투 화면 | 맵, 공격 타입, 전투 UI 기획서 | 🟡 맵·높이·환경 규칙 확정(#136·#137), 구현(#163~#166, [#195](https://github.com/minjunkim-dev/BGLike/issues/195)). 전투 UI는 [#58](https://github.com/minjunkim-dev/BGLike/issues/58) 반영. 주사위 결과 피드백은 [#220](https://github.com/minjunkim-dev/BGLike/issues/220)에서 일부 정함(2026-10-22). 명칭·색 규칙은 기획자 정리 대기. 주사위·판정은 [능력치 기획서](ABILITY_SYSTEM.md)(2026-10-27 개정, 구현 중 [#377](https://github.com/minjunkim-dev/BGLike/issues/377), 능력치 개편 #386 병합). 공격 타입 규칙은 [동작 유형 기획서](SKILL_TYPES.md) 초안, 도입은 후속 |
+| **M4 성장과 경제** | 전투 사이에 강해지는 구조 | 아이템 수치·드랍 기획 (육성은 아이템과 막 최초 클리어 레벨업, 2026-10-28) | 🟡 수치·드랍([#61](https://github.com/minjunkim-dev/BGLike/issues/61))과 공용 가방([#175](https://github.com/minjunkim-dev/BGLike/issues/175)) 구현. 장비 수치 재검토는 [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
 | **M5 콘텐츠** | 실제로 만들 것의 목록 | 캐릭터, 몬스터, 레벨 디자인 문서 | 🟡 몬스터7종·9개 배치 구현 (#107~[#113](https://github.com/minjunkim-dev/BGLike/issues/113)). 캐릭터 컨셉·스킬셋, 몬스터 성향은 기획자가 정리 중([#210](https://github.com/minjunkim-dev/BGLike/issues/210)·[#237](https://github.com/minjunkim-dev/BGLike/issues/237), 2026-10-22) |
 | **M6 밸런스와 연출** | 수치와 손맛 | 밸런스 표, 사운드·이펙트 목록 | 🟡 밸런스 재검토 [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
 | **M7 첫 플레이 가능 구간** | 처음부터 끝까지 하는 짧은 구간 | 구간 기획서 | 🟡 구간 범위 [#202](https://github.com/minjunkim-dev/BGLike/issues/202), 전투 외 화면·저장은 [#209 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6330756631)으로 정함([게임 구조 2-4·2-5](GAME_STRUCTURE.md#2-4-저장과-이어하기-)), 구현 #280~#287 |
@@ -195,7 +195,7 @@ flowchart LR
 
 | 순서 | 영역 | 정할 내용 |
 |---|---|---|
-| 1 | 캐릭터 육성 | 레벨업, 능력치 성장, 스킬 습득. 능력치 성장은 ⏸ [주사위 육성 논의](DICE_GROWTH.md)(단위는 주사위 레벨) |
+| 1 | 캐릭터 육성 | 레벨업, 능력치 성장, 스킬 습득. 능력치 성장은 [주사위 육성 논의](DICE_GROWTH.md)(막 최초 클리어마다 전체 주사위 레벨 +1, 구현 ⏸) |
 | 2 | 장비 | 무기와 방어구. 무기가 공격 타입을 정하는지 |
 | 3 | 아이템 | 소모품 종류, 획득 경로, 소지 한도 |
 | 4 | 성장 재화 | 재화 종류, 얻는 곳, 쓰는 곳 (재화 흐름도) |

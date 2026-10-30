@@ -38,7 +38,7 @@ func _run() -> void:
 	GameSave.path = directory + "/save.bin"
 	await _test_autosave_switch()
 	GameSave.autosave = true
-	await _test_format_two_state()
+	await _test_format_state()
 	for stage_index: int in range(STAGE_COUNT):
 		await _test_stage(stage_index)
 	_check(reaction_stages >= 3, "여러 스테이지에서 아군 반응 답을 담은 적 턴 중간 저장을 복원함: %d" % reaction_stages)
@@ -102,14 +102,14 @@ func _free(battle: Node2D) -> void:
 	await process_frame
 
 
-## 형식 2의 강도·장비·이니셔티브를 실제 상태에서 저장하고 그대로 복원한다.
-func _test_format_two_state() -> void:
+## 형식 3의 강도·장비·이니셔티브를 실제 상태에서 저장하고 그대로 복원한다.
+func _test_format_state() -> void:
 	var battle: Node2D = _battle(0)
 	var actions: CombatActions = battle.get("actions")
 	var party: Array[CombatUnit] = battle.get("party")
 	var source: CombatUnit = actions.units.filter(func(unit: CombatUnit) -> bool: return not unit.is_ally)[0]
 	_check(actions.apply_status(source, party[0], "poison") and actions.apply_status(source, party[1], "burn"),
-		"형식 2 검사용 독·화상 부여")
+		"형식 3 검사용 독·화상 부여")
 	var state: Dictionary = battle.call("combat_state")
 	_check(state.grounds.size() == 2 and state.grounds.all(func(ground: Array) -> bool:
 		return ground.size() == 6 and ground[5] == (4 if ground[2] == "poison" else 0)),
@@ -121,15 +121,18 @@ func _test_format_two_state() -> void:
 	for index: int in range(actions.units.size()):
 		var unit: CombatUnit = actions.units[index]
 		_check(state.units[index].initiative_roll == unit.get_initiative()
-			and unit.initiative_roll >= 1 and unit.initiative_roll <= unit.get_ability_sides(CombatUnit.Ability.DEXTERITY),
+			and unit.initiative_roll >= 1 and unit.initiative_roll <= unit.get_ability_sides(CombatUnit.Ability.AGILITY),
 			"민첩 주사위의 원본 결과를 저장: %d" % index)
 	var restored: Node2D = _battle(-1)
 	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
-		"형식 2의 강도·장비·이니셔티브를 포함한 상태 왕복")
+		"형식 3의 강도·장비·이니셔티브를 포함한 상태 왕복")
 	for value: int in [1, 8]:
 		state.units[0].initiative_roll = value
 		_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
 			"전사 민첩 d8의 유효한 저장 경계: %d" % value)
+	state.units[1].initiative_roll = 12
+	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
+		"궁수 민첩 d12의 유효한 저장 경계: 12")
 	state.props = [["crate", Vector2i(2, 1), 3], ["rock", Vector2i(4, 1), 6]]
 	state.units[0].cell = Vector2i(3, 4)
 	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
@@ -354,7 +357,7 @@ func _test_rejects_bad_saves() -> void:
 		"유닛 변수 타입이 다름": func(state: Dictionary) -> void: state.units[0].action_left = 1.0,
 		"초기 전사 이니셔티브가 0": func(state: Dictionary) -> void: state.units[0].initiative_roll = 0,
 		"전사 민첩 d8 밖 이니셔티브": func(state: Dictionary) -> void: state.units[0].initiative_roll = 9,
-		"궁수 민첩 d20 밖 이니셔티브": func(state: Dictionary) -> void: state.units[1].initiative_roll = 21,
+		"궁수 민첩 d12 밖 이니셔티브": func(state: Dictionary) -> void: state.units[1].initiative_roll = 13,
 		"초기 새끼 거미 이니셔티브가 0": func(state: Dictionary) -> void: state.units[enemy].initiative_roll = 0,
 		"새끼 거미 민첩 d8 밖 이니셔티브": func(state: Dictionary) -> void: state.units[enemy].initiative_roll = 9,
 		"기본 배치와 다른 적 종류": func(state: Dictionary) -> void: state.units[enemy].kind = CombatUnit.Kind.SCRAP_ROBOT_3000,

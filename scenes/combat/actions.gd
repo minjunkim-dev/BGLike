@@ -380,10 +380,10 @@ func _on_turn_started(unit: CombatUnit) -> void:
 		var name: String = tr("화상") if effect.kind == "burn" else tr("독")
 		if effect.kind == "poison" and not poison_checked:
 			poison_checked = true
-			var nature_sides: int = unit.get_ability_sides(CombatUnit.Ability.NATURE)
-			var saved: CombatChecks.RollResult = CombatChecks.threshold(nature_sides, 0, effect.strength, dice)
-			logged.emit(tr("%s 독 제거: 자연 d%d %d / 강도 %d · %s") % [unit.get_display_name(),
-				nature_sides, saved.selected_roll, effect.strength, tr("성공") if saved.success else tr("실패")])
+			var health_sides: int = unit.get_ability_sides(CombatUnit.Ability.HEALTH)
+			var saved: CombatChecks.RollResult = CombatChecks.threshold(health_sides, 0, effect.strength, dice)
+			logged.emit(tr("%s 독 제거: 건강 d%d %d / 강도 %d · %s") % [unit.get_display_name(),
+				health_sides, saved.selected_roll, effect.strength, tr("성공") if saved.success else tr("실패")])
 			# 실패는 뒤따르는 `독 1` 틱 팝업이 효과 이름을 보인다.
 			if saved.success:
 				feedback.emit(unit, tr("독 제거"))
@@ -946,31 +946,31 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
 		return
 	var attack_ability: CombatUnit.Ability = actor.get_attack_ability()
-	var defense_ability: CombatUnit.Ability = CombatUnit.Ability.DEXTERITY if actor.is_ranged_attack() else CombatUnit.Ability.STRENGTH
 	var attack_sides: int = actor.get_ability_sides(attack_ability)
-	var defense_sides: int = target.get_ability_sides(defense_ability)
-	if shared_roll == null:
-		var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
-		last_attack = CombatChecks.opposed_attack(attack_sides, defense_sides,
-			actor.get_attack_bonus(), target.get_defense_bonus(), preview.mode, dice)
-	else:
-		last_attack = CombatChecks.defend_against(shared_roll, defense_sides, target.get_defense_bonus(), dice)
 	last_damage = 0
 	last_damage_rolls.clear()
-	var mode_name: String = tr("일반")
-	if last_attack.mode == CombatChecks.RollMode.ADVANTAGE:
-		mode_name = tr("유리")
-	elif last_attack.mode == CombatChecks.RollMode.DISADVANTAGE:
-		mode_name = tr("불리")
 	if shared_roll == null:
-		logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / %s d%d %d %+d = %d · %s") % [
+		var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
+		last_attack = CombatChecks.hit_roll(attack_sides, actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
+		var mode_name: String = tr("일반")
+		if last_attack.mode == CombatChecks.RollMode.ADVANTAGE:
+			mode_name = tr("유리")
+		elif last_attack.mode == CombatChecks.RollMode.DISADVANTAGE:
+			mode_name = tr("불리")
+		var outcome: String = tr("명중") if last_attack.success else tr("빗나감")
+		if last_attack.face == CombatChecks.Face.ABSOLUTE_SUCCESS:
+			outcome = tr("명중(절대성공)")
+		elif last_attack.face == CombatChecks.Face.ABSOLUTE_FAILURE:
+			outcome = tr("빗나감(절대실패)")
+		logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / AC %d · %s") % [
 			actor.get_display_name(), mode_name, CombatUnit.ability_name(attack_ability), attack_sides,
-			str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total,
-			CombatUnit.ability_name(defense_ability), defense_sides, last_attack.defender_roll,
-			target.get_defense_bonus(), last_attack.defender_total, tr("명중") if last_attack.success else tr("빗나감")])
+			str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total, target.get_armor_class(), outcome])
 	else:
+		# 회전회오리는 내성굴림 티켓(#389)까지 공통 공격 대 대상 방어 대결을 유지한다.
+		var defense_sides: int = target.get_ability_sides(CombatUnit.Ability.STRENGTH)
+		last_attack = CombatChecks.defend_against(shared_roll, defense_sides, target.get_defense_bonus(), dice)
 		logged.emit(tr("%s 방어: %s d%d %d %+d = %d / 공통 공격 %d · %s") % [target.get_display_name(),
-			CombatUnit.ability_name(defense_ability), defense_sides, last_attack.defender_roll,
+			CombatUnit.ability_name(CombatUnit.Ability.STRENGTH), defense_sides, last_attack.defender_roll,
 			target.get_defense_bonus(), last_attack.defender_total, last_attack.total,
 			tr("명중") if last_attack.success else tr("빗나감")])
 	if not last_attack.success:
@@ -978,7 +978,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 		return
 	if (CombatActionRules.has_uses(target, "parry") and not target.is_stunned
 		and target.reaction_left > 0):
-		var parry_sides: int = target.get_ability_sides(CombatUnit.Ability.DEXTERITY)
+		var parry_sides: int = target.get_ability_sides(CombatUnit.Ability.AGILITY)
 		var chance: float = CombatChecks.threshold_chance(parry_sides, 3, last_attack.total)
 		if await _ask_reaction(target, "parry", tr("%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)") % [target.get_display_name(), chance * 100.0, target.parry_left]):
 			target.spend_resource(CombatUnit.TurnResource.REACTION)

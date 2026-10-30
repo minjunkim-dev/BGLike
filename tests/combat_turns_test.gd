@@ -70,14 +70,14 @@ func _test_initiative() -> void:
 	var units: Array[CombatUnit] = _make_units()
 	var turns: CombatTurns = CombatTurns.new()
 	var dice: CombatDice = CombatDice.new()
-	var saw_dexterity_tie: bool = false
+	var saw_agility_tie: bool = false
 	for seed_value: int in range(200):
 		dice.seed = seed_value
 		var expected_dice: CombatDice = CombatDice.new()
 		expected_dice.seed = seed_value
 		turns.start(units, dice)
 		for unit: CombatUnit in units:
-			var sides: int = unit.get_ability_sides(CombatUnit.Ability.DEXTERITY)
+			var sides: int = unit.get_ability_sides(CombatUnit.Ability.AGILITY)
 			_check(unit.initiative_roll == expected_dice.roll(sides)
 				and unit.get_initiative() == unit.initiative_roll, "유닛마다 민첩 주사위 한 번, 가산 없는 원본 값")
 			_check(unit.initiative_roll >= 1 and unit.initiative_roll <= sides, "민첩 주사위 면 범위")
@@ -86,15 +86,15 @@ func _test_initiative() -> void:
 			var next: CombatUnit = turns.ordered_units[index + 1]
 			_check(first.get_initiative() >= next.get_initiative(), "이니셔티브 내림차순")
 			if first.get_initiative() == next.get_initiative():
-				_check(first.get_ability_sides(CombatUnit.Ability.DEXTERITY)
-					>= next.get_ability_sides(CombatUnit.Ability.DEXTERITY), "동점: 민첩 주사위 면 수가 큰 쪽 우선")
-				saw_dexterity_tie = true
-	_check(saw_dexterity_tie, "동점의 면 수 규칙을 실제 주사위로 검증")
+				_check(first.get_ability_sides(CombatUnit.Ability.AGILITY)
+					>= next.get_ability_sides(CombatUnit.Ability.AGILITY), "동점: 민첩 주사위 면 수가 큰 쪽 우선")
+				saw_agility_tie = true
+	_check(saw_agility_tie, "동점의 면 수 규칙을 실제 주사위로 검증")
 	units[2].kind = CombatUnit.Kind.SPIDERLING
 	var another_ally: CombatUnit = CombatUnit.new()
 	units.append(another_ally)
 	_created_units.append(another_ally)
-	turns.start(units, ScriptedDice.new([4, 4, 4, 4, 4], [8, 20, 8, 10, 8]))
+	turns.start(units, ScriptedDice.new([4, 4, 4, 4, 4], [8, 12, 8, 10, 8]))
 	_check(turns.ordered_units == [units[1], units[3], units[0], another_ally, units[2]],
 		"같은 굴림은 민첩 면 수, 아군, 같은 편의 배치 순으로 정렬")
 	var empty: CombatTurns = CombatTurns.new()

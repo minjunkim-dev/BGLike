@@ -53,6 +53,7 @@ func _run() -> void:
 	_check("이니셔티브" not in hud.message_label.text, "전투 시작 로그에 이니셔티브 계산식 없음")
 	_test_square_map()
 	_test_movement_overlay()
+	_test_height_edges()
 	_test_unit_art()
 	_test_warrior()
 	await _test_resources()
@@ -74,6 +75,7 @@ func _run() -> void:
 	await _test_boundary_incapacitated_portrait_join()
 	await _test_order_bar_input()
 	await _test_transparent_order_input()
+	await _test_camera()
 	await _test_reaction_flow()
 	await _test_reaction_focus()
 	await _test_action_animations()
@@ -126,6 +128,76 @@ func _test_movement_overlay() -> void:
 	map.show_movement([], [], [], Vector2i.ZERO)
 	_check(map._overlays.is_empty(), "이동 표시를 닫으면 면·윤곽·경로를 함께 제거")
 	map.free()
+
+
+## #392: 높이가 다른 이웃 칸의 윗면 경계. 실제로 그린 두 배 밀도 텍스처의 가장자리 도트를 읽는다.
+func _test_height_edges() -> void:
+	var grid: CombatGrid = CombatGrid.new()
+	grid.map_size = Vector2i(4, 4)
+	grid.heights[Vector2i(1, 1)] = 1
+	grid.heights[Vector2i(2, 2)] = 2
+	grid.heights[Vector2i(3, 1)] = 1
+	grid.pits.append(Vector2i(3, 0))
+	var map: CombatMap = CombatMap.new()
+	root.add_child(map)
+	map.build_grid(grid, load("res://scenes/combat/floor_tiles.tres") as TileSet)
+	var markers: Dictionary[Vector2i, Node2D] = {}
+	for marker: Node2D in map._height_edges:
+		markers[map.local_to_map(marker.position)] = marker
+	_check(not markers.has(Vector2i(0, 3)) and not markers.has(Vector2i.ZERO),
+		"같은 높이와 맵 밖 가장자리에는 경계를 더하지 않음")
+	for cell: Vector2i in markers:
+		var sprite: Sprite2D = markers[cell].get_node("Sprite") as Sprite2D
+		_check((markers[cell].position + sprite.position).is_equal_approx(map.map_to_surface(cell))
+			and sprite.texture.get_size() == Vector2(map.tile_set.tile_size * 2) and sprite.scale == Vector2.ONE * 0.5
+			and sprite.material == preload("res://scenes/combat/art/pixel_art.tres"),
+			"경계는 바닥 원본과 같은 두 배 밀도로 윗면에 맞춤: %s" % cell)
+	var up: Vector2i = Vector2i(0, -1)
+	var dark: Callable = func(color: Color) -> bool: return color.a > 0.0 and color.get_luminance() < 0.2
+	var light: Callable = func(color: Color) -> bool: return color.a > 0.0 and color.get_luminance() > 0.8
+	var one: Array[Color] = _edge_bands(map, markers, Vector2i(1, 1), up)
+	_check(dark.call(one[0]) and light.call(one[1]) and one[2].a == 0.0,
+		"뒤쪽 높이 차1은 어두운 선과 밝은 선 한 쌍")
+	var two: Array[Color] = _edge_bands(map, markers, Vector2i(2, 2), up)
+	_check(dark.call(two[0]) and light.call(two[1]) and dark.call(two[2]) and light.call(two[3]) and two[4].a == 0.0,
+		"뒤쪽 높이 차2 이상은 두 쌍으로 차1과 구분")
+	var front: Array[Color] = _edge_bands(map, markers, Vector2i(1, 1), Vector2i(1, 0))
+	_check(light.call(front[0]) and front[1].a == 0.0, "앞쪽 내리막은 옆면 위에 밝은 윗면 끝선")
+	var foot: Array[Color] = _edge_bands(map, markers, Vector2i(1, 2), up)
+	var tall: Array[Color] = _edge_bands(map, markers, Vector2i(2, 3), up)
+	_check(dark.call(foot[0]) and foot[1].a < foot[0].a and foot[2].a == 0.0 and tall[2].a > 0.0 and tall[3].a == 0.0,
+		"뒤쪽 높은 이웃의 발치에 접지 그림자, 차2 이상은 더 넓음")
+	_check(_edge_bands(map, markers, Vector2i(2, 1), Vector2i(0, 1))[0].a == 0.0,
+		"앞쪽 높은 이웃이 덮는 가장자리는 그리지 않음")
+	_check(_edge_bands(map, markers, Vector2i(3, 1), up)[0].a == 0.0
+		and dark.call(_edge_bands(map, markers, Vector2i(3, 1), Vector2i(-1, 0))[0]),
+		"낭떠러지 쪽은 기존 표시를 유지하고 바닥 이웃만 경계 표시")
+	map.show_movement([Vector2i(1, 1)], [], [], Vector2i(1, 1))
+	_check(map._overlays[0].get_index() > markers[Vector2i(1, 1)].get_index(),
+		"같은 칸의 이동 범위 면·윤곽은 높이 경계 위에 그림")
+	var old: Node2D = markers[Vector2i(1, 1)]
+	map.build_grid(CombatGrid.new(), load("res://scenes/combat/floor_tiles.tres") as TileSet)
+	_check(map._height_edges.is_empty() and not is_instance_valid(old), "맵을 다시 만들면 이전 높이 경계를 제거")
+	map.free()
+
+
+## cell에서 direction 이웃 쪽 윗면 가장자리의 도트를 바깥 줄부터 다섯 줄 읽는다. 마름모 가로 기울기는 2도트/줄이다.
+func _edge_bands(map: CombatMap, markers: Dictionary[Vector2i, Node2D], cell: Vector2i,
+		direction: Vector2i) -> Array[Color]:
+	var bands: Array[Color] = []
+	bands.resize(5)
+	bands.fill(Color.TRANSPARENT)
+	if not markers.has(cell):
+		return bands
+	var image: Image = (markers[cell].get_node("Sprite") as Sprite2D).texture.get_image()
+	var delta: Vector2 = map.map_to_local(cell + direction) - map.map_to_local(cell)
+	var half: Vector2i = image.get_size() / 2
+	var row: int = half.y / 2
+	var y: int = image.get_height() - 1 - row if delta.y > 0 else row
+	for band: int in range(5):
+		var x: int = half.x + row * 2 - band * 2 if delta.x > 0 else half.x - 1 - row * 2 + band * 2
+		bands[band] = image.get_pixel(x, y)
+	return bands
 
 
 func _test_skill_icons() -> void:
@@ -283,13 +355,13 @@ func _test_warrior() -> void:
 	var costs: Dictionary = hud.get("_costs")
 	var titles: Array = hud.get("_titles")
 	_check(hud.unit_label.text == "아군 전사" and "HP 12 / 12" in hud.resource_label.text
-		and "방어 +0" in hud.resource_label.text and "이동" not in hud.resource_label.text,
-		"현재 유닛 정보: HP·방어 가산 유지, 남은 이동 제거")
+		and "AC 5" in hud.resource_label.text and "이동" not in hud.resource_label.text,
+		"현재 유닛 정보: HP·AC(민첩 d8 표준값 5) 표시, 남은 이동 제거")
 	_check(hud.health_bar.value == 12, "현재 유닛 HP 바")
-	for ability: String in ["힘 d20", "민첩 d8", "솜씨 d6", "지능 d4", "의지 d12", "자연 d6"]:
+	for ability: String in ["힘 d20", "민첩 d8", "솜씨 d6", "지능 d4", "의지 d6", "건강 d12"]:
 		_check(ability in hud.resource_label.text, "현재 전사의 능력치 주사위 표시: " + ability)
-	_check("건강" not in hud.resource_label.text and "정신" not in hud.resource_label.text
-		and "AC" not in hud.resource_label.text, "폐지한 능력치와 AC는 유닛 정보에서 제거")
+	_check("자연" not in hud.resource_label.text and "정신" not in hud.resource_label.text,
+		"폐지한 능력치는 유닛 정보에서 제거")
 	for action: String in ["attack", "second_wind", "surge", "shove", "potion", "opportunity", "parry"]:
 		_check((buttons[action] as Button).is_visible_in_tree(), "전사 동작 표시: " + action)
 	for action: String in ["mark", "shock", "disengage"]:
@@ -354,14 +426,14 @@ func _test_archer_and_enemy() -> void:
 	var before: int = units[0].movement_left
 	hud.unit_selected.emit(units[1])
 	_check(turns.current_unit == units[1] and units[0].movement_left == before, "초상 전환 자원 유지")
-	for ability: String in ["힘 d8", "민첩 d20", "솜씨 d12", "지능 d6", "의지 d4", "자연 d6"]:
+	for ability: String in ["힘 d6", "민첩 d12", "솜씨 d20", "지능 d6", "의지 d4", "건강 d8"]:
 		_check(ability in hud.resource_label.text, "궁수로 전환하면 능력치 주사위 갱신: " + ability)
 	_check(not (containers[2] as PanelContainer).visible, "궁수 반응 컨테이너 숨김")
 	_check((buttons["shock"] as Button).visible and not (buttons["surge"] as Button).visible,
 		"궁수 스킬만 표시")
 	_check(battle.call("preview_enemy", units[2]), "적 미리보기 연결")
-	_check(hud.unit_label.text == "풋내기 야만인" and "방어 +0" in hud.resource_label.text,
-		"미리보기는 유닛 정보 자리를 사용")
+	_check(hud.unit_label.text == "풋내기 야만인" and "AC 4" in hud.resource_label.text,
+		"미리보기는 유닛 정보 자리를 사용하고 대상 AC를 표시")
 	_check((buttons["shock"] as Button).visible, "미리보기에도 현재 아군의 스킬 유지")
 	hud.unit_selected.emit(units[0])
 	hud.end_button.pressed.emit()
@@ -442,7 +514,8 @@ func _test_log_and_status() -> void:
 	turns.select_unit(units[1])
 	units[1].marked_target = units[2]
 	units[2].cell = Vector2i(5, 8)
-	actions.dice = ScriptedDice.new([6, 6, 6], [20, 20, 6])
+	# 불리는 낮은 값 2를 골라 야만인 AC 4에 빗나간다.
+	actions.dice = ScriptedDice.new([3, 2], ScriptedDice.attack_sides(units[1], 2))
 	await actions.attack(units[1], units[2])
 	_check(not hit_sound.playing and hit_played.is_empty(), "실제 장면의 빗나감은 타격음 무음")
 	_check(_has_two_dice_log("불리"),
@@ -457,7 +530,9 @@ func _test_log_and_status() -> void:
 		"불리 공격도 공격자 판정 합계 팝업 없음")
 	units[1].action_left = 1
 	units[2].is_stunned = true
-	actions.dice = ScriptedDice.new([17, 19, 2, 3, 2], [20, 20, 6, 6, 6])
+	var advantage_sides: Array[int] = ScriptedDice.attack_sides(units[1], 2) + ScriptedDice.damage_sides(units[1])
+	advantage_sides.append(6)
+	actions.dice = ScriptedDice.new([17, 19, 3, 2], advantage_sides)
 	await actions.attack(units[1], units[2])
 	_check(hit_played == [true], "실제 피해 신호가 장면의 타격음 재생으로 연결됨")
 	actions.hit_landed.disconnect(record_hit)
@@ -545,7 +620,7 @@ func _test_roll_popups() -> void:
 	units[1].action_left = 1
 	units[1].shock_left = 1
 	units[1].marked_target = null
-	actions.dice = ScriptedDice.new([15, 2, 2], [20, 6, 6])
+	actions.dice = ScriptedDice.new([15, 2], ScriptedDice.attack_sides(units[1]) + ScriptedDice.damage_sides(units[1]))
 	await actions.attack(units[1], target, true)
 	_check(target.is_stunned and _has_feedback(target, "기절"), "충격 화살은 명중하면 기절 팝업 표시")
 	_check("충격 화살: 명중하여 기절" in hud.message_label.text
@@ -564,7 +639,10 @@ func _test_roll_popups() -> void:
 	var respond: Callable = func(_kind: String, _prompt: String) -> void:
 		hud.reaction_dialog.get_ok_button().pressed.emit()
 	actions.reaction_requested.connect(respond)
-	actions.dice = ScriptedDice.new([7, 2, 4], [10, 8, 8])
+	# 풋내기 궁수 민첩 7은 전사 AC 5에 명중하고, 흘려내기 민첩 4+3은 공격 7과 같아 성공한다.
+	var parry_sides: Array[int] = ScriptedDice.attack_sides(units[3])
+	parry_sides.append(target.get_ability_sides(CombatUnit.Ability.AGILITY))
+	actions.dice = ScriptedDice.new([7, 4], parry_sides)
 	await actions.attack(units[3], target)
 	actions.reaction_requested.disconnect(respond)
 	_check("흘려내기: 민첩 d8 4 + 3 = 7 / 공격 7 · 성공" in hud.message_label.text,
@@ -582,7 +660,7 @@ func _test_roll_popups() -> void:
 
 
 func _has_two_dice_log(mode: String) -> bool:
-	var marker: String = "공격(%s): 민첩 d20 [" % mode
+	var marker: String = "공격(%s): 솜씨 d20 [" % mode
 	for line: String in hud.message_label.text.split("\n"):
 		if marker not in line:
 			continue
@@ -591,8 +669,9 @@ func _has_two_dice_log(mode: String) -> bool:
 	return false
 
 
-func _dice_for_miss(defense_sides: int) -> CombatDice:
-	return ScriptedDice.new([1, defense_sides], [20, defense_sides])
+## 공격자의 절대실패면 1이라 AC와 가산에 관계없이 빗나간다.
+func _dice_for_miss(attacker: CombatUnit) -> CombatDice:
+	return ScriptedDice.new([1], ScriptedDice.attack_sides(attacker))
 
 
 func _test_layout() -> void:
@@ -654,9 +733,9 @@ func _test_high_ground_guidance() -> void:
 	units[3].cell = Vector2i(4, 5)
 	actions.grid.heights = {units[1].cell: 2, units[3].cell: 1}
 	battle.call("preview_enemy", units[2])
-	_check("유리/불리 상쇄" in hud.preview_label.text and "기절한 대상" in hud.preview_label.text
+	_check(" · 유리\n" in hud.preview_label.text and "기절한 대상" in hud.preview_label.text
 		and "고지대" in hud.preview_label.text and "옆에 적" in hud.preview_label.text,
-		"고지대·기절 유리와 인접 불리의 세 원인을 실제 HUD에서 상쇄로 표시")
+		"고지대·기절 유리 둘이 인접 불리 하나보다 많아 실제 HUD에서 유리와 세 원인을 표시")
 	units[3].is_stunned = true
 	battle.call("preview_enemy", units[2])
 	_check(" · 유리\n" in hud.preview_label.text and "상쇄" not in hud.preview_label.text,
@@ -692,12 +771,12 @@ func _test_guidance() -> void:
 			and icon_button.icon == CombatActionRules.icon_of(action)
 			and icon_button.accessibility_name == CombatActionRules.NAMES[action],
 			"스킬 버튼은 이름 대신 아이콘 표시: " + action)
-	_check("사거리: 인접1칸\n피해: 1d8+3\n판정: 힘 d20 +0 대 힘" in (buttons["attack"] as Button).tooltip_text,
-		"전사 공격 호버에 사거리·무기 피해·능력치 대결 표시")
+	_check("사거리: 인접1칸\n피해: 1d8+3\n판정: 힘 d20 +0 대 AC" in (buttons["attack"] as Button).tooltip_text,
+		"전사 공격 호버에 사거리·무기 피해·명중굴림 표시")
 	units[0].weapon = {"stats": {"attack_bonus": 1, "damage_bonus": 2}}
 	battle.call("_update_turn_ui")
-	_check("피해: 1d8+5\n판정: 힘 d20 +1 대 힘" in (buttons["attack"] as Button).tooltip_text
-		and "피해: 1d8+5\n판정: 힘 d20 +1 대 힘" in (buttons["opportunity"] as Button).tooltip_text,
+	_check("피해: 1d8+5\n판정: 힘 d20 +1 대 AC" in (buttons["attack"] as Button).tooltip_text
+		and "피해: 1d8+5\n판정: 힘 d20 +1 대 AC" in (buttons["opportunity"] as Button).tooltip_text,
 		"현재 장비의 피해·공격 가산을 호버에 반영")
 	units[0].weapon = {}
 	battle.call("_update_turn_ui")
@@ -740,7 +819,7 @@ func _test_guidance() -> void:
 	for unit: CombatUnit in portraits:
 		var portrait: Button = portraits[unit] as Button
 		_check(portrait.text.split("\n").size() == 2
-			and "민첩 d%d" % unit.get_ability_sides(CombatUnit.Ability.DEXTERITY) in portrait.tooltip_text
+			and "민첩 d%d" % unit.get_ability_sides(CombatUnit.Ability.AGILITY) in portrait.tooltip_text
 			and str(unit.get_initiative()) == portrait.tooltip_text.get_slice(" = ", 1),
 			"초상 숫자 제거, 호버에 실제 민첩 주사위와 원본 값 유지")
 	await battle.call("_select_move_cell", Vector2i(2, 1))
@@ -777,7 +856,7 @@ func _test_guidance() -> void:
 	await _click(point)
 	_check((battle.get("selection") as CombatSelection).preview_target == units[2] and units[0].action_left == 1,
 		"이동 후 적 클릭으로 공격 미리보기")
-	actions.dice = _dice_for_miss(10)
+	actions.dice = _dice_for_miss(units[0])
 	await _click(point)
 	_check(units[0].action_left == 0 and units[0].movement_left == 1 and units[2].hit_points == 12,
 		"같은 적 재클릭은 공격만 소비하고 남은 이동 유지")
@@ -813,8 +892,8 @@ func _test_guidance() -> void:
 				_check(removed not in button.tooltip_text, "호버에서 안내 제거: %s / %s" % [action, removed])
 			_check(unit.hit_points == hp and unit.surge_left == uses,
 				"호버는 동작 실행·자원 소비 없음: " + action)
-	_check("사거리: 1~6칸\n피해: 1d6+1\n판정: 민첩 d20 +0 대 민첩, 명중하면 기절" in (buttons["shock"] as Button).tooltip_text
-		and "판정: 힘 d8 +0 대 힘" in (buttons["shove"] as Button).tooltip_text,
+	_check("사거리: 1~6칸\n피해: 1d6+1\n판정: 솜씨 d20 +0 대 AC, 명중하면 기절" in (buttons["shock"] as Button).tooltip_text
+		and "판정: 힘 d6 +0 대 힘" in (buttons["shove"] as Button).tooltip_text,
 		"궁수 충격 화살·밀치기 호버에 능력치 대결과 명중 시 기절 표시")
 	await _test_focus_tooltips(buttons)
 	# 비활성 버튼은 비용 소진·횟수 소진·효과 없음의 이유를 호버에 유지한다.
@@ -1019,8 +1098,8 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check(hud.unit_label.text == "풋내기 야만인" and hud.actor_label.text == "조작: 아군 전사"
 		and "힘 d10" in hud.resource_label.text and "민첩 d6" in hud.resource_label.text
 		and "솜씨 d4" in hud.resource_label.text and "지능 d4" in hud.resource_label.text
-		and "의지 d4" in hud.resource_label.text and "자연 d4" in hud.resource_label.text
-		and "건강" not in hud.resource_label.text and "정신" not in hud.resource_label.text
+		and "의지 d4" in hud.resource_label.text and "건강 d4" in hud.resource_label.text
+		and "자연" not in hud.resource_label.text and "정신" not in hud.resource_label.text
 		and "공격 +3" in hud.resource_label.text and "사거리 1칸" in hud.resource_label.text,
 		"정보 대상·조작 유닛을 구분하고 실제 능력치·공격 수치 표시")
 	_check("행동" not in hud.resource_label.text and "반응" not in hud.resource_label.text
@@ -1031,12 +1110,12 @@ func _test_mouse_controls_and_inspection() -> void:
 	await _click(enemy_point)
 	_check(units[0].action_left == 1 and (battle.get("selection") as CombatSelection).preview_target == units[2],
 		"초상 조회 뒤 필드 적 클릭은 새 공격의 첫 미리보기")
-	actions.dice = _dice_for_miss(10)
+	actions.dice = _dice_for_miss(units[0])
 	await _click(enemy_point)
 	_check(units[0].action_left == 0, "필드 적 두 번째 좌클릭은 공격 확정")
 	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
 	_check(turns.current_unit == units[1] and units[0].action_left == 0
-		and "힘 d8" in hud.resource_label.text and "사거리 6칸" in hud.resource_label.text,
+		and "힘 d6" in hud.resource_label.text and "사거리 6칸" in hud.resource_label.text,
 		"조작 가능한 아군 초상은 정보와 조작 전환, 기존 자원 유지")
 	turns.select_unit(units[0])
 	turns.end_turn()
@@ -1526,7 +1605,7 @@ func _test_transparent_order_input() -> void:
 		_check((battle.get("selection") as CombatSelection).preview_target == null,
 			"빈 영역 좌클릭은 공격 선택 취소: %s" % window_size)
 		await _click(enemy_point)
-		actions.dice = ScriptedDice.new([15, 1, 2], [20, 10, 8])
+		actions.dice = ScriptedDice.new([15, 2], ScriptedDice.attack_sides(units[0]) + ScriptedDice.damage_sides(units[0]))
 		await _click(enemy_point)
 		_check(units[0].action_left == 0 and units[2].hit_points == 7,
 			"상단 유닛 몸통 두 번째 클릭은 공격 확정: %s" % window_size)
@@ -1534,6 +1613,179 @@ func _test_transparent_order_input() -> void:
 	_reset_units()
 	battle.call("_update_turn_ui")
 	await process_frame
+	await process_frame
+
+
+## #393: 확대·이동 뒤에도 클릭·미리보기·피해 팝업이 같은 맵 위치에 맞고, 화면 원점은 정수 논리 px에 남는다.
+func _test_camera() -> void:
+	var camera: CombatCamera = battle.get_node("Camera") as CombatCamera
+	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	for window_size: Vector2i in [Vector2i(1280, 720), Vector2i(1440, 900), Vector2i(1920, 1080)]:
+		root.size = window_size
+		_reset_units()
+		units[0].cell = Vector2i(4, 4)
+		units[1].cell = Vector2i(0, 0)
+		units[2].cell = Vector2i(6, 3)
+		units[3].cell = Vector2i(9, 9)
+		units[2].reaction_left = 0
+		battle.call("_update_turn_ui")
+		camera.reset()
+		await process_frame
+		var home: Vector2 = camera.position
+		var cell_point: Callable = func(cell: Vector2i) -> Vector2:
+			return map.get_global_transform_with_canvas() * map.map_to_local(cell)
+		var anchor: Vector2 = cell_point.call(Vector2i(5, 4))
+		var portraits: Dictionary = hud.get("_portraits")
+		await _wheel((portraits[units[0]] as Button).get_global_rect().get_center(), MOUSE_BUTTON_WHEEL_UP)
+		await _wheel((hud.get_node("CombatLog") as Control).get_global_rect().get_center(), MOUSE_BUTTON_WHEEL_UP)
+		_check(camera.zoom == Vector2.ONE, "턴 순서 바 초상·전투 로그 위의 휠은 맵을 확대하지 않음: %s" % window_size)
+		var hud_rects: Array = ["OrderScroll", "UnitDetails", "CombatLog", "Skills", "EndTurn"].map(
+			func(path: String) -> Rect2: return (hud.get_node(path) as Control).get_global_rect())
+		await _wheel(anchor, MOUSE_BUTTON_WHEEL_UP)
+		_check(camera.zoom == Vector2(2, 2) and (cell_point.call(Vector2i(5, 4)) as Vector2).distance_to(anchor) <= 1.0
+			and _camera_snapped(camera), "휠 위는 포인터 아래 칸을 그대로 둔 채 2배: %s" % window_size)
+		await _wheel(anchor, MOUSE_BUTTON_WHEEL_UP)
+		_check(camera.zoom == Vector2(2, 2), "2배보다 더 확대하지 않음: %s" % window_size)
+		var delta: Vector2 = Vector2(13.5, -7.25)
+		await _drag(anchor, delta)
+		_check((cell_point.call(Vector2i(5, 4)) as Vector2).distance_to(anchor + delta) <= 1.0 and _camera_snapped(camera),
+			"가운데 버튼 드래그는 맵을 포인터와 함께 옮기고 원점을 정수 px에 맞춤: %s" % window_size)
+		var destination: Vector2i = Vector2i(4, 5)
+		await _click(cell_point.call(destination), MOUSE_BUTTON_RIGHT)
+		_check(selection.preview_cell == destination and units[0].cell == Vector2i(4, 4),
+			"확대·이동 뒤 우클릭은 포인터 아래 칸의 이동 미리보기: %s" % window_size)
+		var enemy_point: Vector2 = units[2].get_global_transform_with_canvas() * Vector2(0, -10)
+		await _click(enemy_point)
+		_check(selection.preview_target == units[2] and units[2].is_previewed,
+			"확대·이동 뒤 적 몸통 좌클릭은 공격 미리보기: %s" % window_size)
+		var saved_props: Array[CombatGrid.Prop] = actions.grid.props.duplicate()
+		actions.grid.props.clear()
+		var crate: CombatGrid.Prop = actions.create_prop(Vector2i(3, 5), "crate")
+		battle.call("_on_action_selected", "attack")
+		await _click(map.get_global_transform_with_canvas() * (map.map_to_surface(crate.cell) + Vector2(0, -8)))
+		_check(selection.preview_prop == crate and crate.hit_points == 6,
+			"확대·이동 뒤 상자 몸통 좌클릭은 상자 미리보기: %s" % window_size)
+		actions.grid.props.clear()
+		var rock: CombatGrid.Prop = actions.create_prop(Vector2i(3, 5), "rock")
+		battle.call("_update_turn_ui")
+		await _click(map.get_global_transform_with_canvas() * (map.map_to_surface(rock.cell) + Vector2(0, -8)))
+		_check(selection.preview_prop == rock and rock.cell == Vector2i(3, 5),
+			"확대·이동 뒤 바위 몸통 좌클릭은 바위 미리보기: %s" % window_size)
+		_check(["OrderScroll", "UnitDetails", "CombatLog", "Skills", "EndTurn"].map(
+			func(path: String) -> Rect2: return (hud.get_node(path) as Control).get_global_rect()) == hud_rects,
+			"확대·이동해도 HUD는 같은 화면 자리: %s" % window_size)
+		actions.grid.props.assign(saved_props)
+		selection.clear_preview()
+		await _click(enemy_point)
+		units[2].show_feedback("-3", hud.feedback_obstacles())
+		var popup: Label = units[2].get_parent().get_child(-1) as Label
+		var popup_rect: Rect2 = popup.get_global_transform_with_canvas() * Rect2(Vector2.ZERO, popup.size)
+		_check(popup_rect.size.y >= 2.0 * popup.size.y - 1.0 and popup_rect.get_center().distance_to(enemy_point) <= 64.0,
+			"피해 팝업은 확대한 맵의 대상 위에 2배로 뜸: %s" % window_size)
+		popup.free()
+		var before: Vector2 = cell_point.call(Vector2i(5, 4))
+		var panel: Vector2 = (hud.get_node("UnitDetails") as Control).get_global_rect().get_center()
+		await _drag(anchor, panel - anchor)
+		_check((cell_point.call(Vector2i(5, 4)) as Vector2).distance_to(before) > 100.0,
+			"HUD 위로 끌어 놓아도 드래그가 이어짐: %s" % window_size)
+		await _drag(anchor, Vector2(4000, 3000))
+		var visible: Rect2 = root.get_visible_rect()
+		_check(_camera_snapped(camera) and map.get_used_cells().any(func(cell: Vector2i) -> bool:
+			return visible.has_point(cell_point.call(cell))), "맵을 멀리 끌어도 칸이 화면에 남음: %s" % window_size)
+		await _key(KEY_C)
+		_check(camera.zoom == Vector2.ONE and camera.position == home, "C는 1배 가운데로 되돌림: %s" % window_size)
+		await _wheel(anchor, MOUSE_BUTTON_WHEEL_DOWN)
+		_check(camera.zoom == Vector2.ONE and camera.position == home, "1배보다 축소하지 않음: %s" % window_size)
+		var gesture: InputEventPanGesture = InputEventPanGesture.new()
+		gesture.position = root.get_final_transform() * anchor
+		gesture.delta = Vector2(1, 0)
+		# Godot 4.7.2의 Input.parse_input_event는 제스처를 두 번 보낸다. 창 입력 경로(push_input)로 한 번만 넣는다.
+		root.push_input(gesture)
+		await process_frame
+		_check(camera.position.is_equal_approx(home + Vector2(CombatCamera.PAN_GESTURE_SPEED, 0)),
+			"트랙패드 두 손가락 이동: %s" % window_size)
+		var magnify: InputEventMagnifyGesture = InputEventMagnifyGesture.new()
+		magnify.position = gesture.position
+		magnify.factor = 1.15
+		root.push_input(magnify)
+		await process_frame
+		_check(camera.zoom == Vector2.ONE, "집기 배율이 덜 쌓이면 그대로: %s" % window_size)
+		root.push_input(magnify)
+		await process_frame
+		_check(camera.zoom == Vector2(2, 2), "집기 배율이 1.25배 쌓이면 2배: %s" % window_size)
+		var over_hud: InputEventPanGesture = gesture.duplicate() as InputEventPanGesture
+		over_hud.position = root.get_final_transform() * (hud.get_node("CombatLog") as Control).get_global_rect().get_center()
+		var zoomed: Vector2 = camera.position
+		# 제스처에는 포인터 이동이 없다. HUD 판정은 마지막 포인터 위치를 따르므로 먼저 로그 위로 옮긴다.
+		var hover: InputEventMouseMotion = InputEventMouseMotion.new()
+		hover.position = over_hud.position
+		hover.global_position = over_hud.position
+		root.push_input(hover)
+		root.push_input(over_hud)
+		await process_frame
+		_check(camera.position == zoomed, "전투 로그 위의 트랙패드 이동은 맵을 옮기지 않음: %s" % window_size)
+		await _key(KEY_C)
+	var start: Vector2 = camera.position
+	var key: InputEventKey = InputEventKey.new()
+	key.physical_keycode = KEY_D
+	key.pressed = true
+	Input.parse_input_event(key)
+	# 짧은 프레임에서도 반 논리 px 이상 움직이도록 0.1초를 기다린다.
+	var pressed_at: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - pressed_at < 100:
+		await process_frame
+	key = key.duplicate() as InputEventKey
+	key.pressed = false
+	Input.parse_input_event(key)
+	await process_frame
+	_check(camera.position.x > start.x and camera.position.y == start.y and _camera_snapped(camera),
+		"D를 누르고 있으면 맵이 오른쪽을 보도록 이동")
+	# 2560×1080은 논리 폭이 홀수라 화면 가운데가 0.5 논리 px다.
+	root.size = Vector2i(2560, 1080)
+	await process_frame
+	await process_frame
+	_check(_camera_snapped(camera), "창 크기가 바뀌면 화면 원점을 다시 정수 px에 맞춤")
+	root.size = Vector2i(1280, 720)
+	camera.reset()
+	_reset_units()
+	battle.call("_update_turn_ui")
+	await process_frame
+
+
+func _camera_snapped(camera: Camera2D) -> bool:
+	var origin: Vector2 = camera.get_canvas_transform().origin
+	return origin.is_equal_approx(origin.round())
+
+
+func _wheel(point: Vector2, button_index: MouseButton) -> void:
+	var event: InputEventMouseButton = InputEventMouseButton.new()
+	event.position = root.get_final_transform() * point
+	event.global_position = event.position
+	event.button_index = button_index
+	await _press(event)
+
+
+func _drag(point: Vector2, delta: Vector2) -> void:
+	var event: InputEventMouseButton = InputEventMouseButton.new()
+	event.position = root.get_final_transform() * point
+	event.global_position = event.position
+	event.button_index = MOUSE_BUTTON_MIDDLE
+	event.pressed = true
+	Input.parse_input_event(event)
+	await process_frame
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = root.get_final_transform() * (point + delta)
+	motion.global_position = motion.position
+	motion.relative = root.get_final_transform().basis_xform(delta)
+	motion.button_mask = MOUSE_BUTTON_MASK_MIDDLE
+	Input.parse_input_event(motion)
+	await process_frame
+	event = event.duplicate() as InputEventMouseButton
+	event.pressed = false
+	event.position = motion.position
+	event.global_position = motion.position
+	Input.parse_input_event(event)
 	await process_frame
 
 
@@ -1753,8 +2005,7 @@ func _test_action_animations() -> void:
 				while turns.current_unit != actor:
 					turns.end_turn()
 			battle.call("_update_turn_ui")
-			actions.dice = (ScriptedDice.new([20, 1, 2], [20, 6, 6]) if side
-				else ScriptedDice.new([10, 1, 2], [10, 8, 4]))
+			actions.dice = ScriptedDice.new([20 if side else 10, 2], ScriptedDice.attack_sides(actor) + ScriptedDice.damage_sides(actor))
 			var hp: int = target.hit_points
 			finished[0] = false
 			_animated_attack(actor, target, shock, finished)
@@ -1776,7 +2027,7 @@ func _test_action_animations() -> void:
 	units[2].cell = Vector2i(4, 4)
 	turns.select_unit(units[1])
 	battle.call("_update_turn_ui")
-	actions.dice = _dice_for_miss(6)
+	actions.dice = _dice_for_miss(units[1])
 	finished[0] = false
 	_animated_attack(units[1], units[2], false, finished)
 	_check(battle.has_node("Arrow"), "확정 빗나감에도 화살 비행 표시")
@@ -1792,7 +2043,7 @@ func _test_action_animations() -> void:
 	while turns.current_unit != units[3]:
 		turns.end_turn()
 	battle.call("_update_turn_ui")
-	actions.dice = ScriptedDice.new([10, 1, 2], [10, 8, 4])
+	actions.dice = ScriptedDice.new([10, 2], ScriptedDice.attack_sides(units[3]) + ScriptedDice.damage_sides(units[3]))
 	var reactions: Array[int] = [0]
 	var on_reaction: Callable = func(kind: String, _prompt: String) -> void:
 		var arrow: Node = battle.get_node_or_null("Arrow")
@@ -2009,7 +2260,7 @@ func _test_reaction_flow() -> void:
 	_check(units[0].reaction_left == 1 and units[3].cell == Vector2i(6, 4)
 		and not hud.reaction_dialog.visible and not actions.busy, "넘기기는 반응 유지와 이동 재개")
 	units[3].cell = Vector2i(5, 4)
-	actions.dice = _dice_for_miss(4)
+	actions.dice = _dice_for_miss(units[0])
 	messages.clear()
 	await actions.move_to(units[3], Vector2i(6, 4))
 	await process_frame
