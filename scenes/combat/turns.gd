@@ -28,7 +28,8 @@ var _deferred_units: Array[CombatUnit] = []
 func start(combat_units: Array[CombatUnit], dice: CombatDice) -> void:
 	ordered_units = combat_units.duplicate()
 	for unit: CombatUnit in ordered_units:
-		unit.initiative_roll = dice.roll(unit.get_ability_sides(CombatUnit.Ability.AGILITY))
+		var agility_sides: int = unit.get_ability_sides(CombatUnit.Ability.AGILITY)
+		unit.initiative_roll = CombatChecks.face_value(agility_sides, dice.roll(agility_sides))
 	# sort_custom은 안정 정렬이 아니므로 완전히 같은 값은 배치 순서를 보존한다.
 	var placement_order: Array[CombatUnit] = ordered_units.duplicate()
 	ordered_units.sort_custom(func(a: CombatUnit, b: CombatUnit) -> bool:

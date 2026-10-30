@@ -29,6 +29,16 @@ func _check(condition: bool, message: String) -> void:
 		push_error(message)
 
 
+## 만능팔은 내성굴림 티켓(#389)까지 고철로봇 힘 d12 대 아군 궁수 힘 d6 대결이다.
+func _pull_sides() -> Array[int]:
+	return [12, 6]
+
+
+## 회전회오리 공통 힘 d12, 전사 방어 힘 d20·피해 d8, 궁수 방어 힘 d6·피해 d8 (#389까지 대결).
+func _spin_sides() -> Array[int]:
+	return [12, 20, 8, 6, 8]
+
+
 func _fixture(archer: bool = false) -> Fixture:
 	var f: Fixture = Fixture.new()
 	fixtures.append(f)
@@ -107,7 +117,7 @@ func _test_ground_paths() -> void:
 		_check(ai.approach_cell(actor, f.actions) == destination, "장판이 목적지 선택을 바꾸지 않음")
 		var walked: Array[Vector2i] = []
 		f.actions.movement_animation = func(_unit: CombatUnit, cell: Vector2i) -> void: walked.append(cell)
-		f.actions.dice = ScriptedDice.new([1, 20], [10, 20])
+		f.actions.dice = ScriptedDice.new([1], ScriptedDice.attack_sides(actor))
 		await ai.play_turn(actor, f.actions)
 		var expected: Array[Vector2i] = [Vector2i(1, 1), destination]
 		if budget == 6:
@@ -150,7 +160,7 @@ func _test_ground_paths() -> void:
 	actor = stationary.units[2]
 	actor.surge_left = 0
 	_check(stationary.actions.create_ground(stationary.units[0], actor.cell, "poison"), "제자리 공격 검사용 장판")
-	stationary.actions.dice = ScriptedDice.new([1, 20], [10, 20])
+	stationary.actions.dice = ScriptedDice.new([1], ScriptedDice.attack_sides(actor))
 	await ai.play_turn(actor, stationary.actions)
 	_check(actor.cell == Vector2i(4, 4) and actor.movement_left == 6 and actor.action_left == 0,
 		"장판 위에서도 이미 공격할 수 있으면 별도 이탈 없이 공격")
@@ -165,7 +175,7 @@ func _test_jump_attack() -> void:
 	f.units[3].cell = Vector2i(9, 9)
 	f.actions.grid.map_size = Vector2i(7, 1)
 	f.actions.grid.heights = {Vector2i(1, 0): 2, Vector2i(2, 0): 2}
-	f.actions.dice = ScriptedDice.new([1, 20], [10, 20])
+	f.actions.dice = ScriptedDice.new([1], ScriptedDice.attack_sides(actor))
 	_check(ai.approach_cell(actor, f.actions) == Vector2i(1, 0),
 		"걸어서 오를 수 없는 높이2 공격 위치를 점프 접근 후보로 선택")
 	await ai.play_turn(actor, f.actions)
@@ -206,7 +216,7 @@ func _test_jump_priorities() -> void:
 	walking.actions.grid.map_size = Vector2i(7, 2)
 	walking.actions.grid.heights = {Vector2i(1, 0): 2, Vector2i(2, 0): 2,
 		Vector2i(0, 1): 1, Vector2i(1, 1): 1}
-	walking.actions.dice = ScriptedDice.new([1, 20], [10, 20])
+	walking.actions.dice = ScriptedDice.new([1], ScriptedDice.attack_sides(actor))
 	await ai.play_turn(actor, walking.actions)
 	_check(actor.cell == Vector2i(1, 0) and actor.movement_left == 3 and actor.bonus_action_left == 1
 		and not walking.logs.any(func(message: String) -> bool: return "점프:" in message),
@@ -238,7 +248,7 @@ func _test_jump_retreat_and_pull() -> void:
 	retreat.units[2].cell = Vector2i(9, 8)
 	retreat.actions.grid.map_size = Vector2i(4, 1)
 	retreat.actions.grid.heights = {Vector2i(2, 0): 2, Vector2i(3, 0): 2}
-	retreat.actions.dice = ScriptedDice.new([1, 1, 8], [10, 10, 8])
+	retreat.actions.dice = ScriptedDice.new([1, 1], ScriptedDice.attack_sides(archer, 2))
 	await ai.play_turn(archer, retreat.actions)
 	_check(archer.cell == Vector2i(2, 0) and archer.movement_left == 3 and archer.bonus_action_left == 0
 		and archer.action_left == 0 and archer.disengage_left == 2 and not archer.disengaged,
@@ -267,7 +277,7 @@ func _test_scrap_robot() -> void:
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
 	boss.hit_points = 40
 	boss.begin_turn()
-	normal.actions.dice = ScriptedDice.new([11, 1, 8], [12, 20, 8])
+	normal.actions.dice = ScriptedDice.new([11, 8], ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	await ai.play_turn(boss, normal.actions)
 	_check(normal.units[0].hit_points == 2 and boss.action_left == 0
 		and boss.bonus_action_left == 1 and boss.movement_left == 4,
@@ -279,7 +289,7 @@ func _test_scrap_robot() -> void:
 	boss.begin_turn()
 	overloaded.units[0].hit_points = 3
 	overloaded.units[1].cell = Vector2i(6, 4)
-	overloaded.actions.dice = ScriptedDice.new([11, 1, 1, 10, 1, 8], [12, 20, 8, 12, 6, 8])
+	overloaded.actions.dice = ScriptedDice.new([11, 1, 10, 8], ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss) + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	await ai.play_turn(boss, overloaded.actions)
 	_check(overloaded.units[0].hit_points == 0 and overloaded.units[1].hit_points == 4,
 		"과부하 첫 행동으로 전투 불능 뒤 두 번째 행동 대상을 다시 선택")
@@ -331,7 +341,8 @@ func _test_scrap_robot_pull_movement_and_combo() -> void:
 	moving.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
 		moving.actions.resolve_reaction(true)
 	)
-	moving.actions.dice = ScriptedDice.new([12, 1, 1, 12, 6], [20, 12, 8, 12, 6])
+	moving.actions.dice = ScriptedDice.new([12, 1, 12, 6], ScriptedDice.attack_sides(moving.units[0])
+		+ ScriptedDice.damage_sides(moving.units[0]) + _pull_sides())
 	await ai.play_turn(boss, moving.actions)
 	_check(boss.cell == Vector2i(6, 4) and boss.movement_left == 2
 		and moving.units[1].cell == Vector2i(7, 4), "인접 아군이 있어도 이동해서 사거리3의 만능팔 실행")
@@ -344,13 +355,13 @@ func _test_scrap_robot_pull_movement_and_combo() -> void:
 	boss.begin_turn()
 	combo.units[0].cell = Vector2i(1, 1)
 	combo.units[1].cell = Vector2i(7, 4)
-	combo.actions.dice = ScriptedDice.new([12, 6, 10, 1, 8], [12, 6, 12, 6, 8])
+	combo.actions.dice = ScriptedDice.new([12, 6, 10, 8], _pull_sides() + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	await ai.play_turn(boss, combo.actions)
 	_check(combo.units[1].cell == Vector2i(5, 4) and combo.units[1].hit_points == 4
 		and boss.action_left == 0, "과부하 첫 행동 만능팔 뒤 두 번째 행동으로 끌려온 아군 기본 공격")
 	boss.begin_turn()
 	combo.units[0].cell = Vector2i(9, 9)
-	combo.actions.dice = ScriptedDice.new([10, 1, 2], [12, 6, 8])
+	combo.actions.dice = ScriptedDice.new([10, 2], ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	await ai.play_turn(boss, combo.actions)
 	_check(combo.units[1].hit_points == 0 and combo.units[0].hit_points == 12
 		and boss.pull_cooldown == 1, "만능팔 쉬는 턴에는 기본 공격과 접근을 수행")
@@ -361,7 +372,7 @@ func _test_scrap_robot_pull_movement_and_combo() -> void:
 	boss.begin_turn()
 	unreachable.units[0].cell = Vector2i(3, 4)
 	unreachable.units[1].cell = Vector2i(9, 9)
-	unreachable.actions.dice = ScriptedDice.new([12, 1, 1], [12, 20, 8])
+	unreachable.actions.dice = ScriptedDice.new([12, 1], ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	await ai.play_turn(boss, unreachable.actions)
 	_check(boss.cell == Vector2i(4, 4) and boss.movement_left == 4
 		and unreachable.units[0].hit_points == 9,
@@ -376,7 +387,7 @@ func _test_scrap_robot_spin_combos() -> void:
 	boss.begin_turn()
 	pull_basic.units[0].cell = Vector2i(1, 1)
 	pull_basic.units[1].cell = Vector2i(7, 4)
-	pull_basic.actions.dice = ScriptedDice.new([12, 6, 10, 1, 8], [12, 6, 12, 6, 8])
+	pull_basic.actions.dice = ScriptedDice.new([12, 6, 10, 8], _pull_sides() + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	await ai.play_turn(boss, pull_basic.actions)
 	_check(pull_basic.units[1].cell == Vector2i(5, 4) and pull_basic.units[1].hit_points == 4
 		and boss.action_left == 0, "3000 비인접 과부하는 만능팔 뒤 끌려온 대상 기본 공격")
@@ -418,7 +429,7 @@ func _test_scrap_robot_spin_height() -> void:
 	f.units[0].cell = Vector2i(3, 4)
 	f.units[1].cell = Vector2i(5, 4)
 	f.actions.grid.heights[f.units[1].cell] = 2
-	f.actions.dice = ScriptedDice.new([11, 1, 1], [12, 20, 8])
+	f.actions.dice = ScriptedDice.new([11, 1], ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	await ai.play_turn(boss, f.actions)
 	_check(f.units[0].hit_points == 9 and f.units[1].hit_points == 14
 		and boss.action_left == 0 and boss.movement_left == 4,
@@ -439,7 +450,7 @@ func _test_scrap_robot_spin_reevaluation() -> void:
 		f.units[1].cell = Vector2i(5, 4)
 		f.units[1].hit_points = 14 if survivors == 1 else 3
 		if survivors == 1:
-			f.actions.dice = ScriptedDice.new([11, 1, 1, 1, 1, 10, 1, 1], [12, 20, 8, 6, 8, 12, 6, 8])
+			f.actions.dice = ScriptedDice.new([11, 1, 1, 1, 1, 10, 1], _spin_sides() + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 		else:
 			f.actions.dice = ScriptedDice.new([11, 1, 1, 1, 1], [12, 20, 8, 6, 8])
 		await ai.play_turn(boss, f.actions)
@@ -477,7 +488,7 @@ func _test_mother() -> void:
 	blocked.units[1].cell = Vector2i(0, 1)
 	blocked.units[1].hit_points = 5
 	blocked.units[3].cell = Vector2i(9, 9)
-	blocked.actions.dice = ScriptedDice.new([8, 1, 1], [8, 6, 6])
+	blocked.actions.dice = ScriptedDice.new([8, 1], ScriptedDice.attack_sides(mother) + ScriptedDice.damage_sides(mother))
 	await ai.play_turn(mother, blocked.actions)
 	_check(blocked.units.size() == 4 and blocked.units[1].hit_points == 2
 		and blocked.units[0].hit_points == 12 and mother.action_left == 0,
@@ -507,7 +518,7 @@ func _test_spiderling() -> void:
 	var spiderling: CombatUnit = close.units[2]
 	spiderling.kind = CombatUnit.Kind.SPIDERLING
 	spiderling.hit_points = 1
-	close.actions.dice = ScriptedDice.new([4, 1], [4, 20])
+	close.actions.dice = ScriptedDice.new([4], ScriptedDice.attack_sides(spiderling))
 	await ai.play_turn(spiderling, close.actions)
 	_check(spiderling.cell == Vector2i(4, 4) and spiderling.movement_left == 6
 		and spiderling.action_left == 0 and close.units[0].hit_points == 11,
@@ -520,7 +531,7 @@ func _test_spiderling() -> void:
 	approach.units[0].cell = Vector2i(3, 3)
 	approach.units[1].cell = Vector2i(9, 9)
 	approach.units[1].hit_points = 1
-	approach.actions.dice = ScriptedDice.new([4, 1], [4, 20])
+	approach.actions.dice = ScriptedDice.new([4], ScriptedDice.attack_sides(spiderling))
 	await ai.play_turn(spiderling, approach.actions)
 	_check(CombatGrid.distance(spiderling.cell, approach.units[0].cell) == 1
 		and spiderling.movement_left == 1 and approach.units[0].hit_points == 11,
@@ -533,7 +544,7 @@ func _test_spiderling() -> void:
 	opportunity.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
 		opportunity.actions.resolve_reaction(true)
 	)
-	opportunity.actions.dice = ScriptedDice.new([20, 1, 1], [20, 4, 8])
+	opportunity.actions.dice = ScriptedDice.new([20, 1], ScriptedDice.attack_sides(opportunity.units[0]) + ScriptedDice.damage_sides(opportunity.units[0]))
 	_check(await opportunity.actions.move_to(spiderling, Vector2i(3, 4))
 		and spiderling.hit_points == 0 and spiderling.cell == Vector2i(4, 4)
 		and spiderling.movement_left == 6 and opportunity.units[0].reaction_left == 0,
@@ -580,7 +591,7 @@ func _test_warrior() -> void:
 	var retarget: Fixture = _fixture()
 	retarget.units[1].cell = Vector2i(4, 5)
 	retarget.units[1].hit_points = 1
-	retarget.actions.dice = ScriptedDice.new([10, 1, 1], [10, 6, 4])
+	retarget.actions.dice = ScriptedDice.new([10, 1], ScriptedDice.attack_sides(retarget.units[2]) + ScriptedDice.damage_sides(retarget.units[2]))
 	await ai.play_turn(retarget.units[2], retarget.actions)
 	_check(retarget.units[1].hit_points == 0, "인접한 대상 중 낮은 HP부터 공격")
 	_check(retarget.units[2].surge_left == 1 and retarget.units[2].action_left == 0
@@ -589,7 +600,7 @@ func _test_warrior() -> void:
 	var last: Fixture = _fixture()
 	last.units[0].hit_points = 1
 	last.actions.incapacitate(last.units[1])
-	last.actions.dice = ScriptedDice.new([10, 1, 1], [10, 20, 4])
+	last.actions.dice = ScriptedDice.new([10, 1], ScriptedDice.attack_sides(last.units[2]) + ScriptedDice.damage_sides(last.units[2]))
 	await ai.play_turn(last.units[2], last.actions)
 	_check(last.actions.is_over() and last.units[2].surge_left == 1,
 		"마지막 아군 탈락 후 추가 스킬과 공격 중단")
@@ -693,7 +704,7 @@ func _test_reaction_pause() -> void:
 	lethal.units[3].disengage_left = 0
 	lethal.units[3].hit_points = 1
 	lethal.units[0].reaction_left = 1
-	lethal.actions.dice = ScriptedDice.new([20, 1, 1], [20, 4, 8])
+	lethal.actions.dice = ScriptedDice.new([20, 1], ScriptedDice.attack_sides(lethal.units[0]) + ScriptedDice.damage_sides(lethal.units[0]))
 	lethal.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
 		lethal.actions.resolve_reaction(true)
 	)
@@ -773,7 +784,8 @@ func _test_scene() -> void:
 	units[2].cell = Vector2i(5, 4)
 	units[3].cell = Vector2i(6, 4)
 	units[3].disengage_left = 0
-	actions.dice.seed = 2
+	# 야만인의 첫 공격 10+3은 전사 AC 5에 명중해 흘려내기 확인 창을 연다. 이후 굴림은 고정 seed다.
+	actions.dice = ScriptedDice.new([10], ScriptedDice.attack_sides(units[2])).then_seeded()
 	hud.end_button.pressed.emit()
 	hud.end_button.pressed.emit()
 	var first_enemy: CombatUnit = turns.current_unit

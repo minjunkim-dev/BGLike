@@ -157,6 +157,14 @@ func get_defense_bonus() -> int:
 	return _equipment_stat("defense_bonus")
 
 
+## AC = 민첩 표준값 + 방어 가산. 몬스터 정의의 armor_class가 있으면 그 값으로 덮어쓴다 (4-3, 7장).
+func get_armor_class() -> int:
+	var armor_class: int = CombatChecks.standard_value(get_ability_sides(Ability.AGILITY)) + get_defense_bonus()
+	if not is_ally:
+		return int(CombatEnemyDefinitions.for_kind(kind).get("armor_class", armor_class))
+	return armor_class
+
+
 func get_max_hit_points() -> int:
 	var base: int = 12 if kind == Kind.WARRIOR else 14
 	if not is_ally:
