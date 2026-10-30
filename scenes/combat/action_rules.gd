@@ -49,6 +49,7 @@ const USES_PER_ACT: Dictionary[String, int] = {
 	"second_wind": 1, "parry": 2, "surge": 1, "mark": 1, "shock": 1, "disengage": 2
 }
 ## 피해 능력치를 명중 능력치와 다르게 지정한 동작 (능력치 기획서 4-9). 지금 있는 스킬은 모두 같아 비어 있다.
+## 동작 이름으로 찾으므로 기회 공격("opportunity")은 "attack"과 따로 지정한다.
 static var DAMAGE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {}
 ## 아군 스킬과 공용 동작의 아이콘. 48px 원본(64px 설계 격자)이다.
 const ICON_PATH: String = "res://scenes/combat/art/icons/skills/%s.png"

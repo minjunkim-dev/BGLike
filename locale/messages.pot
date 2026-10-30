@@ -167,16 +167,16 @@ msgstr ""
 msgid "공격에 맞았을 때 민첩 주사위 +3이\n공격 굴림 이상이면 피해와 추가 효과를 피합니다."
 msgstr ""
 
-#: scenes/combat/action_rules.gd:141
-msgid "피해: %s d%d%s"
+#: scenes/combat/action_rules.gd:110
+msgid "%s d%d %+d 대 AC"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:142
-msgid "피해: 명중 %s d%d → 피해 %s d%d%s"
+msgid "피해: %s d%d%s"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:103
-msgid "%s d%d %+d 대 AC"
+#: scenes/combat/action_rules.gd:143
+msgid "피해: 명중 %s d%d → 피해 %s d%d%s"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:105

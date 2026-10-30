@@ -161,17 +161,17 @@ msgstr "적이 내 인접 칸을 벗어나면 기본 공격."
 msgid "공격에 맞았을 때 민첩 주사위 +3이\n공격 굴림 이상이면 피해와 추가 효과를 피합니다."
 msgstr "공격에 맞았을 때 민첩 주사위 +3이\n공격 굴림 이상이면 피해와 추가 효과를 피합니다."
 
-#: scenes/combat/action_rules.gd:141
+#: scenes/combat/action_rules.gd:110
+msgid "%s d%d %+d 대 AC"
+msgstr "%s d%d %+d 대 AC"
+
+#: scenes/combat/action_rules.gd:142
 msgid "피해: %s d%d%s"
 msgstr "피해: %s d%d%s"
 
-#: scenes/combat/action_rules.gd:142
+#: scenes/combat/action_rules.gd:143
 msgid "피해: 명중 %s d%d → 피해 %s d%d%s"
 msgstr "피해: 명중 %s d%d → 피해 %s d%d%s"
-
-#: scenes/combat/action_rules.gd:103
-msgid "%s d%d %+d 대 AC"
-msgstr "%s d%d %+d 대 AC"
 
 #: scenes/combat/action_rules.gd:105
 #: scenes/combat/unit.gd:11

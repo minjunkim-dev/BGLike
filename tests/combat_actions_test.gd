@@ -606,7 +606,7 @@ func _test_crate_scene_input() -> void:
 	_check(selection.preview_prop == crate and crate.hit_points == 6 and units[0].action_left == 1,
 		"상자 몸통의 첫 좌클릭은 기본 공격 미리보기이며 피해와 비용이 없다")
 	_check("내구도 6/6" in hud.preview_label.text and "4~23" in hud.preview_label.text,
-		"상자 안내는 내구도와 현재 무기 피해 범위를 표시한다")
+		"상자 안내는 내구도와 현재 피해 범위(힘 d20+3)를 표시한다")
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	_check(selection.preview_prop == null and crate.hit_points == 6,
 		"우클릭으로 상자 미리보기를 취소하며 막힌 칸으로 이동하지 않는다")
@@ -622,7 +622,7 @@ func _test_crate_scene_input() -> void:
 	await _click(point)
 	await _click(point)
 	_check(crate.hit_points == 2 and units[0].action_left == 0 and "내구도 2/6" in hud.message_label.text,
-		"실제 상자 두번 클릭은 무기 피해와 행동 소비를 로그에 반영한다")
+		"실제 상자 두번 클릭은 피해와 행동 소비를 로그에 반영한다")
 	await _click(point)
 	await _click(point)
 	_check(crate.hit_points == 2 and "행동 없음" in hud.preview_label.text,
@@ -677,7 +677,7 @@ func _test_crate_boundaries() -> void:
 	actor.kind = CombatUnit.Kind.ARCHER
 	f.actions.dice = _dice_for([2], [20])
 	_check(f.actions.attack_prop(actor, target) and target.hit_points == 3,
-		"원거리 공격은 높이 차2에서도 d6의2+현재 피해 보정1을 준다")
+		"원거리 공격은 높이 차2에서도 솜씨 d20의2+현재 피해 보정1을 준다")
 	actor.begin_turn()
 	f.actions.initialize(f.units, f.turns)
 	var replacement: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "crate")
@@ -1295,7 +1295,7 @@ func _test_scrap_robot_opportunity() -> void:
 	f.actions.dice = _dice_for([11, 8], ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	_check(await f.actions.move_to(f.units[0], Vector2i(3, 5)), "보스 인접 칸에서 이동")
 	_check(f.units[0].hit_points == 2 and boss.reaction_left == 0,
-		"보스 기회 공격은 힘 d12 +3·피해 1d8+2로 반응을 소비")
+		"보스 기회 공격은 힘 d12 +3·피해 힘 d12+2로 반응을 소비")
 
 
 func _test_novice_stats() -> void:
@@ -1341,7 +1341,7 @@ func _test_novice_damage() -> void:
 			_check(await f.actions.attack(actor, target), "풋내기 기본 공격 실행")
 			_check(f.actions.last_attack.success and f.actions.last_damage == 5 and target.hit_points == 7
 				and f.actions.last_damage_rolls == [4],
-				"풋내기 피해는 최대 면에서도 주사위 한 번의 1d4+1")
+				"풋내기 피해는 명중굴림 최대 면에서도 공격 능력치 d10 한 번 +1")
 
 
 func _test_spiderling_stats_and_damage() -> void:
@@ -1391,7 +1391,7 @@ func _test_mother_stats_and_damage() -> void:
 	f.units[0].reaction_left = 0
 	f.actions.dice = _dice_for([8, 6], ScriptedDice.attack_sides(mother) + ScriptedDice.damage_sides(mother))
 	_check(await f.actions.attack(mother, f.units[0]) and f.actions.last_damage == 8
-		and f.units[0].hit_points == 4, "엄마 거미 기본 공격은 힘 d8+3와 피해1d6+2 적용")
+		and f.units[0].hit_points == 4, "엄마 거미 기본 공격은 힘 d8+3와 피해 힘 d8+2 적용")
 
 
 func _test_spawn_spiderling() -> void:
@@ -2136,7 +2136,7 @@ func _test_attacks() -> void:
 	_check(await f.actions.attack(actor, target), "최댓값 공격")
 	_check(f.actions.last_damage_rolls == [1] and f.actions.last_attack.rolls == [20]
 		and f.actions.last_attack.face == CombatChecks.Face.ABSOLUTE_SUCCESS,
-		"절대성공 최댓값도 치명타 없이 무기 주사위 한 개")
+		"절대성공 최댓값도 치명타 없이 피해 능력치 주사위 한 개")
 	_check(f.logs.any(func(line: String) -> bool: return "힘 d20 [20] +0 = 20 / AC 4 · 명중(절대성공)" in line)
 		and not f.logs.any(func(line: String) -> bool: return "치명타" in line),
 		"절대성공 명중은 로그에 절대성공으로 표시하고 치명타 문구 없음")
@@ -2213,7 +2213,7 @@ func _test_archer_balance() -> void:
 					total += rolled
 				_check(f.actions.last_damage_rolls.size() == count and f.actions.last_damage == total
 					and target.hit_points == maxi(0, 14 - total),
-					"궁수 피해는 무기·표식 주사위에 고정값1을 한 번만 더함")
+					"궁수 피해는 솜씨·표식 주사위에 고정값1을 한 번만 더함")
 				_check(" +1 = %d · HP %d" % [total, target.hit_points] in "\n".join(logs),
 					"궁수 피해 로그도 고정값1과 실제 HP를 표시")
 

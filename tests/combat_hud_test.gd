@@ -772,7 +772,7 @@ func _test_guidance() -> void:
 			and icon_button.accessibility_name == CombatActionRules.NAMES[action],
 			"스킬 버튼은 이름 대신 아이콘 표시: " + action)
 	_check("사거리: 인접1칸\n피해: 힘 d20+3\n판정: 힘 d20 +0 대 AC" in (buttons["attack"] as Button).tooltip_text,
-		"전사 공격 호버에 사거리·무기 피해·명중굴림 표시")
+		"전사 공격 호버에 사거리·힘 d20 피해·명중굴림 표시")
 	units[0].weapon = {"stats": {"attack_bonus": 1, "damage_bonus": 2}}
 	battle.call("_update_turn_ui")
 	_check("피해: 힘 d20+5\n판정: 힘 d20 +1 대 AC" in (buttons["attack"] as Button).tooltip_text

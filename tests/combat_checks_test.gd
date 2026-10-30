@@ -589,14 +589,16 @@ func _test_damage_table() -> void:
 		and "피해: 솜씨 d20+1\n" in CombatActionRules.details(archer, "attack")
 		and "→" not in CombatActionRules.details(archer, "shock"),
 		"같은 능력치면 호버에 피해 능력치 주사위 하나만 보임")
+	# 정적 지정은 확인 전에 되돌려 다른 검사에 남기지 않는다.
 	CombatActionRules.DAMAGE_ABILITIES["shock"] = CombatUnit.Ability.STRENGTH
-	_check(CombatActionRules.damage_ability(archer, "shock") == CombatUnit.Ability.STRENGTH
-		and CombatActionRules.damage_ability(archer, "attack") == CombatUnit.Ability.FINESSE
-		and "피해: 명중 솜씨 d20 → 피해 힘 d6+1\n" in CombatActionRules.details(archer, "shock")
-		and "피해: 솜씨 d20+1\n" in CombatActionRules.details(archer, "attack"),
-		"스킬이 피해 능력치를 따로 지정하면 호버에 명중과 피해 능력치를 함께 보임 "
-			+ CombatActionRules.details(archer, "shock"))
+	var shock_ability: CombatUnit.Ability = CombatActionRules.damage_ability(archer, "shock")
+	var attack_ability: CombatUnit.Ability = CombatActionRules.damage_ability(archer, "attack")
+	var shock_details: String = CombatActionRules.details(archer, "shock")
+	var attack_details: String = CombatActionRules.details(archer, "attack")
 	CombatActionRules.DAMAGE_ABILITIES.erase("shock")
+	_check(shock_ability == CombatUnit.Ability.STRENGTH and attack_ability == CombatUnit.Ability.FINESSE
+		and "피해: 명중 솜씨 d20 → 피해 힘 d6+1\n" in shock_details and "피해: 솜씨 d20+1\n" in attack_details,
+		"스킬이 피해 능력치를 따로 지정하면 호버에 명중과 피해 능력치를 함께 보임 " + shock_details)
 
 ## 원거리 공격자는 인접 불리가 없게 세 칸 떨어뜨린다.
 func _preview_percent(attacker: CombatUnit, target: CombatUnit) -> float:
