@@ -184,12 +184,6 @@ func get_damage_bonus() -> int:
 	return (3 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus")
 
 
-func get_damage_sides() -> int:
-	if not is_ally:
-		return int(CombatEnemyDefinitions.for_kind(kind)["damage_sides"])
-	return 8 if kind == Kind.WARRIOR else 6
-
-
 func _equipment_stat(stat: String) -> int:
 	return int(weapon.get("stats", {}).get(stat, 0)) + int(armor.get("stats", {}).get(stat, 0))
 

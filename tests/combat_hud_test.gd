@@ -771,12 +771,12 @@ func _test_guidance() -> void:
 			and icon_button.icon == CombatActionRules.icon_of(action)
 			and icon_button.accessibility_name == CombatActionRules.NAMES[action],
 			"스킬 버튼은 이름 대신 아이콘 표시: " + action)
-	_check("사거리: 인접1칸\n피해: 1d8+3\n판정: 힘 d20 +0 대 AC" in (buttons["attack"] as Button).tooltip_text,
+	_check("사거리: 인접1칸\n피해: 힘 d20+3\n판정: 힘 d20 +0 대 AC" in (buttons["attack"] as Button).tooltip_text,
 		"전사 공격 호버에 사거리·무기 피해·명중굴림 표시")
 	units[0].weapon = {"stats": {"attack_bonus": 1, "damage_bonus": 2}}
 	battle.call("_update_turn_ui")
-	_check("피해: 1d8+5\n판정: 힘 d20 +1 대 AC" in (buttons["attack"] as Button).tooltip_text
-		and "피해: 1d8+5\n판정: 힘 d20 +1 대 AC" in (buttons["opportunity"] as Button).tooltip_text,
+	_check("피해: 힘 d20+5\n판정: 힘 d20 +1 대 AC" in (buttons["attack"] as Button).tooltip_text
+		and "피해: 힘 d20+5\n판정: 힘 d20 +1 대 AC" in (buttons["opportunity"] as Button).tooltip_text,
 		"현재 장비의 피해·공격 가산을 호버에 반영")
 	units[0].weapon = {}
 	battle.call("_update_turn_ui")
@@ -892,7 +892,7 @@ func _test_guidance() -> void:
 				_check(removed not in button.tooltip_text, "호버에서 안내 제거: %s / %s" % [action, removed])
 			_check(unit.hit_points == hp and unit.surge_left == uses,
 				"호버는 동작 실행·자원 소비 없음: " + action)
-	_check("사거리: 1~6칸\n피해: 1d6+1\n판정: 솜씨 d20 +0 대 AC, 명중하면 기절" in (buttons["shock"] as Button).tooltip_text
+	_check("사거리: 1~6칸\n피해: 솜씨 d20+1\n판정: 솜씨 d20 +0 대 AC, 명중하면 기절" in (buttons["shock"] as Button).tooltip_text
 		and "판정: 힘 d6 +0 대 힘" in (buttons["shove"] as Button).tooltip_text,
 		"궁수 충격 화살·밀치기 호버에 능력치 대결과 명중 시 기절 표시")
 	await _test_focus_tooltips(buttons)

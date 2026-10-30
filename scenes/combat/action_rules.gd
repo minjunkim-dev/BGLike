@@ -48,6 +48,8 @@ const USE_COUNTERS: Dictionary[String, StringName] = {
 const USES_PER_ACT: Dictionary[String, int] = {
 	"second_wind": 1, "parry": 2, "surge": 1, "mark": 1, "shock": 1, "disengage": 2
 }
+## 피해 능력치를 명중 능력치와 다르게 지정한 동작 (능력치 기획서 4-9). 지금 있는 스킬은 모두 같아 비어 있다.
+static var DAMAGE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {}
 ## 아군 스킬과 공용 동작의 아이콘. 48px 원본(64px 설계 격자)이다.
 const ICON_PATH: String = "res://scenes/combat/art/icons/skills/%s.png"
 ## #362: 스킬과 정비 아이템 그림의 표시 크기(논리 px). 버튼·칸의 입력 영역은 각 화면이 따로 유지한다.
@@ -59,6 +61,11 @@ static func resource_of(action: String) -> CombatUnit.TurnResource:
 		if action in GROUPS[index]:
 			return index as CombatUnit.TurnResource
 	return CombatUnit.TurnResource.ACTION
+
+
+## 동작의 피해 굴림 능력치. 지정이 없으면 명중 능력치다.
+static func damage_ability(actor: CombatUnit, action: String) -> CombatUnit.Ability:
+	return DAMAGE_ABILITIES.get(action, actor.get_attack_ability())
 
 
 static func belongs_to(actor: CombatUnit, action: String) -> bool:
@@ -98,8 +105,7 @@ static func icon_of(action: String) -> Texture2D:
 ## 호버의 사거리·피해 또는 회복·판정 줄. 현재 장비의 명중·피해 보정을 반영한다.
 static func details(actor: CombatUnit, action: String) -> String:
 	var melee: bool = actor.get_attack_range() == 1
-	var weapon: String = TranslationServer.tr("피해: 1d%d%s") % [actor.get_damage_sides(),
-		"" if actor.get_damage_bonus() == 0 else "%+d" % actor.get_damage_bonus()]
+	var weapon: String = damage_text(actor, action)
 	var hit: String = TranslationServer.tr("%s d%d %+d 대 AC") % [CombatUnit.ability_name(actor.get_attack_ability()),
 		actor.get_ability_sides(actor.get_attack_ability()), actor.get_attack_bonus()]
 	var lines: Array[String] = []
@@ -124,6 +130,17 @@ static func details(actor: CombatUnit, action: String) -> String:
 		"parry":
 			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("판정: 민첩 d%d +3이 공격 굴림 이상") % actor.get_ability_sides(CombatUnit.Ability.AGILITY)]
 	return "\n".join(lines)
+
+
+## 호버의 피해 줄. 피해 능력치가 명중 능력치와 다르면 둘을 함께 보인다 (4-9).
+static func damage_text(actor: CombatUnit, action: String) -> String:
+	var hit_ability: CombatUnit.Ability = actor.get_attack_ability()
+	var ability: CombatUnit.Ability = damage_ability(actor, action)
+	var bonus: String = "" if actor.get_damage_bonus() == 0 else "%+d" % actor.get_damage_bonus()
+	if ability == hit_ability:
+		return TranslationServer.tr("피해: %s d%d%s") % [CombatUnit.ability_name(ability), actor.get_ability_sides(ability), bonus]
+	return TranslationServer.tr("피해: 명중 %s d%d → 피해 %s d%d%s") % [CombatUnit.ability_name(hit_ability),
+		actor.get_ability_sides(hit_ability), CombatUnit.ability_name(ability), actor.get_ability_sides(ability), bonus]
 
 
 static func effect(actor: CombatUnit, action: String) -> String:

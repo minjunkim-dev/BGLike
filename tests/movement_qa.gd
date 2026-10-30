@@ -88,11 +88,11 @@ func _run() -> void:
 				await _free_fixture()
 				quit(1)
 				return
-			# 소비 순서: 공격 능력치 → 방어 힘 → 명중일 때만 피해 주사위.
+			# 소비 순서: 공격 능력치 → 방어 힘 → 명중일 때만 피해 굴림.
 			if lethal:
 				actor.hit_points = 1
 				actions.dice = ScriptedDice.new([attack_roll, defense_roll, 1],
-					[attack_sides, defense_sides, enemy.get_damage_sides()])
+					[attack_sides, defense_sides, ScriptedDice.damage_sides(enemy)[0]])
 			else:
 				actions.dice = ScriptedDice.new([attack_roll, defense_roll], [attack_sides, defense_sides])
 		elif case == "battle_end":

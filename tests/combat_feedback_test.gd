@@ -57,7 +57,7 @@ func _run() -> void:
 	ScriptedDice.arrange_turns(turns, units, units)
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	# 판정·피해·빗나감이 같은 반복 공격에서 발생하는 통제된 재현이다.
-	actions.dice = ScriptedDice.new([8, 1, 1, 1, 1, 1, 20, 6], [12, 20, 8, 6, 8, 12, 20, 6])
+	actions.dice = ScriptedDice.new([8, 1, 1, 1, 1, 1, 20, 6], [12, 20, 12, 6, 12, 12, 20, 6])
 	for unit: CombatUnit in units:
 		if unit.is_ally:
 			unit.reaction_left = 0
@@ -206,8 +206,9 @@ func _test_crowded_feedback() -> void:
 		units[index].reaction_left = 0
 	ScriptedDice.arrange_turns(turns, units, [attacker])
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	# 새끼 거미 힘 4+3은 궁수 AC 7과 같아 두 번 모두 명중한다.
-	actions.dice = ScriptedDice.new([4, 4], ScriptedDice.attack_sides(attacker) + ScriptedDice.attack_sides(attacker))
+	# 새끼 거미 힘 4+3은 궁수 AC 7과 같아 두 번 모두 명중하고, 피해 힘 d4의 1 + 1 = 2다.
+	var sides: Array[int] = ScriptedDice.attack_sides(attacker) + ScriptedDice.damage_sides(attacker)
+	actions.dice = ScriptedDice.new([4, 1, 4, 1], sides + sides)
 	battle.call("_update_turn_ui")
 	_check(turns.current_unit == attacker and attacker.kind == CombatUnit.Kind.SPIDERLING
 		and archer.kind == CombatUnit.Kind.ARCHER, "밀집 팝업 전제조건: 새끼 거미 차례, 궁수 대상")
@@ -230,7 +231,7 @@ func _test_crowded_feedback() -> void:
 	_check(await actions.attack(attacker, archer), "첫 팝업이 남아 있을 때 같은 대상 연속 공격")
 	actions.feedback.disconnect(record)
 	var texts: Array = placed.map(func(entry: Dictionary) -> String: return entry["text"])
-	_check(texts == ["1", "1"], "밀집 배치의 연속 피해 팝업: %s" % str(texts))
+	_check(texts == ["2", "2"], "밀집 배치의 연속 피해 팝업: %s" % str(texts))
 	# 기준 자리: 대상 상태 줄 기준점. 같은 대상의 이전 팝업이 있으면 그 팝업 바로 위가 더 위쪽일 때 그 자리.
 	var latest: Dictionary = {}
 	for entry: Dictionary in placed:
