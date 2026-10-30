@@ -1,5 +1,5 @@
 extends SceneTree
-## #345: 전투 전 정비·저장과 실제 GUI 드래그 입력. 수치·회복·용량은 기존 CombatLoot 규칙을 쓴다.
+## #345·#395: 전투 전 지도 준비·저장과 실제 GUI 드래그 입력. 정비는 승리 뒤에만 연다. 수치·회복·용량은 기존 CombatLoot 규칙을 쓴다.
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
 var checks: int = 0
 var failures: int = 0
@@ -10,6 +10,8 @@ var battle: Node2D
 var preparation: CombatPreparation
 var loot: CombatLoot
 var party: Array[CombatUnit]
+var bar: Control
+var start: Button
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -41,7 +43,7 @@ func _run() -> void:
 	loot = battle.get("loot")
 	party = battle.get("party")
 	await process_frame
-	ck(battle.get("waiting_for_start") and not preparation.visible, "정비를 강제로 열지 않고 지도에서 준비")
+	ck(battle.get("waiting_for_start") and not preparation.visible, "정비를 열지 않고 지도에서 준비")
 	await _capture("01-staging")
 	var turns: CombatTurns = battle.get("turns")
 	var units: Array[CombatUnit] = battle.get("units")
@@ -53,30 +55,36 @@ func _run() -> void:
 	battle.call("_end_turn")
 	battle.call("_on_action_selected", "attack")
 	ck(battle.call("combat_state") == before, "준비 중 행동·턴 종료 차단")
-	var bar: Control = battle.get("staging")
-	ck(bar.visible and not battle.get_node("UI/TurnHud/Skills").visible, "지도에 정비·전투 시작 버튼")
-	(bar.get_child(1) as Button).grab_focus()
-	await _key(KEY_TAB)
-	ck((bar.get_child(2) as Button).has_focus(), "Tab으로 정비에서 전투 시작으로 이동")
-	await _key(KEY_TAB, true)
-	ck((bar.get_child(1) as Button).has_focus(), "Shift+Tab으로 정비로 돌아옴")
+	bar = battle.get("staging")
+	start = bar.get_node("StartBattle")
+	_check_staging_bar("1-1 첫 전투")
 	GameSave.autosave = true
 	battle.call("_autosave", before)
 	await _restore_check(before, false)
-	(bar.get_child(1) as Button).pressed.emit()
-	await process_frame
-	ck(preparation.visible and preparation.maintaining and preparation.before_battle, "전투 전 정비 열기")
-	battle.call("_process", 0.0)
-	await _restore_check(battle.call("combat_state"), true)
-	preparation._continue()
-	ck(not preparation.visible and battle.get("waiting_for_start") and (battle.get("progress") as CombatActProgress).stage_index == 0,
-		"정비 종료는 같은 지도 준비 단계로 돌아옴")
-	(bar.get_child(2) as Button).pressed.emit()
-	ck(not battle.get("waiting_for_start") and not bar.visible and turns.current_unit == units[2], "전투 시작 뒤 원래 적 선공 순서 유지")
+	# #345 시절 지도 준비의 정비 화면에서 남긴 저장은 같은 지도 준비로 이어한다.
+	GameSave.write(1, 1, {"combat": before, "preparation": {"maintaining": true, "before_battle": true}})
+	await _restore_check(before, false)
+	var contradiction: Dictionary = before.duplicate(true)
+	contradiction.waiting_for_start = false
+	ck(not battle.call("restore_save", {"combat": contradiction, "preparation": {"maintaining": true, "before_battle": true}})
+		and battle.call("combat_state") == before, "전투가 시작된 옛 지도 준비 정비 저장 거부")
 	GameSave.autosave = false
-	# 아군 시작 위치와 자원을 그대로 두고 정비 UI의 입력을 검사한다.
-	battle.call("_start_stage", true)
-	battle.call("_open_staging_preparation")
+	start.grab_focus()
+	await _key(KEY_ENTER)
+	ck(not battle.get("waiting_for_start") and not bar.visible and turns.current_unit == units[2],
+		"Enter로 전투 시작 뒤 원래 적 선공 순서 유지")
+	# 승리 뒤 보상 확인 → 정비 흐름에서 정비 UI의 입력을 검사한다.
+	var actions: CombatActions = battle.get("actions")
+	for unit: CombatUnit in battle.get("units"):
+		if not unit.is_ally:
+			actions.incapacitate(unit)
+	actions.changed.emit()
+	battle.call("_restart")
+	ck(preparation.visible and not preparation.maintaining, "승리 뒤 보상 확인")
+	preparation._continue()
+	ck(preparation.visible and preparation.maintaining and preparation.continue_button.text == "다음 스테이지",
+		"보상 확인 뒤 정비와 다음 스테이지 버튼")
+	preparation.rewards.clear()
 	loot.bag.assign([_item("weapon"), _item("armor"), _item("potion")])
 	preparation._render()
 	await _settle()
@@ -170,6 +178,9 @@ func _run() -> void:
 	preparation.discard_dialog.canceled.emit()
 	preparation.rewards.clear()
 	preparation._continue()
+	ck(not preparation.visible and battle.get("waiting_for_start") and (battle.get("progress") as CombatActProgress).stage_index == 1,
+		"정비를 마치면 다음 스테이지 지도 준비")
+	_check_staging_bar("다음 스테이지")
 	# 준비 flag와 승리 기록이 모순이면 복원 전에 거부한다.
 	before = battle.call("combat_state")
 	var invalid: Dictionary = before.duplicate(true)
@@ -276,8 +287,39 @@ func _capture(label: String) -> void:
 	ck(root.get_texture().get_image().save_png(capture_dir.path_join(label + ".png")) == OK, "원본 PNG 저장")
 
 func _transitions() -> void:
+	var progress: CombatActProgress = battle.get("progress")
+	var actions: CombatActions = battle.get("actions")
+	# 1-2 승리 → 1-3, 1-3 승리 → 2-1(막 전환). 정비를 마치면 지도 준비로만 간다.
+	for expected: int in [2, 3]:
+		_win()
+		ck(progress.stage_index == expected and battle.get("waiting_for_start") and not preparation.visible,
+			"승리 후 스테이지 %d도 지도 준비에서 대기" % expected)
+		_check_staging_bar("스테이지 %d" % expected)
+	ck(party.all(func(unit: CombatUnit) -> bool: return unit.hit_points == unit.get_max_hit_points()), "막 전환은 부활한 지도 준비")
+	battle.call("start_battle")
+	for unit: CombatUnit in party:
+		actions.incapacitate(unit)
+	actions.changed.emit()
+	battle.call("_restart")
+	ck(progress.stage_index == 3 and battle.get("waiting_for_start") and not preparation.visible
+		and party.all(func(unit: CombatUnit) -> bool: return unit.hit_points > 0), "전멸 후 막 재시작도 부활한 지도 준비")
+	_check_staging_bar("전멸 재시작")
+	await _tap(_joypad(JOY_BUTTON_A))
+	ck(not battle.get("waiting_for_start") and not bar.visible, "컨트롤러 A로 전투 시작")
+	battle.call("_give_up")
+	battle.call("_restart")
+	ck(progress.stage_index == 3 and battle.get("waiting_for_start") and not preparation.visible
+		and party.all(func(unit: CombatUnit) -> bool: return unit.hit_points > 0), "전투 포기 후 막 재시작도 지도 준비")
+	_check_staging_bar("포기 재시작")
+	start.pressed.emit()
+	ck(not battle.get("waiting_for_start") and not bar.visible, "포기 재시작 뒤 전투 시작")
+
+## 남은 적을 모두 쓰러뜨리고 보상 확인 → 정비 → 다음 스테이지를 지난다.
+func _win() -> void:
 	loot.bag.clear()
 	var actions: CombatActions = battle.get("actions")
+	if battle.get("waiting_for_start"):
+		battle.call("start_battle")
 	for unit: CombatUnit in battle.get("units"):
 		if not unit.is_ally:
 			actions.incapacitate(unit)
@@ -285,13 +327,24 @@ func _transitions() -> void:
 	battle.call("_restart")
 	preparation._continue()
 	preparation._continue()
-	preparation.discard_dialog.confirmed.emit()
-	ck((battle.get("progress") as CombatActProgress).stage_index == 1 and battle.get("waiting_for_start")
-		and not preparation.visible, "승리 후 다음 스테이지도 지도 준비에서 대기")
-	battle.call("start_battle")
-	for unit: CombatUnit in party:
-		actions.incapacitate(unit)
-	actions.changed.emit()
-	battle.call("_restart")
-	ck((battle.get("progress") as CombatActProgress).stage_index == 0 and battle.get("waiting_for_start")
-		and party.all(func(unit: CombatUnit) -> bool: return unit.hit_points > 0), "전멸 후 막 재시작도 부활한 지도 준비")
+	if preparation.discard_dialog.visible:
+		preparation.discard_dialog.confirmed.emit()
+
+## 지도 준비 막대에는 안내와 `전투 시작` 하나만 있고 포커스가 그 버튼에 있다.
+func _check_staging_bar(label: String) -> void:
+	var buttons: Array[Node] = bar.get_children().filter(func(child: Node) -> bool: return child is Button)
+	ck(bar.visible and not battle.get_node("UI/TurnHud/Skills").visible and buttons == [start]
+		and start.text == "전투 시작" and start.has_focus(), "지도 준비에는 포커스된 전투 시작 하나: " + label)
+
+func _joypad(button: JoyButton) -> InputEventJoypadButton:
+	var event: InputEventJoypadButton = InputEventJoypadButton.new()
+	event.button_index = button
+	return event
+
+func _tap(event: InputEvent) -> void:
+	event.set("pressed", true)
+	Input.parse_input_event(event)
+	await _settle()
+	event.set("pressed", false)
+	Input.parse_input_event(event)
+	await _settle()

@@ -57,7 +57,7 @@ func _run() -> void:
 	ScriptedDice.arrange_turns(turns, units, units)
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	# 판정·피해·빗나감이 같은 반복 공격에서 발생하는 통제된 재현이다.
-	actions.dice = ScriptedDice.new([8, 1, 1, 1, 1, 1, 20, 8], [12, 20, 8, 8, 8, 12, 20, 8])
+	actions.dice = ScriptedDice.new([8, 1, 1, 1, 1, 1, 20, 6], [12, 20, 8, 6, 8, 12, 20, 6])
 	for unit: CombatUnit in units:
 		if unit.is_ally:
 			unit.reaction_left = 0
@@ -170,8 +170,12 @@ func _test_shock_feedback() -> void:
 		var actions: CombatActions = battle.get("actions") as CombatActions
 		if marked:
 			_check(actions.mark(archer, target), "충격 화살 전 표식 적용")
-		actions.dice = (ScriptedDice.new([15, 1, 2, 1], [20, 6, 6, 6]) if marked
-			else ScriptedDice.new([15, 1, 2], [20, 6, 6]))
+		var sides: Array[int] = ScriptedDice.attack_sides(archer) + ScriptedDice.damage_sides(archer)
+		var values: Array[int] = [15, 2]
+		if marked:
+			values.append(1)
+			sides.append(6)
+		actions.dice = ScriptedDice.new(values, sides)
 		battle.call("_update_turn_ui")
 		_check(await actions.attack(archer, target, true), "실제 충격 화살 실행")
 		_check(target.is_stunned and target.has_mark == marked, "기절·표식 상태 유지")
@@ -202,7 +206,8 @@ func _test_crowded_feedback() -> void:
 		units[index].reaction_left = 0
 	ScriptedDice.arrange_turns(turns, units, [attacker])
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.dice = ScriptedDice.new([4, 1, 4, 1], [4, 8, 4, 8])
+	# 새끼 거미 힘 4+3은 궁수 AC 7과 같아 두 번 모두 명중한다.
+	actions.dice = ScriptedDice.new([4, 4], ScriptedDice.attack_sides(attacker) + ScriptedDice.attack_sides(attacker))
 	battle.call("_update_turn_ui")
 	_check(turns.current_unit == attacker and attacker.kind == CombatUnit.Kind.SPIDERLING
 		and archer.kind == CombatUnit.Kind.ARCHER, "밀집 팝업 전제조건: 새끼 거미 차례, 궁수 대상")

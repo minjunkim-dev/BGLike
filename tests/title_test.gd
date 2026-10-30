@@ -9,7 +9,7 @@ const LOGICAL: Dictionary[Vector2i, Vector2] = {Vector2i(1280, 720): Vector2(640
 const EXTRA_WINDOWS: Array[Vector2i] = [Vector2i(2560, 1600), Vector2i(2560, 1080), Vector2i(1366, 768)]
 ## 도움말에 적을 조작과 규칙. README·전투 기획서의 이름을 쓴다.
 const HELP_TOPICS: Array[String] = ["우클릭", "좌클릭", "숫자 키 1~9", "방향키", "D-pad", "Enter", "Tab",
-	"Space 누르고 있기", "Esc", "점프", "유리", "불리", "능력치 주사위 대결", "자연", "반응", "기회 공격", "흘려내기"]
+	"Space 누르고 있기", "Esc", "휠", "가운데 버튼 드래그", "WASD", "C:", "점프", "유리", "불리", "능력치 주사위와 AC", "건강", "반응", "기회 공격", "흘려내기"]
 ## #209 6번: 이번 도움말에 넣지 않는 메커닉. 점프는 조작만 적고 높이 규칙은 적지 않는다.
 const HELP_EXCLUDED: Array[String] = ["높이", "낙하", "낭떠러지", "화상", "물 칸"]
 ## 여러 worktree가 같은 user://를 쓰므로 실행마다 폴더를 나눈다 (docs/adr/0003).
