@@ -437,8 +437,8 @@ func _test_spin_saves() -> void:
 				and archer.hit_points == archer.get_max_hit_points() - 3,
 				"내성에 실패한 대상마다 피해를 따로 굴림")
 			_check(boss.action_left == 0 and boss.bonus_action_left == 1 and boss.reaction_left == 1
-				and not actions.busy and actions.pending_reactor == null,
-				"광역은 행동 하나만 쓰고 연출 잠금을 해제")
+				and boss.movement_left == 4 and not actions.busy and actions.pending_reactor == null,
+				"광역은 행동 하나만 쓰고 반응·이동·연출 잠금을 해제")
 			_check((actions.dice as ScriptedDice).unused().is_empty(), "준비한 대상별 내성·피해를 정확히 소비")
 			actions.logged.disconnect(observe)
 			turns.turn_started.disconnect(actions._on_turn_started)
