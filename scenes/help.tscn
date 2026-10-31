@@ -83,6 +83,21 @@ layout_mode = 2
 text = "턴 종료 버튼: 지금 유닛의 턴을 끝냅니다."
 autowrap_mode = 3
 
+[node name="MouseStart" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
+layout_mode = 2
+text = "전투 시작 버튼: 전투 전에 지형과 적을 확인한 뒤 눌러 전투를 시작합니다. 처음에는 이 버튼이 골라져 있어 Enter·컨트롤러 A로도 누릅니다."
+autowrap_mode = 3
+
+[node name="MousePreparation" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
+layout_mode = 2
+text = "정비: 보상·가방 아이템을 캐릭터 카드나 같은 종류 칸으로 끌어 장착하거나 물약을 나눕니다. 장착한 방어구는 가방 빈 칸으로 끌어 해제합니다. 칸을 고른 뒤 아래 상세 패널의 버튼으로도 할 수 있습니다."
+autowrap_mode = 3
+
+[node name="MouseTooltip" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
+layout_mode = 2
+text = "설명 보기: 버튼·칸·초상에 마우스를 올리면 잠시 뒤 설명이 나옵니다. 스킬 바와 정비 화면의 버튼·칸은 키보드·컨트롤러로 골라도 나옵니다. 꺼진 버튼에는 쓸 수 없는 이유가 나옵니다."
+autowrap_mode = 3
+
 [node name="MouseCamera" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
 text = "휠: 포인터 자리를 중심으로 맵을 2배로 확대하고 다시 1배로 줄입니다. 가운데 버튼 드래그로 맵을 옮깁니다. 트랙패드는 두 손가락으로 옮기고 집기로 확대합니다."
