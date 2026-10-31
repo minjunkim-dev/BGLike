@@ -3325,6 +3325,7 @@ func _test_reactions() -> void:
 	parry.actions.reaction_requested.connect(func(kind: String, prompt: String) -> void:
 		_check(kind == "parry" and parry.actions.last_damage_rolls.is_empty(), "피해 굴림 전에 흘려내기 확인")
 		_check("50.0%" in prompt, "공격 합계8에 민첩d8+3 흘려내기 성공률50%")
+		_check(prompt.begins_with("아군 전사가 공격에 맞았습니다."), "흘려내기 확인 창의 주격 조사: %s" % prompt)
 		parry.actions.resolve_reaction(true)
 	)
 	parry.actions.dice = _dice_for([5, 5], ScriptedDice.attack_sides(parry.units[2]) + [parry.units[0].get_ability_sides(CombatUnit.Ability.AGILITY)])
