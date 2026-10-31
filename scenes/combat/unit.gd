@@ -83,10 +83,9 @@ var hit_points: int = 12:
 		if value != hit_points:
 			_lost_hit_points = maxi(0, get_max_hit_points() - value)
 		hit_points = value
-		if (is_boss() and not overloaded
-			and hit_points <= get_max_hit_points() / 2):
+		# 추가 행동은 begin_turn()이 다음 자기 턴부터 준다 (#410).
+		if is_boss() and hit_points <= get_max_hit_points() / 2:
 			overloaded = true
-			action_left += 1
 var stun_source: CombatUnit
 var status_effects: Array[StatusEffect] = []
 var is_stunned: bool = false:
@@ -299,7 +298,7 @@ func save_state(units: Array[CombatUnit]) -> Dictionary:
 	return data
 
 
-## save_state()의 값으로 되돌린다. 장비·HP setter가 바꾸는 HP·과부하·행동은 뒤에서 덮는다.
+## save_state()의 값으로 되돌린다. 장비·HP setter가 바꾸는 HP·과부하는 뒤에서 덮는다.
 func load_state(data: Dictionary, units: Array[CombatUnit]) -> void:
 	armor = data.armor
 	weapon = data.weapon

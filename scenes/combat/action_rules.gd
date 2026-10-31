@@ -21,9 +21,9 @@ static var EFFECTS: Dictionary[String, String] = {
 	"surge": TranslationServer.tr("이미 쓴 행동을 다시 채워\n한 번 더 공격할 수 있습니다."),
 	"mark": TranslationServer.tr("1~6칸 적에게 표식.\n이 궁수가 맞히면 피해 +1d6.\n전투 중 유지됩니다."),
 	"shock": TranslationServer.tr("1~6칸 공격.\n명중하면 기절. 보스는 기절 면역."),
-	"pull": TranslationServer.tr("2~3칸 대상을 힘 대 힘 대결로 끌어옵니다.\n피해와 기회 공격 없음. 다음 턴에는 쓸 수 없습니다."),
+	"pull": TranslationServer.tr("2~3칸 대상을 끌어옵니다. 대상이 힘 내성굴림에\n성공하면 버팁니다. 피해와 기회 공격 없음.\n다음 턴에는 쓸 수 없습니다."),
 	"disengage": TranslationServer.tr("이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\n공격을 실행하지 않습니다."),
-	"shove": TranslationServer.tr("내 힘 대 상대의 힘 주사위로 대결.\n성공: 1칸 밀기, 동점: 실패.\n기절 대상은 대결 없이 성공.\n아군은 판정 없이 밀림."),
+	"shove": TranslationServer.tr("대상이 힘 내성굴림.\n실패하면 1칸 밀리고, 성공하면 버팁니다.\n기절 대상은 내성 없이 밀림.\n아군은 판정 없이 밀림."),
 	"potion": TranslationServer.tr("HP 2d4+2 회복.\n최대 HP를 넘지 않습니다."),
 	"opportunity": TranslationServer.tr("적이 내 인접 칸을 벗어나면 기본 공격."),
 	"parry": TranslationServer.tr("공격에 맞았을 때 민첩 주사위 +3이\n공격 굴림 이상이면 피해와 추가 효과를 피합니다.")
@@ -52,8 +52,12 @@ const USES_PER_ACT: Dictionary[String, int] = {
 ## 동작 이름으로 찾으므로 기회 공격("opportunity")은 "attack"과 따로 지정한다.
 static var DAMAGE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {}
 ## 내성굴림 동작의 시전 능력치(DC)와 대상의 내성 능력치 (4-3, 8장). 기존 동작은 현행(힘)을 유지한다.
-const CAST_ABILITIES: Dictionary[String, CombatUnit.Ability] = {"spin": CombatUnit.Ability.STRENGTH}
-const SAVE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {"spin": CombatUnit.Ability.STRENGTH}
+const CAST_ABILITIES: Dictionary[String, CombatUnit.Ability] = {
+	"spin": CombatUnit.Ability.STRENGTH, "shove": CombatUnit.Ability.STRENGTH, "pull": CombatUnit.Ability.STRENGTH
+}
+const SAVE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {
+	"spin": CombatUnit.Ability.STRENGTH, "shove": CombatUnit.Ability.STRENGTH, "pull": CombatUnit.Ability.STRENGTH
+}
 ## 스킬의 DC 보정. 지정이 없으면 0이다. 지금 있는 스킬은 모두 0이라 비어 있다.
 static var DC_BONUSES: Dictionary[String, int] = {}
 ## 아군 스킬과 공용 동작의 아이콘. 48px 원본(64px 설계 격자)이다.
@@ -115,7 +119,7 @@ static func icon_of(action: String) -> Texture2D:
 
 
 ## 호버의 사거리·피해 또는 회복·판정 줄. 현재 장비의 명중·피해 보정을 반영한다.
-## 내성굴림 동작은 units 가운데 살아 있는 반대편 유닛마다 내성 성공률을 더한다.
+## 회전회오리는 units 가운데 살아 있는 반대편 유닛마다 내성 성공률을 더한다.
 static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] = []) -> String:
 	var melee: bool = actor.get_attack_range() == 1
 	var weapon: String = damage_text(actor, action)
@@ -131,7 +135,11 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 		"mark":
 			lines = [TranslationServer.tr("사거리: 1~%d칸") % SKILL_RANGE, TranslationServer.tr("판정: 없음")]
 		"shove":
-			lines = [TranslationServer.tr("사거리: 인접1칸"), TranslationServer.tr("판정: 힘 d%d %+d 대 힘") % [actor.get_ability_sides(CombatUnit.Ability.STRENGTH), actor.get_attack_bonus()]]
+			lines = [TranslationServer.tr("사거리: 인접1칸"), TranslationServer.tr("판정: 대상의 %s 내성 대 DC %d, 성공하면 버팀") % [
+				CombatUnit.ability_name(SAVE_ABILITIES[action]), save_dc(actor, action)]]
+		"pull":
+			lines = [TranslationServer.tr("사거리: 2~3칸"), TranslationServer.tr("판정: 대상의 %s 내성 대 DC %d, 성공하면 버팀") % [
+				CombatUnit.ability_name(SAVE_ABILITIES[action]), save_dc(actor, action)]]
 		"jump":
 			lines = [TranslationServer.tr("사거리: 1~2칸"), TranslationServer.tr("판정: 없음")]
 		"second_wind":
@@ -157,6 +165,11 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 ## 대상의 내성굴림 유리/불리. 굴리는 쪽(대상)의 요인만 센다 (4-7). 지금 내성굴림에 붙는 요인은 없다.
 static func save_mode(_target: CombatUnit) -> CombatChecks.RollMode:
 	return CombatChecks.roll_mode(0, 0)
+
+
+## 밀치기에 내성굴림이 있는지. 기절한 대상과 아군은 판정 없이 밀린다 (8장).
+static func shove_saves(actor: CombatUnit, target: CombatUnit) -> bool:
+	return not target.is_stunned and actor.is_ally != target.is_ally
 
 
 ## 대상의 실제 내성 성공률. 내성 능력치 주사위, 방어 가산, 유리/불리와 절대면을 반영한다.

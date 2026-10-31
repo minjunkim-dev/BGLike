@@ -92,7 +92,7 @@ func _run() -> void:
 	await create_timer(1.0).timeout
 	_check(popup_samples > 0, "반복 공격에서 실제 팝업을 관찰함")
 	_check(collisions.is_empty(), "반복 공격 팝업 겹침 없음: %s" % str(collisions))
-	_check(not popup_styles.has("치명타!"), "능력치 대결은 치명타 팝업을 생성하지 않음")
+	_check(not popup_styles.has("치명타!"), "능력치 판정은 치명타 팝업을 생성하지 않음")
 	_check(not popup_styles.has("빗나감") and not popup_styles.has("자동 실패"),
 		"내성굴림 광역은 빗나감 없이 피해 팝업만: %s" % str(popup_styles.keys()))
 	_check(popup_styles.keys().all(func(text: String) -> bool:
@@ -137,8 +137,8 @@ func _fixture_ready(units: Array[CombatUnit]) -> bool:
 	var portraits: Dictionary = battle.get_node("UI/TurnHud").get("_portraits")
 	_check(portraits.size() == 3 and portraits.has(units[0]) and portraits.has(units[1])
 		and portraits.has(boss), "반복 공격 전제조건: 실제 유닛의 초상 3개")
-	_check(boss.hit_points == 25 and boss.overloaded and boss.action_left == 2,
-		"반복 공격 전제조건: HP25 과부하와 행동2")
+	_check(boss.hit_points == 25 and boss.overloaded and boss.action_left == 1,
+		"반복 공격 전제조건: HP25 과부하, 행동2는 보스 턴 시작에 받음")
 	for ally: CombatUnit in [units[0], units[1]]:
 		_check(CombatGrid.distance(ally.cell, boss.cell) == 1
 			and ally.hit_points == ally.get_max_hit_points()

@@ -11,8 +11,6 @@ class RollResult extends RefCounted:
 	var rolls: Array[int] = []
 	var selected_roll: int = 0
 	var total: int = 0
-	var defender_roll: int = 0
-	var defender_total: int = 0
 	var success: bool = false
 	var face: Face = Face.NORMAL
 	var mode: RollMode = RollMode.NORMAL
@@ -127,17 +125,6 @@ static func _hits(face: Face, total: int, target: int) -> bool:
 	if face != Face.NORMAL:
 		return face == Face.ABSOLUTE_SUCCESS
 	return total >= target
-
-
-## 밀치기·만능팔에만 남은 대결. 동점은 방어자 승이다. 이 두 동작의 내성굴림 이관은 후속 티켓이다.
-static func opposed_attack(attack_sides: int, defense_sides: int,
-	attack_bonus: int, defense_bonus: int, mode: RollMode, dice: CombatDice) -> RollResult:
-	assert(defense_sides > 0)
-	var result: RollResult = attack_roll(attack_sides, attack_bonus, mode, dice)
-	result.defender_roll = face_value(defense_sides, dice.roll(defense_sides))
-	result.defender_total = result.defender_roll + defense_bonus
-	result.success = result.total > result.defender_total
-	return result
 
 
 ## 굴리는 쪽의 능력치 주사위(유리/불리면 두 번) + 가산. 기준값 비교는 호출자가 한다.
