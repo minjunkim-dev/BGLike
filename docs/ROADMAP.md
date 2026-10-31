@@ -182,7 +182,7 @@ flowchart LR
 
 | 질문 | 결정 |
 |---|---|
-| 굴림을 어디에 보여주나 | ✅ 유닛 머리 위 팝업(결과 중심)과 전투 로그. 주사위 굴리는 연출은 개발 결정([#222](https://github.com/minjunkim-dev/BGLike/issues/222))으로 넣지 않음 |
+| 굴림을 어디에 보여주나 | ✅ 유닛 머리 위 팝업(결과 중심)과 전투 로그. 주사위 굴리는 연출은 [#222](https://github.com/minjunkim-dev/BGLike/issues/222)에서 넣지 않았으나, [#306 기획자 답변](https://github.com/minjunkim-dev/BGLike/issues/306#issuecomment-6406245423)으로 바뀌었다. 명중·내성 굴림 연출은 [주사위 연출 기본값](DICE_PRESENTATION.md)을 따름 |
 | 수식을 얼마나 보여주나 | ✅ 팝업은 결과만(명중이면 피해 합계, 빗나가면 `빗나감`). 로그는 전체 수식([팝업 문구 규칙](COMBAT_UIUX.md#팝업-문구-규칙)의 예) |
 | 유리/불리는 어떻게 보여주나 | ✅ 팝업에서는 보이지 않음. 명중률 미리보기와 로그의 두 주사위로 확인 |
 | 치명타·자동 실패 연출 | ⏸ 치명타는 비활성, 팝업 없음([#321](https://github.com/minjunkim-dev/BGLike/issues/321), [팝업 문구 규칙](COMBAT_UIUX.md#팝업-문구-규칙)). 빗나감은 `빗나감`. 절대성공의 추가 이점은 [능력치 기획서 4-12](ABILITY_SYSTEM.md#4-12-치명타와-절대성공의-이점-) ⏸ |

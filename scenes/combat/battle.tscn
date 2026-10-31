@@ -1,9 +1,10 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=25 format=3]
 
 [ext_resource type="Script" path="res://scenes/combat/battle.gd" id="1_battle"]
 [ext_resource type="PackedScene" path="res://scenes/combat/unit.tscn" id="2_unit"]
 [ext_resource type="TileSet" path="res://scenes/combat/floor_tiles.tres" id="3_floor"]
 [ext_resource type="Script" path="res://scenes/combat/turn_hud.gd" id="4_hud"]
+[ext_resource type="Script" path="res://scenes/combat/dice_roll_view.gd" id="19_dice_view"]
 [ext_resource type="Script" path="res://scenes/combat/turn_order_scroll.gd" id="15_order_scroll"]
 [ext_resource type="Resource" path="res://scenes/combat/stage.tres" id="5_stage"]
 [ext_resource type="Script" path="res://scenes/combat/stage.gd" id="6_stage_script"]
@@ -240,6 +241,19 @@ horizontal_alignment = 1
 [node name="Restart" type="Button" parent="UI/TurnHud/Result/Panel/Contents"]
 layout_mode = 2
 text = "재시작"
+
+[node name="DiceRollView" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -120.0
+offset_top = 92.0
+offset_right = 120.0
+offset_bottom = 164.0
+grow_horizontal = 2
+mouse_filter = 2
+script = ExtResource("19_dice_view")
 
 [node name="Pause" type="CanvasLayer" parent="."]
 layer = 2

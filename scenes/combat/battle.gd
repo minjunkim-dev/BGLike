@@ -44,6 +44,7 @@ var start_button: Button
 @onready var camera: CombatCamera = $Camera
 @onready var hud: CombatTurnHud = $UI/TurnHud
 @onready var pause_menu: PauseMenu = $Pause/PauseMenu
+@onready var dice_view: CombatDiceRollView = $UI/DiceRollView
 
 
 func _ready() -> void:
@@ -100,6 +101,7 @@ func _ready() -> void:
 	actions.movement_animation = _animate_movement
 	actions.jump_animation = _animate_jump
 	actions.attack_animation = _animate_attack
+	actions.roll_animation = _animate_roll
 	turns.changed.connect(_on_turn_changed)
 	turns.order_rotated.connect(hud.prepare_order_rotation)
 	_start_stage(true)
@@ -109,6 +111,7 @@ func _exit_tree() -> void:
 	actions.movement_animation = Callable()
 	actions.jump_animation = Callable()
 	actions.attack_animation = Callable()
+	actions.roll_animation = Callable()
 	Engine.time_scale = 1.0
 
 
@@ -718,6 +721,13 @@ func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
 		return
 	await _show_enemy_action()
 	await _animate_attack_at(actor, destination)
+
+
+## 아군이 굴릴 때만 보인다. 몬스터의 굴림과 이어하기로 다시 실행하는 굴림은 보이지 않는다.
+func _animate_roll(roll: CombatDiceRoll) -> void:
+	if _replaying() or not roll.roller.is_ally:
+		return
+	await dice_view.play(roll)
 
 
 func _animate_attack_at(actor: CombatUnit, destination: Vector2) -> void:

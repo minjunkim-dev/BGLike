@@ -63,6 +63,8 @@ var last_damage: int = 0
 var movement_animation: Callable
 var jump_animation: Callable
 var attack_animation: Callable
+## 확정된 굴림(CombatDiceRoll)을 보인다. 없으면 연출 없이 넘어간다. 보일지는 훅이 정한다.
+var roll_animation: Callable
 ## 이번 적 턴에 아군이 답한 반응. 적 턴 중간 저장이 기록한다.
 var reaction_answers: Array[bool] = []
 ## 이어하기가 다시 실행하는 적 턴에서 묻지 않고 차례로 쓸 반응 답.
@@ -382,6 +384,8 @@ func _on_turn_started(unit: CombatUnit) -> void:
 			poison_checked = true
 			var health_sides: int = unit.get_ability_sides(CombatUnit.Ability.HEALTH)
 			var saved: CombatChecks.RollResult = CombatChecks.threshold(health_sides, 0, effect.strength, dice)
+			# 턴 시작 처리는 중간에 멈추지 않는다. 확정된 굴림을 겹쳐 보이기만 한다.
+			_show_roll_in_background(CombatDiceRoll.save(unit, health_sides, saved, 0, tr("강도"), effect.strength))
 			logged.emit(tr("%s 독 제거: 건강 d%d %d / 강도 %d · %s") % [unit.get_display_name(),
 				health_sides, saved.selected_roll, effect.strength, tr("성공") if saved.success else tr("실패")])
 			# 실패는 뒤따르는 `독 1` 틱 팝업이 효과 이름을 보인다.
@@ -935,6 +939,18 @@ func _ask_reaction(reactor: CombatUnit, kind: String, prompt: String) -> bool:
 	return accepted
 
 
+## 굴림 연출이 끝날 때까지 기다린다. 연출 훅이 없으면 바로 넘어간다.
+func _show_roll(roll: CombatDiceRoll) -> void:
+	if roll_animation.is_valid():
+		await roll_animation.call(roll)
+
+
+## 중간에 멈출 수 없는 처리(턴 시작 효과)에서 기다리지 않고 보이기만 한다.
+func _show_roll_in_background(roll: CombatDiceRoll) -> void:
+	if roll_animation.is_valid():
+		roll_animation.call(roll)
+
+
 func _emit_reaction(kind: String, prompt: String) -> void:
 	reaction_requested.emit(kind, prompt)
 
@@ -952,6 +968,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 	if shared_roll == null:
 		var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
 		last_attack = CombatChecks.hit_roll(attack_sides, actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
+		await _show_roll(CombatDiceRoll.hit(actor, attack_sides, last_attack, actor.get_attack_bonus(), target.get_armor_class()))
 		var mode_name: String = tr("일반")
 		if last_attack.mode == CombatChecks.RollMode.ADVANTAGE:
 			mode_name = tr("유리")
@@ -984,6 +1001,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 			target.spend_resource(CombatUnit.TurnResource.REACTION)
 			CombatActionRules.spend_use(target, "parry")
 			var saved: CombatChecks.RollResult = CombatChecks.threshold(parry_sides, 3, last_attack.total, dice)
+			await _show_roll(CombatDiceRoll.save(target, parry_sides, saved, 3, tr("공격"), last_attack.total))
 			logged.emit(tr("흘려내기: 민첩 d%d %d + 3 = %d / 공격 %d · %s") % [parry_sides,
 				saved.selected_roll, saved.total, last_attack.total, tr("성공") if saved.success else tr("실패")])
 			if saved.success:
