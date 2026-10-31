@@ -76,6 +76,8 @@ func _run() -> void:
 	await _test_order_bar_input()
 	await _test_transparent_order_input()
 	await _test_camera()
+	await _test_zoomed_occlusion()
+	await _test_camera_during_enemy_turn()
 	await _test_reaction_flow()
 	await _test_reaction_focus()
 	await _test_action_animations()
@@ -1747,6 +1749,146 @@ func _test_camera() -> void:
 	await process_frame
 	_check(_camera_snapped(camera), "창 크기가 바뀌면 화면 원점을 다시 정수 px에 맞춤")
 	root.size = Vector2i(1280, 720)
+	camera.reset()
+	_reset_units()
+	battle.call("_update_turn_ui")
+	await process_frame
+
+
+## #393: 2배로 확대·이동해도 가린 유닛의 윤곽은 유닛 그림과 같은 맵 자리에 2배로 그리고, 윤곽 클릭은 앞 바위가 아닌 그 유닛을 고른다.
+## HP 막대는 유닛 _draw가 유닛 캔버스에 그리므로 유닛 캔버스가 2배인지로 확인한다(headless에서는 픽셀을 읽지 않는다).
+func _test_zoomed_occlusion() -> void:
+	var camera: CombatCamera = battle.get_node("Camera") as CombatCamera
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	var enemy: CombatUnit = units[2]
+	_reset_units()
+	units[0].cell = Vector2i(2, 3)
+	units[1].cell = Vector2i(0, 0)
+	enemy.cell = Vector2i(5, 3)
+	units[3].cell = Vector2i(9, 9)
+	root.size = Vector2i(1280, 720)
+	var saved_props: Array[CombatGrid.Prop] = actions.grid.props.duplicate()
+	var saved_heights: Dictionary = actions.grid.heights.duplicate()
+	actions.grid.props.clear()
+	# 지형 가림 검사(combat_actions_test)의 바위 배치: 한 칸 높은 앞 칸 위의 바위.
+	actions.grid.heights[Vector2i(6, 4)] = 1
+	map.build_grid(actions.grid, battle.stages[0].tile_set, battle.stages[0])
+	var rock: CombatGrid.Prop = actions.create_prop(Vector2i(6, 4), "rock")
+	battle.call("_update_turn_ui")
+	camera.reset()
+	await process_frame
+	var hidden: Vector2 = Vector2.INF
+	for y: int in range(-40, 8):
+		for x: int in range(-24, 25):
+			var point: Vector2 = Vector2(x, y)
+			var local: Vector2 = map.to_local(enemy.to_global(point))
+			if (hidden == Vector2.INF and enemy.contains_body_point(point) and map.occludes(enemy.cell, local)
+					and map.prop_at_point(local) == rock):
+				hidden = point
+	var silhouette: Sprite2D = enemy.get("_silhouette") as Sprite2D
+	var sprite: AnimatedSprite2D = enemy.get("_sprite") as AnimatedSprite2D
+	_check(enemy.is_occluded and silhouette.visible and hidden != Vector2.INF,
+		"확대 검사 fixture: 바위 뒤 적은 윤곽 표시, 바위 그림이 가린 몸통 점이 있음")
+	var anchor: Vector2 = enemy.get_global_transform_with_canvas() * hidden
+	await _wheel(anchor, MOUSE_BUTTON_WHEEL_UP)
+	await _drag(anchor, Vector2(-37, 21))
+	battle.call("_update_turn_ui")
+	await process_frame
+	var body: Vector2 = enemy.get_global_transform_with_canvas() * hidden
+	_check(camera.zoom == Vector2(2, 2) and enemy.is_occluded and silhouette.visible
+		and silhouette.get_global_transform_with_canvas().is_equal_approx(sprite.get_global_transform_with_canvas())
+		and silhouette.get_global_transform_with_canvas().get_scale().is_equal_approx(sprite.scale * 2.0),
+		"2배 확대·이동 뒤에도 가린 유닛 윤곽은 유닛 그림과 같은 자리·같은 2배 크기")
+	_check(enemy.get_global_transform_with_canvas().get_scale().is_equal_approx(Vector2(2, 2)),
+		"HP 막대를 그리는 유닛 캔버스도 맵과 함께 2배")
+	await _click(body)
+	_check(selection.preview_target == enemy and selection.preview_prop == null,
+		"2배 확대·이동 뒤 가린 윤곽 좌클릭은 바위가 아닌 유닛의 공격 미리보기")
+	selection.clear_preview()
+	actions.grid.props.assign(saved_props)
+	actions.grid.heights = saved_heights
+	map.build_grid(actions.grid, battle.stages[0].tile_set, battle.stages[0])
+	camera.reset()
+	_reset_units()
+	battle.call("_update_turn_ui")
+	await process_frame
+
+
+## #393: 적 턴에도 드래그·WASD로 맵을 옮기고 적 턴은 끝까지 진행한다. Space 가속 중에도 WASD는 실제 시간 기준 속도다.
+func _test_camera_during_enemy_turn() -> void:
+	var camera: CombatCamera = battle.get_node("Camera") as CombatCamera
+	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	var saved_dice: CombatDice = actions.dice
+	var saved_cells: Array = units.map(func(unit: CombatUnit) -> Vector2i: return unit.cell)
+	actions.dice = CombatDice.new()
+	actions.dice.seed = 393
+	_reset_units()
+	# 적이 닿지 못하는 거리라 공격·반응 확인 창 없이 이동만 한다.
+	units[0].cell = Vector2i(0, 0)
+	units[1].cell = Vector2i(1, 0)
+	units[2].cell = Vector2i(9, 9)
+	units[3].cell = Vector2i(8, 9)
+	battle.call("_update_turn_ui")
+	camera.reset()
+	turns.end_turn()
+	turns.end_turn()
+	battle.set_process(true)
+	await process_frame
+	await process_frame
+	_check(battle.get("_enemy_turn_running") and turns.current_unit == units[2], "카메라 검사 fixture: 첫 적의 턴 진행 중")
+	var anchor: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(Vector2i(5, 4))
+	var delta: Vector2 = Vector2(31, -17)
+	await _drag(anchor, delta)
+	_check((map.get_global_transform_with_canvas() * map.map_to_local(Vector2i(5, 4))).distance_to(anchor + delta) <= 1.0,
+		"적 턴에도 가운데 버튼 드래그로 맵을 옮김")
+	var space: InputEventKey = InputEventKey.new()
+	space.keycode = KEY_SPACE
+	space.physical_keycode = KEY_SPACE
+	space.pressed = true
+	Input.parse_input_event(space)
+	# 가속이 걸린 다음 프레임부터 D를 눌러 time_scale이 바뀌는 프레임을 재지 않는다.
+	await process_frame
+	await process_frame
+	var start: Vector2 = camera.position
+	var key: InputEventKey = InputEventKey.new()
+	key.physical_keycode = KEY_D
+	key.pressed = true
+	Input.parse_input_event(key)
+	var pressed_at: int = Time.get_ticks_usec()
+	var slowest: float = INF
+	# 다음 적으로 넘어가는 프레임은 time_scale이 1이라 첫 적의 턴 안에서만 잰다.
+	while Time.get_ticks_usec() - pressed_at < 100000 and turns.current_unit == units[2]:
+		await process_frame
+		slowest = minf(slowest, Engine.time_scale)
+	key = key.duplicate() as InputEventKey
+	key.pressed = false
+	Input.parse_input_event(key)
+	await process_frame
+	var expected: float = CombatCamera.PAN_SPEED * (Time.get_ticks_usec() - pressed_at) / 1000000.0
+	space = space.duplicate() as InputEventKey
+	space.pressed = false
+	Input.parse_input_event(space)
+	await process_frame
+	var moved: float = camera.position.x - start.x
+	_check(slowest > 1.0, "Space를 누르는 동안 적 턴 가속: 최소 time_scale %s" % slowest)
+	# time_scale에 끌려가면 4배(ENEMY_FAST_SPEED)로 움직인다.
+	_check(camera.position.y == start.y and moved >= expected * 0.5 and moved <= expected * 1.5,
+		"Space 가속 중에도 WASD는 실제 시간 기준 속도: %.1f px, 기대 %.1f px" % [moved, expected])
+	var waited: float = 0.0
+	while (battle.get("_enemy_turn_running") or not turns.current_unit.is_ally) and waited < 10.0:
+		await create_timer(0.05).timeout
+		waited += 0.05
+	_check(turns.current_unit.is_ally and not battle.get("_enemy_turn_running")
+		and units[2].cell != Vector2i(9, 9) and units[3].cell != Vector2i(8, 9)
+		and units[0].cell == Vector2i(0, 0) and selection.preview_cell == Vector2i(-1, -1),
+		"카메라를 옮겨도 적 턴은 끝까지 진행하고 아군 차례로 돌아옴")
+	battle.set_process(false)
+	Engine.time_scale = 1.0
+	actions.dice = saved_dice
+	for index: int in range(units.size()):
+		units[index].cell = saved_cells[index]
 	camera.reset()
 	_reset_units()
 	battle.call("_update_turn_ui")
