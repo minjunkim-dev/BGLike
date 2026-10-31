@@ -35,13 +35,14 @@ class StatusEffect extends RefCounted:
 	var kind: String
 	var source: CombatUnit
 	var turns_left: int
-	var strength: int
+	## 독 중첩 제거의 건강 내성 DC. 부여한 장판 정의의 고정값을 보존하고, 화상은 0이다.
+	var dc: int
 
-	func _init(effect_kind: String, caster: CombatUnit, duration: int, intensity: int = 0) -> void:
+	func _init(effect_kind: String, caster: CombatUnit, duration: int, save_dc: int = 0) -> void:
 		kind = effect_kind
 		source = caster
 		turns_left = duration
-		strength = intensity if kind == "poison" else 0
+		dc = save_dc if kind == "poison" else 0
 
 
 @export var kind: Kind = Kind.WARRIOR
@@ -289,7 +290,7 @@ func begin_stage(restore_act: bool) -> void:
 func save_state(units: Array[CombatUnit]) -> Dictionary:
 	var statuses: Array = []
 	for effect: StatusEffect in status_effects:
-		statuses.append([effect.kind, units.find(effect.source), effect.turns_left, effect.strength])
+		statuses.append([effect.kind, units.find(effect.source), effect.turns_left, effect.dc])
 	var data: Dictionary = {"kind": kind, "ally": is_ally, "weapon": weapon, "armor": armor,
 		"hit_points": hit_points, "lost_hit_points": _lost_hit_points, "stunned": is_stunned,
 		"stun_source": units.find(stun_source), "marked_target": units.find(marked_target), "statuses": statuses}
