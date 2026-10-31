@@ -1838,16 +1838,12 @@ func _test_camera_during_enemy_turn() -> void:
 	await process_frame
 	await process_frame
 	_check(battle.get("_enemy_turn_running") and turns.current_unit == units[2], "카메라 검사 fixture: 첫 적의 턴 진행 중")
-	var anchor: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(Vector2i(5, 4))
-	var delta: Vector2 = Vector2(31, -17)
-	await _drag(anchor, delta)
-	_check((map.get_global_transform_with_canvas() * map.map_to_local(Vector2i(5, 4))).distance_to(anchor + delta) <= 1.0,
-		"적 턴에도 가운데 버튼 드래그로 맵을 옮김")
 	var space: InputEventKey = InputEventKey.new()
 	space.keycode = KEY_SPACE
 	space.physical_keycode = KEY_SPACE
 	space.pressed = true
 	Input.parse_input_event(space)
+	# 첫 적의 턴은 4배 가속에서 실제 약 0.26초라 다른 조작보다 먼저 잰다.
 	# 가속이 걸린 다음 프레임부터 D를 눌러 time_scale이 바뀌는 프레임을 재지 않는다.
 	await process_frame
 	await process_frame
@@ -1879,6 +1875,12 @@ func _test_camera_during_enemy_turn() -> void:
 	# time_scale에 끌려가면 4배(ENEMY_FAST_SPEED)로 움직인다.
 	_check(camera.position.y == start.y and moved >= expected * 0.5 and moved <= expected * 1.5,
 		"Space 가속 중에도 WASD는 실제 시간 기준 속도: %.1f px, 기대 %.1f px" % [moved, expected])
+	_check(not turns.current_unit.is_ally, "드래그 검사 fixture: 아직 적 차례")
+	var anchor: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(Vector2i(5, 4))
+	var delta: Vector2 = Vector2(31, -17)
+	await _drag(anchor, delta)
+	_check((map.get_global_transform_with_canvas() * map.map_to_local(Vector2i(5, 4))).distance_to(anchor + delta) <= 1.0,
+		"적 턴에도 가운데 버튼 드래그로 맵을 옮김")
 	var waited: float = 0.0
 	while (battle.get("_enemy_turn_running") or not turns.current_unit.is_ally) and waited < 10.0:
 		await create_timer(0.05).timeout
