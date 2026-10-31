@@ -92,7 +92,7 @@ func _run() -> void:
 	await create_timer(1.0).timeout
 	_check(popup_samples > 0, "반복 공격에서 실제 팝업을 관찰함")
 	_check(collisions.is_empty(), "반복 공격 팝업 겹침 없음: %s" % str(collisions))
-	_check(not popup_styles.has("치명타!"), "능력치 대결은 치명타 팝업을 생성하지 않음")
+	_check(not popup_styles.has("치명타!"), "능력치 판정은 치명타 팝업을 생성하지 않음")
 	_check(not popup_styles.has("빗나감") and not popup_styles.has("자동 실패"),
 		"내성굴림 광역은 빗나감 없이 피해 팝업만: %s" % str(popup_styles.keys()))
 	_check(popup_styles.keys().all(func(text: String) -> bool:

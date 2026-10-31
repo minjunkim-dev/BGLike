@@ -1165,6 +1165,16 @@ func _test_pull_contest_and_cooldown() -> void:
 	f.actions.dice = _dice_for([6], [6])
 	_check(f.actions.pull(boss, target) and target.cell == Vector2i(5, 4) and target.hit_points == 14,
 		"궁수의 힘 d6 최댓값 6은 DC 10에 못 미쳐 끌림")
+	for turn: int in range(8):
+		f.turns.end_turn()
+	target.kind = CombatUnit.Kind.WARRIOR
+	target.hit_points = 12
+	target.cell = Vector2i(7, 4)
+	target.is_stunned = true
+	f.actions.dice = _dice_for([10], [20])
+	_check(f.turns.current_unit == boss and f.actions.pull(boss, target) and target.cell == Vector2i(7, 4)
+		and f.actions.last_save.rolls == [10] and f.actions.last_attack == null,
+		"만능팔에는 기절 대상의 자동 실패가 없어 기절한 전사도 내성굴림으로 버팀")
 
 
 func _test_pull_destinations() -> void:

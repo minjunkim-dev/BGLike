@@ -853,6 +853,7 @@ func pull(actor: CombatUnit, target: CombatUnit) -> bool:
 		return false
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	actor.pull_cooldown = 2
+	last_attack = null
 	var dc: int = CombatActionRules.save_dc(actor, "pull")
 	logged.emit(tr("%s 만능팔: %s · DC %d") % [actor.get_display_name(), target.get_display_name(), dc])
 	var pulled: bool = not _roll_save(target, "pull", dc).success
@@ -869,6 +870,8 @@ func shove(actor: CombatUnit, target: CombatUnit) -> bool:
 	if not _can_act(actor) or not can_target(actor, target, "shove"):
 		return false
 	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
+	last_attack = null
+	last_save = null
 	var won: bool = not CombatActionRules.shove_saves(actor, target)
 	if not won:
 		var dc: int = CombatActionRules.save_dc(actor, "shove")

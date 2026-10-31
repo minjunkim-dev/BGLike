@@ -119,7 +119,7 @@ static func icon_of(action: String) -> Texture2D:
 
 
 ## 호버의 사거리·피해 또는 회복·판정 줄. 현재 장비의 명중·피해 보정을 반영한다.
-## 내성굴림 동작은 units 가운데 살아 있는 반대편 유닛마다 내성 성공률을 더한다.
+## 회전회오리는 units 가운데 살아 있는 반대편 유닛마다 내성 성공률을 더한다.
 static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] = []) -> String:
 	var melee: bool = actor.get_attack_range() == 1
 	var weapon: String = damage_text(actor, action)

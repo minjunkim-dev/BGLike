@@ -611,7 +611,7 @@ func _test_roll_popups() -> void:
 		"회복 팝업은 + 없는 수치를 초록색으로 표시")
 	warrior.second_wind_left = wind_left
 	warrior.hit_points = hit_points
-	# 충격 화살은 민첩 대결 한 번으로 명중과 기절을 함께 정한다.
+	# 충격 화살은 명중굴림 한 번으로 명중과 기절을 함께 정한다.
 	turns.select_unit(units[1])
 	units[1].cell = Vector2i(1, 4)
 	target.cell = Vector2i(5, 4)
