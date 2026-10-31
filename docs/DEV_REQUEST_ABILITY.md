@@ -2,11 +2,11 @@
 
 > 기획이 개발 담당에게 넘기는 문서입니다. **무엇을, 왜, 어디까지** 만들지 적었습니다. 작업 분할, 순서, 일정은 개발 담당이 이 문서를 보고 개발 계획으로 씁니다.
 >
-> - 규칙 기준일: 2026-10-28 개정 · 구현 상태 갱신일: 2026-10-30
+> - 규칙 기준일: 2026-10-28 개정 · 구현 상태 갱신일: 2026-10-31
 > - 규칙 기준: [능력치와 주사위 판정 기획서](ABILITY_SYSTEM.md)
-> - 상태: **개정 규칙(0장)은 [#377](https://github.com/minjunkim-dev/BGLike/issues/377)의 하위 티켓으로 구현 중입니다.** 능력치 개편([#386](https://github.com/minjunkim-dev/BGLike/issues/386), [PR #401](https://github.com/minjunkim-dev/BGLike/pull/401))을 병합했고, 명중굴림·피해·내성굴림·기존 동작 이관(#387~#391)이 남았습니다. 개정 전 요청(공격자 대 방어자 주사위 대결)은 [Issue #321](https://github.com/minjunkim-dev/BGLike/issues/321)의 구현 [PR #327](https://github.com/minjunkim-dev/BGLike/pull/327)을 `7d39beaa882cd92f053aa8cb828b0187aeacc92a`로 병합했고 alpha.3에 반영했습니다. 1~8장은 그 개정 전 요청의 기록이며, 충돌하면 0장과 능력치 기획서가 우선합니다.
+> - 상태: **개정 규칙(0장)은 [#377](https://github.com/minjunkim-dev/BGLike/issues/377)의 하위 티켓으로 구현 중입니다.** 능력치 개편([#386](https://github.com/minjunkim-dev/BGLike/issues/386), [PR #401](https://github.com/minjunkim-dev/BGLike/pull/401)), 명중굴림(#387), 피해(#388), 내성굴림(#389), 밀치기·만능팔 이관과 대결 판정 삭제(#391)를 구현했고, 충격 화살·흘려내기 이관([#390](https://github.com/minjunkim-dev/BGLike/issues/390))이 남았습니다. 구현의 개발 결정은 [능력치 기획서](ABILITY_SYSTEM.md#개정-구현의-개발-결정-377)에 모았습니다. 개정 전 요청(공격자 대 방어자 주사위 대결)은 [Issue #321](https://github.com/minjunkim-dev/BGLike/issues/321)의 구현 [PR #327](https://github.com/minjunkim-dev/BGLike/pull/327)을 `7d39beaa882cd92f053aa8cb828b0187aeacc92a`로 병합했고 alpha.3에 반영했습니다. 1~8장은 그 개정 전 요청의 기록이며, 충돌하면 0장과 능력치 기획서가 우선합니다.
 > - 실행 검수(개정 전 요청): [#307 사용자 위임 에이전트 검수](https://github.com/minjunkim-dev/BGLike/issues/307#issuecomment-6378380493)와 [이동 후조건 추가 검수](https://github.com/minjunkim-dev/BGLike/issues/307#issuecomment-6378544532)를 완료했습니다. 개정 규칙의 사람 직접 기획 검수는 0-5장입니다.
-> - 후속 구현(개정 전): 혼합된 광역 유리 조건은 [#326](https://github.com/minjunkim-dev/BGLike/issues/326)에서 확정하고 [#341](https://github.com/minjunkim-dev/BGLike/issues/341)에서 지원했으나, 개정에서 대상별 내성굴림으로 바뀌어 정리 대상입니다.
+> - 후속 구현(개정 전): 혼합된 광역 유리 조건은 [#326](https://github.com/minjunkim-dev/BGLike/issues/326)에서 확정하고 [#341](https://github.com/minjunkim-dev/BGLike/issues/341)에서 지원했으나, 개정에서 대상별 내성굴림으로 바뀌어 [#389](https://github.com/minjunkim-dev/BGLike/issues/389)에서 정리했습니다.
 > - 남은 기획: 성장 방식은 정했고(막 최초 클리어마다 파티 공통 주사위 레벨 +1) 몬스터 비강화와의 밸런스 점검, 절대성공면 획득·절대성공의 추가 이점(치명타)은 [#322](https://github.com/minjunkim-dev/BGLike/issues/322)에서 정합니다. 스킬별 내성 능력치, 무기별 능력치 배정, 최대 HP·회복의 건강 연동은 후속 기획입니다. 성장은 구현하지 않습니다.
 > - 배경: [M7까지 남은 작업 지도](https://github.com/minjunkim-dev/BGLike/issues/200) · [기획 현황](DESIGN_STATUS.md) · [주사위 육성 논의](DICE_GROWTH.md)
 

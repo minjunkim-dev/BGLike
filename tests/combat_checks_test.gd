@@ -21,7 +21,7 @@ func _run() -> void:
 	_test_scripted_dice_shortfall()
 	_test_modes()
 	_test_ability_dice()
-	_test_opposed_rolls()
+	_test_parry_threshold()
 	_test_standard_values()
 	_test_hit_chances()
 	_test_hit_rolls()
@@ -30,6 +30,7 @@ func _run() -> void:
 	await _test_damage_rolls()
 	await _test_spin_saves()
 	_test_spin_preview()
+	_test_shove_pull_preview()
 	_test_strength_validation()
 	_test_preview_conditions()
 	_test_monster_hit_table()
@@ -115,35 +116,8 @@ func _test_modes() -> void:
 	_check(CombatChecks.roll_mode(2, 2) == CombatChecks.RollMode.NORMAL, "유리와 불리 요인 수가 같으면 일반")
 
 
-func _test_opposed_rolls() -> void:
-	var normal: CombatChecks.RollMode = CombatChecks.RollMode.NORMAL
-	var result: CombatChecks.RollResult = CombatChecks.opposed_attack(
-		20, 10, 1, 2, normal, ScriptedDice.new([7, 6], [20, 10]))
-	_check(result.rolls == [7] and result.total == 8
-		and result.defender_roll == 6 and result.defender_total == 8
-		and not result.success, "대결의 원본 굴림과 장비 가산을 보존, 동점 방어자 승")
-	result = CombatChecks.opposed_attack(
-		4, 20, 30, 0, normal, ScriptedDice.new([1, 20], [4, 20]))
-	_check(result.success, "대결은 최솟값도 합계가 높으면 성공")
-	result = CombatChecks.opposed_attack(
-		20, 4, 0, 30, normal, ScriptedDice.new([20, 1], [20, 4]))
-	_check(not result.success, "대결은 최댓값도 합계가 낮으면 실패")
-	for mode: CombatChecks.RollMode in [CombatChecks.RollMode.ADVANTAGE, CombatChecks.RollMode.DISADVANTAGE]:
-		result = CombatChecks.opposed_attack(
-			20, 10, 0, 0, mode, ScriptedDice.new([3, 17, 9], [20, 20, 10]))
-		_check(result.rolls == [3, 17] and result.defender_roll == 9
-			and result.mode == mode and result.success == (mode == CombatChecks.RollMode.ADVANTAGE),
-			"유리/불리는 공격 주사위만 두 번, 방어 주사위는 한 번")
-	var dice: CombatDice = CombatDice.new()
-	dice.seed = 321
-	var saved_state: int = dice.state
-	result = CombatChecks.opposed_attack(8, 12, 1, 2, CombatChecks.RollMode.ADVANTAGE, dice)
-	dice.state = saved_state
-	var replay: CombatChecks.RollResult = CombatChecks.opposed_attack(
-		8, 12, 1, 2, CombatChecks.RollMode.ADVANTAGE, dice)
-	_check(result.rolls == replay.rolls and result.defender_roll == replay.defender_roll,
-		"난수 상태 복원 뒤 공격과 방어 굴림을 함께 재현")
-	result = CombatChecks.threshold(8, 3, 7, ScriptedDice.new([4], [8]))
+func _test_parry_threshold() -> void:
+	var result: CombatChecks.RollResult = CombatChecks.threshold(8, 3, 7, ScriptedDice.new([4], [8]))
 	_check(result.success and result.total == 7, "흘려내기 민첩 +3은 같은 공격값에도 성공")
 	_check(CombatChecks.threshold_chance(8, 3, 30) == 0.0
 		and CombatChecks.threshold_chance(8, 3, 1) == 1.0, "흘려내기 확률은 0~100%")
@@ -198,7 +172,7 @@ func _test_saving_throws() -> void:
 	_check(CombatChecks.save_dc(12, 3) == 10 and CombatChecks.save_dc(12, 3, 2) == 12 and CombatChecks.save_dc(20, 0) == 11,
 		"DC = 시전 능력치 표준값 + 공격 가산 + 스킬의 DC 보정(기본 0)")
 	var result: CombatChecks.RollResult = CombatChecks.saving_throw(20, 1, 10, normal, ScriptedDice.new([9], [20]))
-	_check(result.rolls == [9] and result.total == 10 and result.success and result.defender_roll == 0
+	_check(result.rolls == [9] and result.total == 10 and result.success
 		and result.face == CombatChecks.Face.NORMAL, "내성 굴림이 DC와 같으면 성공, 시전자는 굴리지 않음")
 	result = CombatChecks.saving_throw(20, 0, 10, normal, ScriptedDice.new([9], [20]))
 	_check(not result.success, "내성 굴림이 DC보다 1 낮으면 실패")
@@ -270,7 +244,7 @@ func _test_battle_rolls() -> void:
 	var before: int = barbarian.hit_points
 	_check(barbarian.get_armor_class() == 4 and warrior.get_ability_sides(strength) == 20, "풋내기 야만인 AC 4, 전사 힘 d20")
 	_check(await actions.attack(warrior, barbarian) and barbarian.hit_points == before - 2 - warrior.get_damage_bonus()
-		and actions.last_attack.rolls == [4] and actions.last_attack.total == 4 and actions.last_attack.defender_roll == 0
+		and actions.last_attack.rolls == [4] and actions.last_attack.total == 4
 		and actions.last_damage_rolls == [2], "전사 힘 4가 야만인 AC 4와 같으면 명중, 야만인은 굴리지 않음")
 	_check(logs.any(func(message: String) -> bool: return "힘 d20 [4] +0 = 4 / AC 4 · 명중" in message),
 		"로그에 전사의 힘 d20 굴림 하나와 AC " + str(logs))
@@ -465,6 +439,29 @@ func _test_spin_preview() -> void:
 			"내성 성공률: 아군 전사 55.0% · 아군 궁수 0.0%"]),
 		"회전회오리 호버의 DC와 장비 없는 전사 55%, 궁수 0% " + CombatActionRules.details(boss, "spin", units))
 	_check(not CombatActionRules.details(boss, "spin").contains("내성 성공률"), "대상 목록이 없으면 성공률 줄 생략")
+
+
+## 밀치기·만능팔은 대상의 힘 내성굴림이다. 기절한 대상과 아군은 판정 없이 밀린다 (8장).
+func _test_shove_pull_preview() -> void:
+	var robot: CombatUnit = _unit(CombatUnit.Kind.SCRAP_ROBOT_2000, false, Vector2i(4, 4))
+	var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 6))
+	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 7))
+	var barbarian: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(5, 7))
+	_check(CombatActionRules.details(robot, "pull") == "\n".join([
+			"사거리: 2~3칸", "판정: 대상의 힘 내성 대 DC 10, 성공하면 버팀"]),
+		"만능팔 호버는 DC 10(힘 d12 표준값 7 + 공격 가산 3) " + CombatActionRules.details(robot, "pull"))
+	_check(is_equal_approx(CombatActionRules.save_chance(robot, warrior, "pull"), 0.55)
+		and CombatActionRules.save_chance(robot, archer, "pull") == 0.0,
+		"만능팔 내성 성공률: 전사 힘 d20 55%, 궁수 힘 d6 0%")
+	_check(CombatActionRules.save_dc(warrior, "shove") == 11 and CombatActionRules.save_dc(archer, "shove") == 4,
+		"밀치기 DC = 시전자 힘 표준값 + 공격 가산: 전사 11, 궁수 4")
+	_check(CombatActionRules.save_chance(warrior, barbarian, "shove") == 0.0
+		and is_equal_approx(CombatActionRules.save_chance(archer, barbarian, "shove"), 0.7),
+		"야만인 힘 d10의 밀치기 내성: 전사 DC 11에 0%, 궁수 DC 4에 70%")
+	_check(CombatActionRules.shove_saves(archer, barbarian) and not CombatActionRules.shove_saves(archer, warrior),
+		"적에게는 내성굴림, 아군은 판정 없이 밀림")
+	barbarian.is_stunned = true
+	_check(not CombatActionRules.shove_saves(archer, barbarian), "기절한 대상은 내성 없이 밀림")
 
 
 func _test_strength_validation() -> void:

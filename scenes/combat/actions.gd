@@ -853,17 +853,15 @@ func pull(actor: CombatUnit, target: CombatUnit) -> bool:
 		return false
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	actor.pull_cooldown = 2
-	var strength: CombatUnit.Ability = CombatUnit.Ability.STRENGTH
-	var result: CombatChecks.RollResult = CombatChecks.opposed_attack(actor.get_ability_sides(strength),
-		target.get_ability_sides(strength), actor.get_attack_bonus(), target.get_defense_bonus(), CombatChecks.RollMode.NORMAL, dice)
-	if result.success:
+	last_attack = null
+	var dc: int = CombatActionRules.save_dc(actor, "pull")
+	logged.emit(tr("%s 만능팔: %s · DC %d") % [actor.get_display_name(), target.get_display_name(), dc])
+	var pulled: bool = not _roll_save(target, "pull", dc).success
+	if pulled:
 		var cells: Array[Vector2i] = grid.pull_cells(actor, target)
 		_land(target, cells[0] if cells.size() == 1 else cells[dice.roll(cells.size()) - 1])
-	logged.emit(tr("%s 만능팔: 힘 d%d %d %+d = %d / 힘 d%d %d %+d = %d · %s") % [
-		actor.get_display_name(), actor.get_ability_sides(strength), result.selected_roll,
-		actor.get_attack_bonus(), result.total, target.get_ability_sides(strength), result.defender_roll,
-		target.get_defense_bonus(), result.defender_total, tr("성공") if result.success else tr("실패")])
-	feedback.emit(target, tr("끌어옴") if result.success else tr("만능팔 저항"))
+	logged.emit(tr("만능팔 %s") % (tr("성공") if pulled else tr("실패")))
+	feedback.emit(target, tr("끌어옴") if pulled else tr("만능팔 저항"))
 	changed.emit()
 	return true
 
@@ -872,15 +870,13 @@ func shove(actor: CombatUnit, target: CombatUnit) -> bool:
 	if not _can_act(actor) or not can_target(actor, target, "shove"):
 		return false
 	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
-	var won: bool = target.is_stunned or actor.is_ally == target.is_ally
+	last_attack = null
+	last_save = null
+	var won: bool = not CombatActionRules.shove_saves(actor, target)
 	if not won:
-		var strength: CombatUnit.Ability = CombatUnit.Ability.STRENGTH
-		var result: CombatChecks.RollResult = CombatChecks.opposed_attack(actor.get_ability_sides(strength),
-			target.get_ability_sides(strength), actor.get_attack_bonus(), target.get_defense_bonus(), CombatChecks.RollMode.NORMAL, dice)
-		won = result.success
-		logged.emit(tr("밀치기 대결: 힘 d%d %d %+d = %d / 힘 d%d %d %+d = %d") % [
-			actor.get_ability_sides(strength), result.selected_roll, actor.get_attack_bonus(), result.total,
-			target.get_ability_sides(strength), result.defender_roll, target.get_defense_bonus(), result.defender_total])
+		var dc: int = CombatActionRules.save_dc(actor, "shove")
+		logged.emit(tr("%s 밀치기: %s · DC %d") % [actor.get_display_name(), target.get_display_name(), dc])
+		won = not _roll_save(target, "shove", dc).success
 	feedback.emit(target, tr("밀치기 성공") if won else tr("밀치기 실패"))
 	if won:
 		_land(target, grid.push_destination(actor.cell, target.cell))
@@ -983,13 +979,18 @@ func _perform_save(actor: CombatUnit, target: CombatUnit, action: String, dc: in
 	last_attack = null
 	last_damage = 0
 	last_damage_rolls.clear()
+	_deal_damage(actor, target, action, false, _roll_save(target, action, dc).success)
+
+
+## 대상이 동작의 내성 능력치로 DC에 내성굴림하고 로그를 남긴다. 결과는 last_save에도 둔다 (4-1).
+func _roll_save(target: CombatUnit, action: String, dc: int) -> CombatChecks.RollResult:
 	var ability: CombatUnit.Ability = CombatActionRules.SAVE_ABILITIES[action]
 	var sides: int = target.get_ability_sides(ability)
 	last_save = CombatChecks.saving_throw(sides, target.get_defense_bonus(), dc, CombatActionRules.save_mode(target), dice)
 	logged.emit(tr("%s %s 내성(%s): %s d%d %s %+d = %d / DC %d · %s") % [target.get_display_name(),
 		CombatUnit.ability_name(ability), _mode_name(last_save.mode), CombatUnit.ability_name(ability), sides,
 		str(last_save.rolls), target.get_defense_bonus(), last_save.total, dc, _save_outcome(last_save)])
-	_deal_damage(actor, target, action, false, last_save.success)
+	return last_save
 
 
 ## 피해는 명중·내성 굴림과 무관하게 피해 능력치 주사위를 새로 굴린다 (능력치 기획서 4-9).
