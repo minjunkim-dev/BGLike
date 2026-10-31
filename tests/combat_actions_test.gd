@@ -770,6 +770,7 @@ func _run() -> void:
 	_test_pull_contest_and_cooldown()
 	_test_pull_destinations()
 	_test_scrap_robot_overload()
+	await _test_scrap_robot_overload_timing()
 	_test_scrap_robot_turn_damage()
 	await _test_spiderling_stats_and_damage()
 	await _test_mother_stats_and_damage()
@@ -1223,6 +1224,47 @@ func _test_scrap_robot_overload() -> void:
 	boss.hit_points = 40
 	boss.begin_turn()
 	_check(boss.action_left == 2, "회복해도 과부하가 전투 중 유지됨")
+
+
+## 과부하의 추가 행동은 켜진 다음 자기 턴 시작부터 받는다 (개발 결정 #410).
+func _test_scrap_robot_overload_timing() -> void:
+	var own: Fixture = _fixture()
+	var boss: CombatUnit = own.units[2]
+	var warrior: CombatUnit = own.units[0]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = 22
+	ScriptedDice.arrange_turns(own.turns, own.units, [boss, own.units[3], warrior, own.units[1]])
+	own.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
+		own.actions.resolve_reaction(true))
+	own.actions.dice = _dice_for([15, 5], ScriptedDice.attack_sides(warrior) + ScriptedDice.damage_sides(warrior))
+	_check(await own.actions.move_to(boss, Vector2i(6, 4)), "보스가 자기 턴에 전사 옆에서 걸어 나감")
+	_check(boss.hit_points <= 20 and boss.overloaded and boss.action_left == 1,
+		"자기 턴 중 기회 공격으로 켜진 과부하는 그 턴에 행동을 더하지 않음")
+	boss.spend_resource(CombatUnit.TurnResource.ACTION)
+	own.turns.end_turn()
+	own.turns.end_turn()
+	own.turns.end_turn()
+	own.turns.end_turn()
+	_check(own.turns.current_unit == boss and boss.action_left == 2, "다음 자기 턴부터 행동 2개")
+	var spent: CombatUnit = _fixture().units[2]
+	spent.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	spent.hit_points = 40
+	spent.begin_turn()
+	spent.spend_resource(CombatUnit.TurnResource.ACTION)
+	spent.hit_points = 20
+	_check(spent.overloaded and spent.action_left == 0, "행동을 쓴 뒤 켜진 과부하는 그 턴에 행동을 돌려주지 않음")
+	var ally_turn: Fixture = _fixture()
+	boss = ally_turn.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = 21
+	boss.reaction_left = 0
+	ally_turn.actions.dice = _dice_for([15, 5],
+		ScriptedDice.attack_sides(ally_turn.units[0]) + ScriptedDice.damage_sides(ally_turn.units[0]))
+	_check(await ally_turn.actions.attack(ally_turn.units[0], boss), "아군 턴에 보스 공격")
+	_check(boss.overloaded and boss.action_left == 1, "아군 턴에 켜진 과부하도 그 자리에서 행동을 더하지 않음")
+	ally_turn.turns.end_turn()
+	ally_turn.turns.end_turn()
+	_check(ally_turn.turns.current_unit == boss and boss.action_left == 2, "아군 턴에 켜지면 바로 다음 보스 턴에 행동 2개")
 
 
 func _test_scrap_robot_turn_damage() -> void:
