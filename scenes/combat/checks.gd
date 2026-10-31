@@ -66,14 +66,43 @@ static func standard_value(sides: int) -> int:
 
 ## 명중굴림: 공격 굴림이 AC 이상이면 명중. 방어자는 굴리지 않는다.
 static func hit_roll(sides: int, bonus: int, armor_class: int, mode: RollMode, dice: CombatDice) -> RollResult:
-	var result: RollResult = attack_roll(sides, bonus, mode, dice)
-	result.face = face_kind(sides, result.selected_roll)
-	result.success = _hits(result.face, result.total, armor_class)
-	return result
+	return _roll_against(sides, bonus, armor_class, mode, dice)
+
+
+## 내성굴림: 대상의 내성 굴림(내성 능력치 주사위 + 방어 가산)이 DC 이상이면 성공. 시전자는 굴리지 않는다 (4-1).
+static func saving_throw(sides: int, bonus: int, dc: int, mode: RollMode, dice: CombatDice) -> RollResult:
+	return _roll_against(sides, bonus, dc, mode, dice)
+
+
+## DC = 시전 능력치 표준값 + 공격 가산 + 스킬의 DC 보정. 대상의 내성 능력치와 무관하다 (4-3).
+static func save_dc(sides: int, attack_bonus: int, dc_bonus: int = 0) -> int:
+	return standard_value(sides) + attack_bonus + dc_bonus
+
+
+## 내성에 성공한 피해형 효과의 피해. 절반을 내림하고 최소 1이다 (4-1).
+static func halve_damage(amount: int) -> int:
+	return maxi(1, amount / 2)
 
 
 ## 면 열거로 구한 실제 명중률. 유리/불리는 두 면의 모든 조합을 센다.
 static func hit_chance(sides: int, bonus: int, armor_class: int, mode: RollMode) -> float:
+	return _chance_against(sides, bonus, armor_class, mode)
+
+
+## 면 열거로 구한 실제 내성 성공률 (4-10).
+static func save_chance(sides: int, bonus: int, dc: int, mode: RollMode) -> float:
+	return _chance_against(sides, bonus, dc, mode)
+
+
+## 명중굴림과 내성굴림은 굴리는 쪽만 다르고 "기준값 이상이면 성공"으로 같다.
+static func _roll_against(sides: int, bonus: int, target: int, mode: RollMode, dice: CombatDice) -> RollResult:
+	var result: RollResult = attack_roll(sides, bonus, mode, dice)
+	result.face = face_kind(sides, result.selected_roll)
+	result.success = _hits(result.face, result.total, target)
+	return result
+
+
+static func _chance_against(sides: int, bonus: int, target: int, mode: RollMode) -> float:
 	assert(sides > 0)
 	var hits: int = 0
 	var second_faces: int = 1 if mode == RollMode.NORMAL else sides
@@ -83,7 +112,7 @@ static func hit_chance(sides: int, bonus: int, armor_class: int, mode: RollMode)
 			if mode != RollMode.NORMAL:
 				var other: int = face_value(sides, second)
 				value = maxi(value, other) if mode == RollMode.ADVANTAGE else mini(value, other)
-			if _hits(face_kind(sides, value), value + bonus, armor_class):
+			if _hits(face_kind(sides, value), value + bonus, target):
 				hits += 1
 	return hits / float(sides * second_faces)
 
@@ -94,18 +123,24 @@ static func damage_roll(sides: int, dice: CombatDice) -> int:
 	return face_value(sides, dice.roll(sides))
 
 
-static func _hits(face: Face, total: int, armor_class: int) -> bool:
+static func _hits(face: Face, total: int, target: int) -> bool:
 	if face != Face.NORMAL:
 		return face == Face.ABSOLUTE_SUCCESS
-	return total >= armor_class
+	return total >= target
 
 
+## 밀치기·만능팔에만 남은 대결. 동점은 방어자 승이다. 이 두 동작의 내성굴림 이관은 후속 티켓이다.
 static func opposed_attack(attack_sides: int, defense_sides: int,
 	attack_bonus: int, defense_bonus: int, mode: RollMode, dice: CombatDice) -> RollResult:
-	return defend_against(attack_roll(attack_sides, attack_bonus, mode, dice), defense_sides, defense_bonus, dice)
+	assert(defense_sides > 0)
+	var result: RollResult = attack_roll(attack_sides, attack_bonus, mode, dice)
+	result.defender_roll = face_value(defense_sides, dice.roll(defense_sides))
+	result.defender_total = result.defender_roll + defense_bonus
+	result.success = result.total > result.defender_total
+	return result
 
 
-## 광역 공격이 한 공격 굴림을 모든 대상에 공유한다.
+## 굴리는 쪽의 능력치 주사위(유리/불리면 두 번) + 가산. 기준값 비교는 호출자가 한다.
 static func attack_roll(sides: int, bonus: int, mode: RollMode, dice: CombatDice) -> RollResult:
 	assert(sides > 0)
 	var result: RollResult = _roll_die(sides, mode, dice)
@@ -113,21 +148,7 @@ static func attack_roll(sides: int, bonus: int, mode: RollMode, dice: CombatDice
 	return result
 
 
-static func defend_against(attack_result: RollResult, defense_sides: int,
-	defense_bonus: int, dice: CombatDice) -> RollResult:
-	assert(defense_sides > 0)
-	var result: RollResult = RollResult.new()
-	result.rolls = attack_result.rolls.duplicate()
-	result.selected_roll = attack_result.selected_roll
-	result.total = attack_result.total
-	result.mode = attack_result.mode
-	result.defender_roll = face_value(defense_sides, dice.roll(defense_sides))
-	result.defender_total = result.defender_roll + defense_bonus
-	result.success = result.total > result.defender_total
-	return result
-
-
-## 흘려내기와 독 제거는 이미 정해진 공격값·강도 이상이면 성공한다.
+## 흘려내기는 이미 굴린 공격 굴림 이상이면 성공한다.
 static func threshold(sides: int, bonus: int, target: int, dice: CombatDice) -> RollResult:
 	var result: RollResult = attack_roll(sides, bonus, RollMode.NORMAL, dice)
 	result.success = result.total >= target
