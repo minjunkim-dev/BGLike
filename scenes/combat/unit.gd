@@ -139,6 +139,22 @@ static func ability_name(ability: Ability) -> String:
 	return ABILITY_NAMES[ability]
 
 
+## 이름 뒤에 주격 조사 이/가를 붙인다. 숫자로 끝나면 읽은 소리를 따른다(1000 → 천 → 이, #415).
+static func with_subject_particle(display_name: String) -> String:
+	if display_name.is_empty():
+		return display_name
+	var last: int = display_name.unicode_at(display_name.length() - 1)
+	var has_final: bool
+	if last >= 0xAC00 and last <= 0xD7A3:
+		has_final = (last - 0xAC00) % 28 != 0
+	elif last >= 0x30 and last <= 0x39:
+		# 0(영·십·백·천·만)과 1·3·6·7·8은 받침이 있다.
+		has_final = char(last) in "013678"
+	else:
+		return display_name + "(이)가"  # NO_TRANSLATE: 한국어 조사 규칙
+	return display_name + ("이" if has_final else "가")  # NO_TRANSLATE: 한국어 조사 규칙
+
+
 ## 현재 일반 무기는 직업의 기본 대검·활을 강화하는 장비다. 실제 대상 거리로 유형을 바꾸지 않는다.
 ## 아군 궁수는 임시로 솜씨, 풋내기 궁수는 민첩이다 (능력치 기획서 4-2·7장, #386).
 func get_attack_ability() -> Ability:

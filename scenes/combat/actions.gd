@@ -558,7 +558,7 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	changed.emit()
 	for reactor: CombatUnit in jump_reactors(actor, destination):
 		var chance: float = grid.attack_preview(reactor, actor).chance
-		if await _ask_reaction(reactor, "opportunity", tr("%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)") % [actor.get_display_name(), chance * 100.0]):
+		if await _ask_reaction(reactor, "opportunity", tr("%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)") % [CombatUnit.with_subject_particle(actor.get_display_name()), chance * 100.0]):
 			reactor.spend_resource(CombatUnit.TurnResource.REACTION)
 			if not reactor.is_ally:
 				logged.emit(tr("%s 기회 공격: 반응 사용") % reactor.get_display_name())
@@ -736,7 +736,7 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 					and CombatActionRules.belongs_to(reactor, "opportunity") and reactor.reaction_left > 0
 					and grid.leaves_reach(reactor, actor.cell, step)):
 					var chance: float = grid.attack_preview(reactor, actor).chance
-					if await _ask_reaction(reactor, "opportunity", tr("%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)") % [actor.get_display_name(), chance * 100.0]):
+					if await _ask_reaction(reactor, "opportunity", tr("%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)") % [CombatUnit.with_subject_particle(actor.get_display_name()), chance * 100.0]):
 						reactor.spend_resource(CombatUnit.TurnResource.REACTION)
 						if not reactor.is_ally:
 							logged.emit(tr("%s 기회 공격: 반응 사용") % reactor.get_display_name())
@@ -949,7 +949,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> v
 		and target.reaction_left > 0):
 		var parry_sides: int = target.get_ability_sides(CombatUnit.Ability.AGILITY)
 		var chance: float = CombatChecks.threshold_chance(parry_sides, 3, last_attack.total)
-		if await _ask_reaction(target, "parry", tr("%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)") % [target.get_display_name(), chance * 100.0, target.parry_left]):
+		if await _ask_reaction(target, "parry", tr("%s 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)") % [CombatUnit.with_subject_particle(target.get_display_name()), chance * 100.0, target.parry_left]):
 			target.spend_resource(CombatUnit.TurnResource.REACTION)
 			CombatActionRules.spend_use(target, "parry")
 			var saved: CombatChecks.RollResult = CombatChecks.threshold(parry_sides, 3, last_attack.total, dice)

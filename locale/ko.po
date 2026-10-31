@@ -423,8 +423,8 @@ msgstr "전투 포기"
 
 #: scenes/combat/actions.gd:558
 #: scenes/combat/actions.gd:736
-msgid "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)"
-msgstr "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)"
+msgid "%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)"
+msgstr "%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)"
 
 #: scenes/combat/actions.gd:561
 #: scenes/combat/actions.gd:739
@@ -618,8 +618,8 @@ msgid "실패(절대실패)"
 msgstr "실패(절대실패)"
 
 #: scenes/combat/actions.gd:983
-msgid "%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)"
-msgstr "%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)"
+msgid "%s 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)"
+msgstr "%s 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)"
 
 #: scenes/combat/actions.gd:987
 msgid "흘려내기: 민첩 d%d %d + 3 = %d / 공격 %d · %s"

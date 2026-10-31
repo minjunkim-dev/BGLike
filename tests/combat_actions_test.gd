@@ -63,6 +63,21 @@ func _ability_sides(unit: CombatUnit) -> Array[int]:
 	return sides
 
 
+func _test_subject_particle() -> void:
+	var expected: Array[Array] = [
+		[CombatEnemyDefinitions.NOVICE_BARBARIAN, "풋내기 야만인이"], [CombatEnemyDefinitions.NOVICE_ARCHER, "풋내기 궁수가"],
+		[CombatEnemyDefinitions.SCRAP_ROBOT_1000, "고철로봇-1000이"], [CombatEnemyDefinitions.SCRAP_ROBOT_2000, "고철로봇-2000이"],
+		[CombatEnemyDefinitions.SCRAP_ROBOT_3000, "고철로봇-3000이"], [CombatEnemyDefinitions.SPIDERLING, "새끼 거미가"],
+		[CombatEnemyDefinitions.MOTHER_SPIDER, "엄마 거미가"],
+	]
+	for pair: Array in expected:
+		_check(CombatUnit.with_subject_particle(pair[0]["name"]) == pair[1], "적 이름 주격 조사: " + pair[1])
+	_check(CombatUnit.with_subject_particle("아군 전사") == "아군 전사가"
+		and CombatUnit.with_subject_particle("아군 궁수") == "아군 궁수가", "아군 이름 주격 조사")
+	for pair: Array in [["로봇-12", "로봇-12가"], ["로봇-5", "로봇-5가"], ["로봇-7", "로봇-7이"], ["Robot", "Robot(이)가"], ["", ""]]:
+		_check(CombatUnit.with_subject_particle(pair[0]) == pair[1], "주격 조사 경계: " + pair[1])
+
+
 func _test_rock_roll() -> void:
 	var f: Fixture = _fixture()
 	var rock: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "rock")
@@ -800,6 +815,7 @@ func _run() -> void:
 	_test_height_spawn()
 	_test_ally_shove()
 	_test_grid_queries()
+	_test_subject_particle()
 	await _test_square_rules()
 	await _test_attacks()
 	await _test_archer_balance()
@@ -1661,8 +1677,9 @@ func _test_jump_opportunity() -> void:
 		var asked: Array[String] = []
 		if scenario[1]:
 			actor.hit_points = 1
-		f.actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
+		f.actions.reaction_requested.connect(func(kind: String, prompt: String) -> void:
 			asked.append(kind)
+			_check(prompt.begins_with("풋내기 궁수가 벗어납니다."), "점프 기회 공격 확인 창의 주격 조사: %s" % prompt)
 			_check(actor.cell == origin and actor.movement_left == 6 and actor.bonus_action_left == 1,
 				"점프 기회 공격은 출발과 비용 소비 전에 확인")
 			_check(f.actions.busy and f.actions.jump_cells(actor).is_empty(), "점프 반응 대기 중 입력 잠금")
@@ -3266,6 +3283,22 @@ func _test_reactions() -> void:
 	skip.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: skip.actions.resolve_reaction(false))
 	await skip.actions.move_to(skip.units[3], Vector2i(6, 4))
 	_check(skip.units[0].reaction_left == 1 and skip.units[3].cell == Vector2i(6, 4), "넘기기는 반응을 쓰지 않음")
+	# 받침으로 끝나는 이름도 확인 창 문구에 맞는 조사를 붙인다 (#415).
+	var barbarian: Fixture = _fixture()
+	barbarian.units[0].cell = Vector2i(4, 4)
+	barbarian.units[1].cell = Vector2i(0, 0)
+	barbarian.units[2].cell = Vector2i(5, 4)
+	barbarian.units[3].cell = Vector2i(0, 9)
+	barbarian.turns.end_turn()
+	barbarian.turns.end_turn()
+	var prompts: Array[String] = []
+	barbarian.actions.reaction_requested.connect(func(_kind: String, prompt: String) -> void:
+		prompts.append(prompt)
+		barbarian.actions.resolve_reaction(false)
+	)
+	await barbarian.actions.move_to(barbarian.units[2], Vector2i(6, 4))
+	_check(barbarian.turns.current_unit == barbarian.units[2] and prompts.size() == 1
+		and prompts[0].begins_with("풋내기 야만인이 벗어납니다."), "기회 공격 확인 창의 주격 조사: %s" % [prompts])
 	var ranged: Fixture = _fixture()
 	_enemy_archer(ranged)
 	ranged.units[0].kind = CombatUnit.Kind.ARCHER
@@ -3293,6 +3326,7 @@ func _test_reactions() -> void:
 	parry.actions.reaction_requested.connect(func(kind: String, prompt: String) -> void:
 		_check(kind == "parry" and parry.actions.last_damage_rolls.is_empty(), "피해 굴림 전에 흘려내기 확인")
 		_check("50.0%" in prompt, "공격 합계8에 민첩d8+3 흘려내기 성공률50%")
+		_check(prompt.begins_with("아군 전사가 공격에 맞았습니다."), "흘려내기 확인 창의 주격 조사: %s" % prompt)
 		parry.actions.resolve_reaction(true)
 	)
 	parry.actions.dice = _dice_for([5, 5], ScriptedDice.attack_sides(parry.units[2]) + [parry.units[0].get_ability_sides(CombatUnit.Ability.AGILITY)])

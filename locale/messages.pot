@@ -429,7 +429,7 @@ msgstr ""
 
 #: scenes/combat/actions.gd:558
 #: scenes/combat/actions.gd:736
-msgid "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)"
+msgid "%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)"
 msgstr ""
 
 #: scenes/combat/actions.gd:561
@@ -626,7 +626,7 @@ msgid "실패(절대실패)"
 msgstr ""
 
 #: scenes/combat/actions.gd:983
-msgid "%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)"
+msgid "%s 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)"
 msgstr ""
 
 #: scenes/combat/actions.gd:987
