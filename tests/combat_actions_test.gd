@@ -3282,6 +3282,22 @@ func _test_reactions() -> void:
 	skip.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: skip.actions.resolve_reaction(false))
 	await skip.actions.move_to(skip.units[3], Vector2i(6, 4))
 	_check(skip.units[0].reaction_left == 1 and skip.units[3].cell == Vector2i(6, 4), "넘기기는 반응을 쓰지 않음")
+	# 받침으로 끝나는 이름도 확인 창 문구에 맞는 조사를 붙인다 (#415).
+	var barbarian: Fixture = _fixture()
+	barbarian.units[0].cell = Vector2i(4, 4)
+	barbarian.units[1].cell = Vector2i(0, 0)
+	barbarian.units[2].cell = Vector2i(5, 4)
+	barbarian.units[3].cell = Vector2i(0, 9)
+	barbarian.turns.end_turn()
+	barbarian.turns.end_turn()
+	var prompts: Array[String] = []
+	barbarian.actions.reaction_requested.connect(func(_kind: String, prompt: String) -> void:
+		prompts.append(prompt)
+		barbarian.actions.resolve_reaction(false)
+	)
+	await barbarian.actions.move_to(barbarian.units[2], Vector2i(6, 4))
+	_check(barbarian.turns.current_unit == barbarian.units[2] and prompts.size() == 1
+		and prompts[0].begins_with("풋내기 야만인이 벗어납니다."), "기회 공격 확인 창의 주격 조사: %s" % [prompts])
 	var ranged: Fixture = _fixture()
 	_enemy_archer(ranged)
 	ranged.units[0].kind = CombatUnit.Kind.ARCHER

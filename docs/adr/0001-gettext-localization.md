@@ -39,6 +39,7 @@
 
 - 검사는 한글이 든 리터럴만 찾는다. `"HP %d / %d"`처럼 영문만 있는 화면 문자열은 리뷰로 확인한다.
 - `item_data.json`의 아이템 이름은 표시할 때 `TranslationServer.tr()`을 거치지만 템플릿 생성기가 JSON을 읽지 않는다. 다른 언어를 추가할 때 PO에 직접 넣거나 JSON용 `EditorTranslationParserPlugin`을 만든다.
+- 예외: 이름 뒤 주격 조사 이/가는 화면에 보이지만 한국어 문법 규칙이라 `CombatUnit.with_subject_particle`이 `# NO_TRANSLATE`로 붙인다. 해당 msgid에는 조사를 넣지 않는다. 다른 언어를 추가할 때 이 함수와 조사 없는 msgid를 다시 본다([#415](https://github.com/minjunkim-dev/BGLike/issues/415)).
 - `static var` 표는 클래스를 처음 불러올 때 한 번 번역한다. 실행 중 언어 변경은 범위 밖이다. 언어 선택을 만들 때 다시 본다.
 - CI는 POT가 최신인지 검사하지 않는다. 문구를 바꾸면 편집기에서 템플릿을 다시 생성하고 `msgmerge --update --backup=none locale/ko.po locale/messages.pot` 뒤 새 항목의 msgstr을 msgid로 채운다. 갱신을 빠뜨려도 화면에는 msgid가 그대로 나온다.
 
