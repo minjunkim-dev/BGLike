@@ -45,9 +45,9 @@ static func attack_sides(attacker: CombatUnit, count: int = 1) -> Array[int]:
 	return sides
 
 
-## 명중 뒤 피해 굴림의 면 수. 피해가 능력치 주사위로 바뀌면(#388) 여기만 고친다.
-static func damage_sides(attacker: CombatUnit) -> Array[int]:
-	return [attacker.get_damage_sides()]
+## 명중 뒤 피해 굴림의 면 수: 동작의 피해 능력치 주사위. 기본은 명중 능력치와 같다 (#388).
+static func damage_sides(attacker: CombatUnit, action: String = "attack") -> Array[int]:
+	return [attacker.get_ability_sides(CombatActionRules.damage_ability(attacker, action))]
 
 
 func _init(values: Array[int], sides: Array[int] = [], chances: Array[float] = []) -> void:
