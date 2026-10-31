@@ -1862,11 +1862,12 @@ func _test_camera_during_enemy_turn() -> void:
 	while Time.get_ticks_usec() - pressed_at < 100000 and turns.current_unit == units[2]:
 		await process_frame
 		slowest = minf(slowest, Engine.time_scale)
+	# 뗀 키는 다음 프레임에 반영되어 그 프레임은 움직이지 않으므로 떼기 전까지의 시간으로 잰다.
+	var expected: float = CombatCamera.PAN_SPEED * (Time.get_ticks_usec() - pressed_at) / 1000000.0
 	key = key.duplicate() as InputEventKey
 	key.pressed = false
 	Input.parse_input_event(key)
 	await process_frame
-	var expected: float = CombatCamera.PAN_SPEED * (Time.get_ticks_usec() - pressed_at) / 1000000.0
 	space = space.duplicate() as InputEventKey
 	space.pressed = false
 	Input.parse_input_event(space)
