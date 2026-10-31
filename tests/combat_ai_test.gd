@@ -29,9 +29,9 @@ func _check(condition: bool, message: String) -> void:
 		push_error(message)
 
 
-## 만능팔은 내성굴림 티켓(#389)까지 고철로봇 힘 d12 대 아군 궁수 힘 d6 대결이다.
+## 만능팔은 대상(아군 궁수)의 힘 d6 내성굴림 하나다. 고철로봇의 DC 10은 넘지 못해 항상 끌린다.
 func _pull_sides() -> Array[int]:
-	return [12, 6]
+	return [6]
 
 
 ## 회전회오리는 시전자가 굴리지 않는다. 전사 힘 d20 내성·피해 힘 d12, 궁수 힘 d6 내성·피해 힘 d12 (#389).
@@ -264,7 +264,7 @@ func _test_jump_retreat_and_pull() -> void:
 	pulled.units[3].cell = Vector2i(9, 8)
 	pulled.actions.grid.map_size = Vector2i(4, 1)
 	pulled.actions.grid.heights = {Vector2i(1, 0): 2, Vector2i(2, 0): 2, Vector2i(3, 0): 2}
-	pulled.actions.dice = ScriptedDice.new([12, 1], [12, 20])
+	pulled.actions.dice = ScriptedDice.new([1], [20])
 	await ai.play_turn(boss, pulled.actions)
 	_check(boss.cell == Vector2i(1, 0) and boss.movement_left == 1 and boss.bonus_action_left == 0
 		and boss.action_left == 0 and boss.pull_cooldown == 2 and pulled.units[0].cell == Vector2i(2, 0),
@@ -320,7 +320,7 @@ func _test_scrap_robot_pull_priority() -> void:
 		boss.begin_turn()
 		f.units[0].cell = nearby
 		f.units[1].cell = Vector2i(7, 4)
-		f.actions.dice = ScriptedDice.new([12, 6], [12, 6])
+		f.actions.dice = ScriptedDice.new([6], [6])
 		await ai.play_turn(boss, f.actions)
 		_check(f.units[1].cell == Vector2i(5, 4) and f.units[0].cell == nearby
 			and f.units[0].hit_points == 12 and f.units[1].hit_points == 14,
@@ -341,7 +341,7 @@ func _test_scrap_robot_pull_movement_and_combo() -> void:
 	moving.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
 		moving.actions.resolve_reaction(true)
 	)
-	moving.actions.dice = ScriptedDice.new([12, 1, 12, 6], ScriptedDice.attack_sides(moving.units[0])
+	moving.actions.dice = ScriptedDice.new([12, 1, 6], ScriptedDice.attack_sides(moving.units[0])
 		+ ScriptedDice.damage_sides(moving.units[0]) + _pull_sides())
 	await ai.play_turn(boss, moving.actions)
 	_check(boss.cell == Vector2i(6, 4) and boss.movement_left == 2
@@ -355,7 +355,7 @@ func _test_scrap_robot_pull_movement_and_combo() -> void:
 	boss.begin_turn()
 	combo.units[0].cell = Vector2i(1, 1)
 	combo.units[1].cell = Vector2i(7, 4)
-	combo.actions.dice = ScriptedDice.new([12, 6, 10, 8], _pull_sides() + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
+	combo.actions.dice = ScriptedDice.new([6, 10, 8], _pull_sides() + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	await ai.play_turn(boss, combo.actions)
 	_check(combo.units[1].cell == Vector2i(5, 4) and combo.units[1].hit_points == 4
 		and boss.action_left == 0, "과부하 첫 행동 만능팔 뒤 두 번째 행동으로 끌려온 아군 기본 공격")
@@ -387,7 +387,7 @@ func _test_scrap_robot_spin_combos() -> void:
 	boss.begin_turn()
 	pull_basic.units[0].cell = Vector2i(1, 1)
 	pull_basic.units[1].cell = Vector2i(7, 4)
-	pull_basic.actions.dice = ScriptedDice.new([12, 6, 10, 8], _pull_sides() + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
+	pull_basic.actions.dice = ScriptedDice.new([6, 10, 8], _pull_sides() + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	await ai.play_turn(boss, pull_basic.actions)
 	_check(pull_basic.units[1].cell == Vector2i(5, 4) and pull_basic.units[1].hit_points == 4
 		and boss.action_left == 0, "3000 비인접 과부하는 만능팔 뒤 끌려온 대상 기본 공격")
@@ -398,7 +398,7 @@ func _test_scrap_robot_spin_combos() -> void:
 	boss.begin_turn()
 	pull_spin.units[0].cell = Vector2i(3, 4)
 	pull_spin.units[1].cell = Vector2i(7, 4)
-	pull_spin.actions.dice = ScriptedDice.new([12, 6, 1, 1, 1, 2], _pull_sides() + _spin_sides())
+	pull_spin.actions.dice = ScriptedDice.new([6, 1, 1, 1, 2], _pull_sides() + _spin_sides())
 	await ai.play_turn(boss, pull_spin.actions)
 	_check(pull_spin.units[0].hit_points == 9 and pull_spin.units[1].hit_points == 10
 		and pull_spin.units[1].cell == Vector2i(5, 4) and boss.action_left == 0,

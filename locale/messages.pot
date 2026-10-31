@@ -144,7 +144,7 @@ msgid "1~6칸 공격.\n명중하면 기절. 보스는 기절 면역."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:24
-msgid "2~3칸 대상을 힘 대 힘 대결로 끌어옵니다.\n피해와 기회 공격 없음. 다음 턴에는 쓸 수 없습니다."
+msgid "2~3칸 대상을 끌어옵니다. 대상이 힘 내성굴림에\n성공하면 버팁니다. 피해와 기회 공격 없음.\n다음 턴에는 쓸 수 없습니다."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:25
@@ -152,7 +152,7 @@ msgid "이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\
 msgstr ""
 
 #: scenes/combat/action_rules.gd:26
-msgid "내 힘 대 상대의 힘 주사위로 대결.\n성공: 1칸 밀기, 동점: 실패.\n기절 대상은 대결 없이 성공.\n아군은 판정 없이 밀림."
+msgid "대상이 힘 내성굴림.\n실패하면 1칸 밀리고, 성공하면 버팁니다.\n기절 대상은 내성 없이 밀림.\n아군은 판정 없이 밀림."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:27
@@ -225,7 +225,11 @@ msgid "판정: 없음"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:116
-msgid "판정: 힘 d%d %+d 대 힘"
+msgid "판정: 대상의 %s 내성 대 DC %d, 성공하면 버팀"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:142
+msgid "사거리: 2~3칸"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:118
@@ -531,7 +535,11 @@ msgid "%s 표식: %s"
 msgstr ""
 
 #: scenes/combat/actions.gd:875
-msgid "%s 만능팔: 힘 d%d %d %+d = %d / 힘 d%d %d %+d = %d · %s"
+msgid "%s 만능팔: %s · DC %d"
+msgstr ""
+
+#: scenes/combat/actions.gd:863
+msgid "만능팔 %s"
 msgstr ""
 
 #: scenes/combat/actions.gd:879
@@ -543,7 +551,7 @@ msgid "만능팔 저항"
 msgstr ""
 
 #: scenes/combat/actions.gd:894
-msgid "밀치기 대결: 힘 d%d %d %+d = %d / 힘 d%d %d %+d = %d"
+msgid "%s 밀치기: %s · DC %d"
 msgstr ""
 
 #: scenes/combat/actions.gd:897
@@ -692,6 +700,10 @@ msgstr ""
 
 #: scenes/combat/battle.gd:793
 msgid "밀려날 칸: %d, %d"
+msgstr ""
+
+#: scenes/combat/battle.gd:796
+msgid "밀칠 확률 %.1f%%"
 msgstr ""
 
 #: scenes/combat/battle.gd:796
@@ -1342,7 +1354,7 @@ msgid "힘·민첩·솜씨·지능·의지·건강은 각각 능력치 주사위
 msgstr ""
 
 #: scenes/help.tscn
-msgid "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC와 내성 굴림에 더합니다. 명중하면 공격 능력치 주사위를 새로 굴리고 피해 보정을 더해 피해를 정합니다. 피해에는 유리/불리가 없습니다. 회전회오리는 시전자가 굴리지 않고 맞는 대상마다 힘 내성굴림을 합니다. 내성 굴림(내성 능력치 주사위 + 방어 가산)이 DC(시전 능력치 표준값 + 공격 가산) 이상이면 성공하고, 피해는 절반(최소 1)입니다. 밀치기·만능팔은 아직 힘 주사위 대결이며 동점은 방어자 승입니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 내성 굴림이 독의 DC 이상이면 성공합니다."
+msgid "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC와 내성 굴림에 더합니다. 명중하면 공격 능력치 주사위를 새로 굴리고 피해 보정을 더해 피해를 정합니다. 피해에는 유리/불리가 없습니다. 회전회오리는 시전자가 굴리지 않고 맞는 대상마다 힘 내성굴림을 합니다. 내성 굴림(내성 능력치 주사위 + 방어 가산)이 DC(시전 능력치 표준값 + 공격 가산) 이상이면 성공하고, 피해는 절반(최소 1)입니다. 밀치기·만능팔도 대상의 힘 내성굴림이며, 성공하면 밀리거나 끌려가지 않습니다. 기절한 대상과 아군은 판정 없이 밀립니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 내성 굴림이 독의 DC 이상이면 성공합니다."
 msgstr ""
 
 #: scenes/help.tscn

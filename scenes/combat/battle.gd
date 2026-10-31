@@ -789,8 +789,11 @@ func _update_turn_ui() -> void:
 			if actions.can_target(turns.current_unit, selection.preview_target, "shove"):
 				var cell: Vector2i = actions.grid.push_destination(turns.current_unit.cell, selection.preview_target.cell)
 				var landing: String = actions.shove_landing(selection.preview_target, cell)
+				var chance: float = 1.0
+				if CombatActionRules.shove_saves(turns.current_unit, selection.preview_target):
+					chance -= CombatActionRules.save_chance(turns.current_unit, selection.preview_target, "shove")
 				hud.show_target_note(tr("밀려날 칸: %d, %d") % [cell.x, cell.y]
-					+ ("" if landing.is_empty() else " · " + landing))
+					+ ("" if landing.is_empty() else " · " + landing) + " · " + tr("밀칠 확률 %.1f%%") % (chance * 100.0))
 			else:
 				hud.show_target_note(tr("밀치기를 사용할 수 없음"))
 	elif selection.preview_prop != null:

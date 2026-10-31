@@ -583,10 +583,10 @@ func _test_roll_popups() -> void:
 	target.hit_points = target.get_max_hit_points()
 	target.is_stunned = false
 	warrior.bonus_action_left = 1
-	actions.dice = ScriptedDice.new([15, 5, 4], [20, 10, 10])
+	actions.dice = ScriptedDice.new([5, 4], [10, 10])
 	actions.shove(warrior, target)
 	_check(_has_feedback(target, "밀치기 성공")
-		and not _has_feedback(warrior, "밀치기 15"),
+		and not _has_feedback(target, "밀치기 5"),
 		"밀치기는 대상 위에 결과만 표시")
 	warrior.bonus_action_left = 1
 	target.cell = Vector2i(5, 4)
@@ -893,8 +893,8 @@ func _test_guidance() -> void:
 			_check(unit.hit_points == hp and unit.surge_left == uses,
 				"호버는 동작 실행·자원 소비 없음: " + action)
 	_check("사거리: 1~6칸\n피해: 솜씨 d20+1\n판정: 솜씨 d20 +0 대 AC, 명중하면 기절" in (buttons["shock"] as Button).tooltip_text
-		and "판정: 힘 d6 +0 대 힘" in (buttons["shove"] as Button).tooltip_text,
-		"궁수 충격 화살·밀치기 호버에 능력치 대결과 명중 시 기절 표시")
+		and "판정: 대상의 힘 내성 대 DC 4, 성공하면 버팀" in (buttons["shove"] as Button).tooltip_text,
+		"궁수 충격 화살 호버에 명중 시 기절, 밀치기 호버에 대상의 힘 내성과 DC 표시")
 	await _test_focus_tooltips(buttons)
 	# 비활성 버튼은 비용 소진·횟수 소진·효과 없음의 이유를 호버에 유지한다.
 	turns.select_unit(units[0])

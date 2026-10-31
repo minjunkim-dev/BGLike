@@ -505,7 +505,7 @@ func _test_scrap_robot_2000_stage() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	ScriptedDice.arrange_turns(turns, units, [units[2], units[0], units[1]])
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	actions.dice = ScriptedDice.new([12, 6], [12, 6])
+	actions.dice = ScriptedDice.new([6], [6])
 	_check(actions.pull(boss, units[1]) and units[1].cell == Vector2i(5, 4),
 		"실제 2000 보스 전투의 만능팔이 대상 위치와 화면 상태를 갱신")
 	# 이후 승리 보상은 판정 fixture와 별도 RNG로 생성한다.
