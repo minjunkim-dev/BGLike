@@ -77,10 +77,10 @@ func _run() -> void:
 			var point: Vector2 = _prop_point(map, prop, units)
 			if not ck(point != Vector2.INF, "유닛에 가리지 않은 실제 물체 몸통 입력점"):
 				break
-			var sides: int = actor.get_damage_sides()
+			var sides: int = ScriptedDice.damage_sides(actor)[0]
 			if index == 0:
 				if not ck(sides > 0 and sides + actor.get_damage_bonus() >= prop.hit_points,
-					"상자 공격은 능력치/명중 굴림 없이 현재 피해 주사위1회로 파괴 가능한 fixture"):
+					"상자 공격은 명중 굴림 없이 피해 능력치 주사위1회로 파괴 가능한 fixture"):
 					break
 				actions.dice = ScriptedDice.new([sides], [sides])
 			else:

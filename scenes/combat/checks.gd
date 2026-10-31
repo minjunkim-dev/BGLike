@@ -88,6 +88,12 @@ static func hit_chance(sides: int, bonus: int, armor_class: int, mode: RollMode)
 	return hits / float(sides * second_faces)
 
 
+## 피해 굴림: 피해 능력치 주사위를 새로 굴린 숫자 값. 유리/불리는 적용하지 않는다 (4-9).
+static func damage_roll(sides: int, dice: CombatDice) -> int:
+	assert(sides > 0)
+	return face_value(sides, dice.roll(sides))
+
+
 static func _hits(face: Face, total: int, armor_class: int) -> bool:
 	if face != Face.NORMAL:
 		return face == Face.ABSOLUTE_SUCCESS

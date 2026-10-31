@@ -171,9 +171,8 @@ func attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
 		busy = false
 		changed.emit()
 		return true
-	var sides: int = actor.get_damage_sides()
-	if sides > 0:
-		last_damage_rolls.append(dice.roll(sides))
+	last_damage_rolls.append(CombatChecks.damage_roll(
+		actor.get_ability_sides(CombatActionRules.damage_ability(actor, "attack")), dice))
 	if (prop not in grid.props or not is_instance_valid(actor) or actor not in units
 		or actor.hit_points <= 0 or is_over()):
 		busy = false
@@ -559,7 +558,7 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 			reactor.spend_resource(CombatUnit.TurnResource.REACTION)
 			if not reactor.is_ally:
 				logged.emit(tr("%s 기회 공격: 반응 사용") % reactor.get_display_name())
-			await _perform_attack(reactor, actor, false)
+			await _perform_attack(reactor, actor, "opportunity")
 		if actor.hit_points <= 0:
 			break
 	if actor.hit_points <= 0:
@@ -737,7 +736,7 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 						reactor.spend_resource(CombatUnit.TurnResource.REACTION)
 						if not reactor.is_ally:
 							logged.emit(tr("%s 기회 공격: 반응 사용") % reactor.get_display_name())
-						await _perform_attack(reactor, actor, false)
+						await _perform_attack(reactor, actor, "opportunity")
 					if actor.hit_points <= 0:
 						break
 		if actor.hit_points <= 0:
@@ -764,7 +763,7 @@ func attack(actor: CombatUnit, target: CombatUnit, shock: bool = false) -> bool:
 	if shock:
 		CombatActionRules.spend_use(actor, action)
 	changed.emit()
-	await _perform_attack(actor, target, shock)
+	await _perform_attack(actor, target, action)
 	_finish()
 	return true
 
@@ -800,7 +799,7 @@ func spin(actor: CombatUnit) -> bool:
 		if actor.hit_points <= 0 or actor.is_stunned or actor != turns.current_unit or is_over():
 			break
 		if target.hit_points > 0 and target.cell in grid.area_cells(actor.cell, 1):
-			await _perform_attack(actor, target, false, shared_roll)
+			await _perform_attack(actor, target, "spin", shared_roll)
 	_finish()
 	return true
 
@@ -939,7 +938,7 @@ func _emit_reaction(kind: String, prompt: String) -> void:
 	reaction_requested.emit(kind, prompt)
 
 
-func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
+func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String,
 	shared_roll: CombatChecks.RollResult = null) -> void:
 	if attack_animation.is_valid():
 		await attack_animation.call(actor, target)
@@ -989,9 +988,10 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 			if saved.success:
 				feedback.emit(target, tr("흘려내기"))
 				return
-	var sides: int = actor.get_damage_sides()
-	if sides > 0:
-		last_damage_rolls.append(dice.roll(sides))
+	# 피해는 명중굴림과 무관하게 피해 능력치 주사위를 새로 굴린다 (능력치 기획서 4-9).
+	var damage_ability: CombatUnit.Ability = CombatActionRules.damage_ability(actor, action)
+	var damage_sides: int = actor.get_ability_sides(damage_ability)
+	last_damage_rolls.append(CombatChecks.damage_roll(damage_sides, dice))
 	var has_mark_damage: bool = actor.marked_target == target
 	if has_mark_damage:
 		last_damage_rolls.append(dice.roll(6))
@@ -1000,14 +1000,16 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, shock: bool,
 	for rolled: int in last_damage_rolls:
 		last_damage += rolled
 	_damage(target, last_damage)
-	if last_damage_rolls.is_empty():
-		logged.emit(tr("%s 피해: %d · HP %d") % [target.get_display_name(), last_damage, target.hit_points])
+	if has_mark_damage:
+		logged.emit(tr("%s 피해 (표식 추가): %s d%d %s + d6 %s %+d = %d · HP %d") % [target.get_display_name(),
+			CombatUnit.ability_name(damage_ability), damage_sides, str([last_damage_rolls[0]]),
+			str([last_damage_rolls[1]]), damage_bonus, last_damage, target.hit_points])
 	else:
-		logged.emit(tr("%s 피해%s: %s + %d = %d · HP %d") % [target.get_display_name(),
-			tr(" (표식 추가)") if has_mark_damage else "",
-			str(last_damage_rolls), damage_bonus, last_damage, target.hit_points])
+		logged.emit(tr("%s 피해: %s d%d %s %+d = %d · HP %d") % [target.get_display_name(),
+			CombatUnit.ability_name(damage_ability), damage_sides, str(last_damage_rolls),
+			damage_bonus, last_damage, target.hit_points])
 	feedback.emit(target, str(last_damage))
-	if shock and target.hit_points > 0:
+	if action == "shock" and target.hit_points > 0:
 		if target.is_boss():
 			logged.emit(tr("%s 기절 면역") % target.get_display_name())
 			feedback.emit(target, tr("기절 면역"))

@@ -26,11 +26,13 @@ func _run() -> void:
 	_test_hit_chances()
 	_test_hit_rolls()
 	await _test_battle_rolls()
+	await _test_damage_rolls()
 	await _test_spin_shared_modes()
 	_test_spin_disadvantage()
 	_test_strength_validation()
 	_test_preview_conditions()
 	_test_monster_hit_table()
+	_test_damage_table()
 	await _test_scene_input()
 	await _test_scene_mixed_spin()
 	for unit: CombatUnit in _created_units:
@@ -237,7 +239,7 @@ func _test_battle_rolls() -> void:
 	var observe: Callable = func(message: String) -> void: logs.append(message)
 	actions.logged.connect(observe)
 	var strength: CombatUnit.Ability = CombatUnit.Ability.STRENGTH
-	actions.dice = ScriptedDice.new([4, 2], [warrior.get_ability_sides(warrior.get_attack_ability()), warrior.get_damage_sides()])
+	actions.dice = ScriptedDice.new([4, 2], ScriptedDice.attack_sides(warrior) + ScriptedDice.damage_sides(warrior))
 	var before: int = barbarian.hit_points
 	_check(barbarian.get_armor_class() == 4 and warrior.get_ability_sides(strength) == 20, "풋내기 야만인 AC 4, 전사 힘 d20")
 	_check(await actions.attack(warrior, barbarian) and barbarian.hit_points == before - 2 - warrior.get_damage_bonus()
@@ -247,7 +249,7 @@ func _test_battle_rolls() -> void:
 		"로그에 전사의 힘 d20 굴림 하나와 AC " + str(logs))
 	barbarian.cell = Vector2i(3, 7)
 	turns.select_unit(archer)
-	actions.dice = ScriptedDice.new([4, 1], [archer.get_ability_sides(archer.get_attack_ability()), archer.get_damage_sides()])
+	actions.dice = ScriptedDice.new([4, 1], ScriptedDice.attack_sides(archer) + ScriptedDice.damage_sides(archer, "shock"))
 	_check(archer.get_attack_ability() == CombatUnit.Ability.FINESSE, "아군 궁수는 솜씨로 공격")
 	_check(await actions.attack(archer, barbarian, true) and barbarian.is_stunned
 		and actions.last_attack.rolls == [4] and actions.last_damage == 1 + archer.get_damage_bonus(),
@@ -260,7 +262,7 @@ func _test_battle_rolls() -> void:
 	before = warrior.hit_points
 	_check(await actions.attack(barbarian, warrior) and warrior.hit_points == before
 		and actions.last_attack.total == 10 and warrior.parry_left == 1,
-		"야만인 힘7+3이 전사 AC5에 명중, 흘려내기 민첩7+3이 공격10과 같으면 방어, 피해 주사위 없음")
+		"야만인 힘7+3이 전사 AC5에 명중, 흘려내기 민첩7+3이 공격10과 같으면 방어, 피해 굴림 없음")
 	actions.logged.disconnect(observe)
 	_check(actions.apply_status(barbarian, warrior, "poison"), "강도4 독 부여")
 	actions.dice = ScriptedDice.new([4], [warrior.get_ability_sides(CombatUnit.Ability.HEALTH)])
@@ -274,7 +276,7 @@ func _test_battle_rolls() -> void:
 	actions.initialize(units, turns)
 	ScriptedDice.arrange_turns(turns, units, [boss, warrior, archer])
 	actions.replay_answers = [false]
-	actions.dice = ScriptedDice.new([8, 1, 2, 1, 3], [12, 20, 8, 6, 8])
+	actions.dice = ScriptedDice.new([8, 1, 2, 1, 3], [12, 20, 12, 6, 12])
 	var warrior_before: int = warrior.hit_points
 	var archer_before: int = archer.hit_points
 	_check(await actions.spin(boss) and warrior.hit_points == warrior_before - 4
@@ -283,6 +285,61 @@ func _test_battle_rolls() -> void:
 	# 신호가 actions와 turns를 함께 붙잡지 않게 연결을 해제한다.
 	turns.turn_started.disconnect(actions._on_turn_started)
 
+
+
+## 4-9: 명중하면 피해 능력치 주사위를 새로 굴린다. 유리/불리는 피해에 적용하지 않는다.
+func _test_damage_rolls() -> void:
+	var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 4))
+	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 9))
+	var robot: CombatUnit = _unit(CombatUnit.Kind.SCRAP_ROBOT_1000, false, Vector2i(5, 4))
+	var units: Array[CombatUnit] = [warrior, archer, robot]
+	var turns: CombatTurns = CombatTurns.new()
+	var actions: CombatActions = CombatActions.new()
+	actions.initialize(units, turns)
+	ScriptedDice.arrange_turns(turns, units, [warrior, archer, robot])
+	var logs: Array[String] = []
+	var observe: Callable = func(message: String) -> void: logs.append(message)
+	actions.logged.connect(observe)
+	robot.is_stunned = true
+	# 기절 대상은 명중굴림만 유리(두 번)이고 피해는 힘 d20 한 번이다. 18은 절대성공면이라 20으로 센다.
+	actions.dice = ScriptedDice.new([3, 9, 18], ScriptedDice.attack_sides(warrior, 2) + ScriptedDice.damage_sides(warrior))
+	var before: int = robot.hit_points
+	_check(await actions.attack(warrior, robot) and actions.last_attack.rolls == [3, 9]
+		and actions.last_attack.selected_roll == 9 and actions.last_damage_rolls == [20]
+		and actions.last_damage == 20 + warrior.get_damage_bonus()
+		and robot.hit_points == before - 20 - warrior.get_damage_bonus(),
+		"유리 명중굴림 뒤 피해는 힘 d20을 한 번 새로 굴리고 절대성공면은 최댓값")
+	_check(logs.any(func(message: String) -> bool:
+			return message == "고철로봇-1000 피해: 힘 d20 [20] +3 = 23 · HP %d" % robot.hit_points),
+		"피해 로그에 능력치 주사위·굴림·피해 보정 " + str(logs))
+	robot.is_stunned = false
+	turns.select_unit(archer)
+	archer.marked_target = robot
+	var mark_sides: Array[int] = ScriptedDice.attack_sides(archer) + ScriptedDice.damage_sides(archer)
+	mark_sides.append(6)
+	actions.dice = ScriptedDice.new([15, 1, 4], mark_sides)
+	before = robot.hit_points
+	_check(await actions.attack(archer, robot) and actions.last_damage_rolls == [1, 4]
+		and robot.hit_points == before - 1 - 4 - archer.get_damage_bonus(),
+		"피해 굴림의 절대실패면은 1이고 표식 추가 d6을 더함")
+	_check(logs.any(func(message: String) -> bool:
+			return message == "고철로봇-1000 피해 (표식 추가): 솜씨 d20 [1] + d6 [4] +1 = 6 · HP %d" % robot.hit_points),
+		"표식 피해 로그 " + str(logs))
+	ScriptedDice.arrange_turns(turns, units, [archer, warrior, robot])
+	archer.marked_target = null
+	CombatActionRules.DAMAGE_ABILITIES["shock"] = CombatUnit.Ability.STRENGTH
+	actions.dice = ScriptedDice.new([15, 6], ScriptedDice.attack_sides(archer)
+		+ ScriptedDice.damage_sides(archer, "shock"))
+	before = robot.hit_points
+	_check(ScriptedDice.damage_sides(archer, "shock") == [6] and await actions.attack(archer, robot, true)
+		and actions.last_damage_rolls == [6] and robot.hit_points == before - 6 - archer.get_damage_bonus(),
+		"스킬이 지정한 피해 능력치(힘 d6)로 피해를 굴림")
+	_check(logs.any(func(message: String) -> bool:
+			return message == "고철로봇-1000 피해: 힘 d6 [6] +1 = 7 · HP %d" % robot.hit_points),
+		"지정한 피해 능력치가 로그에 보임 " + str(logs))
+	CombatActionRules.DAMAGE_ABILITIES.erase("shock")
+	actions.logged.disconnect(observe)
+	turns.turn_started.disconnect(actions._on_turn_started)
 
 func _test_spin_shared_modes() -> void:
 	for reversed: bool in [false, true]:
@@ -302,7 +359,7 @@ func _test_spin_shared_modes() -> void:
 			warrior.parry_left = 0
 			var advantaged: bool = stunned == 3
 			var attack_sides: int = boss.get_ability_sides(CombatUnit.Ability.STRENGTH)
-			var damage_sides: int = boss.get_damage_sides()
+			var damage_sides: int = ScriptedDice.damage_sides(boss, "spin")[0]
 			var total: int = 8 + boss.get_attack_bonus()
 			var damage: int = 1 + boss.get_damage_bonus()
 			var ready: bool = (attack_sides >= 8 and damage_sides >= 1 and damage > 0
@@ -493,6 +550,56 @@ func _test_monster_hit_table() -> void:
 	CombatEnemyDefinitions.NOVICE_BARBARIAN.erase("armor_class")
 
 
+
+## 4-9·7장: 피해 = 공격 능력치 주사위 + 피해 보정. 별도 피해 주사위 데이터는 없다.
+func _test_damage_table() -> void:
+	var strength: CombatUnit.Ability = CombatUnit.Ability.STRENGTH
+	for row: Array in [
+		[CombatUnit.Kind.WARRIOR, true, strength, 20, 3],
+		[CombatUnit.Kind.ARCHER, true, CombatUnit.Ability.FINESSE, 20, 1],
+		[CombatUnit.Kind.WARRIOR, false, strength, 10, 1],
+		[CombatUnit.Kind.ARCHER, false, CombatUnit.Ability.AGILITY, 10, 1],
+		[CombatUnit.Kind.SCRAP_ROBOT_1000, false, strength, 12, 2],
+		[CombatUnit.Kind.SCRAP_ROBOT_2000, false, strength, 12, 2],
+		[CombatUnit.Kind.SCRAP_ROBOT_3000, false, strength, 12, 2],
+		[CombatUnit.Kind.SPIDERLING, false, strength, 4, 1],
+		[CombatUnit.Kind.MOTHER_SPIDER, false, strength, 8, 2],
+	]:
+		var unit: CombatUnit = _unit(row[0], row[1], Vector2i.ZERO)
+		var ability: CombatUnit.Ability = row[2]
+		_check(["attack", "opportunity", "shock", "spin"].all(func(action: String) -> bool:
+				return CombatActionRules.damage_ability(unit, action) == unit.get_attack_ability())
+			and unit.get_attack_ability() == ability and unit.get_ability_sides(ability) == row[3]
+			and unit.get_damage_bonus() == row[4],
+			"%s 피해 %s d%d%+d (7장 환산, 피해 능력치 = 명중 능력치)" % [
+				unit.get_display_name(), CombatUnit.ability_name(ability), row[3], row[4]])
+	_check([CombatEnemyDefinitions.NOVICE_BARBARIAN, CombatEnemyDefinitions.NOVICE_ARCHER,
+			CombatEnemyDefinitions.SCRAP_ROBOT_1000, CombatEnemyDefinitions.SCRAP_ROBOT_2000,
+			CombatEnemyDefinitions.SCRAP_ROBOT_3000, CombatEnemyDefinitions.SPIDERLING,
+			CombatEnemyDefinitions.MOTHER_SPIDER].all(func(definition: Dictionary) -> bool:
+				return not definition.has("damage_sides"))
+		and not _created_units[0].has_method("get_damage_sides"), "별도 피해 주사위 데이터 없음")
+	var dice: CombatDice = ScriptedDice.new([18, 1, 17, 12, 11, 4], [20, 20, 20, 12, 12, 4])
+	var values: Array[int] = []
+	for sides: int in [20, 20, 20, 12, 12, 4]:
+		values.append(CombatChecks.damage_roll(sides, dice))
+	_check(values == [20, 1, 17, 12, 11, 4], "피해 굴림은 절대성공면을 최댓값, 절대실패면을 1, 일반면은 그대로 센다 " + str(values))
+	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i.ZERO)
+	_check("피해: 솜씨 d20+1\n" in CombatActionRules.details(archer, "shock")
+		and "피해: 솜씨 d20+1\n" in CombatActionRules.details(archer, "attack")
+		and "→" not in CombatActionRules.details(archer, "shock"),
+		"같은 능력치면 호버에 피해 능력치 주사위 하나만 보임")
+	# 정적 지정은 확인 전에 되돌려 다른 검사에 남기지 않는다.
+	CombatActionRules.DAMAGE_ABILITIES["shock"] = CombatUnit.Ability.STRENGTH
+	var shock_ability: CombatUnit.Ability = CombatActionRules.damage_ability(archer, "shock")
+	var attack_ability: CombatUnit.Ability = CombatActionRules.damage_ability(archer, "attack")
+	var shock_details: String = CombatActionRules.details(archer, "shock")
+	var attack_details: String = CombatActionRules.details(archer, "attack")
+	CombatActionRules.DAMAGE_ABILITIES.erase("shock")
+	_check(shock_ability == CombatUnit.Ability.STRENGTH and attack_ability == CombatUnit.Ability.FINESSE
+		and "피해: 명중 솜씨 d20 → 피해 힘 d6+1\n" in shock_details and "피해: 솜씨 d20+1\n" in attack_details,
+		"스킬이 피해 능력치를 따로 지정하면 호버에 명중과 피해 능력치를 함께 보임 " + shock_details)
+
 ## 원거리 공격자는 인접 불리가 없게 세 칸 떨어뜨린다.
 func _preview_percent(attacker: CombatUnit, target: CombatUnit) -> float:
 	var grid: CombatGrid = CombatGrid.new()
@@ -599,7 +706,7 @@ func _test_scene_mixed_spin() -> void:
 	units[0].reaction_left = 0
 	units[1].reaction_left = 0
 	var attack_sides: int = boss.get_ability_sides(CombatUnit.Ability.STRENGTH)
-	var damage_sides: int = boss.get_damage_sides()
+	var damage_sides: int = ScriptedDice.damage_sides(boss, "spin")[0]
 	var damage: int = 1 + boss.get_damage_bonus()
 	var ready: bool = (boss.action_left == 1 and actions.grid.opponents_in_area(boss, 1).size() == 2
 		and attack_sides >= 8 and damage_sides >= 1 and damage > 0

@@ -167,12 +167,16 @@ msgstr ""
 msgid "공격에 맞았을 때 민첩 주사위 +3이\n공격 굴림 이상이면 피해와 추가 효과를 피합니다."
 msgstr ""
 
-#: scenes/combat/action_rules.gd:101
-msgid "피해: 1d%d%s"
+#: scenes/combat/action_rules.gd:110
+msgid "%s d%d %+d 대 AC"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:103
-msgid "%s d%d %+d 대 AC"
+#: scenes/combat/action_rules.gd:142
+msgid "피해: %s d%d%s"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:143
+msgid "피해: 명중 %s d%d → 피해 %s d%d%s"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:105
@@ -606,15 +610,11 @@ msgid "흘려내기: 민첩 d%d %d + 3 = %d / 공격 %d · %s"
 msgstr ""
 
 #: scenes/combat/actions.gd:1004
-msgid "%s 피해: %d · HP %d"
+msgid "%s 피해 (표식 추가): %s d%d %s + d6 %s %+d = %d · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:1006
-msgid "%s 피해%s: %s + %d = %d · HP %d"
-msgstr ""
-
-#: scenes/combat/actions.gd:1007
-msgid " (표식 추가)"
+#: scenes/combat/actions.gd:1008
+msgid "%s 피해: %s d%d %s %+d = %d · HP %d"
 msgstr ""
 
 #: scenes/combat/actions.gd:1012
@@ -1326,7 +1326,7 @@ msgid "힘·민첩·솜씨·지능·의지·건강은 각각 능력치 주사위
 msgstr ""
 
 #: scenes/help.tscn
-msgid "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC에 더합니다. 밀치기·만능팔·회전회오리는 아직 힘 주사위 대결이며 동점은 방어자 승입니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 주사위가 독의 강도 이상이면 성공합니다."
+msgid "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC에 더합니다. 명중하면 공격 능력치 주사위를 새로 굴리고 피해 보정을 더해 피해를 정합니다. 피해에는 유리/불리가 없습니다. 밀치기·만능팔·회전회오리는 아직 힘 주사위 대결이며 동점은 방어자 승입니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 주사위가 독의 강도 이상이면 성공합니다."
 msgstr ""
 
 #: scenes/help.tscn

@@ -1161,7 +1161,7 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	var damage_dice: int = 0
 	for value: int in actions.last_damage_rolls:
 		damage_dice += value
-	_check(actions.last_damage == damage_dice + 6, "실제 피해 판정은 무기 피해+3을 한 번 포함")
+	_check(actions.last_damage == damage_dice + 6, "실제 피해 판정은 무기 피해 보정+3을 한 번 포함")
 	# 이후 보상·다음 전투의 RNG는 엄격한 공격 fixture 밖이다.
 	actions.dice = CombatDice.new()
 	actions.dice.seed = 321
