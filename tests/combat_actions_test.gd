@@ -1677,8 +1677,9 @@ func _test_jump_opportunity() -> void:
 		var asked: Array[String] = []
 		if scenario[1]:
 			actor.hit_points = 1
-		f.actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
+		f.actions.reaction_requested.connect(func(kind: String, prompt: String) -> void:
 			asked.append(kind)
+			_check(prompt.begins_with("풋내기 궁수가 벗어납니다."), "점프 기회 공격 확인 창의 주격 조사: %s" % prompt)
 			_check(actor.cell == origin and actor.movement_left == 6 and actor.bonus_action_left == 1,
 				"점프 기회 공격은 출발과 비용 소비 전에 확인")
 			_check(f.actions.busy and f.actions.jump_cells(actor).is_empty(), "점프 반응 대기 중 입력 잠금")
