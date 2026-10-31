@@ -95,7 +95,7 @@ autowrap_mode = 3
 
 [node name="MousePreparation2" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
-text = "정비 버튼: 칸을 고른 뒤 아래 상세 패널의 버튼으로 장착·해제·버리기를 합니다. 캐릭터의 물약은 다른 캐릭터에게 끌거나 카드의 물약 1개 → 버튼으로 한 개씩 건넵니다."
+text = "정비 버튼: 칸을 고른 뒤 아래 상세 패널의 버튼으로 장착·물약 전달·해제·버리기를 합니다. 캐릭터의 물약은 다른 캐릭터에게 끌거나 카드의 물약 1개 → 버튼으로 한 개씩 건넵니다."
 autowrap_mode = 3
 
 [node name="MouseTooltip" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
