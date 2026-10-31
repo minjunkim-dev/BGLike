@@ -1859,8 +1859,10 @@ func _test_camera_during_enemy_turn() -> void:
 	var pressed_at: int = Time.get_ticks_usec()
 	var slowest: float = INF
 	# 다음 적으로 넘어가는 프레임은 time_scale이 1이라 첫 적의 턴 안에서만 잰다.
-	while Time.get_ticks_usec() - pressed_at < 100000 and turns.current_unit == units[2]:
+	while Time.get_ticks_usec() - pressed_at < 100000:
 		await process_frame
+		if turns.current_unit != units[2]:
+			break
 		slowest = minf(slowest, Engine.time_scale)
 	# 뗀 키는 다음 프레임에 반영되어 그 프레임은 움직이지 않으므로 떼기 전까지의 시간으로 잰다.
 	var expected: float = CombatCamera.PAN_SPEED * (Time.get_ticks_usec() - pressed_at) / 1000000.0
@@ -1873,7 +1875,7 @@ func _test_camera_during_enemy_turn() -> void:
 	Input.parse_input_event(space)
 	await process_frame
 	var moved: float = camera.position.x - start.x
-	_check(slowest > 1.0, "Space를 누르는 동안 적 턴 가속: 최소 time_scale %s" % slowest)
+	_check(slowest != INF and slowest > 1.0, "Space를 누르는 동안 첫 적의 턴 가속: 최소 time_scale %s" % slowest)
 	# time_scale에 끌려가면 4배(ENEMY_FAST_SPEED)로 움직인다.
 	_check(camera.position.y == start.y and moved >= expected * 0.5 and moved <= expected * 1.5,
 		"Space 가속 중에도 WASD는 실제 시간 기준 속도: %.1f px, 기대 %.1f px" % [moved, expected])
