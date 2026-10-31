@@ -34,9 +34,9 @@ func _pull_sides() -> Array[int]:
 	return [12, 6]
 
 
-## 회전회오리 공통 힘 d12, 전사 방어 힘 d20·피해 힘 d12, 궁수 방어 힘 d6·피해 힘 d12 (#389까지 대결).
+## 회전회오리는 시전자가 굴리지 않는다. 전사 힘 d20 내성·피해 힘 d12, 궁수 힘 d6 내성·피해 힘 d12 (#389).
 func _spin_sides() -> Array[int]:
-	return [12, 20, 12, 6, 12]
+	return [20, 12, 6, 12]
 
 
 func _fixture(archer: bool = false) -> Fixture:
@@ -398,7 +398,7 @@ func _test_scrap_robot_spin_combos() -> void:
 	boss.begin_turn()
 	pull_spin.units[0].cell = Vector2i(3, 4)
 	pull_spin.units[1].cell = Vector2i(7, 4)
-	pull_spin.actions.dice = ScriptedDice.new([12, 6, 11, 1, 1, 1, 2], _pull_sides() + _spin_sides())
+	pull_spin.actions.dice = ScriptedDice.new([12, 6, 1, 1, 1, 2], _pull_sides() + _spin_sides())
 	await ai.play_turn(boss, pull_spin.actions)
 	_check(pull_spin.units[0].hit_points == 9 and pull_spin.units[1].hit_points == 10
 		and pull_spin.units[1].cell == Vector2i(5, 4) and boss.action_left == 0,
@@ -410,7 +410,7 @@ func _test_scrap_robot_spin_combos() -> void:
 	boss.begin_turn()
 	spin_twice.units[0].cell = Vector2i(3, 4)
 	spin_twice.units[1].cell = Vector2i(5, 4)
-	spin_twice.actions.dice = ScriptedDice.new([11, 1, 1, 1, 1, 11, 1, 1, 1, 1], _spin_sides() + _spin_sides())
+	spin_twice.actions.dice = ScriptedDice.new([1, 1, 1, 1, 1, 1, 1, 1], _spin_sides() + _spin_sides())
 	await ai.play_turn(boss, spin_twice.actions)
 	_check(spin_twice.units[0].hit_points == 6 and spin_twice.units[1].hit_points == 8
 		and boss.action_left == 0 and boss.pull_cooldown == 0,
@@ -450,9 +450,9 @@ func _test_scrap_robot_spin_reevaluation() -> void:
 		f.units[1].cell = Vector2i(5, 4)
 		f.units[1].hit_points = 14 if survivors == 1 else 3
 		if survivors == 1:
-			f.actions.dice = ScriptedDice.new([11, 1, 1, 1, 1, 10, 1], _spin_sides() + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
+			f.actions.dice = ScriptedDice.new([1, 1, 1, 1, 10, 1], _spin_sides() + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 		else:
-			f.actions.dice = ScriptedDice.new([11, 1, 1, 1, 1], _spin_sides())
+			f.actions.dice = ScriptedDice.new([1, 1, 1, 1], _spin_sides())
 		await ai.play_turn(boss, f.actions)
 		_check(f.units[0].hit_points == 0 and f.units[1].hit_points == (8 if survivors == 1 else 0),
 			"첫 회전회오리 전투 불능 후 살아 있는 대상을 기준으로 다음 행동 선택")

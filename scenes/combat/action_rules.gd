@@ -16,7 +16,7 @@ static var NAMES: Dictionary[String, String] = {
 static var EFFECTS: Dictionary[String, String] = {
 	"jump": TranslationServer.tr("1~2칸의 빈 바닥으로 점프.\n상승2까지, 낙하 차3부터 피해."),
 	"spawn": TranslationServer.tr("인접한 빈 칸에 새끼 거미1마리를 만듭니다."),
-	"spin": TranslationServer.tr("상하좌우1칸·높이 차이1 이하인 모든 아군에게 공통 공격 굴림과 각자의 방어 굴림.\n밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."),
+	"spin": TranslationServer.tr("상하좌우1칸·높이 차이1 이하인 모든 아군이 각자 힘 내성굴림.\n성공하면 피해 절반. 밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."),
 	"second_wind": TranslationServer.tr("HP 1d10+1 회복.\n최대 HP를 넘지 않습니다."),
 	"surge": TranslationServer.tr("이미 쓴 행동을 다시 채워\n한 번 더 공격할 수 있습니다."),
 	"mark": TranslationServer.tr("1~6칸 적에게 표식.\n이 궁수가 맞히면 피해 +1d6.\n전투 중 유지됩니다."),
@@ -51,6 +51,11 @@ const USES_PER_ACT: Dictionary[String, int] = {
 ## 피해 능력치를 명중 능력치와 다르게 지정한 동작 (능력치 기획서 4-9). 지금 있는 스킬은 모두 같아 비어 있다.
 ## 동작 이름으로 찾으므로 기회 공격("opportunity")은 "attack"과 따로 지정한다.
 static var DAMAGE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {}
+## 내성굴림 동작의 시전 능력치(DC)와 대상의 내성 능력치 (4-3, 8장). 기존 동작은 현행(힘)을 유지한다.
+const CAST_ABILITIES: Dictionary[String, CombatUnit.Ability] = {"spin": CombatUnit.Ability.STRENGTH}
+const SAVE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {"spin": CombatUnit.Ability.STRENGTH}
+## 스킬의 DC 보정. 지정이 없으면 0이다. 지금 있는 스킬은 모두 0이라 비어 있다.
+static var DC_BONUSES: Dictionary[String, int] = {}
 ## 아군 스킬과 공용 동작의 아이콘. 48px 원본(64px 설계 격자)이다.
 const ICON_PATH: String = "res://scenes/combat/art/icons/skills/%s.png"
 ## #362: 스킬과 정비 아이템 그림의 표시 크기(논리 px). 버튼·칸의 입력 영역은 각 화면이 따로 유지한다.
@@ -64,9 +69,15 @@ static func resource_of(action: String) -> CombatUnit.TurnResource:
 	return CombatUnit.TurnResource.ACTION
 
 
-## 동작의 피해 굴림 능력치. 지정이 없으면 명중 능력치다.
+## 동작의 피해 굴림 능력치. 지정이 없으면 명중 능력치, 내성굴림 동작은 시전 능력치다.
 static func damage_ability(actor: CombatUnit, action: String) -> CombatUnit.Ability:
-	return DAMAGE_ABILITIES.get(action, actor.get_attack_ability())
+	return DAMAGE_ABILITIES.get(action, CAST_ABILITIES.get(action, actor.get_attack_ability()))
+
+
+## 시전 때 정하는 내성굴림 동작의 DC. 대상이 어떤 능력치로 막든 같다 (4-3).
+static func save_dc(actor: CombatUnit, action: String) -> int:
+	return CombatChecks.save_dc(actor.get_ability_sides(CAST_ABILITIES[action]), actor.get_attack_bonus(),
+		DC_BONUSES.get(action, 0))
 
 
 static func belongs_to(actor: CombatUnit, action: String) -> bool:
@@ -104,7 +115,8 @@ static func icon_of(action: String) -> Texture2D:
 
 
 ## 호버의 사거리·피해 또는 회복·판정 줄. 현재 장비의 명중·피해 보정을 반영한다.
-static func details(actor: CombatUnit, action: String) -> String:
+## 내성굴림 동작은 units 가운데 살아 있는 반대편 유닛마다 내성 성공률을 더한다.
+static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] = []) -> String:
 	var melee: bool = actor.get_attack_range() == 1
 	var weapon: String = damage_text(actor, action)
 	var hit: String = TranslationServer.tr("%s d%d %+d 대 AC") % [CombatUnit.ability_name(actor.get_attack_ability()),
@@ -130,7 +142,27 @@ static func details(actor: CombatUnit, action: String) -> String:
 			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("판정: 없음")]
 		"parry":
 			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("판정: 민첩 d%d +3이 공격 굴림 이상") % actor.get_ability_sides(CombatUnit.Ability.AGILITY)]
+		"spin":
+			lines = [TranslationServer.tr("사거리: 인접1칸"), weapon, TranslationServer.tr("판정: 대상의 %s 내성 대 DC %d, 성공하면 피해 절반") % [
+				CombatUnit.ability_name(SAVE_ABILITIES[action]), save_dc(actor, action)]]
+			var chances: Array[String] = []
+			for unit: CombatUnit in units:
+				if unit.hit_points > 0 and unit.is_ally != actor.is_ally:
+					chances.append("%s %.1f%%" % [unit.get_display_name(), save_chance(actor, unit, action) * 100.0])
+			if not chances.is_empty():
+				lines.append(TranslationServer.tr("내성 성공률: %s") % " · ".join(chances))
 	return "\n".join(lines)
+
+
+## 대상의 내성굴림 유리/불리. 굴리는 쪽(대상)의 요인만 센다 (4-7). 지금 내성굴림에 붙는 요인은 없다.
+static func save_mode(_target: CombatUnit) -> CombatChecks.RollMode:
+	return CombatChecks.roll_mode(0, 0)
+
+
+## 대상의 실제 내성 성공률. 내성 능력치 주사위, 방어 가산, 유리/불리와 절대면을 반영한다.
+static func save_chance(actor: CombatUnit, target: CombatUnit, action: String) -> float:
+	return CombatChecks.save_chance(target.get_ability_sides(SAVE_ABILITIES[action]), target.get_defense_bonus(),
+		save_dc(actor, action), save_mode(target))
 
 
 ## 호버의 피해 줄. 피해 능력치가 명중 능력치와 다르면 둘을 함께 보인다 (4-9).

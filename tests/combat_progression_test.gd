@@ -555,7 +555,7 @@ func _test_scrap_robot_3000_stage() -> void:
 	_check(not actions.grid.is_blocked(units[0].cell) and not actions.grid.is_blocked(units[1].cell)
 		and actions.grid.are_adjacent(boss.cell, units[0].cell) and actions.grid.are_adjacent(boss.cell, units[1].cell),
 		"3000 회전 fixture의 두 아군은 장애물 없는 인접 바닥에 배치")
-	actions.dice = ScriptedDice.new([12, 1, 3, 1, 3], [12, 20, 12, 6, 12])
+	actions.dice = ScriptedDice.new([1, 3, 1, 3], [20, 12, 6, 12])
 	_check(await actions.spin(boss) and units[0].hit_points == 7 and units[1].hit_points == 9
 		and boss.action_left == 1 and boss.hit_points == 23,
 		"실제 3000 과부하 턴 시작 자기 피해 뒤 회전회오리가 두 아군과 화면을 갱신")

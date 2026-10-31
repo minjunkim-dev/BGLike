@@ -118,8 +118,8 @@ msgid "인접한 빈 칸에 새끼 거미1마리를 만듭니다."
 msgstr "인접한 빈 칸에 새끼 거미1마리를 만듭니다."
 
 #: scenes/combat/action_rules.gd:19
-msgid "상하좌우1칸·높이 차이1 이하인 모든 아군에게 공통 공격 굴림과 각자의 방어 굴림.\n밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."
-msgstr "상하좌우1칸·높이 차이1 이하인 모든 아군에게 공통 공격 굴림과 각자의 방어 굴림.\n밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."
+msgid "상하좌우1칸·높이 차이1 이하인 모든 아군이 각자 힘 내성굴림.\n성공하면 피해 절반. 밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."
+msgstr "상하좌우1칸·높이 차이1 이하인 모든 아군이 각자 힘 내성굴림.\n성공하면 피해 절반. 밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."
 
 #: scenes/combat/action_rules.gd:20
 msgid "HP 1d10+1 회복.\n최대 HP를 넘지 않습니다."
@@ -172,6 +172,14 @@ msgstr "피해: %s d%d%s"
 #: scenes/combat/action_rules.gd:143
 msgid "피해: 명중 %s d%d → 피해 %s d%d%s"
 msgstr "피해: 명중 %s d%d → 피해 %s d%d%s"
+
+#: scenes/combat/action_rules.gd:146
+msgid "판정: 대상의 %s 내성 대 DC %d, 성공하면 피해 절반"
+msgstr "판정: 대상의 %s 내성 대 DC %d, 성공하면 피해 절반"
+
+#: scenes/combat/action_rules.gd:153
+msgid "내성 성공률: %s"
+msgstr "내성 성공률: %s"
 
 #: scenes/combat/action_rules.gd:105
 #: scenes/combat/unit.gd:11
@@ -361,9 +369,9 @@ msgstr "과부하 2"
 msgid "화상"
 msgstr "화상"
 
-#: scenes/combat/actions.gd:385
-msgid "%s 독 제거: 건강 d%d %d / 강도 %d · %s"
-msgstr "%s 독 제거: 건강 d%d %d / 강도 %d · %s"
+#: scenes/combat/actions.gd:388
+msgid "%s 독 제거(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s"
+msgstr "%s 독 제거(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s"
 
 #: scenes/combat/actions.gd:386
 #: scenes/combat/actions.gd:878
@@ -489,14 +497,14 @@ msgid "%s 이동: %d칸, 남은 이동 %d"
 msgid_plural "%s 이동: %d칸, 남은 이동 %d"
 msgstr[0] "%s 이동: %d칸, 남은 이동 %d"
 
-#: scenes/combat/actions.gd:795
-msgid "%s 회전회오리: 인접 대상 %d명"
-msgid_plural "%s 회전회오리: 인접 대상 %d명"
-msgstr[0] "%s 회전회오리: 인접 대상 %d명"
+#: scenes/combat/actions.gd:783
+msgid "%s 회전회오리: 인접 대상 %d명 · DC %d"
+msgid_plural "%s 회전회오리: 인접 대상 %d명 · DC %d"
+msgstr[0] "%s 회전회오리: 인접 대상 %d명 · DC %d"
 
-#: scenes/combat/actions.gd:796
-msgid "공통 공격: 힘 d%d %s %+d = %d"
-msgstr "공통 공격: 힘 d%d %s %+d = %d"
+#: scenes/combat/actions.gd:989
+msgid "%s %s 내성(%s): %s d%d %s %+d = %d / DC %d · %s"
+msgstr "%s %s 내성(%s): %s d%d %s %+d = %d / DC %d · %s"
 
 #: scenes/combat/actions.gd:828
 msgid "%s 새끼 낳기: %s"
@@ -589,9 +597,17 @@ msgstr "명중(절대성공)"
 msgid "빗나감(절대실패)"
 msgstr "빗나감(절대실패)"
 
-#: scenes/combat/actions.gd:972
-msgid "%s 방어: %s d%d %d %+d = %d / 공통 공격 %d · %s"
-msgstr "%s 방어: %s d%d %d %+d = %d / 공통 공격 %d · %s"
+#: scenes/combat/actions.gd:1014
+msgid "%s 피해 (내성 성공 절반): %s d%d %s %+d = %d → %d · HP %d"
+msgstr "%s 피해 (내성 성공 절반): %s d%d %s %+d = %d → %d · HP %d"
+
+#: scenes/combat/actions.gd:1034
+msgid "성공(절대성공)"
+msgstr "성공(절대성공)"
+
+#: scenes/combat/actions.gd:1036
+msgid "실패(절대실패)"
+msgstr "실패(절대실패)"
 
 #: scenes/combat/actions.gd:983
 msgid "%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)"
@@ -1314,8 +1330,8 @@ msgid "힘·민첩·솜씨·지능·의지·건강은 각각 능력치 주사위
 msgstr "힘·민첩·솜씨·지능·의지·건강은 각각 능력치 주사위입니다. 공격 능력치는 무기·스킬이 정합니다(전사 힘, 아군 궁수 솜씨). AC는 민첩 주사위의 표준값(d4 3, d6 4, d8 5, d10 6, d12 7, d20 11)에 방어 가산을 더한 값입니다. 모든 주사위의 첫 면은 절대실패면이고, d12의 가장 높은 면 하나와 d20의 가장 높은 면 셋은 절대성공면입니다."
 
 #: scenes/help.tscn
-msgid "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC에 더합니다. 명중하면 공격 능력치 주사위를 새로 굴리고 피해 보정을 더해 피해를 정합니다. 피해에는 유리/불리가 없습니다. 밀치기·만능팔·회전회오리는 아직 힘 주사위 대결이며 동점은 방어자 승입니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 주사위가 독의 강도 이상이면 성공합니다."
-msgstr "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC에 더합니다. 명중하면 공격 능력치 주사위를 새로 굴리고 피해 보정을 더해 피해를 정합니다. 피해에는 유리/불리가 없습니다. 밀치기·만능팔·회전회오리는 아직 힘 주사위 대결이며 동점은 방어자 승입니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 주사위가 독의 강도 이상이면 성공합니다."
+msgid "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC와 내성 굴림에 더합니다. 명중하면 공격 능력치 주사위를 새로 굴리고 피해 보정을 더해 피해를 정합니다. 피해에는 유리/불리가 없습니다. 회전회오리는 시전자가 굴리지 않고 맞는 대상마다 힘 내성굴림을 합니다. 내성 굴림(내성 능력치 주사위 + 방어 가산)이 DC(시전 능력치 표준값 + 공격 가산) 이상이면 성공하고, 피해는 절반(최소 1)입니다. 밀치기·만능팔은 아직 힘 주사위 대결이며 동점은 방어자 승입니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 내성 굴림이 독의 DC 이상이면 성공합니다."
+msgstr "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC와 내성 굴림에 더합니다. 명중하면 공격 능력치 주사위를 새로 굴리고 피해 보정을 더해 피해를 정합니다. 피해에는 유리/불리가 없습니다. 회전회오리는 시전자가 굴리지 않고 맞는 대상마다 힘 내성굴림을 합니다. 내성 굴림(내성 능력치 주사위 + 방어 가산)이 DC(시전 능력치 표준값 + 공격 가산) 이상이면 성공하고, 피해는 절반(최소 1)입니다. 밀치기·만능팔은 아직 힘 주사위 대결이며 동점은 방어자 승입니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 내성 굴림이 독의 DC 이상이면 성공합니다."
 
 #: scenes/help.tscn
 msgid "반응은 조건이 맞으면 누구의 턴이든 쓰는 실행 기회입니다. 하나뿐이고 자기 턴 시작에 회복합니다. 기회 공격과 흘려내기가 함께 씁니다."

@@ -954,13 +954,14 @@ func _test_spin_attacks() -> void:
 	f.turns.current_unit = boss
 	f.units[1].cell = Vector2i(5, 3)
 	f.units[0].parry_left = 0
-	f.actions.dice = _dice_for([6, 9, 2, 6], [12, 20, 6, 12])
+	# 소비 순서: 전사 힘 d20 내성·힘 d12 피해 → 궁수 힘 d6 내성·힘 d12 피해. 시전자는 굴리지 않는다.
+	f.actions.dice = _dice_for([10, 6, 2, 6], [20, 12, 6, 12])
 	_check(await f.actions.spin(boss), "회전회오리 실행")
-	_check(f.units[0].hit_points == 12 and f.units[1].hit_points == 6,
-		"공통 힘 d12의6+3에 각 대상이 방어해 첫 동점은 빗나가고 두 번째만 힘 d12+2 피해")
-	_check(f.actions.last_attack.rolls == [6] and f.actions.last_attack.defender_roll == 2
+	_check(f.units[0].hit_points == 8 and f.units[1].hit_points == 6,
+		"전사는 힘 내성 10이 DC 10과 같아 성공해 피해 6+2의 절반 4, 궁수는 2로 실패해 피해 8")
+	_check(f.actions.last_save.rolls == [2] and f.actions.last_attack == null
 		and f.units[0].cell == Vector2i(4, 4) and f.units[1].cell == Vector2i(5, 3),
-		"회전회오리는 대상을 밀어내지 않음")
+		"회전회오리는 명중굴림 없이 대상만 굴리고 대상을 밀어내지 않음")
 	_check(boss.action_left == 0 and boss.bonus_action_left == 1 and boss.reaction_left == 1
 		and boss.movement_left == 4 and not f.actions.busy, "여러 대상이어도 행동1개만 소비하고 입력 잠금을 해제")
 
@@ -991,7 +992,8 @@ func _test_spin_height_targets() -> void:
 	f.actions.attack_animation = func(_actor: CombatUnit, target: CombatUnit) -> void:
 		attacked.append(target)
 		await process_frame
-	_check(await f.actions.spin(boss) and attacked == [f.units[1]]
+	f.actions.dice = _dice_for([1, 1], [6, 12])
+	_check(await f.actions.spin(boss) and attacked == [f.units[1]] and f.units[1].hit_points == 11
 		and f.units[0].hit_points == 12 and boss.action_left == 0,
 		"회전회오리는 높이1 대상만 실제 판정하고 높이2 대상·기존 유닛 순서·행동1 소비를 보존")
 	f.actions.attack_animation = Callable()
@@ -1011,7 +1013,7 @@ func _test_spin_height_recheck() -> void:
 		attacked.append(target)
 		f.actions.grid.heights[f.units[1].cell] = 2
 		await process_frame
-	f.actions.dice = _dice_for([11, 1, 1], [12, 20, 12])
+	f.actions.dice = _dice_for([1, 1], [20, 12])
 	_check(await f.actions.spin(boss) and attacked == [f.units[0]]
 		and f.units[0].hit_points == 9 and f.units[1].hit_points == 14,
 		"첫 공격 대기 뒤 두 번째 대상의 높이가 바뀌면 주사위·피해 없이 제외")
@@ -1050,27 +1052,26 @@ func _test_spin_reactions_and_reuse() -> void:
 	boss.begin_turn()
 	f.turns.current_unit = boss
 	f.units[1].cell = Vector2i(5, 3)
+	var parry_left: int = f.units[0].parry_left
 	var prompts: Array[String] = []
 	f.actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
 		prompts.append(kind)
-		_check(kind == "parry" and f.actions.busy and f.units[1].hit_points == 14
-			and not f.actions.can_use(boss, "spin"), "첫 대상의 반응을 기다리는 동안 다음 대상 판정과 중복 입력을 잠금")
 		f.actions.resolve_reaction(true)
 	)
-	f.actions.dice = _dice_for([5, 1, 5, 1, 1], [12, 20, 8, 6, 12])
-	_check(await f.actions.spin(boss) and f.units[0].hit_points == 12 and f.units[1].hit_points == 11
-		and f.units[0].reaction_left == 0 and f.units[0].parry_left == 1,
-		"첫 대상은 같은 공격 합계8을 민첩5+3 흘려내기로 막고 다음 대상은 독립 피해를 받음")
-	f.actions.dice = _dice_for([12, 1, 3, 1, 1], [12, 20, 12, 6, 12])
-	_check(await f.actions.spin(boss) and f.units[0].hit_points == 7 and f.units[1].hit_points == 8
-		and prompts == ["parry"] and boss.action_left == 0,
-		"과부하 같은 턴에 회전회오리를 다시 쓰며 공통 최댓값에도 피해를 한 번씩 굴리고 소비한 반응을 유지")
+	f.actions.dice = _dice_for([5, 1, 1, 1], [20, 12, 6, 12])
+	_check(await f.actions.spin(boss) and f.units[0].hit_points == 9 and f.units[1].hit_points == 11
+		and prompts.is_empty() and f.units[0].reaction_left == 1 and f.units[0].parry_left == parry_left,
+		"내성굴림 피해에는 공격 굴림이 없어 흘려내기를 묻지 않고 대상마다 독립 피해")
+	f.actions.dice = _dice_for([20, 4, 6, 1], [20, 12, 6, 12])
+	_check(await f.actions.spin(boss) and f.units[0].hit_points == 6 and f.units[1].hit_points == 8
+		and prompts.is_empty() and boss.action_left == 0,
+		"과부하 같은 턴에 다시 쓰며 전사 절대성공면 20은 피해 4+2의 절반, 궁수 최댓값 6은 DC 10 미만이라 실패")
 	boss.begin_turn()
 	f.units[1].cell = Vector2i(9, 9)
-	f.actions.dice = _dice_for([11, 1, 1], [12, 20, 12])
-	_check(await f.actions.spin(boss) and f.units[0].hit_points == 4 and f.units[1].hit_points == 8
+	f.actions.dice = _dice_for([1, 1], [20, 12])
+	_check(await f.actions.spin(boss) and f.units[0].hit_points == 3 and f.units[1].hit_points == 8
 		and CombatActionRules.uses_left(boss, "spin") == -1,
-		"다음 턴에도 횟수·대기 제한 없이 쓰며 사거리 밖 아군은 공격하지 않음")
+		"다음 턴에도 횟수·대기 제한 없이 쓰며 사거리 밖 아군은 굴리지 않음")
 
 
 func _test_spin_incapacitation() -> void:
@@ -1082,7 +1083,7 @@ func _test_spin_incapacitation() -> void:
 	f.units[0].parry_left = 0
 	f.units[1].cell = Vector2i(5, 3)
 	ScriptedDice.arrange_turns(f.turns, f.units, [f.units[2], f.units[1], f.units[0], f.units[3]])
-	f.actions.dice = _dice_for([11, 1, 1, 1, 2], [12, 20, 12, 6, 12])
+	f.actions.dice = _dice_for([1, 1, 1, 2], [20, 12, 6, 12])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 0
 		and f.units[1].hit_points == 10 and boss.action_left == 0,
 		"첫 대상 전투 불능 뒤 남은 대상 공격과 한 번 소비한 행동을 유지")
@@ -1096,10 +1097,10 @@ func _test_spin_incapacitation() -> void:
 	interrupted.actions.attack_animation = func(actor: CombatUnit, _target: CombatUnit) -> void:
 		interrupted.actions.incapacitate(actor)
 		await process_frame
-	interrupted.actions.dice = _dice_for([11], [12])
+	interrupted.actions.dice = _dice_for([], [])
 	_check(await interrupted.actions.spin(boss) and boss.hit_points == 0
 		and interrupted.units[0].hit_points == 12 and interrupted.units[1].hit_points == 14
-		and not interrupted.actions.busy, "연출 대기 중 공격자가 전투 불능이면 공통 공격 굴림 뒤 대상 방어·피해 없이 중단하고 입력 잠금 해제")
+		and not interrupted.actions.busy, "연출 대기 중 시전자가 전투 불능이면 대상 내성·피해 없이 중단하고 입력 잠금 해제")
 	interrupted.actions.attack_animation = Callable()
 
 
@@ -2404,7 +2405,7 @@ func _test_poison_tick() -> void:
 	f.actions.dice = _dice_for([3], [4])
 	f.turns.end_turn()
 	f.turns.end_turn()
-	_check(target.hit_points == 11, "건강 d4의3은 강도4 미달이라 독 고정1 피해")
+	_check(target.hit_points == 11, "건강 d4의3은 DC 4 미달이라 독 고정1 피해")
 
 
 func _test_status_fifo() -> void:
@@ -2424,7 +2425,7 @@ func _test_status_fifo() -> void:
 	f.turns.end_turn()
 	f.turns.end_turn()
 	_check(target.hit_points == 5 and messages == ["화상 2", "독 1", "화상 3", "독 1"],
-		"다른 상태도 전체 FIFO: 첫 독 강도4로 건강 판정 한 번만 굴리고 각 중첩 피해")
+		"다른 상태도 전체 FIFO: 첫 독 DC 4로 건강 내성 한 번만 굴리고 각 중첩 피해")
 
 
 func _test_poison_save_oldest() -> void:
@@ -2445,7 +2446,7 @@ func _test_poison_save_oldest() -> void:
 	f.turns.end_turn()
 	f.turns.end_turn()
 	f.actions.feedback.disconnect(record)
-	_check(target.hit_points == 10, "건강4는 강도4 동점 성공: 가장 오래된 하나만 제거 후 두 틱")
+	_check(target.hit_points == 10, "건강4는 DC 4와 같아 성공: 가장 오래된 하나만 제거 후 두 틱")
 	_check(messages == ["독 제거", "독 1", "독 1"], "제거 성공은 이름만, 남은 틱은 원인과 피해: %s" % str(messages))
 	# 내성으로 없어진 시전자를 제거해도 남은 두 독은 그대로다.
 	f.actions.incapacitate(f.units[3])
@@ -2453,7 +2454,7 @@ func _test_poison_save_oldest() -> void:
 	f.turns.end_turn()
 	f.turns.end_turn()
 	f.turns.end_turn()
-	_check(target.hit_points == 8, "제거한 독의 다음 제거도 새 가장 오래된 강도4로 한 번만 판정")
+	_check(target.hit_points == 8, "제거한 독의 다음 제거도 새 가장 오래된 독의 DC 4로 한 번만 판정")
 
 
 func _test_status_caster_incapacitation() -> void:
