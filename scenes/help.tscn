@@ -100,7 +100,7 @@ autowrap_mode = 3
 
 [node name="MouseTooltip" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
-text = "설명 보기: 스킬 바 버튼·정비 칸과 버튼·초상에 마우스를 올리면 잠시 뒤 설명이 나옵니다. 스킬 바와 정비 화면에서는 키보드·컨트롤러로 포커스를 옮겨도 나옵니다. 스킬 바 버튼과 정비 화면의 장착·전달·해제 버튼이 꺼져 있으면 쓸 수 없는 이유가 나옵니다."
+text = "설명 보기: 스킬 바 버튼·정비 칸과 버튼·초상에 마우스를 올리면 잠시 뒤 설명이 나옵니다. 스킬 바와 정비 화면에서는 키보드·컨트롤러로 포커스를 옮겨도 나옵니다. 스킬 바의 행동·보조 행동 버튼과 정비 화면의 장착·전달·해제 버튼이 꺼져 있으면 쓸 수 없는 이유가 나옵니다."
 autowrap_mode = 3
 
 [node name="MouseCamera" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
