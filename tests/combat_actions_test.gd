@@ -63,6 +63,21 @@ func _ability_sides(unit: CombatUnit) -> Array[int]:
 	return sides
 
 
+func _test_subject_particle() -> void:
+	var expected: Array[Array] = [
+		[CombatEnemyDefinitions.NOVICE_BARBARIAN, "풋내기 야만인이"], [CombatEnemyDefinitions.NOVICE_ARCHER, "풋내기 궁수가"],
+		[CombatEnemyDefinitions.SCRAP_ROBOT_1000, "고철로봇-1000이"], [CombatEnemyDefinitions.SCRAP_ROBOT_2000, "고철로봇-2000이"],
+		[CombatEnemyDefinitions.SCRAP_ROBOT_3000, "고철로봇-3000이"], [CombatEnemyDefinitions.SPIDERLING, "새끼 거미가"],
+		[CombatEnemyDefinitions.MOTHER_SPIDER, "엄마 거미가"],
+	]
+	for pair: Array in expected:
+		_check(CombatUnit.with_subject_particle(pair[0]["name"]) == pair[1], "적 이름 주격 조사: " + pair[1])
+	_check(CombatUnit.with_subject_particle("아군 전사") == "아군 전사가"
+		and CombatUnit.with_subject_particle("아군 궁수") == "아군 궁수가", "아군 이름 주격 조사")
+	for pair: Array in [["로봇-12", "로봇-12가"], ["로봇-5", "로봇-5가"], ["로봇-7", "로봇-7이"], ["Robot", "Robot(이)가"], ["", ""]]:
+		_check(CombatUnit.with_subject_particle(pair[0]) == pair[1], "주격 조사 경계: " + pair[1])
+
+
 func _test_rock_roll() -> void:
 	var f: Fixture = _fixture()
 	var rock: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "rock")
@@ -800,6 +815,7 @@ func _run() -> void:
 	_test_height_spawn()
 	_test_ally_shove()
 	_test_grid_queries()
+	_test_subject_particle()
 	await _test_square_rules()
 	await _test_attacks()
 	await _test_archer_balance()
