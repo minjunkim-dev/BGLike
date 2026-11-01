@@ -100,7 +100,7 @@ func _run() -> void:
 		"공격자 판정 합계 팝업과 피해 부호 없음: %s" % str(popup_styles.keys()))
 	_check(messages.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 2,
 		"과부하 중 회전 공격 두 번 유지")
-	_check(units[0].hit_points == 8 and units[1].hit_points == 8 and boss.hit_points == 23
+	_check(units[0].hit_points == 7 and units[1].hit_points == 3 and boss.hit_points == 23
 		and messages.any(func(line: String) -> bool: return "피해 (내성 성공 절반)" in line),
 		"내성 실패 피해·내성 성공 절반 피해와 과부하 자해 유지")
 	_check(_popups().is_empty(), "마지막 피드백 이후 팝업 제거")
@@ -142,7 +142,7 @@ func _fixture_ready(units: Array[CombatUnit]) -> bool:
 	for ally: CombatUnit in [units[0], units[1]]:
 		_check(CombatGrid.distance(ally.cell, boss.cell) == 1
 			and ally.hit_points == ally.get_max_hit_points()
-			and ally.movement_left == CombatUnit.MOVEMENT_PER_TURN
+			and ally.movement_left == ally.get_movement()
 			and ally.action_left == 1 and ally.bonus_action_left == 1 and ally.reaction_left == 0,
 			"반복 공격 전제조건: 인접 아군의 정상 HP·턴 자원과 반응0")
 	return failures == previous_failures

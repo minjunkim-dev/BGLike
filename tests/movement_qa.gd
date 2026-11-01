@@ -168,7 +168,7 @@ func _frames(count: int) -> void:
 
 
 func _answer_reaction() -> void:
-	# Policy: always accept opportunity attacks and parry when offered.
+	# Policy: always accept opportunity attacks when offered.
 	await _frames(2)
 	if hud.reaction_dialog.visible:
 		hud.reaction_dialog.get_ok_button().pressed.emit()

@@ -356,19 +356,23 @@ func _test_warrior() -> void:
 	var badges: Dictionary = hud.get("_badges")
 	var costs: Dictionary = hud.get("_costs")
 	var titles: Array = hud.get("_titles")
-	_check(hud.unit_label.text == "아군 전사" and "HP 12 / 12" in hud.resource_label.text
-		and "AC 5" in hud.resource_label.text and "이동" not in hud.resource_label.text,
-		"현재 유닛 정보: HP·AC(민첩 d8 표준값 5) 표시, 남은 이동 제거")
-	_check(hud.health_bar.value == 12, "현재 유닛 HP 바")
-	for ability: String in ["힘 d20", "민첩 d8", "솜씨 d6", "지능 d4", "의지 d6", "건강 d12"]:
+	_check(hud.unit_label.text == "아군 전사" and "HP 11 / 11" in hud.resource_label.text
+		and "AC 6" in hud.resource_label.text and "팔랑크스 AC +1" in hud.resource_label.text
+		and "이동" not in hud.resource_label.text,
+		"현재 유닛 정보: HP·AC(민첩 d8 표준값 5 + 인접 궁수 팔랑크스 1) 표시, 남은 이동 제거")
+	_check(hud.health_bar.value == 11, "현재 유닛 HP 바")
+	for ability: String in ["힘 d20", "민첩 d8", "솜씨 d6", "지능 d4", "의지 d8", "건강 d12"]:
 		_check(ability in hud.resource_label.text, "현재 전사의 능력치 주사위 표시: " + ability)
 	_check("자연" not in hud.resource_label.text and "정신" not in hud.resource_label.text,
 		"폐지한 능력치는 유닛 정보에서 제거")
-	for action: String in ["attack", "second_wind", "surge", "shove", "potion", "opportunity", "parry"]:
+	var warrior_actions: Array[String] = ["attack", "cross_slash", "battle_cry", "holy_veil", "steel_charge",
+		"shove", "potion", "opportunity"]
+	for action: String in warrior_actions:
 		_check((buttons[action] as Button).is_visible_in_tree(), "전사 동작 표시: " + action)
 	for action: String in ["mark", "shock", "disengage"]:
 		_check(not (buttons[action] as Button).visible, "궁수 동작 숨김: " + action)
-	for action: String in ["attack", "second_wind", "surge", "shove", "potion", "opportunity", "parry"]:
+	_check(not (buttons["second_wind"] as Button).visible, "아군 전사는 몬스터 전용 숨 고르기 숨김")
+	for action: String in warrior_actions:
 		var button: Button = buttons[action]
 		_check(button.size == Vector2(52, 34), "#362 스킬 버튼 입력 52×34 유지: " + action)
 		_check(button.get_theme_constant("icon_max_width") == 24, "#362 스킬 그림 24 논리px: " + action)
@@ -376,22 +380,24 @@ func _test_warrior() -> void:
 		and (titles[2] as Label).text == "반응 ◆", "컨테이너 제목이 자원 표시")
 	_check(not (badges["attack"] as Label).visible and not (badges["shove"] as Label).visible,
 		"횟수 제한이 없는 동작은 배지 숨김")
-	_check((badges["parry"] as Label).text == "2" and (costs["parry"] as Label).text == "◆",
+	_check((badges["battle_cry"] as Label).text == "1" and (costs["battle_cry"] as Label).text == "●",
 		"비용 기호와 횟수 숫자 분리")
-	_check((badges["second_wind"] as Label).text == "1" and (badges["potion"] as Label).text == "0"
-		and (costs["second_wind"] as Label).text == "▲" and (costs["potion"] as Label).text == "▲",
+	_check((costs["cross_slash"] as Label).text == "●▲" and (costs["steel_charge"] as Label).text == "▲"
+		and not (badges["opportunity"] as Label).visible and (costs["opportunity"] as Label).text == "◆",
+		"복합 비용은 함께 쓰는 턴 자원 기호를 잇고 이동력은 기호 없음")
+	_check((badges["steel_charge"] as Label).text == "1" and (badges["potion"] as Label).text == "0"
+		and (costs["holy_veil"] as Label).text == "▲" and (costs["potion"] as Label).text == "▲",
 		"호버에서 제거한 스킬 횟수·물약 개수와 비용은 배지·마크에 유지")
-	var badge: Label = badges["parry"] as Label
-	var cost: Label = costs["parry"] as Label
+	var badge: Label = badges["battle_cry"] as Label
+	var cost: Label = costs["battle_cry"] as Label
 	_check(badge.size.y <= 15 and not badge.get_global_rect().intersects(cost.get_global_rect()),
 		"횟수 배지는 작고 비용 기호와 겹치지 않음: badge=%s cost=%s min=%s font=%d fontheight=%f" % [
 			badge.get_global_rect(), cost.get_global_rect(), badge.get_combined_minimum_size(),
 			badge.get_theme_font_size("font_size"), badge.get_theme_font("font").get_height(9)])
-	_check((buttons["surge"] as Button).disabled and (buttons["second_wind"] as Button).disabled
-		and (buttons["potion"] as Button).disabled, "효과 없는 동작 비활성화")
+	_check((buttons["potion"] as Button).disabled, "효과 없는 동작 비활성화")
 	var before: int = units[0].reaction_left
 	(buttons["opportunity"] as Button).pressed.emit()
-	(buttons["parry"] as Button).pressed.emit()
+	(buttons["opportunity"] as Button).pressed.emit()
 	_check(units[0].reaction_left == before and (battle.get("selection") as CombatSelection).selected_action == "attack",
 		"자기 턴의 반응 항목은 아무 동작도 실행하지 않음")
 
@@ -404,14 +410,19 @@ func _test_resources() -> void:
 	battle.call("_update_turn_ui")
 	_check((titles[0] as Label).text == "행동 ○" and (titles[2] as Label).text == "반응 ◇",
 		"소비 자원은 빈 기호")
-	_check(not (buttons["surge"] as Button).disabled, "공격을 쓴 뒤 몰아치기 활성화")
-	_check(not (buttons["parry"] as Button).disabled, "자기 턴 반응 항목은 자원·횟수0도 켜진 표시")
-	(buttons["surge"] as Button).pressed.emit()
-	_check(units[0].action_left == 0 and units[0].surge_left == 1, "자기 대상 첫 클릭은 미리보기")
-	(buttons["surge"] as Button).pressed.emit()
-	_check((titles[0] as Label).text == "행동 ●" and (titles[1] as Label).text == "보조 행동 △",
-		"몰아치기는 기호 한 개만 다시 채움")
-	_check(units[0].surge_left == 0 and (buttons["surge"] as Button).disabled, "횟수 소진 비활성화")
+	_check(not (buttons["holy_veil"] as Button).disabled and (buttons["cross_slash"] as Button).disabled
+		and (buttons["battle_cry"] as Button).disabled, "행동을 쓰면 행동 스킬만 비활성화하고 보조 행동 장막은 활성화")
+	_check(not (buttons["opportunity"] as Button).disabled, "자기 턴 반응 항목은 자원·횟수0도 켜진 표시")
+	(buttons["holy_veil"] as Button).pressed.emit()
+	_check(units[0].bonus_action_left == 1 and units[0].shield_points == 0, "자기 대상 첫 클릭은 미리보기")
+	actions.dice = ScriptedDice.new([7], [12])
+	(buttons["holy_veil"] as Button).pressed.emit()
+	_check((titles[0] as Label).text == "행동 ○" and (titles[1] as Label).text == "보조 행동 △"
+		and units[0].shield_points == 7 and units[0].shield_turns == CombatActionRules.SHIELD_TURNS,
+		"성스러운 장막은 보조 행동 기호 한 개만 쓰고 건강 굴림값만큼 방어막")
+	_check("방어막 7 (3턴)" in hud.resource_label.text, "유닛 정보에 방어막 값과 남은 턴 표시")
+	_check((buttons["holy_veil"] as Button).disabled, "보조 행동 소진 비활성화")
+	units[0].clear_unit_effects()
 	units[0].movement_left = 0
 	units[0].action_left = 0
 	battle.call("_update_turn_ui")
@@ -430,7 +441,7 @@ func _test_archer_and_enemy() -> void:
 	for ability: String in ["힘 d6", "민첩 d12", "솜씨 d20", "지능 d6", "의지 d4", "건강 d8"]:
 		_check(ability in hud.resource_label.text, "궁수로 전환하면 능력치 주사위 갱신: " + ability)
 	_check(not (containers[2] as PanelContainer).visible, "궁수 반응 컨테이너 숨김")
-	_check((buttons["shock"] as Button).visible and not (buttons["surge"] as Button).visible,
+	_check((buttons["shock"] as Button).visible and not (buttons["cross_slash"] as Button).visible,
 		"궁수 스킬만 표시")
 	_check(battle.call("preview_enemy", units[2]), "적 미리보기 연결")
 	_check(hud.unit_label.text == "풋내기 야만인" and "AC 4" in hud.resource_label.text,
@@ -584,7 +595,7 @@ func _test_roll_popups() -> void:
 	target.hit_points = target.get_max_hit_points()
 	target.is_stunned = false
 	warrior.bonus_action_left = 1
-	actions.dice = ScriptedDice.new([5, 4], [10, 10])
+	actions.dice = ScriptedDice.new([5, 2, 3], [10, 4, 4])
 	actions.shove(warrior, target)
 	_check(_has_feedback(target, "밀치기 성공")
 		and not _has_feedback(target, "밀치기 5"),
@@ -597,12 +608,12 @@ func _test_roll_popups() -> void:
 	actions.feedback.connect(capture)
 	actions.shove(warrior, target)
 	_check(emitted == ["밀치기 성공"], "기절 대상의 자동 밀치기도 결과만 표시: %s" % str(emitted))
-	var wind_left: int = warrior.second_wind_left
+	var potions: int = warrior.potion_left
 	var hit_points: int = warrior.hit_points
 	warrior.bonus_action_left = 1
-	warrior.second_wind_left = 1
+	warrior.potion_left = 1
 	warrior.hit_points = 1
-	_check(actions.use_self(warrior, "second_wind"), "숨 고르기 실행")
+	_check(actions.use_self(warrior, "potion"), "물약 실행")
 	var healed: String = str(warrior.hit_points - 1)
 	var heal_popup: Label = null
 	for child: Node in warrior.get_parent().get_children():
@@ -610,7 +621,7 @@ func _test_roll_popups() -> void:
 			heal_popup = child
 	_check(heal_popup != null and heal_popup.get_theme_color("font_color") == CombatUnit.HEAL_COLOR,
 		"회복 팝업은 + 없는 수치를 초록색으로 표시")
-	warrior.second_wind_left = wind_left
+	warrior.potion_left = potions
 	warrior.hit_points = hit_points
 	# 충격 화살은 명중굴림 한 번으로 명중과 기절을 함께 정한다.
 	turns.select_unit(units[1])
@@ -626,7 +637,7 @@ func _test_roll_popups() -> void:
 	_check(target.is_stunned and _has_feedback(target, "기절"), "충격 화살은 명중하면 기절 팝업 표시")
 	_check("충격 화살: 명중하여 기절" in hud.message_label.text
 		and "정신 내성" not in hud.message_label.text, "충격 화살 로그는 추가 내성 없이 기절을 표시")
-	# 아군 전사의 흘려내기 팝업은 성공 결과만 보이고 로그는 전체 수식이다.
+	# 아군 전사의 방어막은 피해를 HP보다 먼저 받고 흡수량을 로그에 남긴다.
 	target = warrior
 	target.cell = Vector2i(4, 4)
 	units[3].cell = Vector2i(1, 4)
@@ -636,20 +647,17 @@ func _test_roll_popups() -> void:
 	target.is_stunned = false
 	target.hit_points = target.get_max_hit_points()
 	target.reaction_left = 1
-	target.parry_left = 2
-	var respond: Callable = func(_kind: String, _prompt: String) -> void:
-		hud.reaction_dialog.get_ok_button().pressed.emit()
-	actions.reaction_requested.connect(respond)
-	# 풋내기 궁수 민첩 7은 전사 AC 5에 명중하고, 흘려내기 민첩 4+3은 공격 7과 같아 성공한다.
-	var parry_sides: Array[int] = ScriptedDice.attack_sides(units[3])
-	parry_sides.append(target.get_ability_sides(CombatUnit.Ability.AGILITY))
-	actions.dice = ScriptedDice.new([7, 4], parry_sides)
+	target.shield_points = 20
+	target.shield_turns = CombatActionRules.SHIELD_TURNS
+	# 풋내기 궁수 공격 7은 전사 AC 5에 명중하고, 피해는 모두 방어막이 받는다.
+	actions.dice = ScriptedDice.new([7, 2], ScriptedDice.attack_sides(units[3]) + ScriptedDice.damage_sides(units[3]))
 	await actions.attack(units[3], target)
-	actions.reaction_requested.disconnect(respond)
-	_check("흘려내기: 민첩 d8 4 + 3 = 7 / 공격 7 · 성공" in hud.message_label.text,
-		"흘려내기 반응은 민첩 주사위와 스킬 방어 가산을 표시하고 동점에 성공")
-	_check(emitted.filter(func(text: String) -> bool: return text.begins_with("흘려내기")) == ["흘려내기"],
-		"흘려내기는 성공할 때만 수치 없이 표시: %s" % str(emitted))
+	var absorbed: int = actions.last_damage
+	_check(absorbed > 0 and target.hit_points == target.get_max_hit_points() and target.shield_points == 20 - absorbed
+		and "아군 전사 방어막: %d 흡수 · 남은 방어막 %d" % [absorbed, 20 - absorbed] in hud.message_label.text,
+		"방어막은 HP보다 먼저 피해를 받고 흡수량을 로그에 표시")
+	_check(str(absorbed) in emitted, "방어막이 받은 피해도 피해 팝업 표시: %s" % str(emitted))
+	target.clear_unit_effects()
 	var popup_rects: Array[Rect2] = []
 	await process_frame
 	for child: Node in target.get_parent().get_children():
@@ -761,10 +769,13 @@ func _test_guidance() -> void:
 		"공격 버튼 호버에 효과와 사용 불가 이유 유지")
 	_check("아군은 판정 없이 밀림" in (buttons["shove"] as Button).tooltip_text,
 		"밀치기 호버에 아군 무판정 안내")
-	await _hover((buttons["second_wind"] as Button))
-	_check((buttons["second_wind"] as Button).tooltip_text ==
-		"숨 고르기\nHP 1d10+1 회복.\n최대 HP를 넘지 않습니다.\n사거리: 자신\n회복: 1d10+1\n판정: 없음\n지금 사용 불가: HP가 이미 최대",
-		"비활성 숨 고르기는 이름·효과·사거리·회복·판정·이유를 표시")
+	units[0].potion_left = 1
+	battle.call("_update_turn_ui")
+	await _hover((buttons["potion"] as Button))
+	_check((buttons["potion"] as Button).tooltip_text ==
+		"물약\nHP 2d4+2 회복.\n최대 HP를 넘지 않습니다.\n사거리: 자신\n회복: 2d4+2\n판정: 없음\n지금 사용 불가: HP가 이미 최대",
+		"비활성 물약은 이름·효과·사거리·회복·판정·이유를 표시")
+	units[0].potion_left = 0
 	for action: String in buttons:
 		var icon_button: Button = buttons[action] as Button
 		var ally_action: bool = CombatActionRules.belongs_to(units[0], action) or CombatActionRules.belongs_to(units[1], action)
@@ -772,12 +783,12 @@ func _test_guidance() -> void:
 			and icon_button.icon == CombatActionRules.icon_of(action)
 			and icon_button.accessibility_name == CombatActionRules.NAMES[action],
 			"스킬 버튼은 이름 대신 아이콘 표시: " + action)
-	_check("사거리: 인접1칸\n피해: 힘 d20+3\n판정: 힘 d20 +0 대 AC" in (buttons["attack"] as Button).tooltip_text,
+	_check("사거리: 인접1칸\n피해: 힘 d20\n판정: 힘 d20 +0 대 AC" in (buttons["attack"] as Button).tooltip_text,
 		"전사 공격 호버에 사거리·힘 d20 피해·명중굴림 표시")
 	units[0].weapon = {"stats": {"attack_bonus": 1, "damage_bonus": 2}}
 	battle.call("_update_turn_ui")
-	_check("피해: 힘 d20+5\n판정: 힘 d20 +1 대 AC" in (buttons["attack"] as Button).tooltip_text
-		and "피해: 힘 d20+5\n판정: 힘 d20 +1 대 AC" in (buttons["opportunity"] as Button).tooltip_text,
+	_check("피해: 힘 d20+2\n판정: 힘 d20 +1 대 AC" in (buttons["attack"] as Button).tooltip_text
+		and "피해: 힘 d20+2\n판정: 힘 d20 +1 대 AC" in (buttons["opportunity"] as Button).tooltip_text,
 		"현재 장비의 피해·공격 가산을 호버에 반영")
 	units[0].weapon = {}
 	battle.call("_update_turn_ui")
@@ -861,12 +872,11 @@ func _test_guidance() -> void:
 	await _click(point)
 	_check(units[0].action_left == 0 and units[0].movement_left == 1 and units[2].hit_points == 12,
 		"같은 적 재클릭은 공격만 소비하고 남은 이동 유지")
-	units[0].surge_left = 1
 	battle.call("_update_turn_ui")
-	(buttons["surge"] as Button).pressed.emit()
-	var details: String = (buttons["surge"] as Button).tooltip_text
-	_check("몰아치기" in details and "이미 쓴 행동" in details
-		and units[0].surge_left == 1,
+	(buttons["holy_veil"] as Button).pressed.emit()
+	var details: String = (buttons["holy_veil"] as Button).tooltip_text
+	_check("성스러운 장막" in details and "건강 굴림값만큼 방어막" in details
+		and units[0].bonus_action_left == 1 and units[0].shield_points == 0,
 		"자기 대상 스킬 첫 클릭은 실행하지 않고 이름·효과 유지")
 	for unit: CombatUnit in [units[0], units[1]]:
 		turns.select_unit(unit)
@@ -876,7 +886,7 @@ func _test_guidance() -> void:
 			if not button.visible:
 				continue
 			var hp: int = unit.hit_points
-			var uses: int = unit.surge_left
+			var uses: Array[int] = [unit.action_left, unit.bonus_action_left, unit.shield_points]
 			await _hover(button)
 			_check(_has_tooltip(root, button.tooltip_text),
 				"활성·비활성 버튼의 실제 호버 설명: " + action)
@@ -888,10 +898,19 @@ func _test_guidance() -> void:
 				"호버 전체 설명은 화면 안에서 스킬 패널·전투 로그를 가리지 않음: " + action)
 			_check(button.tooltip_text.begins_with(CombatActionRules.NAMES[action] + "\n"),
 				"호버에 동작 이름 유지: " + action)
-			for removed: String in ["비용", "막당 ", "횟수 제한", "\n보유 물약", "오른쪽 기호",
-				"위 숫자", "좌클릭", "같은 버튼", "버튼으로 실행", "확인 창", "묻습니다"]:
+			var removed_hints: Array[String] = ["비용", "막당 ", "횟수 제한", "\n보유 물약", "오른쪽 기호",
+				"위 숫자", "좌클릭", "같은 버튼", "버튼으로 실행", "확인 창", "묻습니다"]
+			# 복합 비용 스킬만 함께 소비하는 자원을 호버에 보인다.
+			if action in CombatActionRules.EXTRA_COSTS:
+				removed_hints.erase("비용")
+				_check("\n" + CombatActionRules.cost_text(action) in button.tooltip_text,
+					"복합 비용 스킬 호버에 비용 표시: " + action)
+			if action in CombatActionRules.USES_PER_COMBAT:
+				_check("\n전투마다 1회 · %d회 남음" % CombatActionRules.uses_left(unit, action) in button.tooltip_text,
+					"전투마다 횟수 스킬 호버에 남은 횟수 표시: " + action)
+			for removed: String in removed_hints:
 				_check(removed not in button.tooltip_text, "호버에서 안내 제거: %s / %s" % [action, removed])
-			_check(unit.hit_points == hp and unit.surge_left == uses,
+			_check(unit.hit_points == hp and [unit.action_left, unit.bonus_action_left, unit.shield_points] == uses,
 				"호버는 동작 실행·자원 소비 없음: " + action)
 	_check("사거리: 1~6칸\n피해: 솜씨 d20+1\n판정: 솜씨 d20 +0 대 AC, 명중하면 기절" in (buttons["shock"] as Button).tooltip_text
 		and "판정: 대상의 힘 내성 대 DC 4, 성공하면 버팀" in (buttons["shove"] as Button).tooltip_text,
@@ -900,15 +919,15 @@ func _test_guidance() -> void:
 	# 비활성 버튼은 비용 소진·횟수 소진·효과 없음의 이유를 호버에 유지한다.
 	turns.select_unit(units[0])
 	units[0].action_left = 0
+	units[0].cross_slash_left = 0
+	units[0].potion_left = 1
 	battle.call("_update_turn_ui")
 	_check("자원을 이미 씀" in (buttons["attack"] as Button).tooltip_text
-		and "이번 막의 횟수를 모두 씀" in (buttons["surge"] as Button).tooltip_text
-		and "HP가 이미 최대" in (buttons["second_wind"] as Button).tooltip_text,
+		and "이번 전투의 횟수를 모두 씀" in (buttons["cross_slash"] as Button).tooltip_text
+		and "HP가 이미 최대" in (buttons["potion"] as Button).tooltip_text,
 		"사용 불가 이유는 비활성 버튼 호버에 유지")
-	battle.call("_update_turn_ui")
-	_check("이번 막의 횟수를 모두 씀" in (buttons["parry"] as Button).tooltip_text,
-		"반응 스킬 횟수가 없으면 이유 표시")
-	units[0].parry_left = 2
+	units[0].cross_slash_left = 1
+	units[0].potion_left = 0
 	units[0].reaction_left = 0
 	battle.call("_update_turn_ui")
 	_check("자원을 이미 씀" in (buttons["opportunity"] as Button).tooltip_text,
@@ -918,26 +937,23 @@ func _test_guidance() -> void:
 	turns.end_turn()
 	turns.end_turn()
 	battle.call("_update_turn_ui")
-	_check(not turns.current_unit.is_ally and (buttons["parry"] as Button).is_visible_in_tree()
-		and "지금 사용 불가" not in (buttons["parry"] as Button).tooltip_text,
+	_check(not turns.current_unit.is_ally and (buttons["opportunity"] as Button).is_visible_in_tree()
+		and "지금 사용 불가" not in (buttons["opportunity"] as Button).tooltip_text,
 		"적 턴에도 남은 반응에 아군 자기 턴 제한을 안내하지 않음")
 	actions.busy = true
 	battle.call("_update_turn_ui")
-	_check("지금 사용 불가" not in (buttons["parry"] as Button).tooltip_text
-		and "지금 사용 불가" not in (buttons["opportunity"] as Button).tooltip_text,
+	_check("지금 사용 불가" not in (buttons["opportunity"] as Button).tooltip_text,
 		"적 행동 중의 입력 잠금은 반응 사용을 막지 않음")
 	units[0].is_stunned = true
 	battle.call("_update_turn_ui")
-	_check("기절 상태" in (buttons["parry"] as Button).tooltip_text
-		and "기절 상태" in (buttons["opportunity"] as Button).tooltip_text,
+	_check("기절 상태" in (buttons["opportunity"] as Button).tooltip_text,
 		"기절한 전사는 반응을 사용할 수 없는 이유 표시")
 	units[0].is_stunned = false
 	units[0].hit_points = 0
 	battle.call("_update_turn_ui")
-	_check("전투 불능" in (buttons["parry"] as Button).tooltip_text
-		and "전투 불능" in (buttons["opportunity"] as Button).tooltip_text,
+	_check("전투 불능" in (buttons["opportunity"] as Button).tooltip_text,
 		"전투 불능 전사의 반응에는 사용 불가 이유 표시")
-	units[0].hit_points = 12
+	units[0].hit_points = units[0].get_max_hit_points()
 	actions.busy = false
 	await _hover(hud.end_button)
 
@@ -948,7 +964,7 @@ func _test_focus_tooltips(buttons: Dictionary) -> void:
 	var timer: Timer = hud.get("_tooltip").get("_timer") as Timer
 	turns.select_unit(units[0])
 	battle.call("_update_turn_ui")
-	var hovered: Button = buttons["second_wind"] as Button
+	var hovered: Button = buttons["potion"] as Button
 	await _hover(hovered)
 	hovered.grab_focus()
 	_check(tooltip.visible and timer.is_stopped(), "호버 중 같은 버튼이 포커스를 받아도 설명을 다시 기다리지 않음")
@@ -1044,7 +1060,8 @@ func _reset_units() -> void:
 		unit.hit_points = unit.get_max_hit_points()
 		unit.is_stunned = false
 		unit.marked_target = null
-		unit.parry_left = 2
+		unit.clear_unit_effects()
+		CombatActionRules.restore_combat_uses(unit)
 	ScriptedDice.arrange_turns(turns, units, units)
 
 
@@ -1064,7 +1081,7 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check(units[0].cell == Vector2i(4, 4) and ((battle.get("selection") as CombatSelection).preview_path as Array).is_empty(),
 		"빈 칸 좌클릭은 이동을 준비하거나 실행하지 않음")
 	await _click(point, MOUSE_BUTTON_RIGHT)
-	_check((battle.get("selection") as CombatSelection).preview_cell == destination and units[0].movement_left == 6
+	_check((battle.get("selection") as CombatSelection).preview_cell == destination and units[0].movement_left == 3
 		and not (battle.get("movement_cells") as Array).is_empty(), "첫 우클릭만으로 이동 범위·경로 표시")
 	var other: Vector2i = Vector2i(4, 3)
 	var other_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(other)
@@ -1072,11 +1089,11 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check((battle.get("selection") as CombatSelection).preview_cell == other and units[0].cell == Vector2i(4, 4),
 		"다른 칸 우클릭은 이동하지 않고 목적지 변경")
 	await _click(other_point)
-	_check(units[0].movement_left == 6 and ((battle.get("selection") as CombatSelection).preview_path as Array).is_empty(),
+	_check(units[0].movement_left == 3 and ((battle.get("selection") as CombatSelection).preview_path as Array).is_empty(),
 		"이동 미리보기의 좌클릭은 이동 확정으로 처리하지 않음")
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	await _click(point, MOUSE_BUTTON_RIGHT)
-	_check(units[0].cell == destination and units[0].movement_left == 5 and units[0].action_left == 1,
+	_check(units[0].cell == destination and units[0].movement_left == 2 and units[0].action_left == 1,
 		"같은 칸 두 번째 우클릭은 이동력만 소비")
 	units[0].cell = Vector2i(4, 4)
 	battle.call("_update_turn_ui")
@@ -1103,7 +1120,7 @@ func _test_mouse_controls_and_inspection() -> void:
 		"정보 대상·조작 유닛을 구분하고 실제 능력치·공격 수치 표시")
 	_check("행동" not in hud.resource_label.text and "반응" not in hud.resource_label.text
 		and (hud.get("_titles") as Array)[0].text == "행동 ●"
-		and (hud.get("_actions") as Dictionary).has("surge"), "적 정보에도 현재 아군 자원 마크 유지")
+		and (hud.get("_actions") as Dictionary).has("cross_slash"), "적 정보에도 현재 아군 자원 마크 유지")
 	battle.call("_update_turn_ui")
 	_check(hud.unit_label.text == "풋내기 야만인", "UI 갱신은 초상 정보 조회 유지")
 	await _click(enemy_point)
@@ -1166,7 +1183,7 @@ func _test_group_keyboard() -> void:
 		and is_equal_approx(ended.bg_color.g, ended.bg_color.b), "턴 종료한 초상은 회색")
 	await _tab()
 	_check(turns.current_unit == units[0] and not turns.is_turn_finished(units[0])
-		and units[0].movement_left == 4 and units[0].action_left == 0,
+		and units[0].movement_left == 1 and units[0].action_left == 0,
 		"Tab은 종료한 아군도 포함하며 자원 회복 없이 종료를 해제")
 	var selected: StyleBoxFlat = (portraits[units[0]] as Button).get_theme_stylebox("normal")
 	var grouped: StyleBoxFlat = (portraits[units[1]] as Button).get_theme_stylebox("normal")
@@ -1222,7 +1239,7 @@ func _test_joined_group_hud() -> void:
 		and not warrior.get_global_rect().intersects(archer.get_global_rect()),
 		"1초 미만에 경계 초상이 묶음 뒤로 이동하고 겹침 없이 종료")
 	await _tab()
-	_check(turns.current_unit == units[0] and units[0].movement_left == 6
+	_check(turns.current_unit == units[0] and units[0].movement_left == 3
 		and units[0].action_left == 1 and pending != null and not pending.visible,
 		"Tab 첫 조작에서 턴을 시작하고 모래시계 제거")
 	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
@@ -1271,7 +1288,7 @@ func _test_incapacitated_portrait_join() -> void:
 	_check(root.gui_get_hovered_control() == archer, "묶음 사이를 지나는 초상의 표시 영역이 포인터 입력을 받음")
 	await _click(point)
 	_check(turns.current_unit == units[1] and turns.is_turn_started(units[1])
-		and units[0].movement_left == 4 and units[0].action_left == 0,
+		and units[0].movement_left == 1 and units[0].action_left == 0,
 		"합류 이동 중 초상을 선택해도 첫 턴만 시작하고 동료 자원을 회복하지 않음")
 	await create_timer(0.2).timeout
 	_check(start <= before + 1.0 and start > middle and middle > archer.global_position.x
@@ -1389,6 +1406,8 @@ func _test_skill_bar_keys() -> void:
 			if button.is_visible_in_tree():
 				expected.append(button)
 	_check(slots == expected and slots.size() <= 9, "숫자 키 순서는 보이는 스킬 버튼의 왼쪽부터")
+	_check(slots.map(func(button: Button) -> String: return by_button[button]) == ["attack", "cross_slash", "battle_cry",
+		"holy_veil", "steel_charge", "shove", "jump", "potion", "opportunity"], "전사 숫자 키 순서는 행동·보조 행동·반응 묶음 순")
 	var disabled_seen: int = 0
 	var pressed_seen: int = 0
 	for slot: int in range(slots.size()):
@@ -1420,9 +1439,9 @@ func _test_skill_bar_keys() -> void:
 		await _key(KEY_1 + slots.size())
 		_check(slots[0].has_focus(), "빈 숫자 키는 포커스를 옮기지 않음")
 	var jump: Button = hud.get("_actions")["jump"]
-	var second_wind: Button = hud.get("_actions")["second_wind"]
-	_check(second_wind in slots and second_wind.disabled and jump in slots and not jump.disabled,
-		"입력 fixture: 숨 고르기는 비활성, 점프는 활성")
+	var potion: Button = hud.get("_actions")["potion"]
+	_check(potion in slots and potion.disabled and jump in slots and not jump.disabled,
+		"입력 fixture: 물약은 비활성, 점프는 활성")
 	slots[0].grab_focus()
 	await _key(KEY_RIGHT)
 	_check(slots[1].has_focus(), "오른쪽 방향키는 다음 스킬 버튼으로 이동")
@@ -1441,7 +1460,7 @@ func _test_skill_bar_keys() -> void:
 	await _joypad(JOY_BUTTON_A)
 	_check(selection.selected_action == "jump", "컨트롤러 확인 버튼은 포커스된 스킬을 선택")
 	selection.selected_action = "attack"
-	second_wind.grab_focus()
+	potion.grab_focus()
 	await _key(KEY_ENTER)
 	await _joypad(JOY_BUTTON_A)
 	_check(selection.selected_action == "attack", "비활성 버튼은 Enter·확인 버튼으로 선택되지 않음")
@@ -1567,7 +1586,7 @@ func _test_order_bar_input() -> void:
 		"턴 순서 바의 빈 영역 우클릭은 이동 미리보기·확정으로 통과")
 	var portraits: Dictionary = hud.get("_portraits")
 	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
-	_check(turns.current_unit == units[1] and units[0].movement_left == 5,
+	_check(turns.current_unit == units[1] and units[0].movement_left == 2,
 		"빈 영역을 통과시켜도 자식 초상 클릭은 조작 전환만 수행")
 	destination = Vector2i(1, 0)
 	point = Vector2(80, 140)
@@ -1606,7 +1625,7 @@ func _test_transparent_order_input() -> void:
 		await _click(enemy_point)
 		actions.dice = ScriptedDice.new([15, 2], ScriptedDice.attack_sides(units[0]) + ScriptedDice.damage_sides(units[0]))
 		await _click(enemy_point)
-		_check(units[0].action_left == 0 and units[2].hit_points == 7,
+		_check(units[0].action_left == 0 and units[2].hit_points == 10,
 			"상단 유닛 몸통 두 번째 클릭은 공격 확정: %s" % window_size)
 	root.size = Vector2i(1280, 720)
 	_reset_units()
@@ -2048,7 +2067,7 @@ func _test_spawned_portrait_input() -> void:
 	var resources: Array[int] = [units[0].movement_left, units[0].action_left,
 		units[0].bonus_action_left, units[0].reaction_left, units[1].movement_left,
 		units[1].action_left, units[1].bonus_action_left, units[1].reaction_left]
-	_check(resources == [CombatUnit.MOVEMENT_PER_TURN, 1, 1, 1,
+	_check(resources == [CombatUnit.WARRIOR_MOVEMENT, 1, 1, 1,
 		CombatUnit.MOVEMENT_PER_TURN, 1, 1, 1], "소환 전제조건: 새 라운드의 두 아군 턴 자원 회복")
 	if failures != fixture_failures:
 		main.queue_free()
@@ -2111,7 +2130,7 @@ func _test_action_animations() -> void:
 	var finished: Array[bool] = [false]
 	_animated_move(units[0], Vector2i(4, 2), finished)
 	_check(actions.busy and units[0].is_moving and units[0].cell == Vector2i(4, 4)
-		and units[0].movement_left == 6, "이동 연출 시작은 입력 잠금, 논리 칸·이동력 유지")
+		and units[0].movement_left == 3, "이동 연출 시작은 입력 잠금, 논리 칸·이동력 유지")
 	hud.end_button.pressed.emit()
 	hud.unit_selected.emit(units[1])
 	hud.restart_button.pressed.emit()
@@ -2126,7 +2145,7 @@ func _test_action_animations() -> void:
 		"이동 중 UI 갱신은 실제 중간 위치를 되돌리지 않음")
 	while not finished[0]:
 		await process_frame
-	_check(units[0].cell == Vector2i(4, 2) and units[0].movement_left == 4
+	_check(units[0].cell == Vector2i(4, 2) and units[0].movement_left == 1
 		and units[0].position == (battle.get_node("Map") as TileMapLayer).map_to_local(units[0].cell)
 		and not units[0].is_moving and units[0].body_offset_y == 0.0 and not actions.busy,
 		"두 사각 칸 이동은 도착 후 자원 갱신과 몸통·입력 복구")
@@ -2189,18 +2208,16 @@ func _test_action_animations() -> void:
 	battle.call("_update_turn_ui")
 	actions.dice = ScriptedDice.new([10, 2], ScriptedDice.attack_sides(units[3]) + ScriptedDice.damage_sides(units[3]))
 	var reactions: Array[int] = [0]
-	var on_reaction: Callable = func(kind: String, _prompt: String) -> void:
-		var arrow: Node = battle.get_node_or_null("Arrow")
-		_check(kind == "parry" and (arrow == null or arrow.is_queued_for_deletion())
-			and units[0].hit_points == units[0].get_max_hit_points() and actions.busy,
-			"적 화살이 도착한 뒤 피해 전에 흘려내기 확인")
+	var on_reaction: Callable = func(_kind: String, _prompt: String) -> void:
 		reactions[0] += 1
 		hud.reaction_dialog.get_cancel_button().pressed.emit()
 	actions.reaction_requested.connect(on_reaction)
 	await actions.attack(units[3], units[0])
 	await process_frame
-	_check(reactions[0] == 1 and not actions.busy and not hud.reaction_dialog.visible,
-		"화살 도착 뒤 반응 넘기기는 전투를 정상 재개")
+	# 흘려내기를 제거해 맞는 아군 전사에게 묻는 반응이 없다.
+	_check(reactions[0] == 0 and units[0].hit_points < units[0].get_max_hit_points()
+		and not actions.busy and not hud.reaction_dialog.visible,
+		"적 화살 명중은 반응 확인 없이 피해를 주고 전투를 정상 재개")
 	actions.reaction_requested.disconnect(on_reaction)
 	_reset_units()
 	actions.dice = CombatDice.new()
@@ -2415,10 +2432,6 @@ func _test_reaction_flow() -> void:
 	_check(use_count == 1 and units[0].reaction_left == 0, "아군 반응 사용 로그·비용은 정확히 한 번")
 	_check("힘 d20 [1]" in hud.message_label.text, "3줄 로그에 기회 공격 판정이 남음")
 	_check(choices[0] == 2 and not hud.reaction_dialog.visible and not actions.busy, "두 선택의 연결과 입력 잠금 해제")
-	hud.show_reaction("parry", "흘려내기 확인")
-	_check(hud.reaction_dialog.get_ok_button().text == "흘려내기"
-		and hud.reaction_dialog.get_cancel_button().text == "넘기기", "흘려내기 선택 문구")
-	hud.reaction_dialog.hide()
 	actions.logged.disconnect(on_log)
 	actions.reaction_requested.disconnect(on_reaction)
 
@@ -2435,7 +2448,7 @@ func _test_reaction_focus() -> void:
 	root.focus_entered.connect(on_parent_focus)
 	hud.reaction_selected.connect(on_choice)
 	for choice: String in ["cancel", "ok", "close", "escape", "stage", "result"]:
-		hud.show_reaction("parry", "접근성 포커스 회귀")
+		hud.show_reaction("opportunity", "접근성 포커스 회귀")
 		await process_frame
 		_check(hud.reaction_dialog.visible and hud.reaction_dialog.exclusive,
 			"반응 선택 중 모달 입력 유지: " + choice)

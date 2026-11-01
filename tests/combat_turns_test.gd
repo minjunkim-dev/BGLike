@@ -156,7 +156,7 @@ func _test_resources_and_groups() -> void:
 	_check(turns.get_turn_groups().size() == 2, "아군 둘과 적 둘은 두 묶음")
 	_check(turns.get_current_group() == [units[0], units[1]], "아군 턴 묶음")
 	_check(turns.current_unit == units[0], "가장 높은 이니셔티브부터 선택")
-	_check(units[0].spend_movement(2) and units[0].spend_movement(3), "이동을 나누어 소비")
+	_check(units[0].spend_movement(1) and units[0].spend_movement(1), "이동을 나누어 소비")
 	_check(units[0].movement_left == 1, "나눈 이동 비용 합계")
 	_check(not units[0].spend_movement(2), "남은 이동보다 큰 비용 거부")
 	_check(not units[0].spend_movement(0) and not units[0].spend_movement(-1), "0과 음수 이동 거부")
@@ -192,7 +192,7 @@ func _test_resources_and_groups() -> void:
 	_check(turns.current_unit == units[3] and units[3].movement_left == 4, "적 내부 전환도 자원 회복 없음")
 	turns.end_turn()
 	_check(turns.round_number == 2 and turns.current_unit == units[0], "한 라운드 후 원래 순서로 반복")
-	_check(units[0].movement_left == 6 and units[0].action_left == 1
+	_check(units[0].movement_left == CombatUnit.WARRIOR_MOVEMENT and units[0].action_left == 1
 		and units[0].bonus_action_left == 1 and units[0].reaction_left == 1, "다음 자기 턴에 자원 4종 회복")
 
 
@@ -231,7 +231,7 @@ func _test_removal() -> void:
 	units[1].action_left = 0
 	turns.remove_unit(units[2])
 	_check(turns.get_current_group() == [units[0], units[1]], "중간 적 탈락 후 연속한 아군 묶음 결합")
-	_check(units[0].movement_left == 4 and units[1].movement_left == 2
+	_check(units[0].movement_left == 1 and units[1].movement_left == 2
 		and units[1].action_left == 0, "결합만으로 새 유닛의 턴을 시작하지 않음")
 	_check(turns.select_unit(units[1]) and units[1].movement_left == 6
 		and units[1].action_left == 1, "새로 합류한 아군은 처음 조작할 때 자원 회복")
@@ -308,7 +308,7 @@ func _test_boundary_prefix() -> void:
 	_check(turns.get_current_group() == [third, units[0], units[1]]
 		and turns.ordered_units == [units[2], units[3], third, units[0], units[1]],
 		"앞 유닛이 여럿이면 묶음 단위로 뒤에 옮기고 기존 내부 순서 유지")
-	_check(units[0].movement_left == 4 and units[1].movement_left == 3,
+	_check(units[0].movement_left == 1 and units[1].movement_left == 3,
 		"경계에 합류한 여러 유닛도 각각 조작 전 자원 유지")
 	var allies: Array[CombatUnit] = [units[0], units[1]]
 	turns = _ordered_fixture(allies, [0, 1])
@@ -331,7 +331,7 @@ func _test_rounds() -> void:
 	turns = _ordered_fixture(units, [0, 2, 3, 1])
 	_check(turns.get_turn_groups().size() == 3 and turns.get_current_group() == [units[0]],
 		"처음 차례는 기존 이니셔티브 순서로 시작")
-	units[0].spend_movement(3)
+	units[0].spend_movement(2)
 	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
 	turns.end_turn()
 	turns.end_turn()
@@ -339,9 +339,9 @@ func _test_rounds() -> void:
 	_check(turns.get_current_group() == [units[1], units[0]]
 		and turns.ordered_units == [units[2], units[3], units[1], units[0]],
 		"라운드 경계의 아군을 중복 없이 묶고 앞 초상을 묶음 뒤로 이동")
-	_check(units[0].movement_left == 3 and units[0].action_left == 0,
+	_check(units[0].movement_left == 1 and units[0].action_left == 0,
 		"경계에서 합류한 다음 턴 유닛은 조작 전 자원 유지")
-	_check(turns.select_unit(units[0]) and units[0].movement_left == 6
+	_check(turns.select_unit(units[0]) and units[0].movement_left == CombatUnit.WARRIOR_MOVEMENT
 		and units[0].action_left == 1, "경계 묶음의 새 턴은 첫 조작에 시작")
 	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
 	turns.end_turn()
@@ -394,7 +394,10 @@ func _test_scene() -> void:
 	_check(current.is_selected, "장면 연결: 현재 유닛 선택 테두리")
 	var style: StyleBoxFlat = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
 	_check(style.bg_color == CombatTurnHud.DEFAULT_BUTTON_COLOR, "이동할 수 있으면 종료 강조 없음")
+	# 전사의 성스러운 장막·전투의 함성은 대상 없이 쓰므로 보조 행동과 함성 횟수도 비운다.
 	current.movement_left = 0
+	current.bonus_action_left = 0
+	current.battle_cry_left = 0
 	battle.call("_update_turn_ui")
 	style = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
 	_check(style.bg_color == CombatTurnHud.END_BUTTON_COLOR, "유효한 동작 없으면 버튼 색만 강조")

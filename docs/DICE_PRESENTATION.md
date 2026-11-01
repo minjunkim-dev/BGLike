@@ -2,6 +2,8 @@
 
 [Issue #306](https://github.com/minjunkim-dev/BGLike/issues/306)의 [기획자 답변](https://github.com/minjunkim-dev/BGLike/issues/306#issuecomment-6406245423)에서 시작한 주사위 연출 기획이다. 굴림의 종류별로 연출 기본값을 정한다. 2026-10-31 기획자와 개발 논의 결과를 기록한다. 기획자가 구현 착수를 허용했고, 아래 [구현 상태](#구현-상태)대로 만들었다.
 
+흘려내기는 [#423](https://github.com/minjunkim-dev/BGLike/issues/423)에서 전사 재디자인으로 폐지했다. 아래의 흘려내기 항목은 기록이다. 성스러운 장막과 전투의 함성의 굴림은 피해·회복과 같이 연출 없이 팝업·로그만 보인다.
+
 ## 시점과 범위
 
 - M7에는 넣지 않는다. M6에서 만든다.

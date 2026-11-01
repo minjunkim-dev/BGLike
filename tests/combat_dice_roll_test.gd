@@ -35,7 +35,6 @@ func _check(condition: bool, message: String) -> void:
 func _run() -> void:
 	_test_shapes()
 	await _test_hit_roll_is_awaited_before_the_log()
-	await _test_parry_roll()
 	_test_poison_roll_does_not_block_the_turn()
 	await _test_spin_save_is_awaited_before_damage()
 	await _test_give_up_during_roll()
@@ -127,27 +126,6 @@ func _test_hit_roll_is_awaited_before_the_log() -> void:
 	_check(target.hit_points < target.get_max_hit_points(), "연출을 기다려도 피해는 그대로 적용한다")
 
 
-func _test_parry_roll() -> void:
-	var f: Fixture = _fixture()
-	f.units[0].cell = Vector2i(4, 4)
-	f.units[2].cell = Vector2i(5, 4)
-	f.turns.end_turn()
-	f.turns.end_turn()
-	f.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
-		f.actions.resolve_reaction(true))
-	f.actions.dice = _dice_for([5, 5],
-		ScriptedDice.attack_sides(f.units[2]) + [f.units[0].get_ability_sides(CombatUnit.Ability.AGILITY)])
-	await f.actions.attack(f.units[2], f.units[0])
-	_check(f.rolls.size() == 2 and f.rolls[0].category == CombatDiceRoll.Category.HIT
-		and f.rolls[1].category == CombatDiceRoll.Category.SAVE, "공격을 맞은 쪽의 흘려내기가 이어서 전달된다")
-	if f.rolls.size() < 2:
-		return
-	var parry: CombatDiceRoll = f.rolls[1]
-	_check(parry.roller == f.units[0] and parry.bonus == 3 and parry.target_value == f.actions.last_attack.total
-		and parry.target_label == tr("공격"), "흘려내기는 굴리는 아군, 보정+3, 맞은 공격 합계를 기준으로 전달한다")
-	_check(parry.result.success, "흘려내기의 확정 결과를 그대로 전달한다")
-
-
 func _test_poison_roll_does_not_block_the_turn() -> void:
 	var f: Fixture = _fixture()
 	var target: CombatUnit = f.units[2]
@@ -230,8 +208,9 @@ func _test_pull_save_does_not_block_the_action() -> void:
 func _test_values_without_presentation() -> void:
 	var f: Fixture = _fixture()
 	f.units[0].hit_points = 5
-	f.actions.dice = _dice_for([5], [10])
-	f.actions.use_self(f.units[0], "second_wind")
+	f.units[0].potion_left = 1
+	f.actions.dice = _dice_for([1, 1], [4, 4])
+	_check(f.actions.use_self(f.units[0], "potion") and f.units[0].hit_points == 5 + 1 + 1 + 2, "물약 회복 실행")
 	_check(f.rolls.is_empty(), "회복 굴림은 연출하지 않는다")
 	var bare: CombatActions = CombatActions.new()
 	_check(not bare.roll_animation.is_valid(), "훅이 없으면 연출 없이 넘어간다")
