@@ -484,7 +484,7 @@
 | [전투 시스템 기획서](COMBAT_DESIGN.md) | 유닛 표, 4장 판정 전체, 5장 스킬 표(충격 화살·흘려내기·밀치기·회전회오리), 6-3 화상과 독(건강 내성), 용어표 |
 | [캐릭터](characters/README.md)·[몬스터](monsters/README.md) 문서 | 능력치 표(자연 → 건강, 새 직업 주사위), 방어 가산·AC 열, 피해 표기 |
 | [게임 구조 기획서](GAME_STRUCTURE.md), [아이템 전리품](ITEM_LOOT.md) | 장비 `명중`·`AC` 표기, 7장 전투 규칙 |
-| [전사 문서](characters/warrior.md) | 2026-10-30 재디자인(의지 d8, 최대 HP 식, 가산치 0, 새 스킬 8개)에 맞춰 구현. 구현 Issue는 아직 없음 |
+| [전사 문서](characters/warrior.md) | 2026-10-30 재디자인(의지 d8, 최대 HP 식, 가산치 0, 새 스킬 8개)에 맞춰 구현. 구현 Issue는 [#407](https://github.com/minjunkim-dev/BGLike/issues/407) |
 | [README](../README.md) | 판정 설명 |
 
 [동작 유형 기획서](SKILL_TYPES.md)는 이 개정에서 맞췄습니다.
