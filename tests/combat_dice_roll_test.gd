@@ -193,7 +193,6 @@ func _test_give_up_during_spin_roll() -> void:
 	boss.begin_turn()
 	f.turns.current_unit = boss
 	f.units[1].cell = Vector2i(5, 3)
-	f.units[0].parry_left = 0
 	f.actions.roll_animation = func(roll: CombatDiceRoll) -> void:
 		f.rolls.append(roll)
 		f.actions.give_up()
