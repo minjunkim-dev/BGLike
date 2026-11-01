@@ -91,43 +91,53 @@ def second_wind(x, y):
     return RED[2] if px + py < 72 else RED[1]
 
 
-def surge(x, y):
-    px, py = x + 0.5, y + 0.5
-    u, v = rotated(x, y, 31, 33)
-    blade = short_sword(u + 4, v, 22)
-    if blade is not None:
-        return blade
-    # Refill ring: three quarters of a circle that ends in an arrow head at the upper right.
-    distance = math.hypot(px - 32, py - 32)
-    angle = math.degrees(math.atan2(py - 32, px - 32)) % 360
-    if 24 <= distance <= 29.5 and not 290 <= angle <= 345:
-        return BRASS[2] if distance < 25.6 else BRASS[1] if distance < 28 else BRASS[0]
-    if inside(px, py, [(45, 7), (60, 10), (53, 22)]):
-        return BRASS[2] if px + py < 66 else BRASS[1]
+def cross_slash(x, y):
+    # Two short swords crossed in an X; the up-right blade lies on top.
+    for mirrored in (x, 63 - x):
+        u, v = rotated(mirrored, y, 32, 30)
+        blade = short_sword(u + 12, v, 30)
+        if blade is not None:
+            return blade
     return None
 
 
-def parry(x, y):
+def steel_charge(x, y):
     px, py = x + 0.5, y + 0.5
-    # Enemy sword coming from the upper right; its tip glances off the rim with sparks.
-    u, v = rotated(x, y, 46, 18)
-    blade = short_sword(-u, v, 15)
+    # Short sword thrusting to the right with white speed lines trailing on the left.
+    blade = short_sword(px - 26, py - 30, 34)
     if blade is not None:
         return blade
-    for segment in ((32, 12, 36, 4), (46, 30, 54, 34), (28, 18, 22, 14)):
-        if near_segment(px, py, segment, 1.3):
-            return BRASS[2]
-    # Round shield: steel rim, indigo face, brass boss.
-    distance = math.hypot(px - 26, py - 38)
-    if distance > 22:
+    for line_y, start, length in ((14, 4, 18), (46, 2, 14), (54, 8, 18)):
+        if abs(py - line_y) <= 1.2 and start <= px <= start + length:
+            return WHITE
+    return None
+
+
+def holy_veil(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Heater shield: steel rim, indigo face and a brass cross.
+    if not inside(px, py, [(12, 6), (52, 6), (52, 32), (32, 60), (12, 32)]):
         return None
-    if distance > 18.5:
-        return STEEL[4] if px + py < 58 else STEEL[3] if px + py < 70 else STEEL[2]
-    if distance <= 4.5:
-        return BRASS[2] if px + py < 63 else BRASS[1]
-    if abs(px - 26) <= 1.2 or abs(py - 38) <= 1.2:
-        return STEEL[2]
-    return INDIGO[1] if px + py < 64 else INDIGO[0]
+    if not inside(px, py, [(16, 10), (48, 10), (48, 31), (32, 54), (16, 31)]):
+        return STEEL[4] if px + py < 50 else STEEL[3] if px + py < 76 else STEEL[2]
+    if abs(px - 32) <= 2.6 and 14 <= py <= 48 or abs(py - 24) <= 2.6 and 20 <= px <= 44:
+        return BRASS[2] if px + py < 56 else BRASS[1]
+    return INDIGO[1] if px + py < 60 else INDIGO[0]
+
+
+def battle_cry(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Red banner on a wooden pole with a brass knob, white shout lines on the right.
+    if math.hypot(px - 16, py - 11) <= 3.5:
+        return BRASS[2] if px + py < 27 else BRASS[1]
+    if 14 <= px <= 18 and 14 <= py <= 58:
+        return WOOD[3] if px < 16 else WOOD[1]
+    if inside(px, py, [(18, 16), (44, 18), (37, 27), (44, 36), (18, 35)]):
+        return RED[3] if py < 20 else RED[2] if py < 29 else RED[1]
+    for segment in ((47, 20, 54, 15), (48, 28, 56, 28), (47, 36, 54, 41)):
+        if near_segment(px, py, segment, 1.5):
+            return WHITE
+    return None
 
 
 def opportunity(x, y):
@@ -247,7 +257,8 @@ def fitted(draw):
     return lambda x, y: draw(32 + (x + 0.5 - 32) * scale - 0.5, 32 + (y + 0.5 - 32) * scale - 0.5)
 
 
-ICONS = {"attack": attack, "second_wind": fitted(second_wind), "surge": fitted(surge), "parry": fitted(parry),
+ICONS = {"attack": attack, "second_wind": fitted(second_wind), "cross_slash": fitted(cross_slash),
+         "steel_charge": fitted(steel_charge), "holy_veil": fitted(holy_veil), "battle_cry": fitted(battle_cry),
          "opportunity": fitted(opportunity), "mark": fitted(mark), "shock": fitted(shock),
          "disengage": fitted(disengage), "shove": fitted(shove), "jump": fitted(jump), "potion": potion}
 

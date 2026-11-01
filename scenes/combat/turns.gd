@@ -134,6 +134,19 @@ func is_turn_started(unit: CombatUnit) -> bool:
 	return unit in _started_units
 
 
+## 이번 순환에서 턴 시작 효과(turn_started)를 처리했는지.
+func is_turn_activated(unit: CombatUnit) -> bool:
+	return unit in _activated_units
+
+
+## 순서에서 unit 바로 뒤의 유닛. 끝이면 처음으로 돈다. unit이 없거나 혼자면 null이다.
+func next_unit(unit: CombatUnit) -> CombatUnit:
+	var index: int = ordered_units.find(unit)
+	if index < 0 or ordered_units.size() < 2:
+		return null
+	return ordered_units[(index + 1) % ordered_units.size()]
+
+
 ## 현재 유닛이 만든 동료를 바로 앞에 넣고 생성 라운드에는 대기시킨다.
 func insert_before(unit: CombatUnit, anchor: CombatUnit) -> bool:
 	if (unit == null or anchor == null or anchor != current_unit

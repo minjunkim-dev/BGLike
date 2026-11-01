@@ -62,7 +62,6 @@ func _run() -> void:
 		for i: int in range(4):
 			units[i].cell = [Vector2i(0, 0), Vector2i(0, 9), Vector2i(9, 0), Vector2i(9, 9)][i]
 			units[i].hit_points = units[i].get_max_hit_points()
-			units[i].parry_left = 0
 		var reaction_case: bool = case.begins_with("opportunity")
 		var actor: CombatUnit = units[1] if reaction_case else units[0]
 		actor.cell = Vector2i(5, 4) if reaction_case else Vector2i(1, 4)
@@ -131,16 +130,16 @@ func _run() -> void:
 			fixture_results.append({"case": case, "expected_pass": not drop_confirm, "returned": ok, "record": record.duplicate(true), "movement_failures": movement_failures.duplicate()})
 			if drop_confirm:
 				_check(not ok and not record.passed and record.outcome == "failed" and movement_failures.size() == 1, "oracle rejects a missing confirmation")
-				_check(actor.cell == before and actor.movement_left == 6 and not actions.busy, "negative probe preserves original cell/resources")
+				_check(actor.cell == before and actor.movement_left == CombatUnit.WARRIOR_MOVEMENT and not actions.busy, "negative probe preserves original cell/resources")
 			elif case == "battle_end":
 				_check(ok and record.passed and record.outcome == "interrupted_battle_end" and movement_failures.is_empty(), "battle end is a classified interruption")
-				_check(actor.hit_points > 0 and actor.cell == Vector2i(1, 5) and actor.movement_left == 5 and actions.is_over(), "battle end stops after first paid step while actor is alive")
+				_check(actor.hit_points > 0 and actor.cell == Vector2i(1, 5) and actor.movement_left == CombatUnit.WARRIOR_MOVEMENT - 1 and actions.is_over(), "battle end stops after first paid step while actor is alive")
 			elif case == "opportunity_incapacitated":
 				_check(ok and record.passed and record.outcome == "interrupted_incapacitated" and movement_failures.is_empty(), "lethal opportunity is a classified interruption")
 				_check(actor.hit_points == 0 and actor.cell == before and actor.movement_left == 6 and units[2].reaction_left == 0, "death stops before leaving and consumes enemy reaction")
 			else:
 				_check(ok and record.passed and record.outcome == "arrived" and movement_failures.is_empty(), "%s arrival verified" % case)
-				_check(actor.cell == target and actor.movement_left == (5 if reaction_case else 4), "%s arrival and path cost" % case)
+				_check(actor.cell == target and actor.movement_left == (5 if reaction_case else CombatUnit.WARRIOR_MOVEMENT - 2), "%s arrival and path cost" % case)
 				if reaction_case:
 					_check(actor.hit_points == actor.get_max_hit_points() and units[2].reaction_left == 0, "missed opportunity continues without damage")
 		_check(field_click_failures.is_empty(), "%s preview input succeeded" % case)
@@ -169,7 +168,7 @@ func _frames(count: int) -> void:
 
 
 func _answer_reaction() -> void:
-	# Policy: always accept opportunity attacks and parry when offered.
+	# Policy: always accept opportunity attacks when offered.
 	await _frames(2)
 	if hud.reaction_dialog.visible:
 		hud.reaction_dialog.get_ok_button().pressed.emit()
