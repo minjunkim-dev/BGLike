@@ -71,6 +71,15 @@ func select_target(target: CombatUnit, can_execute: bool) -> bool:
 	return false
 
 
+## 칸을 조준하는 동작(휩쓸기). 실행할 수 있는 같은 칸을 다시 선택하면 호출자가 실행한다.
+func select_cell(cell: Vector2i, can_execute: bool) -> bool:
+	if cell == preview_cell and preview_path.is_empty() and can_execute:
+		return true
+	clear_preview()
+	preview_cell = cell
+	return false
+
+
 func select_prop(prop: CombatGrid.Prop, can_execute: bool) -> bool:
 	if prop == preview_prop and can_execute:
 		return true

@@ -733,10 +733,39 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	return false
 
 
+## 휩쓸기의 대상: facing을 정면으로 둔 반달 5칸의 살아 있는 적을 시계방향 순서로 준다. 아군은 맞지 않는다.
+func sweep_targets(actor: CombatUnit, facing: Vector2i) -> Array[CombatUnit]:
+	var targets: Array[CombatUnit] = []
+	for cell: Vector2i in grid.sweep_cells(actor.cell, facing):
+		var unit: CombatUnit = grid.unit_at(cell)
+		if unit != null and unit.is_ally != actor.is_ally:
+			targets.append(unit)
+	return targets
+
+
+## 영향 칸에 적이 없는 방향은 효과가 없어 고를 수 없다 (9-3 "효과가 없을 때" 비활성).
+func can_sweep(actor: CombatUnit, facing: Vector2i) -> bool:
+	return (actor != null and CombatActionRules.belongs_to(actor, "sweep") and actor.action_left > 0
+		and not sweep_targets(actor, facing).is_empty())
+
+
+## 휩쓸기 대상의 명중률. 반달의 대각선 칸은 기본 공격 사거리 밖이라 attack_preview의 chance를 쓰지 않는다.
+func sweep_chance(actor: CombatUnit, target: CombatUnit) -> float:
+	var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
+	if not preview.blocked_reason.is_empty():
+		return 0.0
+	return CombatChecks.hit_chance(actor.get_ability_sides(actor.get_attack_ability()), actor.get_hit_bonus(),
+		grid.armor_class(target), preview.mode)
+
+
 func can_use(actor: CombatUnit, action: String) -> bool:
 	if not _can_act(actor):
 		return false
 	match action:
+		"sweep":
+			for cell: Vector2i in CombatGrid.neighbors(actor.cell):
+				if can_sweep(actor, cell):
+					return true
 		"spin":
 			return (CombatActionRules.belongs_to(actor, action) and actor.action_left > 0
 				and not grid.opponents_in_area(actor, 1).is_empty())
@@ -944,6 +973,23 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 		"potion":
 			_heal(actor, dice.roll(4) + dice.roll(4) + 2, tr("물약"))
 	changed.emit()
+	return true
+
+
+## 휩쓸기: 행동을 써서 facing을 정면으로 둔 반달 5칸의 적을 시전 때 확정하고, 시계방향으로 한 명씩 명중굴림한다.
+func sweep(actor: CombatUnit, facing: Vector2i) -> bool:
+	if not _can_act(actor) or not can_sweep(actor, facing):
+		return false
+	var targets: Array[CombatUnit] = sweep_targets(actor, facing)
+	busy = true
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	logged.emit(tr_n("%s 휩쓸기: 대상 %d명", "%s 휩쓸기: 대상 %d명", targets.size()) % [actor.get_display_name(), targets.size()])
+	changed.emit()
+	for target: CombatUnit in targets:
+		if actor.hit_points <= 0 or is_over():
+			break
+		await _perform_attack(actor, target, "sweep")
+	_finish()
 	return true
 
 
@@ -1176,9 +1222,18 @@ func _deal_damage(actor: CombatUnit, target: CombatUnit, action: String, has_mar
 	var rolled_total: int = damage_bonus
 	for rolled: int in last_damage_rolls:
 		rolled_total += rolled
-	last_damage = CombatChecks.halve_damage(rolled_total) if halved else rolled_total
+	if action == "sweep":
+		# 휩쓸기 고유 규칙: ⌈굴림값 ÷ 2⌉ + 기타 가산치. 굴림값은 눈 + 주사위 레벨이라 레벨을 따로 더하지 않는다.
+		# #407 질문 4(피해식에 레벨이 두 번 들어가는 문제)의 답이 오면 성장 구현 때 다시 확인한다. 지금 레벨은 0이다.
+		last_damage = ceili(last_damage_rolls[0] / 2.0) + damage_bonus
+	else:
+		last_damage = CombatChecks.halve_damage(rolled_total) if halved else rolled_total
 	_damage(target, last_damage)
-	if has_mark_damage:
+	if action == "sweep":
+		logged.emit(tr("%s 피해 (휩쓸기 ÷2 올림): %s d%d %s → %d %+d = %d · HP %d") % [target.get_display_name(),
+			CombatUnit.ability_name(damage_ability), damage_sides, str(last_damage_rolls),
+			ceili(last_damage_rolls[0] / 2.0), damage_bonus, last_damage, target.hit_points])
+	elif has_mark_damage:
 		logged.emit(tr("%s 피해 (표식 추가): %s d%d %s + d6 %s %+d = %d · HP %d") % [target.get_display_name(),
 			CombatUnit.ability_name(damage_ability), damage_sides, str([last_damage_rolls[0]]),
 			str([last_damage_rolls[1]]), damage_bonus, last_damage, target.hit_points])

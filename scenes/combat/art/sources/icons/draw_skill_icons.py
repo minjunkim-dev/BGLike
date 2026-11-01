@@ -91,6 +91,19 @@ def second_wind(x, y):
     return RED[2] if px + py < 72 else RED[1]
 
 
+def sweep(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Short sword pointing up-right at the lower right; a white half-moon trail sweeps from the left over the top.
+    u, v = rotated(x, y, 40, 46)
+    blade = short_sword(u + 2, v, 22)
+    if blade is not None:
+        return blade
+    ring = math.hypot(px - 30, py - 38)
+    if 21 <= ring <= 24 and py <= 38 and px <= 44:
+        return WHITE if ring >= 22.5 else STEEL[3]
+    return None
+
+
 def cross_slash(x, y):
     # Two short swords crossed in an X; the up-right blade lies on top.
     for mirrored in (x, 63 - x):
@@ -257,7 +270,7 @@ def fitted(draw):
     return lambda x, y: draw(32 + (x + 0.5 - 32) * scale - 0.5, 32 + (y + 0.5 - 32) * scale - 0.5)
 
 
-ICONS = {"attack": attack, "second_wind": fitted(second_wind), "cross_slash": fitted(cross_slash),
+ICONS = {"attack": attack, "second_wind": fitted(second_wind), "sweep": fitted(sweep), "cross_slash": fitted(cross_slash),
          "steel_charge": fitted(steel_charge), "holy_veil": fitted(holy_veil), "battle_cry": fitted(battle_cry),
          "opportunity": fitted(opportunity), "mark": fitted(mark), "shock": fitted(shock),
          "disengage": fitted(disengage), "shove": fitted(shove), "jump": fitted(jump), "potion": potion}

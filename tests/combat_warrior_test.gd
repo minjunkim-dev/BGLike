@@ -62,6 +62,8 @@ func _run() -> void:
 	_test_compound_costs()
 	await _test_cross_slash()
 	await _test_steel_charge()
+	_test_sweep_shape()
+	await _test_sweep()
 	_test_holy_veil()
 	await _test_battle_cry()
 	_test_battle_cry_clock_slot()
@@ -212,6 +214,79 @@ func _test_steel_charge() -> void:
 	_check(missed.units[2].cell == Vector2i(5, 4) and missed.units[0].cell == Vector2i(4, 4)
 		and missed.units[0].steel_charge_left == 0 and missed.units[0].movement_left == 2,
 		"빗나가면 밀치거나 전진하지 않고 비용은 소비")
+
+
+func _test_sweep_shape() -> void:
+	var f: Fixture = _fixture()
+	var grid: CombatGrid = f.actions.grid
+	var origin: Vector2i = Vector2i(4, 4)
+	# 정면 +x(화면 오른쪽 아래)의 오른쪽 옆은 +y(왼쪽 아래)다. 순서는 왼쪽 옆부터 시계방향이다.
+	_check(grid.sweep_cells(origin, Vector2i(5, 4)) == [Vector2i(4, 3), Vector2i(5, 3), Vector2i(5, 4), Vector2i(5, 5), Vector2i(4, 5)],
+		"정면 반달 5칸: 왼쪽 옆 → 앞왼쪽 → 앞 → 앞오른쪽 → 오른쪽 옆")
+	_check(grid.sweep_cells(origin, Vector2i(4, 3)) == [Vector2i(3, 4), Vector2i(3, 3), Vector2i(4, 3), Vector2i(5, 3), Vector2i(5, 4)],
+		"다른 방향을 조준하면 모양과 순서가 함께 돎")
+	_check(grid.sweep_cells(origin, Vector2i(6, 4)).is_empty() and grid.sweep_cells(origin, origin).is_empty(),
+		"인접하지 않은 칸은 정면이 될 수 없음")
+	grid.heights[Vector2i(5, 3)] = 2
+	grid.heights[Vector2i(5, 5)] = 1
+	grid.pits = [Vector2i(4, 3)]
+	grid.blocked_cells = [Vector2i(5, 4)]
+	f.actions.create_prop(Vector2i(4, 5), "crate")
+	_check(grid.sweep_cells(origin, Vector2i(5, 4)) == [Vector2i(5, 5)],
+		"높이 차 2 이상·낭떠러지·막힌 칸·나무 상자는 빼고, 막힌 정면 너머의 칸도 시야 없이 셈")
+	_check(grid.sweep_cells(Vector2i(0, 0), Vector2i(0, 1)) == [Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)], "맵 밖 칸은 뺌")
+
+
+func _test_sweep() -> void:
+	var f: Fixture = _fixture()
+	var warrior: CombatUnit = f.units[0]
+	var archer: CombatUnit = f.units[1]
+	var barbarian: CombatUnit = f.units[2]
+	var enemy_archer: CombatUnit = f.units[3]
+	enemy_archer.cell = Vector2i(4, 3)
+	archer.cell = Vector2i(5, 5)
+	_check(CombatActionRules.belongs_to(warrior, "sweep") and not CombatActionRules.belongs_to(archer, "sweep")
+		and not CombatActionRules.belongs_to(barbarian, "sweep"), "휩쓸기는 아군 전사만")
+	_check(CombatActionRules.resource_of("sweep") == CombatUnit.TurnResource.ACTION
+		and CombatActionRules.GROUPS[0].slice(0, 2) == ["attack", "sweep"] and CombatActionRules.uses_left(warrior, "sweep") == -1,
+		"행동 컨테이너의 공격 다음, 무제한")
+	var details: String = CombatActionRules.details(warrior, "sweep")
+	_check("사거리: 정면 반달 5칸" in details and "피해: 힘 d20 ÷2 올림" in details and "판정: 대상마다 힘 d20" in details,
+		"호버에 범위·피해식·판정 " + details)
+	_check(f.actions.sweep_targets(warrior, Vector2i(5, 4)) == [enemy_archer, barbarian], "영향 칸의 적만 시계방향 순서로, 아군은 제외")
+	_check(f.actions.can_sweep(warrior, Vector2i(4, 5)), "빈 칸을 정면으로 골라도 반달 안에 적이 있으면 쓸 수 있음")
+	var diagonal: float = f.actions.sweep_chance(warrior, enemy_archer)
+	var preview: CombatChecks.AttackPreview = f.actions.grid.attack_preview(warrior, enemy_archer)
+	_check(diagonal > 0.0 and is_equal_approx(diagonal, CombatChecks.hit_chance(20, warrior.get_hit_bonus(),
+		f.actions.grid.armor_class(enemy_archer), preview.mode)), "기본 공격 사거리 밖의 반달 칸도 명중률을 보임")
+	var archer_hp: int = enemy_archer.hit_points
+	f.actions.dice = _dice([15, 7, 15, 10], [20, 20, 20, 20])
+	_check(await f.actions.sweep(warrior, Vector2i(5, 4)), "휩쓸기 실행")
+	_check(archer_hp - enemy_archer.hit_points == 4 and barbarian.hit_points == 12 - 5,
+		"대상마다 명중굴림 뒤 피해 ⌈힘 d20 ÷ 2⌉ + 0을 왼쪽 옆부터 차례로 굴림")
+	_check(archer.hit_points == archer.get_max_hit_points(), "반달 안의 아군은 맞지 않음")
+	_check(warrior.action_left == 0 and warrior.bonus_action_left == 1 and warrior.movement_left == 3, "행동만 소비")
+	_check(f.logs.any(func(line: String) -> bool: return "휩쓸기: 대상 2명" in line)
+		and f.logs.any(func(line: String) -> bool: return "(휩쓸기 ÷2 올림): 힘 d20 [7] → 4 +0 = 4" in line), "대상 수와 피해식을 로그에 기록")
+	_check(not f.actions.can_use(warrior, "sweep") and f.actions.unavailable_reason(warrior, "sweep") == "자원을 이미 씀",
+		"행동을 쓰면 비활성")
+	var bonus: Fixture = _fixture()
+	bonus.units[0].weapon = {"stats": {"damage_bonus": 2}}
+	bonus.actions.dice = _dice([1], [20])
+	await bonus.actions.sweep(bonus.units[0], Vector2i(5, 4))
+	_check(bonus.units[2].hit_points == 12 and bonus.units[0].action_left == 0, "빗나가도 행동은 소비")
+	bonus.units[0].action_left = 1
+	bonus.actions.dice = _dice([15, 1], [20, 20])
+	await bonus.actions.sweep(bonus.units[0], Vector2i(5, 4))
+	_check(bonus.units[2].hit_points == 12 - 3, "피해는 ⌈1 ÷ 2⌉ + 기타 가산치(장비 +2)")
+	var lone: Fixture = _fixture()
+	var alone: CombatUnit = lone.units[0]
+	lone.units[2].cell = Vector2i(7, 7)
+	_check(not lone.actions.can_sweep(alone, Vector2i(3, 4)) and not lone.actions.can_sweep(alone, Vector2i(5, 4)),
+		"영향 칸에 적이 없는 방향은 효과가 없어 고를 수 없음")
+	_check(not await lone.actions.sweep(alone, Vector2i(5, 4)) and alone.action_left == 1, "적이 없는 방향은 실행하지 않고 행동도 남김")
+	_check(not lone.actions.can_use(alone, "sweep")
+		and lone.actions.unavailable_reason(alone, "sweep") == "사거리 또는 대상 조건을 확인", "어느 방향에도 적이 없으면 비활성")
 
 
 func _test_holy_veil() -> void:

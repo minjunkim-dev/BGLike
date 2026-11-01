@@ -577,6 +577,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		return a.get_index() > b.get_index()
 	)
 	var prop: CombatGrid.Prop = map.prop_at_point(map.to_local(world_position))
+	if selection.selected_action == "sweep":
+		get_viewport().set_input_as_handled()
+		# 몸통이나 사물을 눌러도 그 칸을 정면으로 고른다. 인접하지 않은 칸은 미리보기만 지운다.
+		var facing: Vector2i = candidates[0].cell if not candidates.is_empty() else prop.cell if prop != null else cell
+		if CombatGrid.distance(actor.cell, facing) != 1:
+			selection.clear_preview()
+		elif selection.select_cell(facing, actions.can_sweep(actor, facing)):
+			selection.begin_execution()
+			await actions.sweep(actor, facing)
+			selection.finish_execution()
+		_update_turn_ui()
+		return
 	# 윤곽이 보이는 가린 유닛은 몸통 클릭이 동작할 때만 앞 사물보다 우선한다.
 	var unit_first: bool = not candidates.is_empty() and candidates[0].is_occluded and (
 		not candidates[0].is_ally or selection.selected_action == "shove")
@@ -761,6 +773,11 @@ func _update_turn_ui() -> void:
 	selection.discard_incapacitated_inspection()
 	if selection.preview_prop != null and selection.preview_prop not in actions.get_props():
 		selection.clear_preview()
+	var sweeping: bool = (selection.selected_action == "sweep" and turns.current_unit != null
+		and turns.current_unit.is_ally and selection.preview_cell != Vector2i(-1, -1))
+	var sweep_targets: Array[CombatUnit] = []
+	if sweeping:
+		sweep_targets = actions.sweep_targets(turns.current_unit, selection.preview_cell)
 	for unit: CombatUnit in units:
 		unit.has_mark = actions.is_marked(unit)
 		if not unit.is_moving:
@@ -769,7 +786,7 @@ func _update_turn_ui() -> void:
 		unit.visible = unit.hit_points > 0
 		unit.is_selected = unit == turns.current_unit
 		unit.is_previewed = unit == selection.preview_target or (not selection.preview_path.is_empty()
-			and actions.can_target(turns.current_unit, unit, "attack", selection.preview_cell))
+			and actions.can_target(turns.current_unit, unit, "attack", selection.preview_cell)) or unit in sweep_targets
 		unit.queue_redraw()
 	if turns.current_unit != null and turns.current_unit.is_ally:
 		_last_ally = turns.current_unit
@@ -781,9 +798,16 @@ func _update_turn_ui() -> void:
 			movement_cells.assign(actions.reachable_cells(turns.current_unit).keys())
 		elif selection.selected_action == "jump":
 			movement_cells.assign(actions.jump_cells(turns.current_unit).keys())
+		elif sweeping:
+			movement_cells.assign(actions.grid.sweep_cells(turns.current_unit.cell, selection.preview_cell))
+		elif selection.selected_action == "sweep":
+			# 정면을 고르기 전에는 고를 수 있는 인접 칸을 보인다.
+			for cell: Vector2i in CombatGrid.neighbors(turns.current_unit.cell):
+				if actions.grid.is_inside(cell) and actions.can_sweep(turns.current_unit, cell):
+					movement_cells.append(cell)
 	var attack_cells: Array[Vector2i] = []
 	for cell: Vector2i in movement_cells:
-		if not _attack_targets_from(cell).is_empty():
+		if sweeping or not _attack_targets_from(cell).is_empty():
 			attack_cells.append(cell)
 	map.show_movement(movement_cells, attack_cells, selection.preview_path,
 		turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO)
@@ -879,6 +903,16 @@ func _update_turn_ui() -> void:
 			note = tr("점프 · 이동 %d · 보조 행동1\n%s · %s") % [actions.jump_cells(actor).get(cell, 0),
 				tr_n("기회 공격 %d명", "기회 공격 %d명", reactors) % reactors if reactors > 0 else tr("기회 공격 없음"),
 				tr("낙하 피해 %d") % fall if fall > 0 else tr("낙하 없음")]
+		hud.show_target_note(note)
+	elif selection.selected_action == "sweep" and turns.current_unit != null and turns.current_unit.is_ally:
+		var note: String = tr("휩쓸기 · 정면으로 삼을 인접한 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 실행합니다.")
+		if sweeping and sweep_targets.is_empty():
+			note = tr("휩쓸기 · 영향 칸에 적이 없음")
+		elif sweeping:
+			var chances: Array[String] = []
+			for target: CombatUnit in sweep_targets:
+				chances.append("%s %.1f%%" % [target.get_display_name(), actions.sweep_chance(turns.current_unit, target) * 100.0])
+			note = tr("휩쓸기 · 행동1 · 시계방향 명중률\n%s\n같은 칸을 다시 좌클릭하면 실행합니다.") % " → ".join(chances)
 		hud.show_target_note(note)
 	if actions.is_over():
 		hud.show_outcome(actions.is_victory())

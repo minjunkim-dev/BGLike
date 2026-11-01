@@ -90,6 +90,7 @@ func _run() -> void:
 	Engine.max_fps = previous_fps
 	Engine.time_scale = previous_scale
 	await _test_rock_preview_guidance()
+	await _test_sweep_input()
 	await _test_rock_presentation()
 	await _test_results_and_restart()
 	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
@@ -365,7 +366,7 @@ func _test_warrior() -> void:
 		_check(ability in hud.resource_label.text, "현재 전사의 능력치 주사위 표시: " + ability)
 	_check("자연" not in hud.resource_label.text and "정신" not in hud.resource_label.text,
 		"폐지한 능력치는 유닛 정보에서 제거")
-	var warrior_actions: Array[String] = ["attack", "cross_slash", "battle_cry", "holy_veil", "steel_charge",
+	var warrior_actions: Array[String] = ["attack", "sweep", "cross_slash", "battle_cry", "holy_veil", "steel_charge",
 		"shove", "potion", "opportunity"]
 	for action: String in warrior_actions:
 		_check((buttons[action] as Button).is_visible_in_tree(), "전사 동작 표시: " + action)
@@ -1405,12 +1406,13 @@ func _test_skill_bar_keys() -> void:
 			var button: Button = hud.get("_actions")[action]
 			if button.is_visible_in_tree():
 				expected.append(button)
-	_check(slots == expected and slots.size() <= 9, "숫자 키 순서는 보이는 스킬 버튼의 왼쪽부터")
-	_check(slots.map(func(button: Button) -> String: return by_button[button]) == ["attack", "cross_slash", "battle_cry",
+	_check(slots == expected, "숫자 키 순서는 보이는 스킬 버튼의 왼쪽부터")
+	_check(slots.map(func(button: Button) -> String: return by_button[button]) == ["attack", "sweep", "cross_slash", "battle_cry",
 		"holy_veil", "steel_charge", "shove", "jump", "potion", "opportunity"], "전사 숫자 키 순서는 행동·보조 행동·반응 묶음 순")
 	var disabled_seen: int = 0
 	var pressed_seen: int = 0
-	for slot: int in range(slots.size()):
+	# 숫자 키는 1~9뿐이다. 전사의 열 번째 버튼(기회 공격)은 방향키·D-pad로만 간다.
+	for slot: int in range(mini(slots.size(), 9)):
 		var button: Button = slots[slot]
 		var action: String = by_button[button]
 		var before: String = selection.selected_action
@@ -2294,6 +2296,45 @@ func _test_rock_preview_guidance() -> void:
 			and "충돌 없음" in hud.preview_label.text, "즉시 정지해도 방향·거리·정지 원인 보존")
 		actions.grid.blocked_cells.erase(origin + direction)
 	actions.grid.props.clear()
+	_reset_units()
+
+
+## 휩쓸기(#426): 인접한 칸을 좌클릭하면 영향 칸과 대상별 명중률을 보이고, 같은 칸을 다시 좌클릭하면 실행한다.
+func _test_sweep_input() -> void:
+	_reset_units()
+	actions.grid.props.clear()
+	var actor: CombatUnit = units[0]
+	var map: TileMapLayer = battle.map
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	actor.cell = Vector2i(4, 4)
+	units[1].cell = Vector2i(3, 5)
+	units[2].cell = Vector2i(5, 4)
+	units[3].cell = Vector2i(4, 3)
+	battle.call("_update_turn_ui")
+	battle.call("_on_action_selected", "sweep")
+	var overlays: Array = map.get("_overlays")
+	_check(selection.selected_action == "sweep" and "정면으로 삼을 인접한 칸" in hud.preview_label.text
+		and overlays.size() == 4, "휩쓸기를 고르면 안내와 고를 수 있는 인접 칸을 보임")
+	await _click(units[2].get_global_transform_with_canvas() * Vector2(0, -10))
+	_check(selection.preview_cell == units[2].cell and units[2].is_previewed and units[3].is_previewed
+		and actor.action_left == 1, "적 몸통을 눌러도 그 칸을 정면으로 미리보기")
+	# 빈 칸 (4, 5)를 정면으로 두면 왼쪽 옆 (5, 4)의 적만 맞고 앞오른쪽 (3, 5)의 아군은 맞지 않는다.
+	var facing: Vector2i = Vector2i(4, 5)
+	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(facing)
+	await _click(point)
+	var chance: String = "%s %.1f%%" % [units[2].get_display_name(), actions.sweep_chance(actor, units[2]) * 100.0]
+	overlays = map.get("_overlays")
+	_check(selection.preview_cell == facing and chance in hud.preview_label.text and "시계방향 명중률" in hud.preview_label.text
+		and overlays.size() == actions.grid.sweep_cells(actor.cell, facing).size() and units[2].is_previewed
+		and not units[1].is_previewed and not units[3].is_previewed and actor.action_left == 1,
+		"빈 칸 첫 좌클릭은 영향 칸과 대상별 명중률 미리보기: " + hud.preview_label.text)
+	var saved_dice: CombatDice = actions.dice
+	actions.dice = ScriptedDice.new([15, 8], [20, 20])
+	await _click(point)
+	_check(units[2].hit_points == units[2].get_max_hit_points() - 4 and actor.action_left == 0
+		and units[1].hit_points == units[1].get_max_hit_points() and selection.selected_action == "attack",
+		"같은 칸을 다시 좌클릭하면 실행: ⌈8 ÷ 2⌉ 피해, 아군 제외")
+	actions.dice = saved_dice
 	_reset_units()
 
 
