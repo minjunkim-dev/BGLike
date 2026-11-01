@@ -388,8 +388,8 @@ func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 	if not area.has_point(data.cell) or not area.has_point(data.start_cell):
 		return false
 	# 방어막은 3턴, 전투의 함성은 2턴이다. 기간이 남은 효과만 값과 시전자를 가진다.
-	if (data.shield_turns > 3 or (data.shield_turns == 0) != (data.shield_points == 0)
-			or data.battle_cry_turns > 2 or (data.battle_cry_turns == 0) != (data.battle_cry_source == -1)
+	if (data.shield_turns > CombatActionRules.SHIELD_TURNS or (data.shield_turns == 0) != (data.shield_points == 0)
+			or data.battle_cry_turns > CombatActionRules.BATTLE_CRY_TURNS or (data.battle_cry_turns == 0) != (data.battle_cry_source == -1)
 			or (data.battle_cry_turns == 0) != (data.battle_cry_bonus == 0)):
 		return false
 	return (data.statuses as Array).all(func(saved: Variant) -> bool:

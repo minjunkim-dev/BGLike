@@ -310,6 +310,20 @@ func _test_battle_cry_clock_slot() -> void:
 	_check(enemy.actions.save_state().clock_slots == [[0, 1, false]], "적 턴에 쓰러진 시전자의 자리는 아직 지나지 않음")
 	enemy.turns.turn_started.emit(enemy.units[1])
 	_check(enemy.units[1].battle_cry_turns == 1, "다음 유닛 턴 시작 직전에 쓰러진 시전자의 자리가 줄임")
+	# 순서의 마지막인 전사가 자기 턴에 쓰러지면 다음 유닛은 처음으로 돈다. 그 유닛의 다음 시작이 이미 지난 자리다.
+	var last: Fixture = _fixture([2, 3, 1, 0])
+	last.turns.end_turn()
+	last.turns.end_turn()
+	last.turns.select_unit(last.units[0])
+	last.actions.dice = _dice([5], [8])
+	last.actions.use_self(last.units[0], "battle_cry")
+	last.actions.incapacitate(last.units[0])
+	_check(last.actions.save_state().clock_slots == [[0, 2, true]], "순서 끝의 시전자는 처음 유닛 앞 슬롯에 이미 지난 자리로 보관")
+	last.turns.end_turn()
+	_check(last.turns.current_unit == last.units[2] and last.turns.round_number == 2 and last.units[1].battle_cry_turns == 2,
+		"다음 라운드 첫 유닛의 시작은 이미 줄인 자리라 건너뜀")
+	last.turns.turn_started.emit(last.units[2])
+	_check(last.units[1].battle_cry_turns == 1, "그다음 순환부터 줄어듦")
 	# 기존 상태 이상은 시전자 전투 불능에서 해제한다.
 	var burn: Fixture = _fixture()
 	burn.units[0].status_effects.append(CombatUnit.StatusEffect.new("burn", burn.units[2], 2))
@@ -382,7 +396,7 @@ func _test_save_state() -> void:
 	var loaded: Fixture = _fixture([0, 1, 2, 3], true)
 	loaded.actions.load_state(state)
 	_check(loaded.actions.save_state().clock_slots == [[0, 1, false]], "시계 슬롯을 되돌림")
-	for slots: Array in [[[0, 0, true]], [[0, 9, true]], [[0, 1, 1]], [[0, 1]]]:
+	for slots: Array in [[[0, 0, true]], [[0, 9, true]], [[0, 1, 1]], [[0, 1]], [[0, 1, false], [0, 2, false]]]:
 		var broken: Dictionary = state.duplicate()
 		broken.clock_slots = slots
 		_check(not CombatActions.is_valid_state(broken, 5, Vector2i(10, 10)), "깨진 시계 슬롯 거부: " + str(slots))

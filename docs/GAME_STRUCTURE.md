@@ -404,7 +404,7 @@ flowchart TD
 
 ## 7. 전투 시스템 기획서에서 바뀌는 규칙
 
-[#321](https://github.com/minjunkim-dev/BGLike/issues/321)에서 능력치 주사위를 도입했고, [#377](https://github.com/minjunkim-dev/BGLike/issues/377)의 개정부터 판정은 [명중굴림과 내성굴림](ABILITY_SYSTEM.md#4-1-판정의-두-종류-)을 따른다. 여섯 능력치, 민첩 주사위 이니셔티브, 대상마다 굴리는 광역 내성굴림, 공격·방어 장비 가산을 사용한다. HP·행동·사거리는 유지한다. 피해는 [#388](https://github.com/minjunkim-dev/BGLike/issues/388)부터 공격 능력치 주사위를 새로 굴린 값 + 피해 보정이다([능력치 기획서 4-9](ABILITY_SYSTEM.md#4-9-피해와-회복)). 형식1·2 저장은 보존하며 읽지 않고 형식3부터 이어한다. 성장·절대면·치명타 재도입은 #322 확정 전까지 범위 밖이다.
+[#321](https://github.com/minjunkim-dev/BGLike/issues/321)에서 능력치 주사위를 도입했고, [#377](https://github.com/minjunkim-dev/BGLike/issues/377)의 개정부터 판정은 [명중굴림과 내성굴림](ABILITY_SYSTEM.md#4-1-판정의-두-종류-)을 따른다. 여섯 능력치, 민첩 주사위 이니셔티브, 대상마다 굴리는 광역 내성굴림, 공격·방어 장비 가산을 사용한다. HP·행동·사거리는 유지한다. 피해는 [#388](https://github.com/minjunkim-dev/BGLike/issues/388)부터 공격 능력치 주사위를 새로 굴린 값 + 피해 보정이다([능력치 기획서 4-9](ABILITY_SYSTEM.md#4-9-피해와-회복)). 형식1·2·3 저장은 보존하며 읽지 않고 형식4부터 이어한다([ADR 0003](adr/0003-save-files.md)). 성장·절대면·치명타 재도입은 #322 확정 전까지 범위 밖이다.
 
 [전투 시스템 기획서](COMBAT_DESIGN.md)의 아래 내용을 이 문서로 대체합니다. 나머지 규칙은 그대로입니다.
 

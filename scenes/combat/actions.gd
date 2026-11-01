@@ -161,7 +161,9 @@ static func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> boo
 				and (saved[5] == 0 if saved[2] == "burn" else saved[5] > 0)))
 		and data.clock_slots.all(func(saved: Variant) -> bool:
 			return (saved is Array and saved.size() == 3 and unit_index.call(saved[0])
-				and unit_index.call(saved[1]) and saved[0] != saved[1] and saved[2] is bool)))
+				and unit_index.call(saved[1]) and saved[0] != saved[1] and saved[2] is bool))
+		and data.clock_slots.all(func(saved: Array) -> bool:
+			return data.clock_slots.filter(func(other: Array) -> bool: return other[0] == saved[0]).size() == 1))
 
 
 func create_prop(cell: Vector2i, kind: String) -> CombatGrid.Prop:
@@ -564,7 +566,10 @@ func incapacitate(target: CombatUnit) -> void:
 ## 기존 상태 이상·장판은 시전자 전투 불능에서 해제하므로 슬롯을 쓰지 않는다 (동작 유형 기획서 4-5, 8-1).
 func _keep_clock_slot(target: CombatUnit) -> void:
 	var next: CombatUnit = turns.next_unit(target)
-	var passed: bool = next != null and turns.is_turn_activated(target) and not turns.is_turn_activated(next)
+	# target 자리를 이번 순환에서 지났고 그 자리에 대응하는 next의 턴 시작이 아직이면 다음 한 번은 건너뛴다.
+	# next가 순서의 처음으로 돌아가면 next의 다음 시작은 다음 라운드라 아직이다.
+	var passed: bool = (next != null and turns.is_turn_activated(target) and (not turns.is_turn_activated(next)
+		or turns.ordered_units.find(next) < turns.ordered_units.find(target)))
 	for slot: ClockSlot in _clock_slots.duplicate():
 		if slot.caster == target or slot.anchor != target:
 			continue
