@@ -10,7 +10,7 @@ var roller: CombatUnit
 var sides: int
 var result: CombatChecks.RollResult
 var bonus: int
-## 기준값의 이름과 값. 명중은 AC, 흘려내기는 공격, 내성굴림(독 제거·회전회오리·만능팔·밀치기)은 DC다.
+## 기준값의 이름과 값. 명중은 AC, 흘려내기는 공격, 내성굴림(독 제거·회전회오리·만능팔)은 DC다.
 var target_label: String
 var target_value: int
 
@@ -18,7 +18,7 @@ var target_value: int
 ## 명중굴림. 면 열거 결과에 절대성공·절대실패가 담긴다.
 static func hit(roller: CombatUnit, sides: int, result: CombatChecks.RollResult,
 		bonus: int, armor_class: int) -> CombatDiceRoll:
-	return _create(Category.HIT, roller, sides, result, bonus, TranslationServer.translate("AC"), armor_class)
+	return _create(Category.HIT, roller, sides, result, bonus, TranslationServer.tr("AC"), armor_class)
 
 
 ## 기준값 이상이면 성공하는 굴림(흘려내기·내성굴림).

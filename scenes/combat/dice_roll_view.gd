@@ -34,6 +34,8 @@ class Die extends RefCounted:
 	var scale: float = 1.0
 	var alpha: float = 1.0
 	var edge: Color = NEUTRAL_COLOR
+	## 절대성공·절대실패면. 테두리는 성공/실패 색 그대로 두고 바깥 강조선을 더한다.
+	var emphasized: bool = false
 
 
 var _roll: CombatDiceRoll
@@ -161,7 +163,8 @@ func _settle() -> void:
 			_dice[index].alpha = DISCARDED_ALPHA
 	var color: Color = SUCCESS_COLOR if result.success else FAILURE_COLOR
 	var absolute: bool = result.face != CombatChecks.Face.NORMAL
-	_dice[selected].edge = ABSOLUTE_COLOR if absolute else color
+	_dice[selected].edge = color
+	_dice[selected].emphasized = absolute
 	_dice[selected].scale = ABSOLUTE_SCALE if absolute else SELECTED_SCALE
 	_summary.text = _result_text(absolute)
 	_summary.add_theme_color_override("font_color", color)
@@ -198,6 +201,11 @@ func _draw() -> void:
 		outline.append(points[0])
 		draw_colored_polygon(points, Color(DIE_FILL, die.alpha))
 		draw_polyline(outline, Color(die.edge, die.alpha), 0.12)
+		if die.emphasized:
+			var halo: PackedVector2Array = PackedVector2Array()
+			for point: Vector2 in outline:
+				halo.append(point * 1.25)
+			draw_polyline(halo, Color(ABSOLUTE_COLOR, die.alpha), 0.08)
 		if _roll.sides == 20:
 			draw_polyline(PackedVector2Array([points[0], points[2], points[4], points[0]]),
 				Color(die.edge, die.alpha * 0.5), 0.08)

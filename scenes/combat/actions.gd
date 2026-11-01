@@ -882,7 +882,6 @@ func shove(actor: CombatUnit, target: CombatUnit) -> bool:
 		var dc: int = CombatActionRules.save_dc(actor, "shove")
 		logged.emit(tr("%s 밀치기: %s · DC %d") % [actor.get_display_name(), target.get_display_name(), dc])
 		won = not _roll_save(target, "shove", dc).success
-		_show_roll_in_background(_save_roll(target, "shove", dc))
 	feedback.emit(target, tr("밀치기 성공") if won else tr("밀치기 실패"))
 	if won:
 		_land(target, grid.push_destination(actor.cell, target.cell))
@@ -930,7 +929,7 @@ func _show_roll(roll: CombatDiceRoll) -> void:
 		await roll_animation.call(roll)
 
 
-## 중간에 멈출 수 없는 처리(턴 시작 효과)에서 기다리지 않고 보이기만 한다.
+## 중간에 멈출 수 없는 처리(턴 시작 효과, AI가 기다리지 않고 부르는 만능팔)에서 기다리지 않고 보이기만 한다.
 func _show_roll_in_background(roll: CombatDiceRoll) -> void:
 	if roll_animation.is_valid():
 		roll_animation.call(roll)
@@ -953,6 +952,9 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> v
 	var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
 	last_attack = CombatChecks.hit_roll(attack_sides, actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
 	await _show_roll(CombatDiceRoll.hit(actor, attack_sides, last_attack, actor.get_attack_bonus(), target.get_armor_class()))
+	# 연출 중 일시정지 메뉴에서 전투를 포기할 수 있다. 끝난 전투에 결과를 적용하지 않는다.
+	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
+		return
 	var outcome: String = tr("명중") if last_attack.success else tr("빗나감")
 	if last_attack.face == CombatChecks.Face.ABSOLUTE_SUCCESS:
 		outcome = tr("명중(절대성공)")
@@ -973,6 +975,8 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> v
 			CombatActionRules.spend_use(target, "parry")
 			var saved: CombatChecks.RollResult = CombatChecks.threshold(parry_sides, 3, last_attack.total, dice)
 			await _show_roll(CombatDiceRoll.save(target, parry_sides, saved, 3, tr("공격"), last_attack.total))
+			if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
+				return
 			logged.emit(tr("흘려내기: 민첩 d%d %d + 3 = %d / 공격 %d · %s") % [parry_sides,
 				saved.selected_roll, saved.total, last_attack.total, tr("성공") if saved.success else tr("실패")])
 			if saved.success:
@@ -1001,6 +1005,8 @@ func _perform_save(actor: CombatUnit, target: CombatUnit, action: String, dc: in
 	last_damage_rolls.clear()
 	var saved: CombatChecks.RollResult = _roll_save(target, action, dc)
 	await _show_roll(_save_roll(target, action, dc))
+	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
+		return
 	_deal_damage(actor, target, action, false, saved.success)
 
 

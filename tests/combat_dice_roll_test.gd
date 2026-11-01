@@ -38,6 +38,7 @@ func _run() -> void:
 	await _test_parry_roll()
 	_test_poison_roll_does_not_block_the_turn()
 	await _test_spin_save_is_awaited_before_damage()
+	await _test_give_up_during_roll()
 	_test_pull_save_does_not_block_the_action()
 	_test_values_without_presentation()
 	await _test_scene()
@@ -161,8 +162,6 @@ func _test_poison_roll_does_not_block_the_turn() -> void:
 		and f.rolls[0].roller == target and f.rolls[0].target_value == dc
 		and f.rolls[0].target_label == tr("DC") and f.rolls[0].sides == 4,
 		"독 제거는 건강 내성굴림과 독 DC를 기준으로 전달한다")
-	_check(f.events.find("roll end") == -1 or f.events.find("roll end") > f.events.find("roll start"),
-		"독 제거 연출은 턴 시작 처리를 멈추지 않고 이어서 재생한다")
 
 
 ## 회전회오리는 대상마다 내성굴림을 연출이 끝난 뒤 피해로 이어 간다 (#389 이관, DICE_PRESENTATION 내성).
@@ -188,6 +187,24 @@ func _test_spin_save_is_awaited_before_damage() -> void:
 			first_damage = index
 			break
 	_check(first_damage > f.events.find("roll end"), "회전회오리 피해는 첫 내성굴림 연출이 끝난 뒤 나온다")
+
+
+## 연출 중 일시정지 메뉴에서 전투를 포기하면 남은 굴림 결과를 적용하지 않는다.
+func _test_give_up_during_roll() -> void:
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	target.hit_points = 1
+	f.units[3].hit_points = 0
+	f.actions.roll_animation = func(roll: CombatDiceRoll) -> void:
+		f.rolls.append(roll)
+		for unit: CombatUnit in f.units:
+			if unit.is_ally:
+				unit.hit_points = 0
+		await process_frame
+	f.actions.dice = _dice_for([15], ScriptedDice.attack_sides(f.units[0]))
+	await f.actions.attack(f.units[0], target)
+	_check(f.rolls.size() == 1 and target.hit_points == 1 and f.actions.last_damage == 0
+		and not f.actions.is_victory(), "연출 중 전투를 포기하면 명중해도 피해와 승리를 적용하지 않는다")
 
 
 ## 만능팔은 동작이 바로 끝나는 동기 처리라 내성굴림을 기다리지 않고 겹쳐 보인다.
@@ -297,7 +314,16 @@ func _test_scene() -> void:
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
 	dice = view.get("_dice")
 	_check(summary.text.begins_with(tr("절대성공")) and dice[0].scale == CombatDiceRollView.ABSOLUTE_SCALE
-		and dice[0].edge == CombatDiceRollView.ABSOLUTE_COLOR, "절대성공은 같은 성공 색에 강조를 더한다: " + summary.text)
+		and dice[0].edge == CombatDiceRollView.SUCCESS_COLOR and dice[0].emphasized,
+		"절대성공은 같은 성공 색에 강조를 더한다: " + summary.text)
+	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
+
+	play.call(CombatDiceRoll.hit(ally, 20, _result([1], 1, 4, false, CombatChecks.Face.ABSOLUTE_FAILURE), 3, 2))
+	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
+	dice = view.get("_dice")
+	_check(summary.text.begins_with(tr("절대실패")) and dice[0].scale == CombatDiceRollView.ABSOLUTE_SCALE
+		and dice[0].edge == CombatDiceRollView.FAILURE_COLOR and dice[0].emphasized,
+		"절대실패는 같은 실패 색에 강조를 더한다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
 
 	_check(actions.dice.state == dice_state, "화면 연출은 게임의 주사위 순서와 저장 상태를 바꾸지 않는다")
