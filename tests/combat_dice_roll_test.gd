@@ -386,5 +386,6 @@ func _test_overlapping_rolls(actions: CombatActions, view: CombatDiceRollView, a
 	await create_timer(CombatDiceRollView.HOLD_TIME).timeout
 	_check(view.visible and summary.text == "AC 12" and not finished[0],
 		"기다리는 명중굴림은 앞 굴림들이 닫힌 뒤 차례로 굴리고 아직 돌아오지 않는다: " + summary.text)
-	await create_timer(CombatDiceRollView.TUMBLE_TIME + CombatDiceRollView.HOLD_TIME).timeout
+	# 뒤따르는 굴림이 없어 여유를 더 둔다. 뷰의 마지막 타이머가 이 타이머보다 늦게 만들어진다.
+	await create_timer(CombatDiceRollView.TUMBLE_TIME + CombatDiceRollView.HOLD_TIME + 0.1).timeout
 	_check(finished[0] and not view.visible, "명중굴림은 자기 연출까지 마친 뒤 돌아온다")
