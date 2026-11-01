@@ -39,6 +39,7 @@ func _run() -> void:
 	_test_poison_roll_does_not_block_the_turn()
 	await _test_spin_save_is_awaited_before_damage()
 	await _test_give_up_during_roll()
+	await _test_give_up_during_spin_roll()
 	_test_pull_save_does_not_block_the_action()
 	_test_values_without_presentation()
 	await _test_scene()
@@ -197,17 +198,39 @@ func _test_give_up_during_roll() -> void:
 	f.units[3].hit_points = 0
 	f.actions.roll_animation = func(roll: CombatDiceRoll) -> void:
 		f.rolls.append(roll)
-		for unit: CombatUnit in f.units:
-			if unit.is_ally:
-				unit.hit_points = 0
+		f.actions.give_up()
 		await process_frame
 	f.actions.dice = _dice_for([15], ScriptedDice.attack_sides(f.units[0]))
 	await f.actions.attack(f.units[0], target)
 	_check(f.rolls.size() == 1 and target.hit_points == 1 and f.actions.last_damage == 0
-		and not f.actions.is_victory(), "연출 중 전투를 포기하면 명중해도 피해와 승리를 적용하지 않는다")
+		and f.actions.is_over() and not f.actions.is_victory(), "연출 중 전투를 포기하면 명중해도 피해와 승리를 적용하지 않는다")
+	_check(not f.actions.busy, "명중 연출 중 포기한 뒤 동작 잠금을 푼다")
 
 
-## 만능팔은 동작이 바로 끝나는 동기 처리라 내성굴림을 기다리지 않고 겹쳐 보인다.
+## 회전회오리 첫 내성굴림 연출 중 포기하면 그 대상의 피해도, 남은 대상의 굴림도 없고 동작 잠금이 풀린다.
+func _test_give_up_during_spin_roll() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 50
+	boss.begin_turn()
+	f.turns.current_unit = boss
+	f.units[1].cell = Vector2i(5, 3)
+	f.units[0].parry_left = 0
+	f.actions.roll_animation = func(roll: CombatDiceRoll) -> void:
+		f.rolls.append(roll)
+		f.actions.give_up()
+		await process_frame
+	f.actions.dice = _dice_for([1], [20])
+	_check(await f.actions.spin(boss), "회전회오리 실행")
+	_check(f.rolls.size() == 1 and f.actions.last_damage == 0
+		and not f.events.any(func(event: String) -> bool: return "피해" in event),
+		"연출 중 포기하면 회전회오리 피해와 다음 대상의 굴림을 적용하지 않는다: %s" % str(f.events))
+	_check(f.actions.is_over() and not f.actions.is_victory() and boss.hit_points == 50, "포기는 패배로 끝난다")
+	_check(not f.actions.busy, "회전회오리 연출 중 포기한 뒤 동작 잠금을 푼다")
+
+
+## 만능팔은 동작이 바로 끝나는 동기 처리라 내성굴림을 기다리지 않는다.
 func _test_pull_save_does_not_block_the_action() -> void:
 	var f: Fixture = _fixture()
 	var boss: CombatUnit = f.units[2]
@@ -285,8 +308,8 @@ func _test_scene() -> void:
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
 	_check(summary.text == "9 +3 = 12  ≥  AC 12" and summary.get_theme_color("font_color") == CombatDiceRollView.SUCCESS_COLOR,
 		"멈추면 합계와 기준을 비교해 성공 색으로 보인다: " + summary.text)
-	_check((view.get_node("ResultSound") as AudioStreamPlayer).stream == CombatDiceRollView.SUCCESS_SOUND,
-		"성공 결과음을 쓴다")
+	_check((view.get_node("SuccessSound") as AudioStreamPlayer).playing
+		and not (view.get_node("FailureSound") as AudioStreamPlayer).playing, "성공 결과음을 쓴다")
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
 	_check(not view.visible and finished[0], "결과를 잠시 보인 뒤 닫고 대기하던 쪽에 돌려준다")
 
@@ -294,7 +317,7 @@ func _test_scene() -> void:
 	play.call(CombatDiceRoll.save(ally, 8, _result([3], 3, 6, false), 3, tr("공격"), 8))
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
 	_check(summary.text == "3 +3 = 6  <  공격 8" and summary.get_theme_color("font_color") == CombatDiceRollView.FAILURE_COLOR
-		and (view.get_node("ResultSound") as AudioStreamPlayer).stream == CombatDiceRollView.FAILURE_SOUND,
+		and (view.get_node("FailureSound") as AudioStreamPlayer).playing,
 		"기준에 못 미치면 실패 색과 실패 결과음을 쓴다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
 
@@ -325,7 +348,43 @@ func _test_scene() -> void:
 		and dice[0].edge == CombatDiceRollView.FAILURE_COLOR and dice[0].emphasized,
 		"절대실패는 같은 실패 색에 강조를 더한다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
+	var halo: float = CombatDiceRollView.DIE_RADIUS * CombatDiceRollView.ABSOLUTE_SCALE * (
+		CombatDiceRollView.HALO_SCALE + CombatDiceRollView.HALO_WIDTH * 0.5)
+	_check(CombatDiceRollView.DIE_CENTER_Y - halo >= 0.0
+		and CombatDiceRollView.DIE_CENTER_Y + halo <= view.size.y,
+		"d20·d4의 절대면 강조선은 주사위 배경 위로 나가지 않는다: %.1f, %.1f / %.1f" % [
+			CombatDiceRollView.DIE_CENTER_Y - halo, CombatDiceRollView.DIE_CENTER_Y + halo, view.size.y])
+
+	await _test_overlapping_rolls(actions, view, ally, play, finished)
 
 	_check(actions.dice.state == dice_state, "화면 연출은 게임의 주사위 순서와 저장 상태를 바꾸지 않는다")
 	current_scene.queue_free()
 	await process_frame
+
+
+## 기다리지 않는 독 제거 둘이 연달아 오고 기다리는 명중굴림이 뒤따라도, 먼저 온 굴림부터 결과를 끝까지 보인다.
+## 기다리지 않는 쪽은 바로 돌아오고, 기다리는 쪽은 앞 굴림이 닫힌 뒤 자기 연출까지 마치고 돌아온다.
+func _test_overlapping_rolls(actions: CombatActions, view: CombatDiceRollView, ally: CombatUnit,
+		play: Callable, finished: Array[bool]) -> void:
+	var summary: Label = view.get_node("Summary") as Label
+	for player_name: String in ["RollSound", "SuccessSound", "FailureSound"]:
+		_check((view.get_node(player_name) as AudioStreamPlayer).max_polyphony > 1,
+			"%s는 겹쳐 재생해 앞 소리를 끊지 않는다" % player_name)
+	actions.roll_animation.call(CombatDiceRoll.save(ally, 4, _result([4], 4, 4, true), 0, tr("DC"), 3))
+	actions.roll_animation.call(CombatDiceRoll.save(ally, 4, _result([1], 1, 1, false), 0, tr("DC"), 3))
+	play.call(CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12))
+	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
+	_check(summary.text == "4 +0 = 4  ≥  DC 3" and summary.get_theme_color("font_color") == CombatDiceRollView.SUCCESS_COLOR
+		and (view.get_node("SuccessSound") as AudioStreamPlayer).playing,
+		"뒤 굴림이 와도 첫 굴림의 결과 숫자·색·결과음이 나온다: " + summary.text)
+	await create_timer(CombatDiceRollView.HOLD_TIME).timeout
+	_check(view.visible and summary.text == "DC 3", "첫 결과가 닫힌 뒤 두 번째 굴림을 굴린다: " + summary.text)
+	await create_timer(CombatDiceRollView.TUMBLE_TIME).timeout
+	_check(summary.text == "1 +0 = 1  <  DC 3" and summary.get_theme_color("font_color") == CombatDiceRollView.FAILURE_COLOR
+		and (view.get_node("FailureSound") as AudioStreamPlayer).playing,
+		"두 번째 굴림도 결과 숫자·색·결과음이 나온다: " + summary.text)
+	await create_timer(CombatDiceRollView.HOLD_TIME).timeout
+	_check(view.visible and summary.text == "AC 12" and not finished[0],
+		"기다리는 명중굴림은 앞 굴림들이 닫힌 뒤 차례로 굴리고 아직 돌아오지 않는다: " + summary.text)
+	await create_timer(CombatDiceRollView.TUMBLE_TIME + CombatDiceRollView.HOLD_TIME).timeout
+	_check(finished[0] and not view.visible, "명중굴림은 자기 연출까지 마친 뒤 돌아온다")

@@ -387,7 +387,7 @@ func _on_turn_started(unit: CombatUnit) -> void:
 			var health_sides: int = unit.get_ability_sides(CombatUnit.Ability.HEALTH)
 			var saved: CombatChecks.RollResult = CombatChecks.saving_throw(health_sides, unit.get_defense_bonus(),
 				effect.dc, CombatActionRules.save_mode(unit), dice)
-			# 턴 시작 처리는 중간에 멈추지 않는다. 확정된 굴림을 겹쳐 보이기만 한다.
+			# 턴 시작 처리는 중간에 멈추지 않는다. 확정된 굴림을 보이기만 하고 기다리지 않는다.
 			_show_roll_in_background(CombatDiceRoll.save(unit, health_sides, saved, unit.get_defense_bonus(), tr("DC"), effect.dc))
 			logged.emit(tr("%s 독 제거(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s") % [unit.get_display_name(),
 				health_sides, str(saved.rolls), unit.get_defense_bonus(), saved.total, effect.dc, _save_outcome(saved)])
