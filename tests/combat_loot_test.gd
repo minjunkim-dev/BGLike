@@ -170,19 +170,19 @@ func _test_armor_unequip() -> void:
 	unit.weapon = weapon
 	unit.armor = armor
 	unit.hit_points = 1
-	_check(unit.get_max_hit_points() == 17 and loot.armor_unequip_blocker(unit).is_empty(),
+	_check(unit.get_max_hit_points() == 16 and loot.armor_unequip_blocker(unit).is_empty(),
 		"방어구 해제 가능 상태")
 	_check(loot.unequip_armor(unit) and unit.armor.is_empty() and loot.bag == [armor]
-		and unit.hit_points == 1 and unit.get_max_hit_points() == 12 and unit.weapon == weapon,
-		"HP 1/17에서 최대 HP+5 방어구 해제는 1/12, 가방 보관, 무기 유지")
+		and unit.hit_points == 1 and unit.get_max_hit_points() == 11 and unit.weapon == weapon,
+		"HP 1/16에서 최대 HP+5 방어구 해제는 1/11, 가방 보관, 무기 유지")
 	_check(loot.receive_from_bag(unit, 0) and unit.armor == armor and loot.bag.is_empty()
-		and unit.hit_points == 1 and unit.get_max_hit_points() == 17, "다시 장착하면 1/17")
+		and unit.hit_points == 1 and unit.get_max_hit_points() == 16, "다시 장착하면 1/16")
 	unit.hit_points = 10
 	for index: int in range(12):
 		loot.bag.append({"kind": "potion", "name": "물약", "stats": {}})
 	var stored: Array[Dictionary] = loot.bag.duplicate(true)
 	_check("빈 칸" in loot.armor_unequip_blocker(unit) and not loot.unequip_armor(unit)
-		and unit.armor == armor and unit.hit_points == 10 and unit.get_max_hit_points() == 17
+		and unit.armor == armor and unit.hit_points == 10 and unit.get_max_hit_points() == 16
 		and loot.bag == stored, "가방이 가득 차면 해제하지 못하고 방어구·HP·가방 보존")
 	loot.bag.remove_at(0)
 	unit.hit_points = 0
@@ -236,26 +236,26 @@ func _test_armor_hit_points(loot: CombatLoot) -> void:
 	var armor: Dictionary = {"kind": "armor", "name": "HP 방어구",
 		"stats": {"defense_bonus": 2, "max_hit_points": 5}}
 	loot.receive(unit, armor)
-	_check(unit.hit_points == 10 and unit.get_max_hit_points() == 17,
-		"방어구 최대 HP 증가 시 잃은 HP 7 유지")
+	_check(unit.hit_points == 10 and unit.get_max_hit_points() == 16,
+		"방어구 최대 HP 증가 시 잃은 HP 6 유지")
 	var weaker: Dictionary = {"kind": "armor", "name": "낮은 HP 방어구",
 		"stats": {"defense_bonus": 1, "max_hit_points": 2}}
 	loot.receive(unit, weaker)
-	_check(unit.hit_points == 7 and unit.get_max_hit_points() == 14,
+	_check(unit.hit_points == 7 and unit.get_max_hit_points() == 13,
 		"실제 수령 경로로 더 낮은 방어구 직접 교체 시 잃은 HP 유지")
 	loot.receive(unit, armor)
-	_check(unit.hit_points == 10 and unit.get_max_hit_points() == 17,
+	_check(unit.hit_points == 10 and unit.get_max_hit_points() == 16,
 		"실제 수령 경로로 더 높은 방어구 직접 교체 시 잃은 HP 유지")
 	unit.hit_points = 1
 	loot.receive(unit, weaker)
 	loot.receive(unit, armor)
-	_check(unit.hit_points == 1 and unit.get_max_hit_points() == 17,
+	_check(unit.hit_points == 1 and unit.get_max_hit_points() == 16,
 		"실제 방어구 직접 교체도 HP 하한에서 무료 회복 방지")
 	unit.armor = {}
-	_check(unit.hit_points == 1 and unit.get_max_hit_points() == 12,
+	_check(unit.hit_points == 1 and unit.get_max_hit_points() == 11,
 		"방어구 해제는 현재 HP 최소1 유지")
 	loot.receive(unit, armor)
-	_check(unit.hit_points == 1 and unit.get_max_hit_points() == 17,
+	_check(unit.hit_points == 1 and unit.get_max_hit_points() == 16,
 		"최소1 보정 전 잃은 HP를 기억해 재장착 회복 방지")
 	unit.armor = {}
 	unit.begin_stage(false)
@@ -264,13 +264,13 @@ func _test_armor_hit_points(loot: CombatLoot) -> void:
 	unit.hit_points = 0
 	unit.armor = {}
 	loot.receive(unit, armor)
-	_check(unit.hit_points == 0 and unit.get_max_hit_points() == 17,
+	_check(unit.hit_points == 0 and unit.get_max_hit_points() == 16,
 		"전투 불능도 최대 HP 효과는 적용하지만 부활하지 않음")
 	unit.begin_stage(true)
-	_check(unit.hit_points == 17, "막 복구는 장비 포함 최대 HP까지 회복")
+	_check(unit.hit_points == 16, "막 복구는 장비 포함 최대 HP까지 회복")
 	unit.armor = {}
 	loot.receive(unit, armor)
-	_check(unit.hit_points == 17, "막 복구 뒤 과거 HP 하한 손실 제거")
+	_check(unit.hit_points == 16, "막 복구 뒤 과거 HP 하한 손실 제거")
 	_check("최대 HP+5" in CombatLoot.describe(armor), "보상에 최대 HP 수치 표시")
 	unit.free()
 
@@ -332,7 +332,7 @@ func _test_items(loot: CombatLoot, dice: CombatDice) -> void:
 	var weapon: Dictionary = {"kind": "weapon", "name": "검사 무기", "stats": {"attack_bonus": 2, "damage_bonus": 3}}
 	var armor: Dictionary = {"kind": "armor", "name": "검사 방어구", "stats": {"defense_bonus": 3}}
 	_check(loot.receive(warrior, weapon) and loot.receive(warrior, armor), "무기·방어구 각1칸 수령")
-	_check(warrior.get_attack_bonus() == 2 and warrior.get_damage_bonus() == 6
+	_check(warrior.get_attack_bonus() == 2 and warrior.get_damage_bonus() == 3
 		and warrior.get_defense_bonus() == 3, "장비가 기본 전투 수치를 올림")
 	weapon["stats"]["attack_bonus"] = 1
 	_check(warrior.get_attack_bonus() == 2, "받은 장비 수치는 보상 원본 변경과 독립")
@@ -355,7 +355,7 @@ func _test_items(loot: CombatLoot, dice: CombatDice) -> void:
 	warrior.begin_stage(true)
 	archer.begin_stage(true)
 	_check(warrior.weapon["stats"]["attack_bonus"] == 1 and archer.get_defense_bonus() == 3
-		and warrior.potion_left == 4 and archer.hit_points == 14, "막 복구는 장비·남은 물약 유지")
+		and warrior.potion_left == 4 and archer.hit_points == 9, "막 복구는 장비·남은 물약 유지")
 	warrior.free()
 	archer.free()
 
@@ -491,7 +491,7 @@ func _test_armor_unequip_scene() -> void:
 	if unequip != null:
 		await _click(unequip)
 		_check(party[0].armor.is_empty() and party[0].hit_points == 1
-			and party[0].get_max_hit_points() == 12 and loot.bag.size() == 12
+			and party[0].get_max_hit_points() == 11 and loot.bag.size() == 12
 			and loot.bag.back() == warrior_armor and preparation.continue_button.has_focus(),
 			"실제 해제 버튼은 잃은 HP를 유지하고 방어구를 가방 빈 칸에 보관")
 		unequip = await _pick(preparation, "Armor0", "UnequipArmor0")
@@ -512,7 +512,7 @@ func _test_armor_unequip_scene() -> void:
 		await _click(preparation.continue_button)
 		_check(not preparation.visible and battle.progress.act_number() == 2
 			and battle.progress.stage_in_act() == 1 and party[0].armor.is_empty()
-			and party[0].hit_points == 12 and party[1].armor == archer_armor
+			and party[0].hit_points == 11 and party[1].armor == archer_armor
 			and loot.bag.size() == 12 and loot.bag.back() == warrior_armor,
 			"막 전환은 해제한 장비·가방 상태 유지")
 		for unit: CombatUnit in party:
@@ -520,7 +520,7 @@ func _test_armor_unequip_scene() -> void:
 		battle.actions.changed.emit()
 		await _click(battle.hud.restart_button)
 		_check(battle.progress.act_number() == 2 and battle.progress.stage_in_act() == 1
-			and party[0].armor.is_empty() and party[0].hit_points == 12
+			and party[0].armor.is_empty() and party[0].hit_points == 11
 			and party[1].armor == archer_armor and loot.bag.size() == 12
 			and loot.bag.back() == warrior_armor, "전멸 재시작은 해제한 장비·가방 상태 유지")
 	main.queue_free()
@@ -780,7 +780,7 @@ func _test_reward_flow() -> void:
 		await _check_preparation_layout(preparation)
 		await _click(give)
 		_check(party[1].get_defense_bonus() == 2 and party[1].hit_points == 0
-			and party[1].get_max_hit_points() == 18,
+			and party[1].get_max_hit_points() == 13,
 			"실제 분배 버튼은 전투 불능 궁수에게 방어구 장착")
 		_check_pixel_art(main, ["AnimatedSprite2D", "Sprite2D", "Button", "TextureRect"])
 		_check(preparation.continue_button.has_focus(), "분배 뒤 키보드 포커스 유지")
@@ -833,7 +833,7 @@ func _test_reward_flow() -> void:
 		_check((battle.get("progress") as CombatActProgress).stage_index == 0 and party[0].potion_left == 2
 			and party[1].potion_left == 1 and party[1].get_defense_bonus() == 2,
 			"막 재시작은 장비·남은 물약 유지, 소비한 물약 복구 없음")
-		_check(party[1].hit_points == 18, "실제 막 재시작에서 방어구 최대 HP 포함 부활")
+		_check(party[1].hit_points == 13, "실제 막 재시작에서 방어구 최대 HP 포함 부활")
 		_check(loot.bag.size() == 2 and loot.bag[0]["name"] == "버릴 무기"
 			and loot.bag[1]["kind"] == "potion", "패배 후 실제 막 재시작은 공용 가방 보존")
 	main.queue_free()
@@ -1108,13 +1108,13 @@ func _test_scaled_combat() -> void:
 	var loot: CombatLoot = battle.get("loot") as CombatLoot
 	loot.receive(units[1], {"kind": "armor", "name": "검사 방어구",
 		"stats": {"defense_bonus": 7, "max_hit_points": 14}})
-	units[1].hit_points = 26
+	units[1].hit_points = 21
 	units[1].potion_left = 1
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	ScriptedDice.arrange_turns(turns, units, [units[0], units[1]])
 	turns.current_unit = units[1]
-	_check(actions.use_self(units[1], "potion") and units[1].hit_points == 28,
+	_check(actions.use_self(units[1], "potion") and units[1].hit_points == 23,
 		"실제 물약 회복은 방어구 포함 최대 HP에서 제한")
 	# 다음 승리의 보상 RNG는 공격 굴림 fixture와 분리한다.
 	actions.dice = CombatDice.new()
@@ -1161,7 +1161,7 @@ func _test_equipped_attack(battle: Node2D) -> void:
 	var damage_dice: int = 0
 	for value: int in actions.last_damage_rolls:
 		damage_dice += value
-	_check(actions.last_damage == damage_dice + 6, "실제 피해 판정은 무기 피해 보정+3을 한 번 포함")
+	_check(actions.last_damage == damage_dice + 3, "실제 피해 판정은 무기 피해 보정+3을 한 번 포함")
 	# 이후 보상·다음 전투의 RNG는 엄격한 공격 fixture 밖이다.
 	actions.dice = CombatDice.new()
 	actions.dice.seed = 321

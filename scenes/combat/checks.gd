@@ -135,18 +135,6 @@ static func attack_roll(sides: int, bonus: int, mode: RollMode, dice: CombatDice
 	return result
 
 
-## 흘려내기는 이미 굴린 공격 굴림 이상이면 성공한다.
-static func threshold(sides: int, bonus: int, target: int, dice: CombatDice) -> RollResult:
-	var result: RollResult = attack_roll(sides, bonus, RollMode.NORMAL, dice)
-	result.success = result.total >= target
-	return result
-
-
-static func threshold_chance(sides: int, bonus: int, target: int) -> float:
-	assert(sides > 0)
-	return clampi(sides + bonus - target + 1, 0, sides) / float(sides)
-
-
 static func _roll_die(sides: int, mode: RollMode, dice: CombatDice) -> RollResult:
 	var result: RollResult = RollResult.new()
 	result.mode = mode

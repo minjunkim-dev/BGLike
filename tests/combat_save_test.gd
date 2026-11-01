@@ -41,7 +41,8 @@ func _run() -> void:
 	await _test_format_state()
 	for stage_index: int in range(STAGE_COUNT):
 		await _test_stage(stage_index)
-	_check(reaction_stages >= 3, "여러 스테이지에서 아군 반응 답을 담은 적 턴 중간 저장을 복원함: %d" % reaction_stages)
+	# 흘려내기 제거(#423) 뒤 아군 반응은 기회 공격뿐이라 이 입력 규칙에서는 3-3에서만 생긴다.
+	_check(reaction_stages >= 1, "아군 반응 답을 담은 적 턴 중간 저장을 복원함: %d" % reaction_stages)
 	await _test_rejects_bad_saves()
 	GameSave.autosave = false
 	Engine.time_scale = 1.0

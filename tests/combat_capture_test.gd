@@ -128,7 +128,7 @@ func _fixture_ready(units: Array[CombatUnit]) -> bool:
 		_check(portraits.has(unit) and unit.hit_points == unit.get_max_hit_points(),
 			"캡처 전제조건: 각 유닛의 초상과 정상 HP")
 		if unit.is_ally:
-			_check(unit.movement_left == CombatUnit.MOVEMENT_PER_TURN and unit.action_left == 1
+			_check(unit.movement_left == unit.get_movement() and unit.action_left == 1
 				and unit.bonus_action_left == 1 and unit.reaction_left == (1 if manual else 0),
 				"캡처 전제조건: 아군 턴 자원과 모드별 반응 횟수")
 	return failures == previous_failures

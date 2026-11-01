@@ -412,7 +412,7 @@ func _play_three_one_rounds(fast: bool) -> Dictionary:
 			var chosen: Array[bool] = []
 			var choose: Callable = func(use_reaction: bool) -> void: chosen.append(use_reaction)
 			hud.reaction_selected.connect(choose)
-			hud.show_reaction("parry", "검사")
+			hud.show_reaction("opportunity", "검사")
 			await process_frame
 			await process_frame
 			# 창이 열린 뒤 다시 눌렀다 뗀 Space도 포커스된 선택 버튼을 누르지 않는다.
@@ -547,7 +547,6 @@ func _test_scrap_robot_3000_stage() -> void:
 	var boss: CombatUnit = units[2]
 	boss.hit_points = 25
 	units[0].cell = Vector2i(8, 3)
-	units[0].parry_left = 0
 	units[1].cell = Vector2i(8, 5)
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	ScriptedDice.arrange_turns(turns, units, [units[2], units[0], units[1]])
@@ -556,7 +555,7 @@ func _test_scrap_robot_3000_stage() -> void:
 		and actions.grid.are_adjacent(boss.cell, units[0].cell) and actions.grid.are_adjacent(boss.cell, units[1].cell),
 		"3000 회전 fixture의 두 아군은 장애물 없는 인접 바닥에 배치")
 	actions.dice = ScriptedDice.new([1, 3, 1, 3], [20, 12, 6, 12])
-	_check(await actions.spin(boss) and units[0].hit_points == 7 and units[1].hit_points == 9
+	_check(await actions.spin(boss) and units[0].hit_points == 6 and units[1].hit_points == 4
 		and boss.action_left == 1 and boss.hit_points == 23,
 		"실제 3000 과부하 턴 시작 자기 피해 뒤 회전회오리가 두 아군과 화면을 갱신")
 	# 이후 승리 보상은 판정 fixture와 별도 RNG로 생성한다.
@@ -667,8 +666,9 @@ func _test_stage_transition(battle: Node2D) -> void:
 	var archer: CombatUnit = party[1]
 	warrior.hit_points = 5
 	warrior.second_wind_left = 0
-	warrior.parry_left = 0
-	warrior.surge_left = 0
+	warrior.cross_slash_left = 0
+	warrior.steel_charge_left = 0
+	warrior.battle_cry_left = 0
 	warrior.potion_left = 3
 	warrior.is_stunned = true
 	warrior.stun_source = (battle.get("units") as Array)[2] as CombatUnit
@@ -694,8 +694,9 @@ func _test_stage_transition(battle: Node2D) -> void:
 	_check((battle.get_node("Map") as TileMapLayer).get_used_cells().size() == 72
 		and (battle.get("actions") as CombatActions).grid.map_size == Vector2i(8, 9)
 		and warrior.cell == Vector2i(1, 8), "다음 스테이지 맵과 배치 데이터를 실제 전투에 적용")
-	_check(warrior.hit_points == 5 and warrior.second_wind_left == 0
-		and warrior.parry_left == 0 and warrior.surge_left == 0, "같은 막의 HP와 전사 스킬 횟수 유지")
+	_check(warrior.hit_points == 5 and warrior.second_wind_left == 0, "같은 막의 HP와 막당 스킬 횟수 유지")
+	_check(warrior.cross_slash_left == 1 and warrior.steel_charge_left == 1 and warrior.battle_cry_left == 1,
+		"다음 전투는 전투마다 스킬 횟수 회복")
 	_check(archer.hit_points == 0 and not archer.visible
 		and archer not in (battle.get("turns") as CombatTurns).ordered_units,
 		"전투 불능 아군은 같은 막 다음 전투에 나오지 않음")
@@ -767,7 +768,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	var party: Array[CombatUnit] = battle.get("party")
 	for unit: CombatUnit in party:
 		_check(unit.hit_points == unit.get_max_hit_points() and unit.second_wind_left == 1
-			and unit.parry_left == 2 and unit.surge_left == 1 and unit.mark_left == 1
+			and unit.cross_slash_left == 1 and unit.steel_charge_left == 1 and unit.battle_cry_left == 1 and unit.mark_left == 1
 			and unit.shock_left == 1 and unit.disengage_left == 2,
 			"막 시작에 전원 HP와 기존 스킬 횟수 회복")
 	_check(party[0].potion_left == 3 and party[1].potion_left == 0,
@@ -966,8 +967,9 @@ func _test_large_map_battle() -> void:
 	actions.dice.seed = 394
 	ScriptedDice.arrange_turns(turns, units, party)
 	var warrior: CombatUnit = party[0]
-	var destination: Vector2i = stage.crate_cells[0] + Vector2i(-1, -1)
-	_check(await actions.move_to(warrior, destination) and warrior.cell == destination,
+	# 전사 이동력3을 모두 쓰는 상자 옆 칸이다.
+	var destination: Vector2i = stage.crate_cells[0] + Vector2i(-1, 0)
+	_check(await actions.move_to(warrior, destination) and warrior.cell == destination and warrior.movement_left == 0,
 		label + " 아군이 상자 앞까지 걸어서 이동")
 	var starts: Dictionary[CombatUnit, Vector2i] = {}
 	for unit: CombatUnit in units:

@@ -49,6 +49,19 @@ class Ground extends RefCounted:
 		dc = POISON_DC if kind == "poison" else 0
 
 
+## 쓰러진 시전자의 턴 자리. anchor는 그 자리 바로 뒤의 유닛이고, anchor의 턴 시작 직전에 시전자의 유닛 효과를 줄인다.
+## skip은 이번 순환에서 그 자리를 이미 지났다는 뜻이다(시전자가 자기 턴을 시작한 뒤 쓰러짐).
+class ClockSlot extends RefCounted:
+	var caster: CombatUnit
+	var anchor: CombatUnit
+	var skip: bool
+
+	func _init(fallen: CombatUnit, next: CombatUnit, passed: bool) -> void:
+		caster = fallen
+		anchor = next
+		skip = passed
+
+
 var grid: CombatGrid = CombatGrid.new()
 var units: Array[CombatUnit]:
 	get:
@@ -73,6 +86,7 @@ var reaction_answers: Array[bool] = []
 ## 이어하기가 다시 실행하는 적 턴에서 묻지 않고 차례로 쓸 반응 답.
 var replay_answers: Array[bool] = []
 var _grounds: Array[Ground] = []
+var _clock_slots: Array[ClockSlot] = []
 var _revision: int = 0
 
 
@@ -84,6 +98,7 @@ func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> v
 	grid.units = combat_units
 	grid.props.clear()
 	_grounds.clear()
+	_clock_slots.clear()
 	turns = combat_turns
 	turns.turn_started.connect(_on_turn_started)
 	dice.randomize()
@@ -98,7 +113,9 @@ func save_state() -> Dictionary:
 	for ground: Ground in _grounds:
 		grounds.append([units.find(ground.source), ground.cell, ground.kind, ground.turns_left,
 			ground.entered.map(func(unit: CombatUnit) -> int: return units.find(unit)), ground.dc])
-	return {"props": props, "grounds": grounds, "dice": dice.state}
+	var slots: Array = _clock_slots.map(func(slot: ClockSlot) -> Array:
+		return [units.find(slot.caster), units.find(slot.anchor), slot.skip])
+	return {"props": props, "grounds": grounds, "clock_slots": slots, "dice": dice.state}
 
 
 ## save_state()의 값으로 되돌린다. initialize() 뒤에 부르고, is_valid_state()를 먼저 확인한다.
@@ -116,6 +133,9 @@ func load_state(data: Dictionary) -> void:
 		for index: int in saved[4]:
 			ground.entered.append(units[index])
 		_grounds.append(ground)
+	_clock_slots.clear()
+	for saved: Array in data.clock_slots:
+		_clock_slots.append(ClockSlot.new(units[saved[0]], units[saved[1]], saved[2]))
 	dice.state = data.dice
 
 
@@ -124,7 +144,8 @@ static func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> boo
 	var area: Rect2i = Rect2i(Vector2i.ZERO, map_size)
 	if not (data is Dictionary and data.get("dice") is int and data.get("props") is Array
 			and data.props.size() <= area.get_area() and data.get("grounds") is Array
-			and data.grounds.size() <= area.get_area() * 2):
+			and data.grounds.size() <= area.get_area() * 2 and data.get("clock_slots") is Array
+			and data.clock_slots.size() <= count):
 		return false
 	var unit_index: Callable = func(index: Variant) -> bool: return index is int and index >= 0 and index < count
 	return (data.props.all(func(saved: Variant) -> bool:
@@ -137,7 +158,12 @@ static func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> boo
 				and saved[3] is int and saved[3] >= 1 and saved[3] <= 4
 				and saved[4] is Array and saved[4].size() <= count and saved[4].all(unit_index)
 				and saved[5] is int and saved[5] >= 0 and saved[5] <= CombatUnit.SAVED_INT_LIMIT
-				and (saved[5] == 0 if saved[2] == "burn" else saved[5] > 0))))
+				and (saved[5] == 0 if saved[2] == "burn" else saved[5] > 0)))
+		and data.clock_slots.all(func(saved: Variant) -> bool:
+			return (saved is Array and saved.size() == 3 and unit_index.call(saved[0])
+				and unit_index.call(saved[1]) and saved[0] != saved[1] and saved[2] is bool))
+		and data.clock_slots.all(func(saved: Array) -> bool:
+			return data.clock_slots.filter(func(other: Array) -> bool: return other[0] == saved[0]).size() == 1))
 
 
 func create_prop(cell: Vector2i, kind: String) -> CombatGrid.Prop:
@@ -225,7 +251,8 @@ func _trace_rock(prop: CombatGrid.Prop, direction: Vector2i, limit: int,
 	for unit: CombatUnit in units:
 		if unit.hit_points > 0:
 			positions[unit] = unit.cell
-			health[unit] = unit.hit_points
+			# 방어막이 먼저 받으므로 HP + 방어막이 남아 있으면 버틴다. 낙사는 아래에서 0으로 둔다.
+			health[unit] = unit.hit_points + unit.shield_points
 	var cell: Vector2i = prop.cell
 	for index: int in range(limit):
 		var step: RockStep = RockStep.new()
@@ -348,6 +375,15 @@ func _can_continue_rock(actor: CombatUnit, prop: CombatGrid.Prop, cell: Vector2i
 
 
 func _on_turn_started(unit: CombatUnit) -> void:
+	# 쓰러진 시전자의 자리는 이 유닛 바로 앞이라 먼저 줄인다.
+	for slot: ClockSlot in _clock_slots.duplicate():
+		if slot.anchor == unit:
+			if slot.skip:
+				slot.skip = false
+			else:
+				_tick_unit_effects(slot.caster)
+	_tick_unit_effects(unit)
+	_clock_slots = _clock_slots.filter(func(slot: ClockSlot) -> bool: return _has_unit_effects(slot.caster))
 	var ground_messages: Array[String] = []
 	for ground: Ground in _grounds.duplicate():
 		if ground not in _grounds:
@@ -406,6 +442,29 @@ func _on_turn_started(unit: CombatUnit) -> void:
 		logged.emit(tr("%s %s: %d · HP %d") % [unit.get_display_name(), name, amount, unit.hit_points])
 		feedback.emit(unit, "%s %d" % [name, amount])
 	changed.emit()
+
+
+## 시전자 기준 시계의 유닛 효과(성스러운 장막, 전투의 함성)를 1턴 줄인다 (동작 유형 기획서 4-5).
+func _tick_unit_effects(caster: CombatUnit) -> void:
+	if caster.shield_turns > 0:
+		caster.shield_turns -= 1
+		if caster.shield_turns == 0:
+			caster.shield_points = 0
+			logged.emit(tr("%s 성스러운 장막 만료") % caster.get_display_name())
+	var expired: Array[String] = []
+	for target: CombatUnit in units:
+		if target.battle_cry_source == caster and target.battle_cry_turns > 0:
+			target.battle_cry_turns -= 1
+			if target.battle_cry_turns == 0:
+				target.battle_cry_bonus = 0
+				target.battle_cry_source = null
+				expired.append(target.get_display_name())
+	if not expired.is_empty():
+		logged.emit(tr("전투의 함성 만료: %s") % ", ".join(expired))
+
+
+func _has_unit_effects(caster: CombatUnit) -> bool:
+	return units.any(func(unit: CombatUnit) -> bool: return unit.battle_cry_source == caster)
 
 
 func apply_status(source: CombatUnit, target: CombatUnit, kind: String,
@@ -475,6 +534,8 @@ func incapacitate(target: CombatUnit) -> void:
 	var revision: int = _revision
 	target.hit_points = 0
 	target.status_effects.clear()
+	target.clear_unit_effects()
+	_keep_clock_slot(target)
 	var ground_messages: Array[String] = []
 	for ground: Ground in _grounds.duplicate():
 		ground.entered.erase(target)
@@ -500,6 +561,26 @@ func incapacitate(target: CombatUnit) -> void:
 	if not _same_combat(target, revision):
 		return
 	target.visible = false
+
+
+## 쓰러지는 target의 턴 자리를 시계 슬롯으로 보관하고, target 바로 뒤에 걸린 슬롯을 그다음 유닛으로 옮긴다.
+## 기존 상태 이상·장판은 시전자 전투 불능에서 해제하므로 슬롯을 쓰지 않는다 (동작 유형 기획서 4-5, 8-1).
+func _keep_clock_slot(target: CombatUnit) -> void:
+	var next: CombatUnit = turns.next_unit(target)
+	# target 자리를 이번 순환에서 지났고 그 자리에 대응하는 next의 턴 시작이 아직이면 다음 한 번은 건너뛴다.
+	# next가 순서의 처음으로 돌아가면 next의 다음 시작은 다음 라운드라 아직이다.
+	var passed: bool = (next != null and turns.is_turn_activated(target) and (not turns.is_turn_activated(next)
+		or turns.ordered_units.find(next) < turns.ordered_units.find(target)))
+	for slot: ClockSlot in _clock_slots.duplicate():
+		if slot.caster == target or slot.anchor != target:
+			continue
+		if next == null:
+			_clock_slots.erase(slot)
+		else:
+			slot.anchor = next
+			slot.skip = slot.skip or passed
+	if next != null and _has_unit_effects(target):
+		_clock_slots.append(ClockSlot.new(target, next, passed))
 
 
 ## 전투 포기(#286). 남은 아군을 모두 전투 불능으로 만들어 전멸과 똑같이 패배한다.
@@ -637,6 +718,10 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	match action:
 		"attack":
 			return actor.action_left > 0
+		"cross_slash":
+			return CombatActionRules.has_uses(actor, action) and actor.action_left > 0 and actor.bonus_action_left > 0
+		"steel_charge":
+			return CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0 and actor.movement_left >= 1
 		"shock":
 			return CombatActionRules.has_uses(actor, action) and actor.action_left > 0
 		"mark":
@@ -662,7 +747,7 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 			return not reachable_cells(actor).is_empty()
 		"jump":
 			return not jump_cells(actor).is_empty()
-		"attack", "shock", "mark", "shove", "pull":
+		"attack", "cross_slash", "steel_charge", "shock", "mark", "shove", "pull":
 			for target: CombatUnit in units:
 				if can_target(actor, target, action):
 					return true
@@ -673,9 +758,10 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 		"second_wind", "potion":
 			return (CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
 				and actor.hit_points < actor.get_max_hit_points())
-		"surge":
-			return (CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
-				and actor.action_left == 0)
+		"holy_veil":
+			return CombatActionRules.belongs_to(actor, action) and actor.bonus_action_left > 0
+		"battle_cry":
+			return CombatActionRules.has_uses(actor, action) and actor.action_left > 0
 		"disengage":
 			return (CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
 				and not actor.disengaged and actor.movement_left > 0)
@@ -703,17 +789,20 @@ func unavailable_reason(actor: CombatUnit, action: String) -> String:
 	if not reaction and (actor != turns.current_unit or not actor.is_ally):
 		return tr("아군의 자기 턴에만 사용")
 	if CombatActionRules.uses_left(actor, action) == 0:
-		return tr("보유 물약 없음") if action == "potion" else tr("이번 막의 횟수를 모두 씀")
-	if [actor.action_left, actor.bonus_action_left, actor.reaction_left][resource] == 0:
+		if action == "potion":
+			return tr("보유 물약 없음")
+		return tr("이번 전투의 횟수를 모두 씀") if action in CombatActionRules.USES_PER_COMBAT else tr("이번 막의 횟수를 모두 씀")
+	if ([actor.action_left, actor.bonus_action_left, actor.reaction_left][resource] == 0
+			or action == "cross_slash" and actor.bonus_action_left == 0):
 		return tr("자원을 이미 씀")
+	if action == "steel_charge" and actor.movement_left == 0:
+		return tr("이동력을 이미 씀")
 	if reaction:
 		if actor.hit_points <= 0:
 			return tr("전투 불능")
 		return tr("기절 상태") if actor.is_stunned else ""
 	if action in ["second_wind", "potion"] and actor.hit_points == actor.get_max_hit_points():
 		return tr("HP가 이미 최대")
-	if action == "surge" and actor.action_left > 0:
-		return tr("행동이 아직 남아 있음")
 	if not can_use(actor, action):
 		return tr("이동이 없거나 이미 효과 적용 중") if action == "disengage" else tr("사거리 또는 대상 조건을 확인")
 	return ""
@@ -824,20 +913,81 @@ func spawn_spiderling(actor: CombatUnit) -> bool:
 func use_self(actor: CombatUnit, action: String) -> bool:
 	if not can_use(actor, action) or action not in CombatActionRules.SELF_TARGET:
 		return false
-	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
+	actor.spend_resource(CombatActionRules.resource_of(action))
 	CombatActionRules.spend_use(actor, action)
 	match action:
 		"second_wind":
 			_heal(actor, dice.roll(10) + 1, tr("숨 고르기"))
-		"surge":
-			actor.action_left = 1
-			logged.emit(tr("%s 몰아치기: 행동 회복") % actor.get_display_name())
+		"holy_veil":
+			# 굴림값은 눈 + 주사위 레벨(0)이고 기타 가산치를 더하지 않는다. 남은 방어막과 큰 값을 유지한다.
+			var health_sides: int = actor.get_ability_sides(CombatUnit.Ability.HEALTH)
+			var rolled: int = CombatChecks.damage_roll(health_sides, dice)
+			actor.shield_points = maxi(actor.shield_points, rolled)
+			actor.shield_turns = CombatActionRules.SHIELD_TURNS
+			logged.emit(tr("%s 성스러운 장막: 건강 d%d [%d] · 방어막 %d, %d턴") % [actor.get_display_name(),
+				health_sides, rolled, actor.shield_points, actor.shield_turns])
+			feedback.emit(actor, tr("방어막 %d") % actor.shield_points)
+		"battle_cry":
+			var will_sides: int = actor.get_ability_sides(CombatUnit.Ability.WILL)
+			var bonus: int = CombatChecks.damage_roll(will_sides, dice)
+			for unit: CombatUnit in units:
+				if unit.hit_points > 0 and unit.is_ally == actor.is_ally:
+					unit.battle_cry_bonus = bonus
+					unit.battle_cry_turns = CombatActionRules.BATTLE_CRY_TURNS
+					unit.battle_cry_source = actor
+					feedback.emit(unit, tr("명중 +%d") % bonus)
+			logged.emit(tr("%s 전투의 함성: 의지 d%d [%d] · 아군 명중 +%d, %d턴") % [actor.get_display_name(),
+				will_sides, bonus, bonus, CombatActionRules.BATTLE_CRY_TURNS])
 		"disengage":
 			actor.disengaged = true
 			logged.emit(tr("%s 물러서며 쏘기: 이번 턴 이동은 기회 공격 제외") % actor.get_display_name())
 		"potion":
 			_heal(actor, dice.roll(4) + dice.roll(4) + 2, tr("물약"))
 	changed.emit()
+	return true
+
+
+## 십자 베기: 행동과 보조 행동을 모두 써서 같은 대상을 기본 공격 2회. 첫 타격으로 쓰러지면 둘째는 취소한다.
+func cross_slash(actor: CombatUnit, target: CombatUnit) -> bool:
+	if not _can_act(actor) or not can_target(actor, target, "cross_slash"):
+		return false
+	busy = true
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
+	CombatActionRules.spend_use(actor, "cross_slash")
+	logged.emit(tr("%s 십자 베기: %s") % [actor.get_display_name(), target.get_display_name()])
+	changed.emit()
+	for strike: int in range(2):
+		if actor.hit_points <= 0 or is_over():
+			break
+		if target.hit_points <= 0:
+			logged.emit(tr("십자 베기: 대상이 쓰러져 둘째 타격 취소"))
+			break
+		await _perform_attack(actor, target, "cross_slash")
+	_finish()
+	return true
+
+
+## 강철 돌진: 보조 행동과 이동력 1을 써서 인접한 적을 공격한다. 명중하면 피해 뒤 1칸 밀고 빈 칸으로 1칸 전진한다.
+## 밀려날 칸이 맵 밖·장벽·나무 상자·바위·유닛·더 높은 칸이면 피해만 준다. 전진은 기회 공격을 받지 않는다.
+func steel_charge(actor: CombatUnit, target: CombatUnit) -> bool:
+	if not _can_act(actor) or not can_target(actor, target, "steel_charge"):
+		return false
+	busy = true
+	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
+	actor.spend_movement(1)
+	CombatActionRules.spend_use(actor, "steel_charge")
+	changed.emit()
+	var origin: Vector2i = target.cell
+	if await _perform_attack(actor, target, "steel_charge") and target.hit_points > 0 and not is_over():
+		if grid.can_shove(actor, target):
+			_land(target, grid.push_destination(actor.cell, origin))
+			if actor.hit_points > 0 and not is_over() and grid.unit_at(origin) == null:
+				_land(actor, origin)
+			logged.emit(tr("%s 강철 돌진: 밀치고 전진") % actor.get_display_name())
+		else:
+			logged.emit(tr("%s 강철 돌진: 밀려날 칸이 막혀 피해만") % actor.get_display_name())
+	_finish()
 	return true
 
 
@@ -917,8 +1067,7 @@ func _ask_reaction(reactor: CombatUnit, kind: String, prompt: String) -> bool:
 		_emit_reaction.call_deferred(kind, prompt)
 		accepted = await reaction_decided
 	reaction_answers.append(accepted)
-	logged.emit("%s %s: %s" % [reactor.get_display_name(),
-		tr("기회 공격") if kind == "opportunity" else tr("흘려내기"), tr("사용") if accepted else tr("넘기기")])
+	logged.emit("%s %s: %s" % [reactor.get_display_name(), CombatActionRules.NAMES[kind], tr("사용") if accepted else tr("넘기기")])
 	pending_kind = ""
 	return accepted
 
@@ -939,22 +1088,25 @@ func _emit_reaction(kind: String, prompt: String) -> void:
 	reaction_requested.emit(kind, prompt)
 
 
-func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> void:
+## 명중굴림 공격 한 번. 명중해서 피해를 줬으면 true다.
+func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> bool:
 	if attack_animation.is_valid():
 		await attack_animation.call(actor, target)
 	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
-		return
+		return false
 	var attack_ability: CombatUnit.Ability = actor.get_attack_ability()
 	var attack_sides: int = actor.get_ability_sides(attack_ability)
 	last_damage = 0
 	last_damage_rolls.clear()
 	last_save = null
 	var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
-	last_attack = CombatChecks.hit_roll(attack_sides, actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
-	await _show_roll(CombatDiceRoll.hit(actor, attack_sides, last_attack, actor.get_attack_bonus(), target.get_armor_class()))
+	var hit_bonus: int = actor.get_hit_bonus()
+	var armor_class: int = grid.armor_class(target)
+	last_attack = CombatChecks.hit_roll(attack_sides, hit_bonus, armor_class, preview.mode, dice)
+	await _show_roll(CombatDiceRoll.hit(actor, attack_sides, last_attack, hit_bonus, armor_class))
 	# 연출 중 일시정지 메뉴에서 전투를 포기할 수 있다. 끝난 전투에 결과를 적용하지 않는다.
 	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
-		return
+		return false
 	var outcome: String = tr("명중") if last_attack.success else tr("빗나감")
 	if last_attack.face == CombatChecks.Face.ABSOLUTE_SUCCESS:
 		outcome = tr("명중(절대성공)")
@@ -962,26 +1114,10 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> v
 		outcome = tr("빗나감(절대실패)")
 	logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / AC %d · %s") % [
 		actor.get_display_name(), _mode_name(last_attack.mode), CombatUnit.ability_name(attack_ability), attack_sides,
-		str(last_attack.rolls), actor.get_attack_bonus(), last_attack.total, target.get_armor_class(), outcome])
+		str(last_attack.rolls), hit_bonus, last_attack.total, armor_class, outcome])
 	if not last_attack.success:
 		feedback.emit(target, tr("빗나감"))
-		return
-	if (CombatActionRules.has_uses(target, "parry") and not target.is_stunned
-		and target.reaction_left > 0):
-		var parry_sides: int = target.get_ability_sides(CombatUnit.Ability.AGILITY)
-		var chance: float = CombatChecks.threshold_chance(parry_sides, 3, last_attack.total)
-		if await _ask_reaction(target, "parry", tr("%s 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)") % [CombatUnit.with_subject_particle(target.get_display_name()), chance * 100.0, target.parry_left]):
-			target.spend_resource(CombatUnit.TurnResource.REACTION)
-			CombatActionRules.spend_use(target, "parry")
-			var saved: CombatChecks.RollResult = CombatChecks.threshold(parry_sides, 3, last_attack.total, dice)
-			await _show_roll(CombatDiceRoll.save(target, parry_sides, saved, 3, tr("공격"), last_attack.total))
-			if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
-				return
-			logged.emit(tr("흘려내기: 민첩 d%d %d + 3 = %d / 공격 %d · %s") % [parry_sides,
-				saved.selected_roll, saved.total, last_attack.total, tr("성공") if saved.success else tr("실패")])
-			if saved.success:
-				feedback.emit(target, tr("흘려내기"))
-				return
+		return false
 	_deal_damage(actor, target, action, actor.marked_target == target, false)
 	if action == "shock" and target.hit_points > 0:
 		if target.is_boss():
@@ -991,10 +1127,11 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> v
 			apply_status(actor, target, "stun")
 			logged.emit(tr("%s 충격 화살: 명중하여 기절") % target.get_display_name())
 			feedback.emit(target, tr("기절"))
+	return true
 
 
 ## 내성굴림 피해형 동작의 대상 하나. 대상이 시전 때 정한 DC에 내성굴림하고, 성공하면 피해가 절반이다 (4-1).
-## 명중굴림이 없으므로 공격 굴림과 비교하는 흘려내기와 명중에 붙는 표식 추가 피해는 쓰지 않는다.
+## 명중굴림이 없으므로 명중에 붙는 표식 추가 피해는 쓰지 않는다.
 func _perform_save(actor: CombatUnit, target: CombatUnit, action: String, dc: int) -> void:
 	if attack_animation.is_valid():
 		await attack_animation.call(actor, target)
@@ -1035,7 +1172,7 @@ func _deal_damage(actor: CombatUnit, target: CombatUnit, action: String, has_mar
 	last_damage_rolls.append(CombatChecks.damage_roll(damage_sides, dice))
 	if has_mark_damage:
 		last_damage_rolls.append(dice.roll(6))
-	var damage_bonus: int = actor.get_damage_bonus()
+	var damage_bonus: int = CombatActionRules.damage_bonus(actor, action)
 	var rolled_total: int = damage_bonus
 	for rolled: int in last_damage_rolls:
 		rolled_total += rolled
@@ -1109,7 +1246,8 @@ func _land(target: CombatUnit, destination: Vector2i) -> void:
 	var amount: int = fall_damage(target, destination)
 	target.cell = destination
 	if grid.pits.has(destination):
-		_damage(target, target.hit_points)
+		# 낙사는 피해가 아니라 전투 불능이라 방어막이 받지 않는다.
+		_damage(target, target.hit_points, true)
 		if not _same_combat(target, revision):
 			return
 		logged.emit(tr("%s 낙사: 전투 불능") % target.get_display_name())
@@ -1137,11 +1275,21 @@ func _land(target: CombatUnit, destination: Vector2i) -> void:
 	_apply_grounds(target, true)
 
 
-func _damage(target: CombatUnit, amount: int) -> void:
+## 방어막이 HP보다 먼저 모든 피해(공격, 화상·독, 낙하, 과부하)를 받는다. pierce는 낙사처럼 방어막을 지나친다.
+func _damage(target: CombatUnit, amount: int, pierce: bool = false) -> void:
 	var revision: int = _revision
+	var absorbed: int = 0 if pierce else mini(target.shield_points, amount)
+	if absorbed > 0:
+		target.shield_points -= absorbed
+		if target.shield_points == 0:
+			target.shield_turns = 0
+		amount -= absorbed
+		logged.emit(tr("%s 방어막: %d 흡수 · 남은 방어막 %d") % [target.get_display_name(), absorbed, target.shield_points])
+		if not _same_combat(target, revision):
+			return
 	var before: int = target.hit_points
 	target.hit_points = maxi(0, target.hit_points - amount)
-	if target.hit_points < before:
+	if target.hit_points < before or absorbed > 0:
 		hit_landed.emit()
 	if not _same_combat(target, revision):
 		return

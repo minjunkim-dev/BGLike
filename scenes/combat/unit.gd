@@ -7,11 +7,14 @@ enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Ability { STRENGTH, AGILITY, FINESSE, INTELLIGENCE, WILL, HEALTH }
 
 ## 능력치 기획서(ABILITY_SYSTEM.md) 6-1의 전사·궁수 주사위 (#386).
-const ALLY_ABILITY_SIDES: Array[Array] = [[20, 8, 6, 4, 6, 12], [6, 12, 20, 6, 4, 8]]
+## 전사의 의지는 재디자인(#423)에서 d8이다.
+const ALLY_ABILITY_SIDES: Array[Array] = [[20, 8, 6, 4, 8, 12], [6, 12, 20, 6, 4, 8]]
 static var ABILITY_NAMES: Array[String] = [TranslationServer.tr("힘"), TranslationServer.tr("민첩"),
 	TranslationServer.tr("솜씨"), TranslationServer.tr("지능"), TranslationServer.tr("의지"), TranslationServer.tr("건강")]
 
 const MOVEMENT_PER_TURN: int = 6
+## 전사의 이동력. 궁수와 이동력을 정하지 않은 몬스터는 MOVEMENT_PER_TURN이다.
+const WARRIOR_MOVEMENT: int = 3
 const FEEDBACK_RISE: float = 12.0
 ## 팝업이 먼저 찾는 범위: 기준 자리에서 팝업 왼쪽 위까지의 최대 논리px(#260). 기준 자리는 대상 상태 줄 기준점이다.
 ## 같은 대상의 이전 팝업이 그보다 높으면 그 팝업 바로 위다. 붐빌 때 옆 유닛 팝업 하나를 비켜 갈 만큼이다.
@@ -25,8 +28,9 @@ const HEAL_COLOR: Color = Color("70c76d")
 ## 이어하기가 그대로 되돌리는 값. 저장 파일의 값은 이 변수와 같은 타입이어야 한다.
 const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initiative_roll", "movement_left",
 	"action_capacity", "bonus_action_capacity", "reaction_capacity", "action_left", "bonus_action_left",
-	"reaction_left", "overloaded", "pull_cooldown", "disengaged", "second_wind_left", "parry_left",
-	"surge_left", "mark_left", "shock_left", "disengage_left", "potion_left"]
+	"reaction_left", "overloaded", "pull_cooldown", "disengaged", "second_wind_left", "mark_left",
+	"shock_left", "disengage_left", "potion_left", "cross_slash_left", "steel_charge_left", "battle_cry_left",
+	"shield_points", "shield_turns", "battle_cry_bonus", "battle_cry_turns"]
 ## 저장 파일의 정수 상한. 고친 저장이 끝나지 않는 턴이나 큰 목록을 만들지 않게 한다.
 const SAVED_INT_LIMIT: int = 99
 const SAVED_HIT_POINT_LIMIT: int = 999
@@ -97,12 +101,20 @@ var has_mark: bool = false
 var disengaged: bool = false
 var marked_target: CombatUnit
 var second_wind_left: int = 1
-var parry_left: int = 2
-var surge_left: int = 1
 var mark_left: int = 1
 var shock_left: int = 1
 var disengage_left: int = 2
 var potion_left: int = 0
+var cross_slash_left: int = 1
+var steel_charge_left: int = 1
+var battle_cry_left: int = 1
+## 성스러운 장막의 방어막. 피해를 HP보다 먼저 받고, 자기 턴 시작마다 shield_turns가 준다.
+var shield_points: int = 0
+var shield_turns: int = 0
+## 전투의 함성의 명중 보너스. 시전자의 턴 시작(쓰러졌으면 시계 슬롯)마다 battle_cry_turns가 준다.
+var battle_cry_bonus: int = 0
+var battle_cry_turns: int = 0
+var battle_cry_source: CombatUnit
 var weapon: Dictionary = {}
 var armor: Dictionary = {}:
 	set(value):
@@ -181,11 +193,11 @@ func get_armor_class() -> int:
 	return armor_class
 
 
+## 아군은 (건강 면 수 ÷ 2) × (레벨 + 1) + 5다 (능력치 기획서 4-9). 주사위 레벨은 성장 개발 전이라 0이다.
 func get_max_hit_points() -> int:
-	var base: int = 12 if kind == Kind.WARRIOR else 14
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["max_hit_points"])
-	return base + _equipment_stat("max_hit_points")
+	return get_ability_sides(Ability.HEALTH) / 2 + 5 + _equipment_stat("max_hit_points")
 
 
 func get_attack_bonus() -> int:
@@ -194,10 +206,16 @@ func get_attack_bonus() -> int:
 	return _equipment_stat("attack_bonus")
 
 
+## 명중굴림의 가산. 공격 가산에 전투의 함성을 더한다. DC는 공격 가산만 쓴다.
+func get_hit_bonus() -> int:
+	return get_attack_bonus() + battle_cry_bonus
+
+
 func get_damage_bonus() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["damage_bonus"])
-	return (3 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus")
+	# 전사는 기본 피해 보정이 없고 장비로만 더한다. 궁수의 +1은 #407 질문 3의 답을 기다린다.
+	return (0 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus")
 
 
 func _equipment_stat(stat: String) -> int:
@@ -275,11 +293,16 @@ func can_drop_extra_reward() -> bool:
 	return not is_ally and kind != Kind.SPIDERLING
 
 
+func get_movement() -> int:
+	if is_ally:
+		return WARRIOR_MOVEMENT if kind == Kind.WARRIOR else MOVEMENT_PER_TURN
+	return int(CombatEnemyDefinitions.for_kind(kind).get("movement", MOVEMENT_PER_TURN))
+
+
 func begin_turn() -> void:
 	disengaged = false
 	pull_cooldown = maxi(0, pull_cooldown - 1)
-	movement_left = (MOVEMENT_PER_TURN if is_ally
-		else int(CombatEnemyDefinitions.for_kind(kind).get("movement", MOVEMENT_PER_TURN)))
+	movement_left = get_movement()
 	action_left = action_capacity + (1 if overloaded else 0)
 	bonus_action_left = bonus_action_capacity
 	reaction_left = reaction_capacity
@@ -291,14 +314,25 @@ func begin_stage(restore_act: bool) -> void:
 	if restore_act:
 		hit_points = get_max_hit_points()
 		CombatActionRules.restore_uses(self)
+	CombatActionRules.restore_combat_uses(self)
 	# 물약은 막 시작과 재시작에서도 현재 개수를 유지한다.
 	is_stunned = false
 	status_effects.clear()
+	clear_unit_effects()
 	has_mark = false
 	marked_target = null
 	is_selected = false
 	is_previewed = false
 	begin_turn()
+
+
+## 방어막과 전투의 함성. 전투 전환과 전투 불능에서 지운다.
+func clear_unit_effects() -> void:
+	shield_points = 0
+	shield_turns = 0
+	battle_cry_bonus = 0
+	battle_cry_turns = 0
+	battle_cry_source = null
 
 
 ## 이어하기용 상태. 다른 유닛은 전투 유닛 목록의 번호로 적고, 없으면 -1이다.
@@ -308,7 +342,8 @@ func save_state(units: Array[CombatUnit]) -> Dictionary:
 		statuses.append([effect.kind, units.find(effect.source), effect.turns_left, effect.dc])
 	var data: Dictionary = {"kind": kind, "ally": is_ally, "weapon": weapon, "armor": armor,
 		"hit_points": hit_points, "lost_hit_points": _lost_hit_points, "stunned": is_stunned,
-		"stun_source": units.find(stun_source), "marked_target": units.find(marked_target), "statuses": statuses}
+		"stun_source": units.find(stun_source), "marked_target": units.find(marked_target), "statuses": statuses,
+		"battle_cry_source": units.find(battle_cry_source)}
 	for field: String in SAVED_FIELDS:
 		data[field] = get(field)
 	return data
@@ -325,6 +360,7 @@ func load_state(data: Dictionary, units: Array[CombatUnit]) -> void:
 	is_stunned = data.stunned
 	stun_source = units[data.stun_source] if data.stun_source >= 0 else null
 	marked_target = units[data.marked_target] if data.marked_target >= 0 else null
+	battle_cry_source = units[data.battle_cry_source] if data.battle_cry_source >= 0 else null
 	status_effects.clear()
 	for saved: Array in data.statuses:
 		var effect: StatusEffect = StatusEffect.new(saved[0], units[saved[1]], saved[2], saved[3])
@@ -341,6 +377,7 @@ func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 			and data.lost_hit_points <= SAVED_HIT_POINT_LIMIT and data.get("stunned") is bool
 			and _valid_index(data.get("stun_source"), count, true) and (not data.stunned or data.stun_source >= 0)
 			and _valid_index(data.get("marked_target"), count, true)
+			and _valid_index(data.get("battle_cry_source"), count, true)
 			and data.get("statuses") is Array and data.statuses.size() <= 6):
 		return false
 	for field: String in SAVED_FIELDS:
@@ -349,6 +386,11 @@ func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 			return false
 	var area: Rect2i = Rect2i(Vector2i.ZERO, map_size)
 	if not area.has_point(data.cell) or not area.has_point(data.start_cell):
+		return false
+	# 방어막은 3턴, 전투의 함성은 2턴이다. 기간이 남은 효과만 값과 시전자를 가진다.
+	if (data.shield_turns > CombatActionRules.SHIELD_TURNS or (data.shield_turns == 0) != (data.shield_points == 0)
+			or data.battle_cry_turns > CombatActionRules.BATTLE_CRY_TURNS or (data.battle_cry_turns == 0) != (data.battle_cry_source == -1)
+			or (data.battle_cry_turns == 0) != (data.battle_cry_bonus == 0)):
 		return false
 	return (data.statuses as Array).all(func(saved: Variant) -> bool:
 		return (saved is Array and saved.size() == 4 and saved[0] in ["burn", "poison"]

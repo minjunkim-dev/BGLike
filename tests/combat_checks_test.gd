@@ -21,7 +21,6 @@ func _run() -> void:
 	_test_scripted_dice_shortfall()
 	_test_modes()
 	_test_ability_dice()
-	_test_parry_threshold()
 	_test_standard_values()
 	_test_hit_chances()
 	_test_hit_rolls()
@@ -91,7 +90,7 @@ func _unit(kind: CombatUnit.Kind, ally: bool, cell: Vector2i) -> CombatUnit:
 
 func _test_ability_dice() -> void:
 	for profile: Array in [
-		[CombatUnit.Kind.WARRIOR, true, [20, 8, 6, 4, 6, 12]],
+		[CombatUnit.Kind.WARRIOR, true, [20, 8, 6, 4, 8, 12]],
 		[CombatUnit.Kind.ARCHER, true, [6, 12, 20, 6, 4, 8]],
 		[CombatUnit.Kind.WARRIOR, false, [10, 6, 4, 4, 4, 4]],
 		[CombatUnit.Kind.ARCHER, false, [4, 10, 4, 4, 4, 4]],
@@ -114,13 +113,6 @@ func _test_modes() -> void:
 	_check(CombatChecks.roll_mode(2, 1) == CombatChecks.RollMode.ADVANTAGE, "유리 요인이 더 많으면 유리")
 	_check(CombatChecks.roll_mode(1, 2) == CombatChecks.RollMode.DISADVANTAGE, "불리 요인이 더 많으면 불리")
 	_check(CombatChecks.roll_mode(2, 2) == CombatChecks.RollMode.NORMAL, "유리와 불리 요인 수가 같으면 일반")
-
-
-func _test_parry_threshold() -> void:
-	var result: CombatChecks.RollResult = CombatChecks.threshold(8, 3, 7, ScriptedDice.new([4], [8]))
-	_check(result.success and result.total == 7, "흘려내기 민첩 +3은 같은 공격값에도 성공")
-	_check(CombatChecks.threshold_chance(8, 3, 30) == 0.0
-		and CombatChecks.threshold_chance(8, 3, 1) == 1.0, "흘려내기 확률은 0~100%")
 
 
 func _test_standard_values() -> void:
@@ -258,12 +250,12 @@ func _test_battle_rolls() -> void:
 	barbarian.is_stunned = false
 	barbarian.cell = Vector2i(5, 4)
 	ScriptedDice.arrange_turns(turns, units, [barbarian, warrior, archer])
-	actions.replay_answers = [true]
-	actions.dice = ScriptedDice.new([7, 7], [barbarian.get_ability_sides(strength), warrior.get_ability_sides(CombatUnit.Ability.AGILITY)])
+	actions.dice = ScriptedDice.new([7, 2], ScriptedDice.attack_sides(barbarian) + ScriptedDice.damage_sides(barbarian))
 	before = warrior.hit_points
-	_check(await actions.attack(barbarian, warrior) and warrior.hit_points == before
-		and actions.last_attack.total == 10 and warrior.parry_left == 1,
-		"야만인 힘7+3이 전사 AC5에 명중, 흘려내기 민첩7+3이 공격10과 같으면 방어, 피해 굴림 없음")
+	_check(await actions.attack(barbarian, warrior) and warrior.hit_points == before - 2 - barbarian.get_damage_bonus()
+		and actions.last_attack.total == 10 and actions.last_damage_rolls == [2] and actions.grid.armor_class(warrior) == 6,
+		"야만인 힘7+3이 궁수 옆 전사(팔랑크스 AC6)에 명중하면 반응 없이 피해 굴림")
+	before = warrior.hit_points
 	_check(actions.apply_status(barbarian, warrior, "poison") and warrior.status_effects[0].dc == 4, "DC 4 독 부여")
 	actions.dice = ScriptedDice.new([4], [warrior.get_ability_sides(CombatUnit.Ability.HEALTH)])
 	turns.end_turn()
@@ -282,11 +274,9 @@ func _test_battle_rolls() -> void:
 	actions.logged.connect(observe)
 	ScriptedDice.arrange_turns(turns, units, [boss, warrior, archer])
 	warrior.hit_points = warrior.get_max_hit_points()
-	# 회전회오리는 명중굴림이 없으므로 흘려내기를 묻지 않는다. 물으면 준비한 답을 쓴다.
+	# 회전회오리에는 반응을 묻지 않는다. 물으면 준비한 답을 쓴다.
 	actions.replay_answers = [true]
 	warrior.reaction_left = 1
-	warrior.parry_left = 1
-	var parry_before: int = warrior.parry_left
 	_check(CombatActionRules.save_dc(boss, "spin") == 10, "고철로봇-3000 회전회오리 DC = 힘 d12 표준값 7 + 공격 가산 3")
 	# 소비 순서: 전사 힘 내성·피해 → 궁수 힘 내성·피해. 시전자는 굴리지 않는다.
 	actions.dice = ScriptedDice.new([10, 9, 6, 3], [20, 12, 6, 12])
@@ -295,8 +285,7 @@ func _test_battle_rolls() -> void:
 	_check(await actions.spin(boss) and warrior.hit_points == warrior_before - 5
 		and archer.hit_points == archer_before - 5 and actions.last_save.total == 6,
 		"회전회오리는 대상마다 힘 내성: 전사 10 ≥ DC 10이면 피해 11의 절반 5, 궁수 6은 실패해 피해 3+2")
-	_check(actions.replay_answers == [true] and warrior.parry_left == parry_before and warrior.reaction_left == 1,
-		"내성굴림 피해에는 흘려내기를 묻지 않음")
+	_check(actions.replay_answers == [true] and warrior.reaction_left == 1, "내성굴림 피해에는 반응을 묻지 않음")
 	actions.replay_answers.clear()
 	for expected: String in ["고철로봇-3000 회전회오리: 인접 대상 2명 · DC 10",
 			"아군 전사 힘 내성(일반): 힘 d20 [10] +0 = 10 / DC 10 · 성공",
@@ -335,7 +324,7 @@ func _test_damage_rolls() -> void:
 		and robot.hit_points == before - 20 - warrior.get_damage_bonus(),
 		"유리 명중굴림 뒤 피해는 힘 d20을 한 번 새로 굴리고 절대성공면은 최댓값")
 	_check(logs.any(func(message: String) -> bool:
-			return message == "고철로봇-1000 피해: 힘 d20 [20] +3 = 23 · HP %d" % robot.hit_points),
+			return message == "고철로봇-1000 피해: 힘 d20 [20] +0 = 20 · HP %d" % robot.hit_points),
 		"피해 로그에 능력치 주사위·굴림·피해 보정 " + str(logs))
 	robot.is_stunned = false
 	turns.select_unit(archer)
@@ -541,7 +530,7 @@ func _test_preview_conditions() -> void:
 	target.is_ally = false
 	target.hit_points = 0
 	_check(not grid.attack_preview(archer, target).valid_target, "전투 불능 대상 거부")
-	_check(archer.get_ability_sides(CombatUnit.Ability.WILL) == 6, "전사 의지 d6")
+	_check(archer.get_ability_sides(CombatUnit.Ability.WILL) == 8, "전사 의지 d8")
 	_check(target.get_ability_sides(CombatUnit.Ability.WILL) == 4, "풋내기 궁수 의지 d4")
 
 
@@ -586,7 +575,7 @@ func _test_monster_hit_table() -> void:
 func _test_damage_table() -> void:
 	var strength: CombatUnit.Ability = CombatUnit.Ability.STRENGTH
 	for row: Array in [
-		[CombatUnit.Kind.WARRIOR, true, strength, 20, 3],
+		[CombatUnit.Kind.WARRIOR, true, strength, 20, 0],
 		[CombatUnit.Kind.ARCHER, true, CombatUnit.Ability.FINESSE, 20, 1],
 		[CombatUnit.Kind.WARRIOR, false, strength, 10, 1],
 		[CombatUnit.Kind.ARCHER, false, CombatUnit.Ability.AGILITY, 10, 1],
@@ -733,7 +722,6 @@ func _test_scene_spin() -> void:
 	units[3].cell = Vector2i(9, 9)
 	ScriptedDice.arrange_turns(turns, units, [boss])
 	units[0].is_stunned = true
-	units[0].parry_left = 0
 	units[0].reaction_left = 0
 	units[1].reaction_left = 0
 	var damage_sides: int = ScriptedDice.damage_sides(boss, "spin")[0]

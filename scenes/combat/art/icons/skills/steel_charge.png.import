@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dcchvqjeohveb"
-path="res://.godot/imported/surge.png-b8dbe1602a8bfa6ae03b18f90a4bdea8.ctex"
+uid="uid://jmdsm3qn2683"
+path="res://.godot/imported/steel_charge.png-e6cebd6c5a70a455312b26dea5624981.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://scenes/combat/art/icons/skills/surge.png"
-dest_files=["res://.godot/imported/surge.png-b8dbe1602a8bfa6ae03b18f90a4bdea8.ctex"]
+source_file="res://scenes/combat/art/icons/skills/steel_charge.png"
+dest_files=["res://.godot/imported/steel_charge.png-e6cebd6c5a70a455312b26dea5624981.ctex"]
 
 [params]
 

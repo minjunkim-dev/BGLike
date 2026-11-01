@@ -192,6 +192,8 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 		"attack":
 			return (in_range(origin, target.cell, actor.get_attack_range())
 				and (actor.get_attack_range() > 1 or are_adjacent(origin, target.cell)))
+		"cross_slash", "steel_charge":
+			return are_adjacent(origin, target.cell)
 		"shock", "mark":
 			return in_range(origin, target.cell, CombatActionRules.SKILL_RANGE)
 		"shove":
@@ -281,6 +283,27 @@ func nearest_distance(cell: Vector2i, targets: Array[CombatUnit]) -> int:
 	return nearest
 
 
+## 팔랑크스 (전사 문서): 기절하지 않은 전사와 인접한 같은 편 아군의 AC +1. 인접 아군이 있으면 전사도 +1.
+## 위치로 바로 계산하는 상시 효과이고 중첩하지 않는다.
+func phalanx_bonus(unit: CombatUnit) -> int:
+	if unit == null or unit.hit_points <= 0:
+		return 0
+	for owner: CombatUnit in units:
+		if (owner.hit_points <= 0 or owner.is_stunned or owner.is_ally != unit.is_ally
+				or not CombatActionRules.belongs_to(owner, "phalanx")):
+			continue
+		for ally: CombatUnit in units:
+			if (ally != owner and ally.hit_points > 0 and ally.is_ally == owner.is_ally
+					and (unit == owner or unit == ally) and are_adjacent(owner.cell, ally.cell)):
+				return 1
+	return 0
+
+
+## 지금 위치의 AC. 유닛 AC에 팔랑크스를 더한다.
+func armor_class(unit: CombatUnit) -> int:
+	return unit.get_armor_class() + phalanx_bonus(unit)
+
+
 func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.AttackPreview:
 	var preview: CombatChecks.AttackPreview = CombatChecks.AttackPreview.new()
 	if (attacker == null or target == null or attacker.is_ally == target.is_ally
@@ -307,5 +330,5 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 	preview.mode = CombatChecks.roll_mode(advantages, disadvantages)
 	if preview.in_range and preview.blocked_reason.is_empty():
 		preview.chance = CombatChecks.hit_chance(attacker.get_ability_sides(attacker.get_attack_ability()),
-			attacker.get_attack_bonus(), target.get_armor_class(), preview.mode)
+			attacker.get_hit_bonus(), armor_class(target), preview.mode)
 	return preview
