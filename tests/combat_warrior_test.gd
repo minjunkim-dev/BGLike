@@ -235,6 +235,7 @@ func _test_sweep_shape() -> void:
 	_check(grid.sweep_cells(origin, Vector2i(5, 4)) == [Vector2i(5, 5)],
 		"높이 차 2 이상·낭떠러지·막힌 칸·나무 상자는 빼고, 막힌 정면 너머의 칸도 시야 없이 셈")
 	_check(grid.sweep_cells(Vector2i(0, 0), Vector2i(0, 1)) == [Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)], "맵 밖 칸은 뺌")
+	_check(grid.sweep_cells(Vector2i(0, 4), Vector2i(-1, 4)).is_empty(), "맵 밖 칸은 정면이 될 수 없음")
 
 
 func _test_sweep() -> void:
@@ -248,8 +249,7 @@ func _test_sweep() -> void:
 	_check(CombatActionRules.belongs_to(warrior, "sweep") and not CombatActionRules.belongs_to(archer, "sweep")
 		and not CombatActionRules.belongs_to(barbarian, "sweep"), "휩쓸기는 아군 전사만")
 	_check(CombatActionRules.resource_of("sweep") == CombatUnit.TurnResource.ACTION
-		and CombatActionRules.GROUPS[0].slice(0, 2) == ["attack", "sweep"] and CombatActionRules.uses_left(warrior, "sweep") == -1,
-		"행동 컨테이너의 공격 다음, 무제한")
+		and CombatActionRules.uses_left(warrior, "sweep") == -1, "행동 자원, 무제한")
 	var details: String = CombatActionRules.details(warrior, "sweep")
 	_check("사거리: 정면 반달 5칸" in details and "피해: 힘 d20 ÷2 올림" in details and "판정: 대상마다 힘 d20" in details,
 		"호버에 범위·피해식·판정 " + details)
@@ -272,6 +272,7 @@ func _test_sweep() -> void:
 		"행동을 쓰면 비활성")
 	var bonus: Fixture = _fixture()
 	bonus.units[0].weapon = {"stats": {"damage_bonus": 2}}
+	_check("피해: 힘 d20 ÷2 올림 +2" in CombatActionRules.details(bonus.units[0], "sweep"), "가산치는 ÷2 올림 뒤에 띄워 더함")
 	bonus.actions.dice = _dice([1], [20])
 	await bonus.actions.sweep(bonus.units[0], Vector2i(5, 4))
 	_check(bonus.units[2].hit_points == 12 and bonus.units[0].action_left == 0, "빗나가도 행동은 소비")

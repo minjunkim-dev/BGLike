@@ -218,9 +218,10 @@ func area_cells(center: Vector2i, radius: int) -> Array[Vector2i]:
 
 ## 휩쓸기 (전사 문서): 인접한 facing 칸을 정면으로 둔 반달 5칸을 시계방향(왼쪽 옆 → 앞왼쪽 → 앞 → 앞오른쪽 → 오른쪽 옆)으로 준다.
 ## origin 바닥과 높이 차 1 이하인 칸만 넣고 맵 밖·낭떠러지·막힌 칸은 뺀다. 시야와 중간 칸은 보지 않는다.
+## 정면은 맵 안의 인접 4칸 중 하나다.
 func sweep_cells(origin: Vector2i, facing: Vector2i) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
-	if distance(origin, facing) != 1:
+	if distance(origin, facing) != 1 or not is_inside(facing):
 		return cells
 	var front: Vector2i = facing - origin
 	# 격자는 y가 아래로 커지므로 (x, y) → (-y, x)가 화면에서 시계방향 90도다.

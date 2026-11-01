@@ -2315,9 +2315,26 @@ func _test_sweep_input() -> void:
 	var overlays: Array = map.get("_overlays")
 	_check(selection.selected_action == "sweep" and "정면으로 삼을 인접한 칸" in hud.preview_label.text
 		and overlays.size() == 4, "휩쓸기를 고르면 안내와 고를 수 있는 인접 칸을 보임")
+	_check(overlays.all(func(overlay: Polygon2D) -> bool: return overlay.color == (overlays[0] as Polygon2D).color),
+		"고를 수 있는 인접 칸은 기본 공격 대상과 관계없이 같은 색")
 	await _click(units[2].get_global_transform_with_canvas() * Vector2(0, -10))
 	_check(selection.preview_cell == units[2].cell and units[2].is_previewed and units[3].is_previewed
 		and actor.action_left == 1, "적 몸통을 눌러도 그 칸을 정면으로 미리보기")
+	# 전사 자신의 몸통이 인접 칸 바닥을 가려도 격자 위치로 그 칸을 고른다.
+	var covered: Vector2 = Vector2.INF
+	var covered_cell: Vector2i = Vector2i(-1, -1)
+	for y: int in range(-40, 1):
+		for x: int in range(-16, 17):
+			var local: Vector2 = Vector2(x, y)
+			var floor_cell: Vector2i = map.surface_to_map(map.to_local(actor.to_global(local)))
+			if (covered == Vector2.INF and actor.contains_body_point(local)
+					and CombatGrid.distance(actor.cell, floor_cell) == 1):
+				covered = actor.get_global_transform_with_canvas() * local
+				covered_cell = floor_cell
+	_check(covered != Vector2.INF, "입력 fixture: 전사 몸통이 덮은 인접 칸 바닥이 있음")
+	if covered != Vector2.INF:
+		await _click(covered)
+		_check(selection.preview_cell == covered_cell, "자기 몸통이 가린 인접 칸도 정면으로 미리보기")
 	# 빈 칸 (4, 5)를 정면으로 두면 왼쪽 옆 (5, 4)의 적만 맞고 앞오른쪽 (3, 5)의 아군은 맞지 않는다.
 	var facing: Vector2i = Vector2i(4, 5)
 	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(facing)

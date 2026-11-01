@@ -182,7 +182,7 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 			var bonus: int = damage_bonus(actor, action)
 			lines = [TranslationServer.tr("사거리: 정면 반달 5칸"), TranslationServer.tr("피해: %s d%d ÷2 올림%s") % [
 				CombatUnit.ability_name(damage_ability(actor, action)), actor.get_ability_sides(damage_ability(actor, action)),
-				"" if bonus == 0 else "%+d" % bonus], TranslationServer.tr("판정: 대상마다 %s") % hit]
+				"" if bonus == 0 else " %+d" % bonus], TranslationServer.tr("판정: 대상마다 %s") % hit]
 		"shock":
 			lines = [TranslationServer.tr("사거리: 1~%d칸") % SKILL_RANGE, weapon, TranslationServer.tr("판정: %s, 명중하면 기절") % hit]
 		"mark":

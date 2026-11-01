@@ -579,8 +579,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	var prop: CombatGrid.Prop = map.prop_at_point(map.to_local(world_position))
 	if selection.selected_action == "sweep":
 		get_viewport().set_input_as_handled()
-		# 몸통이나 사물을 눌러도 그 칸을 정면으로 고른다. 인접하지 않은 칸은 미리보기만 지운다.
-		var facing: Vector2i = candidates[0].cell if not candidates.is_empty() else prop.cell if prop != null else cell
+		# 인접 칸의 몸통이나 사물을 눌러도 그 칸을 정면으로 고른다. 인접하지 않은 몸통(전사 자신 등)이 가린 칸은
+		# 격자 위치로 고르고, 그래도 인접하지 않으면 미리보기만 지운다.
+		var facing: Vector2i = cell
+		if not candidates.is_empty() and CombatGrid.distance(actor.cell, candidates[0].cell) == 1:
+			facing = candidates[0].cell
+		elif prop != null and CombatGrid.distance(actor.cell, prop.cell) == 1:
+			facing = prop.cell
 		if CombatGrid.distance(actor.cell, facing) != 1:
 			selection.clear_preview()
 		elif selection.select_cell(facing, actions.can_sweep(actor, facing)):
@@ -803,11 +808,11 @@ func _update_turn_ui() -> void:
 		elif selection.selected_action == "sweep":
 			# 정면을 고르기 전에는 고를 수 있는 인접 칸을 보인다.
 			for cell: Vector2i in CombatGrid.neighbors(turns.current_unit.cell):
-				if actions.grid.is_inside(cell) and actions.can_sweep(turns.current_unit, cell):
+				if actions.can_sweep(turns.current_unit, cell):
 					movement_cells.append(cell)
 	var attack_cells: Array[Vector2i] = []
 	for cell: Vector2i in movement_cells:
-		if sweeping or not _attack_targets_from(cell).is_empty():
+		if selection.selected_action == "sweep" or not _attack_targets_from(cell).is_empty():
 			attack_cells.append(cell)
 	map.show_movement(movement_cells, attack_cells, selection.preview_path,
 		turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO)
@@ -904,7 +909,8 @@ func _update_turn_ui() -> void:
 				tr_n("기회 공격 %d명", "기회 공격 %d명", reactors) % reactors if reactors > 0 else tr("기회 공격 없음"),
 				tr("낙하 피해 %d") % fall if fall > 0 else tr("낙하 없음")]
 		hud.show_target_note(note)
-	elif selection.selected_action == "sweep" and turns.current_unit != null and turns.current_unit.is_ally:
+	elif (selection.selected_action == "sweep" and turns.current_unit != null and turns.current_unit.is_ally
+			and not actions.busy):
 		var note: String = tr("휩쓸기 · 정면으로 삼을 인접한 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 실행합니다.")
 		if sweeping and sweep_targets.is_empty():
 			note = tr("휩쓸기 · 영향 칸에 적이 없음")
