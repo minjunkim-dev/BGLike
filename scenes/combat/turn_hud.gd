@@ -36,6 +36,8 @@ var _log_lines: Array[String] = []
 # 기본 툴팁 창 대신 같은 HUD의 최상단에 설명을 그린다.
 var _tooltip: HoverTooltip = HoverTooltip.new()
 var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
+## 유닛 패널의 AC와 팔랑크스 상태를 위치로 계산한다. 없으면 유닛 AC만 보인다.
+var grid: CombatGrid
 
 @onready var round_label: Label = $Round
 @onready var progress_label: Label = $Progress
@@ -165,7 +167,8 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			button.visible = CombatActionRules.belongs_to(shown, action)
 			if button.visible and _containers[index].visible:
 				_action_slots.append(button)
-			_costs[action].text = symbols[index]
+			# 복합 비용은 함께 소비하는 턴 자원 기호를 잇는다. 이동력은 기호가 없다.
+			_costs[action].text = symbols[index] + ("▲" if CombatActionRules.EXTRA_COSTS.get(action) == "bonus_action" else "")
 			button.tooltip_text = CombatActionRules.NAMES[action] + "\n" + action_details(actions, shown, action)
 			var active: bool = ally_turn and not locked and actions.can_use(actor, action)
 			# 반응은 횟수나 자원을 다 써도 자기 턴에는 켜진 표시로 남는다.
@@ -227,7 +230,7 @@ func add_log(message: String) -> void:
 
 func show_reaction(kind: String, prompt: String) -> void:
 	reaction_dialog.dialog_text = prompt
-	reaction_dialog.get_ok_button().text = tr("공격") if kind == "opportunity" else tr("흘려내기")
+	reaction_dialog.get_ok_button().text = tr("공격")
 	reaction_dialog.get_cancel_button().text = tr("넘기기")
 	reaction_dialog.exclusive = true
 	reaction_dialog.popup_centered(Vector2i(360, 110))
@@ -354,8 +357,15 @@ func show_unit(unit: CombatUnit) -> void:
 		states.append(tr("◎ 표식"))
 	if unit.disengaged:
 		states.append(tr("기회 공격 면제"))
+	if unit.shield_points > 0:
+		states.append(tr("방어막 %d (%d턴)") % [unit.shield_points, unit.shield_turns])
+	if unit.battle_cry_turns > 0:
+		states.append(tr("전투의 함성 명중 +%d (%d턴)") % [unit.battle_cry_bonus, unit.battle_cry_turns])
+	var phalanx: int = grid.phalanx_bonus(unit) if grid != null else 0
+	if phalanx > 0:
+		states.append(tr("팔랑크스 AC +%d") % phalanx)
 	resource_label.text = tr("HP %d / %d   AC %d\n힘 d%d · 민첩 d%d · 솜씨 d%d\n지능 d%d · 의지 d%d · 건강 d%d\n공격 %+d · 사거리 %d칸\n상태: %s") % [
-		unit.hit_points, unit.get_max_hit_points(), unit.get_armor_class(),
+		unit.hit_points, unit.get_max_hit_points(), unit.get_armor_class() + phalanx,
 		unit.get_ability_sides(CombatUnit.Ability.STRENGTH), unit.get_ability_sides(CombatUnit.Ability.AGILITY),
 		unit.get_ability_sides(CombatUnit.Ability.FINESSE), unit.get_ability_sides(CombatUnit.Ability.INTELLIGENCE),
 		unit.get_ability_sides(CombatUnit.Ability.WILL), unit.get_ability_sides(CombatUnit.Ability.HEALTH),

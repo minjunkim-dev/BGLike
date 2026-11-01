@@ -62,7 +62,6 @@ func _run() -> void:
 		for i: int in range(4):
 			units[i].cell = [Vector2i(0, 0), Vector2i(0, 9), Vector2i(9, 0), Vector2i(9, 9)][i]
 			units[i].hit_points = units[i].get_max_hit_points()
-			units[i].parry_left = 0
 		var reaction_case: bool = case.begins_with("opportunity")
 		var actor: CombatUnit = units[1] if reaction_case else units[0]
 		actor.cell = Vector2i(5, 4) if reaction_case else Vector2i(1, 4)

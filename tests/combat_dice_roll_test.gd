@@ -173,7 +173,6 @@ func _test_spin_save_is_awaited_before_damage() -> void:
 	boss.begin_turn()
 	f.turns.current_unit = boss
 	f.units[1].cell = Vector2i(5, 3)
-	f.units[0].parry_left = 0
 	f.actions.dice = _dice_for([10, 6, 2, 6], [20, 12, 6, 12])
 	_check(await f.actions.spin(boss), "회전회오리 실행")
 	_check(f.rolls.size() == 2 and f.rolls.all(func(roll: CombatDiceRoll) -> bool:

@@ -970,7 +970,6 @@ func _test_spin_attacks() -> void:
 	boss.begin_turn()
 	f.turns.current_unit = boss
 	f.units[1].cell = Vector2i(5, 3)
-	f.units[0].parry_left = 0
 	# 소비 순서: 전사 힘 d20 내성·힘 d12 피해 → 궁수 힘 d6 내성·힘 d12 피해. 시전자는 굴리지 않는다.
 	f.actions.dice = _dice_for([10, 6, 2, 6], [20, 12, 6, 12])
 	_check(await f.actions.spin(boss), "회전회오리 실행")
@@ -1097,7 +1096,6 @@ func _test_spin_incapacitation() -> void:
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
 	boss.hit_points = 50
 	f.units[0].hit_points = 3
-	f.units[0].parry_left = 0
 	f.units[1].cell = Vector2i(5, 3)
 	ScriptedDice.arrange_turns(f.turns, f.units, [f.units[2], f.units[1], f.units[0], f.units[3]])
 	f.actions.dice = _dice_for([1, 1, 1, 2], [20, 12, 6, 12])
@@ -1108,7 +1106,6 @@ func _test_spin_incapacitation() -> void:
 	boss = interrupted.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
 	boss.hit_points = 50
-	interrupted.units[0].parry_left = 0
 	interrupted.units[1].cell = Vector2i(5, 3)
 	ScriptedDice.arrange_turns(interrupted.turns, interrupted.units, [interrupted.units[2], interrupted.units[1], interrupted.units[0], interrupted.units[3]])
 	interrupted.actions.attack_animation = func(actor: CombatUnit, _target: CombatUnit) -> void:
@@ -1366,7 +1363,6 @@ func _test_scrap_robot_opportunity() -> void:
 	var boss: CombatUnit = f.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
 	boss.hit_points = 40
-	f.units[0].parry_left = 0
 	f.actions.dice = _dice_for([11, 8], ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	_check(await f.actions.move_to(f.units[0], Vector2i(3, 5)), "보스 인접 칸에서 이동")
 	_check(f.units[0].hit_points == 2 and boss.reaction_left == 0,
@@ -2197,7 +2193,6 @@ func _test_attacks() -> void:
 	var f: Fixture = _fixture()
 	var actor: CombatUnit = f.units[0]
 	var target: CombatUnit = f.units[2]
-	target.parry_left = 0
 	f.actions.dice = _dice_for([1], ScriptedDice.attack_sides(actor))
 	_check(await f.actions.attack(actor, target), "빗나간 공격도 실행 성공")
 	_check(actor.action_left == 0 and target.hit_points == 12 and f.actions.last_damage == 0
@@ -2224,7 +2219,6 @@ func _test_attacks() -> void:
 	_check(f.hits.size() == 1, "최댓값 명중 타격음은 한 번")
 	var killed: Fixture = _fixture()
 	killed.units[2].hit_points = 1
-	killed.units[2].parry_left = 0
 	killed.units[1].marked_target = killed.units[2]
 	killed.actions.dice = _dice_for([11, 1], ScriptedDice.attack_sides(killed.units[0]) + ScriptedDice.damage_sides(killed.units[0]))
 	await killed.actions.attack(killed.units[0], killed.units[2])
@@ -3478,7 +3472,6 @@ func _test_scene_input() -> void:
 	await _click(screen, MOUSE_BUTTON_RIGHT)
 	_check(units[0].cell == destination and units[0].movement_left == 4, "이동 두 번째 클릭 실행")
 	units[2].cell = Vector2i(2, 6)
-	units[2].parry_left = 0
 	battle.call("_update_turn_ui")
 	actions.dice = _dice_for([1], ScriptedDice.attack_sides(units[0]))
 	var point: Vector2 = units[2].get_global_transform_with_canvas() * Vector2(0, -10)

@@ -401,7 +401,6 @@ func _test_resources() -> void:
 	var titles: Array = hud.get("_titles")
 	units[0].action_left = 0
 	units[0].reaction_left = 0
-	units[0].parry_left = 0
 	battle.call("_update_turn_ui")
 	_check((titles[0] as Label).text == "행동 ○" and (titles[2] as Label).text == "반응 ◇",
 		"소비 자원은 빈 기호")
@@ -901,13 +900,11 @@ func _test_guidance() -> void:
 	# 비활성 버튼은 비용 소진·횟수 소진·효과 없음의 이유를 호버에 유지한다.
 	turns.select_unit(units[0])
 	units[0].action_left = 0
-	units[0].surge_left = 0
 	battle.call("_update_turn_ui")
 	_check("자원을 이미 씀" in (buttons["attack"] as Button).tooltip_text
 		and "이번 막의 횟수를 모두 씀" in (buttons["surge"] as Button).tooltip_text
 		and "HP가 이미 최대" in (buttons["second_wind"] as Button).tooltip_text,
 		"사용 불가 이유는 비활성 버튼 호버에 유지")
-	units[0].parry_left = 0
 	battle.call("_update_turn_ui")
 	_check("이번 막의 횟수를 모두 씀" in (buttons["parry"] as Button).tooltip_text,
 		"반응 스킬 횟수가 없으면 이유 표시")

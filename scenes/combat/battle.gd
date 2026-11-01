@@ -98,6 +98,7 @@ func _ready() -> void:
 		if not _replaying():
 			$HitSound.play())
 	actions.reaction_requested.connect(hud.show_reaction)
+	hud.grid = actions.grid
 	actions.movement_animation = _animate_movement
 	actions.jump_animation = _animate_jump
 	actions.attack_animation = _animate_attack
@@ -665,6 +666,10 @@ func _execute_target(target: CombatUnit) -> void:
 	match action:
 		"attack", "shock":
 			await actions.attack(actor, target, action == "shock")
+		"cross_slash":
+			await actions.cross_slash(actor, target)
+		"steel_charge":
+			await actions.steel_charge(actor, target)
 		"mark":
 			actions.mark(actor, target)
 		"shove":
@@ -806,6 +811,17 @@ func _update_turn_ui() -> void:
 					+ ("" if landing.is_empty() else " · " + landing) + " · " + tr("밀칠 확률 %.1f%%") % (chance * 100.0))
 			else:
 				hud.show_target_note(tr("밀치기를 사용할 수 없음"))
+		elif selection.selected_action == "steel_charge":
+			var actor: CombatUnit = turns.current_unit
+			var target: CombatUnit = selection.preview_target
+			if not actions.can_target(actor, target, "steel_charge"):
+				hud.show_target_note(tr("강철 돌진을 사용할 수 없음"))
+			elif actions.grid.can_shove(actor, target):
+				var cell: Vector2i = actions.grid.push_destination(actor.cell, target.cell)
+				var landing: String = actions.shove_landing(target, cell)
+				hud.show_target_note(tr("명중하면 밀려날 칸: %d, %d") % [cell.x, cell.y] + ("" if landing.is_empty() else " · " + landing))
+			else:
+				hud.show_target_note(tr("밀려날 칸이 막혀 명중해도 피해만"))
 	elif selection.preview_prop != null:
 		var actor: CombatUnit = turns.current_unit
 		var prop: CombatGrid.Prop = selection.preview_prop

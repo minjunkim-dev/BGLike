@@ -547,7 +547,6 @@ func _test_scrap_robot_3000_stage() -> void:
 	var boss: CombatUnit = units[2]
 	boss.hit_points = 25
 	units[0].cell = Vector2i(8, 3)
-	units[0].parry_left = 0
 	units[1].cell = Vector2i(8, 5)
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	ScriptedDice.arrange_turns(turns, units, [units[2], units[0], units[1]])
@@ -667,8 +666,6 @@ func _test_stage_transition(battle: Node2D) -> void:
 	var archer: CombatUnit = party[1]
 	warrior.hit_points = 5
 	warrior.second_wind_left = 0
-	warrior.parry_left = 0
-	warrior.surge_left = 0
 	warrior.potion_left = 3
 	warrior.is_stunned = true
 	warrior.stun_source = (battle.get("units") as Array)[2] as CombatUnit

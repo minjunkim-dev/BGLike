@@ -21,7 +21,6 @@ func _run() -> void:
 	_test_scripted_dice_shortfall()
 	_test_modes()
 	_test_ability_dice()
-	_test_parry_threshold()
 	_test_standard_values()
 	_test_hit_chances()
 	_test_hit_rolls()
@@ -114,13 +113,6 @@ func _test_modes() -> void:
 	_check(CombatChecks.roll_mode(2, 1) == CombatChecks.RollMode.ADVANTAGE, "유리 요인이 더 많으면 유리")
 	_check(CombatChecks.roll_mode(1, 2) == CombatChecks.RollMode.DISADVANTAGE, "불리 요인이 더 많으면 불리")
 	_check(CombatChecks.roll_mode(2, 2) == CombatChecks.RollMode.NORMAL, "유리와 불리 요인 수가 같으면 일반")
-
-
-func _test_parry_threshold() -> void:
-	var result: CombatChecks.RollResult = CombatChecks.threshold(8, 3, 7, ScriptedDice.new([4], [8]))
-	_check(result.success and result.total == 7, "흘려내기 민첩 +3은 같은 공격값에도 성공")
-	_check(CombatChecks.threshold_chance(8, 3, 30) == 0.0
-		and CombatChecks.threshold_chance(8, 3, 1) == 1.0, "흘려내기 확률은 0~100%")
 
 
 func _test_standard_values() -> void:
@@ -733,7 +725,6 @@ func _test_scene_spin() -> void:
 	units[3].cell = Vector2i(9, 9)
 	ScriptedDice.arrange_turns(turns, units, [boss])
 	units[0].is_stunned = true
-	units[0].parry_left = 0
 	units[0].reaction_left = 0
 	units[1].reaction_left = 0
 	var damage_sides: int = ScriptedDice.damage_sides(boss, "spin")[0]

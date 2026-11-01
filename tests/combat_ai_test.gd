@@ -105,7 +105,6 @@ func _test_ground_paths() -> void:
 		var actor: CombatUnit = f.units[2]
 		actor.cell = Vector2i(0, 1)
 		actor.movement_left = budget
-		actor.surge_left = 0
 		f.units[0].cell = Vector2i(3, 1)
 		f.units[1].cell = Vector2i(9, 9)
 		f.units[3].cell = Vector2i(9, 8)
@@ -158,7 +157,6 @@ func _test_ground_paths() -> void:
 		"아군 이동은 미리보기와 같은 기존 최단 경로와 장판 적용을 유지")
 	var stationary: Fixture = _fixture()
 	actor = stationary.units[2]
-	actor.surge_left = 0
 	_check(stationary.actions.create_ground(stationary.units[0], actor.cell, "poison"), "제자리 공격 검사용 장판")
 	stationary.actions.dice = ScriptedDice.new([1], ScriptedDice.attack_sides(actor))
 	await ai.play_turn(actor, stationary.actions)
@@ -209,7 +207,6 @@ func _test_jump_priorities() -> void:
 	var walking: Fixture = _fixture()
 	var actor: CombatUnit = walking.units[2]
 	actor.cell = Vector2i.ZERO
-	actor.surge_left = 0
 	walking.units[0].cell = Vector2i(2, 0)
 	walking.units[1].cell = Vector2i(6, 0)
 	walking.units[3].cell = Vector2i(9, 9)
@@ -723,7 +720,6 @@ func _test_enemy_reactions() -> void:
 	f.turns.end_turn()
 	var actor: CombatUnit = f.units[0]
 	var reactor: CombatUnit = f.units[2]
-	actor.parry_left = 0
 	var prompts: Array[int] = [0]
 	f.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
 		prompts[0] += 1

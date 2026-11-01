@@ -101,9 +101,8 @@ func _pause(pause: Callable) -> void:
 
 
 func _warrior_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:
-	var used_second_wind: bool = false
 	if actor.hit_points * 2 <= actor.get_max_hit_points() and actions.can_use(actor, "second_wind"):
-		used_second_wind = actions.use_self(actor, "second_wind")
+		actions.use_self(actor, "second_wind")
 		await _pause(pause)
 	if not _active(actor, actions):
 		return
@@ -119,20 +118,6 @@ func _warrior_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -
 	if target == null or not await actions.attack(actor, target):
 		return
 	await _pause(pause)
-	if used_second_wind or not _active(actor, actions) or not actions.can_use(actor, "surge"):
-		return
-	# 공격 뒤 탈락한 대상은 제외한다. 행동 회복 전이므로 거리로 확인한다.
-	var remaining: Array[CombatUnit] = _targets(actor, actions)
-	for candidate: CombatUnit in remaining:
-		if actions.grid.can_target(actor, candidate, "attack"):
-			actions.use_self(actor, "surge")
-			await _pause(pause)
-			if _active(actor, actions):
-				target = _attack_target(actor, actions)
-				if target != null:
-					await actions.attack(actor, target)
-					await _pause(pause)
-			return
 
 
 func _archer_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:
