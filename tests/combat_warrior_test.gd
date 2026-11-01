@@ -248,6 +248,20 @@ func _test_holy_veil() -> void:
 	f.actions.grid.pits = [Vector2i(4, 5)]
 	f.actions.call("_land", warrior, Vector2i(4, 5))
 	_check(warrior.hit_points == 0, "낙사는 피해가 아니라 방어막이 받지 않음")
+	# 바위 미리보기도 방어막을 셈해 실행과 같은 생존·밀림을 보인다.
+	var rocky: Fixture = _fixture()
+	var target: CombatUnit = rocky.units[3]
+	target.cell = Vector2i(4, 6)
+	target.hit_points = 3
+	target.shield_points = 5
+	target.shield_turns = 3
+	var rock: CombatGrid.Prop = rocky.actions.create_prop(Vector2i(4, 5), "rock")
+	var preview: CombatActions.RockRoll = rocky.actions.preview_rock(rocky.units[0], rock)
+	var pushed: bool = preview.steps.any(func(step: CombatActions.RockStep) -> bool: return step.target == target and step.push)
+	rocky.actions.dice = _dice([], [])
+	rocky.actions.attack_prop(rocky.units[0], rock)
+	_check(pushed and target.hit_points == 3 and target.shield_points == 1 and target.cell != Vector2i(4, 6),
+		"바위 충돌 피해 4를 방어막이 받고, 미리보기도 살아남아 밀리는 것으로 보임")
 
 
 func _test_battle_cry() -> void:

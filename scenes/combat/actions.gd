@@ -251,7 +251,8 @@ func _trace_rock(prop: CombatGrid.Prop, direction: Vector2i, limit: int,
 	for unit: CombatUnit in units:
 		if unit.hit_points > 0:
 			positions[unit] = unit.cell
-			health[unit] = unit.hit_points
+			# 방어막이 먼저 받으므로 HP + 방어막이 남아 있으면 버틴다. 낙사는 아래에서 0으로 둔다.
+			health[unit] = unit.hit_points + unit.shield_points
 	var cell: Vector2i = prop.cell
 	for index: int in range(limit):
 		var step: RockStep = RockStep.new()
