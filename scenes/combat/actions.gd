@@ -66,6 +66,8 @@ var last_damage: int = 0
 var movement_animation: Callable
 var jump_animation: Callable
 var attack_animation: Callable
+## 확정된 굴림(CombatDiceRoll)을 보인다. 없으면 연출 없이 넘어간다. 보일지는 훅이 정한다.
+var roll_animation: Callable
 ## 이번 적 턴에 아군이 답한 반응. 적 턴 중간 저장이 기록한다.
 var reaction_answers: Array[bool] = []
 ## 이어하기가 다시 실행하는 적 턴에서 묻지 않고 차례로 쓸 반응 답.
@@ -385,6 +387,8 @@ func _on_turn_started(unit: CombatUnit) -> void:
 			var health_sides: int = unit.get_ability_sides(CombatUnit.Ability.HEALTH)
 			var saved: CombatChecks.RollResult = CombatChecks.saving_throw(health_sides, unit.get_defense_bonus(),
 				effect.dc, CombatActionRules.save_mode(unit), dice)
+			# 턴 시작 처리는 중간에 멈추지 않는다. 확정된 굴림을 겹쳐 보이기만 한다.
+			_show_roll_in_background(CombatDiceRoll.save(unit, health_sides, saved, unit.get_defense_bonus(), tr("DC"), effect.dc))
 			logged.emit(tr("%s 독 제거(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s") % [unit.get_display_name(),
 				health_sides, str(saved.rolls), unit.get_defense_bonus(), saved.total, effect.dc, _save_outcome(saved)])
 			# 실패는 뒤따르는 `독 1` 틱 팝업이 효과 이름을 보인다.
@@ -857,6 +861,7 @@ func pull(actor: CombatUnit, target: CombatUnit) -> bool:
 	var dc: int = CombatActionRules.save_dc(actor, "pull")
 	logged.emit(tr("%s 만능팔: %s · DC %d") % [actor.get_display_name(), target.get_display_name(), dc])
 	var pulled: bool = not _roll_save(target, "pull", dc).success
+	_show_roll_in_background(_save_roll(target, "pull", dc))
 	if pulled:
 		var cells: Array[Vector2i] = grid.pull_cells(actor, target)
 		_land(target, cells[0] if cells.size() == 1 else cells[dice.roll(cells.size()) - 1])
@@ -918,6 +923,18 @@ func _ask_reaction(reactor: CombatUnit, kind: String, prompt: String) -> bool:
 	return accepted
 
 
+## 굴림 연출이 끝날 때까지 기다린다. 연출 훅이 없으면 바로 넘어간다.
+func _show_roll(roll: CombatDiceRoll) -> void:
+	if roll_animation.is_valid():
+		await roll_animation.call(roll)
+
+
+## 중간에 멈출 수 없는 처리(턴 시작 효과, AI가 기다리지 않고 부르는 만능팔)에서 기다리지 않고 보이기만 한다.
+func _show_roll_in_background(roll: CombatDiceRoll) -> void:
+	if roll_animation.is_valid():
+		roll_animation.call(roll)
+
+
 func _emit_reaction(kind: String, prompt: String) -> void:
 	reaction_requested.emit(kind, prompt)
 
@@ -934,6 +951,10 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> v
 	last_save = null
 	var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
 	last_attack = CombatChecks.hit_roll(attack_sides, actor.get_attack_bonus(), target.get_armor_class(), preview.mode, dice)
+	await _show_roll(CombatDiceRoll.hit(actor, attack_sides, last_attack, actor.get_attack_bonus(), target.get_armor_class()))
+	# 연출 중 일시정지 메뉴에서 전투를 포기할 수 있다. 끝난 전투에 결과를 적용하지 않는다.
+	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
+		return
 	var outcome: String = tr("명중") if last_attack.success else tr("빗나감")
 	if last_attack.face == CombatChecks.Face.ABSOLUTE_SUCCESS:
 		outcome = tr("명중(절대성공)")
@@ -953,6 +974,9 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> v
 			target.spend_resource(CombatUnit.TurnResource.REACTION)
 			CombatActionRules.spend_use(target, "parry")
 			var saved: CombatChecks.RollResult = CombatChecks.threshold(parry_sides, 3, last_attack.total, dice)
+			await _show_roll(CombatDiceRoll.save(target, parry_sides, saved, 3, tr("공격"), last_attack.total))
+			if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
+				return
 			logged.emit(tr("흘려내기: 민첩 d%d %d + 3 = %d / 공격 %d · %s") % [parry_sides,
 				saved.selected_roll, saved.total, last_attack.total, tr("성공") if saved.success else tr("실패")])
 			if saved.success:
@@ -979,7 +1003,11 @@ func _perform_save(actor: CombatUnit, target: CombatUnit, action: String, dc: in
 	last_attack = null
 	last_damage = 0
 	last_damage_rolls.clear()
-	_deal_damage(actor, target, action, false, _roll_save(target, action, dc).success)
+	var saved: CombatChecks.RollResult = _roll_save(target, action, dc)
+	await _show_roll(_save_roll(target, action, dc))
+	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
+		return
+	_deal_damage(actor, target, action, false, saved.success)
 
 
 ## 대상이 동작의 내성 능력치로 DC에 내성굴림하고 로그를 남긴다. 결과는 last_save에도 둔다 (4-1).
@@ -991,6 +1019,12 @@ func _roll_save(target: CombatUnit, action: String, dc: int) -> CombatChecks.Rol
 		CombatUnit.ability_name(ability), _mode_name(last_save.mode), CombatUnit.ability_name(ability), sides,
 		str(last_save.rolls), target.get_defense_bonus(), last_save.total, dc, _save_outcome(last_save)])
 	return last_save
+
+
+## 방금 굴린 내성굴림(last_save)을 화면용 굴림으로 만든다. 기준값은 DC다.
+func _save_roll(target: CombatUnit, action: String, dc: int) -> CombatDiceRoll:
+	var sides: int = target.get_ability_sides(CombatActionRules.SAVE_ABILITIES[action])
+	return CombatDiceRoll.save(target, sides, last_save, target.get_defense_bonus(), tr("DC"), dc)
 
 
 ## 피해는 명중·내성 굴림과 무관하게 피해 능력치 주사위를 새로 굴린다 (능력치 기획서 4-9).

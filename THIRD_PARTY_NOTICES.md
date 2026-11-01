@@ -49,6 +49,9 @@ Git 기여 기록만으로 제3자 자료의 원저작권을 확정하지 않습
 | 파일 | 원본·권리자 | 조건과 출처 |
 | --- | --- | --- |
 | `scenes/combat/audio/hit.ogg` | Kenney, Impact Sounds 1.0의 `Audio/impactWood_heavy_000.ogg`. 원본 그대로 사용. 피해 발생 시 임시 타격음 | CC0 1.0 Universal. 사용·수정·재배포와 원본 공개를 허용합니다. 출처 표시는 필수가 아닙니다. [자산 페이지](https://kenney.nl/assets/impact-sounds), [CC0](https://creativecommons.org/publicdomain/zero/1.0/), [패키지의 원래 고지](scenes/combat/audio/kenney_license.txt). 2026-10-09 확인 |
+| `scenes/combat/audio/dice_roll.ogg` | BGLike 자체 합성 임시음. 짧은 잡음 클릭과 사인파를 Python·numpy로 합성했고 외부 샘플을 쓰지 않았습니다. 아군 주사위 굴림 시작음 | 외부 조건 없음. [COPYRIGHT](COPYRIGHT.md)의 자체 콘텐츠 조건을 따릅니다. 자산 선정 전까지 쓰는 임시음이며 교체할 수 있습니다. 2026-10-31 |
+| `scenes/combat/audio/roll_success.ogg` | BGLike 자체 합성 임시음. 사인파 두 음(660Hz→990Hz). 주사위 굴림 성공 결과음 | 위와 같음 |
+| `scenes/combat/audio/roll_fail.ogg` | BGLike 자체 합성 임시음. 사인파 두 음(300Hz→200Hz). 주사위 굴림 실패 결과음 | 위와 같음 |
 
 효과음의 CC0는 BGLike 자체 코드에 적용하지 않습니다.
 

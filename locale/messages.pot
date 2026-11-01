@@ -1517,3 +1517,19 @@ msgstr ""
 #: scenes/title.gd:64
 msgid "%s\n이 저장을 지우고 새 게임을 시작하시겠습니까?"
 msgstr ""
+
+#: scenes/combat/actions.gd:391 scenes/combat/actions.gd:1027
+msgid "DC"
+msgstr ""
+
+#: scenes/combat/dice_roll.gd:21
+msgid "AC"
+msgstr ""
+
+#: scenes/combat/dice_roll_view.gd:180
+msgid "절대성공"
+msgstr ""
+
+#: scenes/combat/dice_roll_view.gd:181
+msgid "절대실패"
+msgstr ""

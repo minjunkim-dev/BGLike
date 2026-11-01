@@ -1505,3 +1505,19 @@ msgstr "이 게임은 Godot Engine %d.%d.%d를 사용합니다. Godot Engine은 
 #: scenes/title.gd:64
 msgid "%s\n이 저장을 지우고 새 게임을 시작하시겠습니까?"
 msgstr "%s\n이 저장을 지우고 새 게임을 시작하시겠습니까?"
+
+#: scenes/combat/actions.gd:391 scenes/combat/actions.gd:1027
+msgid "DC"
+msgstr "DC"
+
+#: scenes/combat/dice_roll.gd:21
+msgid "AC"
+msgstr "AC"
+
+#: scenes/combat/dice_roll_view.gd:180
+msgid "절대성공"
+msgstr "절대성공"
+
+#: scenes/combat/dice_roll_view.gd:181
+msgid "절대실패"
+msgstr "절대실패"
