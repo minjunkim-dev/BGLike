@@ -56,8 +56,9 @@ func _run() -> void:
 	turns = battle.get("turns") as CombatTurns
 	ScriptedDice.arrange_turns(turns, units, units)
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	# 판정·피해·빗나감이 같은 반복 공격에서 발생하는 통제된 재현이다.
-	actions.dice = ScriptedDice.new([8, 1, 1, 1, 1, 1, 20, 6], [12, 20, 8, 6, 8, 12, 20, 6])
+	# 내성 실패·성공 피해가 같은 반복 광역에서 발생하는 통제된 재현이다.
+	# 회전회오리 두 번. 대상마다 힘 내성 → 피해: 첫 번째는 둘 다 실패, 두 번째는 전사만 절대성공면 20으로 성공.
+	actions.dice = ScriptedDice.new([1, 1, 1, 1, 20, 1, 6, 1], [20, 12, 6, 12, 20, 12, 6, 12])
 	for unit: CombatUnit in units:
 		if unit.is_ally:
 			unit.reaction_left = 0
@@ -91,16 +92,17 @@ func _run() -> void:
 	await create_timer(1.0).timeout
 	_check(popup_samples > 0, "반복 공격에서 실제 팝업을 관찰함")
 	_check(collisions.is_empty(), "반복 공격 팝업 겹침 없음: %s" % str(collisions))
-	_check(not popup_styles.has("치명타!"), "능력치 대결은 치명타 팝업을 생성하지 않음")
-	_check(popup_styles.get("빗나감", []) == [CombatUnit.WEAPON_COLOR, 10]
-		and not popup_styles.has("자동 실패"), "방어 합계 이하의 공격은 빗나감 팝업")
+	_check(not popup_styles.has("치명타!"), "능력치 판정은 치명타 팝업을 생성하지 않음")
+	_check(not popup_styles.has("빗나감") and not popup_styles.has("자동 실패"),
+		"내성굴림 광역은 빗나감 없이 피해 팝업만: %s" % str(popup_styles.keys()))
 	_check(popup_styles.keys().all(func(text: String) -> bool:
 		return not text.begins_with("공격 ") and not text.begins_with("-")),
 		"공격자 판정 합계 팝업과 피해 부호 없음: %s" % str(popup_styles.keys()))
 	_check(messages.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 2,
 		"과부하 중 회전 공격 두 번 유지")
-	_check(units[0].hit_points == 9 and units[1].hit_points == 11 and boss.hit_points == 23,
-		"공통 공격의 명중·빗나감 피해와 과부하 자해 유지")
+	_check(units[0].hit_points == 8 and units[1].hit_points == 8 and boss.hit_points == 23
+		and messages.any(func(line: String) -> bool: return "피해 (내성 성공 절반)" in line),
+		"내성 실패 피해·내성 성공 절반 피해와 과부하 자해 유지")
 	_check(_popups().is_empty(), "마지막 피드백 이후 팝업 제거")
 	await _test_shock_feedback()
 	await _test_crowded_feedback()
@@ -135,8 +137,8 @@ func _fixture_ready(units: Array[CombatUnit]) -> bool:
 	var portraits: Dictionary = battle.get_node("UI/TurnHud").get("_portraits")
 	_check(portraits.size() == 3 and portraits.has(units[0]) and portraits.has(units[1])
 		and portraits.has(boss), "반복 공격 전제조건: 실제 유닛의 초상 3개")
-	_check(boss.hit_points == 25 and boss.overloaded and boss.action_left == 2,
-		"반복 공격 전제조건: HP25 과부하와 행동2")
+	_check(boss.hit_points == 25 and boss.overloaded and boss.action_left == 1,
+		"반복 공격 전제조건: HP25 과부하, 행동2는 보스 턴 시작에 받음")
 	for ally: CombatUnit in [units[0], units[1]]:
 		_check(CombatGrid.distance(ally.cell, boss.cell) == 1
 			and ally.hit_points == ally.get_max_hit_points()
@@ -206,8 +208,9 @@ func _test_crowded_feedback() -> void:
 		units[index].reaction_left = 0
 	ScriptedDice.arrange_turns(turns, units, [attacker])
 	var actions: CombatActions = battle.get("actions") as CombatActions
-	# 새끼 거미 힘 4+3은 궁수 AC 7과 같아 두 번 모두 명중한다.
-	actions.dice = ScriptedDice.new([4, 4], ScriptedDice.attack_sides(attacker) + ScriptedDice.attack_sides(attacker))
+	# 새끼 거미 힘 4+3은 궁수 AC 7과 같아 두 번 모두 명중하고, 피해 힘 d4의 1 + 1 = 2다.
+	var sides: Array[int] = ScriptedDice.attack_sides(attacker) + ScriptedDice.damage_sides(attacker)
+	actions.dice = ScriptedDice.new([4, 1, 4, 1], sides + sides)
 	battle.call("_update_turn_ui")
 	_check(turns.current_unit == attacker and attacker.kind == CombatUnit.Kind.SPIDERLING
 		and archer.kind == CombatUnit.Kind.ARCHER, "밀집 팝업 전제조건: 새끼 거미 차례, 궁수 대상")
@@ -230,7 +233,7 @@ func _test_crowded_feedback() -> void:
 	_check(await actions.attack(attacker, archer), "첫 팝업이 남아 있을 때 같은 대상 연속 공격")
 	actions.feedback.disconnect(record)
 	var texts: Array = placed.map(func(entry: Dictionary) -> String: return entry["text"])
-	_check(texts == ["1", "1"], "밀집 배치의 연속 피해 팝업: %s" % str(texts))
+	_check(texts == ["2", "2"], "밀집 배치의 연속 피해 팝업: %s" % str(texts))
 	# 기준 자리: 대상 상태 줄 기준점. 같은 대상의 이전 팝업이 있으면 그 팝업 바로 위가 더 위쪽일 때 그 자리.
 	var latest: Dictionary = {}
 	for entry: Dictionary in placed:

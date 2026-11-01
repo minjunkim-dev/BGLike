@@ -799,8 +799,11 @@ func _update_turn_ui() -> void:
 			if actions.can_target(turns.current_unit, selection.preview_target, "shove"):
 				var cell: Vector2i = actions.grid.push_destination(turns.current_unit.cell, selection.preview_target.cell)
 				var landing: String = actions.shove_landing(selection.preview_target, cell)
+				var chance: float = 1.0
+				if CombatActionRules.shove_saves(turns.current_unit, selection.preview_target):
+					chance -= CombatActionRules.save_chance(turns.current_unit, selection.preview_target, "shove")
 				hud.show_target_note(tr("밀려날 칸: %d, %d") % [cell.x, cell.y]
-					+ ("" if landing.is_empty() else " · " + landing))
+					+ ("" if landing.is_empty() else " · " + landing) + " · " + tr("밀칠 확률 %.1f%%") % (chance * 100.0))
 			else:
 				hud.show_target_note(tr("밀치기를 사용할 수 없음"))
 	elif selection.preview_prop != null:
@@ -825,8 +828,8 @@ func _update_turn_ui() -> void:
 					direction, roll.cells.size(), roll.reason,
 					", ".join(collisions) if not collisions.is_empty() else tr("충돌 없음")]
 			else:
-				var sides: int = actor.get_damage_sides()
-				var minimum: int = maxi(1, actor.get_damage_bonus() + (1 if sides > 0 else 0))
+				var sides: int = actor.get_ability_sides(CombatActionRules.damage_ability(actor, "attack"))
+				var minimum: int = maxi(1, actor.get_damage_bonus() + 1)
 				var maximum: int = maxi(1, actor.get_damage_bonus() + sides)
 				note = tr("피해 %d~%d · 행동1 · 자동 명중\n같은 상자를 다시 좌클릭하면 공격합니다.") % [minimum, maximum]
 			if not actions.can_attack_prop(actor, prop):

@@ -118,8 +118,8 @@ msgid "인접한 빈 칸에 새끼 거미1마리를 만듭니다."
 msgstr "인접한 빈 칸에 새끼 거미1마리를 만듭니다."
 
 #: scenes/combat/action_rules.gd:19
-msgid "상하좌우1칸·높이 차이1 이하인 모든 아군에게 공통 공격 굴림과 각자의 방어 굴림.\n밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."
-msgstr "상하좌우1칸·높이 차이1 이하인 모든 아군에게 공통 공격 굴림과 각자의 방어 굴림.\n밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."
+msgid "상하좌우1칸·높이 차이1 이하인 모든 아군이 각자 힘 내성굴림.\n성공하면 피해 절반. 밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."
+msgstr "상하좌우1칸·높이 차이1 이하인 모든 아군이 각자 힘 내성굴림.\n성공하면 피해 절반. 밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."
 
 #: scenes/combat/action_rules.gd:20
 msgid "HP 1d10+1 회복.\n최대 HP를 넘지 않습니다."
@@ -138,16 +138,16 @@ msgid "1~6칸 공격.\n명중하면 기절. 보스는 기절 면역."
 msgstr "1~6칸 공격.\n명중하면 기절. 보스는 기절 면역."
 
 #: scenes/combat/action_rules.gd:24
-msgid "2~3칸 대상을 힘 대 힘 대결로 끌어옵니다.\n피해와 기회 공격 없음. 다음 턴에는 쓸 수 없습니다."
-msgstr "2~3칸 대상을 힘 대 힘 대결로 끌어옵니다.\n피해와 기회 공격 없음. 다음 턴에는 쓸 수 없습니다."
+msgid "2~3칸 대상을 끌어옵니다. 대상이 힘 내성굴림에\n성공하면 버팁니다. 피해와 기회 공격 없음.\n다음 턴에는 쓸 수 없습니다."
+msgstr "2~3칸 대상을 끌어옵니다. 대상이 힘 내성굴림에\n성공하면 버팁니다. 피해와 기회 공격 없음.\n다음 턴에는 쓸 수 없습니다."
 
 #: scenes/combat/action_rules.gd:25
 msgid "이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\n공격을 실행하지 않습니다."
 msgstr "이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\n공격을 실행하지 않습니다."
 
 #: scenes/combat/action_rules.gd:26
-msgid "내 힘 대 상대의 힘 주사위로 대결.\n성공: 1칸 밀기, 동점: 실패.\n기절 대상은 대결 없이 성공.\n아군은 판정 없이 밀림."
-msgstr "내 힘 대 상대의 힘 주사위로 대결.\n성공: 1칸 밀기, 동점: 실패.\n기절 대상은 대결 없이 성공.\n아군은 판정 없이 밀림."
+msgid "대상이 힘 내성굴림.\n실패하면 1칸 밀리고, 성공하면 버팁니다.\n기절 대상은 내성 없이 밀림.\n아군은 판정 없이 밀림."
+msgstr "대상이 힘 내성굴림.\n실패하면 1칸 밀리고, 성공하면 버팁니다.\n기절 대상은 내성 없이 밀림.\n아군은 판정 없이 밀림."
 
 #: scenes/combat/action_rules.gd:27
 msgid "HP 2d4+2 회복.\n최대 HP를 넘지 않습니다."
@@ -161,13 +161,25 @@ msgstr "적이 내 인접 칸을 벗어나면 기본 공격."
 msgid "공격에 맞았을 때 민첩 주사위 +3이\n공격 굴림 이상이면 피해와 추가 효과를 피합니다."
 msgstr "공격에 맞았을 때 민첩 주사위 +3이\n공격 굴림 이상이면 피해와 추가 효과를 피합니다."
 
-#: scenes/combat/action_rules.gd:101
-msgid "피해: 1d%d%s"
-msgstr "피해: 1d%d%s"
-
-#: scenes/combat/action_rules.gd:103
+#: scenes/combat/action_rules.gd:110
 msgid "%s d%d %+d 대 AC"
 msgstr "%s d%d %+d 대 AC"
+
+#: scenes/combat/action_rules.gd:142
+msgid "피해: %s d%d%s"
+msgstr "피해: %s d%d%s"
+
+#: scenes/combat/action_rules.gd:143
+msgid "피해: 명중 %s d%d → 피해 %s d%d%s"
+msgstr "피해: 명중 %s d%d → 피해 %s d%d%s"
+
+#: scenes/combat/action_rules.gd:146
+msgid "판정: 대상의 %s 내성 대 DC %d, 성공하면 피해 절반"
+msgstr "판정: 대상의 %s 내성 대 DC %d, 성공하면 피해 절반"
+
+#: scenes/combat/action_rules.gd:153
+msgid "내성 성공률: %s"
+msgstr "내성 성공률: %s"
 
 #: scenes/combat/action_rules.gd:105
 #: scenes/combat/unit.gd:11
@@ -207,8 +219,12 @@ msgid "판정: 없음"
 msgstr "판정: 없음"
 
 #: scenes/combat/action_rules.gd:116
-msgid "판정: 힘 d%d %+d 대 힘"
-msgstr "판정: 힘 d%d %+d 대 힘"
+msgid "판정: 대상의 %s 내성 대 DC %d, 성공하면 버팀"
+msgstr "판정: 대상의 %s 내성 대 DC %d, 성공하면 버팀"
+
+#: scenes/combat/action_rules.gd:142
+msgid "사거리: 2~3칸"
+msgstr "사거리: 2~3칸"
 
 #: scenes/combat/action_rules.gd:118
 msgid "사거리: 1~2칸"
@@ -357,9 +373,9 @@ msgstr "과부하 2"
 msgid "화상"
 msgstr "화상"
 
-#: scenes/combat/actions.gd:385
-msgid "%s 독 제거: 건강 d%d %d / 강도 %d · %s"
-msgstr "%s 독 제거: 건강 d%d %d / 강도 %d · %s"
+#: scenes/combat/actions.gd:388
+msgid "%s 독 제거(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s"
+msgstr "%s 독 제거(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s"
 
 #: scenes/combat/actions.gd:386
 #: scenes/combat/actions.gd:878
@@ -407,8 +423,8 @@ msgstr "전투 포기"
 
 #: scenes/combat/actions.gd:558
 #: scenes/combat/actions.gd:736
-msgid "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)"
-msgstr "%s가 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)"
+msgid "%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)"
+msgstr "%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)"
 
 #: scenes/combat/actions.gd:561
 #: scenes/combat/actions.gd:739
@@ -485,14 +501,14 @@ msgid "%s 이동: %d칸, 남은 이동 %d"
 msgid_plural "%s 이동: %d칸, 남은 이동 %d"
 msgstr[0] "%s 이동: %d칸, 남은 이동 %d"
 
-#: scenes/combat/actions.gd:795
-msgid "%s 회전회오리: 인접 대상 %d명"
-msgid_plural "%s 회전회오리: 인접 대상 %d명"
-msgstr[0] "%s 회전회오리: 인접 대상 %d명"
+#: scenes/combat/actions.gd:783
+msgid "%s 회전회오리: 인접 대상 %d명 · DC %d"
+msgid_plural "%s 회전회오리: 인접 대상 %d명 · DC %d"
+msgstr[0] "%s 회전회오리: 인접 대상 %d명 · DC %d"
 
-#: scenes/combat/actions.gd:796
-msgid "공통 공격: 힘 d%d %s %+d = %d"
-msgstr "공통 공격: 힘 d%d %s %+d = %d"
+#: scenes/combat/actions.gd:989
+msgid "%s %s 내성(%s): %s d%d %s %+d = %d / DC %d · %s"
+msgstr "%s %s 내성(%s): %s d%d %s %+d = %d / DC %d · %s"
 
 #: scenes/combat/actions.gd:828
 msgid "%s 새끼 낳기: %s"
@@ -511,8 +527,12 @@ msgid "%s 표식: %s"
 msgstr "%s 표식: %s"
 
 #: scenes/combat/actions.gd:875
-msgid "%s 만능팔: 힘 d%d %d %+d = %d / 힘 d%d %d %+d = %d · %s"
-msgstr "%s 만능팔: 힘 d%d %d %+d = %d / 힘 d%d %d %+d = %d · %s"
+msgid "%s 만능팔: %s · DC %d"
+msgstr "%s 만능팔: %s · DC %d"
+
+#: scenes/combat/actions.gd:863
+msgid "만능팔 %s"
+msgstr "만능팔 %s"
 
 #: scenes/combat/actions.gd:879
 msgid "끌어옴"
@@ -523,8 +543,8 @@ msgid "만능팔 저항"
 msgstr "만능팔 저항"
 
 #: scenes/combat/actions.gd:894
-msgid "밀치기 대결: 힘 d%d %d %+d = %d / 힘 d%d %d %+d = %d"
-msgstr "밀치기 대결: 힘 d%d %d %+d = %d / 힘 d%d %d %+d = %d"
+msgid "%s 밀치기: %s · DC %d"
+msgstr "%s 밀치기: %s · DC %d"
 
 #: scenes/combat/actions.gd:897
 msgid "밀치기 성공"
@@ -585,29 +605,33 @@ msgstr "명중(절대성공)"
 msgid "빗나감(절대실패)"
 msgstr "빗나감(절대실패)"
 
-#: scenes/combat/actions.gd:972
-msgid "%s 방어: %s d%d %d %+d = %d / 공통 공격 %d · %s"
-msgstr "%s 방어: %s d%d %d %+d = %d / 공통 공격 %d · %s"
+#: scenes/combat/actions.gd:1014
+msgid "%s 피해 (내성 성공 절반): %s d%d %s %+d = %d → %d · HP %d"
+msgstr "%s 피해 (내성 성공 절반): %s d%d %s %+d = %d → %d · HP %d"
+
+#: scenes/combat/actions.gd:1034
+msgid "성공(절대성공)"
+msgstr "성공(절대성공)"
+
+#: scenes/combat/actions.gd:1036
+msgid "실패(절대실패)"
+msgstr "실패(절대실패)"
 
 #: scenes/combat/actions.gd:983
-msgid "%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)"
-msgstr "%s가 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)"
+msgid "%s 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)"
+msgstr "%s 공격에 맞았습니다. 흘려낼까요? (성공률 %.1f%%, 남은 횟수 %d)"
 
 #: scenes/combat/actions.gd:987
 msgid "흘려내기: 민첩 d%d %d + 3 = %d / 공격 %d · %s"
 msgstr "흘려내기: 민첩 d%d %d + 3 = %d / 공격 %d · %s"
 
 #: scenes/combat/actions.gd:1004
-msgid "%s 피해: %d · HP %d"
-msgstr "%s 피해: %d · HP %d"
+msgid "%s 피해 (표식 추가): %s d%d %s + d6 %s %+d = %d · HP %d"
+msgstr "%s 피해 (표식 추가): %s d%d %s + d6 %s %+d = %d · HP %d"
 
-#: scenes/combat/actions.gd:1006
-msgid "%s 피해%s: %s + %d = %d · HP %d"
-msgstr "%s 피해%s: %s + %d = %d · HP %d"
-
-#: scenes/combat/actions.gd:1007
-msgid " (표식 추가)"
-msgstr " (표식 추가)"
+#: scenes/combat/actions.gd:1008
+msgid "%s 피해: %s d%d %s %+d = %d · HP %d"
+msgstr "%s 피해: %s d%d %s %+d = %d · HP %d"
 
 #: scenes/combat/actions.gd:1012
 msgid "%s 기절 면역"
@@ -669,6 +693,10 @@ msgstr "표식을 사용할 수 없음"
 #: scenes/combat/battle.gd:793
 msgid "밀려날 칸: %d, %d"
 msgstr "밀려날 칸: %d, %d"
+
+#: scenes/combat/battle.gd:796
+msgid "밀칠 확률 %.1f%%"
+msgstr "밀칠 확률 %.1f%%"
 
 #: scenes/combat/battle.gd:796
 msgid "밀치기를 사용할 수 없음"
@@ -1254,6 +1282,22 @@ msgid "턴 종료 버튼: 지금 유닛의 턴을 끝냅니다."
 msgstr "턴 종료 버튼: 지금 유닛의 턴을 끝냅니다."
 
 #: scenes/help.tscn
+msgid "전투 시작 버튼: 전투 전에 지형과 적을 확인한 뒤 눌러 전투를 시작합니다. 처음에는 이 버튼에 포커스가 있어 Enter·컨트롤러 A로도 누릅니다."
+msgstr "전투 시작 버튼: 전투 전에 지형과 적을 확인한 뒤 눌러 전투를 시작합니다. 처음에는 이 버튼에 포커스가 있어 Enter·컨트롤러 A로도 누릅니다."
+
+#: scenes/help.tscn
+msgid "정비: 보상·가방 아이템을 캐릭터 카드나 같은 종류 칸으로 끌어 장착하거나 물약을 건넵니다. 보상은 가방 빈 칸으로 끌어 보관하고, 장착한 방어구는 가방 빈 칸으로 끌어 해제합니다. 끄는 중에 Esc를 누르면 취소합니다."
+msgstr "정비: 보상·가방 아이템을 캐릭터 카드나 같은 종류 칸으로 끌어 장착하거나 물약을 건넵니다. 보상은 가방 빈 칸으로 끌어 보관하고, 장착한 방어구는 가방 빈 칸으로 끌어 해제합니다. 끄는 중에 Esc를 누르면 취소합니다."
+
+#: scenes/help.tscn
+msgid "정비 버튼: 칸을 고른 뒤 아래 상세 패널의 버튼으로 장착·물약 전달·해제·버리기를 합니다. 캐릭터의 물약은 다른 캐릭터에게 끌거나 카드의 물약 1개 → 버튼으로 한 개씩 건넵니다."
+msgstr "정비 버튼: 칸을 고른 뒤 아래 상세 패널의 버튼으로 장착·물약 전달·해제·버리기를 합니다. 캐릭터의 물약은 다른 캐릭터에게 끌거나 카드의 물약 1개 → 버튼으로 한 개씩 건넵니다."
+
+#: scenes/help.tscn
+msgid "설명 보기: 스킬 바 버튼·정비 칸과 버튼·초상에 마우스를 올리면 잠시 뒤 설명이 나옵니다. 스킬 바와 정비 화면에서는 키보드·컨트롤러로 포커스를 옮겨도 나옵니다. 스킬 바의 행동·보조 행동 버튼과 정비 화면의 장착·전달·해제 버튼이 꺼져 있으면 쓸 수 없는 이유가 나옵니다."
+msgstr "설명 보기: 스킬 바 버튼·정비 칸과 버튼·초상에 마우스를 올리면 잠시 뒤 설명이 나옵니다. 스킬 바와 정비 화면에서는 키보드·컨트롤러로 포커스를 옮겨도 나옵니다. 스킬 바의 행동·보조 행동 버튼과 정비 화면의 장착·전달·해제 버튼이 꺼져 있으면 쓸 수 없는 이유가 나옵니다."
+
+#: scenes/help.tscn
 msgid "휠: 포인터 자리를 중심으로 맵을 2배로 확대하고 다시 1배로 줄입니다. 가운데 버튼 드래그로 맵을 옮깁니다. 트랙패드는 두 손가락으로 옮기고 집기로 확대합니다."
 msgstr "휠: 포인터 자리를 중심으로 맵을 2배로 확대하고 다시 1배로 줄입니다. 가운데 버튼 드래그로 맵을 옮깁니다. 트랙패드는 두 손가락으로 옮기고 집기로 확대합니다."
 
@@ -1314,8 +1358,8 @@ msgid "힘·민첩·솜씨·지능·의지·건강은 각각 능력치 주사위
 msgstr "힘·민첩·솜씨·지능·의지·건강은 각각 능력치 주사위입니다. 공격 능력치는 무기·스킬이 정합니다(전사 힘, 아군 궁수 솜씨). AC는 민첩 주사위의 표준값(d4 3, d6 4, d8 5, d10 6, d12 7, d20 11)에 방어 가산을 더한 값입니다. 모든 주사위의 첫 면은 절대실패면이고, d12의 가장 높은 면 하나와 d20의 가장 높은 면 셋은 절대성공면입니다."
 
 #: scenes/help.tscn
-msgid "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC에 더합니다. 밀치기·만능팔·회전회오리는 아직 힘 주사위 대결이며 동점은 방어자 승입니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 주사위가 독의 강도 이상이면 성공합니다."
-msgstr "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC에 더합니다. 밀치기·만능팔·회전회오리는 아직 힘 주사위 대결이며 동점은 방어자 승입니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 주사위가 독의 강도 이상이면 성공합니다."
+msgid "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC와 내성 굴림에 더합니다. 명중하면 공격 능력치 주사위를 새로 굴리고 피해 보정을 더해 피해를 정합니다. 피해에는 유리/불리가 없습니다. 회전회오리는 시전자가 굴리지 않고 맞는 대상마다 힘 내성굴림을 합니다. 내성 굴림(내성 능력치 주사위 + 방어 가산)이 DC(시전 능력치 표준값 + 공격 가산) 이상이면 성공하고, 피해는 절반(최소 1)입니다. 밀치기·만능팔도 대상의 힘 내성굴림이며, 성공하면 밀리거나 끌려가지 않습니다. 밀치기는 기절한 대상과 아군을 판정 없이 밀어냅니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 내성 굴림이 독의 DC 이상이면 성공합니다."
+msgstr "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산은 AC와 내성 굴림에 더합니다. 명중하면 공격 능력치 주사위를 새로 굴리고 피해 보정을 더해 피해를 정합니다. 피해에는 유리/불리가 없습니다. 회전회오리는 시전자가 굴리지 않고 맞는 대상마다 힘 내성굴림을 합니다. 내성 굴림(내성 능력치 주사위 + 방어 가산)이 DC(시전 능력치 표준값 + 공격 가산) 이상이면 성공하고, 피해는 절반(최소 1)입니다. 밀치기·만능팔도 대상의 힘 내성굴림이며, 성공하면 밀리거나 끌려가지 않습니다. 밀치기는 기절한 대상과 아군을 판정 없이 밀어냅니다. 충격 화살은 명중하면 기절시키며 보스는 기절에 면역입니다. 독 제거는 건강 내성 굴림이 독의 DC 이상이면 성공합니다."
 
 #: scenes/help.tscn
 msgid "반응은 조건이 맞으면 누구의 턴이든 쓰는 실행 기회입니다. 하나뿐이고 자기 턴 시작에 회복합니다. 기회 공격과 흘려내기가 함께 씁니다."
@@ -1461,3 +1505,19 @@ msgstr "이 게임은 Godot Engine %d.%d.%d를 사용합니다. Godot Engine은 
 #: scenes/title.gd:64
 msgid "%s\n이 저장을 지우고 새 게임을 시작하시겠습니까?"
 msgstr "%s\n이 저장을 지우고 새 게임을 시작하시겠습니까?"
+
+#: scenes/combat/actions.gd
+msgid "DC"
+msgstr "DC"
+
+#: scenes/combat/dice_roll.gd
+msgid "AC"
+msgstr "AC"
+
+#: scenes/combat/dice_roll_view.gd
+msgid "절대성공"
+msgstr "절대성공"
+
+#: scenes/combat/dice_roll_view.gd
+msgid "절대실패"
+msgstr "절대실패"

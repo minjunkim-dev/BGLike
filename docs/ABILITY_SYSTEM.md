@@ -5,7 +5,7 @@
 > - 기준일: 2026-10-27 개정 (최초 2026-10-23)
 > - 근거: 기획 논의(2026-10-22~27), 전투 코드(`scenes/combat/`), BG3(SRD 5e) 규칙과의 비교
 > - 관련 문서: [전투 시스템 기획서](COMBAT_DESIGN.md) · [동작 유형 기획서](SKILL_TYPES.md) · [용어집](../CONTEXT.md) · [게임 구조 기획서](GAME_STRUCTURE.md) · [캐릭터 디자인 기획서](characters/README.md) · [몬스터 디자인 기획서](monsters/README.md)
-> - **상태**: 2026-10-23의 "공격자 대 방어자 주사위 대결" 규칙을 이 개정이 대체합니다. 병합된 구현([#321](https://github.com/minjunkim-dev/BGLike/issues/321), PR #327)은 개정 전 규칙이며 후속 구현이 필요합니다. 규칙이 충돌하면 이 문서가 기준이고, 용어집과 다른 기획서는 구현 PR이 맞춥니다.
+> - **상태**: 2026-10-23의 "공격자 대 방어자 주사위 대결" 규칙을 이 개정이 대체합니다. 개정 전 구현([#321](https://github.com/minjunkim-dev/BGLike/issues/321), PR #327)을 [#377](https://github.com/minjunkim-dev/BGLike/issues/377)의 하위 티켓(#386~#389, #391)이 개정 규칙으로 옮겼고, 충격 화살·흘려내기([#390](https://github.com/minjunkim-dev/BGLike/issues/390))가 남았습니다. 규칙이 충돌하면 이 문서가 기준이고, 용어집과 다른 기획서는 구현 PR이 맞춥니다.
 > - 표시: ✅ 정해짐 · 🟡 제안(임시값, 확정 전) · ❓ 정해야 함 · ⏸ 보류
 
 ---
@@ -192,7 +192,7 @@
 | 광역 효과의 여러 대상 | **대상마다 내성굴림** 하나씩. 시전자는 굴리지 않음. 피해는 대상마다 따로 굴림 |
 | 명중 뒤 추가 효과가 있는 공격 (충격 화살) | 명중굴림 하나. 추가 효과는 명중하면 적용 |
 
-- 광역에서 대상마다 유리 조건이 달라도 각 대상이 자기 내성굴림을 굴리므로 조건을 섞는 규칙이 필요 없습니다. 개정 전 [#326](https://github.com/minjunkim-dev/BGLike/issues/326)의 "모든 대상이 유리일 때만 공통 굴림에 유리" 규칙과 그 구현([#341](https://github.com/minjunkim-dev/BGLike/issues/341))은 후속 구현에서 정리합니다.
+- 광역에서 대상마다 유리 조건이 달라도 각 대상이 자기 내성굴림을 굴리므로 조건을 섞는 규칙이 필요 없습니다. 개정 전 [#326](https://github.com/minjunkim-dev/BGLike/issues/326)의 "모든 대상이 유리일 때만 공통 굴림에 유리" 규칙과 그 구현([#341](https://github.com/minjunkim-dev/BGLike/issues/341))은 [#389](https://github.com/minjunkim-dev/BGLike/issues/389)에서 정리했습니다.
 - 시전과 발동의 시점은 [동작 유형 기획서 4장](SKILL_TYPES.md#4-시전과-발동)을 따릅니다.
 
 ### 4-5. 판정 없는 동작 ✅
@@ -500,3 +500,14 @@
 - 기존 입력·연출 fixture의 임의 순서는 공개 저장 복원 API로 고정한다. 실제 이니셔티브 검사는 유효한 능력치 면 수의 원본 굴림으로 따로 검사한다. ScriptedDice의 면 수·범위·남은 값 검사는 유지한다.
 - 저장 형식2(#321 당시, 지금은 #386에서 올린 3)는 장비 `defense_bonus`와 독 상태·장판의 고정 강도를 보존한다. 형식1은 안내 후 그대로 둔다(ADR 0003). 추가 생성 새끼는 굴림 없이 삽입되므로 이니셔티브 원본0을 보존한다.
 - 광역 대상의 유리 조건은 #326 결정에 따라 [#341](https://github.com/minjunkim-dev/BGLike/issues/341)에서 지원했다. 기존 대상별 판정을 재사용해 전원 유리일 때만 공통 유리, 혼합은 일반으로 합성한다. 공격자 공통 불리와 기존 상쇄는 유지하며, 대상 순서와 무관하게 공통 공격을 한 번만 굴린다. 현재 자연 콘텐츠에는 아군 기절 공급원이 없으므로 통제 fixture와 실제 장면의 직접 AI 호출로 확인한다.
+
+## 개정 구현의 개발 결정 (#377)
+
+> 개정 규칙을 구현하며 정한 개발 결정입니다. 근거와 택하지 않은 대안은 각 티켓 코멘트에 있습니다. 기획자가 바꿀 수 있습니다.
+
+- 능력치 식별자는 `CombatUnit.Ability`의 `STRENGTH, AGILITY, FINESSE, INTELLIGENCE, WILL, HEALTH`이고 화면 순서와 같다([#386](https://github.com/minjunkim-dev/BGLike/issues/386#issuecomment-6498750300)).
+- 주사위 값은 별도 객체 없이 면 수와 굴린 면 번호(1~n)로 둔다. `CombatChecks.face_value`가 숫자 값(절대성공면은 최댓값)을, `face_kind`가 면 종류를 낸다. 미리보기 확률은 실제 굴림과 같은 함수로 면을 열거한다. 주사위 레벨은 성장 개발 요청 전까지 넣지 않는다([#387](https://github.com/minjunkim-dev/BGLike/issues/387#issuecomment-6501894148)).
+- 피해 능력치는 `CombatActionRules.DAMAGE_ABILITIES`로 지정하고, 지정이 없으면 명중 능력치, 내성굴림 동작은 시전 능력치다([#388](https://github.com/minjunkim-dev/BGLike/issues/388)).
+- 내성굴림 동작은 `CombatActionRules`의 `CAST_ABILITIES`(DC의 시전 능력치)·`SAVE_ABILITIES`(대상의 내성 능력치)·`DC_BONUSES`로 정의한다. DC는 시전 때 한 번 정하고, 잔류 효과는 부여한 중첩이 DC를 보존한다. 공격 굴림이 없는 회전회오리에는 흘려내기를 묻지 않는다([#389](https://github.com/minjunkim-dev/BGLike/issues/389#issuecomment-6537221180)).
+- 밀치기·만능팔은 같은 표에 힘으로 더하고 대상 하나의 내성굴림으로 판정한다([#391](https://github.com/minjunkim-dev/BGLike/issues/391)). 기절한 대상과 아군의 무판정 밀치기는 `CombatActionRules.shove_saves` 한 곳에서 정해 실행과 미리보기(`밀칠 확률`)가 같은 규칙을 쓴다. 8장대로 만능팔에는 기절 대상의 자동 실패가 없다. 마지막 대결 경로(`opposed_attack`, 방어자 굴림 칸)는 지웠다.
+- 저장 형식은 #386에서 3으로 한 번 올렸고 #387~#391은 3을 유지한다. 건강·절대면은 저장하지 않고 유닛 종류와 면 수에서 다시 만든다([ADR 0003](adr/0003-save-files.md)).

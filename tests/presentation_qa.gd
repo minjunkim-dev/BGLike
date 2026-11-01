@@ -87,9 +87,9 @@ func _run() -> void:
 		elif kind == "crate":
 			assert(not actions.grid.path_to(party[0], Vector2i(2, 4)).is_empty())
 			assert(_cell_point(battle.get("map"), Vector2i(2, 4)) != Vector2.INF)
-			var sides: int = party[0].get_damage_sides()
+			var sides: int = ScriptedDice.damage_sides(party[0])[0]
 			assert(sides + party[0].get_damage_bonus() >= actions.grid.props[0].hit_points)
-			# 상자 공격은 명중 굴림 없이 현재 피해 주사위 한 번만 소비한다.
+			# 상자 공격은 명중 굴림 없이 피해 능력치 주사위 한 번만 소비한다.
 			actions.dice = ScriptedDice.new([sides], [sides]) if not preflight and not transitions else CombatDice.new()
 			print("[FIXTURE] crate current damage d%d +%d; transitions=%s" % [sides, party[0].get_damage_bonus(), transitions])
 		elif kind == "rock":

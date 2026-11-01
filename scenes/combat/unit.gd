@@ -35,13 +35,14 @@ class StatusEffect extends RefCounted:
 	var kind: String
 	var source: CombatUnit
 	var turns_left: int
-	var strength: int
+	## 독 중첩 제거의 건강 내성 DC. 부여한 장판 정의의 고정값을 보존하고, 화상은 0이다.
+	var dc: int
 
-	func _init(effect_kind: String, caster: CombatUnit, duration: int, intensity: int = 0) -> void:
+	func _init(effect_kind: String, caster: CombatUnit, duration: int, save_dc: int = 0) -> void:
 		kind = effect_kind
 		source = caster
 		turns_left = duration
-		strength = intensity if kind == "poison" else 0
+		dc = save_dc if kind == "poison" else 0
 
 
 @export var kind: Kind = Kind.WARRIOR
@@ -82,10 +83,9 @@ var hit_points: int = 12:
 		if value != hit_points:
 			_lost_hit_points = maxi(0, get_max_hit_points() - value)
 		hit_points = value
-		if (is_boss() and not overloaded
-			and hit_points <= get_max_hit_points() / 2):
+		# 추가 행동은 begin_turn()이 다음 자기 턴부터 준다 (#410).
+		if is_boss() and hit_points <= get_max_hit_points() / 2:
 			overloaded = true
-			action_left += 1
 var stun_source: CombatUnit
 var status_effects: Array[StatusEffect] = []
 var is_stunned: bool = false:
@@ -139,6 +139,22 @@ static func ability_name(ability: Ability) -> String:
 	return ABILITY_NAMES[ability]
 
 
+## 이름 뒤에 주격 조사 이/가를 붙인다. 숫자로 끝나면 읽은 소리를 따른다(1000 → 천 → 이, #415).
+static func with_subject_particle(display_name: String) -> String:
+	if display_name.is_empty():
+		return display_name
+	var last: int = display_name.unicode_at(display_name.length() - 1)
+	var has_final: bool
+	if last >= 0xAC00 and last <= 0xD7A3:
+		has_final = (last - 0xAC00) % 28 != 0
+	elif last >= 0x30 and last <= 0x39:
+		# 0(영·십·백·천·만)과 1·3·6·7·8은 받침이 있다.
+		has_final = char(last) in "013678"
+	else:
+		return display_name + "(이)가"  # NO_TRANSLATE: 한국어 조사 규칙
+	return display_name + ("이" if has_final else "가")  # NO_TRANSLATE: 한국어 조사 규칙
+
+
 ## 현재 일반 무기는 직업의 기본 대검·활을 강화하는 장비다. 실제 대상 거리로 유형을 바꾸지 않는다.
 ## 아군 궁수는 임시로 솜씨, 풋내기 궁수는 민첩이다 (능력치 기획서 4-2·7장, #386).
 func get_attack_ability() -> Ability:
@@ -182,12 +198,6 @@ func get_damage_bonus() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["damage_bonus"])
 	return (3 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus")
-
-
-func get_damage_sides() -> int:
-	if not is_ally:
-		return int(CombatEnemyDefinitions.for_kind(kind)["damage_sides"])
-	return 8 if kind == Kind.WARRIOR else 6
 
 
 func _equipment_stat(stat: String) -> int:
@@ -295,7 +305,7 @@ func begin_stage(restore_act: bool) -> void:
 func save_state(units: Array[CombatUnit]) -> Dictionary:
 	var statuses: Array = []
 	for effect: StatusEffect in status_effects:
-		statuses.append([effect.kind, units.find(effect.source), effect.turns_left, effect.strength])
+		statuses.append([effect.kind, units.find(effect.source), effect.turns_left, effect.dc])
 	var data: Dictionary = {"kind": kind, "ally": is_ally, "weapon": weapon, "armor": armor,
 		"hit_points": hit_points, "lost_hit_points": _lost_hit_points, "stunned": is_stunned,
 		"stun_source": units.find(stun_source), "marked_target": units.find(marked_target), "statuses": statuses}
@@ -304,7 +314,7 @@ func save_state(units: Array[CombatUnit]) -> Dictionary:
 	return data
 
 
-## save_state()의 값으로 되돌린다. 장비·HP setter가 바꾸는 HP·과부하·행동은 뒤에서 덮는다.
+## save_state()의 값으로 되돌린다. 장비·HP setter가 바꾸는 HP·과부하는 뒤에서 덮는다.
 func load_state(data: Dictionary, units: Array[CombatUnit]) -> void:
 	armor = data.armor
 	weapon = data.weapon

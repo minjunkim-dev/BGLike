@@ -37,6 +37,8 @@ func _run() -> void:
 	await _test_hit_roll_is_awaited_before_the_log()
 	await _test_parry_roll()
 	_test_poison_roll_does_not_block_the_turn()
+	await _test_spin_save_is_awaited_before_damage()
+	_test_pull_save_does_not_block_the_action()
 	_test_values_without_presentation()
 	await _test_scene()
 	for f: Fixture in _fixtures:
@@ -150,17 +152,63 @@ func _test_poison_roll_does_not_block_the_turn() -> void:
 	var target: CombatUnit = f.units[2]
 	f.turns.select_unit(f.units[1])
 	f.actions.apply_status(f.units[1], target, "poison")
-	var strength: int = target.status_effects[0].strength
+	var dc: int = target.status_effects[0].dc
 	f.actions.dice = _dice_for([3], [4])
 	f.turns.end_turn()
 	f.turns.end_turn()
 	_check(target.hit_points == 11, "연출 훅이 기다려도 독 처리는 같은 시점에 끝난다")
 	_check(f.rolls.size() == 1 and f.rolls[0].category == CombatDiceRoll.Category.SAVE
-		and f.rolls[0].roller == target and f.rolls[0].target_value == strength
-		and f.rolls[0].target_label == tr("강도") and f.rolls[0].sides == 4,
-		"독 제거는 건강 주사위와 독 강도를 기준으로 전달한다")
+		and f.rolls[0].roller == target and f.rolls[0].target_value == dc
+		and f.rolls[0].target_label == tr("DC") and f.rolls[0].sides == 4,
+		"독 제거는 건강 내성굴림과 독 DC를 기준으로 전달한다")
 	_check(f.events.find("roll end") == -1 or f.events.find("roll end") > f.events.find("roll start"),
 		"독 제거 연출은 턴 시작 처리를 멈추지 않고 이어서 재생한다")
+
+
+## 회전회오리는 대상마다 내성굴림을 연출이 끝난 뒤 피해로 이어 간다 (#389 이관, DICE_PRESENTATION 내성).
+func _test_spin_save_is_awaited_before_damage() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 50
+	boss.begin_turn()
+	f.turns.current_unit = boss
+	f.units[1].cell = Vector2i(5, 3)
+	f.units[0].parry_left = 0
+	f.actions.dice = _dice_for([10, 6, 2, 6], [20, 12, 6, 12])
+	_check(await f.actions.spin(boss), "회전회오리 실행")
+	_check(f.rolls.size() == 2 and f.rolls.all(func(roll: CombatDiceRoll) -> bool:
+			return roll.category == CombatDiceRoll.Category.SAVE and roll.target_label == tr("DC") and roll.target_value == 10)
+		and f.rolls[0].roller == f.units[0] and f.rolls[0].sides == 20 and f.rolls[0].result.success
+		and f.rolls[1].roller == f.units[1] and f.rolls[1].sides == 6 and not f.rolls[1].result.success,
+		"회전회오리는 대상마다 힘 내성굴림을 DC 기준으로 전달한다")
+	var first_damage: int = -1
+	for index: int in range(f.events.size()):
+		if f.events[index].begins_with("log: ") and "피해" in f.events[index]:
+			first_damage = index
+			break
+	_check(first_damage > f.events.find("roll end"), "회전회오리 피해는 첫 내성굴림 연출이 끝난 뒤 나온다")
+
+
+## 만능팔은 동작이 바로 끝나는 동기 처리라 내성굴림을 기다리지 않고 겹쳐 보인다.
+func _test_pull_save_does_not_block_the_action() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 45
+	boss.cell = Vector2i(4, 4)
+	boss.begin_turn()
+	f.turns.current_unit = boss
+	f.units[0].cell = Vector2i(1, 1)
+	f.units[3].cell = Vector2i(0, 9)
+	var target: CombatUnit = f.units[1]
+	target.cell = Vector2i(7, 4)
+	f.actions.dice = _dice_for([1], [6])
+	_check(f.actions.pull(boss, target) and target.cell == Vector2i(5, 4), "만능팔 실행과 끌어오기")
+	_check(f.rolls.size() == 1 and f.rolls[0].category == CombatDiceRoll.Category.SAVE
+		and f.rolls[0].roller == target and f.rolls[0].target_label == tr("DC") and not f.rolls[0].result.success,
+		"만능팔은 대상의 힘 내성굴림을 DC 기준으로 전달한다")
+	_check(f.events.find("roll end") == -1, "만능팔 연출은 동작 처리를 멈추지 않는다")
 
 
 func _test_values_without_presentation() -> void:
@@ -196,7 +244,7 @@ func _test_scene() -> void:
 	var monster_roll: CombatDiceRoll = CombatDiceRoll.hit(enemy, 20, _result([9], 9, 12, true), 3, 12)
 	await actions.roll_animation.call(monster_roll)
 	_check(not view.visible, "몬스터의 명중굴림은 연출하지 않는다")
-	monster_roll = CombatDiceRoll.save(enemy, 4, _result([3], 3, 3, false), 0, tr("강도"), 4)
+	monster_roll = CombatDiceRoll.save(enemy, 4, _result([3], 3, 3, false), 0, tr("DC"), 4)
 	await actions.roll_animation.call(monster_roll)
 	_check(not view.visible, "몬스터의 독 제거는 연출하지 않는다")
 

@@ -209,7 +209,7 @@ func action_details(actions: CombatActions, actor: CombatUnit, action: String) -
 	if actor == null:
 		return ""
 	var effect: String = CombatActionRules.effect(actor, action)
-	var details: String = CombatActionRules.details(actor, action)
+	var details: String = CombatActionRules.details(actor, action, actions.units)
 	if not details.is_empty():
 		effect += "\n" + details
 	var reason: String = actions.unavailable_reason(actor, action)
