@@ -49,9 +49,24 @@ jobs:
         id: godot-install
         shell: bash
         run: make godot-install
+      # The runner has no Korean font, and Godot asks every installed font for each Hangul label.
+      # Searching only Noto CJK keeps real Hangul metrics and makes scene setup several times faster (#430).
+      - name: Limit fonts to Noto CJK
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends fonts-noto-cjk >/dev/null
+          cat > "$RUNNER_TEMP/fonts.conf" <<EOF
+          <?xml version="1.0"?>
+          <fontconfig>
+            <dir>/usr/share/fonts/opentype/noto</dir>
+            <cachedir>$RUNNER_TEMP/fontconfig</cachedir>
+          </fontconfig>
+          EOF
+          FONTCONFIG_FILE="$RUNNER_TEMP/fonts.conf" fc-list :lang=ko family | grep -q 'Noto Sans CJK KR'
       - name: Check project with the shared local command
         env:
           GODOT: ${{ steps.engine.outputs.binary }}
+          FONTCONFIG_FILE: ${{ runner.temp }}/fonts.conf
         run: make godot-check
       - name: Record engine cache state
         if: always()

@@ -109,18 +109,18 @@ class GodotCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 3)
         self.assertTrue(any("combat_hud_test" in call for call in calls))
 
-    def test_hud_and_ai_run_concurrently_after_import(self):
+    def test_save_and_hud_run_concurrently_after_import(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             binary = root / "godot"
             binary.write_text(FAKE_GODOT + """
 case "$*" in
   *--import*) touch "$PROBE/imported" ;;
-  *combat_hud_test*|*combat_ai_test*)
+  *combat_save_test*|*combat_hud_test*)
     test -f "$PROBE/imported" || exit 12
     case "$*" in
-      *combat_hud_test*) own=hud; other=ai ;;
-      *) own=ai; other=hud ;;
+      *combat_save_test*) own=save; other=hud ;;
+      *) own=hud; other=save ;;
     esac
     touch "$PROBE/$own"
     attempt=0
@@ -145,8 +145,8 @@ esac
                 binary = root / "godot"
                 binary.write_text(FAKE_GODOT + """
 case "$*" in
+  *combat_save_test*) echo 'save stage 1'; echo $$ > "$PROBE/save.pid"; exec sleep 30 ;;
   *combat_hud_test*) echo $$ > "$PROBE/hud.pid"; exec sleep 30 ;;
-  *combat_ai_test*) echo $$ > "$PROBE/ai.pid"; exec sleep 30 ;;
 esac
 """)
                 binary.chmod(0o755)
@@ -158,13 +158,15 @@ esac
                 children = []
                 try:
                     deadline = time.monotonic() + 5
-                    while not all((root / f"{name}.pid").exists() for name in ("hud", "ai")):
+                    while not all((root / f"{name}.pid").exists() for name in ("save", "hud")):
                         self.assertLess(time.monotonic(), deadline, "Parallel tests did not start")
                         time.sleep(0.02)
-                    children = [int((root / f"{name}.pid").read_text()) for name in ("hud", "ai")]
+                    children = [int((root / f"{name}.pid").read_text()) for name in ("save", "hud")]
                     os.kill(process.pid, signum)
-                    process.communicate(timeout=3)
+                    stdout, _ = process.communicate(timeout=3)
                     self.assertEqual(process.returncode, 130)
+                    # Output is relayed as it arrives, so a cancelled run still shows how far each test got.
+                    self.assertRegex(stdout, r"\[combat_save_test \d+s\] save stage 1")
                     for child in children:
                         with self.assertRaises(ProcessLookupError):
                             os.kill(child, 0)

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# The save test is the longest by far, so it starts first and the rest share the other slot.
 tests=(
-  tests/combat_{hud,ai,turns,checks,actions,progression,loot,capture,feedback,save,preparation_save,staging,dice_roll,warrior}_test.gd
+  tests/combat_save_test.gd
+  tests/combat_{hud,ai,turns,checks,actions,progression,loot,capture,feedback,preparation_save,staging,dice_roll,warrior}_test.gd
   tests/{save,title,pause,continue}_test.gd
 )
 if [ "$#" -gt 0 ]; then
@@ -45,67 +47,81 @@ run_godot --quit-after 2
 rm -f "$log"
 trap - EXIT
 # Separate process groups let cancellation stop each owned test and its children.
+# Each line is relayed as it arrives with the test name and elapsed time, so a cancelled job still shows where time went.
 exec python3 - "$godot" "${tests[@]}" <<'PY'
 import os
 from pathlib import Path
 import signal
 import subprocess
 import sys
-import tempfile
+import threading
 import time
 
 tests = iter(sys.argv[2:])
 active = []
 status = 0
+lock = threading.Lock()
+def say(name, started, text):
+    with lock:
+        print(f"[{name} {time.monotonic() - started:.0f}s] {text}", end="", flush=True)
+def relay(name, started, process, lines):
+    for line in process.stdout:
+        lines.append(line)
+        say(name, started, line)
 def cancel(_signal, _frame):
     raise KeyboardInterrupt
 signal.signal(signal.SIGTERM, cancel)
-with tempfile.TemporaryDirectory() as directory:
-    try:
-        pending = True
-        while pending or active:
-            while pending and len(active) < 2:
-                test = next(tests, None)
-                if test is None:
-                    pending = False
-                    break
-                log = Path(directory) / Path(test).name
-                with log.open("w") as output:
-                    process = subprocess.Popen([sys.argv[1], "--headless", "--path", ".", "--script", test],
-                                               stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
-                active.append((test, process, log))
-            for item in active[:]:
-                test, process, log = item
-                result = process.poll()
-                if result is None:
-                    continue
-                output = log.read_text()
-                print(output, end="", flush=True)
-                if "SCRIPT ERROR" in output or "Failed to load script" in output:
-                    print(f"Godot script error during: --script {test}", file=sys.stderr)
-                    result = 1
-                if result:
-                    status = result if result > 0 else 128 - result
-                active.remove(item)
-            if active:
-                time.sleep(0.02)
-    except KeyboardInterrupt:
-        status = 130
-    finally:
-        for _, process, _ in active:
-            if process.poll() is None:
-                try:
-                    os.killpg(process.pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-        for _, process, _ in active:
+try:
+    pending = True
+    while pending or active:
+        while pending and len(active) < 2:
+            test = next(tests, None)
+            if test is None:
+                pending = False
+                break
+            name = Path(test).stem
+            started = time.monotonic()
+            process = subprocess.Popen([sys.argv[1], "--headless", "--path", ".", "--script", test],
+                                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                       errors="replace", start_new_session=True)
+            lines = []
+            reader = threading.Thread(target=relay, args=(name, started, process, lines), daemon=True)
+            reader.start()
+            say(name, started, "started\n")
+            active.append((test, process, reader, lines, started))
+        for item in active[:]:
+            test, process, reader, lines, started = item
+            result = process.poll()
+            if result is None:
+                continue
+            reader.join()
+            output = "".join(lines)
+            say(Path(test).stem, started, f"finished with exit code {result}\n")
+            if "SCRIPT ERROR" in output or "Failed to load script" in output:
+                print(f"Godot script error during: --script {test}", file=sys.stderr)
+                result = 1
+            if result:
+                status = result if result > 0 else 128 - result
+            active.remove(item)
+        if active:
+            time.sleep(0.02)
+except KeyboardInterrupt:
+    status = 130
+finally:
+    for _, process, _, _, _ in active:
+        if process.poll() is None:
             try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                process.wait()
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+    for _, process, _, _, _ in active:
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait()
 sys.exit(status)
 PY
