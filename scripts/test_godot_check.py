@@ -1,9 +1,11 @@
 """A script that fails to load must fail the Godot check even when Godot exits 0."""
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import tempfile
+import threading
 import time
 import unittest
 
@@ -138,6 +140,33 @@ esac
                                              PROBE=str(root)), text=True, capture_output=True, timeout=10)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_leftover_child_does_not_hang_or_outlive_the_check(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "godot"
+            binary.write_text(FAKE_GODOT + """
+case "$*" in
+  *combat_save_test*) sleep 30 & echo $! > "$PROBE/child.pid"; echo 'no newline at end' | tr -d '\\n'; exit 0 ;;
+esac
+""")
+            binary.chmod(0o755)
+            result = subprocess.run(["bash", "scripts/check_godot.sh", "tests/combat_save_test.gd"], cwd=ROOT,
+                                    env=dict(os.environ, GODOT=str(binary), CALL_LOG=str(root / "calls"),
+                                             BROKEN="no-such-step", ERROR_LINE="", BROKEN_EXIT="0",
+                                             PROBE=str(root)), text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("] no newline at end\n[combat_save_test", result.stdout)
+            child = int((root / "child.pid").read_text())
+            deadline = time.monotonic() + 3
+            # The orphaned child is reaped by init, so give it a moment to disappear.
+            while True:
+                try:
+                    os.kill(child, 0)
+                except ProcessLookupError:
+                    break
+                self.assertLess(time.monotonic(), deadline, "Leftover child outlived the check")
+                time.sleep(0.02)
+
     def test_cancellation_stops_owned_godot_processes(self):
         for signum in (signal.SIGINT, signal.SIGTERM):
             with self.subTest(signum=signum), tempfile.TemporaryDirectory() as directory:
@@ -156,24 +185,33 @@ esac
                                                     PROBE=str(root)), stdout=subprocess.PIPE,
                                            stderr=subprocess.PIPE, text=True, start_new_session=True)
                 children = []
+                lines = []
+                def read():
+                    for line in process.stdout:
+                        lines.append(line)
+                reader = threading.Thread(target=read, daemon=True)
+                reader.start()
                 try:
                     deadline = time.monotonic() + 5
                     while not all((root / f"{name}.pid").exists() for name in ("save", "hud")):
                         self.assertLess(time.monotonic(), deadline, "Parallel tests did not start")
                         time.sleep(0.02)
                     children = [int((root / f"{name}.pid").read_text()) for name in ("save", "hud")]
-                    os.kill(process.pid, signum)
-                    stdout, _ = process.communicate(timeout=3)
-                    self.assertEqual(process.returncode, 130)
                     # Output is relayed as it arrives, so a cancelled run still shows how far each test got.
-                    self.assertRegex(stdout, r"\[combat_save_test \d+s\] save stage 1")
+                    while not any(re.search(r"\[combat_save_test \d+s\] save stage 1", line) for line in lines):
+                        self.assertLess(time.monotonic(), deadline, "Running test output was not relayed")
+                        time.sleep(0.02)
+                    os.kill(process.pid, signum)
+                    process.wait(timeout=3)
+                    reader.join(timeout=3)
+                    self.assertEqual(process.returncode, 130)
                     for child in children:
                         with self.assertRaises(ProcessLookupError):
                             os.kill(child, 0)
                 finally:
                     if process.poll() is None:
                         os.killpg(process.pid, signal.SIGKILL)
-                        process.communicate()
+                        process.wait()
                     for child in children:
                         try:
                             os.killpg(child, signal.SIGKILL)

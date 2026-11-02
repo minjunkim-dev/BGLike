@@ -49,8 +49,8 @@ jobs:
         id: godot-install
         shell: bash
         run: make godot-install
-      # The runner has no Korean font, and Godot asks every installed font for each Hangul label.
-      # Searching only Noto CJK keeps real Hangul metrics and makes scene setup several times faster (#430).
+      # With the runner's 53 fonts (none Korean) visible, Godot's fallback font lookup made combat scene
+      # setup several times slower (#430). Searching only Noto CJK keeps real Hangul metrics and that speed.
       - name: Limit fonts to Noto CJK
         run: |
           sudo apt-get update -qq

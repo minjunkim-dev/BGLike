@@ -67,7 +67,11 @@ def say(name, started, text):
 def relay(name, started, process, lines):
     for line in process.stdout:
         lines.append(line)
-        say(name, started, line)
+        # A broken stdout must not stop draining, or Godot blocks on a full pipe.
+        try:
+            say(name, started, line if line.endswith("\n") else line + "\n")
+        except (OSError, UnicodeError):
+            pass
 def cancel(_signal, _frame):
     raise KeyboardInterrupt
 signal.signal(signal.SIGTERM, cancel)
@@ -94,7 +98,12 @@ try:
             result = process.poll()
             if result is None:
                 continue
-            reader.join()
+            # Leftover children would hold the pipe open and outlive the check.
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            reader.join(timeout=5)
             output = "".join(lines)
             say(Path(test).stem, started, f"finished with exit code {result}\n")
             if "SCRIPT ERROR" in output or "Failed to load script" in output:
@@ -108,12 +117,12 @@ try:
 except KeyboardInterrupt:
     status = 130
 finally:
+    # The group may outlive an exited test process, so stop it either way.
     for _, process, _, _, _ in active:
-        if process.poll() is None:
-            try:
-                os.killpg(process.pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
     for _, process, _, _, _ in active:
         try:
             process.wait(timeout=5)
@@ -123,5 +132,7 @@ finally:
             except ProcessLookupError:
                 pass
             process.wait()
+    for _, _, reader, _, _ in active:
+        reader.join(timeout=1)
 sys.exit(status)
 PY
