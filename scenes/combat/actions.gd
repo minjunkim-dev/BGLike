@@ -50,7 +50,7 @@ class Ground extends RefCounted:
 
 
 ## 쓰러진 시전자의 턴 자리. anchor는 그 자리 바로 뒤의 유닛이고, anchor의 턴 시작 직전에 시전자의 유닛 효과를 줄인다.
-## skip은 이번 순환에서 그 자리를 이미 지났다는 뜻이다(시전자가 자기 턴을 시작한 뒤 쓰러짐).
+## skip은 anchor의 다음 턴 시작 앞 자리를 이미 줄였다는 뜻이다(시전자가 자기 턴을 시작한 뒤 쓰러짐 등).
 class ClockSlot extends RefCounted:
 	var caster: CombatUnit
 	var anchor: CombatUnit
@@ -578,7 +578,9 @@ func _keep_clock_slot(target: CombatUnit) -> void:
 			_clock_slots.erase(slot)
 		else:
 			slot.anchor = next
-			slot.skip = _settle_clock_slot(slot.caster, slot.skip or turns.is_turn_activated(target), follows)
+			# target이 이미 시작했는데 skip이 남았으면 줄인 몫은 target의 다음 라운드 시작 앞이고, next의 다음 시작도 그 뒤다.
+			slot.skip = (slot.skip and turns.is_turn_activated(target)
+				or _settle_clock_slot(slot.caster, slot.skip or turns.is_turn_activated(target), follows))
 	if next != null and _has_unit_effects(target):
 		var skip: bool = _settle_clock_slot(target, turns.is_turn_activated(target), follows)
 		if _has_unit_effects(target):

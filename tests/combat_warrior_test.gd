@@ -414,6 +414,19 @@ func _test_battle_cry_clock_slot() -> void:
 		"다음 라운드 첫 유닛의 시작은 이미 줄인 자리라 건너뜀")
 	last.turns.turn_started.emit(last.units[2])
 	_check(last.units[1].battle_cry_turns == 1, "그다음 순환부터 줄어듦")
+	# 그 슬롯의 기준 유닛도 같은 라운드에 쓰러지면, 옮긴 유닛의 다음 라운드 시작도 이미 줄인 자리 바로 뒤다.
+	var wrap: Fixture = _fixture([2, 3, 1, 0])
+	wrap.turns.end_turn()
+	wrap.turns.end_turn()
+	wrap.turns.select_unit(wrap.units[0])
+	wrap.actions.dice = _dice([5], [8])
+	wrap.actions.use_self(wrap.units[0], "battle_cry")
+	wrap.actions.incapacitate(wrap.units[0])
+	wrap.actions.incapacitate(wrap.units[2])
+	_check(wrap.actions.save_state().clock_slots == [[0, 3, true]], "이미 시작한 기준 유닛이 쓰러져도 건너뛸 자리를 유지")
+	wrap.turns.end_turn()
+	_check(wrap.turns.current_unit == wrap.units[3] and wrap.turns.round_number == 2
+		and wrap.units[1].battle_cry_turns == 2, "옮긴 유닛의 다음 라운드 시작은 이미 줄인 자리라 건너뜀")
 	# 기존 상태 이상은 시전자 전투 불능에서 해제한다.
 	var burn: Fixture = _fixture()
 	burn.units[0].status_effects.append(CombatUnit.StatusEffect.new("burn", burn.units[2], 2))
