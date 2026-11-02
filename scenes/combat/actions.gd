@@ -87,7 +87,7 @@ var reaction_answers: Array[bool] = []
 var replay_answers: Array[bool] = []
 var _grounds: Array[Ground] = []
 var _clock_slots: Array[ClockSlot] = []
-## 턴 시작의 틱까지 처리했고 기간 감소는 아직인 유닛. 이 틱으로 쓰러지면 이번 몫은 시계 슬롯이 줄인다.
+## 턴 시작의 틱까지 처리했고 기간 감소는 아직인 유닛. 이 틱으로 쓰러지면 쓰러질 때 바로 줄인다.
 var _pending_decrease: CombatUnit
 var _revision: int = 0
 
@@ -429,7 +429,7 @@ func _on_turn_started(unit: CombatUnit) -> void:
 		logged.emit(tr("%s %s: %d · HP %d") % [unit.get_display_name(), name, amount, unit.hit_points])
 		feedback.emit(unit, "%s %d" % [name, amount])
 	_pending_decrease = null
-	# 틱으로 쓰러졌으면 이번 몫은 쓰러질 때 시계 슬롯이 맡았다.
+	# 틱으로 쓰러졌으면 이번 몫은 쓰러질 때 이미 줄였다.
 	if revision == _revision and not is_over() and unit.hit_points > 0:
 		_decrease_durations(unit)
 	changed.emit()
@@ -595,7 +595,10 @@ func _keep_clock_slot(target: CombatUnit) -> void:
 			slot.skip = (slot.skip and turns.is_turn_activated(target)
 				or _settle_clock_slot(slot.caster, slot.skip or turns.is_turn_activated(target), follows))
 	if next != null and _has_unit_effects(target):
-		var skip: bool = _settle_clock_slot(target, turns.is_turn_activated(target) and target != _pending_decrease, follows)
+		# 자기 턴 시작의 틱으로 쓰러지면 다른 유닛이 이어 움직이기 전에 이번 몫(6-1 ⑥)을 줄인다.
+		if target == _pending_decrease:
+			_tick_unit_effects(target)
+		var skip: bool = _settle_clock_slot(target, turns.is_turn_activated(target), follows)
 		if _has_unit_effects(target):
 			_clock_slots.append(ClockSlot.new(target, next, skip))
 	_clock_slots = _clock_slots.filter(func(slot: ClockSlot) -> bool: return _has_unit_effects(slot.caster))

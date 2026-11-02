@@ -469,6 +469,17 @@ func _test_turn_start_order() -> void:
 		"자기 틱으로 쓰러진 시전자의 기간도 이번 순환에 한 번 줄고 다음 유닛 앞 슬롯은 건너뛰지 않음")
 	# 바깥 전사 emit이 바뀐 current_unit(궁수)을 뒤 연결에 다시 넘겨 셋째 값이 붙는다. 앞 둘이 실제 시작이다.
 	_check(seen.slice(0, 2) == [2, 1], "쓰러진 시전자의 감소는 다음 유닛의 턴 시작 처리보다 먼저 " + str(seen))
+	# 같은 묶음에서 이미 시작한 앞 유닛으로 돌아가도 쓰러진 시전자의 이번 몫은 이미 줄었다.
+	var back: Fixture = _fixture([1, 0, 4, 2, 3], true)
+	var cried: CombatUnit = back.units[1]
+	_give_battle_cry(back.units[0], cried)
+	cried.battle_cry_turns = 1
+	back.units[0].hit_points = 1
+	back.units[0].status_effects.append(CombatUnit.StatusEffect.new("burn", back.units[2], 2))
+	back.actions.dice = _dice([4], [4])
+	back.turns.select_unit(back.units[0])
+	_check(back.units[0].hit_points == 0 and back.turns.current_unit == cried and cried.battle_cry_turns == 0
+		and back.actions.save_state().clock_slots.is_empty(), "이미 시작한 앞 유닛이 이어 움직이기 전에 기간이 끝남")
 
 
 ## archer에게 caster의 전투의 함성 2턴을 건다.
