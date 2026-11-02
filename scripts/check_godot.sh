@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# The save test is the longest by far, so it starts first and the rest take whichever slot frees up.
 tests=(
-  tests/combat_{hud,ai,turns,checks,actions,progression,loot,capture,feedback,save,preparation_save,staging,dice_roll,warrior}_test.gd
+  tests/combat_save_test.gd
+  tests/combat_{hud,ai,turns,checks,actions,progression,loot,capture,feedback,preparation_save,staging,dice_roll,warrior}_test.gd
   tests/{save,title,pause,continue}_test.gd
 )
 if [ "$#" -gt 0 ]; then
@@ -45,67 +47,113 @@ run_godot --quit-after 2
 rm -f "$log"
 trap - EXIT
 # Separate process groups let cancellation stop each owned test and its children.
+# Each line is relayed as it arrives with the test name and elapsed time, so a cancelled job still shows where time went.
 exec python3 - "$godot" "${tests[@]}" <<'PY'
 import os
 from pathlib import Path
 import signal
 import subprocess
 import sys
-import tempfile
+import threading
 import time
 
 tests = iter(sys.argv[2:])
 active = []
 status = 0
+lock = threading.Lock()
+def say(name, started, text):
+    with lock:
+        print(f"[{name} {time.monotonic() - started:.0f}s] {text}", end="", flush=True)
+def relay(name, started, process, lines):
+    for line in process.stdout:
+        lines.append(line)
+        # A broken stdout must not stop draining, or Godot blocks on a full pipe.
+        try:
+            say(name, started, line if line.endswith("\n") else line + "\n")
+        except (OSError, UnicodeError):
+            pass
+spawning = False
+deferred = False
 def cancel(_signal, _frame):
+    global deferred
+    # A signal between starting a test and registering it would leave that test unstopped.
+    if spawning:
+        deferred = True
+        return
     raise KeyboardInterrupt
 signal.signal(signal.SIGTERM, cancel)
-with tempfile.TemporaryDirectory() as directory:
-    try:
-        pending = True
-        while pending or active:
-            while pending and len(active) < 2:
-                test = next(tests, None)
-                if test is None:
-                    pending = False
-                    break
-                log = Path(directory) / Path(test).name
-                with log.open("w") as output:
-                    process = subprocess.Popen([sys.argv[1], "--headless", "--path", ".", "--script", test],
-                                               stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
-                active.append((test, process, log))
-            for item in active[:]:
-                test, process, log = item
-                result = process.poll()
-                if result is None:
-                    continue
-                output = log.read_text()
-                print(output, end="", flush=True)
-                if "SCRIPT ERROR" in output or "Failed to load script" in output:
-                    print(f"Godot script error during: --script {test}", file=sys.stderr)
-                    result = 1
-                if result:
-                    status = result if result > 0 else 128 - result
-                active.remove(item)
-            if active:
-                time.sleep(0.02)
-    except KeyboardInterrupt:
-        status = 130
-    finally:
-        for _, process, _ in active:
-            if process.poll() is None:
-                try:
-                    os.killpg(process.pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-        for _, process, _ in active:
+signal.signal(signal.SIGINT, cancel)
+try:
+    pending = True
+    while pending or active:
+        while pending and len(active) < 2:
+            test = next(tests, None)
+            if test is None:
+                pending = False
+                break
+            name = Path(test).stem
+            started = time.monotonic()
+            lines = []
+            spawning = True
+            process = subprocess.Popen([sys.argv[1], "--headless", "--path", ".", "--script", test],
+                                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                       errors="replace", start_new_session=True)
+            reader = threading.Thread(target=relay, args=(name, started, process, lines), daemon=True)
+            active.append((test, process, reader, lines, started))
+            spawning = False
+            if deferred:
+                raise KeyboardInterrupt
+            say(name, started, "started\n")
+            reader.start()
+        for item in active[:]:
+            test, process, reader, lines, started = item
+            result = process.poll()
+            if result is None:
+                continue
+            # Leftover children would hold the pipe open and outlive the check.
             try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                process.wait()
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            reader.join(timeout=5)
+            output = "".join(lines)
+            say(Path(test).stem, started, f"finished with exit code {result}\n")
+            if reader.is_alive():
+                # Unread output could still hold a script error, so it cannot pass.
+                print(f"Godot output did not end during: --script {test}", file=sys.stderr)
+                result = 1
+            elif "SCRIPT ERROR" in output or "Failed to load script" in output:
+                print(f"Godot script error during: --script {test}", file=sys.stderr)
+                result = 1
+            if result:
+                status = result if result > 0 else 128 - result
+            active.remove(item)
+        if active:
+            time.sleep(0.02)
+except KeyboardInterrupt:
+    status = 130
+finally:
+    # Cancellation often sends a second signal (SIGINT, then SIGTERM); it must not cut cleanup short.
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    # The group may outlive an exited test process or ignore SIGTERM, so stop it either way.
+    for _, process, _, _, _ in active:
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    for _, process, _, _, _ in active:
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
+    for _, _, reader, _, _ in active:
+        if reader.is_alive():
+            reader.join(timeout=1)
 sys.exit(status)
 PY

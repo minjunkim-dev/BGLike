@@ -22,6 +22,7 @@
   "icons": [
     {"id": "attack", "name": "공격", "effect": "기본 공격", "brief": "The item sword: steel blade up-right, brass guard, leather grip. Same picture as the weapon slot."},
     {"id": "second_wind", "name": "숨 고르기", "effect": "HP 1d10+1 회복", "brief": "Red heart for HP with two white breath curls at the upper left."},
+    {"id": "sweep", "name": "휩쓸기", "effect": "정면 반달 5칸의 적을 시계방향으로 각각 공격", "brief": "Short sword pointing up-right at the lower right with a white half-moon arc sweeping over it from the left.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/426"},
     {"id": "cross_slash", "name": "십자 베기", "effect": "인접한 적을 기본 공격 2회", "brief": "Two short swords crossed in an X, steel blades up, brass guards and leather grips below.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/423"},
     {"id": "steel_charge", "name": "강철 돌진", "effect": "공격 뒤 1칸 밀치고 전진", "brief": "Short sword thrusting to the right with white speed lines trailing on the left.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/423"},
     {"id": "holy_veil", "name": "성스러운 장막", "effect": "HP보다 먼저 피해를 받는 방어막", "brief": "Heater shield with a steel rim, indigo face and a brass cross.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/423"},

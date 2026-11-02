@@ -50,7 +50,7 @@ class Ground extends RefCounted:
 
 
 ## 쓰러진 시전자의 턴 자리. anchor는 그 자리 바로 뒤의 유닛이고, anchor의 턴 시작 직전에 시전자의 유닛 효과를 줄인다.
-## skip은 이번 순환에서 그 자리를 이미 지났다는 뜻이다(시전자가 자기 턴을 시작한 뒤 쓰러짐).
+## skip은 anchor의 다음 턴 시작 앞 자리를 이미 줄였다는 뜻이다(시전자가 자기 턴을 시작한 뒤 쓰러짐 등).
 class ClockSlot extends RefCounted:
 	var caster: CombatUnit
 	var anchor: CombatUnit
@@ -567,10 +567,10 @@ func incapacitate(target: CombatUnit) -> void:
 ## 기존 상태 이상·장판은 시전자 전투 불능에서 해제하므로 슬롯을 쓰지 않는다 (동작 유형 기획서 4-5, 8-1).
 func _keep_clock_slot(target: CombatUnit) -> void:
 	var next: CombatUnit = turns.next_unit(target)
-	# target 자리를 이번 순환에서 지났고 그 자리에 대응하는 next의 턴 시작이 아직이면 다음 한 번은 건너뛴다.
-	# next가 순서의 처음으로 돌아가면 next의 다음 시작은 다음 라운드라 아직이다.
-	var passed: bool = (next != null and turns.is_turn_activated(target) and (not turns.is_turn_activated(next)
-		or turns.ordered_units.find(next) < turns.ordered_units.find(target)))
+	# next의 다음 턴 시작이 target 자리의 이번 순환 바로 뒤인지. next가 순서의 처음으로 돌면 다음 라운드 첫 시작이 그렇다.
+	# 이미 시작한 유닛과 생성 라운드의 소환 유닛은 이번 순환에 다시 시작하지 않는다.
+	var follows: bool = next != null and (turns.ordered_units.find(next) < turns.ordered_units.find(target)
+		or not turns.is_turn_activated(next) and not turns.is_turn_finished(next))
 	for slot: ClockSlot in _clock_slots.duplicate():
 		if slot.caster == target or slot.anchor != target:
 			continue
@@ -578,9 +578,22 @@ func _keep_clock_slot(target: CombatUnit) -> void:
 			_clock_slots.erase(slot)
 		else:
 			slot.anchor = next
-			slot.skip = slot.skip or passed
+			# target이 이미 시작했는데 skip이 남았으면 줄인 몫은 target의 다음 라운드 시작 앞이고, next의 다음 시작도 그 뒤다.
+			slot.skip = (slot.skip and turns.is_turn_activated(target)
+				or _settle_clock_slot(slot.caster, slot.skip or turns.is_turn_activated(target), follows))
 	if next != null and _has_unit_effects(target):
-		_clock_slots.append(ClockSlot.new(target, next, passed))
+		var skip: bool = _settle_clock_slot(target, turns.is_turn_activated(target), follows)
+		if _has_unit_effects(target):
+			_clock_slots.append(ClockSlot.new(target, next, skip))
+	_clock_slots = _clock_slots.filter(func(slot: ClockSlot) -> bool: return _has_unit_effects(slot.caster))
+
+
+## 쓰러진 자리의 이번 순환 몫을 맞추고 skip을 돌려준다. 이미 줄였으면(paid) next의 다음 시작이 바로 뒤일 때 건너뛴다.
+## 아직이고 next의 다음 시작이 다음 순환이면 그 사이에 줄일 기회가 없으므로 지금 줄인다(같은 묶음에서 뒤 유닛을 먼저 조작함).
+func _settle_clock_slot(caster: CombatUnit, paid: bool, follows: bool) -> bool:
+	if not paid and not follows:
+		_tick_unit_effects(caster)
+	return paid and follows
 
 
 ## 전투 포기(#286). 남은 아군을 모두 전투 불능으로 만들어 전멸과 똑같이 패배한다.
@@ -733,10 +746,39 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	return false
 
 
+## 휩쓸기의 대상: facing을 정면으로 둔 반달 5칸의 살아 있는 적을 시계방향 순서로 준다. 아군은 맞지 않는다.
+func sweep_targets(actor: CombatUnit, facing: Vector2i) -> Array[CombatUnit]:
+	var targets: Array[CombatUnit] = []
+	for cell: Vector2i in grid.sweep_cells(actor.cell, facing):
+		var unit: CombatUnit = grid.unit_at(cell)
+		if unit != null and unit.is_ally != actor.is_ally:
+			targets.append(unit)
+	return targets
+
+
+## 영향 칸에 적이 없는 방향은 효과가 없어 고를 수 없다 (9-3 "효과가 없을 때" 비활성).
+func can_sweep(actor: CombatUnit, facing: Vector2i) -> bool:
+	return (actor != null and CombatActionRules.belongs_to(actor, "sweep") and actor.action_left > 0
+		and not sweep_targets(actor, facing).is_empty())
+
+
+## 휩쓸기 대상의 명중률. 반달의 대각선 칸은 기본 공격 사거리 밖이라 attack_preview의 chance를 쓰지 않는다.
+func sweep_chance(actor: CombatUnit, target: CombatUnit) -> float:
+	var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
+	if not preview.blocked_reason.is_empty():
+		return 0.0
+	return CombatChecks.hit_chance(actor.get_ability_sides(actor.get_attack_ability()), actor.get_hit_bonus(),
+		grid.armor_class(target), preview.mode)
+
+
 func can_use(actor: CombatUnit, action: String) -> bool:
 	if not _can_act(actor):
 		return false
 	match action:
+		"sweep":
+			for cell: Vector2i in CombatGrid.neighbors(actor.cell):
+				if can_sweep(actor, cell):
+					return true
 		"spin":
 			return (CombatActionRules.belongs_to(actor, action) and actor.action_left > 0
 				and not grid.opponents_in_area(actor, 1).is_empty())
@@ -904,6 +946,10 @@ func spawn_spiderling(actor: CombatUnit) -> bool:
 		child.free()
 		busy = false
 		return false
+	# 새끼는 쓰러진 자리와 엄마 사이에 들어오므로 그 자리 바로 뒤가 된다.
+	for slot: ClockSlot in _clock_slots:
+		if slot.anchor == actor:
+			slot.anchor = child
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	logged.emit(tr("%s 새끼 낳기: %s") % [actor.get_display_name(), child.cell])
 	_finish()
@@ -944,6 +990,23 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 		"potion":
 			_heal(actor, dice.roll(4) + dice.roll(4) + 2, tr("물약"))
 	changed.emit()
+	return true
+
+
+## 휩쓸기: 행동을 써서 facing을 정면으로 둔 반달 5칸의 적을 시전 때 확정하고, 시계방향으로 한 명씩 명중굴림한다.
+func sweep(actor: CombatUnit, facing: Vector2i) -> bool:
+	if not _can_act(actor) or not can_sweep(actor, facing):
+		return false
+	var targets: Array[CombatUnit] = sweep_targets(actor, facing)
+	busy = true
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	logged.emit(tr_n("%s 휩쓸기: 대상 %d명", "%s 휩쓸기: 대상 %d명", targets.size()) % [actor.get_display_name(), targets.size()])
+	changed.emit()
+	for target: CombatUnit in targets:
+		if actor.hit_points <= 0 or is_over():
+			break
+		await _perform_attack(actor, target, "sweep")
+	_finish()
 	return true
 
 
@@ -1176,9 +1239,18 @@ func _deal_damage(actor: CombatUnit, target: CombatUnit, action: String, has_mar
 	var rolled_total: int = damage_bonus
 	for rolled: int in last_damage_rolls:
 		rolled_total += rolled
-	last_damage = CombatChecks.halve_damage(rolled_total) if halved else rolled_total
+	if action == "sweep":
+		# 휩쓸기 고유 규칙: ⌈굴림값 ÷ 2⌉ + 기타 가산치. 굴림값은 눈 + 주사위 레벨이라 레벨을 따로 더하지 않는다.
+		# #407 질문 4(피해식에 레벨이 두 번 들어가는 문제)의 답이 오면 성장 구현 때 다시 확인한다. 지금 레벨은 0이다.
+		last_damage = ceili(last_damage_rolls[0] / 2.0) + damage_bonus
+	else:
+		last_damage = CombatChecks.halve_damage(rolled_total) if halved else rolled_total
 	_damage(target, last_damage)
-	if has_mark_damage:
+	if action == "sweep":
+		logged.emit(tr("%s 피해 (휩쓸기 ÷2 올림): %s d%d %s → %d %+d = %d · HP %d") % [target.get_display_name(),
+			CombatUnit.ability_name(damage_ability), damage_sides, str(last_damage_rolls),
+			ceili(last_damage_rolls[0] / 2.0), damage_bonus, last_damage, target.hit_points])
+	elif has_mark_damage:
 		logged.emit(tr("%s 피해 (표식 추가): %s d%d %s + d6 %s %+d = %d · HP %d") % [target.get_display_name(),
 			CombatUnit.ability_name(damage_ability), damage_sides, str([last_damage_rolls[0]]),
 			str([last_damage_rolls[1]]), damage_bonus, last_damage, target.hit_points])

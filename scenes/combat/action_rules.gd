@@ -5,7 +5,7 @@ extends RefCounted
 ## 비용 자원(행동, 보조 행동, 반응) 순서의 묶음. HUD의 배치 순서이기도 하다.
 ## 복합 비용 스킬은 첫 자원의 묶음에 둔다(십자 베기는 임시로 행동, 9-3).
 const GROUPS: Array[Array] = [
-	["attack", "cross_slash", "battle_cry", "shock", "spawn", "pull", "spin"],
+	["attack", "sweep", "cross_slash", "battle_cry", "shock", "spawn", "pull", "spin"],
 	["holy_veil", "steel_charge", "second_wind", "mark", "disengage", "shove", "jump", "potion"],
 	["opportunity"]
 ]
@@ -15,7 +15,7 @@ const EXTRA_COSTS: Dictionary[String, String] = {
 }
 static var NAMES: Dictionary[String, String] = {
 	"attack": TranslationServer.tr("공격"), "second_wind": TranslationServer.tr("숨 고르기"),
-	"cross_slash": TranslationServer.tr("십자 베기"), "steel_charge": TranslationServer.tr("강철 돌진"),
+	"sweep": TranslationServer.tr("휩쓸기"), "cross_slash": TranslationServer.tr("십자 베기"), "steel_charge": TranslationServer.tr("강철 돌진"),
 	"holy_veil": TranslationServer.tr("성스러운 장막"), "battle_cry": TranslationServer.tr("전투의 함성"),
 	"mark": TranslationServer.tr("표식"), "shock": TranslationServer.tr("충격 화살"), "disengage": TranslationServer.tr("물러서며 쏘기"),
 	"shove": TranslationServer.tr("밀치기"), "potion": TranslationServer.tr("물약"), "opportunity": TranslationServer.tr("기회 공격"),
@@ -26,6 +26,7 @@ static var EFFECTS: Dictionary[String, String] = {
 	"spawn": TranslationServer.tr("인접한 빈 칸에 새끼 거미1마리를 만듭니다."),
 	"spin": TranslationServer.tr("상하좌우1칸·높이 차이1 이하인 모든 아군이 각자 힘 내성굴림.\n성공하면 피해 절반. 밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."),
 	"second_wind": TranslationServer.tr("HP 1d10+1 회복.\n최대 HP를 넘지 않습니다."),
+	"sweep": TranslationServer.tr("인접한 칸을 골라 정면을 정하고\n정면 반달 5칸의 적만 시계방향으로\n각각 공격합니다. 아군은 맞지 않습니다."),
 	"cross_slash": TranslationServer.tr("인접한 적 1명을 기본 공격 2회.\n첫 타격으로 쓰러지면 둘째는 취소."),
 	"steel_charge": TranslationServer.tr("인접한 적을 공격. 명중하면 피해 후\n1칸 밀치고 빈 칸으로 1칸 전진.\n밀 수 없으면 피해만. 전진은 기회 공격 없음."),
 	"holy_veil": TranslationServer.tr("건강 굴림값만큼 방어막.\nHP보다 먼저 모든 피해를 받습니다.\n3턴. 다시 쓰면 큰 값을 유지합니다."),
@@ -44,7 +45,7 @@ const SELF_TARGET: Array[String] = ["holy_veil", "battle_cry", "second_wind", "d
 const SKILL_RANGE: int = 6
 ## 아군 직업의 고유 동작. 몬스터의 동작은 정의의 actions가 정한다.
 const CLASS_ONLY: Dictionary[String, CombatUnit.Kind] = {
-	"cross_slash": CombatUnit.Kind.WARRIOR, "steel_charge": CombatUnit.Kind.WARRIOR,
+	"sweep": CombatUnit.Kind.WARRIOR, "cross_slash": CombatUnit.Kind.WARRIOR, "steel_charge": CombatUnit.Kind.WARRIOR,
 	"holy_veil": CombatUnit.Kind.WARRIOR, "battle_cry": CombatUnit.Kind.WARRIOR,
 	"phalanx": CombatUnit.Kind.WARRIOR, "opportunity": CombatUnit.Kind.WARRIOR,
 	"mark": CombatUnit.Kind.ARCHER, "shock": CombatUnit.Kind.ARCHER, "disengage": CombatUnit.Kind.ARCHER
@@ -177,6 +178,11 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 		"attack", "opportunity", "cross_slash", "steel_charge":
 			lines = [TranslationServer.tr("사거리: 인접1칸") if melee else TranslationServer.tr("사거리: 1~%d칸") % actor.get_attack_range(), weapon,
 				TranslationServer.tr("판정: %s") % hit]
+		"sweep":
+			var bonus: int = damage_bonus(actor, action)
+			lines = [TranslationServer.tr("사거리: 정면 반달 5칸"), TranslationServer.tr("피해: %s d%d ÷2 올림%s") % [
+				CombatUnit.ability_name(damage_ability(actor, action)), actor.get_ability_sides(damage_ability(actor, action)),
+				"" if bonus == 0 else " %+d" % bonus], TranslationServer.tr("판정: 대상마다 %s") % hit]
 		"shock":
 			lines = [TranslationServer.tr("사거리: 1~%d칸") % SKILL_RANGE, weapon, TranslationServer.tr("판정: %s, 명중하면 기절") % hit]
 		"mark":

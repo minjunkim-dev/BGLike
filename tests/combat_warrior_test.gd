@@ -62,6 +62,8 @@ func _run() -> void:
 	_test_compound_costs()
 	await _test_cross_slash()
 	await _test_steel_charge()
+	_test_sweep_shape()
+	await _test_sweep()
 	_test_holy_veil()
 	await _test_battle_cry()
 	_test_battle_cry_clock_slot()
@@ -214,6 +216,80 @@ func _test_steel_charge() -> void:
 		"빗나가면 밀치거나 전진하지 않고 비용은 소비")
 
 
+func _test_sweep_shape() -> void:
+	var f: Fixture = _fixture()
+	var grid: CombatGrid = f.actions.grid
+	var origin: Vector2i = Vector2i(4, 4)
+	# 정면 +x(화면 오른쪽 아래)의 오른쪽 옆은 +y(왼쪽 아래)다. 순서는 왼쪽 옆부터 시계방향이다.
+	_check(grid.sweep_cells(origin, Vector2i(5, 4)) == [Vector2i(4, 3), Vector2i(5, 3), Vector2i(5, 4), Vector2i(5, 5), Vector2i(4, 5)],
+		"정면 반달 5칸: 왼쪽 옆 → 앞왼쪽 → 앞 → 앞오른쪽 → 오른쪽 옆")
+	_check(grid.sweep_cells(origin, Vector2i(4, 3)) == [Vector2i(3, 4), Vector2i(3, 3), Vector2i(4, 3), Vector2i(5, 3), Vector2i(5, 4)],
+		"다른 방향을 조준하면 모양과 순서가 함께 돎")
+	_check(grid.sweep_cells(origin, Vector2i(6, 4)).is_empty() and grid.sweep_cells(origin, origin).is_empty(),
+		"인접하지 않은 칸은 정면이 될 수 없음")
+	grid.heights[Vector2i(5, 3)] = 2
+	grid.heights[Vector2i(5, 5)] = 1
+	grid.pits = [Vector2i(4, 3)]
+	grid.blocked_cells = [Vector2i(5, 4)]
+	f.actions.create_prop(Vector2i(4, 5), "crate")
+	_check(grid.sweep_cells(origin, Vector2i(5, 4)) == [Vector2i(5, 5)],
+		"높이 차 2 이상·낭떠러지·막힌 칸·나무 상자는 빼고, 막힌 정면 너머의 칸도 시야 없이 셈")
+	_check(grid.sweep_cells(Vector2i(0, 0), Vector2i(0, 1)) == [Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)], "맵 밖 칸은 뺌")
+	_check(grid.sweep_cells(Vector2i(0, 4), Vector2i(-1, 4)).is_empty(), "맵 밖 칸은 정면이 될 수 없음")
+
+
+func _test_sweep() -> void:
+	var f: Fixture = _fixture()
+	var warrior: CombatUnit = f.units[0]
+	var archer: CombatUnit = f.units[1]
+	var barbarian: CombatUnit = f.units[2]
+	var enemy_archer: CombatUnit = f.units[3]
+	enemy_archer.cell = Vector2i(4, 3)
+	archer.cell = Vector2i(5, 5)
+	_check(CombatActionRules.belongs_to(warrior, "sweep") and not CombatActionRules.belongs_to(archer, "sweep")
+		and not CombatActionRules.belongs_to(barbarian, "sweep"), "휩쓸기는 아군 전사만")
+	_check(CombatActionRules.resource_of("sweep") == CombatUnit.TurnResource.ACTION
+		and CombatActionRules.uses_left(warrior, "sweep") == -1, "행동 자원, 무제한")
+	var details: String = CombatActionRules.details(warrior, "sweep")
+	_check("사거리: 정면 반달 5칸" in details and "피해: 힘 d20 ÷2 올림" in details and "판정: 대상마다 힘 d20" in details,
+		"호버에 범위·피해식·판정 " + details)
+	_check(f.actions.sweep_targets(warrior, Vector2i(5, 4)) == [enemy_archer, barbarian], "영향 칸의 적만 시계방향 순서로, 아군은 제외")
+	_check(f.actions.can_sweep(warrior, Vector2i(4, 5)), "빈 칸을 정면으로 골라도 반달 안에 적이 있으면 쓸 수 있음")
+	var diagonal: float = f.actions.sweep_chance(warrior, enemy_archer)
+	var preview: CombatChecks.AttackPreview = f.actions.grid.attack_preview(warrior, enemy_archer)
+	_check(diagonal > 0.0 and is_equal_approx(diagonal, CombatChecks.hit_chance(20, warrior.get_hit_bonus(),
+		f.actions.grid.armor_class(enemy_archer), preview.mode)), "기본 공격 사거리 밖의 반달 칸도 명중률을 보임")
+	var archer_hp: int = enemy_archer.hit_points
+	f.actions.dice = _dice([15, 7, 15, 10], [20, 20, 20, 20])
+	_check(await f.actions.sweep(warrior, Vector2i(5, 4)), "휩쓸기 실행")
+	_check(archer_hp - enemy_archer.hit_points == 4 and barbarian.hit_points == 12 - 5,
+		"대상마다 명중굴림 뒤 피해 ⌈힘 d20 ÷ 2⌉ + 0을 왼쪽 옆부터 차례로 굴림")
+	_check(archer.hit_points == archer.get_max_hit_points(), "반달 안의 아군은 맞지 않음")
+	_check(warrior.action_left == 0 and warrior.bonus_action_left == 1 and warrior.movement_left == 3, "행동만 소비")
+	_check(f.logs.any(func(line: String) -> bool: return "휩쓸기: 대상 2명" in line)
+		and f.logs.any(func(line: String) -> bool: return "(휩쓸기 ÷2 올림): 힘 d20 [7] → 4 +0 = 4" in line), "대상 수와 피해식을 로그에 기록")
+	_check(not f.actions.can_use(warrior, "sweep") and f.actions.unavailable_reason(warrior, "sweep") == "자원을 이미 씀",
+		"행동을 쓰면 비활성")
+	var bonus: Fixture = _fixture()
+	bonus.units[0].weapon = {"stats": {"damage_bonus": 2}}
+	_check("피해: 힘 d20 ÷2 올림 +2" in CombatActionRules.details(bonus.units[0], "sweep"), "가산치는 ÷2 올림 뒤에 띄워 더함")
+	bonus.actions.dice = _dice([1], [20])
+	await bonus.actions.sweep(bonus.units[0], Vector2i(5, 4))
+	_check(bonus.units[2].hit_points == 12 and bonus.units[0].action_left == 0, "빗나가도 행동은 소비")
+	bonus.units[0].action_left = 1
+	bonus.actions.dice = _dice([15, 1], [20, 20])
+	await bonus.actions.sweep(bonus.units[0], Vector2i(5, 4))
+	_check(bonus.units[2].hit_points == 12 - 3, "피해는 ⌈1 ÷ 2⌉ + 기타 가산치(장비 +2)")
+	var lone: Fixture = _fixture()
+	var alone: CombatUnit = lone.units[0]
+	lone.units[2].cell = Vector2i(7, 7)
+	_check(not lone.actions.can_sweep(alone, Vector2i(3, 4)) and not lone.actions.can_sweep(alone, Vector2i(5, 4)),
+		"영향 칸에 적이 없는 방향은 효과가 없어 고를 수 없음")
+	_check(not await lone.actions.sweep(alone, Vector2i(5, 4)) and alone.action_left == 1, "적이 없는 방향은 실행하지 않고 행동도 남김")
+	_check(not lone.actions.can_use(alone, "sweep")
+		and lone.actions.unavailable_reason(alone, "sweep") == "사거리 또는 대상 조건을 확인", "어느 방향에도 적이 없으면 비활성")
+
+
 func _test_holy_veil() -> void:
 	var f: Fixture = _fixture()
 	var warrior: CombatUnit = f.units[0]
@@ -338,12 +414,100 @@ func _test_battle_cry_clock_slot() -> void:
 		"다음 라운드 첫 유닛의 시작은 이미 줄인 자리라 건너뜀")
 	last.turns.turn_started.emit(last.units[2])
 	_check(last.units[1].battle_cry_turns == 1, "그다음 순환부터 줄어듦")
+	# 그 슬롯의 기준 유닛도 같은 라운드에 쓰러지면, 옮긴 유닛의 다음 라운드 시작도 이미 줄인 자리 바로 뒤다.
+	var wrap: Fixture = _fixture([2, 3, 1, 0])
+	wrap.turns.end_turn()
+	wrap.turns.end_turn()
+	wrap.turns.select_unit(wrap.units[0])
+	wrap.actions.dice = _dice([5], [8])
+	wrap.actions.use_self(wrap.units[0], "battle_cry")
+	wrap.actions.incapacitate(wrap.units[0])
+	wrap.actions.incapacitate(wrap.units[2])
+	_check(wrap.actions.save_state().clock_slots == [[0, 3, true]], "이미 시작한 기준 유닛이 쓰러져도 건너뛸 자리를 유지")
+	wrap.turns.end_turn()
+	_check(wrap.turns.current_unit == wrap.units[3] and wrap.turns.round_number == 2
+		and wrap.units[1].battle_cry_turns == 2, "옮긴 유닛의 다음 라운드 시작은 이미 줄인 자리라 건너뜀")
 	# 기존 상태 이상은 시전자 전투 불능에서 해제한다.
 	var burn: Fixture = _fixture()
 	burn.units[0].status_effects.append(CombatUnit.StatusEffect.new("burn", burn.units[2], 2))
 	burn.actions.incapacitate(burn.units[2])
 	_check(burn.units[0].status_effects.is_empty() and burn.actions.save_state().clock_slots.is_empty(),
 		"기존 화상은 시전자 전투 불능에 해제하고 시계 슬롯을 쓰지 않음")
+	_test_clock_slot_with_spawn()
+	_test_clock_slot_in_group()
+
+
+## archer에게 caster의 전투의 함성 2턴을 건다.
+func _give_battle_cry(caster: CombatUnit, archer: CombatUnit) -> void:
+	archer.battle_cry_bonus = 3
+	archer.battle_cry_turns = 2
+	archer.battle_cry_source = caster
+
+
+## 엄마 거미가 자기 턴에 새끼를 낳는다. 새끼는 units의 끝에 붙는다.
+func _spawn(f: Fixture, mother: CombatUnit) -> CombatUnit:
+	f.actions.dice = _dice([1], [f.actions.grid.empty_neighbors(mother.cell).size()])
+	_check(f.actions.spawn_spiderling(mother), "엄마 거미가 새끼를 낳음")
+	_created.append(f.units.back())
+	return f.units.back()
+
+
+## 소환 유닛이 쓰러진 시전자의 자리 바로 뒤에 끼어도 순환마다 그 자리에서 한 번 줄인다 (#427 1·2번).
+func _test_clock_slot_with_spawn() -> void:
+	# 슬롯 (전사, 엄마)에서 엄마가 새끼를 낳으면 쓰러진 자리 바로 뒤는 새끼다.
+	var moved: Fixture = _fixture([1, 0, 2, 3])
+	moved.units[2].kind = CombatUnit.Kind.MOTHER_SPIDER
+	moved.turns.end_turn()
+	moved.turns.end_turn()
+	_give_battle_cry(moved.units[0], moved.units[1])
+	moved.actions.incapacitate(moved.units[0])
+	var child: CombatUnit = _spawn(moved, moved.units[2])
+	_check(moved.actions.save_state().clock_slots == [[0, 4, false]], "새끼를 낳으면 엄마에 걸린 슬롯을 새끼로 옮김")
+	moved.turns.end_turn()
+	moved.turns.end_turn()
+	moved.turns.end_turn()
+	_check(moved.turns.current_unit == child and moved.units[1].battle_cry_turns == 1,
+		"다음 라운드에 새끼의 턴 시작 직전에 쓰러진 자리가 줄임")
+	# 생성 라운드의 새끼는 이번 순환에 시작하지 않으므로 그 앞의 시전자가 쓰러져도 건너뛸 자리가 아니다.
+	var own: Fixture = _fixture([1, 0, 2, 3])
+	own.units[2].kind = CombatUnit.Kind.MOTHER_SPIDER
+	own.turns.end_turn()
+	own.turns.end_turn()
+	_give_battle_cry(own.units[0], own.units[1])
+	child = _spawn(own, own.units[2])
+	own.actions.incapacitate(own.units[0])
+	_check(own.actions.save_state().clock_slots == [[0, 4, false]], "생성 라운드 새끼 앞의 쓰러진 자리는 지난 자리가 아님")
+	own.turns.end_turn()
+	own.turns.end_turn()
+	own.turns.end_turn()
+	_check(own.turns.current_unit == child and own.units[1].battle_cry_turns == 1, "다음 라운드 새끼의 턴 시작에 줄임")
+	# 기준 유닛이 쓰러져 생성 라운드 새끼로 옮겨질 때도 같다.
+	var anchor: Fixture = _fixture([1, 0, 4, 2, 3], true)
+	anchor.units[2].kind = CombatUnit.Kind.MOTHER_SPIDER
+	anchor.turns.end_turn()
+	anchor.turns.end_turn()
+	anchor.turns.end_turn()
+	_give_battle_cry(anchor.units[0], anchor.units[1])
+	anchor.actions.incapacitate(anchor.units[0])
+	child = _spawn(anchor, anchor.units[2])
+	anchor.actions.incapacitate(anchor.units[4])
+	_check(anchor.actions.save_state().clock_slots == [[0, 5, false]], "생성 라운드 새끼로 옮긴 슬롯은 건너뛰지 않음")
+	anchor.turns.end_turn()
+	anchor.turns.end_turn()
+	anchor.turns.end_turn()
+	_check(anchor.turns.current_unit == child and anchor.units[1].battle_cry_turns == 1, "옮긴 새끼의 다음 라운드 턴 시작에 줄임")
+
+
+## 같은 묶음에서 뒤 유닛을 먼저 조작한 뒤 시전자가 자기 턴 전에 쓰러져도 이번 순환 몫을 줄인다 (#427 3번).
+func _test_clock_slot_in_group() -> void:
+	var f: Fixture = _fixture([4, 0, 1, 2, 3], true)
+	_give_battle_cry(f.units[0], f.units[1])
+	f.turns.select_unit(f.units[1])
+	f.actions.incapacitate(f.units[0])
+	_check(f.units[1].battle_cry_turns == 1 and f.actions.save_state().clock_slots == [[0, 1, false]],
+		"기준 유닛이 이미 시작했으면 시전자의 이번 순환 몫을 바로 줄임")
+	f.turns.turn_started.emit(f.units[1])
+	_check(f.units[1].battle_cry_turns == 0, "다음 순환의 기준 유닛 턴 시작에 다시 줄임")
 
 
 func _test_phalanx() -> void:
