@@ -92,10 +92,10 @@ func surface_to_map(point: Vector2) -> Vector2i:
 	var cells: Array[Vector2i] = get_used_cells()
 	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x + a.y > b.x + b.y)
 	for cell: Vector2i in cells:
-		if _contains_surface(cell, point) or _contains_sides(cell, point):
+		if contains_surface(cell, point) or _contains_sides(cell, point):
 			if scenery != null and scenery.position.y >= map_to_local(cell).y:
 				return scenery.get_meta("cell") as Vector2i
-			return cell if _contains_surface(cell, point) else Vector2i(-1, -1)
+			return cell if contains_surface(cell, point) else Vector2i(-1, -1)
 	return scenery.get_meta("cell") as Vector2i if scenery != null else Vector2i(-1, -1)
 
 
@@ -105,7 +105,7 @@ func occludes(unit_cell: Vector2i, point: Vector2) -> bool:
 			return true
 	for cell: Vector2i in get_used_cells():
 		if cell.x + cell.y > unit_cell.x + unit_cell.y:
-			if _contains_surface(cell, point) or _contains_sides(cell, point):
+			if contains_surface(cell, point) or _contains_sides(cell, point):
 				return true
 	return false
 
@@ -201,7 +201,8 @@ func prop_impact(cell: Vector2i, broken: bool) -> void:
 	tween.tween_callback(effect.queue_free)
 
 
-func _contains_surface(cell: Vector2i, point: Vector2) -> bool:
+## point가 cell 윗면 마름모 안인지. 바닥 타일이 없는 칸(낭떠러지)도 계산한다.
+func contains_surface(cell: Vector2i, point: Vector2) -> bool:
 	var offset: Vector2 = (point - map_to_surface(cell)).abs() / (Vector2(tile_set.tile_size) / 2.0)
 	return offset.x + offset.y <= 1.0
 

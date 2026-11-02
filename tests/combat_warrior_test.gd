@@ -322,7 +322,8 @@ func _test_sweep() -> void:
 	idle.units[3].cell = Vector2i(9, 8)
 	idle_archer.movement_left = 0
 	idle_archer.bonus_action_left = 0
-	_check(idle_archer.action_left > 0 and not idle.actions.has_available_action(idle_archer),
+	_check(idle.turns.current_unit == idle_archer and idle_archer.action_left > 0
+		and not idle.actions.has_available_action(idle_archer),
 		"행동이 남아도 대상이 없는 궁수는 할 동작 없음")
 
 

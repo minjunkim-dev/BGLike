@@ -584,12 +584,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if selection.selected_action == "sweep":
 		get_viewport().set_input_as_handled()
 		# 인접 칸의 몸통이나 사물을 눌러도 그 칸을 정면으로 고른다. 인접하지 않은 몸통(전사 자신 등)이 가린 칸은
-		# 격자 위치로 고르고, 그래도 인접하지 않으면 미리보기만 지운다.
+		# 격자 위치로 고르고, 그래도 인접하지 않거나 맵 밖이면 미리보기만 지운다.
 		var facing: Vector2i = cell
 		if not candidates.is_empty() and CombatGrid.distance(actor.cell, candidates[0].cell) == 1:
 			facing = candidates[0].cell
 		elif prop != null and CombatGrid.distance(actor.cell, prop.cell) == 1:
 			facing = prop.cell
+		else:
+			# 낭떠러지 칸은 바닥 타일이 없어 격자 위치로 잡히지 않으므로 인접한 낭떠러지의 윗면으로 찾는다.
+			for neighbor: Vector2i in CombatGrid.neighbors(actor.cell):
+				if actions.grid.pits.has(neighbor) and map.contains_surface(neighbor, map.to_local(world_position)):
+					facing = neighbor
 		if CombatGrid.distance(actor.cell, facing) != 1 or not actions.grid.is_inside(facing):
 			selection.clear_preview()
 		elif selection.select_cell(facing, actions.can_sweep(actor, facing)):
