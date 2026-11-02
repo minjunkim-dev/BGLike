@@ -1,9 +1,11 @@
 """A script that fails to load must fail the Godot check even when Godot exits 0."""
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import tempfile
+import threading
 import time
 import unittest
 
@@ -109,18 +111,18 @@ class GodotCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 3)
         self.assertTrue(any("combat_hud_test" in call for call in calls))
 
-    def test_hud_and_ai_run_concurrently_after_import(self):
+    def test_save_and_hud_run_concurrently_after_import(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             binary = root / "godot"
             binary.write_text(FAKE_GODOT + """
 case "$*" in
   *--import*) touch "$PROBE/imported" ;;
-  *combat_hud_test*|*combat_ai_test*)
+  *combat_save_test*|*combat_hud_test*)
     test -f "$PROBE/imported" || exit 12
     case "$*" in
-      *combat_hud_test*) own=hud; other=ai ;;
-      *) own=ai; other=hud ;;
+      *combat_save_test*) own=save; other=hud ;;
+      *) own=hud; other=save ;;
     esac
     touch "$PROBE/$own"
     attempt=0
@@ -138,6 +140,101 @@ esac
                                              PROBE=str(root)), text=True, capture_output=True, timeout=10)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_leftover_child_does_not_hang_or_outlive_the_check(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "godot"
+            binary.write_text(FAKE_GODOT + """
+case "$*" in
+  *combat_save_test*) sleep 30 & echo $! > "$PROBE/child.pid"; echo 'no newline at end' | tr -d '\\n'; exit 0 ;;
+esac
+""")
+            binary.chmod(0o755)
+            result = subprocess.run(["bash", "scripts/check_godot.sh", "tests/combat_save_test.gd"], cwd=ROOT,
+                                    env=dict(os.environ, GODOT=str(binary), CALL_LOG=str(root / "calls"),
+                                             BROKEN="no-such-step", ERROR_LINE="", BROKEN_EXIT="0",
+                                             PROBE=str(root)), text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("] no newline at end\n[combat_save_test", result.stdout)
+            child = int((root / "child.pid").read_text())
+            deadline = time.monotonic() + 3
+            # The orphaned child is reaped by init, so give it a moment to disappear.
+            while True:
+                try:
+                    os.kill(child, 0)
+                except ProcessLookupError:
+                    break
+                self.assertLess(time.monotonic(), deadline, "Leftover child outlived the check")
+                time.sleep(0.02)
+
+    def test_output_that_does_not_end_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "godot"
+            # A writer in its own session escapes the group kill and keeps the pipe open.
+            binary.write_text(FAKE_GODOT + """
+case "$*" in
+  *combat_save_test*)
+    python3 -c 'import os, sys, time; os.setsid(); open(sys.argv[1], "w").write(str(os.getpid())); time.sleep(30)' \\
+      "$PROBE/escaped.pid" &
+    while [ ! -s "$PROBE/escaped.pid" ]; do sleep 0.02; done
+    exit 0 ;;
+esac
+""")
+            binary.chmod(0o755)
+            try:
+                result = subprocess.run(["bash", "scripts/check_godot.sh", "tests/combat_save_test.gd"], cwd=ROOT,
+                                        env=dict(os.environ, GODOT=str(binary), CALL_LOG=str(root / "calls"),
+                                                 BROKEN="no-such-step", ERROR_LINE="", BROKEN_EXIT="0",
+                                                 PROBE=str(root)), text=True, capture_output=True, timeout=20)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("Godot output did not end during: --script tests/combat_save_test.gd", result.stderr)
+            finally:
+                try:
+                    os.kill(int((root / "escaped.pid").read_text()), signal.SIGKILL)
+                except (FileNotFoundError, ValueError, ProcessLookupError):
+                    pass
+
+    def test_second_signal_does_not_cut_cleanup_short(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "godot"
+            # Ignoring SIGTERM keeps cleanup busy long enough for the second signal to land in it.
+            binary.write_text(FAKE_GODOT + """
+case "$*" in
+  *combat_save_test*) trap '' TERM; echo $$ > "$PROBE/save.pid"; exec sleep 30 ;;
+esac
+""")
+            binary.chmod(0o755)
+            process = subprocess.Popen(["bash", "scripts/check_godot.sh", "tests/combat_save_test.gd"], cwd=ROOT,
+                                       env=dict(os.environ, GODOT=str(binary), CALL_LOG=str(root / "calls"),
+                                                BROKEN="no-such-step", ERROR_LINE="", BROKEN_EXIT="0",
+                                                PROBE=str(root)), stdout=subprocess.DEVNULL,
+                                       stderr=subprocess.DEVNULL, start_new_session=True)
+            child = None
+            try:
+                deadline = time.monotonic() + 5
+                while not (root / "save.pid").exists():
+                    self.assertLess(time.monotonic(), deadline, "Test did not start")
+                    time.sleep(0.02)
+                child = int((root / "save.pid").read_text())
+                os.kill(process.pid, signal.SIGINT)
+                time.sleep(0.5)
+                os.kill(process.pid, signal.SIGTERM)
+                process.wait(timeout=10)
+                self.assertEqual(process.returncode, 130)
+                with self.assertRaises(ProcessLookupError):
+                    os.kill(child, 0)
+            finally:
+                if process.poll() is None:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait()
+                if child is not None:
+                    try:
+                        os.killpg(child, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+
     def test_cancellation_stops_owned_godot_processes(self):
         for signum in (signal.SIGINT, signal.SIGTERM):
             with self.subTest(signum=signum), tempfile.TemporaryDirectory() as directory:
@@ -145,8 +242,8 @@ esac
                 binary = root / "godot"
                 binary.write_text(FAKE_GODOT + """
 case "$*" in
+  *combat_save_test*) echo 'save stage 1'; echo $$ > "$PROBE/save.pid"; exec sleep 30 ;;
   *combat_hud_test*) echo $$ > "$PROBE/hud.pid"; exec sleep 30 ;;
-  *combat_ai_test*) echo $$ > "$PROBE/ai.pid"; exec sleep 30 ;;
 esac
 """)
                 binary.chmod(0o755)
@@ -156,14 +253,25 @@ esac
                                                     PROBE=str(root)), stdout=subprocess.PIPE,
                                            stderr=subprocess.PIPE, text=True, start_new_session=True)
                 children = []
+                lines = []
+                def read():
+                    for line in process.stdout:
+                        lines.append(line)
+                reader = threading.Thread(target=read, daemon=True)
+                reader.start()
                 try:
                     deadline = time.monotonic() + 5
-                    while not all((root / f"{name}.pid").exists() for name in ("hud", "ai")):
+                    while not all((root / f"{name}.pid").exists() for name in ("save", "hud")):
                         self.assertLess(time.monotonic(), deadline, "Parallel tests did not start")
                         time.sleep(0.02)
-                    children = [int((root / f"{name}.pid").read_text()) for name in ("hud", "ai")]
+                    children = [int((root / f"{name}.pid").read_text()) for name in ("save", "hud")]
+                    # Output is relayed as it arrives, so a cancelled run still shows how far each test got.
+                    while not any(re.search(r"\[combat_save_test \d+s\] save stage 1", line) for line in lines):
+                        self.assertLess(time.monotonic(), deadline, "Running test output was not relayed")
+                        time.sleep(0.02)
                     os.kill(process.pid, signum)
-                    process.communicate(timeout=3)
+                    process.wait(timeout=3)
+                    reader.join(timeout=3)
                     self.assertEqual(process.returncode, 130)
                     for child in children:
                         with self.assertRaises(ProcessLookupError):
@@ -171,7 +279,7 @@ esac
                 finally:
                     if process.poll() is None:
                         os.killpg(process.pid, signal.SIGKILL)
-                        process.communicate()
+                        process.wait()
                     for child in children:
                         try:
                             os.killpg(child, signal.SIGKILL)
