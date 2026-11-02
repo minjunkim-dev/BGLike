@@ -756,10 +756,10 @@ func sweep_targets(actor: CombatUnit, facing: Vector2i) -> Array[CombatUnit]:
 	return targets
 
 
-## 영향 칸에 적이 없는 방향은 효과가 없어 고를 수 없다 (9-3 "효과가 없을 때" 비활성).
+## 정면은 맵 안의 인접 4칸 중 하나다. 반달에 적이 없어도 고를 수 있다 (#407 답 5a, 9-3 "효과가 없을 때" 비활성의 예외).
 func can_sweep(actor: CombatUnit, facing: Vector2i) -> bool:
 	return (actor != null and CombatActionRules.belongs_to(actor, "sweep") and actor.action_left > 0
-		and not sweep_targets(actor, facing).is_empty())
+		and CombatGrid.distance(actor.cell, facing) == 1 and grid.is_inside(facing))
 
 
 ## 휩쓸기 대상의 명중률. 반달의 대각선 칸은 기본 공격 사거리 밖이라 attack_preview의 chance를 쓰지 않는다.
@@ -1032,7 +1032,8 @@ func cross_slash(actor: CombatUnit, target: CombatUnit) -> bool:
 
 
 ## 강철 돌진: 보조 행동과 이동력 1을 써서 인접한 적을 공격한다. 명중하면 피해 뒤 1칸 밀고 빈 칸으로 1칸 전진한다.
-## 밀려날 칸이 맵 밖·장벽·나무 상자·바위·유닛·더 높은 칸이면 피해만 준다. 전진은 기회 공격을 받지 않는다.
+## 피해로 쓰러지면 밀침 없이 대상이 있던 칸으로 전진한다. 밀려날 칸이 맵 밖·장벽·나무 상자·바위·유닛·더 높은 칸이면
+## 피해만 준다. 전진은 기회 공격을 받지 않는다.
 func steel_charge(actor: CombatUnit, target: CombatUnit) -> bool:
 	if not _can_act(actor) or not can_target(actor, target, "steel_charge"):
 		return false
@@ -1042,8 +1043,12 @@ func steel_charge(actor: CombatUnit, target: CombatUnit) -> bool:
 	CombatActionRules.spend_use(actor, "steel_charge")
 	changed.emit()
 	var origin: Vector2i = target.cell
-	if await _perform_attack(actor, target, "steel_charge") and target.hit_points > 0 and not is_over():
-		if grid.can_shove(actor, target):
+	if await _perform_attack(actor, target, "steel_charge") and not is_over():
+		if target.hit_points <= 0:
+			if actor.hit_points > 0 and grid.unit_at(origin) == null:
+				_land(actor, origin)
+				logged.emit(tr("%s 강철 돌진: 쓰러진 대상의 칸으로 전진") % actor.get_display_name())
+		elif grid.can_shove(actor, target):
 			_land(target, grid.push_destination(actor.cell, origin))
 			if actor.hit_points > 0 and not is_over() and grid.unit_at(origin) == null:
 				_land(actor, origin)

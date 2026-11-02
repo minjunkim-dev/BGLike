@@ -208,6 +208,19 @@ func _test_steel_charge() -> void:
 		await blocked.actions.steel_charge(blocked.units[0], target)
 		_check(target.hit_points == 6 and blocked.units[0].cell == origin and target.cell == origin + Vector2i(1, 0),
 			"밀려날 칸이 막히면 피해만: " + blocker)
+	# #407 1단계 답 1: 피해로 쓰러지면 밀침 없이 대상 칸으로 전진하고, 떠나는 칸의 인접 적에게 기회 공격을 받지 않는다.
+	var downed: Fixture = _fixture()
+	var charger: CombatUnit = downed.units[0]
+	var watcher: CombatUnit = downed.units[3]
+	watcher.kind = CombatUnit.Kind.WARRIOR
+	watcher.cell = Vector2i(4, 3)
+	downed.units[2].hit_points = 6
+	downed.actions.dice = _dice([15, 6], [20, 20])
+	_check(await downed.actions.steel_charge(charger, downed.units[2]), "쓰러뜨리는 강철 돌진")
+	_check(downed.units[2].hit_points == 0 and charger.cell == Vector2i(5, 4), "대상이 쓰러지면 대상이 있던 칸으로 1칸 전진")
+	_check(charger.hit_points == charger.get_max_hit_points() and watcher.reaction_left == 1
+		and downed.actions.pending_reactor == null, "전진은 기회 공격을 받지 않음")
+	_check(charger.movement_left == 2 and charger.bonus_action_left == 0, "전진에 이동력을 더 쓰지 않음")
 	var missed: Fixture = _fixture()
 	missed.actions.dice = _dice([1], [20])
 	await missed.actions.steel_charge(missed.units[0], missed.units[2])
@@ -280,14 +293,22 @@ func _test_sweep() -> void:
 	bonus.actions.dice = _dice([15, 1], [20, 20])
 	await bonus.actions.sweep(bonus.units[0], Vector2i(5, 4))
 	_check(bonus.units[2].hit_points == 12 - 3, "피해는 ⌈1 ÷ 2⌉ + 기타 가산치(장비 +2)")
+	# #407 답 5a: 반달 안에 적이 없어도 실행하고 행동을 소비한다.
 	var lone: Fixture = _fixture()
 	var alone: CombatUnit = lone.units[0]
 	lone.units[2].cell = Vector2i(7, 7)
-	_check(not lone.actions.can_sweep(alone, Vector2i(3, 4)) and not lone.actions.can_sweep(alone, Vector2i(5, 4)),
-		"영향 칸에 적이 없는 방향은 효과가 없어 고를 수 없음")
-	_check(not await lone.actions.sweep(alone, Vector2i(5, 4)) and alone.action_left == 1, "적이 없는 방향은 실행하지 않고 행동도 남김")
-	_check(not lone.actions.can_use(alone, "sweep")
-		and lone.actions.unavailable_reason(alone, "sweep") == "사거리 또는 대상 조건을 확인", "어느 방향에도 적이 없으면 비활성")
+	lone.actions.grid.blocked_cells = [Vector2i(4, 3)]
+	_check(lone.actions.can_use(alone, "sweep") and lone.actions.can_sweep(alone, Vector2i(5, 4))
+		and lone.actions.can_sweep(alone, Vector2i(4, 3)), "적이 없는 방향과 막힌 칸도 정면으로 고를 수 있어 버튼이 켜져 있음")
+	_check(not lone.actions.can_sweep(alone, Vector2i(6, 4)) and not lone.actions.can_sweep(alone, alone.cell),
+		"인접하지 않은 칸은 정면이 될 수 없음")
+	var edge: Fixture = _fixture()
+	edge.units[0].cell = Vector2i(0, 4)
+	_check(not edge.actions.can_sweep(edge.units[0], Vector2i(-1, 4)), "맵 밖 칸은 정면이 될 수 없음")
+	_check(await lone.actions.sweep(alone, Vector2i(5, 4)) and alone.action_left == 0
+		and lone.logs.any(func(line: String) -> bool: return "휩쓸기: 대상 0명" in line), "빈 반달도 실행하고 행동을 소비")
+	_check(not lone.actions.can_use(alone, "sweep") and lone.actions.unavailable_reason(alone, "sweep") == "자원을 이미 씀",
+		"빈 반달에 쓴 뒤에는 행동이 없어 비활성")
 
 
 func _test_holy_veil() -> void:
@@ -533,10 +554,11 @@ func _test_phalanx() -> void:
 	grid.heights[archer.cell] = 2
 	_check(grid.phalanx_bonus(archer) == 0 and grid.phalanx_bonus(warrior) == 0, "높이 차가 2 이상이면 인접 아님")
 	grid.heights.erase(archer.cell)
-	warrior.is_stunned = true
+	_check(f.actions.apply_status(f.units[3], warrior, "stun"), "적이 전사를 기절시킴")
 	_check(grid.phalanx_bonus(archer) == 0 and grid.phalanx_bonus(warrior) == 0, "전사가 기절하면 해제")
-	warrior.is_stunned = false
-	_check(grid.phalanx_bonus(archer) == 1, "기절이 풀리면 다시 켜짐 (#407 질문 5의 가정)")
+	f.actions.call("_on_turn_started", f.units[3])
+	_check(not warrior.is_stunned and grid.phalanx_bonus(archer) == 1 and grid.phalanx_bonus(warrior) == 1,
+		"기절을 건 적의 턴 시작에 기절이 풀리면 인접 아군이 있는 동안 다시 켜짐 (#407 답 5b)")
 	archer.cell = Vector2i(2, 4)
 	_check(grid.phalanx_bonus(archer) == 0 and grid.phalanx_bonus(warrior) == 0, "떨어지면 바로 꺼지는 상시 효과")
 	archer.cell = Vector2i(3, 4)

@@ -917,7 +917,7 @@ func _update_turn_ui() -> void:
 			and not actions.busy):
 		var note: String = tr("휩쓸기 · 정면으로 삼을 인접한 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 실행합니다.")
 		if sweeping and sweep_targets.is_empty():
-			note = tr("휩쓸기 · 영향 칸에 적이 없음")
+			note = tr("휩쓸기 · 행동1 · 영향 칸에 적이 없음\n같은 칸을 다시 좌클릭하면 실행합니다.")
 		elif sweeping:
 			var chances: Array[String] = []
 			for target: CombatUnit in sweep_targets:
