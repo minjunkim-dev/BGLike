@@ -195,6 +195,46 @@ esac
                 except (FileNotFoundError, ValueError, ProcessLookupError):
                     pass
 
+    def test_second_signal_does_not_cut_cleanup_short(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "godot"
+            # Ignoring SIGTERM keeps cleanup busy long enough for the second signal to land in it.
+            binary.write_text(FAKE_GODOT + """
+case "$*" in
+  *combat_save_test*) trap '' TERM; echo $$ > "$PROBE/save.pid"; exec sleep 30 ;;
+esac
+""")
+            binary.chmod(0o755)
+            process = subprocess.Popen(["bash", "scripts/check_godot.sh", "tests/combat_save_test.gd"], cwd=ROOT,
+                                       env=dict(os.environ, GODOT=str(binary), CALL_LOG=str(root / "calls"),
+                                                BROKEN="no-such-step", ERROR_LINE="", BROKEN_EXIT="0",
+                                                PROBE=str(root)), stdout=subprocess.DEVNULL,
+                                       stderr=subprocess.DEVNULL, start_new_session=True)
+            child = None
+            try:
+                deadline = time.monotonic() + 5
+                while not (root / "save.pid").exists():
+                    self.assertLess(time.monotonic(), deadline, "Test did not start")
+                    time.sleep(0.02)
+                child = int((root / "save.pid").read_text())
+                os.kill(process.pid, signal.SIGINT)
+                time.sleep(0.5)
+                os.kill(process.pid, signal.SIGTERM)
+                process.wait(timeout=10)
+                self.assertEqual(process.returncode, 130)
+                with self.assertRaises(ProcessLookupError):
+                    os.kill(child, 0)
+            finally:
+                if process.poll() is None:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait()
+                if child is not None:
+                    try:
+                        os.killpg(child, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+
     def test_cancellation_stops_owned_godot_processes(self):
         for signum in (signal.SIGINT, signal.SIGTERM):
             with self.subTest(signum=signum), tempfile.TemporaryDirectory() as directory:

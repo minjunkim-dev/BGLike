@@ -133,7 +133,10 @@ try:
 except KeyboardInterrupt:
     status = 130
 finally:
-    # The group may outlive an exited test process, so stop it either way.
+    # Cancellation often sends a second signal (SIGINT, then SIGTERM); it must not cut cleanup short.
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    # The group may outlive an exited test process or ignore SIGTERM, so stop it either way.
     for _, process, _, _, _ in active:
         try:
             os.killpg(process.pid, signal.SIGTERM)
@@ -144,7 +147,6 @@ finally:
             process.wait(timeout=5)
         except subprocess.TimeoutExpired:
             pass
-        # Children that ignore SIGTERM can outlive an exited test process.
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
