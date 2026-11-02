@@ -1428,8 +1428,8 @@ func _test_spiderling_stats_and_damage() -> void:
 			and _ability_sides(spiderling) == [4, 8, 4, 4, 4, 4], "새끼 거미의 HP·방어·공격은 모든 막에서 고정")
 		_check(spiderling.movement_left == 6, "새끼 거미의 능력치·이동력")
 		for action: String in CombatActionRules.NAMES:
-			_check(CombatActionRules.belongs_to(spiderling, action) == (action in ["attack", "jump"]),
-				"새끼 거미는 기본 공격과 공용 점프만 사용: " + action)
+			_check(CombatActionRules.belongs_to(spiderling, action) == (action in ["attack", "jump", "opportunity"]),
+				"새끼 거미는 기본 공격과 공용 점프·기회 공격만 사용 (#434): " + action)
 		f.turns.end_turn()
 		f.turns.end_turn()
 		f.units[0].reaction_left = 0

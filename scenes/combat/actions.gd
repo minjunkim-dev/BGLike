@@ -655,15 +655,16 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	busy = true
 	changed.emit()
 	for reactor: CombatUnit in jump_reactors(actor, destination):
-		var chance: float = grid.attack_preview(reactor, actor).chance
-		if await _ask_reaction(reactor, "opportunity", tr("%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)") % [CombatUnit.with_subject_particle(actor.get_display_name()), chance * 100.0]):
-			reactor.spend_resource(CombatUnit.TurnResource.REACTION)
-			if not reactor.is_ally:
-				logged.emit(tr("%s 기회 공격: 반응 사용") % reactor.get_display_name())
-			await _perform_attack(reactor, actor, "opportunity")
-		if actor.hit_points <= 0:
+		await _opportunity_attack(reactor, actor)
+		if actor.hit_points <= 0 or actor.movement_left == 0:
 			break
 	if actor.hit_points <= 0:
+		_finish()
+		return true
+	# 괴력의 사내로 멈춘 점프는 비용을 돌려주지 않고 출발 칸에 남는다 (전사 문서).
+	if actor.movement_left == 0:
+		actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
+		logged.emit(tr("%s 점프: 이동 정지, 보조 행동1 소비") % actor.get_display_name())
 		_finish()
 		return true
 	actor.spend_movement(cells[destination])
@@ -870,15 +871,10 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 				if (reactor.hit_points > 0 and not reactor.is_stunned and reactor.is_ally != actor.is_ally
 					and CombatActionRules.belongs_to(reactor, "opportunity") and reactor.reaction_left > 0
 					and grid.leaves_reach(reactor, actor.cell, step)):
-					var chance: float = grid.attack_preview(reactor, actor).chance
-					if await _ask_reaction(reactor, "opportunity", tr("%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)") % [CombatUnit.with_subject_particle(actor.get_display_name()), chance * 100.0]):
-						reactor.spend_resource(CombatUnit.TurnResource.REACTION)
-						if not reactor.is_ally:
-							logged.emit(tr("%s 기회 공격: 반응 사용") % reactor.get_display_name())
-						await _perform_attack(reactor, actor, "opportunity")
-					if actor.hit_points <= 0:
+					await _opportunity_attack(reactor, actor)
+					if actor.hit_points <= 0 or actor.movement_left == 0:
 						break
-		if actor.hit_points <= 0:
+		if actor.hit_points <= 0 or actor.movement_left == 0:
 			break
 		if movement_animation.is_valid():
 			await movement_animation.call(actor, step)
@@ -1116,6 +1112,25 @@ func resolve_reaction(use_reaction: bool) -> bool:
 func _can_act(actor: CombatUnit) -> bool:
 	return (actor != null and actor == turns.current_unit and actor.hit_points > 0
 		and not actor.is_stunned and not busy and not is_over())
+
+
+## 인접 칸을 벗어나려는 actor에게 reactor가 하는 기회 공격. 아군은 확인 창으로 묻는다.
+## 괴력의 사내: 전사의 기회 공격이 명중하면 actor의 이동력을 즉시 0으로 만든다. 묶음 확정의 자원 회복으로 돌아온다.
+func _opportunity_attack(reactor: CombatUnit, actor: CombatUnit) -> void:
+	var brawn: bool = CombatActionRules.belongs_to(reactor, "brawn")
+	var prompt: String = tr("%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)") % [
+		CombatUnit.with_subject_particle(actor.get_display_name()), grid.attack_preview(reactor, actor).chance * 100.0]
+	if brawn:
+		prompt += "\n" + tr("명중하면 이동을 멈춥니다.")
+	if not await _ask_reaction(reactor, "opportunity", prompt):
+		return
+	reactor.spend_resource(CombatUnit.TurnResource.REACTION)
+	if not reactor.is_ally:
+		logged.emit(tr("%s 기회 공격: 반응 사용") % reactor.get_display_name())
+	if await _perform_attack(reactor, actor, "opportunity") and brawn and actor.hit_points > 0:
+		actor.movement_left = 0
+		logged.emit(tr("%s 괴력의 사내: %s 이동 정지") % [reactor.get_display_name(), actor.get_display_name()])
+		feedback.emit(actor, tr("이동 정지"))
 
 
 func _ask_reaction(reactor: CombatUnit, kind: String, prompt: String) -> bool:

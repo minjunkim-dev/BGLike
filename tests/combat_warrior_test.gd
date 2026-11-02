@@ -68,6 +68,7 @@ func _run() -> void:
 	await _test_battle_cry()
 	_test_battle_cry_clock_slot()
 	_test_phalanx()
+	await _test_brawn()
 	_test_save_state()
 	for unit: CombatUnit in _created:
 		unit.free()
@@ -100,7 +101,7 @@ func _test_stats() -> void:
 func _test_skill_ownership() -> void:
 	var f: Fixture = _fixture()
 	var warrior: CombatUnit = f.units[0]
-	for action: String in ["cross_slash", "steel_charge", "holy_veil", "battle_cry", "phalanx", "opportunity"]:
+	for action: String in ["cross_slash", "steel_charge", "holy_veil", "battle_cry", "phalanx", "brawn", "opportunity"]:
 		_check(CombatActionRules.belongs_to(warrior, action), "아군 전사의 스킬: " + action)
 		_check(not CombatActionRules.belongs_to(f.units[1], action), "아군 궁수는 전사 스킬 없음: " + action)
 		_check(not CombatActionRules.belongs_to(f.units[2], action) or action == "opportunity",
@@ -542,6 +543,46 @@ func _test_phalanx() -> void:
 	archer.cell = Vector2i(3, 4)
 	f.actions.incapacitate(warrior)
 	_check(grid.phalanx_bonus(archer) == 0, "전사가 전투 불능이면 사라짐")
+
+
+## 괴력의 사내(#434): 전사의 기회 공격이 명중하면 대상의 이동력을 즉시 0으로 만든다. 걷기·점프 모두 출발 칸에서 멈춘다.
+func _test_brawn() -> void:
+	for jump: bool in [false, true]:
+		var f: Fixture = _fixture([2, 0, 1, 3])
+		var warrior: CombatUnit = f.units[0]
+		var barbarian: CombatUnit = f.units[2]
+		warrior.reaction_left = 1
+		var prompts: Array[String] = []
+		f.actions.reaction_requested.connect(func(_kind: String, prompt: String) -> void:
+			prompts.append(prompt)
+			f.actions.resolve_reaction(true)
+		)
+		# 힘 d20 20은 야만인 AC 4에 명중하고, 피해 1이라 야만인은 살아남는다.
+		f.actions.dice = _dice([20, 1], ScriptedDice.attack_sides(warrior) + ScriptedDice.damage_sides(warrior))
+		var destination: Vector2i = Vector2i(5, 6)
+		var moved: bool = await f.actions.jump_to(barbarian, destination) if jump else await f.actions.move_to(barbarian, destination)
+		_check(moved, "기회 공격을 받는 이동 시도 처리")
+		var label: String = "점프" if jump else "걷기"
+		_check(prompts.size() == 1 and "명중하면 이동을 멈춥니다" in prompts[0],
+			"전사의 기회 공격 확인 창에 이동 정지 안내: %s %s" % [label, prompts])
+		_check(barbarian.hit_points == 11 and barbarian.cell == Vector2i(5, 4) and barbarian.movement_left == 0
+			and warrior.reaction_left == 0, "명중하면 대상은 출발 칸에 남고 이동력 0: " + label)
+		_check(barbarian.bonus_action_left == (0 if jump else 1) and barbarian.action_left == 1,
+			"멈춘 점프는 보조 행동도 소비하고, 행동은 남음: " + label)
+		_check(f.actions.reachable_cells(barbarian).is_empty() and f.actions.jump_cells(barbarian).is_empty()
+			and f.actions.can_target(barbarian, warrior, "attack") and not f.actions.busy,
+			"멈춘 대상은 더 움직이지 못하고 공격은 할 수 있음: " + label)
+		_check(f.logs.any(func(line: String) -> bool: return "괴력의 사내" in line), "괴력의 사내 로그: " + label)
+	# 적 풋내기 야만인은 전사와 같은 Kind이지만 괴력의 사내가 없다.
+	var enemy: Fixture = _fixture()
+	enemy.units[2].reaction_left = 1
+	enemy.actions.dice = _dice([10, 1], ScriptedDice.attack_sides(enemy.units[2]) + ScriptedDice.damage_sides(enemy.units[2]))
+	_check(await enemy.actions.move_to(enemy.units[0], Vector2i(4, 6)) and enemy.units[2].reaction_left == 0
+		and enemy.units[0].hit_points == 9 and enemy.units[0].cell == Vector2i(4, 6) and enemy.units[0].movement_left == 1,
+		"적의 기회 공격은 명중해도 이동을 멈추지 않음")
+	_check("괴력의 사내" in CombatActionRules.effect(enemy.units[0], "opportunity")
+		and "괴력의 사내" not in CombatActionRules.effect(enemy.units[2], "opportunity"),
+		"패시브 칸 대신 전사의 기회 공격 호버에 괴력의 사내 안내")
 
 
 func _test_save_state() -> void:
