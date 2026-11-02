@@ -438,7 +438,7 @@ func _test_battle_cry_clock_slot() -> void:
 	_test_clock_slot_in_group()
 
 
-## 턴 시작은 발동(틱) 먼저, 시전자 기준 기간 감소 나중이다 (#437, 전투 시스템 기획서 3-5).
+## 턴 시작은 발동(틱) 먼저, 시전자 기준 기간 감소 나중이다 (#437, 전투 시스템 기획서 6-1).
 func _test_turn_start_order() -> void:
 	var f: Fixture = _fixture()
 	var warrior: CombatUnit = f.units[0]
@@ -458,11 +458,17 @@ func _test_turn_start_order() -> void:
 	caster.hit_points = 1
 	caster.status_effects.append(CombatUnit.StatusEffect.new("burn", downed.units[2], 2))
 	downed.actions.dice = _dice([4], [4])
+	var seen: Array[int] = []
+	downed.turns.turn_started.connect(func(unit: CombatUnit) -> void:
+		if unit == archer:
+			seen.append(archer.battle_cry_turns))
 	for count: int in range(4):
 		downed.turns.end_turn()
 	_check(caster.hit_points == 0 and downed.turns.current_unit == archer and archer.battle_cry_turns == 1
 		and downed.actions.save_state().clock_slots == [[0, 1, false]],
 		"자기 틱으로 쓰러진 시전자의 기간도 이번 순환에 한 번 줄고 다음 유닛 앞 슬롯은 건너뛰지 않음")
+	# 바깥 전사 emit이 바뀐 current_unit(궁수)을 뒤 연결에 다시 넘겨 셋째 값이 붙는다. 앞 둘이 실제 시작이다.
+	_check(seen.slice(0, 2) == [2, 1], "쓰러진 시전자의 감소는 다음 유닛의 턴 시작 처리보다 먼저 " + str(seen))
 
 
 ## archer에게 caster의 전투의 함성 2턴을 건다.
