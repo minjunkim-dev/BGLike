@@ -413,6 +413,14 @@ func _test_rejects_bad_saves() -> void:
 		"턴 순서에 없는 살아 있는 유닛": func(state: Dictionary) -> void:
 			state.turns.order.remove_at(state.turns.order.size() - 1),
 		"현재 유닛 없음": func(state: Dictionary) -> void: state.turns.current = -1,
+		"살아 있는 시전자의 시계 슬롯": func(state: Dictionary) -> void:
+			state.clock_slots = [[state.turns.order[0], state.turns.order[1], false]],
+		"쓰러진 기준 유닛의 시계 슬롯": func(state: Dictionary) -> void:
+			var caster: int = state.turns.order.pop_back()
+			var anchor: int = state.turns.order.pop_back()
+			state.units[caster].hit_points = 0
+			state.units[anchor].hit_points = 0
+			state.clock_slots = [[caster, anchor, false]],
 		"다시 실행 없는 반응 답": func(state: Dictionary) -> void: state.replay = {"actions": 0, "reactions": [true]},
 		"묶음 밖의 현재 유닛": func(state: Dictionary) -> void:
 			state.turns.group = Vector2i(0, 0)
