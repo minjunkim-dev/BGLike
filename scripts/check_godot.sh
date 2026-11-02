@@ -85,14 +85,15 @@ try:
                 break
             name = Path(test).stem
             started = time.monotonic()
+            lines = []
             process = subprocess.Popen([sys.argv[1], "--headless", "--path", ".", "--script", test],
                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                        errors="replace", start_new_session=True)
-            lines = []
+            # Register before anything else so cancellation always finds the new process group.
             reader = threading.Thread(target=relay, args=(name, started, process, lines), daemon=True)
+            active.append((test, process, reader, lines, started))
             say(name, started, "started\n")
             reader.start()
-            active.append((test, process, reader, lines, started))
         for item in active[:]:
             test, process, reader, lines, started = item
             result = process.poll()
@@ -139,6 +140,7 @@ finally:
             pass
         process.wait()
     for _, _, reader, _, _ in active:
-        reader.join(timeout=1)
+        if reader.is_alive():
+            reader.join(timeout=1)
 sys.exit(status)
 PY
