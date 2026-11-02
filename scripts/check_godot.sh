@@ -72,9 +72,17 @@ def relay(name, started, process, lines):
             say(name, started, line if line.endswith("\n") else line + "\n")
         except (OSError, UnicodeError):
             pass
+spawning = False
+deferred = False
 def cancel(_signal, _frame):
+    global deferred
+    # A signal between starting a test and registering it would leave that test unstopped.
+    if spawning:
+        deferred = True
+        return
     raise KeyboardInterrupt
 signal.signal(signal.SIGTERM, cancel)
+signal.signal(signal.SIGINT, cancel)
 try:
     pending = True
     while pending or active:
@@ -86,12 +94,15 @@ try:
             name = Path(test).stem
             started = time.monotonic()
             lines = []
+            spawning = True
             process = subprocess.Popen([sys.argv[1], "--headless", "--path", ".", "--script", test],
                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                        errors="replace", start_new_session=True)
-            # Register before anything else so cancellation always finds the new process group.
             reader = threading.Thread(target=relay, args=(name, started, process, lines), daemon=True)
             active.append((test, process, reader, lines, started))
+            spawning = False
+            if deferred:
+                raise KeyboardInterrupt
             say(name, started, "started\n")
             reader.start()
         for item in active[:]:
