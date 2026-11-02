@@ -345,6 +345,25 @@ func _test_scrap_robot_pull_movement_and_combo() -> void:
 		and moving.units[1].cell == Vector2i(7, 4), "인접 아군이 있어도 이동해서 사거리3의 만능팔 실행")
 	_check(boss.hit_points == 45 and moving.units[0].reaction_left == 0
 		and moving.units[0].hit_points == 11, "만능팔을 위한 로봇 일반 이동은 아군 기회 공격을 받음")
+	var stopped: Fixture = _fixture()
+	boss = stopped.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 45
+	boss.begin_turn()
+	stopped.units[0].cell = Vector2i(3, 4)
+	stopped.units[0].reaction_left = 1
+	stopped.units[1].cell = Vector2i(9, 4)
+	stopped.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
+		stopped.actions.resolve_reaction(true)
+	)
+	# 명중하면 괴력의 사내로 멈춘 로봇은 만능팔 대신 인접한 전사를 공격한다(절대실패 1로 빗나감).
+	stopped.actions.dice = ScriptedDice.new([12, 4, 1], ScriptedDice.attack_sides(stopped.units[0])
+		+ ScriptedDice.damage_sides(stopped.units[0]) + ScriptedDice.attack_sides(boss))
+	await ai.play_turn(boss, stopped.actions)
+	_check(boss.cell == Vector2i(4, 4) and boss.movement_left == 0 and boss.hit_points == 41
+		and stopped.units[1].cell == Vector2i(9, 4) and boss.pull_cooldown == 0
+		and boss.action_left == 0 and not stopped.actions.busy,
+		"괴력의 사내로 멈춘 로봇은 그 칸에서 만능팔 없이 인접 아군을 공격하고 턴을 마침")
 	var combo: Fixture = _fixture()
 	boss = combo.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000

@@ -573,6 +573,15 @@ func _test_brawn() -> void:
 			and f.actions.can_target(barbarian, warrior, "attack") and not f.actions.busy,
 			"멈춘 대상은 더 움직이지 못하고 공격은 할 수 있음: " + label)
 		_check(f.logs.any(func(line: String) -> bool: return "괴력의 사내" in line), "괴력의 사내 로그: " + label)
+	# 전사의 기회 공격으로 전투 불능이 된 점프는 지금처럼 비용을 쓰지 않는다 (#432에서 확인 중).
+	var downed: Fixture = _fixture([2, 0, 1, 3])
+	downed.units[0].reaction_left = 1
+	downed.units[2].hit_points = 1
+	downed.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: downed.actions.resolve_reaction(true))
+	downed.actions.dice = _dice([20, 1], ScriptedDice.attack_sides(downed.units[0]) + ScriptedDice.damage_sides(downed.units[0]))
+	_check(await downed.actions.jump_to(downed.units[2], Vector2i(5, 6)) and downed.units[2].hit_points == 0
+		and downed.units[2].cell == Vector2i(5, 4) and downed.units[2].movement_left == 6
+		and downed.units[2].bonus_action_left == 1, "기회 공격으로 쓰러진 점프는 이동력·보조 행동을 쓰지 않음")
 	# 적 풋내기 야만인은 전사와 같은 Kind이지만 괴력의 사내가 없다.
 	var enemy: Fixture = _fixture()
 	enemy.units[2].reaction_left = 1

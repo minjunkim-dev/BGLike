@@ -44,6 +44,7 @@ const SELF_TARGET: Array[String] = ["holy_veil", "battle_cry", "second_wind", "d
 ## 표식과 충격 화살의 사거리.
 const SKILL_RANGE: int = 6
 ## 아군 직업의 고유 동작과 패시브(팔랑크스, 괴력의 사내). 몬스터의 동작은 정의의 actions가 정한다.
+## 공용 동작(점프·기회 공격)은 belongs_to가 정한다.
 const CLASS_ONLY: Dictionary[String, CombatUnit.Kind] = {
 	"sweep": CombatUnit.Kind.WARRIOR, "cross_slash": CombatUnit.Kind.WARRIOR, "steel_charge": CombatUnit.Kind.WARRIOR,
 	"holy_veil": CombatUnit.Kind.WARRIOR, "battle_cry": CombatUnit.Kind.WARRIOR,
