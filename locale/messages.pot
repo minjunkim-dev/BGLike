@@ -151,7 +151,7 @@ msgid "인접한 적 1명을 기본 공격 2회.\n첫 타격으로 쓰러지면 
 msgstr ""
 
 #: scenes/combat/action_rules.gd:31
-msgid "인접한 적을 공격. 명중하면 피해 후\n1칸 밀치고 빈 칸으로 1칸 전진.\n밀 수 없으면 피해만. 전진은 기회 공격 없음."
+msgid "인접한 적을 공격. 명중하면 피해 후\n1칸 밀치고 빈 칸으로 1칸 전진.\n쓰러지면 그 칸으로 전진, 밀 수 없으면\n피해만. 전진은 기회 공격 없음."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:32
