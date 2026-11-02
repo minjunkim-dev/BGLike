@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# The save test is the longest by far, so it starts first and the rest share the other slot.
+# The save test is the longest by far, so it starts first and the rest take whichever slot frees up.
 tests=(
   tests/combat_save_test.gd
   tests/combat_{hud,ai,turns,checks,actions,progression,loot,capture,feedback,preparation_save,staging,dice_roll,warrior}_test.gd
@@ -90,8 +90,8 @@ try:
                                        errors="replace", start_new_session=True)
             lines = []
             reader = threading.Thread(target=relay, args=(name, started, process, lines), daemon=True)
-            reader.start()
             say(name, started, "started\n")
+            reader.start()
             active.append((test, process, reader, lines, started))
         for item in active[:]:
             test, process, reader, lines, started = item
@@ -106,7 +106,11 @@ try:
             reader.join(timeout=5)
             output = "".join(lines)
             say(Path(test).stem, started, f"finished with exit code {result}\n")
-            if "SCRIPT ERROR" in output or "Failed to load script" in output:
+            if reader.is_alive():
+                # Unread output could still hold a script error, so it cannot pass.
+                print(f"Godot output did not end during: --script {test}", file=sys.stderr)
+                result = 1
+            elif "SCRIPT ERROR" in output or "Failed to load script" in output:
                 print(f"Godot script error during: --script {test}", file=sys.stderr)
                 result = 1
             if result:
@@ -127,11 +131,13 @@ finally:
         try:
             process.wait(timeout=5)
         except subprocess.TimeoutExpired:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            process.wait()
+            pass
+        # Children that ignore SIGTERM can outlive an exited test process.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
     for _, _, reader, _, _ in active:
         reader.join(timeout=1)
 sys.exit(status)

@@ -167,6 +167,34 @@ esac
                 self.assertLess(time.monotonic(), deadline, "Leftover child outlived the check")
                 time.sleep(0.02)
 
+    def test_output_that_does_not_end_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "godot"
+            # A writer in its own session escapes the group kill and keeps the pipe open.
+            binary.write_text(FAKE_GODOT + """
+case "$*" in
+  *combat_save_test*)
+    python3 -c 'import os, sys, time; os.setsid(); open(sys.argv[1], "w").write(str(os.getpid())); time.sleep(30)' \\
+      "$PROBE/escaped.pid" &
+    while [ ! -s "$PROBE/escaped.pid" ]; do sleep 0.02; done
+    exit 0 ;;
+esac
+""")
+            binary.chmod(0o755)
+            try:
+                result = subprocess.run(["bash", "scripts/check_godot.sh", "tests/combat_save_test.gd"], cwd=ROOT,
+                                        env=dict(os.environ, GODOT=str(binary), CALL_LOG=str(root / "calls"),
+                                                 BROKEN="no-such-step", ERROR_LINE="", BROKEN_EXIT="0",
+                                                 PROBE=str(root)), text=True, capture_output=True, timeout=20)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("Godot output did not end during: --script tests/combat_save_test.gd", result.stderr)
+            finally:
+                try:
+                    os.kill(int((root / "escaped.pid").read_text()), signal.SIGKILL)
+                except (FileNotFoundError, ValueError, ProcessLookupError):
+                    pass
+
     def test_cancellation_stops_owned_godot_processes(self):
         for signum in (signal.SIGINT, signal.SIGTERM):
             with self.subTest(signum=signum), tempfile.TemporaryDirectory() as directory:
