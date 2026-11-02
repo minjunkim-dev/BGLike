@@ -277,6 +277,10 @@ func _is_valid_state(state: Dictionary) -> bool:
 	if (order.size() != living.size() or not living.all(func(index: int) -> bool: return index in order)
 			or not order.is_empty() and state.turns.current < 0):
 		return false
+	# 시계 슬롯은 쓰러진 시전자의 자리다. 시전자가 살아 있으면 두 번 줄고, 기준 유닛이 쓰러졌으면 줄지 않는다.
+	for slot: Array in state.clock_slots:
+		if slot[0] in order or slot[1] not in order:
+			return false
 	# 기절은 시전자의 턴이 와야 풀린다. 시전자가 살아서 순서에 있어야 턴이 끝없이 넘어가지 않는다.
 	for saved: Dictionary in saved_units:
 		if saved.stunned and saved.hit_points > 0 and (saved_units[saved.stun_source].hit_points <= 0

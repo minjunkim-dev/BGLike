@@ -50,7 +50,7 @@ class Ground extends RefCounted:
 
 
 ## 쓰러진 시전자의 턴 자리. anchor는 그 자리 바로 뒤의 유닛이고, anchor의 턴 시작 직전에 시전자의 유닛 효과를 줄인다.
-## skip은 이번 순환에서 그 자리를 이미 지났다는 뜻이다(시전자가 자기 턴을 시작한 뒤 쓰러짐).
+## skip은 anchor의 다음 턴 시작 앞 자리를 이미 줄였다는 뜻이다(시전자가 자기 턴을 시작한 뒤 쓰러짐 등).
 class ClockSlot extends RefCounted:
 	var caster: CombatUnit
 	var anchor: CombatUnit
@@ -567,10 +567,10 @@ func incapacitate(target: CombatUnit) -> void:
 ## 기존 상태 이상·장판은 시전자 전투 불능에서 해제하므로 슬롯을 쓰지 않는다 (동작 유형 기획서 4-5, 8-1).
 func _keep_clock_slot(target: CombatUnit) -> void:
 	var next: CombatUnit = turns.next_unit(target)
-	# target 자리를 이번 순환에서 지났고 그 자리에 대응하는 next의 턴 시작이 아직이면 다음 한 번은 건너뛴다.
-	# next가 순서의 처음으로 돌아가면 next의 다음 시작은 다음 라운드라 아직이다.
-	var passed: bool = (next != null and turns.is_turn_activated(target) and (not turns.is_turn_activated(next)
-		or turns.ordered_units.find(next) < turns.ordered_units.find(target)))
+	# next의 다음 턴 시작이 target 자리의 이번 순환 바로 뒤인지. next가 순서의 처음으로 돌면 다음 라운드 첫 시작이 그렇다.
+	# 이미 시작한 유닛과 생성 라운드의 소환 유닛은 이번 순환에 다시 시작하지 않는다.
+	var follows: bool = next != null and (turns.ordered_units.find(next) < turns.ordered_units.find(target)
+		or not turns.is_turn_activated(next) and not turns.is_turn_finished(next))
 	for slot: ClockSlot in _clock_slots.duplicate():
 		if slot.caster == target or slot.anchor != target:
 			continue
@@ -578,9 +578,22 @@ func _keep_clock_slot(target: CombatUnit) -> void:
 			_clock_slots.erase(slot)
 		else:
 			slot.anchor = next
-			slot.skip = slot.skip or passed
+			# target이 이미 시작했는데 skip이 남았으면 줄인 몫은 target의 다음 라운드 시작 앞이고, next의 다음 시작도 그 뒤다.
+			slot.skip = (slot.skip and turns.is_turn_activated(target)
+				or _settle_clock_slot(slot.caster, slot.skip or turns.is_turn_activated(target), follows))
 	if next != null and _has_unit_effects(target):
-		_clock_slots.append(ClockSlot.new(target, next, passed))
+		var skip: bool = _settle_clock_slot(target, turns.is_turn_activated(target), follows)
+		if _has_unit_effects(target):
+			_clock_slots.append(ClockSlot.new(target, next, skip))
+	_clock_slots = _clock_slots.filter(func(slot: ClockSlot) -> bool: return _has_unit_effects(slot.caster))
+
+
+## 쓰러진 자리의 이번 순환 몫을 맞추고 skip을 돌려준다. 이미 줄였으면(paid) next의 다음 시작이 바로 뒤일 때 건너뛴다.
+## 아직이고 next의 다음 시작이 다음 순환이면 그 사이에 줄일 기회가 없으므로 지금 줄인다(같은 묶음에서 뒤 유닛을 먼저 조작함).
+func _settle_clock_slot(caster: CombatUnit, paid: bool, follows: bool) -> bool:
+	if not paid and not follows:
+		_tick_unit_effects(caster)
+	return paid and follows
 
 
 ## 전투 포기(#286). 남은 아군을 모두 전투 불능으로 만들어 전멸과 똑같이 패배한다.
@@ -933,6 +946,10 @@ func spawn_spiderling(actor: CombatUnit) -> bool:
 		child.free()
 		busy = false
 		return false
+	# 새끼는 쓰러진 자리와 엄마 사이에 들어오므로 그 자리 바로 뒤가 된다.
+	for slot: ClockSlot in _clock_slots:
+		if slot.anchor == actor:
+			slot.anchor = child
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	logged.emit(tr("%s 새끼 낳기: %s") % [actor.get_display_name(), child.cell])
 	_finish()
