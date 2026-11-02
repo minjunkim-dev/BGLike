@@ -685,6 +685,9 @@ func _dice_for_miss(attacker: CombatUnit) -> CombatDice:
 
 
 func _test_layout() -> void:
+	# 측정한 가장 긴 로그 줄로 세 줄 모두 줄바꿈한 가장 높은 로그에서도 겹치지 않아야 한다.
+	for index: int in range(3):
+		hud.add_log("아군 궁수 공격(불리): 솜씨 d20 [16, 1] +0 = 1 / AC 5 · 빗나감(절대실패)")
 	# 해상도 ADR(docs/adr/0002-resolution.md)의 검증 창, 넓은 비율 창, 비정수 배율 창.
 	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900),
 		Vector2i(2560, 1600), Vector2i(2560, 1080), Vector2i(1366, 768)]:
@@ -710,11 +713,24 @@ func _test_layout() -> void:
 			_check(not (hud.get_node("UnitDetails/UnitPanel") as Control).get_global_rect().intersects(
 				hud.preview_label.get_global_rect()), "확장한 유닛 정보와 공격 예측은 겹치지 않음")
 			var skills: Rect2 = (hud.get_node("Skills") as Control).get_global_rect()
-			_check(not skills.intersects(hud.end_button.get_global_rect()), "스킬과 턴 종료가 겹치지 않음")
+			var end_turn: Rect2 = hud.end_button.get_global_rect()
+			var details: Rect2 = (hud.get_node("UnitDetails") as Control).get_global_rect()
+			_check(not skills.intersects(end_turn) and not skills.intersects(details), "스킬과 턴 종료·유닛 정보가 겹치지 않음")
 			var combat_log: Rect2 = (hud.get_node("CombatLog") as Control).get_global_rect()
-			_check(not combat_log.intersects(skills)
-				and not combat_log.intersects((hud.get_node("UnitDetails") as Control).get_global_rect()),
-				"%s: 전투 로그는 스킬·유닛 정보와 겹치지 않음" % size)
+			_check(not combat_log.intersects(skills) and not combat_log.intersects(details)
+				and not combat_log.intersects(end_turn) and not end_turn.intersects(details),
+				"%s: 전투 로그·턴 종료·스킬·유닛 정보는 서로 겹치지 않음" % size)
+			# 아래 HUD는 화면 아래 절반 안에 두어 지도 가운데를 가리지 않는다.
+			for bottom: Rect2 in [skills, combat_log, end_turn]:
+				_check(bottom.position.y >= area.size.y * 0.5, "%s %s: 아래 HUD 높이 제한 %s" % [size, kind, bottom])
+			# 행동·보조 행동·반응을 위에서 아래로 한 줄씩 쌓는다. 한 줄은 높이가 같다.
+			var rows: Array = (hud.get("_containers") as Array).filter(func(panel: Control) -> bool: return panel.visible)
+			_check(rows.size() == (3 if kind == CombatUnit.Kind.WARRIOR else 2), "%s: 보이는 컨테이너 수" % kind)
+			for index: int in range(1, rows.size()):
+				var above: Rect2 = (rows[index - 1] as Control).get_global_rect()
+				var below: Rect2 = (rows[index] as Control).get_global_rect()
+				_check(below.position.y >= above.end.y and below.position.x == above.position.x
+					and below.size.y == above.size.y, "%s %s: 컨테이너 %d는 앞 컨테이너 아래 같은 줄 높이" % [size, kind, index])
 			var badges: Dictionary = hud.get("_badges")
 			var costs: Dictionary = hud.get("_costs")
 			for action: String in badges:
@@ -732,6 +748,42 @@ func _test_layout() -> void:
 	hud.resource_label.remove_theme_constant_override("line_spacing")
 	root.size = Vector2i(1280, 720)
 	await process_frame
+	await _test_skill_row_wrap()
+
+
+# 스킬이 늘어 한 줄을 넘치면 그 컨테이너 안에서 다음 줄로 넘기고 패널은 위로 자란다.
+func _test_skill_row_wrap() -> void:
+	turns.select_unit(units[0])
+	battle.call("_update_turn_ui")
+	await process_frame
+	var skills: Control = hud.get_node("Skills") as Control
+	var bottom: float = skills.get_global_rect().end.y
+	var height: float = skills.size.y
+	var row: PanelContainer = (hud.get("_containers") as Array)[1] as PanelContainer
+	var flow: HFlowContainer = row.get_child(0).get_child(1) as HFlowContainer
+	var first: Button = (hud.get("_actions") as Dictionary)["holy_veil"] as Button
+	var extra: Array[Button] = []
+	for index: int in range(3):
+		var button: Button = Button.new()
+		button.custom_minimum_size = first.custom_minimum_size
+		flow.add_child(button)
+		extra.append(button)
+	await process_frame
+	await process_frame
+	var panel: Rect2 = row.get_global_rect()
+	_check(extra.back().get_global_rect().position.y > first.get_global_rect().end.y
+		and extra.all(func(button: Button) -> bool: return panel.encloses(button.get_global_rect())),
+		"넘친 버튼은 같은 컨테이너의 다음 줄로 넘어감")
+	var rect: Rect2 = skills.get_global_rect()
+	_check(rect.end.y == bottom and skills.size.y > height and hud.get_global_rect().encloses(rect)
+		and not rect.intersects((hud.get_node("CombatLog") as Control).get_global_rect())
+		and not rect.intersects(hud.end_button.get_global_rect()),
+		"줄바꿈한 스킬 패널은 아래 끝을 유지한 채 위로 자라고 로그·턴 종료와 겹치지 않음")
+	for button: Button in extra:
+		button.free()
+	await process_frame
+	await process_frame
+	_check(skills.size.y == height, "넘친 버튼이 사라지면 원래 높이로 돌아감")
 
 
 func _test_high_ground_guidance() -> void:

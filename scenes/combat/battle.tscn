@@ -127,7 +127,7 @@ anchor_right = 1.0
 offset_left = -212.0
 offset_top = 8.0
 offset_right = -8.0
-offset_bottom = 210.0
+offset_bottom = 190.0
 grow_horizontal = 0
 mouse_filter = 2
 theme_override_constants/separation = 6
@@ -167,12 +167,15 @@ mouse_filter = 2
 autowrap_mode = 2
 
 [node name="CombatLog" type="PanelContainer" parent="UI/TurnHud"]
+anchor_left = 1.0
 anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = -117.0
-offset_right = 544.0
-offset_bottom = -69.0
+offset_left = -272.0
+offset_top = -102.0
+offset_right = -8.0
+offset_bottom = -54.0
+grow_horizontal = 0
 grow_vertical = 0
 
 [node name="Message" type="Label" parent="UI/TurnHud/CombatLog"]
@@ -180,19 +183,20 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 10
 text = "전투 시작"
 mouse_filter = 2
+autowrap_mode = 3
 
 [node name="Skills" type="PanelContainer" parent="UI/TurnHud"]
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 8.0
 offset_top = -63.0
-offset_right = 544.0
+offset_right = 362.0
 offset_bottom = -6.0
 grow_vertical = 0
 
-[node name="Groups" type="HBoxContainer" parent="UI/TurnHud/Skills"]
+[node name="Groups" type="VBoxContainer" parent="UI/TurnHud/Skills"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 3
 
 [node name="EndTurn" type="Button" parent="UI/TurnHud"]
 anchor_left = 1.0
@@ -200,9 +204,9 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -88.0
-offset_top = -111.0
+offset_top = -48.0
 offset_right = -8.0
-offset_bottom = -69.0
+offset_bottom = -6.0
 grow_horizontal = 0
 grow_vertical = 0
 text = "턴 종료"
