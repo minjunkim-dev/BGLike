@@ -832,7 +832,7 @@ msgid "명중하면 밀려날 칸: %d, %d"
 msgstr ""
 
 #: scenes/combat/battle.gd:853
-msgid "밀려날 칸이 막혀 명중해도 피해만"
+msgid "밀려날 칸이 막힘 · 명중하면 피해만, 쓰러뜨리면 그 칸으로 전진"
 msgstr ""
 
 #: scenes/combat/battle.gd:857

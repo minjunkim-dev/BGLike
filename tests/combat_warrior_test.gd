@@ -221,6 +221,12 @@ func _test_steel_charge() -> void:
 	_check(charger.hit_points == charger.get_max_hit_points() and watcher.reaction_left == 1
 		and downed.actions.pending_reactor == null, "전진은 기회 공격을 받지 않음")
 	_check(charger.movement_left == 2 and charger.bonus_action_left == 0, "전진에 이동력을 더 쓰지 않음")
+	var walled: Fixture = _fixture()
+	walled.actions.create_prop(Vector2i(6, 4), "crate")
+	walled.units[2].hit_points = 6
+	walled.actions.dice = _dice([15, 6], [20, 20])
+	await walled.actions.steel_charge(walled.units[0], walled.units[2])
+	_check(walled.units[0].cell == Vector2i(5, 4), "밀려날 칸이 막혀도 대상이 쓰러지면 그 칸으로 전진")
 	var missed: Fixture = _fixture()
 	missed.actions.dice = _dice([1], [20])
 	await missed.actions.steel_charge(missed.units[0], missed.units[2])
@@ -309,6 +315,15 @@ func _test_sweep() -> void:
 		and lone.logs.any(func(line: String) -> bool: return "휩쓸기: 대상 0명" in line), "빈 반달도 실행하고 행동을 소비")
 	_check(not lone.actions.can_use(alone, "sweep") and lone.actions.unavailable_reason(alone, "sweep") == "자원을 이미 씀",
 		"빈 반달에 쓴 뒤에는 행동이 없어 비활성")
+	# 휩쓸기가 없는 유닛은 행동이 남아도 쓸 대상이 없으면 할 동작이 없다.
+	var idle: Fixture = _fixture([1, 0, 2, 3])
+	var idle_archer: CombatUnit = idle.units[1]
+	idle.units[2].cell = Vector2i(9, 9)
+	idle.units[3].cell = Vector2i(9, 8)
+	idle_archer.movement_left = 0
+	idle_archer.bonus_action_left = 0
+	_check(idle_archer.action_left > 0 and not idle.actions.has_available_action(idle_archer),
+		"행동이 남아도 대상이 없는 궁수는 할 동작 없음")
 
 
 func _test_holy_veil() -> void:

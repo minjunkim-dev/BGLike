@@ -590,7 +590,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			facing = candidates[0].cell
 		elif prop != null and CombatGrid.distance(actor.cell, prop.cell) == 1:
 			facing = prop.cell
-		if CombatGrid.distance(actor.cell, facing) != 1:
+		if CombatGrid.distance(actor.cell, facing) != 1 or not actions.grid.is_inside(facing):
 			selection.clear_preview()
 		elif selection.select_cell(facing, actions.can_sweep(actor, facing)):
 			selection.begin_execution()
@@ -854,7 +854,7 @@ func _update_turn_ui() -> void:
 				var landing: String = actions.shove_landing(target, cell)
 				hud.show_target_note(tr("명중하면 밀려날 칸: %d, %d") % [cell.x, cell.y] + ("" if landing.is_empty() else " · " + landing))
 			else:
-				hud.show_target_note(tr("밀려날 칸이 막혀 명중해도 피해만"))
+				hud.show_target_note(tr("밀려날 칸이 막힘 · 명중하면 피해만, 쓰러뜨리면 그 칸으로 전진"))
 	elif selection.preview_prop != null:
 		var actor: CombatUnit = turns.current_unit
 		var prop: CombatGrid.Prop = selection.preview_prop
