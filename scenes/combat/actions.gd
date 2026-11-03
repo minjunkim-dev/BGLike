@@ -889,9 +889,10 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 					and CombatActionRules.belongs_to(reactor, "opportunity") and reactor.reaction_left > 0
 					and grid.leaves_reach(reactor, actor.cell, step)):
 					await _opportunity_attack(reactor, actor)
-					if actor.hit_points <= 0 or actor.movement_left == 0:
+					if actor.hit_points <= 0 or actor.movement_left == 0 or is_over():
 						break
-		if actor.hit_points <= 0 or actor.movement_left == 0:
+		# 반격으로 마지막 적이 쓰러지면 전투가 끝나 더 걷지 않는다.
+		if actor.hit_points <= 0 or actor.movement_left == 0 or is_over():
 			break
 		if movement_animation.is_valid():
 			await movement_animation.call(actor, step)
