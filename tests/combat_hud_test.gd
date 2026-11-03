@@ -729,8 +729,13 @@ func _test_layout() -> void:
 			for index: int in range(1, rows.size()):
 				var above: Rect2 = (rows[index - 1] as Control).get_global_rect()
 				var below: Rect2 = (rows[index] as Control).get_global_rect()
-				_check(below.position.y >= above.end.y and below.position.x == above.position.x
-					and below.size.y == above.size.y, "%s %s: 컨테이너 %d는 앞 컨테이너 아래 같은 줄 높이" % [size, kind, index])
+				_check(below.position.y >= above.end.y and below.size.y == above.size.y,
+					"%s %s: 컨테이너 %d는 앞 컨테이너 아래 같은 줄 높이" % [size, kind, index])
+			# 제목 폭을 맞춰 각 줄의 첫 버튼이 같은 세로선에 선다.
+			var first_x: Array = rows.map(func(panel: Control) -> float:
+				return (panel.get_child(0).get_child(1).get_children().filter(
+					func(button: Control) -> bool: return button.visible)[0] as Control).global_position.x)
+			_check(first_x.all(func(x: float) -> bool: return x == first_x[0]), "%s %s: 줄마다 첫 버튼 x 같음 %s" % [size, kind, first_x])
 			var badges: Dictionary = hud.get("_badges")
 			var costs: Dictionary = hud.get("_costs")
 			for action: String in badges:
@@ -748,6 +753,23 @@ func _test_layout() -> void:
 	hud.resource_label.remove_theme_constant_override("line_spacing")
 	root.size = Vector2i(1280, 720)
 	await process_frame
+	# 상태 줄과 공격 예측 원인 줄이 모두 길어진 유닛 정보도 가장 높은 로그와 겹치지 않는다.
+	units[1].marked_target = units[2]
+	units[2].is_stunned = true
+	units[2].overloaded = true
+	actions.apply_status(units[1], units[2], "burn")
+	actions.apply_status(units[0], units[2], "poison")
+	battle.call("preview_enemy", units[2])
+	hud.preview_label.text = "명중률 37.5% · 유리\n고지대, 기절한 대상, ◎ 표식, 옆에 적"
+	await process_frame
+	await process_frame
+	_check(not (hud.get_node("UnitDetails") as Control).get_global_rect().intersects(
+		(hud.get_node("CombatLog") as Control).get_global_rect()),
+		"긴 상태·공격 예측의 유닛 정보와 가장 높은 로그는 겹치지 않음: %s / %s" % [
+			(hud.get_node("UnitDetails") as Control).get_global_rect(), (hud.get_node("CombatLog") as Control).get_global_rect()])
+	units[2].status_effects.clear()
+	units[2].overloaded = false
+	_reset_units()
 	await _test_skill_row_wrap()
 
 
