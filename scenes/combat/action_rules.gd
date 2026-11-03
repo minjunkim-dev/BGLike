@@ -43,11 +43,12 @@ static var EFFECTS: Dictionary[String, String] = {
 const SELF_TARGET: Array[String] = ["holy_veil", "battle_cry", "second_wind", "disengage", "potion"]
 ## 표식과 충격 화살의 사거리.
 const SKILL_RANGE: int = 6
-## 아군 직업의 고유 동작. 몬스터의 동작은 정의의 actions가 정한다.
+## 아군 직업의 고유 동작과 패시브(팔랑크스, 괴력의 사내). 몬스터의 동작은 정의의 actions가 정한다.
+## 공용 동작(점프·기회 공격)은 belongs_to가 정한다.
 const CLASS_ONLY: Dictionary[String, CombatUnit.Kind] = {
 	"sweep": CombatUnit.Kind.WARRIOR, "cross_slash": CombatUnit.Kind.WARRIOR, "steel_charge": CombatUnit.Kind.WARRIOR,
 	"holy_veil": CombatUnit.Kind.WARRIOR, "battle_cry": CombatUnit.Kind.WARRIOR,
-	"phalanx": CombatUnit.Kind.WARRIOR, "opportunity": CombatUnit.Kind.WARRIOR,
+	"phalanx": CombatUnit.Kind.WARRIOR, "brawn": CombatUnit.Kind.WARRIOR,
 	"mark": CombatUnit.Kind.ARCHER, "shock": CombatUnit.Kind.ARCHER, "disengage": CombatUnit.Kind.ARCHER
 }
 ## 아군이 쓰지 않는 몬스터 동작. 풋내기 야만인의 숨 고르기도 여기 있다.
@@ -107,6 +108,9 @@ static func save_dc(actor: CombatUnit, action: String) -> int:
 static func belongs_to(actor: CombatUnit, action: String) -> bool:
 	if action == "jump":
 		return true
+	# 기회 공격은 근접 기본 공격을 가진 모든 유닛의 공용 동작이다 (5-2).
+	if action == "opportunity":
+		return actor.get_attack_range() == 1
 	if not actor.is_ally:
 		return action in CombatEnemyDefinitions.for_kind(actor.kind)["actions"]
 	return action not in MONSTER_ONLY and (action not in CLASS_ONLY or actor.kind == CLASS_ONLY[action])
@@ -252,4 +256,7 @@ static func damage_text(actor: CombatUnit, action: String) -> String:
 static func effect(actor: CombatUnit, action: String) -> String:
 	if action == "attack":
 		return TranslationServer.tr("인접한 적을 기본 공격합니다.") if actor.get_attack_range() == 1 else TranslationServer.tr("1~6칸 원거리 공격.\n옆에 적이 있으면 불리.")
+	# 패시브 칸이 정해지기 전까지 괴력의 사내는 기회 공격 호버로 안내한다 (#434).
+	if action == "opportunity" and belongs_to(actor, "brawn"):
+		return EFFECTS[action] + "\n" + TranslationServer.tr("괴력의 사내: 명중하면 대상의 이동을 멈춥니다.")
 	return EFFECTS.get(action, "")
