@@ -584,13 +584,19 @@ func _unhandled_input(event: InputEvent) -> void:
 	if selection.selected_action == "sweep":
 		get_viewport().set_input_as_handled()
 		# 인접 칸의 몸통이나 사물을 눌러도 그 칸을 정면으로 고른다. 인접하지 않은 몸통(전사 자신 등)이 가린 칸은
-		# 격자 위치로 고르고, 그래도 인접하지 않으면 미리보기만 지운다.
+		# 격자 위치로 고르고, 그래도 인접하지 않거나 맵 밖이면 미리보기만 지운다.
 		var facing: Vector2i = cell
 		if not candidates.is_empty() and CombatGrid.distance(actor.cell, candidates[0].cell) == 1:
 			facing = candidates[0].cell
 		elif prop != null and CombatGrid.distance(actor.cell, prop.cell) == 1:
 			facing = prop.cell
-		if CombatGrid.distance(actor.cell, facing) != 1:
+		elif not actions.grid.is_inside(cell):
+			# 낭떠러지 칸은 바닥 타일이 없어 격자 위치로 잡히지 않으므로 인접한 낭떠러지의 윗면으로 찾는다.
+			# 높이 때문에 윗면이 겹쳐도 맵 안 칸이 잡혔으면 그 칸을 정면으로 둔다.
+			for neighbor: Vector2i in CombatGrid.neighbors(actor.cell):
+				if actions.grid.pits.has(neighbor) and map.contains_surface(neighbor, map.to_local(world_position)):
+					facing = neighbor
+		if CombatGrid.distance(actor.cell, facing) != 1 or not actions.grid.is_inside(facing):
 			selection.clear_preview()
 		elif selection.select_cell(facing, actions.can_sweep(actor, facing)):
 			selection.begin_execution()
@@ -854,7 +860,7 @@ func _update_turn_ui() -> void:
 				var landing: String = actions.shove_landing(target, cell)
 				hud.show_target_note(tr("명중하면 밀려날 칸: %d, %d") % [cell.x, cell.y] + ("" if landing.is_empty() else " · " + landing))
 			else:
-				hud.show_target_note(tr("밀려날 칸이 막혀 명중해도 피해만"))
+				hud.show_target_note(tr("밀려날 칸이 막힘 · 명중하면 피해만, 쓰러뜨리면 그 칸으로 전진"))
 	elif selection.preview_prop != null:
 		var actor: CombatUnit = turns.current_unit
 		var prop: CombatGrid.Prop = selection.preview_prop
@@ -917,7 +923,7 @@ func _update_turn_ui() -> void:
 			and not actions.busy):
 		var note: String = tr("휩쓸기 · 정면으로 삼을 인접한 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 실행합니다.")
 		if sweeping and sweep_targets.is_empty():
-			note = tr("휩쓸기 · 영향 칸에 적이 없음")
+			note = tr("휩쓸기 · 행동1 · 영향 칸에 적이 없음\n같은 칸을 다시 좌클릭하면 실행합니다.")
 		elif sweeping:
 			var chances: Array[String] = []
 			for target: CombatUnit in sweep_targets:

@@ -48,7 +48,7 @@ var grid: CombatGrid
 @onready var health_bar: ProgressBar = $UnitDetails/UnitPanel/Info/Health
 @onready var end_button: Button = $EndTurn
 @onready var preview_label: Label = $UnitDetails/AttackPreview
-@onready var action_bar: HBoxContainer = $Skills/Groups
+@onready var action_bar: VBoxContainer = $Skills/Groups
 @onready var message_label: Label = $CombatLog/Message
 @onready var result_label: Label = $Result/Panel/Contents/Outcome
 @onready var restart_button: Button = $Result/Panel/Contents/Restart
@@ -65,10 +65,10 @@ func feedback_obstacles() -> Array[Rect2]:
 func _ready() -> void:
 	# 기본 반투명 배경은 아래 지형에 따라 대비가 바뀐다. 불투명 패널로 WCAG AA를 고정한다.
 	$CombatLog.add_theme_stylebox_override("panel", _panel_style())
-	# 스킬 설명은 전투 로그 위에 띄워 판정 기록을 가리지 않는다.
+	# 스킬 설명은 전투 로그와 스킬 패널 위에 띄워 판정 기록을 가리지 않는다.
 	_tooltip.top_of = func(target: Control) -> float:
-		return ($CombatLog as Control).get_global_rect().position.y if $Skills.is_ancestor_of(target) \
-			else target.get_global_rect().position.y
+		return minf(($CombatLog as Control).get_global_rect().position.y, ($Skills as Control).get_global_rect().position.y) \
+			if $Skills.is_ancestor_of(target) else target.get_global_rect().position.y
 	_tooltip.hidden_when = func() -> bool: return reaction_dialog.visible or $Result.visible
 	add_child(_tooltip)
 	end_button.pressed.connect(func() -> void: end_turn_requested.emit())
@@ -78,18 +78,24 @@ func _ready() -> void:
 		panel.add_theme_stylebox_override("panel", _panel_style())
 		action_bar.add_child(panel)
 		_containers.append(panel)
-		var column: VBoxContainer = VBoxContainer.new()
-		column.add_theme_constant_override("separation", 3)
-		panel.add_child(column)
+		# 컨테이너마다 한 줄이다. 버튼이 줄을 넘치면 같은 컨테이너 안에서 다음 줄로 넘긴다(#438).
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		panel.add_child(row)
 		var title: Label = Label.new()
 		title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		title.add_theme_font_size_override("font_size", 10)
 		title.add_theme_color_override("font_color", RESOURCE_COLORS[index])
-		column.add_child(title)
+		# 제목 폭을 맞춰 세 줄의 첫 버튼을 같은 세로선에 둔다.
+		title.custom_minimum_size.x = 58
+		title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(title)
 		_titles.append(title)
-		var buttons: HBoxContainer = HBoxContainer.new()
-		buttons.add_theme_constant_override("separation", 3)
-		column.add_child(buttons)
+		var buttons: HFlowContainer = HFlowContainer.new()
+		buttons.add_theme_constant_override("h_separation", 3)
+		buttons.add_theme_constant_override("v_separation", 3)
+		buttons.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(buttons)
 		for action: String in CombatActionRules.GROUPS[index]:
 			var button: Button = HoverTooltip.HoverButton.new()
 			# 아이콘 오른쪽에 비용 마크 자리를 남긴다. 높이는 그림을 줄이기 전(#362)의 입력 영역이다.
@@ -230,7 +236,7 @@ func add_log(message: String) -> void:
 
 func show_reaction(kind: String, prompt: String) -> void:
 	reaction_dialog.dialog_text = prompt
-	reaction_dialog.get_ok_button().text = tr("공격")
+	reaction_dialog.get_ok_button().text = tr("반격") if kind == "counter" else tr("공격")
 	reaction_dialog.get_cancel_button().text = tr("넘기기")
 	reaction_dialog.exclusive = true
 	reaction_dialog.popup_centered(Vector2i(360, 110))

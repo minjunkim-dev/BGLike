@@ -191,7 +191,7 @@
 
 | 캐릭터 | 역할 | 추상 컨셉 | 상태 |
 |---|---|---|---|
-| [전사](warrior.md) | 탱커 | 든든한 지휘관 ✅ (2026-10-30) | 재디자인 확정 · 구현 전 (현재 구현은 옛 스킬) |
+| [전사](warrior.md) | 탱커 | 든든한 지휘관 ✅ (2026-10-30) | 재디자인 확정 · 구현 ([#423](https://github.com/minjunkim-dev/BGLike/issues/423), [#426](https://github.com/minjunkim-dev/BGLike/issues/426), [#434](https://github.com/minjunkim-dev/BGLike/issues/434)~[#438](https://github.com/minjunkim-dev/BGLike/issues/438)). 패시브 칸은 구현 전 |
 | [궁수](archer.md) | 딜러 | ❓ | 구현됨 |
 
 전사는 2026-10-30에 컨셉부터 다시 디자인했습니다. 궁수는 추상 컨셉 없이 스킬부터 만들었습니다 (10장).

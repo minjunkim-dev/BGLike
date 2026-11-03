@@ -367,7 +367,7 @@ func _test_warrior() -> void:
 	_check("자연" not in hud.resource_label.text and "정신" not in hud.resource_label.text,
 		"폐지한 능력치는 유닛 정보에서 제거")
 	var warrior_actions: Array[String] = ["attack", "sweep", "cross_slash", "battle_cry", "holy_veil", "steel_charge",
-		"shove", "potion", "opportunity"]
+		"shove", "potion", "opportunity", "counter"]
 	for action: String in warrior_actions:
 		_check((buttons[action] as Button).is_visible_in_tree(), "전사 동작 표시: " + action)
 	for action: String in ["mark", "shock", "disengage"]:
@@ -685,6 +685,9 @@ func _dice_for_miss(attacker: CombatUnit) -> CombatDice:
 
 
 func _test_layout() -> void:
+	# 측정한 가장 긴 로그 줄로 세 줄 모두 줄바꿈한 가장 높은 로그에서도 겹치지 않아야 한다.
+	for index: int in range(3):
+		hud.add_log("아군 궁수 공격(불리): 솜씨 d20 [16, 1] +0 = 1 / AC 5 · 빗나감(절대실패)")
 	# 해상도 ADR(docs/adr/0002-resolution.md)의 검증 창, 넓은 비율 창, 비정수 배율 창.
 	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900),
 		Vector2i(2560, 1600), Vector2i(2560, 1080), Vector2i(1366, 768)]:
@@ -710,11 +713,29 @@ func _test_layout() -> void:
 			_check(not (hud.get_node("UnitDetails/UnitPanel") as Control).get_global_rect().intersects(
 				hud.preview_label.get_global_rect()), "확장한 유닛 정보와 공격 예측은 겹치지 않음")
 			var skills: Rect2 = (hud.get_node("Skills") as Control).get_global_rect()
-			_check(not skills.intersects(hud.end_button.get_global_rect()), "스킬과 턴 종료가 겹치지 않음")
+			var end_turn: Rect2 = hud.end_button.get_global_rect()
+			var details: Rect2 = (hud.get_node("UnitDetails") as Control).get_global_rect()
+			_check(not skills.intersects(end_turn) and not skills.intersects(details), "스킬과 턴 종료·유닛 정보가 겹치지 않음")
 			var combat_log: Rect2 = (hud.get_node("CombatLog") as Control).get_global_rect()
-			_check(not combat_log.intersects(skills)
-				and not combat_log.intersects((hud.get_node("UnitDetails") as Control).get_global_rect()),
-				"%s: 전투 로그는 스킬·유닛 정보와 겹치지 않음" % size)
+			_check(not combat_log.intersects(skills) and not combat_log.intersects(details)
+				and not combat_log.intersects(end_turn) and not end_turn.intersects(details),
+				"%s: 전투 로그·턴 종료·스킬·유닛 정보는 서로 겹치지 않음" % size)
+			# 아래 HUD는 화면 아래 절반 안에 두어 지도 가운데를 가리지 않는다.
+			for bottom: Rect2 in [skills, combat_log, end_turn]:
+				_check(bottom.position.y >= area.size.y * 0.5, "%s %s: 아래 HUD 높이 제한 %s" % [size, kind, bottom])
+			# 행동·보조 행동·반응을 위에서 아래로 한 줄씩 쌓는다. 한 줄은 높이가 같다.
+			var rows: Array = (hud.get("_containers") as Array).filter(func(panel: Control) -> bool: return panel.visible)
+			_check(rows.size() == (3 if kind == CombatUnit.Kind.WARRIOR else 2), "%s: 보이는 컨테이너 수" % kind)
+			for index: int in range(1, rows.size()):
+				var above: Rect2 = (rows[index - 1] as Control).get_global_rect()
+				var below: Rect2 = (rows[index] as Control).get_global_rect()
+				_check(below.position.y >= above.end.y and below.size.y == above.size.y,
+					"%s %s: 컨테이너 %d는 앞 컨테이너 아래 같은 줄 높이" % [size, kind, index])
+			# 제목 폭을 맞춰 각 줄의 첫 버튼이 같은 세로선에 선다.
+			var first_x: Array = rows.map(func(panel: Control) -> float:
+				return (panel.get_child(0).get_child(1).get_children().filter(
+					func(button: Control) -> bool: return button.visible)[0] as Control).global_position.x)
+			_check(first_x.all(func(x: float) -> bool: return x == first_x[0]), "%s %s: 줄마다 첫 버튼 x 같음 %s" % [size, kind, first_x])
 			var badges: Dictionary = hud.get("_badges")
 			var costs: Dictionary = hud.get("_costs")
 			for action: String in badges:
@@ -732,6 +753,65 @@ func _test_layout() -> void:
 	hud.resource_label.remove_theme_constant_override("line_spacing")
 	root.size = Vector2i(1280, 720)
 	await process_frame
+	# 상태 줄과 공격 예측 원인 줄이 모두 길어진 유닛 정보도 가장 높은 로그와 겹치지 않는다.
+	# 앞 검사가 적 턴으로 끝나므로 아군 턴으로 돌려야 적 미리보기가 유닛 정보를 바꾼다.
+	_reset_units()
+	units[1].marked_target = units[2]
+	units[2].is_stunned = true
+	units[2].overloaded = true
+	actions.apply_status(units[1], units[2], "burn")
+	actions.apply_status(units[0], units[2], "poison")
+	_check(battle.call("preview_enemy", units[2]), "긴 유닛 정보 fixture: 아군 턴의 적 미리보기")
+	hud.preview_label.text = "명중률 37.5% · 유리\n고지대, 기절한 대상, ◎ 표식, 옆에 적"
+	await process_frame
+	await process_frame
+	_check(hud.unit_label.text == units[2].get_display_name() and "기절" in hud.resource_label.text
+		and "화상1" in hud.resource_label.text and "독1" in hud.resource_label.text
+		and "과부하" in hud.resource_label.text and "◎ 표식" in hud.resource_label.text,
+		"긴 유닛 정보 fixture: 대상의 상태 줄 표시: " + hud.resource_label.text.replace("\n", " | "))
+	_check(not (hud.get_node("UnitDetails") as Control).get_global_rect().intersects(
+		(hud.get_node("CombatLog") as Control).get_global_rect()),
+		"긴 상태·공격 예측의 유닛 정보와 가장 높은 로그는 겹치지 않음: %s / %s" % [
+			(hud.get_node("UnitDetails") as Control).get_global_rect(), (hud.get_node("CombatLog") as Control).get_global_rect()])
+	units[2].status_effects.clear()
+	units[2].overloaded = false
+	_reset_units()
+	await _test_skill_row_wrap()
+
+
+# 스킬이 늘어 한 줄을 넘치면 그 컨테이너 안에서 다음 줄로 넘기고 패널은 위로 자란다.
+func _test_skill_row_wrap() -> void:
+	turns.select_unit(units[0])
+	battle.call("_update_turn_ui")
+	await process_frame
+	var skills: Control = hud.get_node("Skills") as Control
+	var bottom: float = skills.get_global_rect().end.y
+	var height: float = skills.size.y
+	var row: PanelContainer = (hud.get("_containers") as Array)[1] as PanelContainer
+	var flow: HFlowContainer = row.get_child(0).get_child(1) as HFlowContainer
+	var first: Button = (hud.get("_actions") as Dictionary)["holy_veil"] as Button
+	var extra: Array[Button] = []
+	for index: int in range(3):
+		var button: Button = Button.new()
+		button.custom_minimum_size = first.custom_minimum_size
+		flow.add_child(button)
+		extra.append(button)
+	await process_frame
+	await process_frame
+	var panel: Rect2 = row.get_global_rect()
+	_check(extra.back().get_global_rect().position.y > first.get_global_rect().end.y
+		and extra.all(func(button: Button) -> bool: return panel.encloses(button.get_global_rect())),
+		"넘친 버튼은 같은 컨테이너의 다음 줄로 넘어감")
+	var rect: Rect2 = skills.get_global_rect()
+	_check(rect.end.y == bottom and skills.size.y > height and hud.get_global_rect().encloses(rect)
+		and not rect.intersects((hud.get_node("CombatLog") as Control).get_global_rect())
+		and not rect.intersects(hud.end_button.get_global_rect()),
+		"줄바꿈한 스킬 패널은 아래 끝을 유지한 채 위로 자라고 로그·턴 종료와 겹치지 않음")
+	for button: Button in extra:
+		button.free()
+	await process_frame
+	await process_frame
+	_check(skills.size.y == height, "넘친 버튼이 사라지면 원래 높이로 돌아감")
 
 
 func _test_high_ground_guidance() -> void:
@@ -1408,10 +1488,10 @@ func _test_skill_bar_keys() -> void:
 				expected.append(button)
 	_check(slots == expected, "숫자 키 순서는 보이는 스킬 버튼의 왼쪽부터")
 	_check(slots.map(func(button: Button) -> String: return by_button[button]) == ["attack", "sweep", "cross_slash", "battle_cry",
-		"holy_veil", "steel_charge", "shove", "jump", "potion", "opportunity"], "전사 숫자 키 순서는 행동·보조 행동·반응 묶음 순")
+		"holy_veil", "steel_charge", "shove", "jump", "potion", "opportunity", "counter"], "전사 숫자 키 순서는 행동·보조 행동·반응 묶음 순")
 	var disabled_seen: int = 0
 	var pressed_seen: int = 0
-	# 숫자 키는 1~9뿐이다. 전사의 열 번째 버튼(기회 공격)은 방향키·D-pad로만 간다.
+	# 숫자 키는 1~9뿐이다. 전사의 열 번째·열한 번째 버튼(기회 공격, 반격)은 방향키·D-pad로만 간다.
 	for slot: int in range(mini(slots.size(), 9)):
 		var button: Button = slots[slot]
 		var action: String = by_button[button]
@@ -2352,6 +2432,26 @@ func _test_sweep_input() -> void:
 		and units[1].hit_points == units[1].get_max_hit_points() and selection.selected_action == "attack",
 		"같은 칸을 다시 좌클릭하면 실행: ⌈8 ÷ 2⌉ 피해, 아군 제외")
 	actions.dice = saved_dice
+	# #407 답 5a: 반달에 적이 없어도 같은 칸을 다시 좌클릭하면 실행하고 행동을 소비한다.
+	# 정면은 바닥 타일이 없는 낭떠러지 칸으로 둔다. 칠한 칸이면 눌러서 고를 수 있어야 한다.
+	units[2].cell = Vector2i(8, 8)
+	units[3].cell = Vector2i(9, 9)
+	actor.action_left = 1
+	facing = Vector2i(3, 4)
+	var tile_source: int = map.get_cell_source_id(facing)
+	var tile_atlas: Vector2i = map.get_cell_atlas_coords(facing)
+	map.erase_cell(facing)
+	actions.grid.pits = [facing]
+	battle.call("_on_action_selected", "sweep")
+	point = map.get_global_transform_with_canvas() * map.map_to_surface(facing)
+	await _click(point)
+	_check(selection.preview_cell == facing and "영향 칸에 적이 없음" in hud.preview_label.text
+		and "같은 칸을 다시 좌클릭하면 실행합니다." in hud.preview_label.text and actor.action_left == 1,
+		"타일 없는 낭떠러지 정면도 첫 좌클릭에 빈 반달 실행 안내와 함께 미리보기: " + hud.preview_label.text)
+	await _click(point)
+	_check(actor.action_left == 0 and selection.selected_action == "attack", "빈 반달도 같은 칸을 다시 좌클릭하면 실행")
+	actions.grid.pits.clear()
+	map.set_cell(facing, tile_source, tile_atlas)
 	_reset_units()
 
 
@@ -2492,6 +2592,11 @@ func _test_reaction_flow() -> void:
 	_check(choices[0] == 2 and not hud.reaction_dialog.visible and not actions.busy, "두 선택의 연결과 입력 잠금 해제")
 	actions.logged.disconnect(on_log)
 	actions.reaction_requested.disconnect(on_reaction)
+	hud.show_reaction("counter", "반격 문구")
+	_check(hud.reaction_dialog.get_ok_button().text == "반격"
+		and hud.reaction_dialog.get_cancel_button().text == "넘기기", "반격 선택 문구")
+	hud.reaction_dialog.get_cancel_button().pressed.emit()
+	await process_frame
 
 
 func _test_reaction_focus() -> void:

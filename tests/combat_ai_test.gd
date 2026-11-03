@@ -338,13 +338,32 @@ func _test_scrap_robot_pull_movement_and_combo() -> void:
 	moving.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
 		moving.actions.resolve_reaction(true)
 	)
-	moving.actions.dice = ScriptedDice.new([12, 4, 6], ScriptedDice.attack_sides(moving.units[0])
-		+ ScriptedDice.damage_sides(moving.units[0]) + _pull_sides())
+	# 기회 공격이 명중하면 괴력의 사내로 멈추므로(#434) 빗나가게 한다.
+	moving.actions.dice = ScriptedDice.new([1, 6], ScriptedDice.attack_sides(moving.units[0]) + _pull_sides())
 	await ai.play_turn(boss, moving.actions)
 	_check(boss.cell == Vector2i(6, 4) and boss.movement_left == 2
 		and moving.units[1].cell == Vector2i(7, 4), "인접 아군이 있어도 이동해서 사거리3의 만능팔 실행")
-	_check(boss.hit_points == 41 and moving.units[0].reaction_left == 0
+	_check(boss.hit_points == 45 and moving.units[0].reaction_left == 0
 		and moving.units[0].hit_points == 11, "만능팔을 위한 로봇 일반 이동은 아군 기회 공격을 받음")
+	var stopped: Fixture = _fixture()
+	boss = stopped.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
+	boss.hit_points = 45
+	boss.begin_turn()
+	stopped.units[0].cell = Vector2i(3, 4)
+	stopped.units[0].reaction_left = 1
+	stopped.units[1].cell = Vector2i(9, 4)
+	stopped.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
+		stopped.actions.resolve_reaction(true)
+	)
+	# 명중하면 괴력의 사내로 멈춘 로봇은 만능팔 대신 인접한 전사를 공격한다(절대실패 1로 빗나감).
+	stopped.actions.dice = ScriptedDice.new([12, 4, 1], ScriptedDice.attack_sides(stopped.units[0])
+		+ ScriptedDice.damage_sides(stopped.units[0]) + ScriptedDice.attack_sides(boss))
+	await ai.play_turn(boss, stopped.actions)
+	_check(boss.cell == Vector2i(4, 4) and boss.movement_left == 0 and boss.hit_points == 41
+		and stopped.units[1].cell == Vector2i(9, 4) and boss.pull_cooldown == 0
+		and boss.action_left == 0 and not stopped.actions.busy,
+		"괴력의 사내로 멈춘 로봇은 그 칸에서 만능팔 없이 인접 아군을 공격하고 턴을 마침")
 	var combo: Fixture = _fixture()
 	boss = combo.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
@@ -546,14 +565,16 @@ func _test_spiderling() -> void:
 		and spiderling.hit_points == 0 and spiderling.cell == Vector2i(4, 4)
 		and spiderling.movement_left == 6 and opportunity.units[0].reaction_left == 0,
 		"이동하는 새끼 거미는 아군 기회 공격을 받고 벗어나기 전에 전투 불능")
-	var no_opportunity: Fixture = _fixture()
-	no_opportunity.units[2].kind = CombatUnit.Kind.SPIDERLING
-	no_opportunity.turns.end_turn()
-	no_opportunity.turns.end_turn()
-	no_opportunity.actions.dice = ScriptedDice.new([])
-	_check(await no_opportunity.actions.move_to(no_opportunity.units[0], Vector2i(6, 4))
-		and no_opportunity.units[0].hit_points == 11
-		and no_opportunity.units[2].reaction_left == 1, "새끼 거미는 아군 이동에 기회 공격을 하지 않음")
+	var reacting: Fixture = _fixture()
+	reacting.units[2].kind = CombatUnit.Kind.SPIDERLING
+	reacting.turns.end_turn()
+	reacting.turns.end_turn()
+	# 근접 기본 공격은 예외 없이 기회 공격을 한다 (#434). 힘 d4 2+3은 전사 AC 5와 같아 명중, 피해 1+1.
+	reacting.actions.dice = ScriptedDice.new([2, 1], ScriptedDice.attack_sides(reacting.units[2])
+		+ ScriptedDice.damage_sides(reacting.units[2]))
+	_check(await reacting.actions.move_to(reacting.units[0], Vector2i(6, 4))
+		and reacting.units[0].hit_points == 9 and reacting.units[0].cell == Vector2i(6, 4)
+		and reacting.units[2].reaction_left == 0, "새끼 거미도 아군 이동에 기회 공격을 하고, 이동은 멈추지 않음")
 
 
 func _test_warrior() -> void:
@@ -598,6 +619,20 @@ func _test_warrior() -> void:
 	await ai.play_turn(last.units[2], last.actions)
 	_check(last.actions.is_over() and last.units[2].bonus_action_left == 1,
 		"마지막 아군 탈락 후 추가 스킬과 공격 중단")
+	# 아군 전사의 반격으로 자기 턴에 쓰러진 적은 그대로 턴을 넘긴다.
+	var countered: Fixture = _fixture()
+	countered.units[0].reaction_left = 1
+	countered.units[2].hit_points = 1
+	countered.units[2].second_wind_left = 0
+	countered.actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
+		_check(kind == "counter", "AI 공격이 빗나가면 반격 확인 창")
+		countered.actions.resolve_reaction(true)
+	)
+	countered.actions.dice = ScriptedDice.new([1, 1], ScriptedDice.attack_sides(countered.units[2])
+		+ ScriptedDice.damage_sides(countered.units[0], "counter"))
+	await ai.play_turn(countered.units[2], countered.actions)
+	_check(countered.units[2].hit_points == 0 and countered.units[0].reaction_left == 0 and not countered.actions.busy
+		and countered.turns.current_unit != countered.units[2], "반격으로 쓰러진 AI는 턴을 넘김")
 
 
 func _test_archer() -> void:
@@ -718,8 +753,10 @@ func _test_enemy_reactions() -> void:
 	var actor: CombatUnit = f.units[0]
 	var reactor: CombatUnit = f.units[2]
 	var prompts: Array[int] = [0]
-	f.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
-		prompts[0] += 1
+	# 적 기회 공격이 빗나가면 아군 전사의 반격 창이 뜰 수 있다. 여기서는 적 반응의 확인 창만 센다.
+	f.actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
+		if kind != "counter":
+			prompts[0] += 1
 		f.actions.resolve_reaction(false)
 	)
 	f.actions.dice.seed = 2

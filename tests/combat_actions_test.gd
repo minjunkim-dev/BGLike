@@ -729,6 +729,8 @@ func _test_crate_ai_path() -> void:
 	f.actions.dice = _dice_for([6], [20])
 	_check(f.actions.attack_prop(ally, crate), "아군의 기본 공격으로 좁은 길의 상자를 부순다")
 	f.turns.end_turn()
+	# 빗나간 공격에 반격 창이 뜨지 않게 한다. 이 검사는 AI의 이동과 공격만 본다.
+	ally.reaction_left = 0
 	f.actions.dice = _dice_for([1], ScriptedDice.attack_sides(enemy))
 	await ai.play_turn(enemy, f.actions)
 	_check(enemy.cell == Vector2i(2, 0) and enemy.action_left == 0 and ally.hit_points == 11,
@@ -1428,8 +1430,8 @@ func _test_spiderling_stats_and_damage() -> void:
 			and _ability_sides(spiderling) == [4, 8, 4, 4, 4, 4], "새끼 거미의 HP·방어·공격은 모든 막에서 고정")
 		_check(spiderling.movement_left == 6, "새끼 거미의 능력치·이동력")
 		for action: String in CombatActionRules.NAMES:
-			_check(CombatActionRules.belongs_to(spiderling, action) == (action in ["attack", "jump"]),
-				"새끼 거미는 기본 공격과 공용 점프만 사용: " + action)
+			_check(CombatActionRules.belongs_to(spiderling, action) == (action in ["attack", "jump", "opportunity"]),
+				"새끼 거미는 기본 공격과 공용 점프·기회 공격만 사용 (#434): " + action)
 		f.turns.end_turn()
 		f.turns.end_turn()
 		f.units[0].reaction_left = 0
@@ -2836,11 +2838,12 @@ func _test_self_ground_expiry() -> void:
 	var f: Fixture = _fixture()
 	var target: CombatUnit = f.units[0]
 	f.actions.create_ground(target, target.cell, "burn")
-	f.actions.dice = _dice_for([2, 2], [4, 4])
-	for expected_hp: int in [9, 7, 7]:
+	f.actions.dice = _dice_for([2, 1, 3, 1], [4, 4, 4, 4])
+	# 발동 먼저, 기간 감소 나중(#437): 기간 1이 남은 자기 장판도 소멸 전에 한 번 더 화상을 부여한다.
+	for expected_hp: int in [9, 5, 4]:
 		for index: int in range(4):
 			f.turns.end_turn()
-		_check(target.hit_points == expected_hp, "자기 장판도 만료 먼저, 이미 부여한 화상은 자기 기간 유지: " + str(expected_hp))
+		_check(target.hit_points == expected_hp, "자기 장판은 틱 뒤에 만료, 이미 부여한 화상은 자기 기간 유지: " + str(expected_hp))
 	_check(f.actions.get_grounds().is_empty() and target.status_effects.is_empty(), "자기 장판과 뒤늦게 받은 화상 모두 정상 만료")
 
 
@@ -3025,11 +3028,12 @@ func _test_self_status_expiry() -> void:
 	var f: Fixture = _fixture()
 	var target: CombatUnit = f.units[0]
 	f.actions.apply_status(target, target, "burn")
-	f.actions.dice = _dice_for([2], [4])
-	for expected_hp: int in [9, 9]:
+	f.actions.dice = _dice_for([2, 3], [4, 4])
+	for expected_hp: int in [9, 6]:
 		for index: int in range(4):
 			f.turns.end_turn()
-		_check(target.hit_points == expected_hp, "자기 시전자도 만료를 대상 틱보다 먼저 처리: " + str(expected_hp))
+		_check(target.hit_points == expected_hp, "자기 시전자 효과도 틱 뒤에 기간 감소(#437): " + str(expected_hp))
+	_check(target.status_effects.is_empty(), "기간 2 화상은 두 번 틱한 뒤 만료")
 
 
 func _test_status_removed_during_tick() -> void:
@@ -3837,6 +3841,8 @@ func _test_jump_scene_animation() -> void:
 	units[3].cell = Vector2i(9, 9)
 	ScriptedDice.arrange_turns(turns, units, [units[1], units[0], units[3], units[2]])
 	turns.select_unit(actor)
+	# 빗나간 기회 공격에 반격 창이 뜨지 않게 한다. 이 검사는 점프 연출만 본다.
+	actor.reaction_left = 0
 	actions.dice = _dice_for([1], ScriptedDice.attack_sides(units[2]))
 	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(destination)
 	((hud.get("_actions") as Dictionary)["jump"] as Button).pressed.emit()

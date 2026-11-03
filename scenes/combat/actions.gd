@@ -87,6 +87,8 @@ var reaction_answers: Array[bool] = []
 var replay_answers: Array[bool] = []
 var _grounds: Array[Ground] = []
 var _clock_slots: Array[ClockSlot] = []
+## 턴 시작의 틱까지 처리했고 기간 감소는 아직인 유닛. 이 틱으로 쓰러지면 쓰러질 때 바로 줄인다.
+var _pending_decrease: CombatUnit
 var _revision: int = 0
 
 
@@ -375,36 +377,21 @@ func _can_continue_rock(actor: CombatUnit, prop: CombatGrid.Prop, cell: Vector2i
 
 
 func _on_turn_started(unit: CombatUnit) -> void:
-	# 쓰러진 시전자의 자리는 이 유닛 바로 앞이라 먼저 줄인다.
+	# 쓰러진 시전자의 자리는 이 유닛 바로 앞이라 이 유닛의 시작보다 먼저 줄인다.
 	for slot: ClockSlot in _clock_slots.duplicate():
 		if slot.anchor == unit:
 			if slot.skip:
 				slot.skip = false
 			else:
 				_tick_unit_effects(slot.caster)
-	_tick_unit_effects(unit)
-	_clock_slots = _clock_slots.filter(func(slot: ClockSlot) -> bool: return _has_unit_effects(slot.caster))
-	var ground_messages: Array[String] = []
-	for ground: Ground in _grounds.duplicate():
-		if ground not in _grounds:
-			continue
-		ground.entered.erase(unit)
-		if ground.source == unit:
-			ground.turns_left -= 1
-			if ground.turns_left == 0:
-				_grounds.erase(ground)
-				ground_messages.append(tr("%s %s 장판 만료: %d, %d") % [unit.get_display_name(),
-					tr("불") if ground.kind == "burn" else tr("독"), ground.cell.x, ground.cell.y])
+	# 턴 시작 순서: ① 기절 해제 → ② 시작 시 발동 → ③ 시전자 기준 기간 감소 (전투 시스템 기획서 6-1).
+	var revision: int = _revision
+	_pending_decrease = unit
 	for target: CombatUnit in units:
 		if target.stun_source == unit:
 			target.is_stunned = false
-		for effect: CombatUnit.StatusEffect in target.status_effects.duplicate():
-			if effect.source == unit:
-				effect.turns_left -= 1
-				if effect.turns_left == 0:
-					target.status_effects.erase(effect)
-	for message: String in ground_messages:
-		logged.emit(message)
+	for ground: Ground in _grounds:
+		ground.entered.erase(unit)
 	_clear_burn_in_water(unit)
 	if unit.overloaded and unit.hit_points > 0 and not is_over():
 		_damage(unit, 2)
@@ -441,7 +428,33 @@ func _on_turn_started(unit: CombatUnit) -> void:
 		_damage(unit, amount)
 		logged.emit(tr("%s %s: %d · HP %d") % [unit.get_display_name(), name, amount, unit.hit_points])
 		feedback.emit(unit, "%s %d" % [name, amount])
+	_pending_decrease = null
+	# 틱으로 쓰러졌으면 이번 몫은 쓰러질 때 이미 줄였다.
+	if revision == _revision and not is_over() and unit.hit_points > 0:
+		_decrease_durations(unit)
 	changed.emit()
+
+
+## unit이 시전자인 유닛 효과·상태 이상·장판의 기간을 1 줄이고 0이면 해제한다.
+func _decrease_durations(unit: CombatUnit) -> void:
+	_tick_unit_effects(unit)
+	_clock_slots = _clock_slots.filter(func(slot: ClockSlot) -> bool: return _has_unit_effects(slot.caster))
+	var ground_messages: Array[String] = []
+	for ground: Ground in _grounds.duplicate():
+		if ground.source == unit:
+			ground.turns_left -= 1
+			if ground.turns_left == 0:
+				_grounds.erase(ground)
+				ground_messages.append(tr("%s %s 장판 만료: %d, %d") % [unit.get_display_name(),
+					tr("불") if ground.kind == "burn" else tr("독"), ground.cell.x, ground.cell.y])
+	for target: CombatUnit in units:
+		for effect: CombatUnit.StatusEffect in target.status_effects.duplicate():
+			if effect.source == unit:
+				effect.turns_left -= 1
+				if effect.turns_left == 0:
+					target.status_effects.erase(effect)
+	for message: String in ground_messages:
+		logged.emit(message)
 
 
 ## 시전자 기준 시계의 유닛 효과(성스러운 장막, 전투의 함성)를 1턴 줄인다 (동작 유형 기획서 4-5).
@@ -582,6 +595,9 @@ func _keep_clock_slot(target: CombatUnit) -> void:
 			slot.skip = (slot.skip and turns.is_turn_activated(target)
 				or _settle_clock_slot(slot.caster, slot.skip or turns.is_turn_activated(target), follows))
 	if next != null and _has_unit_effects(target):
+		# 자기 턴 시작의 틱으로 쓰러지면 다른 유닛이 이어 움직이기 전에 이번 몫(6-1 ⑥)을 줄인다.
+		if target == _pending_decrease:
+			_tick_unit_effects(target)
 		var skip: bool = _settle_clock_slot(target, turns.is_turn_activated(target), follows)
 		if _has_unit_effects(target):
 			_clock_slots.append(ClockSlot.new(target, next, skip))
@@ -655,15 +671,17 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	busy = true
 	changed.emit()
 	for reactor: CombatUnit in jump_reactors(actor, destination):
-		var chance: float = grid.attack_preview(reactor, actor).chance
-		if await _ask_reaction(reactor, "opportunity", tr("%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)") % [CombatUnit.with_subject_particle(actor.get_display_name()), chance * 100.0]):
-			reactor.spend_resource(CombatUnit.TurnResource.REACTION)
-			if not reactor.is_ally:
-				logged.emit(tr("%s 기회 공격: 반응 사용") % reactor.get_display_name())
-			await _perform_attack(reactor, actor, "opportunity")
-		if actor.hit_points <= 0:
+		await _opportunity_attack(reactor, actor)
+		if actor.hit_points <= 0 or actor.movement_left == 0 or is_over():
 			break
-	if actor.hit_points <= 0:
+	# 반격으로 마지막 적이 쓰러지면 전투가 끝나 점프하지 않는다.
+	if actor.hit_points <= 0 or is_over():
+		_finish()
+		return true
+	# 괴력의 사내로 멈춘 점프는 비용을 돌려주지 않고 출발 칸에 남는다 (전사 문서).
+	if actor.movement_left == 0:
+		actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
+		logged.emit(tr("%s 점프: 이동 정지, 보조 행동1 소비") % actor.get_display_name())
 		_finish()
 		return true
 	actor.spend_movement(cells[destination])
@@ -756,10 +774,10 @@ func sweep_targets(actor: CombatUnit, facing: Vector2i) -> Array[CombatUnit]:
 	return targets
 
 
-## 영향 칸에 적이 없는 방향은 효과가 없어 고를 수 없다 (9-3 "효과가 없을 때" 비활성).
+## 정면은 맵 안의 인접 4칸 중 하나다. 반달에 적이 없어도 고를 수 있다 (#407 답 5a, 9-3 "효과가 없을 때" 비활성의 예외).
 func can_sweep(actor: CombatUnit, facing: Vector2i) -> bool:
 	return (actor != null and CombatActionRules.belongs_to(actor, "sweep") and actor.action_left > 0
-		and not sweep_targets(actor, facing).is_empty())
+		and CombatGrid.distance(actor.cell, facing) == 1 and grid.is_inside(facing))
 
 
 ## 휩쓸기 대상의 명중률. 반달의 대각선 칸은 기본 공격 사거리 밖이라 attack_preview의 chance를 쓰지 않는다.
@@ -870,15 +888,11 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 				if (reactor.hit_points > 0 and not reactor.is_stunned and reactor.is_ally != actor.is_ally
 					and CombatActionRules.belongs_to(reactor, "opportunity") and reactor.reaction_left > 0
 					and grid.leaves_reach(reactor, actor.cell, step)):
-					var chance: float = grid.attack_preview(reactor, actor).chance
-					if await _ask_reaction(reactor, "opportunity", tr("%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)") % [CombatUnit.with_subject_particle(actor.get_display_name()), chance * 100.0]):
-						reactor.spend_resource(CombatUnit.TurnResource.REACTION)
-						if not reactor.is_ally:
-							logged.emit(tr("%s 기회 공격: 반응 사용") % reactor.get_display_name())
-						await _perform_attack(reactor, actor, "opportunity")
-					if actor.hit_points <= 0:
+					await _opportunity_attack(reactor, actor)
+					if actor.hit_points <= 0 or actor.movement_left == 0 or is_over():
 						break
-		if actor.hit_points <= 0:
+		# 반격으로 마지막 적이 쓰러지면 전투가 끝나 더 걷지 않는다.
+		if actor.hit_points <= 0 or actor.movement_left == 0 or is_over():
 			break
 		if movement_animation.is_valid():
 			await movement_animation.call(actor, step)
@@ -1032,7 +1046,8 @@ func cross_slash(actor: CombatUnit, target: CombatUnit) -> bool:
 
 
 ## 강철 돌진: 보조 행동과 이동력 1을 써서 인접한 적을 공격한다. 명중하면 피해 뒤 1칸 밀고 빈 칸으로 1칸 전진한다.
-## 밀려날 칸이 맵 밖·장벽·나무 상자·바위·유닛·더 높은 칸이면 피해만 준다. 전진은 기회 공격을 받지 않는다.
+## 피해로 쓰러지면 밀침 없이 대상이 있던 칸으로 전진한다. 밀려날 칸이 맵 밖·장벽·나무 상자·바위·유닛·더 높은 칸이면
+## 피해만 준다. 전진은 기회 공격을 받지 않는다.
 func steel_charge(actor: CombatUnit, target: CombatUnit) -> bool:
 	if not _can_act(actor) or not can_target(actor, target, "steel_charge"):
 		return false
@@ -1042,8 +1057,12 @@ func steel_charge(actor: CombatUnit, target: CombatUnit) -> bool:
 	CombatActionRules.spend_use(actor, "steel_charge")
 	changed.emit()
 	var origin: Vector2i = target.cell
-	if await _perform_attack(actor, target, "steel_charge") and target.hit_points > 0 and not is_over():
-		if grid.can_shove(actor, target):
+	if await _perform_attack(actor, target, "steel_charge") and not is_over():
+		if target.hit_points <= 0:
+			if actor.hit_points > 0 and grid.unit_at(origin) == null:
+				_land(actor, origin)
+				logged.emit(tr("%s 강철 돌진: 쓰러진 대상의 칸으로 전진") % actor.get_display_name())
+		elif grid.can_shove(actor, target):
 			_land(target, grid.push_destination(actor.cell, origin))
 			if actor.hit_points > 0 and not is_over() and grid.unit_at(origin) == null:
 				_land(actor, origin)
@@ -1118,6 +1137,44 @@ func _can_act(actor: CombatUnit) -> bool:
 		and not actor.is_stunned and not busy and not is_over())
 
 
+## 인접 칸을 벗어나려는 actor에게 reactor가 하는 기회 공격. 아군은 확인 창으로 묻는다.
+## 괴력의 사내: 전사의 기회 공격이 명중하면 actor의 이동력을 즉시 0으로 만든다. 묶음 확정의 자원 회복으로 돌아온다.
+func _opportunity_attack(reactor: CombatUnit, actor: CombatUnit) -> void:
+	var brawn: bool = CombatActionRules.belongs_to(reactor, "brawn")
+	var prompt: String = tr("%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)") % [
+		CombatUnit.with_subject_particle(actor.get_display_name()), grid.attack_preview(reactor, actor).chance * 100.0]
+	if brawn:
+		prompt += "\n" + tr("명중하면 이동을 멈춥니다.")
+	if not await _ask_reaction(reactor, "opportunity", prompt):
+		return
+	reactor.spend_resource(CombatUnit.TurnResource.REACTION)
+	if not reactor.is_ally:
+		logged.emit(tr("%s 기회 공격: 반응 사용") % reactor.get_display_name())
+	if await _perform_attack(reactor, actor, "opportunity") and brawn and actor.hit_points > 0:
+		actor.movement_left = 0
+		logged.emit(tr("%s 괴력의 사내: %s 이동 정지") % [reactor.get_display_name(), actor.get_display_name()])
+		feedback.emit(actor, tr("이동 정지"))
+
+
+## 반격: reactor를 겨눈 인접한 attacker의 명중굴림이 빗나가면 반응을 써서 명중굴림 없이 피해를 준다 (전사 문서).
+func _counter(reactor: CombatUnit, attacker: CombatUnit) -> void:
+	if not (CombatActionRules.belongs_to(reactor, "counter") and reactor.is_ally != attacker.is_ally
+		and reactor.reaction_left > 0 and reactor.hit_points > 0 and not reactor.is_stunned
+		and attacker.hit_points > 0 and grid.are_adjacent(reactor.cell, attacker.cell)):
+		return
+	var ability: CombatUnit.Ability = CombatActionRules.damage_ability(reactor, "counter")
+	var prompt: String = tr("%s의 공격이 빗나갔습니다. 반격할까요? (반드시 명중, 피해 %s d%d + 레벨 + 기타 가산치)") % [
+		attacker.get_display_name(), CombatUnit.ability_name(ability), reactor.get_ability_sides(ability)]
+	if not await _ask_reaction(reactor, "counter", prompt):
+		return
+	reactor.spend_resource(CombatUnit.TurnResource.REACTION)
+	if attack_animation.is_valid():
+		await attack_animation.call(reactor, attacker)
+	if reactor.hit_points <= 0 or attacker.hit_points <= 0 or is_over():
+		return
+	_deal_damage(reactor, attacker, "counter", false, false)
+
+
 func _ask_reaction(reactor: CombatUnit, kind: String, prompt: String) -> bool:
 	if not reactor.is_ally:
 		return true
@@ -1180,6 +1237,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> b
 		str(last_attack.rolls), hit_bonus, last_attack.total, armor_class, outcome])
 	if not last_attack.success:
 		feedback.emit(target, tr("빗나감"))
+		await _counter(target, actor)
 		return false
 	_deal_damage(actor, target, action, actor.marked_target == target, false)
 	if action == "shock" and target.hit_points > 0:
@@ -1250,6 +1308,10 @@ func _deal_damage(actor: CombatUnit, target: CombatUnit, action: String, has_mar
 		logged.emit(tr("%s 피해 (휩쓸기 ÷2 올림): %s d%d %s → %d %+d = %d · HP %d") % [target.get_display_name(),
 			CombatUnit.ability_name(damage_ability), damage_sides, str(last_damage_rolls),
 			ceili(last_damage_rolls[0] / 2.0), damage_bonus, last_damage, target.hit_points])
+	elif action == "counter":
+		logged.emit(tr("%s 피해 (반격, 반드시 명중): %s d%d %s %+d = %d · HP %d") % [target.get_display_name(),
+			CombatUnit.ability_name(damage_ability), damage_sides, str(last_damage_rolls),
+			damage_bonus, last_damage, target.hit_points])
 	elif has_mark_damage:
 		logged.emit(tr("%s 피해 (표식 추가): %s d%d %s + d6 %s %+d = %d · HP %d") % [target.get_display_name(),
 			CombatUnit.ability_name(damage_ability), damage_sides, str([last_damage_rolls[0]]),

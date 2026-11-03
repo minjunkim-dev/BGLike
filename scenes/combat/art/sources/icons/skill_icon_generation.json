@@ -28,6 +28,7 @@
     {"id": "holy_veil", "name": "성스러운 장막", "effect": "HP보다 먼저 피해를 받는 방어막", "brief": "Heater shield with a steel rim, indigo face and a brass cross.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/423"},
     {"id": "battle_cry", "name": "전투의 함성", "effect": "모든 아군의 명중굴림에 의지 굴림값", "brief": "Red banner on a wooden pole with a brass knob and white shout lines on the right.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/423"},
     {"id": "opportunity", "name": "기회 공격", "effect": "적이 인접 칸을 벗어나면 기본 공격", "brief": "Watching eye at the upper left; a sword with its blade pointing down-left and a white slash arc at the lower right."},
+    {"id": "counter", "name": "반격", "effect": "나를 노린 인접한 적의 명중굴림이 빗나가면 반드시 명중하는 반격", "brief": "White return arrow along the top, in from the left, round the right end and back to the left; a short sword striking up-right from the lower left.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/435"},
     {"id": "mark", "name": "표식", "effect": "맞히면 피해 +1d6", "brief": "Red and white target board with a wooden arrow stuck in the bullseye."},
     {"id": "shock", "name": "충격 화살", "effect": "명중하면 기절", "brief": "Wooden arrow with steel head and teal fletching flying up-right, a brass lightning bolt beside the head."},
     {"id": "disengage", "name": "물러서며 쏘기", "effect": "남은 이동에서 기회 공격을 받지 않음", "brief": "Teal arrow pointing back to the left above a leather boot; white speed lines trail on the toe side as it slides left."},
