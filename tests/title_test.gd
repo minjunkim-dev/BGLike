@@ -221,6 +221,7 @@ func _check_settings_kept() -> void:
 	_check(GameSettings.volume() == 10 and GameSettings.fullscreen() and GameSettings.fill_screen(),
 		"새 게임 뒤에도 설정 유지")
 	AudioServer.set_bus_volume_linear(0, 1.0)
+	GameSettings.apply_screen_fit(root, false)  # 저장한 값(켬)을 새 타이틀이 적용하는지 보려고 되돌린다.
 	var title: TitleScreen = (load("res://scenes/main.tscn") as PackedScene).instantiate() as TitleScreen
 	root.add_child(title)
 	await process_frame

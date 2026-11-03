@@ -25,7 +25,8 @@ func open() -> void:
 	volume_slider.set_value_no_signal(volume)
 	_show_volume(volume)
 	fullscreen_box.set_pressed_no_signal(GameSettings.fullscreen())
-	fill_box.set_pressed_no_signal(GameSettings.fill_screen())
+	# 쓰기에 실패했어도 적용된 값을 보인다.
+	fill_box.set_pressed_no_signal(get_window().content_scale_stretch == Window.CONTENT_SCALE_STRETCH_FRACTIONAL)
 	show()
 	volume_slider.grab_focus()
 
