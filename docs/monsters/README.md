@@ -111,7 +111,7 @@
 | [풋내기 궁수](novice-archer.md) | 일반 / 원거리 | 2, 3 | 시험 적 궁수 | ✅ 구현 #107 |
 | [새끼 거미](spiderling.md) | 일반 / 근접 | 1, 2, 3 | 없음 | ✅ 구현 #108·#109 |
 | [엄마 거미](mother-spider.md) | 일반 / 지원 | 2, 3 | 없음 | ✅ 구현 #109 |
-| [독안개 거미](fog-spider.md) | 일반 / 지원 | 3 | 없음 | 🟡 기획 확정, 구현 전 ([#305](https://github.com/minjunkim-dev/BGLike/issues/305)) |
+| [독안개 거미](fog-spider.md) | 일반 / 지원 | 3 | 없음 | ✅ 기획 확정, 구현 전 ([#305](https://github.com/minjunkim-dev/BGLike/issues/305)) |
 | [고철로봇-1000](scrap-robot-1000.md) | 보스 / 근접 | 1 | 없음 | ✅ 구현 #110 |
 | [고철로봇-2000](scrap-robot-2000.md) | 보스 / 근접 | 2 | 없음 | ✅ 구현 #111 |
 | [고철로봇-3000](scrap-robot-3000.md) | 보스 / 근접 | 3 | 없음 | ✅ 구현 #112 |
