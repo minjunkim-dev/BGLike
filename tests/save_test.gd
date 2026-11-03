@@ -116,8 +116,8 @@ func _test_interrupted_write() -> void:
 
 
 func _test_settings_survive_delete() -> void:
-	_check(GameSettings.volume() == GameSettings.VOLUME_DEFAULT and not GameSettings.fullscreen(),
-		"설정이 없으면 기본값: 음량 %d%%, 창" % GameSettings.VOLUME_DEFAULT)
+	_check(GameSettings.volume() == GameSettings.VOLUME_DEFAULT and not GameSettings.fullscreen()
+		and not GameSettings.fill_screen(), "설정이 없으면 기본값: 음량 %d%%, 창, 화면 맞춤 끔" % GameSettings.VOLUME_DEFAULT)
 	_check(GameSettings.write("master_volume", 30) == OK, "설정 쓰기 성공")
 	GameSettings.write("fullscreen", true)
 	_check(GameSettings.path != GameSave.path, "설정은 게임 저장과 다른 파일")
@@ -130,8 +130,8 @@ func _test_settings_survive_delete() -> void:
 		GameSettings.write("master_volume", case[0])
 		_check(GameSettings.volume() == case[1], "음량 %s → %d: %d" % [case[0], case[1], GameSettings.volume()])
 	_write_raw(GameSettings.path, "[settings\nmaster_volume=".to_utf8_buffer())
-	_check(GameSettings.volume() == GameSettings.VOLUME_DEFAULT and not GameSettings.fullscreen(),
-		"깨진 설정 파일은 기본값")
+	_check(GameSettings.volume() == GameSettings.VOLUME_DEFAULT and not GameSettings.fullscreen()
+		and not GameSettings.fill_screen(), "깨진 설정 파일은 기본값")
 
 
 func _write_raw(target: String, bytes: PackedByteArray) -> void:

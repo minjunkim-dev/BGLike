@@ -25,7 +25,7 @@ func _initialize() -> void:
 
 
 func _start() -> void:
-	GameSettings.apply()
+	GameSettings.apply(root)
 	var game: Node = instantiate_game()
 	root.add_child(game)
 	current_scene = game
