@@ -70,6 +70,7 @@ func _run() -> void:
 	_test_turn_start_order()
 	_test_phalanx()
 	await _test_brawn()
+	await _test_counter()
 	_test_save_state()
 	for unit: CombatUnit in _created:
 		unit.free()
@@ -102,7 +103,7 @@ func _test_stats() -> void:
 func _test_skill_ownership() -> void:
 	var f: Fixture = _fixture()
 	var warrior: CombatUnit = f.units[0]
-	for action: String in ["cross_slash", "steel_charge", "holy_veil", "battle_cry", "phalanx", "brawn", "opportunity"]:
+	for action: String in ["cross_slash", "steel_charge", "holy_veil", "battle_cry", "phalanx", "brawn", "counter", "opportunity"]:
 		_check(CombatActionRules.belongs_to(warrior, action), "아군 전사의 스킬: " + action)
 		_check(not CombatActionRules.belongs_to(f.units[1], action), "아군 궁수는 전사 스킬 없음: " + action)
 		_check(not CombatActionRules.belongs_to(f.units[2], action) or action == "opportunity",
@@ -112,7 +113,7 @@ func _test_skill_ownership() -> void:
 	for action: String in ["parry", "surge"]:
 		_check(action not in CombatActionRules.NAMES and action not in CombatActionRules.USE_COUNTERS
 			and not CombatActionRules.GROUPS.any(func(group: Array) -> bool: return action in group), "옛 스킬 삭제: " + action)
-	_check(CombatActionRules.GROUPS[2] == ["opportunity"], "반응 묶음은 기회 공격만")
+	_check(CombatActionRules.GROUPS[2] == ["opportunity", "counter"], "반응 묶음은 기회 공격과 반격")
 
 
 func _test_combat_uses() -> void:
@@ -675,6 +676,132 @@ func _test_brawn() -> void:
 	_check("괴력의 사내" in CombatActionRules.effect(enemy.units[0], "opportunity")
 		and "괴력의 사내" not in CombatActionRules.effect(enemy.units[2], "opportunity"),
 		"패시브 칸 대신 전사의 기회 공격 호버에 괴력의 사내 안내")
+
+
+## 반격 fixture: 기본은 야만인(5,4) 차례. 전사(4,4)는 반응 1, 확인 창은 answer로 답한다. prompts에 (종류, 문구)를 모은다.
+func _counter_fixture(answer: bool, prompts: Array[Array], order: Array[int] = [2, 0, 1, 3]) -> Fixture:
+	var f: Fixture = _fixture(order)
+	f.units[0].reaction_left = 1
+	f.actions.reaction_requested.connect(func(kind: String, prompt: String) -> void:
+		prompts.append([kind, prompt])
+		f.actions.resolve_reaction(answer)
+	)
+	return f
+
+
+func _test_counter() -> void:
+	# 야만인 힘 d10 2 + 3 = 5는 전사 AC 6(팔랑크스)에 빗나간다. 반격은 명중굴림 없이 민첩 d8만 굴린다.
+	var prompts: Array[Array] = []
+	var f: Fixture = _counter_fixture(true, prompts)
+	var warrior: CombatUnit = f.units[0]
+	var barbarian: CombatUnit = f.units[2]
+	warrior.weapon = {"stats": {"damage_bonus": 2}}
+	f.actions.dice = _dice([2, 3], ScriptedDice.attack_sides(barbarian) + ScriptedDice.damage_sides(warrior, "counter"))
+	_check(await f.actions.attack(barbarian, warrior), "야만인이 전사를 공격")
+	_check(f.actions.last_attack.face == CombatChecks.Face.NORMAL and not f.actions.last_attack.success,
+		"보통 빗나감에도 반격")
+	_check(prompts.size() == 1 and prompts[0][0] == "counter" and "빗나갔습니다" in prompts[0][1]
+		and "반드시 명중" in prompts[0][1] and "민첩 d8" in prompts[0][1] and "레벨" in prompts[0][1]
+		and "기타 가산치" in prompts[0][1], "반격 확인 창에 필중과 예상 피해식: " + str(prompts))
+	_check(barbarian.hit_points == 12 - 5 and warrior.reaction_left == 0,
+		"반격 피해 = 민첩 d8 3 + 레벨 0 + 기타 가산치 2, 반응 소비")
+	_check(f.logs.any(func(line: String) -> bool: return "반격" in line and "피해" in line), "반격 피해 로그: " + str(f.logs))
+	_check(not f.actions.busy, "반격 뒤 입력 잠금 해제")
+	var hover: String = CombatActionRules.details(warrior, "counter")
+	_check("사거리: 인접1칸" in hover and "피해: 민첩 d8+2" in hover and "판정: 없음(반드시 명중)" in hover
+		and "명중굴림" in CombatActionRules.effect(warrior, "counter"), "반격 호버: 사거리, 민첩 피해식, 판정 없음: " + hover)
+	# 반격 연출 중 전투를 포기하면 반격 피해를 주지 않고 입력 잠금을 푼다.
+	prompts.clear()
+	var abandoned: Fixture = _counter_fixture(true, prompts)
+	abandoned.actions.attack_animation = func(actor: CombatUnit, _target: CombatUnit) -> void:
+		if actor == abandoned.units[0]:
+			abandoned.actions.give_up()
+		await process_frame
+	abandoned.actions.dice = _dice([1], ScriptedDice.attack_sides(abandoned.units[2]))
+	await abandoned.actions.attack(abandoned.units[2], abandoned.units[0])
+	_check(prompts.size() == 1 and abandoned.actions.is_over() and abandoned.units[2].hit_points == 12
+		and not abandoned.actions.busy, "반격 연출 중 포기하면 피해 없이 잠금 해제")
+	# 넘기면 반응을 쓰지 않는다. 절대실패(1)도 빗나감이다.
+	prompts.clear()
+	var declined: Fixture = _counter_fixture(false, prompts)
+	declined.actions.dice = _dice([1], ScriptedDice.attack_sides(declined.units[2]))
+	await declined.actions.attack(declined.units[2], declined.units[0])
+	_check(prompts.size() == 1 and declined.units[0].reaction_left == 1 and declined.units[2].hit_points == 12,
+		"절대실패에도 묻고, 넘기면 반응과 피해 없음")
+	# 명중, 반응 없음, 기절이면 묻지 않는다.
+	for case: String in ["hit", "no_reaction", "stunned"]:
+		prompts.clear()
+		var quiet: Fixture = _counter_fixture(true, prompts)
+		quiet.units[0].reaction_left = 0 if case == "no_reaction" else 1
+		quiet.units[0].is_stunned = case == "stunned"
+		# 기절한 대상은 유리(2개)라 둘 다 1로 빗나가게 한다.
+		var rolls: Array[int] = []
+		rolls.assign({"hit": [10, 1], "no_reaction": [2], "stunned": [1, 1]}[case])
+		var sides: Array[int] = ScriptedDice.attack_sides(quiet.units[2], 2 if case == "stunned" else 1)
+		if case == "hit":
+			sides += ScriptedDice.damage_sides(quiet.units[2])
+		quiet.actions.dice = _dice(rolls, sides)
+		await quiet.actions.attack(quiet.units[2], quiet.units[0])
+		_check(prompts.is_empty() and quiet.units[2].hit_points == 12, "반격 확인 창 없음: " + case)
+	# 인접 아군을 겨눈 공격과 인접하지 않은 공격자에게는 발동하지 않는다.
+	prompts.clear()
+	var ally: Fixture = _counter_fixture(true, prompts)
+	# 야만인(5,4)은 전사와 인접한 채로 (5,5)의 궁수를 노린다.
+	ally.units[1].cell = Vector2i(5, 5)
+	ally.actions.dice = _dice([1], ScriptedDice.attack_sides(ally.units[2]))
+	await ally.actions.attack(ally.units[2], ally.units[1])
+	_check(prompts.is_empty(), "인접 아군을 겨눈 빗나감에는 반격 없음")
+	var ranged: Fixture = _fixture([3, 0, 1, 2])
+	ranged.units[0].reaction_left = 1
+	ranged.units[2].cell = Vector2i(5, 6)
+	var ranged_prompts: Array[String] = []
+	ranged.actions.reaction_requested.connect(func(_kind: String, prompt: String) -> void:
+		ranged_prompts.append(prompt)
+		ranged.actions.resolve_reaction(true)
+	)
+	ranged.actions.dice = _dice([1], ScriptedDice.attack_sides(ranged.units[3]))
+	await ranged.actions.attack(ranged.units[3], ranged.units[0])
+	_check(ranged_prompts.is_empty() and ranged.units[3].hit_points == 14, "3칸 밖 궁수의 빗나감에는 반격 없음")
+	# 인접해서 쏜 원거리 공격자에게는 반격한다. 옆에 적이 있어 불리(2개)다.
+	ranged.units[3].cell = Vector2i(4, 5)
+	ranged.units[3].action_left = 1
+	ranged.actions.dice = _dice([1, 1, 4], ScriptedDice.attack_sides(ranged.units[3], 2)
+		+ ScriptedDice.damage_sides(ranged.units[0], "counter"))
+	await ranged.actions.attack(ranged.units[3], ranged.units[0])
+	_check(ranged_prompts.size() == 1 and ranged.units[3].hit_points == 10, "인접 원거리 공격자에게 반격")
+	# 적의 기회 공격이 빗나가도 반격한다. 반응은 기회 공격과 나눠 쓴다.
+	prompts.clear()
+	var moving: Fixture = _counter_fixture(true, prompts, [0, 1, 2, 3])
+	moving.units[2].reaction_left = 1
+	moving.actions.dice = _dice([2, 6], ScriptedDice.attack_sides(moving.units[2])
+		+ ScriptedDice.damage_sides(moving.units[0], "counter"))
+	_check(await moving.actions.move_to(moving.units[0], Vector2i(4, 6)), "전사가 야만인 곁을 벗어남")
+	_check(prompts.size() == 1 and prompts[0][0] == "counter" and moving.units[2].hit_points == 6
+		and moving.units[0].reaction_left == 0 and moving.units[0].cell == Vector2i(4, 6),
+		"빗나간 기회 공격에 반격하고 이동은 이어 감")
+	# 걷기를 노린 마지막 적이 반격으로 쓰러지면 그 칸에서 멈춘다.
+	prompts.clear()
+	var walking: Fixture = _counter_fixture(true, prompts, [0, 1, 2, 3])
+	walking.actions.incapacitate(walking.units[3])
+	walking.units[2].hit_points = 1
+	walking.units[2].reaction_left = 1
+	walking.actions.dice = _dice([1, 1], ScriptedDice.attack_sides(walking.units[2])
+		+ ScriptedDice.damage_sides(walking.units[0], "counter"))
+	_check(await walking.actions.move_to(walking.units[0], Vector2i(4, 6)), "전사가 야만인 곁에서 걷기")
+	_check(prompts.size() == 1 and walking.actions.is_victory() and walking.units[0].cell == Vector2i(4, 4)
+		and walking.units[0].movement_left == 3 and not walking.actions.busy, "반격으로 이긴 뒤 더 걷지 않음")
+	# 점프를 노린 마지막 적이 반격으로 쓰러지면 전투가 끝나 점프하지 않는다.
+	prompts.clear()
+	var jumping: Fixture = _counter_fixture(true, prompts, [0, 1, 2, 3])
+	jumping.actions.incapacitate(jumping.units[3])
+	jumping.units[2].hit_points = 1
+	jumping.units[2].reaction_left = 1
+	jumping.actions.dice = _dice([1, 1], ScriptedDice.attack_sides(jumping.units[2])
+		+ ScriptedDice.damage_sides(jumping.units[0], "counter"))
+	_check(await jumping.actions.jump_to(jumping.units[0], Vector2i(4, 6)), "전사가 야만인 곁에서 점프")
+	_check(prompts.size() == 1 and jumping.actions.is_victory() and jumping.units[0].cell == Vector2i(4, 4)
+		and jumping.units[0].bonus_action_left == 1 and not jumping.actions.busy,
+		"반격으로 이긴 뒤 점프 비용·착지 없음")
 
 
 func _test_save_state() -> void:

@@ -236,7 +236,7 @@ func add_log(message: String) -> void:
 
 func show_reaction(kind: String, prompt: String) -> void:
 	reaction_dialog.dialog_text = prompt
-	reaction_dialog.get_ok_button().text = tr("공격")
+	reaction_dialog.get_ok_button().text = tr("반격") if kind == "counter" else tr("공격")
 	reaction_dialog.get_cancel_button().text = tr("넘기기")
 	reaction_dialog.exclusive = true
 	reaction_dialog.popup_centered(Vector2i(360, 110))

@@ -190,12 +190,17 @@ text = "반응"
 
 [node name="Reactions1" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
-text = "반응은 조건이 맞으면 누구의 턴이든 쓰는 실행 기회입니다. 하나뿐이고 자기 턴 시작에 회복합니다. 지금은 기회 공격이 씁니다."
+text = "반응은 조건이 맞으면 누구의 턴이든 쓰는 실행 기회입니다. 하나뿐이고 자기 턴 시작에 회복합니다. 기회 공격과 전사의 반격이 함께 씁니다."
 autowrap_mode = 3
 
 [node name="Reactions2" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
 text = "기회 공격(근접 기본 공격을 가진 모든 유닛): 상대가 스스로 인접 칸을 벗어날 때 기본 공격을 합니다. 점프도 포함하고, 밀치기와 물러서며 쏘기의 이동은 기회 공격을 받지 않습니다. 전사의 괴력의 사내: 기회 공격이 명중하고 대상이 살아 있으면 그 칸에서 이동을 멈춥니다. 점프였다면 비용을 모두 씁니다."
+autowrap_mode = 3
+
+[node name="Reactions3" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
+layout_mode = 2
+text = "반격(전사): 전사를 노린 인접한 적의 명중굴림이 빗나가면 반격할지 묻습니다. 쓰면 명중굴림 없이 반드시 명중하고, 피해는 민첩 d8 + 레벨 + 기타 가산치입니다."
 autowrap_mode = 3
 
 [node name="Reactions4" type="Label" parent="Margin/Layout/HelpScroll/Topics"]

@@ -3,7 +3,7 @@
 > 플레이어 캐릭터입니다. 2026-10-30에 컨셉부터 다시 디자인했습니다. 능력치와 판정은 [능력치 기획서](../ABILITY_SYSTEM.md), 동작의 정의는 [동작 유형 기획서](../SKILL_TYPES.md), 스킬 규칙은 [전투 시스템 기획서 5장](../COMBAT_DESIGN.md#5-동작)을 따릅니다.
 >
 > - 기준일: 2026-10-30 (전사 재디자인)
-> - **상태: 기획 확정, 1단계([#423](https://github.com/minjunkim-dev/BGLike/issues/423))·2단계([#426](https://github.com/minjunkim-dev/BGLike/issues/426)) 구현.** 수치, 전투마다 횟수, 복합 비용, 십자 베기, 강철 돌진, 성스러운 장막, 팔랑크스, 전투의 함성을 구현했고 옛 스킬(숨 고르기, 흘려내기, 몰아치기)을 없앴습니다. 2단계에서 휩쓸기를 구현했습니다. [#407](https://github.com/minjunkim-dev/BGLike/issues/407)의 2026-11-02 답에 따른 휩쓸기의 빈 반달 사용과 강철 돌진의 쓰러진 대상 칸 전진은 [#436](https://github.com/minjunkim-dev/BGLike/issues/436)에서 구현했습니다. 기회 공격 공용화와 괴력의 사내는 [#434](https://github.com/minjunkim-dev/BGLike/issues/434)에서 구현했습니다. 반격은 [#407](https://github.com/minjunkim-dev/BGLike/issues/407)의 [2026-11-02 답](https://github.com/minjunkim-dev/BGLike/issues/407#issuecomment-6568715948)을 정했고 구현 전입니다. 주사위 레벨은 성장 개발 전이라 0입니다.
+> - **상태: 기획 확정, 1단계([#423](https://github.com/minjunkim-dev/BGLike/issues/423))·2단계([#426](https://github.com/minjunkim-dev/BGLike/issues/426)) 구현.** 수치, 전투마다 횟수, 복합 비용, 십자 베기, 강철 돌진, 성스러운 장막, 팔랑크스, 전투의 함성을 구현했고 옛 스킬(숨 고르기, 흘려내기, 몰아치기)을 없앴습니다. 2단계에서 휩쓸기를 구현했습니다. [#407](https://github.com/minjunkim-dev/BGLike/issues/407)의 2026-11-02 답에 따른 휩쓸기의 빈 반달 사용과 강철 돌진의 쓰러진 대상 칸 전진은 [#436](https://github.com/minjunkim-dev/BGLike/issues/436)에서 구현했습니다. 기회 공격 공용화와 괴력의 사내는 [#434](https://github.com/minjunkim-dev/BGLike/issues/434)에서 구현했습니다. 반격은 [#407](https://github.com/minjunkim-dev/BGLike/issues/407)의 [2026-11-02 답](https://github.com/minjunkim-dev/BGLike/issues/407#issuecomment-6568715948)에 따라 [#435](https://github.com/minjunkim-dev/BGLike/issues/435)에서 구현했습니다. 주사위 레벨은 성장 개발 전이라 0입니다.
 > - 관련 문서: [캐릭터 디자인 기획서](README.md) · [전투 시스템 기획서](../COMBAT_DESIGN.md) · [게임 구조 기획서](../GAME_STRUCTURE.md) · [주사위 육성 논의](../DICE_GROWTH.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
 
@@ -130,7 +130,8 @@
 - 공격자에게 반격 1회를 합니다. 명중굴림이 없고 **무조건 명중**합니다.
 - 피해는 `민첩 d8 + 레벨 + 기타 가산치`입니다. 평균 피해는 레벨 0에서 4.5입니다.
 - 사용 여부를 묻는 확인 창이 뜹니다([전투 시스템 기획서 9-5](../COMBAT_DESIGN.md#9-5-반응-확인-창)). 넘기면 반응은 소비되지 않습니다.
-- 반응 자원은 기회 공격과 나눠 씁니다. 한 라운드에 둘 중 하나만 쓸 수 있습니다.
+- 반응 자원은 기회 공격과 나눠 씁니다. 반응 자원이 남아 있는 만큼 쓸 수 있고 라운드 제한은 없습니다. 지금은 모든 유닛의 반응 자원이 1이라 회복되기 전까지 둘 중 하나만 씁니다 ✅.
+- `개발 결정`([#435](https://github.com/minjunkim-dev/BGLike/issues/435)): "사거리 1(인접)"은 기본 공격의 인접 판정과 같게 상하좌우 1칸·높이 차 1 이하로 봅니다. 반격은 아군 전사만 가집니다(적 풋내기 야만인은 없음).
 - 발동 빈도는 전사의 AC에 달려 있습니다. AC가 높을수록, 팔랑크스처럼 AC를 올리는 효과가 있을수록 자주 발동합니다.
 
 ### 성스러운 장막

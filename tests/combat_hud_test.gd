@@ -367,7 +367,7 @@ func _test_warrior() -> void:
 	_check("자연" not in hud.resource_label.text and "정신" not in hud.resource_label.text,
 		"폐지한 능력치는 유닛 정보에서 제거")
 	var warrior_actions: Array[String] = ["attack", "sweep", "cross_slash", "battle_cry", "holy_veil", "steel_charge",
-		"shove", "potion", "opportunity"]
+		"shove", "potion", "opportunity", "counter"]
 	for action: String in warrior_actions:
 		_check((buttons[action] as Button).is_visible_in_tree(), "전사 동작 표시: " + action)
 	for action: String in ["mark", "shock", "disengage"]:
@@ -1488,10 +1488,10 @@ func _test_skill_bar_keys() -> void:
 				expected.append(button)
 	_check(slots == expected, "숫자 키 순서는 보이는 스킬 버튼의 왼쪽부터")
 	_check(slots.map(func(button: Button) -> String: return by_button[button]) == ["attack", "sweep", "cross_slash", "battle_cry",
-		"holy_veil", "steel_charge", "shove", "jump", "potion", "opportunity"], "전사 숫자 키 순서는 행동·보조 행동·반응 묶음 순")
+		"holy_veil", "steel_charge", "shove", "jump", "potion", "opportunity", "counter"], "전사 숫자 키 순서는 행동·보조 행동·반응 묶음 순")
 	var disabled_seen: int = 0
 	var pressed_seen: int = 0
-	# 숫자 키는 1~9뿐이다. 전사의 열 번째 버튼(기회 공격)은 방향키·D-pad로만 간다.
+	# 숫자 키는 1~9뿐이다. 전사의 열 번째·열한 번째 버튼(기회 공격, 반격)은 방향키·D-pad로만 간다.
 	for slot: int in range(mini(slots.size(), 9)):
 		var button: Button = slots[slot]
 		var action: String = by_button[button]
@@ -2592,6 +2592,11 @@ func _test_reaction_flow() -> void:
 	_check(choices[0] == 2 and not hud.reaction_dialog.visible and not actions.busy, "두 선택의 연결과 입력 잠금 해제")
 	actions.logged.disconnect(on_log)
 	actions.reaction_requested.disconnect(on_reaction)
+	hud.show_reaction("counter", "반격 문구")
+	_check(hud.reaction_dialog.get_ok_button().text == "반격"
+		and hud.reaction_dialog.get_cancel_button().text == "넘기기", "반격 선택 문구")
+	hud.reaction_dialog.get_cancel_button().pressed.emit()
+	await process_frame
 
 
 func _test_reaction_focus() -> void:

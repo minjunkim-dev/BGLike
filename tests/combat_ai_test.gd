@@ -619,6 +619,20 @@ func _test_warrior() -> void:
 	await ai.play_turn(last.units[2], last.actions)
 	_check(last.actions.is_over() and last.units[2].bonus_action_left == 1,
 		"마지막 아군 탈락 후 추가 스킬과 공격 중단")
+	# 아군 전사의 반격으로 자기 턴에 쓰러진 적은 그대로 턴을 넘긴다.
+	var countered: Fixture = _fixture()
+	countered.units[0].reaction_left = 1
+	countered.units[2].hit_points = 1
+	countered.units[2].second_wind_left = 0
+	countered.actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
+		_check(kind == "counter", "AI 공격이 빗나가면 반격 확인 창")
+		countered.actions.resolve_reaction(true)
+	)
+	countered.actions.dice = ScriptedDice.new([1, 1], ScriptedDice.attack_sides(countered.units[2])
+		+ ScriptedDice.damage_sides(countered.units[0], "counter"))
+	await ai.play_turn(countered.units[2], countered.actions)
+	_check(countered.units[2].hit_points == 0 and countered.units[0].reaction_left == 0 and not countered.actions.busy
+		and countered.turns.current_unit != countered.units[2], "반격으로 쓰러진 AI는 턴을 넘김")
 
 
 func _test_archer() -> void:
@@ -739,8 +753,10 @@ func _test_enemy_reactions() -> void:
 	var actor: CombatUnit = f.units[0]
 	var reactor: CombatUnit = f.units[2]
 	var prompts: Array[int] = [0]
-	f.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
-		prompts[0] += 1
+	# 적 기회 공격이 빗나가면 아군 전사의 반격 창이 뜰 수 있다. 여기서는 적 반응의 확인 창만 센다.
+	f.actions.reaction_requested.connect(func(kind: String, _prompt: String) -> void:
+		if kind != "counter":
+			prompts[0] += 1
 		f.actions.resolve_reaction(false)
 	)
 	f.actions.dice.seed = 2
