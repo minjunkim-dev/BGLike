@@ -590,8 +590,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			facing = candidates[0].cell
 		elif prop != null and CombatGrid.distance(actor.cell, prop.cell) == 1:
 			facing = prop.cell
-		else:
+		elif not actions.grid.is_inside(cell):
 			# 낭떠러지 칸은 바닥 타일이 없어 격자 위치로 잡히지 않으므로 인접한 낭떠러지의 윗면으로 찾는다.
+			# 높이 때문에 윗면이 겹쳐도 맵 안 칸이 잡혔으면 그 칸을 정면으로 둔다.
 			for neighbor: Vector2i in CombatGrid.neighbors(actor.cell):
 				if actions.grid.pits.has(neighbor) and map.contains_surface(neighbor, map.to_local(world_position)):
 					facing = neighbor
