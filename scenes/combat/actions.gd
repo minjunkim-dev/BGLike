@@ -672,9 +672,10 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	changed.emit()
 	for reactor: CombatUnit in jump_reactors(actor, destination):
 		await _opportunity_attack(reactor, actor)
-		if actor.hit_points <= 0 or actor.movement_left == 0:
+		if actor.hit_points <= 0 or actor.movement_left == 0 or is_over():
 			break
-	if actor.hit_points <= 0:
+	# 반격으로 마지막 적이 쓰러지면 전투가 끝나 점프하지 않는다.
+	if actor.hit_points <= 0 or is_over():
 		_finish()
 		return true
 	# 괴력의 사내로 멈춘 점프는 비용을 돌려주지 않고 출발 칸에 남는다 (전사 문서).

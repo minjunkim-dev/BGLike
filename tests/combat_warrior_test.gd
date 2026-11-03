@@ -779,6 +779,18 @@ func _test_counter() -> void:
 	_check(prompts.size() == 1 and prompts[0][0] == "counter" and moving.units[2].hit_points == 6
 		and moving.units[0].reaction_left == 0 and moving.units[0].cell == Vector2i(4, 6),
 		"빗나간 기회 공격에 반격하고 이동은 이어 감")
+	# 점프를 노린 마지막 적이 반격으로 쓰러지면 전투가 끝나 점프하지 않는다.
+	prompts.clear()
+	var jumping: Fixture = _counter_fixture(true, prompts, [0, 1, 2, 3])
+	jumping.actions.incapacitate(jumping.units[3])
+	jumping.units[2].hit_points = 1
+	jumping.units[2].reaction_left = 1
+	jumping.actions.dice = _dice([1, 1], ScriptedDice.attack_sides(jumping.units[2])
+		+ ScriptedDice.damage_sides(jumping.units[0], "counter"))
+	_check(await jumping.actions.jump_to(jumping.units[0], Vector2i(4, 6)), "전사가 야만인 곁에서 점프")
+	_check(prompts.size() == 1 and jumping.actions.is_victory() and jumping.units[0].cell == Vector2i(4, 4)
+		and jumping.units[0].bonus_action_left == 1 and not jumping.actions.busy,
+		"반격으로 이긴 뒤 점프 비용·착지 없음")
 
 
 func _test_save_state() -> void:
