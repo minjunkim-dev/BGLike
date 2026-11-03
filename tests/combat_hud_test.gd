@@ -754,15 +754,21 @@ func _test_layout() -> void:
 	root.size = Vector2i(1280, 720)
 	await process_frame
 	# 상태 줄과 공격 예측 원인 줄이 모두 길어진 유닛 정보도 가장 높은 로그와 겹치지 않는다.
+	# 앞 검사가 적 턴으로 끝나므로 아군 턴으로 돌려야 적 미리보기가 유닛 정보를 바꾼다.
+	_reset_units()
 	units[1].marked_target = units[2]
 	units[2].is_stunned = true
 	units[2].overloaded = true
 	actions.apply_status(units[1], units[2], "burn")
 	actions.apply_status(units[0], units[2], "poison")
-	battle.call("preview_enemy", units[2])
+	_check(battle.call("preview_enemy", units[2]), "긴 유닛 정보 fixture: 아군 턴의 적 미리보기")
 	hud.preview_label.text = "명중률 37.5% · 유리\n고지대, 기절한 대상, ◎ 표식, 옆에 적"
 	await process_frame
 	await process_frame
+	_check(hud.unit_label.text == units[2].get_display_name() and "기절" in hud.resource_label.text
+		and "화상1" in hud.resource_label.text and "독1" in hud.resource_label.text
+		and "과부하" in hud.resource_label.text and "◎ 표식" in hud.resource_label.text,
+		"긴 유닛 정보 fixture: 대상의 상태 줄 표시: " + hud.resource_label.text.replace("\n", " | "))
 	_check(not (hud.get_node("UnitDetails") as Control).get_global_rect().intersects(
 		(hud.get_node("CombatLog") as Control).get_global_rect()),
 		"긴 상태·공격 예측의 유닛 정보와 가장 높은 로그는 겹치지 않음: %s / %s" % [
