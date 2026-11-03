@@ -2432,6 +2432,26 @@ func _test_sweep_input() -> void:
 		and units[1].hit_points == units[1].get_max_hit_points() and selection.selected_action == "attack",
 		"같은 칸을 다시 좌클릭하면 실행: ⌈8 ÷ 2⌉ 피해, 아군 제외")
 	actions.dice = saved_dice
+	# #407 답 5a: 반달에 적이 없어도 같은 칸을 다시 좌클릭하면 실행하고 행동을 소비한다.
+	# 정면은 바닥 타일이 없는 낭떠러지 칸으로 둔다. 칠한 칸이면 눌러서 고를 수 있어야 한다.
+	units[2].cell = Vector2i(8, 8)
+	units[3].cell = Vector2i(9, 9)
+	actor.action_left = 1
+	facing = Vector2i(3, 4)
+	var tile_source: int = map.get_cell_source_id(facing)
+	var tile_atlas: Vector2i = map.get_cell_atlas_coords(facing)
+	map.erase_cell(facing)
+	actions.grid.pits = [facing]
+	battle.call("_on_action_selected", "sweep")
+	point = map.get_global_transform_with_canvas() * map.map_to_surface(facing)
+	await _click(point)
+	_check(selection.preview_cell == facing and "영향 칸에 적이 없음" in hud.preview_label.text
+		and "같은 칸을 다시 좌클릭하면 실행합니다." in hud.preview_label.text and actor.action_left == 1,
+		"타일 없는 낭떠러지 정면도 첫 좌클릭에 빈 반달 실행 안내와 함께 미리보기: " + hud.preview_label.text)
+	await _click(point)
+	_check(actor.action_left == 0 and selection.selected_action == "attack", "빈 반달도 같은 칸을 다시 좌클릭하면 실행")
+	actions.grid.pits.clear()
+	map.set_cell(facing, tile_source, tile_atlas)
 	_reset_units()
 
 

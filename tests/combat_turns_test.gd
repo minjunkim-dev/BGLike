@@ -394,8 +394,9 @@ func _test_scene() -> void:
 	_check(current.is_selected, "장면 연결: 현재 유닛 선택 테두리")
 	var style: StyleBoxFlat = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
 	_check(style.bg_color == CombatTurnHud.DEFAULT_BUTTON_COLOR, "이동할 수 있으면 종료 강조 없음")
-	# 전사의 성스러운 장막·전투의 함성은 대상 없이 쓰므로 보조 행동과 함성 횟수도 비운다.
+	# 전사의 성스러운 장막·전투의 함성과 빈 반달 휩쓸기(#436)는 대상 없이 쓰므로 행동·보조 행동과 함성 횟수도 비운다.
 	current.movement_left = 0
+	current.action_left = 0
 	current.bonus_action_left = 0
 	current.battle_cry_left = 0
 	battle.call("_update_turn_ui")
