@@ -1149,6 +1149,25 @@ func _opportunity_attack(reactor: CombatUnit, actor: CombatUnit) -> void:
 		feedback.emit(actor, tr("이동 정지"))
 
 
+## 반격: reactor를 겨눈 인접한 attacker의 명중굴림이 빗나가면 반응을 써서 명중굴림 없이 피해를 준다 (전사 문서).
+func _counter(reactor: CombatUnit, attacker: CombatUnit) -> void:
+	if not (CombatActionRules.belongs_to(reactor, "counter") and reactor.is_ally != attacker.is_ally
+		and reactor.reaction_left > 0 and reactor.hit_points > 0 and not reactor.is_stunned
+		and attacker.hit_points > 0 and grid.are_adjacent(reactor.cell, attacker.cell)):
+		return
+	var ability: CombatUnit.Ability = CombatActionRules.damage_ability(reactor, "counter")
+	var prompt: String = tr("%s의 공격이 빗나갔습니다. 반격할까요? (반드시 명중, 피해 %s d%d + 레벨 + 기타 가산치)") % [
+		attacker.get_display_name(), CombatUnit.ability_name(ability), reactor.get_ability_sides(ability)]
+	if not await _ask_reaction(reactor, "counter", prompt):
+		return
+	reactor.spend_resource(CombatUnit.TurnResource.REACTION)
+	if attack_animation.is_valid():
+		await attack_animation.call(reactor, attacker)
+	if reactor.hit_points <= 0 or attacker.hit_points <= 0 or is_over():
+		return
+	_deal_damage(reactor, attacker, "counter", false, false)
+
+
 func _ask_reaction(reactor: CombatUnit, kind: String, prompt: String) -> bool:
 	if not reactor.is_ally:
 		return true
@@ -1211,6 +1230,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> b
 		str(last_attack.rolls), hit_bonus, last_attack.total, armor_class, outcome])
 	if not last_attack.success:
 		feedback.emit(target, tr("빗나감"))
+		await _counter(target, actor)
 		return false
 	_deal_damage(actor, target, action, actor.marked_target == target, false)
 	if action == "shock" and target.hit_points > 0:
@@ -1281,6 +1301,10 @@ func _deal_damage(actor: CombatUnit, target: CombatUnit, action: String, has_mar
 		logged.emit(tr("%s 피해 (휩쓸기 ÷2 올림): %s d%d %s → %d %+d = %d · HP %d") % [target.get_display_name(),
 			CombatUnit.ability_name(damage_ability), damage_sides, str(last_damage_rolls),
 			ceili(last_damage_rolls[0] / 2.0), damage_bonus, last_damage, target.hit_points])
+	elif action == "counter":
+		logged.emit(tr("%s 피해 (반격, 반드시 명중): %s d%d %s %+d = %d · HP %d") % [target.get_display_name(),
+			CombatUnit.ability_name(damage_ability), damage_sides, str(last_damage_rolls),
+			damage_bonus, last_damage, target.hit_points])
 	elif has_mark_damage:
 		logged.emit(tr("%s 피해 (표식 추가): %s d%d %s + d6 %s %+d = %d · HP %d") % [target.get_display_name(),
 			CombatUnit.ability_name(damage_ability), damage_sides, str([last_damage_rolls[0]]),

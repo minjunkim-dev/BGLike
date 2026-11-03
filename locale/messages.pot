@@ -61,7 +61,7 @@ msgid "공격"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:17
-#: scenes/combat/actions.gd:962
+#: scenes/combat/actions.gd:978
 msgid "숨 고르기"
 msgstr ""
 
@@ -102,7 +102,7 @@ msgid "밀치기"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:21
-#: scenes/combat/actions.gd:987
+#: scenes/combat/actions.gd:1003
 msgid "물약"
 msgstr ""
 
@@ -126,206 +126,221 @@ msgstr ""
 msgid "점프"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:25
-msgid "1~2칸의 빈 바닥으로 점프.\n상승2까지, 낙하 차3부터 피해."
+#: scenes/combat/action_rules.gd:23
+#: scenes/combat/turn_hud.gd:233
+msgid "반격"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:26
-msgid "인접한 빈 칸에 새끼 거미1마리를 만듭니다."
+msgid "1~2칸의 빈 바닥으로 점프.\n상승2까지, 낙하 차3부터 피해."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:27
-msgid "상하좌우1칸·높이 차이1 이하인 모든 아군이 각자 힘 내성굴림.\n성공하면 피해 절반. 밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."
+msgid "인접한 빈 칸에 새끼 거미1마리를 만듭니다."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:28
-msgid "HP 1d10+1 회복.\n최대 HP를 넘지 않습니다."
+msgid "상하좌우1칸·높이 차이1 이하인 모든 아군이 각자 힘 내성굴림.\n성공하면 피해 절반. 밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:29
-msgid "인접한 칸을 골라 정면을 정하고\n정면 반달 5칸의 적만 시계방향으로\n각각 공격합니다. 아군은 맞지 않습니다."
+msgid "HP 1d10+1 회복.\n최대 HP를 넘지 않습니다."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:30
-msgid "인접한 적 1명을 기본 공격 2회.\n첫 타격으로 쓰러지면 둘째는 취소."
+msgid "인접한 칸을 골라 정면을 정하고\n정면 반달 5칸의 적만 시계방향으로\n각각 공격합니다. 아군은 맞지 않습니다."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:31
-msgid "인접한 적을 공격. 명중하면 피해 후\n1칸 밀치고 빈 칸으로 1칸 전진.\n밀 수 없으면 피해만. 전진은 기회 공격 없음."
+msgid "인접한 적 1명을 기본 공격 2회.\n첫 타격으로 쓰러지면 둘째는 취소."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:32
-msgid "건강 굴림값만큼 방어막.\nHP보다 먼저 모든 피해를 받습니다.\n3턴. 다시 쓰면 큰 값을 유지합니다."
+msgid "인접한 적을 공격. 명중하면 피해 후\n1칸 밀치고 빈 칸으로 1칸 전진.\n밀 수 없으면 피해만. 전진은 기회 공격 없음."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:33
-msgid "의지 굴림값을 모든 아군의\n명중굴림에 더합니다. 2턴.\n전사가 쓰러져도 유지됩니다."
+msgid "건강 굴림값만큼 방어막.\nHP보다 먼저 모든 피해를 받습니다.\n3턴. 다시 쓰면 큰 값을 유지합니다."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:34
-msgid "1~6칸 적에게 표식.\n이 궁수가 맞히면 피해 +1d6.\n전투 중 유지됩니다."
+msgid "의지 굴림값을 모든 아군의\n명중굴림에 더합니다. 2턴.\n전사가 쓰러져도 유지됩니다."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:35
-msgid "1~6칸 공격.\n명중하면 기절. 보스는 기절 면역."
+msgid "1~6칸 적에게 표식.\n이 궁수가 맞히면 피해 +1d6.\n전투 중 유지됩니다."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:36
-msgid "2~3칸 대상을 끌어옵니다. 대상이 힘 내성굴림에\n성공하면 버팁니다. 피해와 기회 공격 없음.\n다음 턴에는 쓸 수 없습니다."
+msgid "1~6칸 공격.\n명중하면 기절. 보스는 기절 면역."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:37
-msgid "이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\n공격을 실행하지 않습니다."
+msgid "2~3칸 대상을 끌어옵니다. 대상이 힘 내성굴림에\n성공하면 버팁니다. 피해와 기회 공격 없음.\n다음 턴에는 쓸 수 없습니다."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:38
-msgid "대상이 힘 내성굴림.\n실패하면 1칸 밀리고, 성공하면 버팁니다.\n기절 대상은 내성 없이 밀림.\n아군은 판정 없이 밀림."
+msgid "이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\n공격을 실행하지 않습니다."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:39
-msgid "HP 2d4+2 회복.\n최대 HP를 넘지 않습니다."
+msgid "대상이 힘 내성굴림.\n실패하면 1칸 밀리고, 성공하면 버팁니다.\n기절 대상은 내성 없이 밀림.\n아군은 판정 없이 밀림."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:40
+msgid "HP 2d4+2 회복.\n최대 HP를 넘지 않습니다."
+msgstr ""
+
+#: scenes/combat/action_rules.gd:41
 msgid "적이 내 인접 칸을 벗어나면 기본 공격."
 msgstr ""
 
-#: scenes/combat/action_rules.gd:147
-msgid "행동 1"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:147
-#: scenes/combat/action_rules.gd:148
-msgid "보조 행동 1"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:148
-msgid "이동력 1"
+#: scenes/combat/action_rules.gd:42
+msgid "나를 노린 인접한 적의 명중굴림이\n빗나가면 반드시 명중하는 반격."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:150
-msgid "이동력(칸 수와 오르는 높이)"
+msgid "행동 1"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:150
+#: scenes/combat/action_rules.gd:151
+msgid "보조 행동 1"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:151
+msgid "이동력 1"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:153
+msgid "이동력(칸 수와 오르는 높이)"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:154
 msgid "비용: %s + %s"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:158
+#: scenes/combat/action_rules.gd:161
 msgid "전투마다 %d회 · %d회 남음"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:177
+#: scenes/combat/action_rules.gd:180
 msgid "%s d%d %+d 대 AC"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:182
+#: scenes/combat/action_rules.gd:185
 #: scenes/combat/action_rules.gd:194
-#: scenes/combat/action_rules.gd:214
+#: scenes/combat/action_rules.gd:202
+#: scenes/combat/action_rules.gd:222
 msgid "사거리: 인접1칸"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:182
-#: scenes/combat/action_rules.gd:190
-#: scenes/combat/action_rules.gd:192
+#: scenes/combat/action_rules.gd:185
+#: scenes/combat/action_rules.gd:198
+#: scenes/combat/action_rules.gd:200
 msgid "사거리: 1~%d칸"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:183
+#: scenes/combat/action_rules.gd:186
 msgid "판정: %s"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:186
+#: scenes/combat/action_rules.gd:189
 msgid "사거리: 정면 반달 5칸"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:186
+#: scenes/combat/action_rules.gd:189
 msgid "피해: %s d%d ÷2 올림%s"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:188
+#: scenes/combat/action_rules.gd:191
 msgid "판정: 대상마다 %s"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:190
-msgid "판정: %s, 명중하면 기절"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:192
-#: scenes/combat/action_rules.gd:200
-#: scenes/combat/action_rules.gd:202
-#: scenes/combat/action_rules.gd:204
-#: scenes/combat/action_rules.gd:206
-#: scenes/combat/action_rules.gd:209
-#: scenes/combat/action_rules.gd:212
-msgid "판정: 없음"
-msgstr ""
-
 #: scenes/combat/action_rules.gd:194
-#: scenes/combat/action_rules.gd:197
-msgid "판정: 대상의 %s 내성 대 DC %d, 성공하면 버팀"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:197
-msgid "사거리: 2~3칸"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:200
-msgid "사거리: 1~2칸"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:202
-#: scenes/combat/action_rules.gd:204
-#: scenes/combat/action_rules.gd:206
-#: scenes/combat/action_rules.gd:208
-msgid "사거리: 자신"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:202
-msgid "회복: 1d10+1"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:204
-msgid "회복: 2d4+2"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:208
-msgid "방어막: 건강 d%d"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:211
-msgid "사거리: 모든 아군"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:211
-msgid "명중 보너스: 의지 d%d"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:214
-msgid "판정: 대상의 %s 내성 대 DC %d, 성공하면 피해 절반"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:221
-msgid "내성 성공률: %s"
-msgstr ""
-
-#: scenes/combat/action_rules.gd:250
+#: scenes/combat/action_rules.gd:258
 msgid "피해: %s d%d%s"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:251
+#: scenes/combat/action_rules.gd:196
+msgid "판정: 없음(반드시 명중)"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:198
+msgid "판정: %s, 명중하면 기절"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:200
+#: scenes/combat/action_rules.gd:208
+#: scenes/combat/action_rules.gd:210
+#: scenes/combat/action_rules.gd:212
+#: scenes/combat/action_rules.gd:214
+#: scenes/combat/action_rules.gd:217
+#: scenes/combat/action_rules.gd:220
+msgid "판정: 없음"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:202
+#: scenes/combat/action_rules.gd:205
+msgid "판정: 대상의 %s 내성 대 DC %d, 성공하면 버팀"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:205
+msgid "사거리: 2~3칸"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:208
+msgid "사거리: 1~2칸"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:210
+#: scenes/combat/action_rules.gd:212
+#: scenes/combat/action_rules.gd:214
+#: scenes/combat/action_rules.gd:216
+msgid "사거리: 자신"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:210
+msgid "회복: 1d10+1"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:212
+msgid "회복: 2d4+2"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:216
+msgid "방어막: 건강 d%d"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:219
+msgid "사거리: 모든 아군"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:219
+msgid "명중 보너스: 의지 d%d"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:222
+msgid "판정: 대상의 %s 내성 대 DC %d, 성공하면 피해 절반"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:229
+msgid "내성 성공률: %s"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:259
 msgid "피해: 명중 %s d%d → 피해 %s d%d%s"
 msgstr ""
 
-#: scenes/combat/action_rules.gd:257
+#: scenes/combat/action_rules.gd:265
 msgid "인접한 적을 기본 공격합니다."
 msgstr ""
 
-#: scenes/combat/action_rules.gd:257
+#: scenes/combat/action_rules.gd:265
 msgid "1~6칸 원거리 공격.\n옆에 적이 있으면 불리."
 msgstr ""
 
-#: scenes/combat/action_rules.gd:260
+#: scenes/combat/action_rules.gd:268
 msgid "괴력의 사내: 명중하면 대상의 이동을 멈춥니다."
 msgstr ""
 
@@ -333,478 +348,486 @@ msgstr ""
 msgid "최대3칸"
 msgstr ""
 
-#: scenes/combat/actions.gd:219
+#: scenes/combat/actions.gd:221
 msgid "%s 나무 상자 공격: %d, %d · 피해 %d · 내구도 %d/6%s"
 msgstr ""
 
-#: scenes/combat/actions.gd:221
+#: scenes/combat/actions.gd:223
 msgid " · 파괴"
 msgstr ""
 
-#: scenes/combat/actions.gd:233
+#: scenes/combat/actions.gd:235
 msgid "대상 없음"
 msgstr ""
 
-#: scenes/combat/actions.gd:239
+#: scenes/combat/actions.gd:241
 #: scenes/combat/battle.gd:870
 msgid "방향 없음"
 msgstr ""
 
-#: scenes/combat/actions.gd:264
+#: scenes/combat/actions.gd:266
 msgid "맵 경계"
 msgstr ""
 
-#: scenes/combat/actions.gd:267
+#: scenes/combat/actions.gd:269
 msgid "물체"
 msgstr ""
 
-#: scenes/combat/actions.gd:267
+#: scenes/combat/actions.gd:269
 msgid "장벽"
 msgstr ""
 
-#: scenes/combat/actions.gd:270
+#: scenes/combat/actions.gd:272
 msgid "오르막"
 msgstr ""
 
-#: scenes/combat/actions.gd:273
+#: scenes/combat/actions.gd:275
 msgid "낭떠러지 소멸"
 msgstr ""
 
-#: scenes/combat/actions.gd:273
+#: scenes/combat/actions.gd:275
 msgid "높이 차2 파괴"
 msgstr ""
 
-#: scenes/combat/actions.gd:296
+#: scenes/combat/actions.gd:298
 msgid "밀기 막힘"
 msgstr ""
 
-#: scenes/combat/actions.gd:310
+#: scenes/combat/actions.gd:312
 msgid "전투 종료"
 msgstr ""
 
-#: scenes/combat/actions.gd:337
+#: scenes/combat/actions.gd:339
 msgid " · 충돌: %s 피해4"
 msgstr ""
 
-#: scenes/combat/actions.gd:337
+#: scenes/combat/actions.gd:339
 msgid ", %s 피해4"
 msgstr ""
 
-#: scenes/combat/actions.gd:338
+#: scenes/combat/actions.gd:340
 msgid "%s 바위 충돌: 피해4 · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:342
-#: scenes/combat/actions.gd:353
+#: scenes/combat/actions.gd:344
+#: scenes/combat/actions.gd:355
 msgid "바위 정지: 전투 종료"
 msgstr ""
 
-#: scenes/combat/actions.gd:363
+#: scenes/combat/actions.gd:365
 msgid "바위 %s: %d, %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:363
+#: scenes/combat/actions.gd:365
 msgid "이동"
 msgstr ""
 
-#: scenes/combat/actions.gd:369
+#: scenes/combat/actions.gd:371
 msgid "바위 정지: 최대3칸"
 msgstr ""
 
-#: scenes/combat/actions.gd:396
-msgid "%s %s 장판 만료: %d, %d"
-msgstr ""
-
-#: scenes/combat/actions.gd:397
-#: scenes/combat/actions.gd:511
-#: scenes/combat/actions.gd:545
-#: scenes/combat/actions.gd:1312
-msgid "불"
-msgstr ""
-
-#: scenes/combat/actions.gd:397
-#: scenes/combat/actions.gd:420
-#: scenes/combat/actions.gd:511
-#: scenes/combat/actions.gd:545
-#: scenes/combat/actions.gd:1312
-#: scenes/combat/unit.gd:284
-msgid "독"
-msgstr ""
-
-#: scenes/combat/actions.gd:411
+#: scenes/combat/actions.gd:398
 msgid "%s 과부하: 자기 피해 2 · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:412
+#: scenes/combat/actions.gd:399
 msgid "과부하 2"
 msgstr ""
 
-#: scenes/combat/actions.gd:420
-#: scenes/combat/actions.gd:1312
+#: scenes/combat/actions.gd:407
+#: scenes/combat/actions.gd:1352
 #: scenes/combat/unit.gd:284
 msgid "화상"
 msgstr ""
 
-#: scenes/combat/actions.gd:427
-#: scenes/combat/actions.gd:1242
+#: scenes/combat/actions.gd:407
+#: scenes/combat/actions.gd:449
+#: scenes/combat/actions.gd:524
+#: scenes/combat/actions.gd:558
+#: scenes/combat/actions.gd:1352
+#: scenes/combat/unit.gd:284
+msgid "독"
+msgstr ""
+
+#: scenes/combat/actions.gd:414
+#: scenes/combat/actions.gd:1278
 msgid "DC"
 msgstr ""
 
-#: scenes/combat/actions.gd:428
+#: scenes/combat/actions.gd:415
 msgid "%s 독 제거(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:432
+#: scenes/combat/actions.gd:419
 msgid "독 제거"
 msgstr ""
 
-#: scenes/combat/actions.gd:442
+#: scenes/combat/actions.gd:429
 msgid "%s %s: %d · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:453
+#: scenes/combat/actions.gd:448
+msgid "%s %s 장판 만료: %d, %d"
+msgstr ""
+
+#: scenes/combat/actions.gd:449
+#: scenes/combat/actions.gd:524
+#: scenes/combat/actions.gd:558
+#: scenes/combat/actions.gd:1352
+msgid "불"
+msgstr ""
+
+#: scenes/combat/actions.gd:466
 msgid "%s 성스러운 장막 만료"
 msgstr ""
 
-#: scenes/combat/actions.gd:463
+#: scenes/combat/actions.gd:476
 msgid "전투의 함성 만료: %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:510
+#: scenes/combat/actions.gd:523
 msgid "%s %s 장판 %s: %d, %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:511
+#: scenes/combat/actions.gd:524
 msgid "갱신"
 msgstr ""
 
-#: scenes/combat/actions.gd:511
+#: scenes/combat/actions.gd:524
 msgid "생성"
 msgstr ""
 
-#: scenes/combat/actions.gd:544
+#: scenes/combat/actions.gd:557
 msgid "%s %s 장판 해제: %d, %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:610
+#: scenes/combat/actions.gd:626
 #: scenes/pause_menu.gd:34
 #: scenes/pause_menu.tscn
 msgid "전투 포기"
 msgstr ""
 
-#: scenes/combat/actions.gd:667
+#: scenes/combat/actions.gd:683
 msgid "%s 점프: 이동 정지, 보조 행동1 소비"
 msgstr ""
 
-#: scenes/combat/actions.gd:675
+#: scenes/combat/actions.gd:691
 msgid "%s 점프: 이동 %d, 보조 행동1 · 남은 이동 %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:705
 #: scenes/combat/actions.gd:721
-#: scenes/combat/actions.gd:1343
+#: scenes/combat/actions.gd:737
+#: scenes/combat/actions.gd:1383
 msgid "낙사"
 msgstr ""
 
-#: scenes/combat/actions.gd:708
-#: scenes/combat/actions.gd:1328
+#: scenes/combat/actions.gd:724
+#: scenes/combat/actions.gd:1368
 msgid "물: 화상 해제"
 msgstr ""
 
-#: scenes/combat/actions.gd:711
-#: scenes/combat/actions.gd:723
+#: scenes/combat/actions.gd:727
+#: scenes/combat/actions.gd:739
 #: scenes/combat/battle.gd:914
 msgid "낙하 피해 %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:831
+#: scenes/combat/actions.gd:847
 msgid "전투 입력 잠금"
 msgstr ""
 
-#: scenes/combat/actions.gd:833
+#: scenes/combat/actions.gd:849
 msgid "아군의 자기 턴에만 사용"
 msgstr ""
 
-#: scenes/combat/actions.gd:836
+#: scenes/combat/actions.gd:852
 msgid "보유 물약 없음"
 msgstr ""
 
-#: scenes/combat/actions.gd:837
+#: scenes/combat/actions.gd:853
 msgid "이번 전투의 횟수를 모두 씀"
 msgstr ""
 
-#: scenes/combat/actions.gd:837
+#: scenes/combat/actions.gd:853
 msgid "이번 막의 횟수를 모두 씀"
 msgstr ""
 
-#: scenes/combat/actions.gd:840
+#: scenes/combat/actions.gd:856
 msgid "자원을 이미 씀"
 msgstr ""
 
-#: scenes/combat/actions.gd:842
+#: scenes/combat/actions.gd:858
 msgid "이동력을 이미 씀"
 msgstr ""
 
-#: scenes/combat/actions.gd:845
+#: scenes/combat/actions.gd:861
 msgid "전투 불능"
 msgstr ""
 
-#: scenes/combat/actions.gd:846
+#: scenes/combat/actions.gd:862
 msgid "기절 상태"
 msgstr ""
 
-#: scenes/combat/actions.gd:848
+#: scenes/combat/actions.gd:864
 msgid "HP가 이미 최대"
 msgstr ""
 
-#: scenes/combat/actions.gd:850
+#: scenes/combat/actions.gd:866
 msgid "이동이 없거나 이미 효과 적용 중"
 msgstr ""
 
-#: scenes/combat/actions.gd:850
+#: scenes/combat/actions.gd:866
 msgid "사거리 또는 대상 조건을 확인"
 msgstr ""
 
-#: scenes/combat/actions.gd:887
+#: scenes/combat/actions.gd:903
 msgid "%s 이동: %d칸, 남은 이동 %d"
 msgid_plural "%s 이동: %d칸, 남은 이동 %d"
 msgstr[0] ""
 msgstr[1] ""
 
-#: scenes/combat/actions.gd:914
+#: scenes/combat/actions.gd:930
 msgid "%s 회전회오리: 인접 대상 %d명 · DC %d"
 msgid_plural "%s 회전회오리: 인접 대상 %d명 · DC %d"
 msgstr[0] ""
 msgstr[1] ""
 
-#: scenes/combat/actions.gd:950
+#: scenes/combat/actions.gd:966
 msgid "%s 새끼 낳기: %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:969
+#: scenes/combat/actions.gd:985
 msgid "%s 성스러운 장막: 건강 d%d [%d] · 방어막 %d, %d턴"
 msgstr ""
 
-#: scenes/combat/actions.gd:971
+#: scenes/combat/actions.gd:987
 msgid "방어막 %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:980
+#: scenes/combat/actions.gd:996
 msgid "명중 +%d"
 msgstr ""
 
-#: scenes/combat/actions.gd:981
+#: scenes/combat/actions.gd:997
 msgid "%s 전투의 함성: 의지 d%d [%d] · 아군 명중 +%d, %d턴"
 msgstr ""
 
-#: scenes/combat/actions.gd:985
+#: scenes/combat/actions.gd:1001
 msgid "%s 물러서며 쏘기: 이번 턴 이동은 기회 공격 제외"
 msgstr ""
 
-#: scenes/combat/actions.gd:999
+#: scenes/combat/actions.gd:1015
 msgid "%s 휩쓸기: 대상 %d명"
 msgid_plural "%s 휩쓸기: 대상 %d명"
 msgstr[0] ""
 msgstr[1] ""
 
-#: scenes/combat/actions.gd:1017
+#: scenes/combat/actions.gd:1033
 msgid "%s 십자 베기: %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:1023
+#: scenes/combat/actions.gd:1039
 msgid "십자 베기: 대상이 쓰러져 둘째 타격 취소"
 msgstr ""
 
-#: scenes/combat/actions.gd:1046
+#: scenes/combat/actions.gd:1062
 msgid "%s 강철 돌진: 밀치고 전진"
 msgstr ""
 
-#: scenes/combat/actions.gd:1048
+#: scenes/combat/actions.gd:1064
 msgid "%s 강철 돌진: 밀려날 칸이 막혀 피해만"
 msgstr ""
 
-#: scenes/combat/actions.gd:1059
+#: scenes/combat/actions.gd:1075
 msgid "%s 표식: %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:1071
+#: scenes/combat/actions.gd:1087
 msgid "%s 만능팔: %s · DC %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:1077
+#: scenes/combat/actions.gd:1093
 msgid "만능팔 %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:1077
-#: scenes/combat/actions.gd:1097
-#: scenes/combat/actions.gd:1296
+#: scenes/combat/actions.gd:1093
+#: scenes/combat/actions.gd:1113
+#: scenes/combat/actions.gd:1336
 msgid "성공"
 msgstr ""
 
-#: scenes/combat/actions.gd:1077
-#: scenes/combat/actions.gd:1097
-#: scenes/combat/actions.gd:1296
+#: scenes/combat/actions.gd:1093
+#: scenes/combat/actions.gd:1113
+#: scenes/combat/actions.gd:1336
 msgid "실패"
 msgstr ""
 
-#: scenes/combat/actions.gd:1078
+#: scenes/combat/actions.gd:1094
 msgid "끌어옴"
 msgstr ""
 
-#: scenes/combat/actions.gd:1078
+#: scenes/combat/actions.gd:1094
 msgid "만능팔 저항"
 msgstr ""
 
-#: scenes/combat/actions.gd:1092
+#: scenes/combat/actions.gd:1108
 msgid "%s 밀치기: %s · DC %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:1094
+#: scenes/combat/actions.gd:1110
 msgid "밀치기 성공"
 msgstr ""
 
-#: scenes/combat/actions.gd:1094
+#: scenes/combat/actions.gd:1110
 msgid "밀치기 실패"
 msgstr ""
 
-#: scenes/combat/actions.gd:1097
+#: scenes/combat/actions.gd:1113
 msgid "밀치기 %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:1121
+#: scenes/combat/actions.gd:1137
 msgid "%s 벗어납니다. 기회 공격할까요? (명중률 %.1f%%)"
 msgstr ""
 
-#: scenes/combat/actions.gd:1124
+#: scenes/combat/actions.gd:1140
 msgid "명중하면 이동을 멈춥니다."
 msgstr ""
 
-#: scenes/combat/actions.gd:1129
+#: scenes/combat/actions.gd:1145
 msgid "%s 기회 공격: 반응 사용"
 msgstr ""
 
-#: scenes/combat/actions.gd:1132
+#: scenes/combat/actions.gd:1148
 msgid "%s 괴력의 사내: %s 이동 정지"
 msgstr ""
 
-#: scenes/combat/actions.gd:1133
+#: scenes/combat/actions.gd:1149
 msgid "이동 정지"
 msgstr ""
 
-#: scenes/combat/actions.gd:1148
+#: scenes/combat/actions.gd:1159
+msgid "%s의 공격이 빗나갔습니다. 반격할까요? (반드시 명중, 피해 %s d%d + 레벨 + 기타 가산치)"
+msgstr ""
+
+#: scenes/combat/actions.gd:1183
 msgid "사용"
 msgstr ""
 
-#: scenes/combat/actions.gd:1148
+#: scenes/combat/actions.gd:1183
 #: scenes/combat/turn_hud.gd:234
 msgid "넘기기"
 msgstr ""
 
-#: scenes/combat/actions.gd:1188
+#: scenes/combat/actions.gd:1223
 msgid "명중"
 msgstr ""
 
-#: scenes/combat/actions.gd:1188
-#: scenes/combat/actions.gd:1197
+#: scenes/combat/actions.gd:1223
+#: scenes/combat/actions.gd:1232
 msgid "빗나감"
 msgstr ""
 
-#: scenes/combat/actions.gd:1190
+#: scenes/combat/actions.gd:1225
 msgid "명중(절대성공)"
 msgstr ""
 
-#: scenes/combat/actions.gd:1192
+#: scenes/combat/actions.gd:1227
 msgid "빗나감(절대실패)"
 msgstr ""
 
-#: scenes/combat/actions.gd:1193
+#: scenes/combat/actions.gd:1228
 msgid "%s 공격(%s): %s d%d %s %+d = %d / AC %d · %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:1202
+#: scenes/combat/actions.gd:1238
 msgid "%s 기절 면역"
 msgstr ""
 
-#: scenes/combat/actions.gd:1203
+#: scenes/combat/actions.gd:1239
 #: scenes/combat/turn_hud.gd:353
 msgid "기절 면역"
 msgstr ""
 
-#: scenes/combat/actions.gd:1206
+#: scenes/combat/actions.gd:1242
 msgid "%s 충격 화살: 명중하여 기절"
 msgstr ""
 
-#: scenes/combat/actions.gd:1207
+#: scenes/combat/actions.gd:1243
 #: scenes/combat/turn_hud.gd:346
 #: scenes/combat/unit.gd:256
 #: scenes/combat/unit.gd:584
 msgid "기절"
 msgstr ""
 
-#: scenes/combat/actions.gd:1233
+#: scenes/combat/actions.gd:1269
 msgid "%s %s 내성(%s): %s d%d %s %+d = %d / DC %d · %s"
 msgstr ""
 
-#: scenes/combat/actions.gd:1265
+#: scenes/combat/actions.gd:1301
 msgid "%s 피해 (휩쓸기 ÷2 올림): %s d%d %s → %d %+d = %d · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:1269
+#: scenes/combat/actions.gd:1305
+msgid "%s 피해 (반격, 반드시 명중): %s d%d %s %+d = %d · HP %d"
+msgstr ""
+
+#: scenes/combat/actions.gd:1309
 msgid "%s 피해 (표식 추가): %s d%d %s + d6 %s %+d = %d · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:1273
+#: scenes/combat/actions.gd:1313
 msgid "%s 피해 (내성 성공 절반): %s d%d %s %+d = %d → %d · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:1277
+#: scenes/combat/actions.gd:1317
 msgid "%s 피해: %s d%d %s %+d = %d · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:1285
+#: scenes/combat/actions.gd:1325
 #: scenes/combat/turn_hud.gd:380
 msgid "유리"
 msgstr ""
 
-#: scenes/combat/actions.gd:1287
+#: scenes/combat/actions.gd:1327
 #: scenes/combat/turn_hud.gd:382
 msgid "불리"
 msgstr ""
 
-#: scenes/combat/actions.gd:1288
+#: scenes/combat/actions.gd:1328
 #: scenes/combat/turn_hud.gd:378
 msgid "일반"
 msgstr ""
 
-#: scenes/combat/actions.gd:1293
+#: scenes/combat/actions.gd:1333
 msgid "성공(절대성공)"
 msgstr ""
 
-#: scenes/combat/actions.gd:1295
+#: scenes/combat/actions.gd:1335
 msgid "실패(절대실패)"
 msgstr ""
 
-#: scenes/combat/actions.gd:1311
+#: scenes/combat/actions.gd:1351
 msgid "%s %s 장판: %s 부여"
 msgstr ""
 
-#: scenes/combat/actions.gd:1325
+#: scenes/combat/actions.gd:1365
 msgid "%s 물: 화상 해제"
 msgstr ""
 
-#: scenes/combat/actions.gd:1340
+#: scenes/combat/actions.gd:1380
 msgid "%s 낙사: 전투 불능"
 msgstr ""
 
-#: scenes/combat/actions.gd:1356
+#: scenes/combat/actions.gd:1396
 msgid "%s 낙하 피해: %d · HP %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:1374
+#: scenes/combat/actions.gd:1414
 msgid "%s 방어막: %d 흡수 · 남은 방어막 %d"
 msgstr ""
 
-#: scenes/combat/actions.gd:1394
+#: scenes/combat/actions.gd:1434
 msgid "%s %s: HP +%d → %d"
 msgstr ""
 
@@ -1557,11 +1580,15 @@ msgid "무기의 공격 가산은 공격 굴림에, 방어구의 방어 가산�
 msgstr ""
 
 #: scenes/help.tscn
-msgid "반응은 조건이 맞으면 누구의 턴이든 쓰는 실행 기회입니다. 하나뿐이고 자기 턴 시작에 회복합니다. 지금은 기회 공격이 씁니다."
+msgid "반응은 조건이 맞으면 누구의 턴이든 쓰는 실행 기회입니다. 하나뿐이고 자기 턴 시작에 회복합니다. 기회 공격과 전사의 반격이 함께 씁니다."
 msgstr ""
 
 #: scenes/help.tscn
 msgid "기회 공격(근접 기본 공격을 가진 모든 유닛): 상대가 스스로 인접 칸을 벗어날 때 기본 공격을 합니다. 점프도 포함하고, 밀치기와 물러서며 쏘기의 이동은 기회 공격을 받지 않습니다. 전사의 괴력의 사내: 기회 공격이 명중하고 대상이 살아 있으면 그 칸에서 이동을 멈춥니다. 점프였다면 비용을 모두 씁니다."
+msgstr ""
+
+#: scenes/help.tscn
+msgid "반격(전사): 전사를 노린 인접한 적의 명중굴림이 빗나가면 반격할지 묻습니다. 쓰면 명중굴림 없이 반드시 명중하고, 피해는 민첩 d8 + 레벨 + 기타 가산치입니다."
 msgstr ""
 
 #: scenes/help.tscn

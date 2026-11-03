@@ -175,6 +175,23 @@ def opportunity(x, y):
     return None
 
 
+def counter(x, y):
+    px, py = x + 0.5, y + 0.5
+    # White return arrow at the top right: in from the left, round the right end and back to the left.
+    ring = math.hypot(px - 42, py - 14)
+    if 7 <= ring <= 10 and px >= 42:
+        return WHITE if ring >= 8.5 else STEEL[3]
+    if 4 <= py <= 7 and 24 <= px < 42:
+        return WHITE
+    if 21 <= py <= 24 and 34 <= px < 42:
+        return STEEL[3]
+    if inside(px, py, [(24, 22.5), (35, 15), (35, 29)]):
+        return WHITE if py < 22.5 else STEEL[3]
+    # Short sword striking back up to the right from the lower left.
+    u, v = rotated(x, y, 20, 47)
+    return short_sword(u, v, 15)
+
+
 def mark(x, y):
     px, py = x + 0.5, y + 0.5
     # Arrow stuck in the centre, coming from the upper right.
@@ -272,7 +289,7 @@ def fitted(draw):
 
 ICONS = {"attack": attack, "second_wind": fitted(second_wind), "sweep": fitted(sweep), "cross_slash": fitted(cross_slash),
          "steel_charge": fitted(steel_charge), "holy_veil": fitted(holy_veil), "battle_cry": fitted(battle_cry),
-         "opportunity": fitted(opportunity), "mark": fitted(mark), "shock": fitted(shock),
+         "opportunity": fitted(opportunity), "counter": fitted(counter), "mark": fitted(mark), "shock": fitted(shock),
          "disengage": fitted(disengage), "shove": fitted(shove), "jump": fitted(jump), "potion": potion}
 
 if __name__ == "__main__":
