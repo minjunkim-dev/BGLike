@@ -729,6 +729,8 @@ func _test_crate_ai_path() -> void:
 	f.actions.dice = _dice_for([6], [20])
 	_check(f.actions.attack_prop(ally, crate), "아군의 기본 공격으로 좁은 길의 상자를 부순다")
 	f.turns.end_turn()
+	# 빗나간 공격에 반격 창이 뜨지 않게 한다. 이 검사는 AI의 이동과 공격만 본다.
+	ally.reaction_left = 0
 	f.actions.dice = _dice_for([1], ScriptedDice.attack_sides(enemy))
 	await ai.play_turn(enemy, f.actions)
 	_check(enemy.cell == Vector2i(2, 0) and enemy.action_left == 0 and ally.hit_points == 11,
@@ -3839,6 +3841,8 @@ func _test_jump_scene_animation() -> void:
 	units[3].cell = Vector2i(9, 9)
 	ScriptedDice.arrange_turns(turns, units, [units[1], units[0], units[3], units[2]])
 	turns.select_unit(actor)
+	# 빗나간 기회 공격에 반격 창이 뜨지 않게 한다. 이 검사는 점프 연출만 본다.
+	actor.reaction_left = 0
 	actions.dice = _dice_for([1], ScriptedDice.attack_sides(units[2]))
 	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(destination)
 	((hud.get("_actions") as Dictionary)["jump"] as Button).pressed.emit()
