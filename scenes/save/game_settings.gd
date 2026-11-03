@@ -37,10 +37,16 @@ static func fullscreen() -> bool:
 	return read("fullscreen", false)
 
 
+## 꽉 채우기를 끄면(기본) 정수 배율이라 창 크기에 따라 남는 자리가 검은 테두리가 된다 (docs/adr/0002).
+static func fill_screen() -> bool:
+	return read("fill_screen", false)
+
+
 ## 저장한 값을 Master 버스와 창에 적용한다. 게임을 시작할 때(타이틀) 부른다.
-static func apply() -> void:
+static func apply(window: Window) -> void:
 	apply_volume(volume())
 	apply_window_mode(fullscreen())
+	apply_screen_fit(window, fill_screen())
 
 
 static func apply_volume(percent: int) -> void:
@@ -54,3 +60,9 @@ static func apply_window_mode(full_screen: bool) -> void:
 	if full != full_screen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if full_screen
 			else DisplayServer.WINDOW_MODE_WINDOWED)
+
+
+## 켜면 소수 배율로 창을 빈틈없이 채운다. 맵 카메라의 정수 px 정렬과 1px 선은 이 배율에서 확인하지 않았다 (docs/adr/0002).
+static func apply_screen_fit(window: Window, fill: bool) -> void:
+	window.content_scale_stretch = Window.CONTENT_SCALE_STRETCH_FRACTIONAL if fill \
+		else Window.CONTENT_SCALE_STRETCH_INTEGER

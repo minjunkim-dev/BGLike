@@ -102,6 +102,7 @@ func _run() -> void:
 		var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 		_check((hud.get_node("Progress") as Label).text == "1막 · 1스테이지", "1-1 전투 화면")
 	await _check_settings_kept()
+	await _check_screen_fit()
 	_finish()
 
 
@@ -195,6 +196,12 @@ func _check_settings(title: TitleScreen) -> void:
 	await _tap(_joypad(JOY_BUTTON_A))
 	_check(settings.fullscreen_box.button_pressed and GameSettings.fullscreen(), "컨트롤러 A로 전체 화면을 켜고 파일에 씀")
 	await _tap(_action("ui_down"))
+	_check(settings.fill_box.has_focus() and not settings.fill_box.button_pressed, "아래로 화면 맞춤 칸, 처음은 끔")
+	await _tap(_action("ui_accept"))
+	_check(settings.fill_box.button_pressed and GameSettings.fill_screen()
+		and root.content_scale_stretch == Window.CONTENT_SCALE_STRETCH_FRACTIONAL,
+		"Enter로 꽉 채우기를 켜고 파일에 쓰고 적용")
+	await _tap(_action("ui_down"))
 	await _tap(_action("ui_down"))
 	_check(settings.back_button.has_focus(), "아래로 뒤로 버튼, 끝에서 멈춤")
 	await _tap(_joypad(JOY_BUTTON_A))
@@ -202,8 +209,8 @@ func _check_settings(title: TitleScreen) -> void:
 		"뒤로 버튼으로 닫고 설정 버튼으로 포커스 복귀")
 	# 다시 열면 저장한 값을 보이고, Esc로 닫는다.
 	await _tap(_action("ui_accept"))
-	_check(settings.visible and settings.volume_slider.value == 10 and settings.fullscreen_box.button_pressed,
-		"다시 열면 저장한 값")
+	_check(settings.visible and settings.volume_slider.value == 10 and settings.fullscreen_box.button_pressed
+		and settings.fill_box.button_pressed, "다시 열면 저장한 값")
 	await _tap(_action("ui_cancel"))
 	_check(not settings.visible and title.settings_button.has_focus(), "Esc로 설정 화면을 닫음")
 	title.new_game_button.grab_focus()
@@ -211,17 +218,41 @@ func _check_settings(title: TitleScreen) -> void:
 
 ## 새 게임은 설정 파일을 지우지 않는다. 게임을 다시 켠 것처럼 타이틀을 새로 열면 저장한 설정을 적용한다.
 func _check_settings_kept() -> void:
-	_check(GameSettings.volume() == 10 and GameSettings.fullscreen(), "새 게임 뒤에도 설정 유지")
+	_check(GameSettings.volume() == 10 and GameSettings.fullscreen() and GameSettings.fill_screen(),
+		"새 게임 뒤에도 설정 유지")
 	AudioServer.set_bus_volume_linear(0, 1.0)
 	var title: TitleScreen = (load("res://scenes/main.tscn") as PackedScene).instantiate() as TitleScreen
 	root.add_child(title)
 	await process_frame
 	_check(is_equal_approx(AudioServer.get_bus_volume_linear(0), 0.1), "다시 시작하면 저장한 음량 10%를 적용")
+	_check(root.content_scale_stretch == Window.CONTENT_SCALE_STRETCH_FRACTIONAL, "다시 시작하면 저장한 화면 맞춤을 적용")
 	_check(title.settings_button.visible, "다시 시작한 타이틀에서도 설정을 엶")
 	title.queue_free()
 	# 화면이 있는 실행(화면 밖 Docker 등)에서 창이 전체 화면으로 남지 않게 되돌린다.
 	GameSettings.write("fullscreen", false)
 	GameSettings.apply_window_mode(false)
+	GameSettings.write("fill_screen", false)
+	GameSettings.apply_screen_fit(root, false)
+	await process_frame
+
+
+## 꽉 채우기를 켜면 1440×900 창 전체를 그리고, 끄면 정수 배율이라 남는 자리가 생긴다 (docs/adr/0002).
+func _check_screen_fit() -> void:
+	root.size = Vector2i(1440, 900)
+	GameSettings.write("fill_screen", true)
+	GameSettings.apply_screen_fit(root, true)
+	await process_frame
+	await process_frame
+	var drawn: Vector2 = root.get_visible_rect().size * root.get_stretch_transform().x.x
+	_check(drawn.is_equal_approx(Vector2(root.size)), "꽉 채우기: 1440×900 창 전체를 그림 %s" % drawn)
+	GameSettings.write("fill_screen", false)
+	GameSettings.apply_screen_fit(root, false)
+	await process_frame
+	await process_frame
+	drawn = root.get_visible_rect().size * root.get_stretch_transform().x.x
+	_check(not drawn.is_equal_approx(Vector2(root.size)), "정수 배율: 1440×900에서 남는 자리가 있음 %s" % drawn)
+	root.size = WINDOWS[0]
+	await process_frame
 	await process_frame
 
 
