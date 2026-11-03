@@ -710,6 +710,17 @@ func _test_counter() -> void:
 	var hover: String = CombatActionRules.details(warrior, "counter")
 	_check("사거리: 인접1칸" in hover and "피해: 민첩 d8+2" in hover and "판정: 없음(반드시 명중)" in hover
 		and "명중굴림" in CombatActionRules.effect(warrior, "counter"), "반격 호버: 사거리, 민첩 피해식, 판정 없음: " + hover)
+	# 반격 연출 중 전투를 포기하면 반격 피해를 주지 않고 입력 잠금을 푼다.
+	prompts.clear()
+	var abandoned: Fixture = _counter_fixture(true, prompts)
+	abandoned.actions.attack_animation = func(actor: CombatUnit, _target: CombatUnit) -> void:
+		if actor == abandoned.units[0]:
+			abandoned.actions.give_up()
+		await process_frame
+	abandoned.actions.dice = _dice([1], ScriptedDice.attack_sides(abandoned.units[2]))
+	await abandoned.actions.attack(abandoned.units[2], abandoned.units[0])
+	_check(prompts.size() == 1 and abandoned.actions.is_over() and abandoned.units[2].hit_points == 12
+		and not abandoned.actions.busy, "반격 연출 중 포기하면 피해 없이 잠금 해제")
 	# 넘기면 반응을 쓰지 않는다. 절대실패(1)도 빗나감이다.
 	prompts.clear()
 	var declined: Fixture = _counter_fixture(false, prompts)
@@ -735,7 +746,8 @@ func _test_counter() -> void:
 	# 인접 아군을 겨눈 공격과 인접하지 않은 공격자에게는 발동하지 않는다.
 	prompts.clear()
 	var ally: Fixture = _counter_fixture(true, prompts)
-	ally.units[2].cell = Vector2i(3, 3)
+	# 야만인(5,4)은 전사와 인접한 채로 (5,5)의 궁수를 노린다.
+	ally.units[1].cell = Vector2i(5, 5)
 	ally.actions.dice = _dice([1], ScriptedDice.attack_sides(ally.units[2]))
 	await ally.actions.attack(ally.units[2], ally.units[1])
 	_check(prompts.is_empty(), "인접 아군을 겨눈 빗나감에는 반격 없음")
