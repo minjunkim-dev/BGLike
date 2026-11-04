@@ -83,6 +83,10 @@ GitHub 자동 병합 예약은 독립 리뷰 결과를 대상 SHA의 필수 체�
 
 권한·Secret·workflow·저장소 설정·dependency 정책 변경에는 작성자와 다른 모델의 리뷰를 추가한다. 실행할 수 없으면 그 한계를 기록하고 프로젝트의 위험별 승인 기준을 따른다.
 
+## 프로젝트 신뢰 경계 경로
+
+공통 경로는 repo-baseline `POLICY.md` §5가 정한다. 이 저장소가 더한 경로는 [`.github/trust-boundary-paths`](../../.github/trust-boundary-paths)다. 인증·결제·권한 검사·migration에 해당하는 프로젝트 경로는 아직 없다. 경로를 추가하면 그 파일에 한 줄씩 적고 이 절의 링크를 유지한다.
+
 ## Matt Pocock retro로 환경 개선
 
 사용자가 회고를 요청하면 설치 manifest에서 Matt Pocock의 `mattpocock-skills:retro` 원문을 확인한다. 동명의 일반 스프린트 회고로 대체하지 않는다. 런타임의 실제 호출 문법을 따른다.

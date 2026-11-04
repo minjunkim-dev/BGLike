@@ -17,6 +17,7 @@ PR에서는 제목과 브랜치 규칙도 검사합니다.
 `python3 scripts/check_whitespace.py --base <ref>`로 지정합니다. 기준 ref를 찾지 못하면 실패합니다.
 
 policy와 `make repository-check`는 `python3 scripts/check_repo_baseline.py`로 공통 복사본 해시를 확인합니다. 남은 공통 테스트는 전체 scripts 탐색에서 실행하고 CodeQL blob pin 검사를 유지합니다. 자체 리뷰의 자료 선택과 사용자 요청 회고는 `docs/agents/review.md`를 따릅니다.
+`Review status`는 [별도 workflow](../.github/workflows/review-status.yml)다. Godot workflow와 합치지 않았고, 필수 체크로 등록하지 않았다. `pull_request_target`은 기본 브랜치의 검사기만 실행한다.
 
 - Markdown, `docs/` 자료와 `scripts/ci_scope.py`에 명시된 관리 파일만 바뀌면 Godot 작업을 선택하지 않습니다.
 - 게임 코드·장면·자산·프로젝트 설정, CI 선택기와 게임 검사 워크플로 변경은 모든 기존 Godot 검사를 선택합니다.

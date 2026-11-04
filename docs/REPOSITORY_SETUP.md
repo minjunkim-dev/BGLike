@@ -12,7 +12,7 @@ python3 scripts/check_github_settings.py
 
 GET으로 ID·자료형·체크/App·main blob을 확인한다. exit 0은 일치, 1은 drift, 2는 미확인이다. 누락 기준선은 중단한다. PR과 main을 구분한다. 회귀 검사는 repository-check에 있다.
 PR의 unittest는 codeql.yml blob과 `codeql_main_source.sha`를 비교한다. Dependabot이 codeql.yml만 바꾸면 이 검사가 실패한다. 기준선 SHA를 `git hash-object .github/workflows/codeql.yml` 값으로 갱신한다.
-공통 검사기(`check_github_settings.py`·`check_repo_baseline.py`)와 테스트는 비공개 `minjunkim-dev/repo-baseline`에서 복사한다. 이 저장소에서 직접 고치지 않는다. 원본을 고친 뒤 `tools/apply_baseline.py`로 다시 적용한다. 복사본이 `.github/repo-baseline.json`의 해시와 다르면 `python3 scripts/check_repo_baseline.py`가 실패한다. CodeQL 단계들이 서로 다른 `github/codeql-action` commit을 쓰는 것도 거부한다.
+공통 검사기(`check_github_settings.py`·`check_repo_baseline.py`·`check_review_status.py`)와 테스트는 공개 `minjunkim-dev/repo-baseline`에서 복사한다. 이 저장소에서 직접 고치지 않는다. 원본을 고친 뒤 `tools/apply_baseline.py`로 다시 적용한다. 복사본이 `.github/repo-baseline.json`의 해시와 다르면 `python3 scripts/check_repo_baseline.py`가 실패한다. CodeQL 단계들이 서로 다른 `github/codeql-action` commit을 쓰는 것도 거부한다.
 
 ## 공통 정책
 
@@ -33,9 +33,13 @@ PR의 unittest는 codeql.yml blob과 `codeql_main_source.sha`를 비교한다. D
 
 ## 공통 기준 갱신과 설정 관측 기록
 
-적용 원본은 `minjunkim-dev/repo-baseline`의 main `9d3958b5dc35b43b98ee8adb53bd416eac956e0a`다. 복사본의 경로·생태계를 유지하며 원본 도구로 갱신했다. 로컬 스킬 설정과 일상 작업 진입은 [개발 절차](agents/development.md), 자체 리뷰와 사용자 요청 회고는 [리뷰 절차](agents/review.md)를 따른다.
+적용 원본은 `minjunkim-dev/repo-baseline`의 main `8aad448d196ac21308e88e016d17c1f3b6920221`다. 복사본의 경로와 Dependabot `ecosystems`(빈 목록)를 유지하며 원본 도구로 갱신했다. 이전에 복사된 파일은 기록된 해시와 같았고, 이 저장소만의 수정은 없었다. 로컬 스킬 설정과 일상 작업 진입은 [개발 절차](agents/development.md), 자체 리뷰와 사용자 요청 회고는 [리뷰 절차](agents/review.md)를 따른다.
 
-기존 기준선의 설명용 `exceptions` 배열은 내용을 보존해 `observations`로 옮겼다. 관측 기록은 API 감사 항목을 제외하지 않는다. 실제 기능 미지원·비해당을 감사 범위에서 제외하려면 원본의 [설정 기준선 형식](https://github.com/minjunkim-dev/repo-baseline/blob/9d3958b5dc35b43b98ee8adb53bd416eac956e0a/docs/github-settings-profile.md)에 맞는 `exceptions` 객체와 사유·근거가 필요하다. 예외가 있으면 exit 0이어도 결과는 전체 PASS가 아닌 LIMITED다. 미선언 403·404·누락·권한 오류는 계속 실패한다.
+`scripts/check_review_status.py`와 테스트, `matt-code-review` 스킬 사본을 manifest에 더했다. `.claude/settings.json`은 원본 템플릿 그대로다. 기존 파일이 없어 합칠 항목은 없었다. `.github/workflows/review-status.yml`은 `templates/review-status.yml`과 같은 별도 파일이고, 다른 workflow와 합치지 않았다. 이벤트는 `pull_request_target`과 `issue_comment`뿐이다.
+
+이 파일의 `pull_request_target`은 기본 브랜치의 workflow와 검사기만 실행한다. GitHub는 공개 저장소에서 이 이벤트를 2026-12-02부터 기본으로 막는다. 그 전에 2026-11-09 16:00–18:00 UTC와 2026-11-16 16:00–18:00 UTC(한국 시간 2026-11-10과 2026-11-17 01:00–03:00)에 같은 차단을 잠시 적용한다. 공식 공지는 [pull_request_target blocked by default December 2](https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2/)다. 허용 정책이 기본 브랜치 병합 전에 보이기 전에는 이 workflow를 병합하지 않는다. 이 갱신은 그 정책을 만들지 않았고 필수 체크 `Review status`도 등록하지 않았다. 현재 필수 체크는 기존 `policy / PR conventions and scope`, `smoke`, `CI`다.
+
+기존 기준선의 설명용 `exceptions` 배열은 내용을 보존해 `observations`로 옮겼다. 관측 기록은 API 감사 항목을 제외하지 않는다. 실제 기능 미지원·비해당을 감사 범위에서 제외하려면 원본의 [설정 기준선 형식](https://github.com/minjunkim-dev/repo-baseline/blob/8aad448d196ac21308e88e016d17c1f3b6920221/docs/github-settings-profile.md)에 맞는 `exceptions` 객체와 사유·근거가 필요하다. 예외가 있으면 exit 0이어도 결과는 전체 PASS가 아닌 LIMITED다. 미선언 403·404·누락·권한 오류는 계속 실패한다.
 
 이번 갱신은 GitHub 서버 기대값·권한·필수 체크·CodeQL·배포를 변경하지 않는다. 과거 실행 기록을 현재 검증 결과로 바꾸지 않는다.
 
