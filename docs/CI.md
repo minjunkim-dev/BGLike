@@ -17,7 +17,9 @@ PR에서는 제목과 브랜치 규칙도 검사합니다.
 `python3 scripts/check_whitespace.py --base <ref>`로 지정합니다. 기준 ref를 찾지 못하면 실패합니다.
 
 policy와 `make repository-check`는 `python3 scripts/check_repo_baseline.py`로 공통 복사본 해시를 확인합니다. 남은 공통 테스트는 전체 scripts 탐색에서 실행하고 CodeQL blob pin 검사를 유지합니다. 자체 리뷰의 자료 선택과 사용자 요청 회고는 `docs/agents/review.md`를 따릅니다.
-`Review status`는 [별도 workflow](../.github/workflows/review-status.yml)다. Godot workflow와 합치지 않았고, 필수 체크로 등록하지 않았다. `pull_request_target`은 기본 브랜치의 검사기만 실행한다.
+`Review status`는 [별도 workflow](../.github/workflows/review-status.yml)다. Godot workflow와 합치지 않았고, 필수 체크로 등록하지 않았다. `pull_request_target`은 기본 브랜치의 검사기만 실행한다. 활동 유형에 `ready_for_review`가 있다. 이벤트 종류는 `pull_request_target`과 `issue_comment`뿐이다.
+
+`PR policy`는 [별도 workflow](../.github/workflows/pr-policy.yml)다. Godot workflow와 합치지 않았다. 제목, 브랜치, 이슈 링크, `## Summary`, `## Evidence`, `## Merge Danger`, `Door:`, 작성 기록을 검사한다. base에 `scripts/workflow_policy.py`가 있으면 그 파일을 실행하고, 없을 때만 PR 쪽 스크립트를 실행한다. 그 예외는 검사기를 처음 넣는 PR뿐이다. `AGENTS.md`, `CLAUDE.md`, 기능 플래그는 `--root`로 PR 트리를 읽고 실행하지 않는다. [`.github/workflow-policy.json`](../.github/workflow-policy.json)은 `@AGENTS.md`만 있는 `CLAUDE.md`를 남기고, 기능 플래그 파일을 요구하지 않는다. `config/feature-flags.json`은 없다.
 
 - Markdown, `docs/` 자료와 `scripts/ci_scope.py`에 명시된 관리 파일만 바뀌면 Godot 작업을 선택하지 않습니다.
 - 게임 코드·장면·자산·프로젝트 설정, CI 선택기와 게임 검사 워크플로 변경은 모든 기존 Godot 검사를 선택합니다.
