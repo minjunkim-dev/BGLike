@@ -1,49 +1,41 @@
-<!-- PR 제목 예시: feat(combat): add turn order. 규칙: docs/GIT_CONVENTIONS.md -->
+<!--
+PR 본문 양식. 헤더 이름(## Summary, ## Evidence, ## Merge Danger)과 Door, Author는 그대로 둔다.
+작성 기록은 아래 Author 줄이거나, 같은 내용의 두 줄이다.
+  작성 도구: Claude Code | Cursor | Cursor 클라우드 에이전트 | 사람
+  작성 모델: 도구가 보여주는 모델 이름. 사람은 `없음`.
+tool과 모델이 둘 다 있어야 한다. 이전 도구가 있으면 이전 작성 모델: 에 이름을 쉼표로 적는다.
+축 이름은 Standards, Spec, 버그 찾기, Security다. 버그 찾기와 Security를 돌리지 않으면 모델은 `해당 없음: <이유>`이고 P0·P1·P2는 0이다.
+리뷰를 시작하지 못한 축은 모델·effort·P0·P1·P2에 미실행이라고 적는다. 미실행은 0이 아니다.
+head SHA는 이 표를 쓸 때의 PR head 전체 40자다. 리뷰 모델의 패밀리가 최종 작성 모델 또는 이전 작성 모델의 패밀리와 같으면 안 된다. 패밀리는 `docs/development-workflow.md` 역할 분담이다. CI 별칭은 Claude(Opus, Sonnet), Grok, Composer, Gemini, GPT다.
+-->
 
-## 관련 Issue
+Author: <tool> / <model>
 
-Refs # (Issue를 끝내는 마지막 PR이면 Closes #)
+## Summary
 
-## 변경 내용
+왜 바꾸는지, 바꾸기 전과 후.
 
-### Summary
+## Evidence
 
-변경 이유와 결과를 적습니다. before/after 또는 작은 도식을 사용합니다.
+실행한 명령, 결과, head SHA, 확인하지 않은 범위.
 
-- 변경 전:
-- 변경 후:
+## Merge Danger
 
-## 검증
+<!-- Door 값은 `양쪽 문` 또는 `한쪽 문`만. POLICY.md §10으로 판정한다. -->
 
-### Evidence
+Door: <양쪽 문 또는 한쪽 문>
 
-- [ ] `git diff --check`
-- [ ] `python3 -m unittest discover -s scripts -p 'test_*.py'`
-- [ ] 워크플로 변경 시 `actionlint` (해당 없음이면 이유 기록)
-- [ ] Godot headless import와 메인 장면 실행
-- [ ] 필요한 Godot 회귀 검사 (문서·관리 파일만 변경하면 범위 규칙과 생략 이유 기록)
-- [ ] 최종 head의 필수 CI 통과
-- [ ] 플레이 변경 시 편집기 또는 `manual_qa.py --mode macos`에서 직접 조작 확인 (체크 기준: `docs/CAPTURE_VERIFICATION.md`의 확인 등급, 해당 없음이면 이유 기록)
+영향 범위:
 
-실제 명령, 결과와 로그 링크:
+복구:
 
-- base SHA / 최종 head SHA:
-- Standards / Spec / 필요한 Security: 별도 컨텍스트, 실제 모델, 결과, 수정 커밋
-- 합격 기준과 읽은 문서 경로·SHA-256:
-- 영향 문서와 갱신 내용 또는 유지 이유 (기획서·개발 요청서의 구현 상태 포함):
-- 확인하지 못한 항목:
+신뢰 경계 기준: <없음, 또는 걸린 POLICY.md §5 기준>
 
-<!-- 같은 모델이면 같은 모델의 별도 컨텍스트로 기록합니다. 실행하지 못한 리뷰는 미완료입니다. -->
+## Review evidence
 
-## 검토자에게
-
-중점적으로 볼 장면, 충돌 가능 파일, 미완성 기능의 노출 조건을 적습니다.
-
-### Merge Danger
-
-- two-way / one-way와 이유:
-- blast radius: 영향을 받는 사용자·데이터·권한·외부 시스템:
-- 되돌리는 방법과 남는 외부 상태:
-- 병합 주체·위임 근거 / 사람이 승인해야 하는 최종 head:
-
-<!-- diff 크기로 위험을 판단하지 않습니다. 권한 확대·되돌리기 어려운 데이터 변경·외부 대량 발송은 위험 변경입니다. one-way/broad 변경에는 사람이 최종 head를 승인해야 합니다. -->
+| axis | model | effort | head SHA | P0 | P1 | P2 | result |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Standards |  |  |  |  |  |  |  |
+| Spec |  |  |  |  |  |  |  |
+| 버그 찾기 |  |  |  |  |  |  |  |
+| Security |  |  |  |  |  |  |  |
