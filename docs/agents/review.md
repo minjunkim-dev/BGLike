@@ -24,7 +24,7 @@
 
 Spec은 Issue가 연결한 기획서·개발 요청서의 규칙과 구현 상태를 함께 확인합니다. PR에 적힌 영향 문서의 갱신 내용 또는 유지 이유를 실제 구현·검수 근거와 대조합니다. 체크박스 완료 처리는 [확인 등급](../CAPTURE_VERIFICATION.md#확인-등급)을 따릅니다.
 
-Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행합니다. 위험 변경에는 Security도 별도 컨텍스트에서 수행합니다. 리뷰 모델의 패밀리는 작성 모델의 패밀리와 달라야 한다. 패밀리 기준은 [repo-baseline 역할 분담](https://github.com/minjunkim-dev/repo-baseline/blob/e8c5224e33d8ebe3aa915fd741702ee75c77ecc2/docs/development-workflow.md)이고, 이 저장소는 그 문서를 복사하지 않는다. 판정 코드는 복사본 `scripts/check_review_status.py`다. 다른 모델을 실행하지 않았으면 다른 모델의 리뷰로 보고하지 않습니다. 실행하지 못한 리뷰는 미완료로 기록합니다.
+Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행합니다. 위험 변경에는 Security도 별도 컨텍스트에서 수행합니다. 리뷰 모델의 패밀리는 작성 모델의 패밀리와 달라야 한다. 패밀리 기준은 [repo-baseline 역할 분담](https://github.com/minjunkim-dev/repo-baseline/blob/c6405a09a7d06af943cb08db5b600fe0f655b0a2/docs/development-workflow.md)이고, 이 저장소는 그 문서를 복사하지 않는다. 판정 코드는 복사본 `scripts/check_review_status.py`다. 다른 모델을 실행하지 않았으면 다른 모델의 리뷰로 보고하지 않습니다. 실행하지 못한 리뷰는 미완료로 기록합니다.
 
 리뷰어는 작성자가 같은 head SHA에서 통과시킨 검사를 다시 실행하지 않습니다. 작성자의 명령·결과·로그를 근거로 재사용합니다. 근거가 없거나 부족하면 그 이유를 기록합니다. 실행 권한이 없는 리뷰어는 그 검사를 미확인으로 기록합니다. 그리고 작성자에게 근거를 요청합니다. [읽기 전용 Claude 리뷰의 사전 승인](../WORKFLOW.md#읽기-전용-claude-리뷰의-사전-승인)에는 검사 실행 권한이 없습니다.
 
@@ -55,8 +55,8 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 
 저장소 `Allow auto-merge`는 On으로 둔다. 모든 PR에 자동 병합을 예약하지 않는다.
 기본 흐름은 담당 로컬 에이전트가 최종 독립 리뷰·필수 CI·티켓 검증 후 직접 병합하는 방식이다.
-`two-way/narrow`는 맡긴 작업의 조건 충족 후 별도 병합 위임 없이 병합할 수 있다.
-`one-way/broad`는 사람이 최종 head SHA와 영향 범위를 승인해야 한다.
+되돌리기 쉬움이면서 narrow인 변경은 맡긴 작업의 조건 충족 후 별도 병합 위임 없이 병합할 수 있다.
+되돌리기 어려움이거나 broad인 변경은 사람이 최종 head SHA와 영향 범위를 승인해야 한다.
 
 병합 직전에 GitHub API로 head·base와 검사 결과를 다시 확인한다.
 CodeQL 경고 수정 PR은 workflow 성공이 아니라 code scanning API로 판정한다.

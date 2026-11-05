@@ -104,7 +104,7 @@ squash merge를 하면 `main`에는 PR 제목이 커밋 제목으로 남습니�
 | 대상 | 검사 | 어긋나면 |
 | --- | --- | --- |
 | PR 제목, 브랜치 이름 | Godot workflow가 [재사용 PR lint](../.github/workflows/pr-lint.yml)를 호출. PR을 열거나 제목을 고칠 때마다 실행 | CI 실패. 제목이나 브랜치 이름을 고치면 다시 검사 |
-| PR 제목, 브랜치, 이슈 링크, 본문 절 | [PR policy](../.github/workflows/pr-policy.yml)가 `scripts/workflow_policy.py`를 호출. 위 PR lint는 유지한다. `## Summary`, `## Evidence`, `## Merge Danger`, `Door:`, 작성 기록을 본다 | CI 실패. 제목, 브랜치, 본문을 고치면 다시 검사 |
+| PR 제목, 브랜치, 이슈 링크, 본문 절 | [PR policy](../.github/workflows/pr-policy.yml)가 `scripts/workflow_policy.py`를 호출. 위 PR lint는 유지한다. `## Summary`, `## Evidence`, `## Merge Danger`, `Door:`(`되돌리기 쉬움` 또는 `되돌리기 어려움`), 작성 기록을 본다. 검사기 재적용 전 옛 형식은 [협업 규칙](WORKFLOW.md#브랜치와-병합)을 따른다 | CI 실패. 제목, 브랜치, 본문을 고치면 다시 검사 |
 | 커밋 제목 | `.githooks/commit-msg`. `git config core.hooksPath .githooks`를 한 번 실행해 켬. 같은 폴더의 LFS hook도 함께 켜짐 | 커밋 거부. 급하면 `git commit --no-verify` |
 | push 대상 브랜치 | `.githooks/pre-push`와 CI가 공유 `scripts/check_branch_name.py`를 호출. 실제 목적지 ref를 검사하고 Git LFS에 원래 입력·인자를 전달 | 잘못된 브랜치 push 거부. 기본 브랜치·태그·삭제는 로컬 이름 검사에서 제외 |
 | 병합 방식 | 저장소 설정: squash merge만 허용, 병합 후 브랜치 자동 삭제 | 다른 방식은 선택할 수 없음 |
