@@ -214,7 +214,7 @@ func get_hit_bonus() -> int:
 func get_damage_bonus() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["damage_bonus"])
-	# 전사는 기본 피해 보정이 없고 장비로만 더한다. 궁수의 +1은 #407 질문 3의 답을 기다린다.
+	# 전사는 기본 피해 보정이 없고 장비로만 더한다. 궁수의 +1은 궁수 재디자인 때 정한다 (#407 답 3번).
 	return (0 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus")
 
 

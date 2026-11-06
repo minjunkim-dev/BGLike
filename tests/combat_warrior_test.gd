@@ -790,7 +790,7 @@ func _test_counter() -> void:
 	_check(await walking.actions.move_to(walking.units[0], Vector2i(4, 6)), "전사가 야만인 곁에서 걷기")
 	_check(prompts.size() == 1 and walking.actions.is_victory() and walking.units[0].cell == Vector2i(4, 4)
 		and walking.units[0].movement_left == 3 and not walking.actions.busy, "반격으로 이긴 뒤 더 걷지 않음")
-	# 점프를 노린 마지막 적이 반격으로 쓰러지면 전투가 끝나 점프하지 않는다.
+	# 점프를 노린 마지막 적이 반격으로 쓰러지면 점프는 멈추고 비용은 소비한다. 착지하지 않아 낙하 피해도 없다 (#407 답 7번).
 	prompts.clear()
 	var jumping: Fixture = _counter_fixture(true, prompts, [0, 1, 2, 3])
 	jumping.actions.incapacitate(jumping.units[3])
@@ -798,10 +798,14 @@ func _test_counter() -> void:
 	jumping.units[2].reaction_left = 1
 	jumping.actions.dice = _dice([1, 1], ScriptedDice.attack_sides(jumping.units[2])
 		+ ScriptedDice.damage_sides(jumping.units[0], "counter"))
+	var jump_cost: int = jumping.actions.jump_cells(jumping.units[0])[Vector2i(4, 6)]
+	var hit_points_before: int = jumping.units[0].hit_points
+	var movement_before: int = jumping.units[0].movement_left
 	_check(await jumping.actions.jump_to(jumping.units[0], Vector2i(4, 6)), "전사가 야만인 곁에서 점프")
 	_check(prompts.size() == 1 and jumping.actions.is_victory() and jumping.units[0].cell == Vector2i(4, 4)
-		and jumping.units[0].bonus_action_left == 1 and not jumping.actions.busy,
-		"반격으로 이긴 뒤 점프 비용·착지 없음")
+		and jumping.units[0].bonus_action_left == 0 and jumping.units[0].movement_left == movement_before - jump_cost
+		and jumping.units[0].hit_points == hit_points_before and not jumping.actions.busy,
+		"반격으로 이긴 뒤 점프 비용만 소비, 착지·낙하 피해 없음")
 
 
 func _test_save_state() -> void:
