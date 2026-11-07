@@ -301,14 +301,27 @@ func show_grounds(grounds: Array[CombatActions.Ground]) -> void:
 	for marker: Node2D in _ground_markers:
 		marker.free()
 	_ground_markers.clear()
-	for ground: CombatActions.Ground in grounds:
+	var fog_cells: Array[Vector2i] = []
+	for entry: CombatActions.Ground in grounds:
+		var ground: CombatActions.Ground = entry
+		# 겹친 독안개는 칸 하나로 그린다. 남은 기간은 가장 오래 남는 기록을 보인다.
+		if ground.kind == "fog":
+			if ground.cell in fog_cells:
+				continue
+			fog_cells.append(ground.cell)
+			for other: CombatActions.Ground in grounds:
+				if other.kind == "fog" and other.cell == ground.cell and other.turns_left > ground.turns_left:
+					ground = other
 		var marker: Node2D = Node2D.new()
 		marker.position = map_to_local(ground.cell)
 		var center: Vector2 = map_to_surface(ground.cell) - marker.position
 		center.x += -7 if ground.kind == "burn" else 7
 		marker.draw.connect(func() -> void:
-			var color: Color = Color("ffb653") if ground.kind == "burn" else Color("b3e86c")
-			if ground.kind == "burn":
+			var color: Color = {"burn": Color("ffb653"), "poison": Color("b3e86c"), "fog": Color("8fd6c4")}[ground.kind]
+			if ground.kind == "fog":
+				marker.draw_circle(center + Vector2(-2, 0), 3.0, color, false)
+				marker.draw_circle(center + Vector2(2, 1), 2.5, color, false)
+			elif ground.kind == "burn":
 				marker.draw_colored_polygon(PackedVector2Array([
 					center + Vector2(-4, 2), center + Vector2(-2, -3), center + Vector2(0, -1),
 					center + Vector2(2, -5), center + Vector2(4, 2), center + Vector2(0, 4)]), color)

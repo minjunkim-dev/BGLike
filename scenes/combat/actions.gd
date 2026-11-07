@@ -44,12 +44,13 @@ class Ground extends RefCounted:
 	var dc: int
 	var entered: Array[CombatUnit] = []
 
-	func _init(caster: CombatUnit, position: Vector2i, effect: String) -> void:
+	## fog는 시전 때 기록한 save_dc를 쓴다. 시전마다 칸 하나에 기록 하나를 둔다.
+	func _init(caster: CombatUnit, position: Vector2i, effect: String, save_dc: int = 0) -> void:
 		source = caster
 		cell = position
 		kind = effect
 		turns_left = 2 if kind == "burn" else 4
-		dc = POISON_DC if kind == "poison" else 0
+		dc = POISON_DC if kind == "poison" else (save_dc if kind == "fog" else 0)
 
 
 ## 쓰러진 시전자의 턴 자리. anchor는 그 자리 바로 뒤의 유닛이고, anchor의 턴 시작 직전에 시전자의 유닛 효과를 줄인다.
@@ -159,7 +160,7 @@ static func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> boo
 				and saved[2] <= 6))
 		and data.grounds.all(func(saved: Variant) -> bool:
 			return (saved is Array and saved.size() == 6 and unit_index.call(saved[0])
-				and saved[1] is Vector2i and area.has_point(saved[1]) and saved[2] in ["burn", "poison"]
+				and saved[1] is Vector2i and area.has_point(saved[1]) and saved[2] in ["burn", "poison", "fog"]
 				and saved[3] is int and saved[3] >= 1 and saved[3] <= 4
 				and saved[4] is Array and saved[4].size() <= count and saved[4].all(unit_index)
 				and saved[5] is int and saved[5] >= 0 and saved[5] <= CombatUnit.SAVED_INT_LIMIT
@@ -457,7 +458,7 @@ func _decrease_durations(unit: CombatUnit) -> void:
 	_clock_slots = _clock_slots.filter(func(slot: ClockSlot) -> bool: return _has_unit_effects(slot.caster))
 	var ground_messages: Array[String] = []
 	for ground: Ground in _grounds.duplicate():
-		if ground.source == unit:
+		if ground.source == unit and ground.kind != "fog":
 			ground.turns_left -= 1
 			if ground.turns_left == 0:
 				_grounds.erase(ground)
@@ -465,7 +466,7 @@ func _decrease_durations(unit: CombatUnit) -> void:
 					tr("불") if ground.kind == "burn" else tr("독"), ground.cell.x, ground.cell.y])
 	for target: CombatUnit in units:
 		for effect: CombatUnit.StatusEffect in target.status_effects.duplicate():
-			if effect.source == unit:
+			if effect.source == unit and effect.turns_left > 0:
 				effect.turns_left -= 1
 				if effect.turns_left == 0:
 					target.status_effects.erase(effect)
@@ -490,10 +491,18 @@ func _tick_unit_effects(caster: CombatUnit) -> void:
 				expired.append(target.get_display_name())
 	if not expired.is_empty():
 		logged.emit(tr("전투의 함성 만료: %s") % ", ".join(expired))
+	# 독안개는 시전 순서대로 줄인다. 시전자가 쓰러졌어도 시계 슬롯이 이 길로 줄인다.
+	for ground: Ground in _grounds.duplicate():
+		if ground.kind == "fog" and ground.source == caster:
+			ground.turns_left -= 1
+			if ground.turns_left == 0:
+				_grounds.erase(ground)
+				logged.emit(tr("%s 독안개 만료: %d, %d") % [caster.get_display_name(), ground.cell.x, ground.cell.y])
 
 
 func _has_unit_effects(caster: CombatUnit) -> bool:
-	return units.any(func(unit: CombatUnit) -> bool: return unit.battle_cry_source == caster)
+	return (units.any(func(unit: CombatUnit) -> bool: return unit.battle_cry_source == caster)
+		or _grounds.any(func(ground: Ground) -> bool: return ground.kind == "fog" and ground.source == caster))
 
 
 func apply_status(source: CombatUnit, target: CombatUnit, kind: String,
@@ -568,7 +577,7 @@ func incapacitate(target: CombatUnit) -> void:
 	var ground_messages: Array[String] = []
 	for ground: Ground in _grounds.duplicate():
 		ground.entered.erase(target)
-		if ground.source == target:
+		if ground.source == target and ground.kind != "fog":
 			_grounds.erase(ground)
 			ground_messages.append(tr("%s %s 장판 해제: %d, %d") % [target.get_display_name(),
 				tr("불") if ground.kind == "burn" else tr("독"), ground.cell.x, ground.cell.y])
@@ -578,7 +587,7 @@ func incapacitate(target: CombatUnit) -> void:
 		if unit.stun_source == target:
 			unit.is_stunned = false
 		for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
-			if effect.source == target:
+			if effect.source == target and effect.turns_left > 0:
 				unit.status_effects.erase(effect)
 	for message: String in ground_messages:
 		logged.emit(message)
@@ -1379,9 +1388,12 @@ func _save_outcome(result: CombatChecks.RollResult) -> String:
 
 
 func _apply_grounds(unit: CombatUnit, entering: bool) -> void:
+	_apply_fog(unit, entering)
 	for ground: Ground in _grounds.duplicate():
 		if not is_instance_valid(unit) or unit.hit_points <= 0 or is_over():
 			break
+		if ground.kind == "fog":
+			continue
 		if (ground not in _grounds or ground.cell != unit.cell
 			or not is_instance_valid(ground.source) or ground.source.hit_points <= 0):
 			continue
@@ -1392,6 +1404,54 @@ func _apply_grounds(unit: CombatUnit, entering: bool) -> void:
 		if apply_status(ground.source, unit, ground.kind, ground.dc):
 			logged.emit(tr("%s %s 장판: %s 부여") % [unit.get_display_name(),
 				tr("불") if ground.kind == "burn" else tr("독"), tr("화상") if ground.kind == "burn" else tr("독")])
+
+
+## 독안개 칸의 건강 내성굴림. 칸 단위로 한 번 굴리고 그 칸의 모든 독안개 기록에 진입을 남긴다.
+## 시전자가 쓰러졌어도 장판은 남으므로 시전자의 생사를 보지 않는다. DC는 칸에서 가장 먼저 시전한 기록을 쓴다.
+func _apply_fog(unit: CombatUnit, entering: bool) -> void:
+	if not is_instance_valid(unit) or unit.hit_points <= 0 or is_over():
+		return
+	var fogs: Array[Ground] = []
+	for ground: Ground in _grounds:
+		if ground.kind == "fog" and ground.cell == unit.cell:
+			fogs.append(ground)
+	if fogs.is_empty() or entering and fogs.all(func(ground: Ground) -> bool: return unit in ground.entered):
+		return
+	for ground: Ground in fogs:
+		if unit not in ground.entered:
+			ground.entered.append(unit)
+	var health_sides: int = unit.get_ability_sides(CombatUnit.Ability.HEALTH)
+	var saved: CombatChecks.RollResult = CombatChecks.saving_throw(health_sides, unit.get_defense_bonus(),
+		fogs[0].dc, CombatActionRules.save_mode(unit), dice)
+	_show_roll_in_background(CombatDiceRoll.save(unit, health_sides, saved, unit.get_defense_bonus(), tr("DC"), fogs[0].dc))
+	logged.emit(tr("%s 독안개(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s") % [unit.get_display_name(),
+		health_sides, str(saved.rolls), unit.get_defense_bonus(), saved.total, fogs[0].dc, _save_outcome(saved)])
+	if saved.success or unit.get_status_count("poison") >= 3:
+		return
+	# 독안개로 얻은 독 중첩은 기간이 없고(turns_left 0) 시전자가 쓰러져도 남는다. 제거 DC는 고정 4다.
+	unit.status_effects.append(CombatUnit.StatusEffect.new("poison", fogs[0].source, 0, Ground.POISON_DC))
+	logged.emit(tr("%s 독안개: 독 부여") % unit.get_display_name())
+	feedback.emit(unit, tr("독"))
+	changed.emit()
+
+
+## 독안개를 시전한다. 칸 조준으로 고른 cell 기준 영역(상자·바위 칸 포함)에 시전마다 칸당 기록 하나를 만들고,
+## 시전 순간 영역 안의 유닛이 바로 굴린다(진입 1회로 소비).
+func cast_fog(caster: CombatUnit, cell: Vector2i) -> bool:
+	if not is_instance_valid(caster) or caster not in units or caster.hit_points <= 0 or not can_aim(caster, "fog", cell):
+		return false
+	var area: Array[Vector2i] = aim_area(caster, "fog", cell)
+	if area.is_empty():
+		return false
+	var dc: int = CombatActionRules.save_dc(caster, "fog")
+	for area_cell: Vector2i in area:
+		_grounds.append(Ground.new(caster, area_cell, "fog", dc))
+	logged.emit(tr("%s 독안개 시전: %d, %d · DC %d") % [caster.get_display_name(), cell.x, cell.y, dc])
+	for unit: CombatUnit in units.duplicate():
+		if unit.cell in area:
+			_apply_fog(unit, true)
+	changed.emit()
+	return true
 
 
 func _clear_burn_in_water(unit: CombatUnit) -> void:
