@@ -24,7 +24,7 @@
 
 Spec은 Issue가 연결한 기획서·개발 요청서의 규칙과 구현 상태를 함께 확인합니다. PR에 적힌 영향 문서의 갱신 내용 또는 유지 이유를 실제 구현·검수 근거와 대조합니다. 체크박스 완료 처리는 [확인 등급](../CAPTURE_VERIFICATION.md#확인-등급)을 따릅니다.
 
-Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행합니다. 위험 변경에는 Security도 별도 컨텍스트에서 수행합니다. 같은 모델을 쓰면 `같은 모델의 별도 컨텍스트`와 실제 모델명을 기록합니다. 다른 모델을 실행하지 않았으면 다른 모델의 리뷰로 보고하지 않습니다. 실행하지 못한 리뷰는 미완료로 기록합니다.
+Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행합니다. 위험 변경에는 Security도 별도 컨텍스트에서 수행합니다. 리뷰 모델의 패밀리는 작성 모델의 패밀리와 달라야 한다. 패밀리 기준은 [repo-baseline 역할 분담](https://github.com/minjunkim-dev/repo-baseline/blob/9a3920b942695257772f25083e8a4fde5d4e3208/docs/development-workflow.md)이고, 이 저장소는 그 문서를 복사하지 않는다. 판정 코드는 복사본 `scripts/check_review_status.py`다. 1인 프로필에서 그 코드는 `creator.login`이 저장소 소유자이거나 `STATUS_ACTORS`(지금은 비어 있음)인 `review/independent`·`review/security`만 success로 센다. 다른 작성자의 status는 실패다. 편집한 승인 댓글은 받지 않는다. 다른 모델을 실행하지 않았으면 다른 모델의 리뷰로 보고하지 않습니다. 실행하지 못한 리뷰는 미완료로 기록합니다.
 
 리뷰어는 작성자가 같은 head SHA에서 통과시킨 검사를 다시 실행하지 않습니다. 작성자의 명령·결과·로그를 근거로 재사용합니다. 근거가 없거나 부족하면 그 이유를 기록합니다. 실행 권한이 없는 리뷰어는 그 검사를 미확인으로 기록합니다. 그리고 작성자에게 근거를 요청합니다. [읽기 전용 Claude 리뷰의 사전 승인](../WORKFLOW.md#읽기-전용-claude-리뷰의-사전-승인)에는 검사 실행 권한이 없습니다.
 
@@ -36,7 +36,7 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 2. 지적마다 위치, 실패 조건, 영향과 수정 근거를 적습니다. 불확실하거나 범위 밖인 문제는 근거와 함께 보고합니다. 구현 범위를 늘리거나 제품 규칙을 확정하지 않습니다.
 3. 확실한 결함에는 수정 전 실패하는 동작 검사를 재사용하거나 추가합니다. 수정한 범위의 검사와 저장소 필수 검사를 실행합니다.
 4. 모든 수정을 커밋한 뒤 최종 head의 전체 diff를 다시 독립 검토합니다. 같은 SHA에서 이미 통과한 검사는 근거를 재사용합니다. 입력 변경이나 실패가 없으면 반복하지 않습니다.
-5. PR의 Evidence에 각 리뷰의 컨텍스트·모델·base·head·문서 fingerprint·결과·수정 커밋을 기록합니다. 최종 필수 CI와 합격 기준을 확인한 뒤 [병합 정책](../WORKFLOW.md#브랜치와-병합)을 적용합니다.
+5. PR의 Evidence에 각 리뷰의 컨텍스트·모델·base·head·문서 fingerprint·결과·수정 커밋을 기록합니다. 근거 표의 열은 축, 모델, effort, head SHA, P0, P1, P2다. 축은 Standards, Spec, 버그 찾기, Security다. 기본 브랜치의 `Review status`가 그 표를 현재 head와 대조한다. 그 검사기가 기본 브랜치에 있기 전에는 표만으로 그 job이 통과하지 않는다. `.github/repository-settings.json`은 `Review status`를 필수 체크 기대값으로 기록한다. 그 기록은 branch protection이 아니다. 소유자가 서버에 적용하면 Dependabot 버전 전용 PR을 뺀 모든 PR에 소유자가 올리는 `review/independent`가 필요하고, 신뢰 경계 경로면 `review/security`도 필요하다. 에이전트는 그 status와 승인 댓글을 남기지 않는다. 최종 필수 CI와 합격 기준을 확인한 뒤 [병합 정책](../WORKFLOW.md#브랜치와-병합)을 적용합니다.
 
 ## CI 실패 처리
 
@@ -55,8 +55,8 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 
 저장소 `Allow auto-merge`는 On으로 둔다. 모든 PR에 자동 병합을 예약하지 않는다.
 기본 흐름은 담당 로컬 에이전트가 최종 독립 리뷰·필수 CI·티켓 검증 후 직접 병합하는 방식이다.
-`two-way/narrow`는 맡긴 작업의 조건 충족 후 별도 병합 위임 없이 병합할 수 있다.
-`one-way/broad`는 사람이 최종 head SHA와 영향 범위를 승인해야 한다.
+되돌리기 쉬움이면서 narrow인 변경은 맡긴 작업의 조건 충족 후 별도 병합 위임 없이 병합할 수 있다.
+되돌리기 어려움이거나 broad인 변경은 사람이 최종 head SHA와 영향 범위를 승인해야 한다.
 
 병합 직전에 GitHub API로 head·base와 검사 결과를 다시 확인한다.
 CodeQL 경고 수정 PR은 workflow 성공이 아니라 code scanning API로 판정한다.
@@ -82,6 +82,10 @@ GitHub 자동 병합 예약은 독립 리뷰 결과를 대상 SHA의 필수 체�
 | 문서·권리 | 변경한 기준 문서, `COPYRIGHT.md`, `THIRD_PARTY_NOTICES.md` |
 
 권한·Secret·workflow·저장소 설정·dependency 정책 변경에는 작성자와 다른 모델의 리뷰를 추가한다. 실행할 수 없으면 그 한계를 기록하고 프로젝트의 위험별 승인 기준을 따른다.
+
+## 프로젝트 신뢰 경계 경로
+
+공통 경로는 repo-baseline `POLICY.md` §5가 정한다. 이 저장소가 더한 경로는 [`.github/trust-boundary-paths`](../../.github/trust-boundary-paths)다. 인증·결제·권한 검사·migration에 해당하는 프로젝트 경로는 아직 없다. 경로를 추가하면 그 파일에 한 줄씩 적고 이 절의 링크를 유지한다.
 
 ## Matt Pocock retro로 환경 개선
 
