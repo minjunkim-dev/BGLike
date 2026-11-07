@@ -1013,9 +1013,10 @@ func _check_focus_tooltip(preparation: CombatPreparation, button_name: String, s
 ## 정비 화면 바로 아래 설명 패널에 보이는 글의 영역. 없으면 빈 Rect2다.
 ## 상세 패널의 같은 아이템 글과 Godot 기본 툴팁 창의 글은 세지 않는다.
 func _tooltip_rect(preparation: CombatPreparation, text: String) -> Rect2:
-	for label: Node in root.find_children("*", "Label", true, false):
+	# 호버 설명은 수치 색 때문에 RichTextLabel이다(#457).
+	for label: Node in root.find_children("*", "RichTextLabel", true, false):
 		var panel: Node = label.get_parent()
-		if (label as Label).text == text and (label as Label).is_visible_in_tree() \
+		if (label as RichTextLabel).get_parsed_text() == text and (label as RichTextLabel).is_visible_in_tree() \
 			and panel is PanelContainer and panel.get_parent() == preparation:
 			return (panel as Control).get_global_rect()
 	return Rect2()

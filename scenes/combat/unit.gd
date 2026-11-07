@@ -25,6 +25,7 @@ const ENEMY_COLOR: Color = Color("df6256")
 const OUTLINE_COLOR: Color = Color("202b35")
 const WEAPON_COLOR: Color = Color("f4ead1")
 const HEAL_COLOR: Color = Color("70c76d")
+const SHIELD_COLOR: Color = Color("8fd3ff")
 ## 이어하기가 그대로 되돌리는 값. 저장 파일의 값은 이 변수와 같은 타입이어야 한다.
 const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initiative_roll", "movement_left",
 	"action_capacity", "bonus_action_capacity", "reaction_capacity", "action_left", "bonus_action_left",
@@ -109,7 +110,10 @@ var cross_slash_left: int = 1
 var steel_charge_left: int = 1
 var battle_cry_left: int = 1
 ## 성스러운 장막의 방어막. 피해를 HP보다 먼저 받고, 자기 턴 시작마다 shield_turns가 준다.
-var shield_points: int = 0
+var shield_points: int = 0:
+	set(value):
+		shield_points = value
+		queue_redraw()
 var shield_turns: int = 0
 ## 전투의 함성의 명중 보너스. 시전자의 턴 시작(쓰러졌으면 시계 슬롯)마다 battle_cry_turns가 준다.
 var battle_cry_bonus: int = 0
@@ -519,6 +523,12 @@ func face_toward(destination: Vector2) -> void:
 		queue_redraw()
 
 
+## HP 바에서 HP와 방어막이 차지하는 비율(x, y). HP + 방어막이 최대 HP를 넘으면 바 전체를 그 합에 맞춘다(#457).
+func get_bar_fractions() -> Vector2:
+	var total: float = maxf(get_max_hit_points(), hit_points + shield_points)
+	return Vector2(hit_points, shield_points) / total
+
+
 func _draw() -> void:
 	_silhouette.visible = is_occluded or is_selected or is_previewed
 	var edge: Color = Color("f4cf69") if is_selected else (
@@ -530,7 +540,11 @@ func _draw() -> void:
 	draw_set_transform(Vector2(0, floor_offset_y))
 	var status_y: float = get_status_label_y()
 	draw_rect(Rect2(-9, status_y + 4, 18, 4), OUTLINE_COLOR)
-	draw_rect(Rect2(-8, status_y + 5, 16.0 * hit_points / get_max_hit_points(), 2), HEAL_COLOR)
+	# 방어막은 HP 바 뒤쪽에 겹쳐 그린다.
+	var fractions: Vector2 = get_bar_fractions()
+	draw_rect(Rect2(-8, status_y + 5, 16.0 * fractions.x, 2), HEAL_COLOR)
+	if shield_points > 0:
+		draw_rect(Rect2(-8 + 16.0 * fractions.x, status_y + 5, 16.0 * fractions.y, 2), SHIELD_COLOR)
 	var status: String = get_status_text()
 	if not status.is_empty():
 		var font: Font = ThemeDB.fallback_font

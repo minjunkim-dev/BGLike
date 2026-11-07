@@ -14,7 +14,7 @@ var hidden_when: Callable = func() -> bool: return false
 var top_of: Callable = func(target: Control) -> float: return target.get_global_rect().position.y
 
 var _owner: Control
-var _label: Label = Label.new()
+var _label: RichTextLabel = RichTextLabel.new()
 var _timer: Timer = Timer.new()
 
 
@@ -31,7 +31,11 @@ func _init() -> void:
 	style.content_margin_bottom = 3
 	add_theme_stylebox_override("panel", style)
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_label.add_theme_font_size_override("font_size", 10)
+	_label.bbcode_enabled = true
+	_label.fit_content = true
+	_label.scroll_active = false
+	_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_label.add_theme_font_size_override("normal_font_size", 10)
 	add_child(_label)
 	hide()
 	_timer.one_shot = true
@@ -70,7 +74,7 @@ func _update() -> void:
 		or hidden_when.call():
 		hide()
 		return
-	_label.text = _owner.tooltip_text
+	_label.text = CombatSignedNumbers.colorize(_owner.tooltip_text.replace("[", "[lb]"))
 	size = get_combined_minimum_size()
 	var rect: Rect2 = _owner.get_global_rect()
 	var bounds: Rect2 = get_parent_control().get_global_rect().grow(-4)

@@ -22,6 +22,14 @@ static var NAMES: Dictionary[String, String] = {
 	"spawn": TranslationServer.tr("새끼 낳기"), "pull": TranslationServer.tr("만능팔"), "spin": TranslationServer.tr("회전회오리"), "jump": TranslationServer.tr("점프"),
 	"counter": TranslationServer.tr("반격")
 }
+## 패시브 칸(스킬 컨테이너 맨 왼쪽)에 보이는 상시 효과. 자원도 아이콘도 없다(#457).
+static var PASSIVES: Dictionary[String, String] = {
+	"phalanx": TranslationServer.tr("팔랑크스"), "brawn": TranslationServer.tr("괴력의 사내")
+}
+static var PASSIVE_EFFECTS: Dictionary[String, String] = {
+	"phalanx": TranslationServer.tr("인접한 아군이 있으면\n전사와 그 아군의 AC +1."),
+	"brawn": TranslationServer.tr("기회 공격이 명중하면\n대상의 이동력을 0으로 만듭니다.")
+}
 static var EFFECTS: Dictionary[String, String] = {
 	"jump": TranslationServer.tr("1~2칸의 빈 바닥으로 점프.\n상승2까지, 낙하 차3부터 피해."),
 	"spawn": TranslationServer.tr("인접한 빈 칸에 새끼 거미1마리를 만듭니다."),

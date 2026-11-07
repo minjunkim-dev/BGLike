@@ -154,11 +154,13 @@ layout_mode = 2
 show_percentage = false
 mouse_filter = 2
 
-[node name="Resources" type="Label" parent="UI/TurnHud/UnitDetails/UnitPanel/Info"]
+[node name="Resources" type="RichTextLabel" parent="UI/TurnHud/UnitDetails/UnitPanel/Info"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/normal_font_size = 10
 mouse_filter = 2
-autowrap_mode = 3
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
 
 [node name="AttackPreview" type="Label" parent="UI/TurnHud/UnitDetails"]
 layout_mode = 2
@@ -171,7 +173,7 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -272.0
+offset_left = -216.0
 offset_top = -102.0
 offset_right = -8.0
 offset_bottom = -54.0
@@ -190,7 +192,7 @@ anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 8.0
 offset_top = -63.0
-offset_right = 362.0
+offset_right = 413.0
 offset_bottom = -6.0
 grow_vertical = 0
 

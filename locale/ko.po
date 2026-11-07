@@ -1723,3 +1723,27 @@ msgstr "이 게임은 Godot Engine %d.%d.%d를 사용합니다. Godot Engine은 
 #: scenes/title.gd:64
 msgid "%s\n이 저장을 지우고 새 게임을 시작하시겠습니까?"
 msgstr "%s\n이 저장을 지우고 새 게임을 시작하시겠습니까?"
+
+#: scenes/combat/action_rules.gd
+msgid "팔랑크스"
+msgstr "팔랑크스"
+
+#: scenes/combat/action_rules.gd
+msgid "괴력의 사내"
+msgstr "괴력의 사내"
+
+#: scenes/combat/action_rules.gd
+msgid "인접한 아군이 있으면\n전사와 그 아군의 AC +1."
+msgstr "인접한 아군이 있으면\n전사와 그 아군의 AC +1."
+
+#: scenes/combat/action_rules.gd
+msgid "기회 공격이 명중하면\n대상의 이동력을 0으로 만듭니다."
+msgstr "기회 공격이 명중하면\n대상의 이동력을 0으로 만듭니다."
+
+#: scenes/combat/turn_hud.gd
+msgid "패시브"
+msgstr "패시브"
+
+#: scenes/combat/turn_hud.gd
+msgid "지금 적용 중"
+msgstr "지금 적용 중"

@@ -650,7 +650,7 @@ func _test_scene_input() -> void:
 	var action_before: int = units[0].action_left
 	await _click_unit(units[2])
 	_check((battle.get("selection") as CombatSelection).preview_target == units[2], "실제 입력 경로로 적 도형 선택")
-	_check(hud.unit_label.text == "풋내기 야만인" and "AC 4" in hud.resource_label.text, "클릭하면 적 HP/AC/상태 표시")
+	_check(hud.unit_label.text == "풋내기 야만인" and "AC 4" in hud.resource_label.get_parsed_text(), "클릭하면 적 HP/AC/상태 표시")
 	_check("사거리 밖" in hud.preview_label.text and "0.0%" in hud.preview_label.text, "기본 배치의 사거리 밖 안내")
 	await _click_unit(units[2])
 	_check(units[2].hit_points == hp_before and units[0].movement_left == movement_before
@@ -670,8 +670,8 @@ func _test_scene_input() -> void:
 	units[3].position = map.map_to_local(units[3].cell)
 	(battle.get("selection") as CombatSelection).clear_preview()
 	await _click_unit(units[3])
-	_check("75.0%" in hud.preview_label.text and "AC 6" in hud.resource_label.text
-		and "HP 14 / 14" in hud.resource_label.text, "사거리 안 대상의 명중률과 능력치 표시")
+	_check("75.0%" in hud.preview_label.text and "AC 6" in hud.resource_label.get_parsed_text()
+		and "HP 14 / 14" in hud.resource_label.get_parsed_text(), "사거리 안 대상의 명중률과 능력치 표시")
 	units[3].is_stunned = true
 	(battle.get("selection") as CombatSelection).clear_preview()
 	await _click_unit(units[3])
