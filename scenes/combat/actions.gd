@@ -765,6 +765,24 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	return false
 
 
+## 칸 조준 동작이 고를 수 있는 칸 목록. 칸 조준 항목이 없는 동작은 비어 있다.
+func aim_cells(actor: CombatUnit, action: String, from_cell: Vector2i = Vector2i(-1, -1)) -> Array[Vector2i]:
+	if actor == null or action not in CombatActionRules.AIM_RANGES:
+		return []
+	return grid.aim_cells(actor.cell if from_cell == Vector2i(-1, -1) else from_cell, CombatActionRules.AIM_RANGES[action])
+
+
+func can_aim(actor: CombatUnit, action: String, cell: Vector2i, from_cell: Vector2i = Vector2i(-1, -1)) -> bool:
+	return cell in aim_cells(actor, action, from_cell)
+
+
+## 목표 칸 기준 영역: 반경 안에서 목표 칸 바닥과 높이 차 1 이하인 고를 수 있는 칸. 목표 칸이 유효하지 않으면 비어 있다.
+func aim_area(actor: CombatUnit, action: String, cell: Vector2i) -> Array[Vector2i]:
+	if actor == null or action not in CombatActionRules.AIM_RADII:
+		return []
+	return grid.area_cells(cell, CombatActionRules.AIM_RADII[action], false)
+
+
 ## 휩쓸기의 대상: facing을 정면으로 둔 반달 5칸의 살아 있는 적을 시계방향 순서로 준다. 아군은 맞지 않는다.
 func sweep_targets(actor: CombatUnit, facing: Vector2i) -> Array[CombatUnit]:
 	var targets: Array[CombatUnit] = []

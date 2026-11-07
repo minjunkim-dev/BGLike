@@ -45,6 +45,9 @@ static var EFFECTS: Dictionary[String, String] = {
 const SELF_TARGET: Array[String] = ["holy_veil", "battle_cry", "second_wind", "disengage", "potion"]
 ## 표식과 충격 화살의 사거리.
 const SKILL_RANGE: int = 6
+## 칸 조준 동작의 사거리와 반경 (SKILL_TYPES 5-2). 최소 사거리는 0, 곡사·기준점(목표 칸)은 기본값이라 필드가 없다.
+const AIM_RANGES: Dictionary[String, int] = {"fog": 4}
+const AIM_RADII: Dictionary[String, int] = {"fog": 1}
 ## 아군 직업의 고유 동작과 패시브(팔랑크스, 괴력의 사내). 몬스터의 동작은 정의의 actions가 정한다.
 ## 공용 동작(점프·기회 공격)은 belongs_to가 정한다.
 const CLASS_ONLY: Dictionary[String, CombatUnit.Kind] = {
