@@ -378,6 +378,25 @@ func _test_passive_slot_and_number_colors() -> void:
 		and colored.contains("[color=#70c76d]+3[/color]") and not colored.contains("+0[/color]")
 		and colored.contains("AC +0"), "수치 색: 가감 부호만 칠하고 +0은 칠하지 않음: " + colored)
 	_check(CombatActionRules.colorize("HP 5 / 9") == "HP 5 / 9", "수치 색: 가감이 없는 줄은 그대로")
+	# 방어막 바(#457): HP 뒤에 이어 그리고, 합이 최대 HP를 넘으면 합에 맞춘다. 검사 뒤 값을 되돌린다.
+	var unit: CombatUnit = units[0]
+	var saved_hp: int = unit.hit_points
+	var saved_shield: int = unit.shield_points
+	var max_hp: int = unit.get_max_hit_points()
+	unit.hit_points = max_hp
+	unit.shield_points = 0
+	_check(unit.get_bar_fractions().is_equal_approx(Vector2(1, 0)), "방어막 바: 방어막이 없으면 HP만")
+	unit.hit_points = max_hp - 4
+	unit.shield_points = 2
+	_check(unit.get_bar_fractions().is_equal_approx(Vector2(float(max_hp - 4) / max_hp, 2.0 / max_hp)),
+		"방어막 바: 합이 최대 HP 이하면 최대 HP 기준")
+	unit.hit_points = max_hp
+	unit.shield_points = max_hp
+	_check(unit.get_bar_fractions().is_equal_approx(Vector2(0.5, 0.5)), "방어막 바: 합이 넘으면 합 기준")
+	unit.shield_points = 0
+	_check(unit.get_bar_fractions().y == 0.0, "방어막 바: 방어막이 다 닳으면 사라짐")
+	unit.hit_points = saved_hp
+	unit.shield_points = saved_shield
 
 
 func _test_warrior() -> void:

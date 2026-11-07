@@ -253,6 +253,13 @@ func get_status_label_y() -> float:
 	return _art_top_y + body_offset_y - 9.0
 
 
+## HP 바에서 HP와 방어막이 차지하는 비율(x=HP, y=방어막, #457). 방어막은 HP 뒤에 이어 그린다.
+## HP와 방어막 합이 최대 HP를 넘으면 바 전체를 합에 맞춘다. 그래서 만피에 방어막을 받으면 초록이 줄어 보인다.
+func get_bar_fractions() -> Vector2:
+	var total: float = float(maxi(get_max_hit_points(), hit_points + shield_points))
+	return Vector2(hit_points / total, shield_points / total)
+
+
 ## 유닛 위에 지금 보이는 상태 글자. 기절·화상·독·표식.
 func get_status_text() -> String:
 	var status: String = get_periodic_status_text()
@@ -534,11 +541,10 @@ func _draw() -> void:
 	draw_set_transform(Vector2(0, floor_offset_y))
 	var status_y: float = get_status_label_y()
 	draw_rect(Rect2(-9, status_y + 4, 18, 4), OUTLINE_COLOR)
-	# 방어막(#457)은 같은 바에서 HP 뒤에 이어 그린다. HP와 방어막 합이 최대 HP를 넘으면 바 전체를 합에 맞춘다.
-	var bar_total: int = maxi(get_max_hit_points(), hit_points + shield_points)
-	draw_rect(Rect2(-8, status_y + 5, 16.0 * hit_points / bar_total, 2), HEAL_COLOR)
+	var fractions: Vector2 = get_bar_fractions()
+	draw_rect(Rect2(-8, status_y + 5, 16.0 * fractions.x, 2), HEAL_COLOR)
 	if shield_points > 0:
-		draw_rect(Rect2(-8 + 16.0 * hit_points / bar_total, status_y + 5, 16.0 * shield_points / bar_total, 2), SHIELD_COLOR)
+		draw_rect(Rect2(-8 + 16.0 * fractions.x, status_y + 5, 16.0 * fractions.y, 2), SHIELD_COLOR)
 	var status: String = get_status_text()
 	if not status.is_empty():
 		var font: Font = ThemeDB.fallback_font
