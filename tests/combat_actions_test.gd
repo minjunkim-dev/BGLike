@@ -790,6 +790,7 @@ func _run() -> void:
 	_test_scrap_robot_overload()
 	await _test_scrap_robot_overload_timing()
 	_test_scrap_robot_turn_damage()
+	_test_scrap_robot_overload_burn()
 	await _test_spiderling_stats_and_damage()
 	await _test_mother_stats_and_damage()
 	_test_spawn_spiderling()
@@ -1215,6 +1216,8 @@ func _test_pull_contest_and_cooldown() -> void:
 	f.actions.dice = _dice_for([6], [6])
 	_check(f.actions.pull(boss, target) and target.cell == Vector2i(5, 4) and target.hit_points == 14,
 		"궁수의 힘 d6 최댓값 6은 DC 10에 못 미쳐 끌림")
+	# 끌려온 궁수는 과부하 고철로봇의 턴 시작 화상을 받는다. 그 굴림은 준비값 밖이라 seed로 잇는다 (#464).
+	f.actions.dice = ScriptedDice.new([], []).then_seeded()
 	for turn: int in range(8):
 		f.turns.end_turn()
 	target.kind = CombatUnit.Kind.WARRIOR
@@ -1378,6 +1381,58 @@ func _test_scrap_robot_turn_damage() -> void:
 			"다른 살아 있는 적이 없을 때만 승리")
 		_check(not dying.actions.can_use(doomed, "attack")
 			and dying.turns.current_unit != doomed, "전투 불능 보스는 그 턴과 이후 턴에 행동 불가")
+
+
+## 과부하 고철로봇의 턴 시작 화상 방출: 기간 감소 뒤, 반경 1(높이 차 1 이하), 판정 없음 (#464).
+func _test_scrap_robot_overload_burn() -> void:
+	for kind: CombatUnit.Kind in CombatActions.SCRAP_ROBOTS:
+		var f: Fixture = _burn_fixture(kind, true)
+		var boss: CombatUnit = f.units[2]
+		var warrior: CombatUnit = f.units[0]
+		f.actions.apply_status(boss, warrior, "burn")
+		_start_boss_turn(f)
+		var durations: Array[int] = []
+		for effect: CombatUnit.StatusEffect in warrior.status_effects:
+			durations.append(effect.turns_left)
+		durations.sort()
+		_check(warrior.get_status_count("burn") == 2 and durations == [1, 2],
+			"방출은 기간 감소 뒤라 새 화상이 기간 2를 가짐 (%d)" % kind)
+		_check(f.units[1].get_status_count("burn") == 0 and f.units[3].get_status_count("burn") == 0
+			and boss.get_status_count("burn") == 0, "반경 밖 유닛과 로봇 자신은 화상을 받지 않음")
+		var before: Fixture = _burn_fixture(kind, false)
+		_start_boss_turn(before)
+		_check(before.units[0].get_status_count("burn") == 0, "과부하 전에는 방출 없음 (%d)" % kind)
+	var capped: Fixture = _burn_fixture(CombatUnit.Kind.SCRAP_ROBOT_1000, true)
+	for _i: int in range(3):
+		capped.actions.apply_status(capped.units[2], capped.units[0], "burn")
+	_start_boss_turn(capped)
+	_check(capped.units[0].get_status_count("burn") == 3, "화상 상한 3을 넘지 않음")
+	var tall: Fixture = _burn_fixture(CombatUnit.Kind.SCRAP_ROBOT_1000, true)
+	tall.units[3].cell = Vector2i(5, 5)
+	tall.actions.grid.heights[tall.units[0].cell] = 1
+	tall.actions.grid.heights[tall.units[3].cell] = 2
+	_start_boss_turn(tall)
+	_check(tall.units[0].get_status_count("burn") == 1 and tall.units[3].get_status_count("burn") == 0,
+		"높이 차 1은 맞고 2는 맞지 않음")
+	var wet: Fixture = _burn_fixture(CombatUnit.Kind.SCRAP_ROBOT_1000, true)
+	wet.actions.grid.water_cells = [wet.units[0].cell]
+	_start_boss_turn(wet)
+	_check(wet.units[0].get_status_count("burn") == 0, "물 위 유닛은 화상을 받지 않음")
+
+
+func _burn_fixture(kind: CombatUnit.Kind, overloaded: bool) -> Fixture:
+	var f: Fixture = _fixture()
+	f.actions.dice = ScriptedDice.new([], []).then_seeded()
+	f.units[2].kind = kind
+	f.units[2].hit_points = 10 if overloaded else f.units[2].get_max_hit_points()
+	return f
+
+
+## 보스 바로 앞 유닛까지 턴을 넘겨 보스의 실제 턴 시작을 일으킨다.
+func _start_boss_turn(f: Fixture) -> void:
+	ScriptedDice.arrange_turns(f.turns, f.units, [f.units[0], f.units[1], f.units[3], f.units[2]])
+	for _i: int in range(3):
+		f.turns.end_turn()
 
 
 func _test_scrap_robot_stun_immunity() -> void:
