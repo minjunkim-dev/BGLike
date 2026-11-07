@@ -834,6 +834,7 @@ func _run() -> void:
 	_test_burn_caster_duration()
 	_test_burn_stack_limit()
 	_test_poison_tick()
+	await _test_poison_immunity()
 	_test_status_fifo()
 	_test_poison_save_oldest()
 	_test_status_caster_incapacitation()
@@ -2494,6 +2495,44 @@ func _test_poison_tick() -> void:
 	f.turns.end_turn()
 	f.turns.end_turn()
 	_check(target.hit_points == 11, "건강 d4의3은 DC 4 미달이라 독 고정1 피해")
+
+
+func _test_poison_immunity() -> void:
+	for kind: CombatUnit.Kind in [CombatUnit.Kind.SPIDERLING, CombatUnit.Kind.MOTHER_SPIDER]:
+		var f: Fixture = _fixture()
+		var spider: CombatUnit = f.units[2]
+		spider.kind = kind
+		spider.hit_points = spider.get_max_hit_points()
+		var hp: int = spider.hit_points
+		_check(spider.is_poison_immune() and not f.units[3].is_poison_immune() and not f.units[0].is_poison_immune(),
+			"거미 계열만 독 면역: " + str(kind))
+		_check(not f.actions.apply_status(f.units[1], spider, "poison") and spider.get_status_count("poison") == 0,
+			"독 중첩을 받지 않음")
+		_check(f.actions.apply_status(f.units[1], spider, "burn"), "화상은 면역이 아님")
+		spider.status_effects.clear()
+		f.actions.dice = _dice_for([], [])
+		# 장판 위에 선 채로 턴 시작: 부여도, 내성굴림도, 로그도 없다.
+		f.actions.create_ground(f.units[1], spider.cell, "poison")
+		f.logs.clear()
+		f.turns.end_turn()
+		f.turns.end_turn()
+		_check(f.turns.current_unit == spider and spider.get_status_count("poison") == 0 and spider.hit_points == hp
+			and not f.logs.any(func(line: String) -> bool: return "독" in line), "독 장판 위 턴 시작: 부여·굴림·로그 없음")
+	var f: Fixture = _fixture()
+	var spiderling: CombatUnit = f.units[2]
+	spiderling.kind = CombatUnit.Kind.SPIDERLING
+	spiderling.hit_points = 1
+	spiderling.cell = Vector2i(6, 4)
+	f.units[3].cell = Vector2i(9, 9)
+	f.actions.create_ground(f.units[1], Vector2i(7, 4), "poison")
+	f.actions.dice = _dice_for([], [])
+	f.turns.end_turn()
+	f.turns.end_turn()
+	f.logs.clear()
+	var moved: bool = await f.actions.move_to(spiderling, Vector2i(7, 4))
+	_check(moved and spiderling.cell == Vector2i(7, 4)
+		and spiderling.get_status_count("poison") == 0 and spiderling.hit_points == 1
+		and not f.logs.any(func(line: String) -> bool: return "장판" in line), "독 장판 진입: 부여·로그 없음")
 
 
 func _test_status_fifo() -> void:

@@ -76,6 +76,7 @@ func _run() -> void:
 	await _test_spiderling()
 	await _test_warrior()
 	await _test_ground_paths()
+	await _test_poison_immune_paths()
 	await _test_jump_attack()
 	await _test_jump_priorities()
 	await _test_jump_retreat_and_pull()
@@ -162,6 +163,30 @@ func _test_ground_paths() -> void:
 	await ai.play_turn(actor, stationary.actions)
 	_check(actor.cell == Vector2i(4, 4) and actor.movement_left == 6 and actor.action_left == 0,
 		"장판 위에서도 이미 공격할 수 있으면 별도 이탈 없이 공격")
+
+
+func _test_poison_immune_paths() -> void:
+	for kind: String in ["poison", "burn"]:
+		var f: Fixture = _fixture()
+		var actor: CombatUnit = f.units[2]
+		actor.kind = CombatUnit.Kind.SPIDERLING
+		actor.cell = Vector2i(0, 1)
+		actor.movement_left = 6
+		f.units[0].cell = Vector2i(3, 1)
+		f.units[1].cell = Vector2i(9, 9)
+		f.units[3].cell = Vector2i(9, 8)
+		f.actions.grid.map_size = Vector2i(4, 3)
+		_check(f.actions.create_ground(f.units[0], Vector2i(1, 1), kind), "경로에 장판 생성: " + kind)
+		var walked: Array[Vector2i] = []
+		f.actions.movement_animation = func(_unit: CombatUnit, cell: Vector2i) -> void: walked.append(cell)
+		f.actions.dice = ScriptedDice.new([1], ScriptedDice.attack_sides(actor))
+		await ai.play_turn(actor, f.actions)
+		# 독 면역은 독 장판 칸 비용 0이라 곧장 걷고, 불 장판은 기존대로 돌아간다.
+		var expected: Array[Vector2i] = [Vector2i(1, 1), Vector2i(2, 1)]
+		if kind == "burn":
+			expected = [Vector2i(0, 2), Vector2i(1, 2), Vector2i(2, 2), Vector2i(2, 1)]
+		_check(walked == expected and actor.get_status_count("poison") == 0,
+			"새끼 거미는 독 장판을 피해 걷지 않고 불 장판은 피함: " + kind)
 
 
 func _test_jump_attack() -> void:

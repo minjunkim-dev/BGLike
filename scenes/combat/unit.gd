@@ -289,6 +289,11 @@ func is_boss() -> bool:
 	return not is_ally and bool(CombatEnemyDefinitions.for_kind(kind).get("boss", false))
 
 
+## 거미 계열은 독 상태를 받지 않는다. 화상은 면역이 아니다 (#465).
+func is_poison_immune() -> bool:
+	return not is_ally and bool(CombatEnemyDefinitions.for_kind(kind).get("poison_immune", false))
+
+
 func can_drop_extra_reward() -> bool:
 	return not is_ally and kind != Kind.SPIDERLING
 

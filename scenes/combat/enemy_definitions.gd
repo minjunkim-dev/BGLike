@@ -38,14 +38,14 @@ static var SCRAP_ROBOT_3000: Dictionary = {
 static var SPIDERLING: Dictionary = {
 	"abilities": [4, 8, 4, 4, 4, 4], "defense_bonus": 0,
 	"name": TranslationServer.tr("새끼 거미"), "max_hit_points": 1,
-	"attack_bonus": 3, "damage_bonus": 1, "attack_range": 1,
+	"attack_bonus": 3, "damage_bonus": 1, "attack_range": 1, "poison_immune": true,
 	"actions": ["attack"]
 }
 static var MOTHER_SPIDER: Dictionary = {
 	"abilities": [8, 6, 4, 4, 6, 8], "defense_bonus": 1,
 	"name": TranslationServer.tr("엄마 거미"), "max_hit_points": 20,
 	"movement": 4,
-	"attack_bonus": 3, "damage_bonus": 2, "attack_range": 1,
+	"attack_bonus": 3, "damage_bonus": 2, "attack_range": 1, "poison_immune": true,
 	"actions": ["attack", "spawn"]
 }
 
