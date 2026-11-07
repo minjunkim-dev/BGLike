@@ -781,6 +781,7 @@ func _run() -> void:
 	await _test_spin_height_targets()
 	await _test_spin_height_recheck()
 	_test_area_cells()
+	_test_tile_aim()
 	await _test_spin_reactions_and_reuse()
 	await _test_spin_incapacitation()
 	_test_pull_success()
@@ -1037,6 +1038,40 @@ func _test_spin_height_recheck() -> void:
 		and f.units[0].hit_points == 8 and f.units[1].hit_points == 9,
 		"첫 공격 대기 뒤 두 번째 대상의 높이가 바뀌면 주사위·피해 없이 제외")
 	f.actions.attack_animation = Callable()
+
+
+func _test_tile_aim() -> void:
+	var f: Fixture = _fixture()
+	var grid: CombatGrid = f.actions.grid
+	var actor: CombatUnit = f.units[3]
+	grid.map_size = Vector2i(12, 9)
+	actor.cell = Vector2i(5, 4)
+	_check(CombatActionRules.AIM_RANGES["fog"] == 4 and CombatActionRules.AIM_RADII["fog"] == 1, "독안개 칸 조준은 사거리 4·반경 1")
+	_check(f.actions.can_aim(actor, "fog", actor.cell) and f.actions.can_aim(actor, "fog", Vector2i(9, 4))
+		and not f.actions.can_aim(actor, "fog", Vector2i(10, 4)), "사거리 0(자기 칸)과 4는 고르고 5는 못 고름")
+	_check(f.actions.aim_cells(actor, "fog").size() == 41, "맨해튼 거리 0~4의 칸은 41칸")
+	_check(f.actions.create_prop(Vector2i(6, 4), "crate") != null and f.actions.can_aim(actor, "fog", Vector2i(6, 4))
+		and f.actions.can_aim(actor, "fog", f.units[0].cell), "상자와 유닛이 있는 칸도 고를 수 있음")
+	grid.blocked_cells = [Vector2i(5, 3)]
+	grid.pits = [Vector2i(5, 5)]
+	grid.heights = {Vector2i(4, 4): 5}
+	_check(not f.actions.can_aim(actor, "fog", Vector2i(5, 3)) and not f.actions.can_aim(actor, "fog", Vector2i(5, 5))
+		and not f.actions.can_aim(actor, "fog", Vector2i(-1, 4)) and f.actions.can_aim(actor, "fog", Vector2i(4, 4)),
+		"벽·낭떠러지·맵 밖은 제외하고 높이는 보지 않음")
+	_check(f.actions.can_aim(actor, "fog", Vector2i(5, 1)), "중간 칸이 막혀도 곡사로 넘김")
+	_check(not f.actions.can_aim(actor, "attack", actor.cell) and f.actions.aim_cells(actor, "attack").is_empty(),
+		"칸 조준 항목이 없는 동작은 칸을 못 고름")
+	grid.blocked_cells.clear()
+	grid.pits.clear()
+	grid.heights = {Vector2i(9, 5): 2, Vector2i(8, 4): 1}
+	var area: Array[Vector2i] = f.actions.aim_area(actor, "fog", Vector2i(9, 4))
+	_check(area.size() == 4 and Vector2i(9, 5) not in area and Vector2i(8, 4) in area, "높이 차 2 칸은 영역에서 제외")
+	grid.pits = [Vector2i(9, 3)]
+	_check(f.actions.create_prop(Vector2i(10, 4), "rock") != null
+		and f.actions.aim_area(actor, "fog", Vector2i(9, 4)) == [Vector2i(8, 4), Vector2i(9, 4), Vector2i(10, 4)],
+		"영역은 낭떠러지를 빼고 바위 칸을 포함")
+	_check(f.actions.aim_area(actor, "fog", Vector2i(9, 3)).is_empty() and f.actions.aim_area(actor, "fog", Vector2i(-1, 4)).is_empty(),
+		"고를 수 없는 칸의 영역은 비어 있음")
 
 
 func _test_area_cells() -> void:
