@@ -674,8 +674,7 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 		await _opportunity_attack(reactor, actor)
 		if actor.hit_points <= 0 or actor.movement_left == 0 or is_over():
 			break
-	# 반격으로 마지막 적이 쓰러지면 전투가 끝나 점프하지 않는다.
-	if actor.hit_points <= 0 or is_over():
+	if actor.hit_points <= 0:
 		_finish()
 		return true
 	# 괴력의 사내로 멈춘 점프는 비용을 돌려주지 않고 출발 칸에 남는다 (전사 문서).
@@ -686,9 +685,11 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 		return true
 	actor.spend_movement(cells[destination])
 	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
-	if jump_animation.is_valid():
-		await jump_animation.call(actor, destination)
-	_land(actor, destination)
+	# 반격으로 마지막 적이 쓰러지면 비용만 소비하고 착지하지 않는다 (#407 답 7번).
+	if not is_over():
+		if jump_animation.is_valid():
+			await jump_animation.call(actor, destination)
+		_land(actor, destination)
 	logged.emit(tr("%s 점프: 이동 %d, 보조 행동1 · 남은 이동 %d") % [
 		actor.get_display_name(), cells[destination], actor.movement_left])
 	_finish()
