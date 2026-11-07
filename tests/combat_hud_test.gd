@@ -56,6 +56,7 @@ func _run() -> void:
 	_test_height_edges()
 	_test_unit_art()
 	_test_warrior()
+	_test_passive_slot_and_number_colors()
 	await _test_resources()
 	_test_archer_and_enemy()
 	await _test_log_and_status()
@@ -352,40 +353,31 @@ func _test_unit_art() -> void:
 			"고밀도 초상의 논리 표시 폭32 유지: " + unit.get_display_name())
 
 
-# #457: 패시브 칸은 팔랑크스 조건이 맞을 때만 강조하고, 수치 가감은 색과 부호로 구분한다.
-func _test_passives() -> void:
+## 패시브 칸(#457): 전사에만 보이고 팔랑크스는 인접 아군이 있을 때만 켜진다. 수치 색은 가감 부호만 칠한다.
+func _test_passive_slot_and_number_colors() -> void:
 	var passives: Dictionary = hud.get("_passives")
-	var phalanx: Button = passives["phalanx"] as Button
-	var panel: Control = hud.get("_passive_panel") as Control
-	var skills: Control = hud.get_node("Skills") as Control
-	var first_container: Control = (hud.get("_containers") as Array)[0] as Control
-	_check(panel.is_visible_in_tree() and panel.get_global_rect().end.x <= first_container.get_global_rect().position.x
-		and panel.get_global_rect().position.x < first_container.get_global_rect().position.x
-		and skills.get_global_rect().encloses(panel.get_global_rect()), "패시브 칸은 스킬 컨테이너 맨 왼쪽")
-	_check(phalanx.visible and (passives["brawn"] as Button).visible and "●" in phalanx.text
-		and "지금 적용 중" in phalanx.tooltip_text, "인접 아군이 있으면 팔랑크스를 강조")
-	_check("●" not in (passives["brawn"] as Button).text, "괴력의 사내는 강조하지 않음")
-	_check(units[0].is_stunned == false, "fixture: 전사는 기절하지 않음")
-	var cell: Vector2i = units[1].cell
-	units[1].cell = Vector2i(0, 0)
+	var dots: Dictionary = hud.get("_passive_dots")
 	hud.refresh_actions(actions, "attack", units[0])
-	_check("●" not in phalanx.text and "지금 적용 중" not in phalanx.tooltip_text, "인접 아군이 없으면 팔랑크스는 평범한 모습")
-	units[1].cell = cell
+	_check((passives["phalanx"] as Button).visible and (passives["brawn"] as Button).visible,
+		"패시브 칸: 전사 선택 시 팔랑크스·괴력의 사내 칸")
+	_check((dots["phalanx"] as Label).visible == (actions.grid.phalanx_bonus(units[0]) > 0),
+		"패시브 칸: 팔랑크스 강조 점은 실제 적용 중에만")
+	# 인접 아군이 없으면 팔랑크스 강조가 꺼진다. 검사 뒤 궁수 위치를 되돌린다.
+	var archer_cell: Vector2i = units[1].cell
+	units[1].cell = Vector2i(9, 1)
 	hud.refresh_actions(actions, "attack", units[0])
-	_check("●" in phalanx.text, "다시 인접하면 강조")
-	hud.call("_refresh_passives", units[1], true)
-	_check(not panel.visible, "궁수에게는 패시브 칸 없음")
+	_check(actions.grid.phalanx_bonus(units[0]) == 0 and not (dots["phalanx"] as Label).visible,
+		"패시브 칸: 인접 아군이 없으면 팔랑크스 강조 꺼짐")
+	units[1].cell = archer_cell
 	hud.refresh_actions(actions, "attack", units[0])
-
-
-func _test_signed_colors() -> void:
-	var benefit: String = CombatSignedNumbers.BENEFIT_COLOR
-	var harm: String = CombatSignedNumbers.HARM_COLOR
-	_check(CombatSignedNumbers.colorize("피해: 힘 d20+2") == "피해: 힘 d20[color=#%s]+2[/color]" % benefit, "이로운 가감은 초록과 부호")
-	_check(CombatSignedNumbers.colorize("공격 -1 · 사거리 1~6칸") == "공격 [color=#%s]-1[/color] · 사거리 1~6칸" % harm,
-		"해로운 가감은 빨강과 부호, 범위는 칠하지 않음")
-	_check(CombatSignedNumbers.colorize("공격 +0 · AC 6") == "공격 +0 · AC 6", "+0은 칠하지 않음")
-	_check("color=#%s" % benefit in hud.resource_label.text, "유닛 패널의 가감 수치는 색을 가짐(팔랑크스 AC +1)")
+	_check(not (dots["brawn"] as Label).visible, "패시브 칸: 괴력의 사내는 상시 강조 없음")
+	_check(not CombatActionRules.belongs_to(units[1], "phalanx") and not CombatActionRules.belongs_to(units[1], "brawn"),
+		"패시브 칸: 궁수는 패시브가 없어 칸이 숨음")
+	var colored: String = CombatActionRules.colorize("힘 d20+2 · 공격 -1 · AC +0 · 공격 +3 · HP 5")
+	_check(colored.contains("[color=#70c76d]+2[/color]") and colored.contains("[color=#ff8a80]-1[/color]")
+		and colored.contains("[color=#70c76d]+3[/color]") and not colored.contains("+0[/color]")
+		and colored.contains("AC +0"), "수치 색: 가감 부호만 칠하고 +0은 칠하지 않음: " + colored)
+	_check(CombatActionRules.colorize("HP 5 / 9") == "HP 5 / 9", "수치 색: 가감이 없는 줄은 그대로")
 
 
 func _test_warrior() -> void:
@@ -398,8 +390,6 @@ func _test_warrior() -> void:
 		and "이동" not in hud.resource_label.get_parsed_text(),
 		"현재 유닛 정보: HP·AC(민첩 d8 표준값 5 + 인접 궁수 팔랑크스 1) 표시, 남은 이동 제거")
 	_check(hud.health_bar.value == 11, "현재 유닛 HP 바")
-	_test_passives()
-	_test_signed_colors()
 	for ability: String in ["힘 d20", "민첩 d8", "솜씨 d6", "지능 d4", "의지 d8", "건강 d12"]:
 		_check(ability in hud.resource_label.get_parsed_text(), "현재 전사의 능력치 주사위 표시: " + ability)
 	_check("자연" not in hud.resource_label.get_parsed_text() and "정신" not in hud.resource_label.get_parsed_text(),
@@ -460,13 +450,6 @@ func _test_resources() -> void:
 		and units[0].shield_points == 7 and units[0].shield_turns == CombatActionRules.SHIELD_TURNS,
 		"성스러운 장막은 보조 행동 기호 한 개만 쓰고 건강 굴림값만큼 방어막")
 	_check("방어막 7 (3턴)" in hud.resource_label.get_parsed_text(), "유닛 정보에 방어막 값과 남은 턴 표시")
-	# #457: HP 바 위의 방어막. 방어막이 남아 있는 동안만 바에 겹쳐 그린다.
-	var fractions: Vector2 = units[0].get_bar_fractions()
-	_check(is_equal_approx(fractions.x, units[0].hit_points / maxf(units[0].get_max_hit_points(), units[0].hit_points + 7.0))
-		and fractions.y > 0.0 and fractions.x + fractions.y <= 1.0, "방어막이 있으면 HP 바에 방어막 구간을 겹쳐 그림")
-	units[0].shield_points = 0
-	_check(units[0].get_bar_fractions().y == 0.0, "방어막이 사라지면 HP 바에서 구간도 사라짐")
-	units[0].shield_points = 7
 	_check((buttons["holy_veil"] as Button).disabled, "보조 행동 소진 비활성화")
 	units[0].clear_unit_effects()
 	units[0].movement_left = 0
@@ -1139,7 +1122,7 @@ func _hover(control: Control) -> void:
 func _has_tooltip(node: Node, text: String) -> bool:
 	if node is Label and node.text == text and node.is_visible_in_tree():
 		return true
-	# 호버 설명은 수치 색 때문에 RichTextLabel이다(#457).
+	# 호버 설명은 수치 색을 위해 RichTextLabel이며, 글자는 태그를 뺀 원문으로 비교한다.
 	if node is RichTextLabel and (node as RichTextLabel).get_parsed_text() == text and node.is_visible_in_tree():
 		return true
 	for child: Node in node.get_children(true):

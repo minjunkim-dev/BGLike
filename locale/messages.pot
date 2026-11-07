@@ -344,6 +344,22 @@ msgstr ""
 msgid "괴력의 사내: 명중하면 대상의 이동을 멈춥니다."
 msgstr ""
 
+#: scenes/combat/action_rules.gd:47
+msgid "팔랑크스"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:47
+msgid "괴력의 사내"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:50
+msgid "전사와 인접한 아군이 있으면\n전사와 그 아군의 AC +1. 중첩 없음."
+msgstr ""
+
+#: scenes/combat/action_rules.gd:51
+msgid "기회 공격이 명중하면\n대상의 이동력을 즉시 0으로 만듭니다."
+msgstr ""
+
 #: scenes/combat/actions.gd:31
 msgid "최대3칸"
 msgstr ""
@@ -1738,28 +1754,4 @@ msgstr ""
 
 #: scenes/title.gd:64
 msgid "%s\n이 저장을 지우고 새 게임을 시작하시겠습니까?"
-msgstr ""
-
-#: scenes/combat/action_rules.gd
-msgid "팔랑크스"
-msgstr ""
-
-#: scenes/combat/action_rules.gd
-msgid "괴력의 사내"
-msgstr ""
-
-#: scenes/combat/action_rules.gd
-msgid "인접한 아군이 있으면\n전사와 그 아군의 AC +1."
-msgstr ""
-
-#: scenes/combat/action_rules.gd
-msgid "기회 공격이 명중하면\n대상의 이동력을 0으로 만듭니다."
-msgstr ""
-
-#: scenes/combat/turn_hud.gd
-msgid "패시브"
-msgstr ""
-
-#: scenes/combat/turn_hud.gd
-msgid "지금 적용 중"
 msgstr ""

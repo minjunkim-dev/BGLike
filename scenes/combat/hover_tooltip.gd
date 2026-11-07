@@ -12,6 +12,8 @@ class HoverButton extends Button:
 var hidden_when: Callable = func() -> bool: return false
 ## 설명 아래 끝을 둘 global y. 기본은 대상의 위 끝이다. 위 자리가 모자라면 대상 아래에 둔다.
 var top_of: Callable = func(target: Control) -> float: return target.get_global_rect().position.y
+# 수치 가감 색은 전투 HUD만 켠다(#457). 정비 화면의 설명은 원문 그대로 보인다.
+var colorize_numbers: bool = false
 
 var _owner: Control
 var _label: RichTextLabel = RichTextLabel.new()
@@ -31,11 +33,12 @@ func _init() -> void:
 	style.content_margin_bottom = 3
 	add_theme_stylebox_override("panel", style)
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_label.add_theme_font_size_override("normal_font_size", 10)
+	# 수치 가감은 색과 부호로 구분한다(#457). 줄바꿈은 tooltip_text 그대로 쓰므로 자동 줄바꿈은 끈다.
 	_label.bbcode_enabled = true
 	_label.fit_content = true
 	_label.scroll_active = false
 	_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_label.add_theme_font_size_override("normal_font_size", 10)
 	add_child(_label)
 	hide()
 	_timer.one_shot = true
@@ -74,7 +77,9 @@ func _update() -> void:
 		or hidden_when.call():
 		hide()
 		return
-	_label.text = CombatSignedNumbers.colorize(_owner.tooltip_text.replace("[", "[lb]"))
+	# 글자는 BBCode다. 꺼진 경우도 [를 태그가 아닌 글자로 쓴다.
+	_label.text = CombatActionRules.colorize(_owner.tooltip_text) if colorize_numbers \
+		else _owner.tooltip_text.replace("[", "[lb]")
 	size = get_combined_minimum_size()
 	var rect: Rect2 = _owner.get_global_rect()
 	var bounds: Rect2 = get_parent_control().get_global_rect().grow(-4)

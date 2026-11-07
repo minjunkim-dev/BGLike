@@ -173,7 +173,7 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -216.0
+offset_left = -253.0
 offset_top = -102.0
 offset_right = -8.0
 offset_bottom = -54.0
@@ -192,7 +192,7 @@ anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 8.0
 offset_top = -63.0
-offset_right = 413.0
+offset_right = 379.0
 offset_bottom = -6.0
 grow_vertical = 0
 

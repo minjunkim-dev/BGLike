@@ -22,14 +22,6 @@ static var NAMES: Dictionary[String, String] = {
 	"spawn": TranslationServer.tr("새끼 낳기"), "pull": TranslationServer.tr("만능팔"), "spin": TranslationServer.tr("회전회오리"), "jump": TranslationServer.tr("점프"),
 	"counter": TranslationServer.tr("반격")
 }
-## 패시브 칸(스킬 컨테이너 맨 왼쪽)에 보이는 상시 효과. 자원도 아이콘도 없다(#457).
-static var PASSIVES: Dictionary[String, String] = {
-	"phalanx": TranslationServer.tr("팔랑크스"), "brawn": TranslationServer.tr("괴력의 사내")
-}
-static var PASSIVE_EFFECTS: Dictionary[String, String] = {
-	"phalanx": TranslationServer.tr("인접한 아군이 있으면\n전사와 그 아군의 AC +1."),
-	"brawn": TranslationServer.tr("기회 공격이 명중하면\n대상의 이동력을 0으로 만듭니다.")
-}
 static var EFFECTS: Dictionary[String, String] = {
 	"jump": TranslationServer.tr("1~2칸의 빈 바닥으로 점프.\n상승2까지, 낙하 차3부터 피해."),
 	"spawn": TranslationServer.tr("인접한 빈 칸에 새끼 거미1마리를 만듭니다."),
@@ -49,6 +41,30 @@ static var EFFECTS: Dictionary[String, String] = {
 	"opportunity": TranslationServer.tr("적이 내 인접 칸을 벗어나면 기본 공격."),
 	"counter": TranslationServer.tr("나를 노린 인접한 적의 명중굴림이\n빗나가면 반드시 명중하는 반격.")
 }
+## 패시브 칸의 스킬(#457). 자원과 횟수가 없어 NAMES·GROUPS에 넣지 않는다. 아이콘이 생기기 전에는 이름 첫 글자를 보인다.
+const PASSIVES: Array[String] = ["phalanx", "brawn"]
+static var PASSIVE_NAMES: Dictionary[String, String] = {
+	"phalanx": TranslationServer.tr("팔랑크스"), "brawn": TranslationServer.tr("괴력의 사내")
+}
+static var PASSIVE_EFFECTS: Dictionary[String, String] = {
+	"phalanx": TranslationServer.tr("전사와 인접한 아군이 있으면\n전사와 그 아군의 AC +1. 중첩 없음."),
+	"brawn": TranslationServer.tr("기회 공격이 명중하면\n대상의 이동력을 즉시 0으로 만듭니다.")
+}
+## 이로움(초록)·해로움(빨강) 수치 색(#457). 어두운 패널(202b35) 위에서 AA 대비를 넘는다.
+const GOOD_COLOR: Color = Color("70c76d")
+const BAD_COLOR: Color = Color("ff8a80")
+# 앞 글자가 수치 가감일 때만 칠한다. +0은 가감이 아니라 칠하지 않는다.
+static var _GOOD: RegEx = RegEx.create_from_string("(d\\d+ ?|AC |명중 |공격 )(\\+(?!0(?!\\d))\\d+)")  # NO_TRANSLATE: 정규식 패턴
+static var _BAD: RegEx = RegEx.create_from_string("(d\\d+ ?|AC |명중 |공격 )(-\\d+)")  # NO_TRANSLATE: 정규식 패턴
+
+
+## 수치 가감(`힘 d20+2`, `공격 -1`)을 부호는 그대로 두고 색만 입힌 BBCode로 바꾼다.
+static func colorize(text: String) -> String:
+	var result: String = text.replace("[", "[lb]")
+	result = _GOOD.sub(result, "$1[color=#%s]$2[/color]" % GOOD_COLOR.to_html(false), true)
+	return _BAD.sub(result, "$1[color=#%s]$2[/color]" % BAD_COLOR.to_html(false), true)
+
+
 ## 대상 없이 바로 쓰는 동작.
 const SELF_TARGET: Array[String] = ["holy_veil", "battle_cry", "second_wind", "disengage", "potion"]
 ## 표식과 충격 화살의 사거리.
