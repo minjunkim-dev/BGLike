@@ -441,6 +441,10 @@ msgstr "%s 과부하: 자기 피해 2 · HP %d"
 msgid "과부하 2"
 msgstr "과부하 2"
 
+#: scenes/combat/actions.gd:450
+msgid "%s 과부하: %s 화상 부여"
+msgstr "%s 과부하: %s 화상 부여"
+
 #: scenes/combat/actions.gd:407
 #: scenes/combat/actions.gd:1357
 #: scenes/combat/unit.gd:284
