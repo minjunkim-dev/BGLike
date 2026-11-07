@@ -2756,6 +2756,18 @@ func _test_fog_cast() -> void:
 	_check(f.actions.get_grounds().all(func(ground: CombatActions.Ground) -> bool:
 		return ground.cell not in [Vector2i(4, 4), Vector2i(5, 4)] or f.units[0] in ground.entered or f.units[2] in ground.entered),
 		"굴린 유닛은 그 칸의 모든 기록에 진입이 남음")
+	# 진입은 칸의 기록 전체에 한 번만 소비한다. 아직 들어선 적 없는 유닛은 한 번 굴리고 다시 굴리지 않는다.
+	var walker: CombatUnit = f.units[3]
+	walker.cell = Vector2i(4, 5)
+	var before: int = _fog_rolls(f)
+	f.actions.dice = _dice_for([4], [4])
+	f.actions._apply_fog(walker, true)
+	f.actions._apply_fog(walker, true)
+	_check(_fog_rolls(f) == before + 1 and walker.get_status_count("poison") == 0, "같은 칸 진입은 기록이 겹쳐도 한 번만 굴림")
+	# 턴 시작은 진입 기록과 무관하게 매번 굴린다.
+	f.actions.dice = _dice_for([4], [4])
+	f.actions._apply_fog(walker, false)
+	_check(_fog_rolls(f) == before + 2, "그 위에서 턴을 시작하면 다시 굴림")
 	# 저장·복원 왕복
 	var state: Dictionary = f.actions.save_state()
 	_check(CombatActions.is_valid_state(state, 4, Vector2i(10, 10)), "독안개 기록이 저장 검증을 통과")
