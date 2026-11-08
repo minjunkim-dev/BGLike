@@ -40,14 +40,14 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 
 ## CI 실패 처리
 
-필수가 아닌 검사의 실패는 병합을 막지 않는다. 서버 필수 체크는 `gh api repos/<OWNER/REPO>/branches/main/protection/required_status_checks`로 확인한다.
+필수가 아닌 검사의 실패는 병합을 막지 않는다. 필수 체크 이름은 `.github/repository-settings.json`의 기대값이다. 서버 실제값은 소유자가 [설정 기준선](../REPOSITORY_SETUP.md#기준선-검증)의 읽기 전용 명령으로 확인한다. 에이전트의 `gh api *protection*`은 `.claude/settings.json`이 막는다.
 
 담당 로컬 에이전트는 맡은 PR의 CI가 완료될 때까지 결과를 확인한다.
 
 1. PR의 head·base SHA와 실패한 run·attempt를 기록한다. `gh run view <RUN_ID> --repo <OWNER/REPO> --log-failed`로 실패 로그를 확인한다.
 2. 코드 결함과 인프라 장애를 구분한다. 가능한 실패는 로컬에서 재현한다. 재현하지 못한 범위는 기록한다.
 3. 범위 안의 원인을 수정하고 관련 검사를 실행한다. 검사 삭제·skip·조건 완화로 실패를 숨기지 않는다. 같은 실패를 근거 없이 반복 재실행하지 않는다.
-4. 수정 내용을 커밋·푸시한다. 새 head의 CI를 확인한다. 이전 커밋의 성공을 새 head의 근거로 사용하지 않는다.
+4. 수정 내용을 커밋하고 `git push origin <작업 브랜치>`로 푸시한다(인자 없는 `git push`는 거부 규칙이 막는다). 새 head의 CI를 확인한다. 이전 커밋의 성공을 새 head의 근거로 사용하지 않는다.
 5. 필수 CI와 티켓 검증을 확인한 뒤 PR에 결과를 적고 사람에게 병합을 넘긴다.
 
 접근 권한 부족이나 해결하지 못한 실패가 남으면 원인과 미확인 범위를 보고한다.
