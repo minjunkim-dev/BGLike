@@ -251,6 +251,7 @@ func _test_scene() -> void:
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var view: CombatDiceRollView = battle.get("dice_view") as CombatDiceRollView
 	var summary: Label = view.get_node("Summary") as Label
+	var target: Label = view.get_node("Target") as Label
 	_check(view != null and not view.visible and actions.roll_animation.is_valid(),
 		"전투 장면은 숨겨진 주사위 뷰를 가지고 훅을 연결한다")
 	var ally: CombatUnit = units.filter(func(unit: CombatUnit) -> bool: return unit.is_ally)[0]
@@ -280,11 +281,14 @@ func _test_scene() -> void:
 		finished[0] = true
 	play.call(hit)
 	await process_frame
-	_check(view.visible and summary.text == "AC 12" and not finished[0],
-		"굴리는 동안 기준값 AC 12가 먼저 보인다: " + summary.text)
+	_check(view.visible and target.text == "AC 12" and summary.text == "" and not finished[0],
+		"굴리는 동안 기준값 AC 12가 먼저 보이고 판정 단어는 아직 없다: " + target.text)
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
-	_check(summary.text == "9 +3 = 12  ≥  AC 12" and summary.get_theme_color("font_color") == CombatDiceRollView.SUCCESS_COLOR,
-		"멈추면 합계와 기준을 비교해 성공 색으로 보인다: " + summary.text)
+	_check(summary.text == tr("간신히 성공") + "  ±0" and target.text == "AC 12"
+		and summary.get_theme_color("font_color") == CombatDiceRollView.SUCCESS_COLOR,
+		"멈추면 식 없이 판정 단어와 여유를 성공 색으로 보인다: " + summary.text)
+	_check(view.get("_total_shown") == true and view.get("_marker_margin") == 0.0,
+		"게이지 마커는 합계와 기준의 차이 위치에서 멈추고 합계를 보인다")
 	_check((view.get_node("SuccessSound") as AudioStreamPlayer).playing
 		and not (view.get_node("FailureSound") as AudioStreamPlayer).playing, "성공 결과음을 쓴다")
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
@@ -293,7 +297,8 @@ func _test_scene() -> void:
 	# 실패.
 	play.call(CombatDiceRoll.save(ally, 8, _result([3], 3, 6, false), 3, tr("공격"), 8))
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
-	_check(summary.text == "3 +3 = 6  <  공격 8" and summary.get_theme_color("font_color") == CombatDiceRollView.FAILURE_COLOR
+	_check(summary.text == tr("실패") + "  -2" and target.text == "공격 8"
+		and summary.get_theme_color("font_color") == CombatDiceRollView.FAILURE_COLOR
 		and (view.get_node("FailureSound") as AudioStreamPlayer).playing,
 		"기준에 못 미치면 실패 색과 실패 결과음을 쓴다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
@@ -313,7 +318,8 @@ func _test_scene() -> void:
 	play.call(CombatDiceRoll.hit(ally, 20, _result([20], 20, 23, true, CombatChecks.Face.ABSOLUTE_SUCCESS), 3, 30))
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
 	dice = view.get("_dice")
-	_check(summary.text.begins_with(tr("절대성공")) and dice[0].scale == CombatDiceRollView.ABSOLUTE_SCALE
+	_check(summary.text == tr("절대성공") and view.get("_gauge_filled") == true and view.get("_total_shown") == false
+		and dice[0].scale == CombatDiceRollView.ABSOLUTE_SCALE
 		and dice[0].edge == CombatDiceRollView.SUCCESS_COLOR and dice[0].emphasized,
 		"절대성공은 같은 성공 색에 강조를 더한다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
@@ -321,7 +327,7 @@ func _test_scene() -> void:
 	play.call(CombatDiceRoll.hit(ally, 20, _result([1], 1, 4, false, CombatChecks.Face.ABSOLUTE_FAILURE), 3, 2))
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
 	dice = view.get("_dice")
-	_check(summary.text.begins_with(tr("절대실패")) and dice[0].scale == CombatDiceRollView.ABSOLUTE_SCALE
+	_check(summary.text == tr("절대실패") and view.get("_gauge_filled") == true and dice[0].scale == CombatDiceRollView.ABSOLUTE_SCALE
 		and dice[0].edge == CombatDiceRollView.FAILURE_COLOR and dice[0].emphasized,
 		"절대실패는 같은 실패 색에 강조를 더한다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
@@ -332,6 +338,7 @@ func _test_scene() -> void:
 		"d20·d4의 절대면 강조선은 주사위 배경 위로 나가지 않는다: %.1f, %.1f / %.1f" % [
 			CombatDiceRollView.DIE_CENTER_Y - halo, CombatDiceRollView.DIE_CENTER_Y + halo, view.size.y])
 
+	_test_grades()
 	await _test_overlapping_rolls(actions, view, ally, play, finished)
 
 	_check(actions.dice.state == dice_state, "화면 연출은 게임의 주사위 순서와 저장 상태를 바꾸지 않는다")
@@ -339,11 +346,38 @@ func _test_scene() -> void:
 	await process_frame
 
 
+## 판정 단어의 등급은 규칙의 성공/실패 방향을 바꾸지 않고 여유로만 세분한다.
+func _test_grades() -> void:
+	var cases: Array = [
+		# [총합, 성공, 절대면, 기대 등급, 이름]
+		[17, true, CombatChecks.Face.NORMAL, CombatDiceRollView.Grade.BIG_SUCCESS, "여유 +5"],
+		[16, true, CombatChecks.Face.NORMAL, CombatDiceRollView.Grade.SUCCESS, "여유 +4"],
+		[14, true, CombatChecks.Face.NORMAL, CombatDiceRollView.Grade.SUCCESS, "여유 +2"],
+		[13, true, CombatChecks.Face.NORMAL, CombatDiceRollView.Grade.NARROW_SUCCESS, "여유 +1"],
+		[12, true, CombatChecks.Face.NORMAL, CombatDiceRollView.Grade.NARROW_SUCCESS, "여유 0"],
+		[11, false, CombatChecks.Face.NORMAL, CombatDiceRollView.Grade.NARROW_FAILURE, "여유 -1"],
+		[10, false, CombatChecks.Face.NORMAL, CombatDiceRollView.Grade.FAILURE, "여유 -2"],
+		[8, false, CombatChecks.Face.NORMAL, CombatDiceRollView.Grade.FAILURE, "여유 -4"],
+		[7, false, CombatChecks.Face.NORMAL, CombatDiceRollView.Grade.BIG_FAILURE, "여유 -5"],
+		[3, true, CombatChecks.Face.ABSOLUTE_SUCCESS, CombatDiceRollView.Grade.ABSOLUTE_SUCCESS, "절대성공은 여유와 무관"],
+		[40, false, CombatChecks.Face.ABSOLUTE_FAILURE, CombatDiceRollView.Grade.ABSOLUTE_FAILURE, "절대실패는 여유와 무관"],
+	]
+	for entry: Array in cases:
+		var result: CombatChecks.RollResult = _result([entry[0] - 3], entry[0] - 3, entry[0], entry[1], entry[2])
+		_check(CombatDiceRollView.grade(result, 12) == entry[3], "등급: " + str(entry[4]))
+	_check(CombatDiceRollView.gauge_offset(0.0) == 0.0
+		and CombatDiceRollView.gauge_offset(100.0) == CombatDiceRollView.GAUGE_WIDTH * 0.5
+		and CombatDiceRollView.gauge_offset(-100.0) == -CombatDiceRollView.GAUGE_WIDTH * 0.5
+		and CombatDiceRollView.gauge_offset(3.0) > 0.0 and CombatDiceRollView.gauge_offset(-3.0) < 0.0,
+		"게이지 마커는 기준값이 중앙이고 범위를 넘으면 끝에 붙는다")
+
+
 ## 기다리지 않는 독 제거 둘이 연달아 오고 기다리는 명중굴림이 뒤따라도, 먼저 온 굴림부터 결과를 끝까지 보인다.
 ## 기다리지 않는 쪽은 바로 돌아오고, 기다리는 쪽은 앞 굴림이 닫힌 뒤 자기 연출까지 마치고 돌아온다.
 func _test_overlapping_rolls(actions: CombatActions, view: CombatDiceRollView, ally: CombatUnit,
 		play: Callable, finished: Array[bool]) -> void:
 	var summary: Label = view.get_node("Summary") as Label
+	var target: Label = view.get_node("Target") as Label
 	for player_name: String in ["RollSound", "SuccessSound", "FailureSound"]:
 		_check((view.get_node(player_name) as AudioStreamPlayer).max_polyphony > 1,
 			"%s는 겹쳐 재생해 앞 소리를 끊지 않는다" % player_name)
@@ -351,17 +385,17 @@ func _test_overlapping_rolls(actions: CombatActions, view: CombatDiceRollView, a
 	actions.roll_animation.call(CombatDiceRoll.save(ally, 4, _result([1], 1, 1, false), 0, tr("DC"), 3))
 	play.call(CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12))
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
-	_check(summary.text == "4 +0 = 4  ≥  DC 3" and summary.get_theme_color("font_color") == CombatDiceRollView.SUCCESS_COLOR
+	_check(summary.text == tr("간신히 성공") + "  +1" and summary.get_theme_color("font_color") == CombatDiceRollView.SUCCESS_COLOR
 		and (view.get_node("SuccessSound") as AudioStreamPlayer).playing,
 		"뒤 굴림이 와도 첫 굴림의 결과 숫자·색·결과음이 나온다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME).timeout
-	_check(view.visible and summary.text == "DC 3", "첫 결과가 닫힌 뒤 두 번째 굴림을 굴린다: " + summary.text)
+	_check(view.visible and target.text == "DC 3" and summary.text == "", "첫 결과가 닫힌 뒤 두 번째 굴림을 굴린다: " + summary.text)
 	await create_timer(CombatDiceRollView.TUMBLE_TIME).timeout
-	_check(summary.text == "1 +0 = 1  <  DC 3" and summary.get_theme_color("font_color") == CombatDiceRollView.FAILURE_COLOR
+	_check(summary.text == tr("실패") + "  -2" and summary.get_theme_color("font_color") == CombatDiceRollView.FAILURE_COLOR
 		and (view.get_node("FailureSound") as AudioStreamPlayer).playing,
 		"두 번째 굴림도 결과 숫자·색·결과음이 나온다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME).timeout
-	_check(view.visible and summary.text == "AC 12" and not finished[0],
+	_check(view.visible and target.text == "AC 12" and not finished[0],
 		"기다리는 명중굴림은 앞 굴림들이 닫힌 뒤 차례로 굴리고 아직 돌아오지 않는다: " + summary.text)
 	# 뒤따르는 굴림이 없어 여유를 더 둔다. 뷰의 마지막 타이머가 이 타이머보다 늦게 만들어진다.
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + CombatDiceRollView.HOLD_TIME + 0.1).timeout
