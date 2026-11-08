@@ -55,7 +55,7 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 
 저장소 `Allow auto-merge`는 On으로 둔다. 모든 PR에 자동 병합을 예약하지 않는다.
 기본 흐름은 담당 로컬 에이전트가 필수 CI·티켓 검증 후 직접 병합하는 방식이다.
-별도 병합 위임이나 사람 승인을 기다리지 않는다.
+별도 병합 위임이나 사람 승인을 기다리지 않는다. 새 `contents: write` Draft 권한만 [Draft Release 절차](../DRAFT_RELEASE.md)의 사람 승인을 따른다.
 사용자가 병합을 금지한 PR은 열어 둔다.
 
 병합 직전에 GitHub API로 head·base와 검사 결과를 다시 확인한다.

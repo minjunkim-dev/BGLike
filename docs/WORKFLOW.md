@@ -52,7 +52,7 @@ GitHub 품질 운영은 1인 개발 기준입니다. 필수 승인 인원은 0�
 1. 최신 `main`에서 `feat/4-combat-prototype`처럼 짧은 브랜치를 만듭니다. 브랜치 이름, 커밋 메시지, PR 제목은 [브랜치와 커밋 규칙](GIT_CONVENTIONS.md)을 따릅니다.
 2. 한 PR은 한 목표에 집중합니다. 가능하면 하루 안에 검토할 수 있는 크기로 나눕니다.
 3. 작성자는 PR 양식에 관련 Issue, 변경 내용, 검증 결과를 기록합니다. 필요하면 상대방에게 검토를 요청합니다.
-4. 필수 CI를 확인하고 지적을 처리합니다. 필수 CI와 Issue 합격 기준을 충족하면 로컬 에이전트가 별도 병합 위임이나 승인 없이 squash merge합니다. [독립 리뷰 절차](agents/review.md)는 필요하다고 판단할 때 쓰는 선택 절차이며 병합 조건이 아닙니다. 동료 승인은 필수가 아닙니다. 병합한 브랜치는 삭제합니다.
+4. 필수 CI를 확인하고 지적을 처리합니다. 필수 CI와 Issue 합격 기준을 충족하면 로컬 에이전트가 별도 병합 위임이나 승인 없이 squash merge합니다. [독립 리뷰 절차](agents/review.md)는 필요하다고 판단할 때 쓰는 선택 절차이며 병합 조건이 아닙니다. 새 `contents: write` Draft 권한만 [Draft Release 절차](DRAFT_RELEASE.md)의 사람 승인을 받은 뒤 병합합니다. 동료 승인은 필수가 아닙니다. 병합한 브랜치는 삭제합니다.
 5. `main`이 깨지면 다음 기능보다 복구를 우선합니다. 문제가 있는 변경은 작은 수정 PR 또는 revert로 되돌립니다.
 
 ### PR 생성과 CI 대기
@@ -111,7 +111,7 @@ ChatGPT·Codex Cloud 계정 설정과 서비스의 저장소 목록 탐색은 �
 
 **GitHub의 추가 Claude 리뷰**
 
-GitHub Claude workflow와 전용 스크립트는 사용하지 않습니다. 댓글과 라벨로 Claude 리뷰를 요청하지 않습니다. 로컬 독립 리뷰·직접 수정·최종 CI를 기본 흐름으로 사용합니다. 권한·Secret·외부 명령 등 위험 변경에는 [독립 리뷰 절차](agents/review.md)의 별도 Security 검토를 유지합니다.
+GitHub Claude workflow와 전용 스크립트는 사용하지 않습니다. 댓글과 라벨로 Claude 리뷰를 요청하지 않습니다. 로컬 독립 리뷰·직접 수정·최종 CI를 기본 흐름으로 사용합니다. Security 검토는 필요하다고 판단할 때 [독립 리뷰 절차](agents/review.md)로 합니다.
 
 **Codex의 GitHub 연결 확인**
 
