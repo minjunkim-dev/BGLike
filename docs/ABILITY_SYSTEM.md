@@ -1,6 +1,6 @@
 # 능력치와 주사위 판정 기획서
 
-> 능력치 6종과, 공격·효과를 명중굴림과 내성굴림으로 해결하는 판정 규칙을 정리한 기획서입니다. 개발로 넘기는 범위는 [개발 요청서](DEV_REQUEST_ABILITY.md), 보류한 주사위 성장과 절대성공의 이점은 [주사위 육성 논의](DICE_GROWTH.md)에 따로 둡니다.
+> 능력치 6종과, 공격·효과를 명중굴림과 내성굴림으로 해결하는 판정 규칙을 정리한 기획서입니다. 개발로 넘기는 범위는 [개발 요청서](DEV_REQUEST_ABILITY.md), 주사위 레벨업 규칙과 보류한 절대성공면 획득·절대성공의 이점은 [주사위 육성 논의](DICE_GROWTH.md)에 따로 둡니다.
 >
 > - 기준일: 2026-10-27 개정 (최초 2026-10-23)
 > - 근거: 기획 논의(2026-10-22~27), 전투 코드(`scenes/combat/`), BG3(SRD 5e) 규칙과의 비교
@@ -528,7 +528,7 @@
 > 개정 규칙을 구현하며 정한 개발 결정입니다. 근거와 택하지 않은 대안은 각 티켓 코멘트에 있습니다. 기획자가 바꿀 수 있습니다.
 
 - 능력치 식별자는 `CombatUnit.Ability`의 `STRENGTH, AGILITY, FINESSE, INTELLIGENCE, WILL, HEALTH`이고 화면 순서와 같다([#386](https://github.com/minjunkim-dev/BGLike/issues/386#issuecomment-6498750300)).
-- 주사위 값은 별도 객체 없이 면 수와 굴린 면 번호(1~n)로 둔다. `CombatChecks.face_value`가 숫자 값(절대성공면은 최댓값)을, `face_kind`가 면 종류를 낸다. 미리보기 확률은 실제 굴림과 같은 함수로 면을 열거한다. 주사위 레벨은 성장 개발 요청 전까지 넣지 않는다([#387](https://github.com/minjunkim-dev/BGLike/issues/387#issuecomment-6501894148)).
+- 주사위 값은 별도 객체 없이 면 수와 굴린 면 번호(1~n)로 둔다. `CombatChecks.face_value`가 숫자 값(절대성공면은 최댓값)을, `face_kind`가 면 종류를 낸다. 미리보기 확률은 실제 굴림과 같은 함수로 면을 열거한다. 주사위 레벨은 성장 개발 요청 전까지 넣지 않는다([#387](https://github.com/minjunkim-dev/BGLike/issues/387#issuecomment-6501894148)). 2026-11-08 [#322 답](https://github.com/minjunkim-dev/BGLike/issues/322#issuecomment-6714895396)로 막 최초 클리어 레벨업이 구현 범위가 됐다.
 - 피해 능력치는 `CombatActionRules.DAMAGE_ABILITIES`로 지정하고, 지정이 없으면 명중 능력치, 내성굴림 동작은 시전 능력치다([#388](https://github.com/minjunkim-dev/BGLike/issues/388)).
 - 내성굴림 동작은 `CombatActionRules`의 `CAST_ABILITIES`(DC의 시전 능력치)·`SAVE_ABILITIES`(대상의 내성 능력치)·`DC_BONUSES`로 정의한다. DC는 시전 때 한 번 정하고, 잔류 효과는 부여한 중첩이 DC를 보존한다. 공격 굴림이 없는 회전회오리에는 흘려내기를 묻지 않는다([#389](https://github.com/minjunkim-dev/BGLike/issues/389#issuecomment-6537221180)).
 - 밀치기·만능팔은 같은 표에 힘으로 더하고 대상 하나의 내성굴림으로 판정한다([#391](https://github.com/minjunkim-dev/BGLike/issues/391)). 기절한 대상과 아군의 무판정 밀치기는 `CombatActionRules.shove_saves` 한 곳에서 정해 실행과 미리보기(`밀칠 확률`)가 같은 규칙을 쓴다. 8장대로 만능팔에는 기절 대상의 자동 실패가 없다. 마지막 대결 경로(`opposed_attack`, 방어자 굴림 칸)는 지웠다.
