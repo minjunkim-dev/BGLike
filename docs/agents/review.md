@@ -1,6 +1,6 @@
 # 독립 리뷰 절차
 
-기본 흐름은 `구현 → 자동 검사 → (선택) 독립 리뷰 → 결함 수정·커밋 → 최종 CI → 병합`입니다. 독립 리뷰는 병합 조건이 아닙니다. 필요하다고 판단할 때 씁니다.
+기본 흐름은 `구현 → 자동 검사 → 다른 컨텍스트 리뷰 → 결함 수정·커밋 → 최종 CI → 사람 병합`입니다. 리뷰 기준은 [REVIEW.md](../../REVIEW.md)입니다. 리뷰는 기계적으로 강제하지 않습니다. 결과는 PR 본문 Review 칸에 적습니다.
 
 ## 리뷰 입력 고정
 
@@ -10,7 +10,7 @@
 - Issue의 목표·합격 기준·범위·제외 범위와 결정 코멘트.
 - base에서 head까지의 전체 diff, 관련 호출자·테스트·fixture·설정 경로.
 - 실제 검사 명령·결과·로그 경로와 사람이 확인하지 못한 항목.
-- [AGENTS.md](../../AGENTS.md), [코딩 규칙](../coding-standards.md), [협업 규칙](../WORKFLOW.md), 관련 기획 문서와 ADR의 경로·SHA-256. 없거나 읽지 못한 문서는 누락으로 기록합니다.
+- [AGENTS.md](../../AGENTS.md), [REVIEW.md](../../REVIEW.md), [코딩 규칙](../coding-standards.md), [협업 규칙](../WORKFLOW.md), 관련 기획 문서와 ADR의 경로·SHA-256. 없거나 읽지 못한 문서는 누락으로 기록합니다.
 
 `git diff <base_sha> <head_sha>`로 리뷰 범위를 고정합니다. head, base, 합격 기준이나 문서 내용이 바뀌면 기존 리뷰를 최종 리뷰로 사용하지 않습니다. 변경된 입력과 문서 fingerprint를 갱신합니다.
 
@@ -18,7 +18,7 @@
 
 | 리뷰 | 확인할 내용 |
 | --- | --- |
-| Standards | [코딩 규칙과 리뷰 우선순위](../coding-standards.md#리뷰-우선순위), 기존 interface, 오류·취소·자원 처리, 검사 품질 |
+| Standards | [REVIEW.md](../../REVIEW.md)와 [코딩 규칙](../coding-standards.md), 기존 interface, 오류·취소·자원 처리, 검사 품질 |
 | Spec | Issue 합격 기준, 기획 규칙·수치, 관련 ADR, 구현 범위와 누락 |
 | Security | 권한·trust·승인·비밀값·외부 명령·경로·삭제·dependency·workflow 권한의 변경 |
 
@@ -36,11 +36,11 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 2. 지적마다 위치, 실패 조건, 영향과 수정 근거를 적습니다. 불확실하거나 범위 밖인 문제는 근거와 함께 보고합니다. 구현 범위를 늘리거나 제품 규칙을 확정하지 않습니다.
 3. 확실한 결함에는 수정 전 실패하는 동작 검사를 재사용하거나 추가합니다. 수정한 범위의 검사와 저장소 필수 검사를 실행합니다.
 4. 모든 수정을 커밋한 뒤 최종 head의 전체 diff를 다시 독립 검토합니다. 같은 SHA에서 이미 통과한 검사는 근거를 재사용합니다. 입력 변경이나 실패가 없으면 반복하지 않습니다.
-5. PR의 Evidence에 실행한 검사와 리뷰 결과를 적습니다. 리뷰를 했다면 컨텍스트·모델·head·결과·수정 커밋도 적습니다. 최종 필수 CI와 합격 기준을 확인한 뒤 [병합 정책](../WORKFLOW.md#브랜치와-병합)을 적용합니다.
+5. PR의 Evidence에 실행한 검사를, Review에 리뷰어(컨텍스트·모델)·고친 것·남은 지적을 적습니다. 최종 필수 CI와 합격 기준을 확인한 뒤 [병합 정책](../WORKFLOW.md#브랜치와-병합)에 따라 사람에게 병합을 넘깁니다.
 
 ## CI 실패 처리
 
-`Review status`와 `PR conventions` 같은 필수가 아닌 검사의 실패는 병합을 막지 않는다. 독립 리뷰 status가 없어서 나는 `Review status` 실패는 무시한다. 서버 필수 체크는 `gh api repos/<OWNER/REPO>/branches/main/protection/required_status_checks`로 확인한다.
+필수가 아닌 검사의 실패는 병합을 막지 않는다. 서버 필수 체크는 `gh api repos/<OWNER/REPO>/branches/main/protection/required_status_checks`로 확인한다.
 
 담당 로컬 에이전트는 맡은 PR의 CI가 완료될 때까지 결과를 확인한다.
 
@@ -48,31 +48,24 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 2. 코드 결함과 인프라 장애를 구분한다. 가능한 실패는 로컬에서 재현한다. 재현하지 못한 범위는 기록한다.
 3. 범위 안의 원인을 수정하고 관련 검사를 실행한다. 검사 삭제·skip·조건 완화로 실패를 숨기지 않는다. 같은 실패를 근거 없이 반복 재실행하지 않는다.
 4. 수정 내용을 커밋·푸시한다. 새 head의 CI를 확인한다. 이전 커밋의 성공을 새 head의 근거로 사용하지 않는다.
-5. 필수 CI와 티켓 검증을 확인한 뒤 병합한다.
+5. 필수 CI와 티켓 검증을 확인한 뒤 PR에 결과를 적고 사람에게 병합을 넘긴다.
 
-접근 권한 부족이나 해결하지 못한 실패가 남으면 원인과 미확인 범위를 보고하고 병합하지 않는다.
+접근 권한 부족이나 해결하지 못한 실패가 남으면 원인과 미확인 범위를 보고한다.
 이 절차는 담당 에이전트의 작업 중 수행한다. 별도 상시 감시 프로그램을 뜻하지 않는다.
 
 ## 병합 실행
 
-저장소 `Allow auto-merge`는 On으로 둔다. 모든 PR에 자동 병합을 예약하지 않는다.
-기본 흐름은 담당 로컬 에이전트가 필수 CI·티켓 검증 후 직접 병합하는 방식이다.
-별도 병합 위임이나 사람 승인을 기다리지 않는다. 새 `contents: write` Draft 권한만 [Draft Release 절차](../DRAFT_RELEASE.md)의 사람 승인을 따른다.
-사용자가 병합을 금지한 PR은 열어 둔다.
+병합은 사람만 한다. 에이전트는 PR을 병합하지 않고 자동 병합을 예약하지 않는다. 저장소 `Allow auto-merge`는 Off다. `.claude/settings.json`의 거부 규칙이 `gh pr merge`와 `main` push를 막는다. 이것은 습관이지 보안 경계가 아니다.
 
-병합 직전에 GitHub API로 head·base와 검사 결과를 다시 확인한다.
+병합하는 사람은 병합 직전에 head·base와 필수 검사 결과를 다시 확인한다. 되돌리기 어려움이거나 [신뢰 경계](../../REVIEW.md#신뢰-경계)를 건드리면 diff를 직접 읽고 그 head에서 병합한다.
 CodeQL 경고 수정 PR은 workflow 성공이 아니라 code scanning API로 판정한다.
 `refs/pull/<PR>/merge`의 Actions·Python 분석은 최종 base와 최종 head를 부모로 둔 merge 커밋에서 끝나야 한다. 각 분석의 `error`·`warning` 필드는 비어 있어야 한다. 그 ref의 열린 경고는 0건이어야 한다.
 code scanning API는 분석이 없는 ref에도 열린 경고 0건을 반환한다. 경고 수만 보고 판정하지 않는다.
-head나 base가 바뀌면 영향받는 검증을 갱신한다.
-`gh pr merge <PR> --repo <OWNER/REPO> --squash --match-head-commit <FINAL_HEAD_SHA>`로 병합한다.
-`--admin`으로 보호를 우회하지 않는다. 사용자가 병합을 금지한 PR은 열어 둔다.
-독립 리뷰와 사람 승인은 병합 조건이 아니다.
-GitHub 자동 병합 예약은 필요할 때 별도 구성한다.
+`gh pr merge <PR> --repo <OWNER/REPO> --squash --match-head-commit <FINAL_HEAD_SHA>`로 병합한다. `--admin`으로 보호를 우회하지 않는다.
 
 ## 변경 영역별 자료 선택
 
-로컬 독립 리뷰 에이전트는 `docs/coding-standards.md`와 티켓의 확정 완료 조건을 읽는다.
+로컬 독립 리뷰 에이전트는 `REVIEW.md`, `docs/coding-standards.md`와 티켓의 확정 완료 조건을 읽는다.
 그다음 변경 영역에 필요한 원문만 선택한다. 아래 표에서 변경 영역에 필요한 자료만 선택한다.
 
 | 변경 영역 | 로컬 리뷰가 선택할 상세 문서 |
@@ -87,7 +80,7 @@ GitHub 자동 병합 예약은 필요할 때 별도 구성한다.
 
 ## 프로젝트 신뢰 경계 경로
 
-공통 경로는 repo-baseline `POLICY.md` §5가 정한다. 이 저장소가 더한 경로는 [`.github/trust-boundary-paths`](../../.github/trust-boundary-paths)다. 인증·결제·권한 검사·migration에 해당하는 프로젝트 경로는 아직 없다. 경로를 추가하면 그 파일에 한 줄씩 적고 이 절의 링크를 유지한다.
+공통 경로는 repo-baseline `POLICY.md` §4가 정한다. 이 저장소의 경로는 [REVIEW.md의 신뢰 경계](../../REVIEW.md#신뢰-경계)에 적는다. 경로를 더하면 그 절에 적는다.
 
 ## Matt Pocock retro로 환경 개선
 
