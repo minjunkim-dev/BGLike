@@ -1,5 +1,0 @@
-{
-  "reject_claude_md": false,
-  "feature_flags": false,
-  "bot_branch_prefixes": ["claude", "codex", "dependabot"]
-}
