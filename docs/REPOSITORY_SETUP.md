@@ -11,7 +11,6 @@ python3 <repo-baseline>/tools/apply_github_settings.py <BGLike 경로>
 ```
 
 인자 없이 실행하면 읽기만 한다. 다른 값마다 현재값 → 기대값과 고칠 쓰기를 보여 준다. 소유자만 결과를 확인한 뒤 같은 명령에 `--apply`를 붙여 적용한다. 에이전트는 `--apply`와 branch protection 쓰기를 실행하지 않는다.
-`codeql_main_source.sha`는 main의 `.github/workflows/codeql.yml` blob이다. Dependabot이 codeql.yml을 바꾸면 이 값이 drift로 나온다. `git hash-object .github/workflows/codeql.yml` 값으로 갱신한다. 이 비교는 PR CI가 아니라 위 명령에서만 한다.
 
 ## 공통 정책
 
