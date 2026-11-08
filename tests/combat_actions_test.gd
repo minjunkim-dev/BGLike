@@ -1786,9 +1786,8 @@ func _test_jump_opportunity() -> void:
 			and (scenario[1] or f.units[0].reaction_left == (0 if scenario[0] else 1)),
 			"출발에서 인접하고 착지에서 벗어나는 적에게 한 번만 기회 공격")
 		_check(actor.cell == (origin if scenario[1] else destination)
-			and actor.movement_left == (6 if scenario[1] else 4)
-			and actor.bonus_action_left == (1 if scenario[1] else 0),
-			"기회 공격 전투 불능은 원점·이동·보조 행동 보존, 생존은 착지·비용 소비")
+			and actor.movement_left == 4 and actor.bonus_action_left == 0,
+			"기회 공격 전투 불능은 원점에 남고, 전투 불능이든 생존이든 점프 비용 소비 (#407)")
 		_check(not f.actions.busy and f.actions.pending_reactor == null, "점프 반응 종료 후 잠금 해제")
 	for reactor_cell: Vector2i in [Vector2i(5, 5), Vector2i(4, 5)]:
 		var f: Fixture = _fixture()

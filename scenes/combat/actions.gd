@@ -691,6 +691,9 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 		if actor.hit_points <= 0 or actor.movement_left == 0 or is_over():
 			break
 	if actor.hit_points <= 0:
+		# 기회 공격으로 쓰러져도 점프 비용은 소비한다 (#407 개발 결정).
+		actor.spend_movement(cells[destination])
+		actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
 		_finish()
 		return true
 	# 괴력의 사내로 멈춘 점프는 비용을 돌려주지 않고 출발 칸에 남는다 (전사 문서).
