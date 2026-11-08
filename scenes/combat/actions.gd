@@ -2,6 +2,9 @@ class_name CombatActions
 extends RefCounted
 ## 아군과 적 AI가 함께 쓰는 동작 실행과 반응 대기.
 
+const SCRAP_ROBOTS: Array[CombatUnit.Kind] = [CombatUnit.Kind.SCRAP_ROBOT_1000,
+	CombatUnit.Kind.SCRAP_ROBOT_2000, CombatUnit.Kind.SCRAP_ROBOT_3000]
+
 signal changed
 signal logged(message: String)
 signal feedback(unit: CombatUnit, text: String)
@@ -432,7 +435,20 @@ func _on_turn_started(unit: CombatUnit) -> void:
 	# 틱으로 쓰러졌으면 이번 몫은 쓰러질 때 이미 줄였다.
 	if revision == _revision and not is_over() and unit.hit_points > 0:
 		_decrease_durations(unit)
+	# 6-1의 7번: 기간 감소 뒤에 걸어 새 화상이 기간 2를 온전히 가진다.
+	if unit.overloaded and unit.kind in SCRAP_ROBOTS and unit.hit_points > 0 and unit in units and not is_over():
+		_emit_overload_burn(unit)
 	changed.emit()
+
+
+## 과부하 고철로봇이 반경 1(높이 차 1 이하)의 모든 유닛에게 판정 없이 화상 1중첩을 건다.
+func _emit_overload_burn(robot: CombatUnit) -> void:
+	for target: CombatUnit in units.duplicate():
+		if target == robot or not grid.are_adjacent(robot.cell, target.cell) or is_over():
+			continue
+		if apply_status(robot, target, "burn"):
+			logged.emit(tr("%s 과부하: %s 화상 부여") % [robot.get_display_name(), target.get_display_name()])
+			feedback.emit(target, tr("화상"))
 
 
 ## unit이 시전자인 유닛 효과·상태 이상·장판의 기간을 1 줄이고 0이면 해제한다.
@@ -675,6 +691,9 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 		if actor.hit_points <= 0 or actor.movement_left == 0 or is_over():
 			break
 	if actor.hit_points <= 0:
+		# 기회 공격으로 쓰러져도 점프 비용은 소비한다 (#407 개발 결정).
+		actor.spend_movement(cells[destination])
+		actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
 		_finish()
 		return true
 	# 괴력의 사내로 멈춘 점프는 비용을 돌려주지 않고 출발 칸에 남는다 (전사 문서).
@@ -763,6 +782,24 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 		"pull":
 			return actor.action_left > 0 and actor.pull_cooldown == 0
 	return false
+
+
+## 칸 조준 동작이 고를 수 있는 칸 목록. 칸 조준 항목이 없는 동작은 비어 있다.
+func aim_cells(actor: CombatUnit, action: String, from_cell: Vector2i = Vector2i(-1, -1)) -> Array[Vector2i]:
+	if actor == null or action not in CombatActionRules.AIM_RANGES:
+		return []
+	return grid.aim_cells(actor.cell if from_cell == Vector2i(-1, -1) else from_cell, CombatActionRules.AIM_RANGES[action])
+
+
+func can_aim(actor: CombatUnit, action: String, cell: Vector2i, from_cell: Vector2i = Vector2i(-1, -1)) -> bool:
+	return cell in aim_cells(actor, action, from_cell)
+
+
+## 목표 칸 기준 영역: 반경 안에서 목표 칸 바닥과 높이 차 1 이하인 고를 수 있는 칸. 목표 칸이 유효하지 않으면 비어 있다.
+func aim_area(actor: CombatUnit, action: String, cell: Vector2i) -> Array[Vector2i]:
+	if actor == null or action not in CombatActionRules.AIM_RADII:
+		return []
+	return grid.area_cells(cell, CombatActionRules.AIM_RADII[action], false)
 
 
 ## 휩쓸기의 대상: facing을 정면으로 둔 반달 5칸의 살아 있는 적을 시계방향 순서로 준다. 아군은 맞지 않는다.
