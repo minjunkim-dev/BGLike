@@ -40,6 +40,8 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 
 ## CI 실패 처리
 
+`Review status`와 `PR conventions` 같은 필수가 아닌 검사의 실패는 병합을 막지 않는다. 독립 리뷰 status가 없어서 나는 `Review status` 실패는 무시한다. 서버 필수 체크는 `gh api repos/<OWNER/REPO>/branches/main/protection/required_status_checks`로 확인한다.
+
 담당 로컬 에이전트는 맡은 PR의 CI가 완료될 때까지 결과를 확인한다.
 
 1. PR의 head·base SHA와 실패한 run·attempt를 기록한다. `gh run view <RUN_ID> --repo <OWNER/REPO> --log-failed`로 실패 로그를 확인한다.
