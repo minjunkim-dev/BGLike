@@ -1391,7 +1391,10 @@ func _save_outcome(result: CombatChecks.RollResult) -> String:
 
 
 func _apply_grounds(unit: CombatUnit, entering: bool) -> void:
+	var revision: int = _revision
 	_apply_fog(unit, entering)
+	if not _same_combat(unit, revision):
+		return
 	for ground: Ground in _grounds.duplicate():
 		if not is_instance_valid(unit) or unit.hit_points <= 0 or is_over():
 			break
@@ -1423,13 +1426,14 @@ func _apply_fog(unit: CombatUnit, entering: bool) -> void:
 	for ground: Ground in fogs:
 		if unit not in ground.entered:
 			ground.entered.append(unit)
+	var revision: int = _revision
 	var health_sides: int = unit.get_ability_sides(CombatUnit.Ability.HEALTH)
 	var saved: CombatChecks.RollResult = CombatChecks.saving_throw(health_sides, unit.get_defense_bonus(),
 		fogs[0].dc, CombatActionRules.save_mode(unit), dice)
 	_show_roll_in_background(CombatDiceRoll.save(unit, health_sides, saved, unit.get_defense_bonus(), tr("DC"), fogs[0].dc))
 	logged.emit(tr("%s 독안개(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s") % [unit.get_display_name(),
 		health_sides, str(saved.rolls), unit.get_defense_bonus(), saved.total, fogs[0].dc, _save_outcome(saved)])
-	if saved.success or unit.get_status_count("poison") >= 3:
+	if not _same_combat(unit, revision) or saved.success or unit.get_status_count("poison") >= 3:
 		return
 	# 독안개로 얻은 독 중첩은 기간이 없고(turns_left 0) 시전자가 쓰러져도 남는다. 제거 DC는 고정 4다.
 	unit.status_effects.append(CombatUnit.StatusEffect.new("poison", fogs[0].source, 0, Ground.POISON_DC))
@@ -1449,11 +1453,15 @@ func cast_fog(caster: CombatUnit, cell: Vector2i) -> bool:
 	var dc: int = CombatActionRules.save_dc(caster, "fog")
 	for area_cell: Vector2i in area:
 		_grounds.append(Ground.new(caster, area_cell, "fog", dc))
+	var revision: int = _revision
 	logged.emit(tr("%s 독안개 시전: %d, %d · DC %d") % [caster.get_display_name(), cell.x, cell.y, dc])
 	for unit: CombatUnit in units.duplicate():
+		if revision != _revision or is_over():
+			break
 		if unit.cell in area:
 			_apply_fog(unit, true)
-	changed.emit()
+	if revision == _revision:
+		changed.emit()
 	return true
 
 

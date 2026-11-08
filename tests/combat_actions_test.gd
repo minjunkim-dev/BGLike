@@ -857,6 +857,7 @@ func _run() -> void:
 	_test_status_application_boundaries()
 	_test_ground_creation()
 	_test_fog_cast()
+	_test_fog_cast_reset()
 	_test_fog_clock()
 	await _test_ground_walk_entry()
 	_test_ground_start_and_expiry()
@@ -2777,6 +2778,24 @@ func _test_fog_cast() -> void:
 	g.units[0].load_state(unit_data, g.units)
 	_check(_fog_count(g) == 10 and g.units[0].get_status_count("poison") == 1 and g.units[0].status_effects[0].turns_left == 0
 		and g.actions.get_grounds()[0].dc == dc, "독안개 장판과 기간 없는 중첩이 복원됨")
+
+
+func _test_fog_cast_reset() -> void:
+	var f: Fixture = _fixture()
+	var reset: Array[bool] = [false]
+	var callback: Callable = func(message: String) -> void:
+		if reset[0] or "독안개(건강 내성)" not in message:
+			return
+		reset[0] = true
+		f.actions.initialize(f.units, f.turns)
+	f.actions.logged.connect(callback)
+	# 첫 굴림(유닛 0, d12) 뒤에 초기화하므로 남은 유닛은 굴리지 않는다.
+	f.actions.dice = _dice_for([1], [12])
+	f.actions.cast_fog(f.units[3], Vector2i(4, 4))
+	f.actions.logged.disconnect(callback)
+	_check(reset[0] and _fog_rolls(f) == 1 and _fog_count(f) == 0
+		and f.units.all(func(unit: CombatUnit) -> bool: return unit.get_status_count("poison") == 0),
+		"독안개 굴림 callback이 전투를 초기화하면 지난 시전의 독과 남은 굴림을 적용하지 않는다")
 
 
 func _test_fog_clock() -> void:
