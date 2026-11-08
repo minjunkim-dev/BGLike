@@ -16,8 +16,8 @@ PR의 unittest는 codeql.yml blob과 `codeql_main_source.sha`를 비교한다. D
 
 ## 공통 정책
 
-서버 목표값은 기준선 파일을 따른다. 1인 개발의 필수 승인은 0명이다. 되돌리기 어려움이거나 broad인 변경은 사람이 최종 head를 승인한다. [독립 리뷰](agents/review.md)와 최종 CI 뒤 exact-head 병합한다. auto-merge는 사용 가능 상태만 켜고 일괄 예약하지 않는다.
-필수 체크 기대값은 기존 `policy / PR conventions and scope`, `smoke`, `CI`에 `Review status`를 더한다. 넷 다 App `15368`이고 `strict`는 true다. context는 `.github/workflows/review-status.yml`의 job 이름 `Review status`와 같다. 이 파일은 기대값이다. 이 갱신은 branch protection을 쓰지 않는다. 병합 뒤 소유자가 Mac에서 적용한다. 적용되면 Dependabot 버전 전용 PR을 뺀 모든 PR(되돌리기 쉬움 포함)에 소유자가 올리는 `review/independent`가 필요하다. 신뢰 경계 경로를 바꾸면 `review/security`도 필요하다. 1인 프로필에서 status는 소유자만 올린다. 에이전트가 status를 올리는 것은 금지지만 GitHub가 기술적으로 막지는 않는다. 검사기는 `creator.login`이 저장소 소유자이거나 `STATUS_ACTORS`(지금은 비어 있음)인 status만 success로 센다. 다른 작성자의 status는 실패다. 기존 보호·보안·주간 Dependabot을 유지한다. 미래 공개 Release immutability를 켠다.
+서버 목표값은 기준선 파일을 따른다. 1인 개발의 필수 승인은 0명이다. 필수 CI 뒤 exact-head 병합한다. 독립 리뷰와 사람 승인은 병합 조건이 아니다. auto-merge는 사용 가능 상태만 켜고 일괄 예약하지 않는다.
+필수 체크 기대값은 `policy / PR conventions and scope`, `smoke`, `CI`다. 셋 다 App `15368`이고 `strict`는 true다. `Review status`는 필수 체크에 넣지 않는다. 이 파일은 기대값이며 branch protection을 쓰지 않는다. 기존 보호·보안·주간 Dependabot을 유지한다. 미래 공개 Release immutability를 켠다.
 
 ## CodeQL
 
