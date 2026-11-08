@@ -16,8 +16,8 @@ PR의 unittest는 codeql.yml blob과 `codeql_main_source.sha`를 비교한다. D
 
 ## 공통 정책
 
-서버 목표값은 기준선 파일을 따른다. 1인 개발의 필수 승인은 0명이다. 되돌리기 어려움이거나 broad인 변경은 사람이 최종 head를 승인한다. [독립 리뷰](agents/review.md)와 최종 CI 뒤 exact-head 병합한다. auto-merge는 사용 가능 상태만 켜고 일괄 예약하지 않는다.
-필수 체크 기대값은 기존 `policy / PR conventions and scope`, `smoke`, `CI`에 `Review status`를 더한다. 넷 다 App `15368`이고 `strict`는 true다. context는 `.github/workflows/review-status.yml`의 job 이름 `Review status`와 같다. 이 파일은 기대값이다. 이 갱신은 branch protection을 쓰지 않는다. 병합 뒤 소유자가 Mac에서 적용한다. 적용되면 Dependabot 버전 전용 PR을 뺀 모든 PR(되돌리기 쉬움 포함)에 소유자가 올리는 `review/independent`가 필요하다. 신뢰 경계 경로를 바꾸면 `review/security`도 필요하다. 1인 프로필에서 status는 소유자만 올린다. 에이전트가 status를 올리는 것은 금지지만 GitHub가 기술적으로 막지는 않는다. 검사기는 `creator.login`이 저장소 소유자이거나 `STATUS_ACTORS`(지금은 비어 있음)인 status만 success로 센다. 다른 작성자의 status는 실패다. 기존 보호·보안·주간 Dependabot을 유지한다. 미래 공개 Release immutability를 켠다.
+서버 목표값은 기준선 파일을 따른다. 1인 개발의 필수 승인은 0명이다. 필수 CI 뒤 exact-head 병합한다. 독립 리뷰와 사람 승인은 병합 조건이 아니다. auto-merge는 사용 가능 상태만 켜고 일괄 예약하지 않는다.
+필수 체크 기대값은 `policy / PR conventions and scope`, `smoke`, `CI`다. 셋 다 App `15368`이고 `strict`는 true다. `Review status`는 필수 체크에 넣지 않는다. 이 파일은 기대값이며 branch protection을 쓰지 않는다. 기존 보호·보안·주간 Dependabot을 유지한다. 미래 공개 Release immutability를 켠다.
 
 ## CodeQL
 
@@ -39,11 +39,11 @@ PR의 unittest는 codeql.yml blob과 `codeql_main_source.sha`를 비교한다. D
 
 `.github/workflow-policy.json`은 이 저장소 설정이다. manifest가 복사하지 않는다. `reject_claude_md`는 거짓이다. `@AGENTS.md`만 있는 `CLAUDE.md`를 유지한다. `feature_flags`는 거짓이다. [협업 규칙](WORKFLOW.md)이 공통 기능 플래그 시스템을 만들지 않으므로 `config/feature-flags.json`을 두지 않는다. 봇 브랜치 접두사는 기존과 같이 `claude`, `codex`, `dependabot`이다.
 
-`.github/workflows/review-status.yml`의 `pull_request_target`과 `.github/workflows/pr-policy.yml`의 `pull_request`는 `branches: [main]`만 본다. Review status 검사기는 base ref가 저장소 기본 브랜치가 아니거나 이벤트 `BASE_SHA`가 그 브랜치 위에 없으면 실패한다. `pull_request_target`은 기본 브랜치의 workflow와 검사기만 실행한다. GitHub는 공개 저장소에서 이 이벤트를 2026-12-02부터 기본으로 막는다. 그 전에 2026-11-09 16:00–18:00 UTC와 2026-11-16 16:00–18:00 UTC(한국 시간 2026-11-10과 2026-11-17 01:00–03:00)에 같은 차단을 잠시 적용한다. 공식 공지는 [pull_request_target blocked by default December 2](https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2/)다. 허용 정책이 기본 브랜치 병합 전에 보이기 전에는 이 workflow를 병합하지 않는다. 그 정책은 이미 있고 이 갱신은 정책을 바꾸지 않는다. `.github/repository-settings.json`은 필수 체크 기대값에 `Review status`(App 15368)를 더한다. `strict`는 true다. 기존 `policy / PR conventions and scope`, `smoke`, `CI`는 그대로다. `PR policy`는 필수 체크가 아니다. 이 파일 기록은 branch protection이 아니다. 서버에 적용되기 전에는 GitHub가 `Review status`를 요구하지 않는다. 적용되면 Dependabot 버전 전용 PR을 뺀 모든 PR에 소유자가 올리는 `review/independent`가 필요하고, 신뢰 경계 경로면 `review/security`도 필요하다.
+`.github/workflows/review-status.yml`의 `pull_request_target`과 `.github/workflows/pr-policy.yml`의 `pull_request`는 `branches: [main]`만 본다. Review status 검사기는 base ref가 저장소 기본 브랜치가 아니거나 이벤트 `BASE_SHA`가 그 브랜치 위에 없으면 실패한다. `pull_request_target`은 기본 브랜치의 workflow와 검사기만 실행한다. GitHub는 공개 저장소에서 이 이벤트를 2026-12-02부터 기본으로 막는다. 그 전에 2026-11-09 16:00–18:00 UTC와 2026-11-16 16:00–18:00 UTC(한국 시간 2026-11-10과 2026-11-17 01:00–03:00)에 같은 차단을 잠시 적용한다. 공식 공지는 [pull_request_target blocked by default December 2](https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2/)다. 허용 정책이 기본 브랜치 병합 전에 보이기 전에는 이 workflow를 병합하지 않는다. 그 정책은 이미 있고 이 갱신은 정책을 바꾸지 않는다. (과거 기록) 당시 `.github/repository-settings.json`은 필수 체크 기대값에 `Review status`(App 15368)를 더했다. 현재 기대값에는 없다. `strict`는 true다. 기존 `policy / PR conventions and scope`, `smoke`, `CI`는 그대로다. `PR policy`는 필수 체크가 아니다. 이 파일 기록은 branch protection이 아니다. 현재 기대값에는 `Review status`가 없어 GitHub가 이를 요구하지 않는다. 과거 기대값을 서버에 적용했다면 Dependabot 버전 전용 PR을 뺀 모든 PR에 소유자가 올리는 `review/independent`가 필요하고, 신뢰 경계 경로면 `review/security`도 필요하다.
 
 기존 기준선의 설명용 `exceptions` 배열은 내용을 보존해 `observations`로 옮겼다. 관측 기록은 API 감사 항목을 제외하지 않는다. 실제 기능 미지원·비해당을 감사 범위에서 제외하려면 원본의 [설정 기준선 형식](https://github.com/minjunkim-dev/repo-baseline/blob/e8c5224e33d8ebe3aa915fd741702ee75c77ecc2/docs/github-settings-profile.md)에 맞는 `exceptions` 객체와 사유·근거가 필요하다. 예외가 있으면 exit 0이어도 결과는 전체 PASS가 아닌 LIMITED다. 미선언 403·404·누락·권한 오류는 계속 실패한다.
 
-이번 갱신은 기준선 파일의 필수 체크 기대값에 `Review status`를 더한다. GitHub 서버의 branch protection·권한·CodeQL·배포는 바꾸지 않는다. 과거 실행 기록을 현재 검증 결과로 바꾸지 않는다.
+(과거 기록) 당시 갱신은 기준선 파일의 필수 체크 기대값에 `Review status`를 더했다. 현재 기대값은 `policy / PR conventions and scope`, `smoke`, `CI`다. GitHub 서버의 branch protection·권한·CodeQL·배포는 바꾸지 않는다. 과거 실행 기록을 현재 검증 결과로 바꾸지 않는다.
 
 ## 과거 Bugbot 확인 기록
 
