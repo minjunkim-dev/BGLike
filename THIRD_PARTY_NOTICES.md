@@ -11,7 +11,6 @@
 | --- | --- | --- |
 | Godot Engine | 4.7.2 Standard, 편집·검사·향후 게임 실행 | MIT. 엔진 바이너리를 저장소에 포함하지 않습니다. [엔진 LICENSE](https://github.com/godotengine/godot/blob/4.7.2-stable/LICENSE.txt), [엔진의 외부 구성 요소](https://github.com/godotengine/godot/blob/4.7.2-stable/COPYRIGHT.txt), [고지 안내](https://docs.godotengine.org/en/stable/about/complying_with_licenses.html) |
 | Git LFS | 바이너리 원본 자산 관리 도구 | MIT. 도구 바이너리를 저장소에 포함하지 않습니다. [Git LFS LICENSE](https://github.com/git-lfs/git-lfs/blob/main/LICENSE.md) |
-| matt-code-review | Matt Pocock `code-review` v1.3.2, commit `d1478fc`. 저장소 사본은 `.agents/skills/matt-code-review/`와 `.claude/skills/matt-code-review/`. frontmatter 이름만 `matt-code-review` | MIT. Copyright (c) 2026 Matt Pocock. 각 사본의 `LICENSE`가 고지다. [원본](https://github.com/mattpocock/skills/tree/d1478fc/skills/engineering/code-review) |
 
 Godot의 MIT 조건은 BGLike 자체 코드에 MIT를 부여하는 의미가 아닙니다.
 엔진과 엔진의 외부 라이브러리를 포함한 게임 배포물에는 원래 요구되는 고지를 포함합니다.

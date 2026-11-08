@@ -26,7 +26,7 @@
 
 **캐릭터를 육성하면서 3막의 모든 스테이지를 깨는 것(3막 졸업)이 목표입니다.** ✅
 
-- 육성 수단은 **아이템**과 **막 최초 클리어마다 오르는 파티 레벨**(6개 능력치 주사위 레벨 +1, 모든 캐릭터 공유, 2026-10-28)입니다. 재화는 두지 않습니다. 레벨업 구현은 [주사위 육성 논의](DICE_GROWTH.md)가 Issue로 넘어온 뒤입니다 ⏸.
+- 육성 수단은 **아이템**과 **막 최초 클리어마다 오르는 파티 레벨**(6개 능력치 주사위 레벨 +1, 모든 캐릭터 공유, 2026-10-28)입니다. 재화는 두지 않습니다. 레벨업은 구현 범위입니다([#322 답](https://github.com/minjunkim-dev/BGLike/issues/322#issuecomment-6714895396)). 규칙은 [주사위 육성 논의](DICE_GROWTH.md)를 따릅니다.
 - 이야기와 세계관은 이 구조 위에 나중에 얹습니다 ([로드맵 M7](ROADMAP.md#10-m7-첫-플레이-가능-구간-기획)).
 
 ---
@@ -406,7 +406,7 @@ flowchart TD
 
 ## 7. 전투 시스템 기획서에서 바뀌는 규칙
 
-[#321](https://github.com/minjunkim-dev/BGLike/issues/321)에서 능력치 주사위를 도입했고, [#377](https://github.com/minjunkim-dev/BGLike/issues/377)의 개정부터 판정은 [명중굴림과 내성굴림](ABILITY_SYSTEM.md#4-1-판정의-두-종류-)을 따른다. 여섯 능력치, 민첩 주사위 이니셔티브, 대상마다 굴리는 광역 내성굴림, 공격·방어 장비 가산을 사용한다. HP·행동·사거리는 유지한다. 피해는 [#388](https://github.com/minjunkim-dev/BGLike/issues/388)부터 공격 능력치 주사위를 새로 굴린 값 + 피해 보정이다([능력치 기획서 4-9](ABILITY_SYSTEM.md#4-9-피해와-회복)). 형식1·2·3 저장은 보존하며 읽지 않고 형식4부터 이어한다([ADR 0003](adr/0003-save-files.md)). 성장·절대면·치명타 재도입은 #322 확정 전까지 범위 밖이다.
+[#321](https://github.com/minjunkim-dev/BGLike/issues/321)에서 능력치 주사위를 도입했고, [#377](https://github.com/minjunkim-dev/BGLike/issues/377)의 개정부터 판정은 [명중굴림과 내성굴림](ABILITY_SYSTEM.md#4-1-판정의-두-종류-)을 따른다. 여섯 능력치, 민첩 주사위 이니셔티브, 대상마다 굴리는 광역 내성굴림, 공격·방어 장비 가산을 사용한다. HP·행동·사거리는 유지한다. 피해는 [#388](https://github.com/minjunkim-dev/BGLike/issues/388)부터 공격 능력치 주사위를 새로 굴린 값 + 피해 보정이다([능력치 기획서 4-9](ABILITY_SYSTEM.md#4-9-피해와-회복)). 형식1·2·3 저장은 보존하며 읽지 않고 형식4부터 이어한다([ADR 0003](adr/0003-save-files.md)). 막 최초 클리어 레벨업은 [#322 답](https://github.com/minjunkim-dev/BGLike/issues/322#issuecomment-6714895396)에 따라 구현 범위가 됐다. 절대성공면 획득·치명타 재도입은 #322 확정 전까지 범위 밖이다.
 
 [전투 시스템 기획서](COMBAT_DESIGN.md)의 아래 내용을 이 문서로 대체합니다. 나머지 규칙은 그대로입니다.
 
