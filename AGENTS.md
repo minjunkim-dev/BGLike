@@ -8,6 +8,7 @@ Godot 4 싱글 플레이 PC 게임입니다. GitHub 품질 운영은 1인 개발
 ## 구현 길잡이
 
 - 작업 시작: [협업 규칙](docs/WORKFLOW.md)과 [브랜치·커밋 규칙](docs/GIT_CONVENTIONS.md)을 읽습니다. 다른 작업자의 변경을 보존합니다.
+- 브랜치를 만들기 전에 [브랜치·커밋 규칙](docs/GIT_CONVENTIONS.md)을 먼저 읽습니다. 도구가 `claude/…`처럼 자동 이름을 지정해도 이름 검사가 면제될 뿐이므로, 새 작업은 최신 `main`에서 `<type>/<issue번호>-<짧은-설명>` 형식의 브랜치로 시작합니다.
 - 제품 사양: 관련 Issue의 목표·완료 조건과 연결한 기획 문서를 읽습니다. 용어·ADR은 [문서 길잡이](docs/agents/domain.md)를 따릅니다.
 - 검증: [README](https://github.com/minjunkim-dev/BGLike/blob/main/README.md)의 명령과 [CI 구성](docs/CI.md)의 범위 규칙을 확인합니다. 플레이 변경의 직접 확인 기준은 [협업 규칙](docs/WORKFLOW.md#검증과-보고)을 따릅니다.
 - GitHub 설정: [설정 기준선과 읽기 전용 검증](docs/REPOSITORY_SETUP.md)을 따릅니다.
