@@ -36,7 +36,7 @@
 | 아이콘 방향 | 외형 콘셉트, 직업별 변형 |
 | 밸런스 메모 | 기대 효과와 위험 요소 |
 
-게임 내 설명을 직접 쓸지, 수치 가감에서 자동으로 만들고 플레이버만 직접 쓸지는 아직 정하지 않았습니다 ❓.
+게임 내 설명은 수치에서 자동으로 만들고, 플레이버만 직접 씁니다 ✅ `개발 결정`([Issue #456](https://github.com/minjunkim-dev/BGLike/issues/456)).
 
 ## 3. 수치 가감
 
@@ -87,7 +87,7 @@ DC         = max(1, max(1, 시전 능력치 표준값 + 그 능력치 가감) + 
 | 최대 HP | 1 |
 | 최대 이동 | 1칸 |
 
-최대 이동 0칸(이동 불가)이 필요한 아이템은 이 하한과 충돌하므로 따로 기획합니다 ❓.
+최대 이동 0칸(이동 불가)이 필요한 아이템은 이 하한과 충돌하므로 따로 기획합니다. 지금은 허용하지 않습니다 ✅ `개발 결정`([Issue #456](https://github.com/minjunkim-dev/BGLike/issues/456)).
 
 ### 절대면과 유리/불리 ✅
 
@@ -114,9 +114,9 @@ AC는 방어 가산 +3과 민첩 가감 −1이 합쳐져 +2입니다. 이니셔
 
 | 항목 | 상태 |
 |---|---|
-| 게임 내 설명의 형식(직접 작성 또는 자동 생성) | ❓ |
+| 게임 내 설명의 형식(직접 작성 또는 자동 생성) | ✅ `개발 결정`: 수치에서 자동 생성([Issue #456](https://github.com/minjunkim-dev/BGLike/issues/456)) |
 | 능력치 가감과 가산의 막별 수치 범위 | ❓ [Issue #205](https://github.com/minjunkim-dev/BGLike/issues/205)에서 다룹니다 |
-| 최대 이동 0칸을 허용하는 아이템 | ❓ |
+| 최대 이동 0칸을 허용하는 아이템 | ✅ `개발 결정`: 허용하지 않음, 최소 1칸([Issue #456](https://github.com/minjunkim-dev/BGLike/issues/456)) |
 | 등급·희소성, 직업 제한 | ⏸ 보류 |
-| 전투 UI의 능력치 가감 표시 | ❓ 현재 유닛 패널(능력치 6종, 공격 가산), 호버(`피해: 힘 d20+2`), 확인 창 문구에 가감을 어떻게 보일지 정해야 합니다. [전투 시스템 기획서 9장](COMBAT_DESIGN.md)과 `COMBAT_UIUX.md`의 표기 규칙을 함께 고칩니다 |
-| 구현 요청과 개발 | ❓ [능력치 기획서](ABILITY_SYSTEM.md)·[용어집](../CONTEXT.md)·[전투 시스템 기획서](COMBAT_DESIGN.md)·[게임 구조 기획서](GAME_STRUCTURE.md)에는 2026-11-05에 반영했습니다. `item_data.json`과 전투 코드는 아직 가산 4종만 씁니다 |
+| 전투 UI의 능력치 가감 표시 | ✅ `개발 결정`: 가산 표기를 확장해 `힘 d20+2`로 보입니다. 유닛 패널·호버에 적용했고 확인 창은 가감이 없어 그대로입니다([Issue #456](https://github.com/minjunkim-dev/BGLike/issues/456)) |
+| 구현 요청과 개발 | ✅ 전투 코드가 능력치 가감 6종(`strength_modifier` 등)과 `max_movement`를 읽습니다([Issue #456](https://github.com/minjunkim-dev/BGLike/issues/456)). `item_data.json`의 시험 아이템은 가산 4종만 쓰며, 가감을 쓰는 아이템과 수치 범위는 [Issue #205](https://github.com/minjunkim-dev/BGLike/issues/205)에서 정합니다 |

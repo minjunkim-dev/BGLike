@@ -6,8 +6,13 @@ const DATA_PATH: String = "res://scenes/combat/item_data.json"
 const ICON_PATH: String = "res://scenes/combat/art/icons/items/%s.png"
 static var STAT_NAMES: Dictionary = {
 	"attack_bonus": TranslationServer.tr("공격 가산"), "damage_bonus": TranslationServer.tr("피해"), "defense_bonus": TranslationServer.tr("방어"),
-	"max_hit_points": TranslationServer.tr("최대 HP")
+	"max_hit_points": TranslationServer.tr("최대 HP"), "max_movement": TranslationServer.tr("최대 이동"),
+	"strength_modifier": TranslationServer.tr("힘 가감"), "agility_modifier": TranslationServer.tr("민첩 가감"),
+	"finesse_modifier": TranslationServer.tr("솜씨 가감"), "intelligence_modifier": TranslationServer.tr("지능 가감"),
+	"will_modifier": TranslationServer.tr("의지 가감"), "health_modifier": TranslationServer.tr("건강 가감")
 }
+## 음수 범위를 허용하는 수치: 능력치 가감과 최대 이동. 나머지는 0 이상이다 (아이템 기획 폼 3장).
+const SIGNED_STATS: Array[String] = ["max_movement"] + CombatUnit.ABILITY_MODIFIER_KEYS
 
 var data: Dictionary
 var bag: Array[Dictionary] = []
@@ -42,8 +47,8 @@ func _init() -> void:
 			var act_ranges: Array = item["stats"][stat]
 			assert(act_ranges.size() == 3, "장비 수치는 막별 범위3개가 필요합니다.")
 			for bounds: Array in act_ranges:
-				assert(bounds.size() == 2 and int(bounds[0]) >= 0
-					and int(bounds[0]) <= int(bounds[1]), "장비 범위는0이상 최소·최대입니다.")
+				assert(bounds.size() == 2 and (stat in SIGNED_STATS or int(bounds[0]) >= 0)
+					and int(bounds[0]) <= int(bounds[1]), "장비 범위는 최소·최대입니다. 가감이 아닌 수치는 0 이상입니다.")
 	assert(total_weight > 0)
 
 
@@ -178,5 +183,5 @@ static func describe(item: Dictionary) -> String:
 		return TranslationServer.tr("없음")
 	var text: String = TranslationServer.tr(str(item["name"]))
 	for stat: String in item["stats"]:
-		text += " · %s+%d" % [STAT_NAMES[stat], int(item["stats"][stat])]
+		text += " · %s%+d" % [STAT_NAMES[stat], int(item["stats"][stat])]
 	return text

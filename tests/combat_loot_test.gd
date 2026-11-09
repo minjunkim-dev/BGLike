@@ -48,6 +48,7 @@ func _run() -> void:
 		_check(loot.roll_rewards(1, ScriptedDice.new([], [], [0.35]).then_seeded(), 1).size() == 1,
 			"추가 드랍 굴림 0.35는 35% 실패")
 		_test_items(loot, dice)
+		_test_modifier_items(loot)
 	await _test_reward_flow()
 	await _test_full_bag_finish()
 	await _test_bag_scene_use()
@@ -228,6 +229,23 @@ func _test_bag_replacement() -> void:
 	_check(loot.receive(unit, second) and unit.weapon == second, "새 보상 무기 장착")
 	_check(loot.bag == [first], "교체한 이전 무기는 공용 가방에 보존")
 	unit.free()
+
+
+## 능력치 가감과 최대 이동은 음수 범위를 허용하고, 굴린 값이 범위 안인지 저장 검사도 같은 규칙을 쓴다 (#456).
+func _test_modifier_items(loot: CombatLoot) -> void:
+	var definition: Dictionary = {"id": "modifier_armor", "name": "가감 시험 갑옷", "kind": "armor", "weight": 1,
+		"stats": {"agility_modifier": [[-2, -1], [-1, 0], [0, 1]], "max_movement": [[-1, -1], [-1, 0], [0, 0]]}}
+	loot.data["items"].append(definition)
+	var rolled: Dictionary = definition.duplicate(true)
+	rolled["stats"] = {"agility_modifier": -1, "max_movement": -1}
+	_check(loot.is_valid_item(rolled), "범위 안의 음수 가감은 유효한 아이템")
+	rolled["stats"] = {"agility_modifier": -3, "max_movement": -1}
+	_check(not loot.is_valid_item(rolled), "범위 밖의 음수 가감은 무효")
+	rolled["stats"] = {"agility_modifier": 2, "max_movement": -1}
+	_check(not loot.is_valid_item(rolled), "범위 밖의 양수 가감은 무효")
+	_check(CombatLoot.describe(rolled).contains("민첩 가감+2") and CombatLoot.describe(rolled).contains("최대 이동-1"),
+		"설명은 수치에서 자동 생성: " + CombatLoot.describe(rolled))
+	loot.data["items"].erase(definition)
 
 
 func _test_armor_hit_points(loot: CombatLoot) -> void:

@@ -883,9 +883,10 @@ func _update_turn_ui() -> void:
 					direction, roll.cells.size(), roll.reason,
 					", ".join(collisions) if not collisions.is_empty() else tr("충돌 없음")]
 			else:
-				var sides: int = actor.get_ability_sides(CombatActionRules.damage_ability(actor, "attack"))
-				var minimum: int = maxi(1, actor.get_damage_bonus() + 1)
-				var maximum: int = maxi(1, actor.get_damage_bonus() + sides)
+				var ability: CombatUnit.Ability = CombatActionRules.damage_ability(actor, "attack")
+				var modifier: int = actor.get_ability_modifier(ability)
+				var minimum: int = maxi(1, actor.get_damage_bonus() + maxi(1, 1 + modifier))
+				var maximum: int = maxi(1, actor.get_damage_bonus() + maxi(1, actor.get_ability_sides(ability) + modifier))
 				note = tr("피해 %d~%d · 행동1 · 자동 명중\n같은 상자를 다시 좌클릭하면 공격합니다.") % [minimum, maximum]
 			if not actions.can_attack_prop(actor, prop):
 				if actor.action_left <= 0:

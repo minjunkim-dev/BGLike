@@ -381,8 +381,8 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 		if unit.initiative_roll == 0:
 			button.tooltip_text = tr("%s: 엄마 거미 바로 앞 순서\n생성한 라운드에는 행동하지 않습니다.") % unit.get_display_name()
 		else:
-			button.tooltip_text = tr("%s: 민첩 d%d = %d") % [
-				unit.get_display_name(), unit.get_ability_sides(CombatUnit.Ability.AGILITY), unit.get_initiative()]
+			button.tooltip_text = tr("%s: %s = %d") % [
+				unit.get_display_name(), CombatUnit.ability_text(unit, CombatUnit.Ability.AGILITY), unit.get_initiative()]
 		var in_group: bool = unit in turns.get_current_group()
 		(button.get_node("PendingTurn") as Control).visible = (
 			in_group and not turns.is_turn_started(unit) and not turns.is_turn_finished(unit))
@@ -428,11 +428,11 @@ func show_unit(unit: CombatUnit) -> void:
 	var phalanx: int = grid.phalanx_bonus(unit) if grid != null else 0
 	if phalanx > 0:
 		states.append(tr("팔랑크스 AC +%d") % phalanx)
-	resource_label.text = CombatActionRules.colorize(tr("HP %d / %d   AC %d\n힘 d%d · 민첩 d%d · 솜씨 d%d\n지능 d%d · 의지 d%d · 건강 d%d\n공격 %+d · 사거리 %d칸\n상태: %s") % [
+	resource_label.text = CombatActionRules.colorize(tr("HP %d / %d   AC %d\n%s · %s · %s\n%s · %s · %s\n공격 %+d · 사거리 %d칸\n상태: %s") % [
 		unit.hit_points, unit.get_max_hit_points(), unit.get_armor_class() + phalanx,
-		unit.get_ability_sides(CombatUnit.Ability.STRENGTH), unit.get_ability_sides(CombatUnit.Ability.AGILITY),
-		unit.get_ability_sides(CombatUnit.Ability.FINESSE), unit.get_ability_sides(CombatUnit.Ability.INTELLIGENCE),
-		unit.get_ability_sides(CombatUnit.Ability.WILL), unit.get_ability_sides(CombatUnit.Ability.HEALTH),
+		CombatUnit.ability_text(unit, CombatUnit.Ability.STRENGTH), CombatUnit.ability_text(unit, CombatUnit.Ability.AGILITY),
+		CombatUnit.ability_text(unit, CombatUnit.Ability.FINESSE), CombatUnit.ability_text(unit, CombatUnit.Ability.INTELLIGENCE),
+		CombatUnit.ability_text(unit, CombatUnit.Ability.WILL), CombatUnit.ability_text(unit, CombatUnit.Ability.HEALTH),
 		unit.get_attack_bonus(), unit.get_attack_range(),
 		", ".join(states) if not states.is_empty() else tr("없음")])
 
