@@ -241,8 +241,8 @@ msgid "사거리: 정면 반달 5칸"
 msgstr "사거리: 정면 반달 5칸"
 
 #: scenes/combat/action_rules.gd:189
-msgid "피해: %s d%d ÷2 올림%s"
-msgstr "피해: %s d%d ÷2 올림%s"
+msgid "피해: %s ÷2 올림%s"
+msgstr "피해: %s ÷2 올림%s"
 
 #: scenes/combat/action_rules.gd:191
 msgid "판정: 대상마다 %s"
@@ -250,8 +250,8 @@ msgstr "판정: 대상마다 %s"
 
 #: scenes/combat/action_rules.gd:194
 #: scenes/combat/action_rules.gd:258
-msgid "피해: %s d%d%s"
-msgstr "피해: %s d%d%s"
+msgid "피해: %s%s"
+msgstr "피해: %s%s"
 
 #: scenes/combat/action_rules.gd:196
 msgid "판정: 없음(반드시 명중)"
@@ -320,8 +320,8 @@ msgid "내성 성공률: %s"
 msgstr "내성 성공률: %s"
 
 #: scenes/combat/action_rules.gd:259
-msgid "피해: 명중 %s d%d → 피해 %s d%d%s"
-msgstr "피해: 명중 %s d%d → 피해 %s d%d%s"
+msgid "피해: 명중 %s d%d → 피해 %s%s"
+msgstr "피해: 명중 %s d%d → 피해 %s%s"
 
 #: scenes/combat/action_rules.gd:265
 msgid "인접한 적을 기본 공격합니다."
@@ -1434,8 +1434,8 @@ msgid "팔랑크스 AC +%d"
 msgstr "팔랑크스 AC +%d"
 
 #: scenes/combat/turn_hud.gd:367
-msgid "HP %d / %d   AC %d\n힘 d%d · 민첩 d%d · 솜씨 d%d\n지능 d%d · 의지 d%d · 건강 d%d\n공격 %+d · 사거리 %d칸\n상태: %s"
-msgstr "HP %d / %d   AC %d\n힘 d%d · 민첩 d%d · 솜씨 d%d\n지능 d%d · 의지 d%d · 건강 d%d\n공격 %+d · 사거리 %d칸\n상태: %s"
+msgid "HP %d / %d   AC %d\n%s · %s · %s\n%s · %s · %s\n공격 %+d · 사거리 %d칸\n상태: %s"
+msgstr "HP %d / %d   AC %d\n%s · %s · %s\n%s · %s · %s\n공격 %+d · 사거리 %d칸\n상태: %s"
 
 #: scenes/combat/turn_hud.gd:384
 msgid "유리/불리 상쇄"
@@ -1759,3 +1759,31 @@ msgstr "이 게임은 Godot Engine %d.%d.%d를 사용합니다. Godot Engine은 
 #: scenes/title.gd:64
 msgid "%s\n이 저장을 지우고 새 게임을 시작하시겠습니까?"
 msgstr "%s\n이 저장을 지우고 새 게임을 시작하시겠습니까?"
+
+#: scenes/combat/loot.gd:9
+msgid "최대 이동"
+msgstr "최대 이동"
+
+#: scenes/combat/loot.gd:9
+msgid "힘 가감"
+msgstr "힘 가감"
+
+#: scenes/combat/loot.gd:9
+msgid "민첩 가감"
+msgstr "민첩 가감"
+
+#: scenes/combat/loot.gd:9
+msgid "솜씨 가감"
+msgstr "솜씨 가감"
+
+#: scenes/combat/loot.gd:9
+msgid "지능 가감"
+msgstr "지능 가감"
+
+#: scenes/combat/loot.gd:9
+msgid "의지 가감"
+msgstr "의지 가감"
+
+#: scenes/combat/loot.gd:9
+msgid "건강 가감"
+msgstr "건강 가감"

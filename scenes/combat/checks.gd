@@ -15,6 +15,10 @@ class RollResult extends RefCounted:
 	var face: Face = Face.NORMAL
 	var mode: RollMode = RollMode.NORMAL
 
+	## 눈 위에 더해진 값(능력치 가감의 하한 보정과 가산). 화면과 로그의 "+n"이다.
+	func added() -> int:
+		return total - selected_roll
+
 
 class AttackPreview extends RefCounted:
 	var valid_target: bool = false
@@ -63,18 +67,20 @@ static func standard_value(sides: int) -> int:
 
 
 ## 명중굴림: 공격 굴림이 AC 이상이면 명중. 방어자는 굴리지 않는다.
-static func hit_roll(sides: int, bonus: int, armor_class: int, mode: RollMode, dice: CombatDice) -> RollResult:
-	return _roll_against(sides, bonus, armor_class, mode, dice)
+static func hit_roll(sides: int, bonus: int, armor_class: int, mode: RollMode, dice: CombatDice,
+		modifier: int = 0) -> RollResult:
+	return _roll_against(sides, bonus, armor_class, mode, dice, modifier)
 
 
 ## 내성굴림: 대상의 내성 굴림(내성 능력치 주사위 + 방어 가산)이 DC 이상이면 성공. 시전자는 굴리지 않는다 (4-1).
-static func saving_throw(sides: int, bonus: int, dc: int, mode: RollMode, dice: CombatDice) -> RollResult:
-	return _roll_against(sides, bonus, dc, mode, dice)
+static func saving_throw(sides: int, bonus: int, dc: int, mode: RollMode, dice: CombatDice,
+		modifier: int = 0) -> RollResult:
+	return _roll_against(sides, bonus, dc, mode, dice, modifier)
 
 
-## DC = 시전 능력치 표준값 + 공격 가산 + 스킬의 DC 보정. 대상의 내성 능력치와 무관하다 (4-3).
-static func save_dc(sides: int, attack_bonus: int, dc_bonus: int = 0) -> int:
-	return standard_value(sides) + attack_bonus + dc_bonus
+## DC = max(1, max(1, 시전 능력치 표준값 + 능력치 가감) + 공격 가산 + 스킬의 DC 보정). 대상의 내성 능력치와 무관하다 (4-3, 아이템 기획 폼 3장).
+static func save_dc(sides: int, attack_bonus: int, dc_bonus: int = 0, modifier: int = 0) -> int:
+	return maxi(1, maxi(1, standard_value(sides) + modifier) + attack_bonus + dc_bonus)
 
 
 ## 내성에 성공한 피해형 효과의 피해. 절반을 내림하고 최소 1이다 (4-1).
@@ -83,24 +89,25 @@ static func halve_damage(amount: int) -> int:
 
 
 ## 면 열거로 구한 실제 명중률. 유리/불리는 두 면의 모든 조합을 센다.
-static func hit_chance(sides: int, bonus: int, armor_class: int, mode: RollMode) -> float:
-	return _chance_against(sides, bonus, armor_class, mode)
+static func hit_chance(sides: int, bonus: int, armor_class: int, mode: RollMode, modifier: int = 0) -> float:
+	return _chance_against(sides, bonus, armor_class, mode, modifier)
 
 
 ## 면 열거로 구한 실제 내성 성공률 (4-10).
-static func save_chance(sides: int, bonus: int, dc: int, mode: RollMode) -> float:
-	return _chance_against(sides, bonus, dc, mode)
+static func save_chance(sides: int, bonus: int, dc: int, mode: RollMode, modifier: int = 0) -> float:
+	return _chance_against(sides, bonus, dc, mode, modifier)
 
 
 ## 명중굴림과 내성굴림은 굴리는 쪽만 다르고 "기준값 이상이면 성공"으로 같다.
-static func _roll_against(sides: int, bonus: int, target: int, mode: RollMode, dice: CombatDice) -> RollResult:
-	var result: RollResult = attack_roll(sides, bonus, mode, dice)
+static func _roll_against(sides: int, bonus: int, target: int, mode: RollMode, dice: CombatDice,
+		modifier: int) -> RollResult:
+	var result: RollResult = attack_roll(sides, bonus, mode, dice, modifier)
 	result.face = face_kind(sides, result.selected_roll)
 	result.success = _hits(result.face, result.total, target)
 	return result
 
 
-static func _chance_against(sides: int, bonus: int, target: int, mode: RollMode) -> float:
+static func _chance_against(sides: int, bonus: int, target: int, mode: RollMode, modifier: int) -> float:
 	assert(sides > 0)
 	var hits: int = 0
 	var second_faces: int = 1 if mode == RollMode.NORMAL else sides
@@ -110,15 +117,15 @@ static func _chance_against(sides: int, bonus: int, target: int, mode: RollMode)
 			if mode != RollMode.NORMAL:
 				var other: int = face_value(sides, second)
 				value = maxi(value, other) if mode == RollMode.ADVANTAGE else mini(value, other)
-			if _hits(face_kind(sides, value), value + bonus, target):
+			if _hits(face_kind(sides, value), maxi(1, value + modifier) + bonus, target):
 				hits += 1
 	return hits / float(sides * second_faces)
 
 
-## 피해 굴림: 피해 능력치 주사위를 새로 굴린 숫자 값. 유리/불리는 적용하지 않는다 (4-9).
-static func damage_roll(sides: int, dice: CombatDice) -> int:
+## 피해 굴림: 피해 능력치 주사위를 새로 굴린 숫자 값에 능력치 가감을 더한 굴림값(최소 1). 유리/불리는 적용하지 않는다 (4-9).
+static func damage_roll(sides: int, dice: CombatDice, modifier: int = 0) -> int:
 	assert(sides > 0)
-	return face_value(sides, dice.roll(sides))
+	return maxi(1, face_value(sides, dice.roll(sides)) + modifier)
 
 
 static func _hits(face: Face, total: int, target: int) -> bool:
@@ -127,11 +134,12 @@ static func _hits(face: Face, total: int, target: int) -> bool:
 	return total >= target
 
 
-## 굴리는 쪽의 능력치 주사위(유리/불리면 두 번) + 가산. 기준값 비교는 호출자가 한다.
-static func attack_roll(sides: int, bonus: int, mode: RollMode, dice: CombatDice) -> RollResult:
+## 굴리는 쪽의 능력치 주사위(유리/불리면 두 번)로 눈을 고른 뒤 능력치 가감을 더한 굴림값(최소 1) + 가산.
+## 기준값 비교는 호출자가 한다. 절대면은 가감과 무관하게 눈 기준이다.
+static func attack_roll(sides: int, bonus: int, mode: RollMode, dice: CombatDice, modifier: int = 0) -> RollResult:
 	assert(sides > 0)
 	var result: RollResult = _roll_die(sides, mode, dice)
-	result.total = result.selected_roll + bonus
+	result.total = maxi(1, result.selected_roll + modifier) + bonus
 	return result
 
 

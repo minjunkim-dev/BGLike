@@ -133,7 +133,7 @@ static func damage_ability(actor: CombatUnit, action: String) -> CombatUnit.Abil
 ## 시전 때 정하는 내성굴림 동작의 DC. 대상이 어떤 능력치로 막든 같다 (4-3).
 static func save_dc(actor: CombatUnit, action: String) -> int:
 	return CombatChecks.save_dc(actor.get_ability_sides(CAST_ABILITIES[action]), actor.get_attack_bonus(),
-		DC_BONUSES.get(action, 0))
+		DC_BONUSES.get(action, 0), actor.get_ability_modifier(CAST_ABILITIES[action]))
 
 
 static func belongs_to(actor: CombatUnit, action: String) -> bool:
@@ -207,7 +207,8 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 	var melee: bool = actor.get_attack_range() == 1
 	var weapon: String = damage_text(actor, action)
 	var hit: String = TranslationServer.tr("%s d%d %+d 대 AC") % [CombatUnit.ability_name(actor.get_attack_ability()),
-		actor.get_ability_sides(actor.get_attack_ability()), actor.get_hit_bonus()]
+		actor.get_ability_sides(actor.get_attack_ability()),
+		actor.get_hit_bonus() + actor.get_ability_modifier(actor.get_attack_ability())]
 	var lines: Array[String] = []
 	match action:
 		"attack", "opportunity", "cross_slash", "steel_charge":
@@ -215,13 +216,13 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 				TranslationServer.tr("판정: %s") % hit]
 		"sweep":
 			var bonus: int = damage_bonus(actor, action)
-			lines = [TranslationServer.tr("사거리: 정면 반달 5칸"), TranslationServer.tr("피해: %s d%d ÷2 올림%s") % [
-				CombatUnit.ability_name(damage_ability(actor, action)), actor.get_ability_sides(damage_ability(actor, action)),
+			lines = [TranslationServer.tr("사거리: 정면 반달 5칸"), TranslationServer.tr("피해: %s ÷2 올림%s") % [
+				CombatUnit.ability_text(actor, damage_ability(actor, action)),
 				"" if bonus == 0 else " %+d" % bonus], TranslationServer.tr("판정: 대상마다 %s") % hit]
 		"counter":
 			var counter_bonus: int = damage_bonus(actor, action)
-			lines = [TranslationServer.tr("사거리: 인접1칸"), TranslationServer.tr("피해: %s d%d%s") % [
-				CombatUnit.ability_name(damage_ability(actor, action)), actor.get_ability_sides(damage_ability(actor, action)),
+			lines = [TranslationServer.tr("사거리: 인접1칸"), TranslationServer.tr("피해: %s%s") % [
+				CombatUnit.ability_text(actor, damage_ability(actor, action)),
 				"" if counter_bonus == 0 else "%+d" % counter_bonus], TranslationServer.tr("판정: 없음(반드시 명중)")]
 		"shock":
 			lines = [TranslationServer.tr("사거리: 1~%d칸") % SKILL_RANGE, weapon, TranslationServer.tr("판정: %s, 명중하면 기절") % hit]
@@ -275,7 +276,7 @@ static func shove_saves(actor: CombatUnit, target: CombatUnit) -> bool:
 ## 대상의 실제 내성 성공률. 내성 능력치 주사위, 방어 가산, 유리/불리와 절대면을 반영한다.
 static func save_chance(actor: CombatUnit, target: CombatUnit, action: String) -> float:
 	return CombatChecks.save_chance(target.get_ability_sides(SAVE_ABILITIES[action]), target.get_defense_bonus(),
-		save_dc(actor, action), save_mode(target))
+		save_dc(actor, action), save_mode(target), target.get_ability_modifier(SAVE_ABILITIES[action]))
 
 
 ## 호버의 피해 줄. 피해 능력치가 명중 능력치와 다르면 둘을 함께 보인다 (4-9).
@@ -284,9 +285,9 @@ static func damage_text(actor: CombatUnit, action: String) -> String:
 	var ability: CombatUnit.Ability = damage_ability(actor, action)
 	var bonus: String = "" if damage_bonus(actor, action) == 0 else "%+d" % damage_bonus(actor, action)
 	if ability == hit_ability:
-		return TranslationServer.tr("피해: %s d%d%s") % [CombatUnit.ability_name(ability), actor.get_ability_sides(ability), bonus]
-	return TranslationServer.tr("피해: 명중 %s d%d → 피해 %s d%d%s") % [CombatUnit.ability_name(hit_ability),
-		actor.get_ability_sides(hit_ability), CombatUnit.ability_name(ability), actor.get_ability_sides(ability), bonus]
+		return TranslationServer.tr("피해: %s%s") % [CombatUnit.ability_text(actor, ability), bonus]
+	return TranslationServer.tr("피해: 명중 %s d%d → 피해 %s%s") % [CombatUnit.ability_name(hit_ability),
+		actor.get_ability_sides(hit_ability), CombatUnit.ability_text(actor, ability), bonus]
 
 
 static func effect(actor: CombatUnit, action: String) -> String:

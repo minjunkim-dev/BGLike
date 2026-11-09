@@ -25,6 +25,9 @@ func _run() -> void:
 	_test_hit_chances()
 	_test_hit_rolls()
 	_test_saving_throws()
+	_test_ability_modifier_math()
+	_test_ability_modifier_units()
+	await _test_ability_modifier_attack()
 	await _test_battle_rolls()
 	await _test_damage_rolls()
 	await _test_spin_saves()
@@ -217,6 +220,84 @@ func _test_hit_rolls() -> void:
 		_check(result.rolls == [1, 20] and result.success == advantage
 			and result.face == (CombatChecks.Face.ABSOLUTE_SUCCESS if advantage else CombatChecks.Face.ABSOLUTE_FAILURE),
 			"고른 굴림이 절대면이면 절대면 효과 적용")
+
+
+## 능력치 가감(#456): 굴림값 = max(1, 눈 + 가감)에 가산을 더한다. 절대면은 눈 기준이다 (ITEM_FORM 3장).
+func _test_ability_modifier_math() -> void:
+	var normal: CombatChecks.RollMode = CombatChecks.RollMode.NORMAL
+	var result: CombatChecks.RollResult = CombatChecks.hit_roll(20, 1, 8, normal, ScriptedDice.new([5], [20]), 2)
+	_check(result.selected_roll == 5 and result.total == 8 and result.success, "굴림값에 능력치 가감 +2를 더하고 가산을 더함")
+	result = CombatChecks.hit_roll(20, 2, 3, normal, ScriptedDice.new([1], [20]), -3)
+	_check(result.total == 3 and result.face == CombatChecks.Face.ABSOLUTE_FAILURE and not result.success,
+		"굴림값은 가감 뒤에도 최소 1이고 가산은 그 밖에 더함, 절대실패는 눈 기준")
+	result = CombatChecks.saving_throw(20, 1, 10, normal, ScriptedDice.new([7], [20]), 2)
+	_check(result.total == 10 and result.success, "내성굴림에도 능력치 가감")
+	result = CombatChecks.hit_roll(20, 0, 99, normal, ScriptedDice.new([18], [20]), -5)
+	_check(result.success and result.face == CombatChecks.Face.ABSOLUTE_SUCCESS, "음수 가감이어도 절대성공은 눈 기준으로 명중")
+	_check(is_equal_approx(CombatChecks.hit_chance(10, 1, 5, normal, 2), CombatChecks.hit_chance(10, 3, 5, normal)),
+		"명중률은 가감만큼 이동")
+	_check(is_equal_approx(CombatChecks.save_chance(8, 0, 4, normal, 1), CombatChecks.save_chance(8, 1, 4, normal)),
+		"내성 성공률은 가감만큼 이동")
+	_check(is_equal_approx(CombatChecks.hit_chance(6, 0, 3, normal, -10), CombatChecks.hit_chance(6, 0, 3, normal, -99)),
+		"굴림값 하한 1이라 아주 낮은 음수 가감은 같은 확률")
+	_check(CombatChecks.damage_roll(6, ScriptedDice.new([4], [6]), 2) == 6
+		and CombatChecks.damage_roll(6, ScriptedDice.new([2], [6]), -9) == 1, "피해 굴림값도 가감을 더하고 최소 1")
+	_check(CombatChecks.save_dc(12, 3, 2, 1) == 13 and CombatChecks.save_dc(4, 0, 0, -9) == 1,
+		"DC는 표준값에 가감을 먼저 더해 최소 1을 지킨 뒤 가산을 더함")
+
+
+func _test_ability_modifier_units() -> void:
+	var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i.ZERO)
+	warrior.armor = {"kind": "armor", "stats": {"defense_bonus": 3, "agility_modifier": -1, "max_movement": -1}}
+	warrior.weapon = {"kind": "weapon", "stats": {"strength_modifier": 2, "finesse_modifier": -1}}
+	_check(warrior.get_ability_modifier(CombatUnit.Ability.STRENGTH) == 2
+		and warrior.get_ability_modifier(CombatUnit.Ability.AGILITY) == -1
+		and warrior.get_ability_modifier(CombatUnit.Ability.WILL) == 0, "장비의 능력치 가감을 합침")
+	_check(warrior.get_armor_class() == CombatChecks.standard_value(8) - 1 + 3, "AC에 민첩 가감과 방어 가산")
+	_check(warrior.get_movement() == 2, "최대 이동 가감 −1: 전사 3 → 2")
+	warrior.armor["stats"]["max_movement"] = -9
+	warrior.armor["stats"]["agility_modifier"] = -20
+	_check(warrior.get_movement() == 1, "최대 이동은 최소 1칸")
+	_check(warrior.get_armor_class() == 1 + 3, "민첩 가감을 더한 표준값은 최소 1, 그 뒤 방어 가산")
+	warrior.initiative_roll = 3
+	_check(warrior.get_initiative() == 1, "이니셔티브는 민첩 굴림값이라 가감 뒤 최소 1")
+	warrior.armor["stats"]["agility_modifier"] = 4
+	_check(warrior.get_initiative() == 7, "이니셔티브에 민첩 가감")
+	warrior.armor = {}
+	warrior.weapon = {}
+	_check(warrior.get_ability_modifier(CombatUnit.Ability.STRENGTH) == 0 and warrior.get_movement() == 3,
+		"장비 없으면 가감 0")
+	var robot: CombatUnit = _unit(CombatUnit.Kind.SCRAP_ROBOT_1000, false, Vector2i.ONE)
+	_check(robot.get_ability_modifier(CombatUnit.Ability.STRENGTH) == 0, "몬스터는 장비가 없어 가감 0")
+	_check(CombatActionRules.save_dc(warrior, "spin") == CombatChecks.save_dc(20, 0, CombatActionRules.DC_BONUSES.get("spin", 0)),
+		"가감 없는 DC는 그대로")
+	warrior.weapon = {"kind": "weapon", "stats": {"strength_modifier": 2, "attack_bonus": 1}}
+	_check(CombatActionRules.damage_text(warrior, "attack") == "피해: 힘 d20+2", "호버 피해 줄에 가감: " + CombatActionRules.damage_text(warrior, "attack"))
+	_check("힘 d20 +3 대 AC" in CombatActionRules.details(warrior, "attack"), "호버 판정 줄에 가감과 가산을 더해 표기: " + CombatActionRules.details(warrior, "attack"))
+	_check(CombatUnit.ability_text(warrior, CombatUnit.Ability.STRENGTH) == "힘 d20+2"
+		and CombatUnit.ability_text(warrior, CombatUnit.Ability.AGILITY) == "민첩 d8"
+		and CombatUnit.ability_text(_unit(CombatUnit.Kind.WARRIOR, true, Vector2i.ZERO), CombatUnit.Ability.STRENGTH) == "힘 d20",
+		"유닛 패널의 능력치 표기는 가감이 0이 아닐 때만 +n")
+	_check(CombatLoot.describe({"name": "시험", "stats": {"strength_modifier": 2, "agility_modifier": -1, "max_movement": -1}})
+		== "시험 · 힘 가감+2 · 민첩 가감-1 · 최대 이동-1", "설명은 수치에서 자동 생성: " + CombatLoot.describe({"name": "시험", "stats": {"strength_modifier": 2, "agility_modifier": -1, "max_movement": -1}}))
+
+
+func _test_ability_modifier_attack() -> void:
+	var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 4))
+	var robot: CombatUnit = _unit(CombatUnit.Kind.SCRAP_ROBOT_1000, false, Vector2i(5, 4))
+	var units: Array[CombatUnit] = [warrior, robot]
+	var turns: CombatTurns = CombatTurns.new()
+	var actions: CombatActions = CombatActions.new()
+	actions.initialize(units, turns)
+	ScriptedDice.arrange_turns(turns, units, [warrior, robot])
+	warrior.weapon = {"kind": "weapon", "stats": {"strength_modifier": 3}}
+	robot.is_stunned = true
+	actions.dice = ScriptedDice.new([3, 9, 5], ScriptedDice.attack_sides(warrior, 2) + ScriptedDice.damage_sides(warrior))
+	var before: int = robot.hit_points
+	_check(await actions.attack(warrior, robot) and actions.last_attack.total == 12
+		and actions.last_damage_rolls == [8] and actions.last_damage == 8 + warrior.get_damage_bonus()
+		and robot.hit_points == before - 8 - warrior.get_damage_bonus(),
+		"실제 공격: 명중 굴림값 9+3, 피해 굴림값 5+3")
 
 
 func _test_battle_rolls() -> void:

@@ -250,7 +250,7 @@ msgid "사거리: 정면 반달 5칸"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:189
-msgid "피해: %s d%d ÷2 올림%s"
+msgid "피해: %s ÷2 올림%s"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:191
@@ -259,7 +259,7 @@ msgstr ""
 
 #: scenes/combat/action_rules.gd:194
 #: scenes/combat/action_rules.gd:258
-msgid "피해: %s d%d%s"
+msgid "피해: %s%s"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:196
@@ -329,7 +329,7 @@ msgid "내성 성공률: %s"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:259
-msgid "피해: 명중 %s d%d → 피해 %s d%d%s"
+msgid "피해: 명중 %s d%d → 피해 %s%s"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:265
@@ -1450,7 +1450,7 @@ msgid "팔랑크스 AC +%d"
 msgstr ""
 
 #: scenes/combat/turn_hud.gd:367
-msgid "HP %d / %d   AC %d\n힘 d%d · 민첩 d%d · 솜씨 d%d\n지능 d%d · 의지 d%d · 건강 d%d\n공격 %+d · 사거리 %d칸\n상태: %s"
+msgid "HP %d / %d   AC %d\n%s · %s · %s\n%s · %s · %s\n공격 %+d · 사거리 %d칸\n상태: %s"
 msgstr ""
 
 #: scenes/combat/turn_hud.gd:384
@@ -1774,4 +1774,32 @@ msgstr ""
 
 #: scenes/title.gd:64
 msgid "%s\n이 저장을 지우고 새 게임을 시작하시겠습니까?"
+msgstr ""
+
+#: scenes/combat/loot.gd:9
+msgid "최대 이동"
+msgstr ""
+
+#: scenes/combat/loot.gd:9
+msgid "힘 가감"
+msgstr ""
+
+#: scenes/combat/loot.gd:9
+msgid "민첩 가감"
+msgstr ""
+
+#: scenes/combat/loot.gd:9
+msgid "솜씨 가감"
+msgstr ""
+
+#: scenes/combat/loot.gd:9
+msgid "지능 가감"
+msgstr ""
+
+#: scenes/combat/loot.gd:9
+msgid "의지 가감"
+msgstr ""
+
+#: scenes/combat/loot.gd:9
+msgid "건강 가감"
 msgstr ""
