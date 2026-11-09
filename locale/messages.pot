@@ -225,7 +225,7 @@ msgid "전투마다 %d회 · %d회 남음"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:180
-msgid "%s d%d %+d 대 AC"
+msgid "%s %+d 대 AC"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:185
@@ -309,7 +309,7 @@ msgid "회복: 2d4+2"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:216
-msgid "방어막: 건강 d%d"
+msgid "방어막: %s"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:219
@@ -317,7 +317,7 @@ msgid "사거리: 모든 아군"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:219
-msgid "명중 보너스: 의지 d%d"
+msgid "명중 보너스: %s"
 msgstr ""
 
 #: scenes/combat/action_rules.gd:222
@@ -1418,7 +1418,7 @@ msgid "%s: 엄마 거미 바로 앞 순서\n생성한 라운드에는 행동하�
 msgstr ""
 
 #: scenes/combat/turn_hud.gd:320
-msgid "%s: 민첩 d%d = %d"
+msgid "%s: %s = %d"
 msgstr ""
 
 #: scenes/combat/turn_hud.gd:351

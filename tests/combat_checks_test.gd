@@ -273,7 +273,7 @@ func _test_ability_modifier_units() -> void:
 		"가감 없는 DC는 그대로")
 	warrior.weapon = {"kind": "weapon", "stats": {"strength_modifier": 2, "attack_bonus": 1}}
 	_check(CombatActionRules.damage_text(warrior, "attack") == "피해: 힘 d20+2", "호버 피해 줄에 가감: " + CombatActionRules.damage_text(warrior, "attack"))
-	_check("힘 d20 +3 대 AC" in CombatActionRules.details(warrior, "attack"), "호버 판정 줄에 가감과 가산을 더해 표기: " + CombatActionRules.details(warrior, "attack"))
+	_check("힘 d20+2 +1 대 AC" in CombatActionRules.details(warrior, "attack"), "호버 판정 줄에 가감과 가산을 더해 표기: " + CombatActionRules.details(warrior, "attack"))
 	_check(CombatUnit.ability_text(warrior, CombatUnit.Ability.STRENGTH) == "힘 d20+2"
 		and CombatUnit.ability_text(warrior, CombatUnit.Ability.AGILITY) == "민첩 d8"
 		and CombatUnit.ability_text(_unit(CombatUnit.Kind.WARRIOR, true, Vector2i.ZERO), CombatUnit.Ability.STRENGTH) == "힘 d20",

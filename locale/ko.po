@@ -216,8 +216,8 @@ msgid "전투마다 %d회 · %d회 남음"
 msgstr "전투마다 %d회 · %d회 남음"
 
 #: scenes/combat/action_rules.gd:180
-msgid "%s d%d %+d 대 AC"
-msgstr "%s d%d %+d 대 AC"
+msgid "%s %+d 대 AC"
+msgstr "%s %+d 대 AC"
 
 #: scenes/combat/action_rules.gd:185
 #: scenes/combat/action_rules.gd:194
@@ -300,16 +300,16 @@ msgid "회복: 2d4+2"
 msgstr "회복: 2d4+2"
 
 #: scenes/combat/action_rules.gd:216
-msgid "방어막: 건강 d%d"
-msgstr "방어막: 건강 d%d"
+msgid "방어막: %s"
+msgstr "방어막: %s"
 
 #: scenes/combat/action_rules.gd:219
 msgid "사거리: 모든 아군"
 msgstr "사거리: 모든 아군"
 
 #: scenes/combat/action_rules.gd:219
-msgid "명중 보너스: 의지 d%d"
-msgstr "명중 보너스: 의지 d%d"
+msgid "명중 보너스: %s"
+msgstr "명중 보너스: %s"
 
 #: scenes/combat/action_rules.gd:222
 msgid "판정: 대상의 %s 내성 대 DC %d, 성공하면 피해 절반"
@@ -1402,8 +1402,8 @@ msgid "%s: 엄마 거미 바로 앞 순서\n생성한 라운드에는 행동하�
 msgstr "%s: 엄마 거미 바로 앞 순서\n생성한 라운드에는 행동하지 않습니다."
 
 #: scenes/combat/turn_hud.gd:320
-msgid "%s: 민첩 d%d = %d"
-msgstr "%s: 민첩 d%d = %d"
+msgid "%s: %s = %d"
+msgstr "%s: %s = %d"
 
 #: scenes/combat/turn_hud.gd:351
 msgid "과부하"

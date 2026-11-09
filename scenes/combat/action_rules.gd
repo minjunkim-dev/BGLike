@@ -206,9 +206,8 @@ static func icon_of(action: String) -> Texture2D:
 static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] = []) -> String:
 	var melee: bool = actor.get_attack_range() == 1
 	var weapon: String = damage_text(actor, action)
-	var hit: String = TranslationServer.tr("%s d%d %+d 대 AC") % [CombatUnit.ability_name(actor.get_attack_ability()),
-		actor.get_ability_sides(actor.get_attack_ability()),
-		actor.get_hit_bonus() + actor.get_ability_modifier(actor.get_attack_ability())]
+	var hit: String = TranslationServer.tr("%s %+d 대 AC") % [CombatUnit.ability_text(actor, actor.get_attack_ability()),
+		actor.get_hit_bonus()]
 	var lines: Array[String] = []
 	match action:
 		"attack", "opportunity", "cross_slash", "steel_charge":
@@ -243,10 +242,10 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 		"disengage":
 			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("판정: 없음")]
 		"holy_veil":
-			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("방어막: 건강 d%d") % actor.get_ability_sides(CombatUnit.Ability.HEALTH),
+			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("방어막: %s") % CombatUnit.ability_text(actor, CombatUnit.Ability.HEALTH),
 				TranslationServer.tr("판정: 없음")]
 		"battle_cry":
-			lines = [TranslationServer.tr("사거리: 모든 아군"), TranslationServer.tr("명중 보너스: 의지 d%d") % actor.get_ability_sides(CombatUnit.Ability.WILL),
+			lines = [TranslationServer.tr("사거리: 모든 아군"), TranslationServer.tr("명중 보너스: %s") % CombatUnit.ability_text(actor, CombatUnit.Ability.WILL),
 				TranslationServer.tr("판정: 없음")]
 		"spin":
 			lines = [TranslationServer.tr("사거리: 인접1칸"), weapon, TranslationServer.tr("판정: 대상의 %s 내성 대 DC %d, 성공하면 피해 절반") % [

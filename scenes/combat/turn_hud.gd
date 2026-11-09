@@ -381,8 +381,8 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 		if unit.initiative_roll == 0:
 			button.tooltip_text = tr("%s: 엄마 거미 바로 앞 순서\n생성한 라운드에는 행동하지 않습니다.") % unit.get_display_name()
 		else:
-			button.tooltip_text = tr("%s: 민첩 d%d = %d") % [
-				unit.get_display_name(), unit.get_ability_sides(CombatUnit.Ability.AGILITY), unit.get_initiative()]
+			button.tooltip_text = tr("%s: %s = %d") % [
+				unit.get_display_name(), CombatUnit.ability_text(unit, CombatUnit.Ability.AGILITY), unit.get_initiative()]
 		var in_group: bool = unit in turns.get_current_group()
 		(button.get_node("PendingTurn") as Control).visible = (
 			in_group and not turns.is_turn_started(unit) and not turns.is_turn_finished(unit))
