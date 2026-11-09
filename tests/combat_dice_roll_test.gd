@@ -323,6 +323,9 @@ func _test_scene() -> void:
 		and dice[0].edge == CombatDiceRollView.SUCCESS_COLOR and dice[0].emphasized,
 		"절대성공은 같은 성공 색에 강조를 더한다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
+	_check(view.visible, "명중굴림의 절대성공은 일반 표시 시간이 지나도 계속 보인다")
+	await create_timer(CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME - CombatDiceRollView.HOLD_TIME).timeout
+	_check(not view.visible, "명중굴림의 절대성공은 늘어난 표시 시간 뒤에 닫힌다")
 
 	play.call(CombatDiceRoll.hit(ally, 20, _result([1], 1, 4, false, CombatChecks.Face.ABSOLUTE_FAILURE), 3, 2))
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
@@ -333,7 +336,7 @@ func _test_scene() -> void:
 	_check(summary.get_combined_minimum_size().y <= CombatDiceRollView.WORD_HEIGHT,
 		"절대면의 큰 글자도 판정 단어 영역(%.0f)에 들어간다: %.1f" % [
 			CombatDiceRollView.WORD_HEIGHT, summary.get_combined_minimum_size().y])
-	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
+	await create_timer(CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME + 0.1).timeout
 
 	# 절대면 다음 일반 굴림은 채움·글자 크기·마커 상태를 이어받지 않는다.
 	play.call(CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12))
@@ -377,6 +380,15 @@ func _test_grades() -> void:
 	for entry: Array in cases:
 		var result: CombatChecks.RollResult = _result([entry[0] - 3], entry[0] - 3, entry[0], entry[1], entry[2])
 		_check(CombatDiceRollView.grade(result, 12) == entry[3], "등급: " + str(entry[4]))
+	var absolute_result: CombatChecks.RollResult = _result([20], 20, 23, true, CombatChecks.Face.ABSOLUTE_SUCCESS)
+	var normal_result: CombatChecks.RollResult = _result([9], 9, 12, true)
+	var hit_absolute: CombatDiceRoll = CombatDiceRoll.hit(null, 20, absolute_result, 3, 30)
+	var save_absolute: CombatDiceRoll = CombatDiceRoll.save(null, 20, absolute_result, 3, tr("DC"), 10)
+	_check(CombatDiceRollView.hold_time(hit_absolute) == CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME
+		and CombatDiceRollView.hold_time(CombatDiceRoll.hit(null, 20, normal_result, 3, 12)) == CombatDiceRollView.HOLD_TIME
+		and CombatDiceRollView.hold_time(save_absolute) == CombatDiceRollView.HOLD_TIME
+		and CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME > CombatDiceRollView.HOLD_TIME,
+		"표시 시간은 명중굴림의 절대면만 늘어난다")
 	_check(CombatDiceRollView.gauge_offset(0.0) == 0.0
 		and CombatDiceRollView.gauge_offset(100.0) == CombatDiceRollView.GAUGE_WIDTH * 0.5
 		and CombatDiceRollView.gauge_offset(-100.0) == -CombatDiceRollView.GAUGE_WIDTH * 0.5
