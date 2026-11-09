@@ -781,6 +781,7 @@ func _run() -> void:
 	await _test_spin_height_targets()
 	await _test_spin_height_recheck()
 	_test_area_cells()
+	_test_tile_aim()
 	await _test_spin_reactions_and_reuse()
 	await _test_spin_incapacitation()
 	_test_pull_success()
@@ -789,6 +790,7 @@ func _run() -> void:
 	_test_scrap_robot_overload()
 	await _test_scrap_robot_overload_timing()
 	_test_scrap_robot_turn_damage()
+	_test_scrap_robot_overload_burn()
 	await _test_spiderling_stats_and_damage()
 	await _test_mother_stats_and_damage()
 	_test_spawn_spiderling()
@@ -1039,6 +1041,40 @@ func _test_spin_height_recheck() -> void:
 	f.actions.attack_animation = Callable()
 
 
+func _test_tile_aim() -> void:
+	var f: Fixture = _fixture()
+	var grid: CombatGrid = f.actions.grid
+	var actor: CombatUnit = f.units[3]
+	grid.map_size = Vector2i(12, 9)
+	actor.cell = Vector2i(5, 4)
+	_check(CombatActionRules.AIM_RANGES["fog"] == 4 and CombatActionRules.AIM_RADII["fog"] == 1, "독안개 칸 조준은 사거리 4·반경 1")
+	_check(f.actions.can_aim(actor, "fog", actor.cell) and f.actions.can_aim(actor, "fog", Vector2i(9, 4))
+		and not f.actions.can_aim(actor, "fog", Vector2i(10, 4)), "사거리 0(자기 칸)과 4는 고르고 5는 못 고름")
+	_check(f.actions.aim_cells(actor, "fog").size() == 41, "맨해튼 거리 0~4의 칸은 41칸")
+	_check(f.actions.create_prop(Vector2i(6, 4), "crate") != null and f.actions.can_aim(actor, "fog", Vector2i(6, 4))
+		and f.actions.can_aim(actor, "fog", f.units[0].cell), "상자와 유닛이 있는 칸도 고를 수 있음")
+	grid.blocked_cells = [Vector2i(5, 3)]
+	grid.pits = [Vector2i(5, 5)]
+	grid.heights = {Vector2i(4, 4): 5}
+	_check(not f.actions.can_aim(actor, "fog", Vector2i(5, 3)) and not f.actions.can_aim(actor, "fog", Vector2i(5, 5))
+		and not f.actions.can_aim(actor, "fog", Vector2i(-1, 4)) and f.actions.can_aim(actor, "fog", Vector2i(4, 4)),
+		"벽·낭떠러지·맵 밖은 제외하고 높이는 보지 않음")
+	_check(f.actions.can_aim(actor, "fog", Vector2i(5, 1)), "중간 칸이 막혀도 곡사로 넘김")
+	_check(not f.actions.can_aim(actor, "attack", actor.cell) and f.actions.aim_cells(actor, "attack").is_empty(),
+		"칸 조준 항목이 없는 동작은 칸을 못 고름")
+	grid.blocked_cells.clear()
+	grid.pits.clear()
+	grid.heights = {Vector2i(9, 5): 2, Vector2i(8, 4): 1}
+	var area: Array[Vector2i] = f.actions.aim_area(actor, "fog", Vector2i(9, 4))
+	_check(area.size() == 4 and Vector2i(9, 5) not in area and Vector2i(8, 4) in area, "높이 차 2 칸은 영역에서 제외")
+	grid.pits = [Vector2i(9, 3)]
+	_check(f.actions.create_prop(Vector2i(10, 4), "rock") != null
+		and f.actions.aim_area(actor, "fog", Vector2i(9, 4)) == [Vector2i(8, 4), Vector2i(9, 4), Vector2i(10, 4)],
+		"영역은 낭떠러지를 빼고 바위 칸을 포함")
+	_check(f.actions.aim_area(actor, "fog", Vector2i(9, 3)).is_empty() and f.actions.aim_area(actor, "fog", Vector2i(-1, 4)).is_empty(),
+		"고를 수 없는 칸의 영역은 비어 있음")
+
+
 func _test_area_cells() -> void:
 	var grid: CombatGrid = _fixture().actions.grid
 	grid.map_size = Vector2i(3, 3)
@@ -1181,6 +1217,8 @@ func _test_pull_contest_and_cooldown() -> void:
 	f.actions.dice = _dice_for([6], [6])
 	_check(f.actions.pull(boss, target) and target.cell == Vector2i(5, 4) and target.hit_points == 14,
 		"궁수의 힘 d6 최댓값 6은 DC 10에 못 미쳐 끌림")
+	# 끌려온 궁수는 과부하 고철로봇의 턴 시작 화상을 받는다. 그 굴림은 준비값 밖이라 seed로 잇는다 (#464).
+	f.actions.dice = ScriptedDice.new([], []).then_seeded()
 	for turn: int in range(8):
 		f.turns.end_turn()
 	target.kind = CombatUnit.Kind.WARRIOR
@@ -1344,6 +1382,58 @@ func _test_scrap_robot_turn_damage() -> void:
 			"다른 살아 있는 적이 없을 때만 승리")
 		_check(not dying.actions.can_use(doomed, "attack")
 			and dying.turns.current_unit != doomed, "전투 불능 보스는 그 턴과 이후 턴에 행동 불가")
+
+
+## 과부하 고철로봇의 턴 시작 화상 방출: 기간 감소 뒤, 반경 1(높이 차 1 이하), 판정 없음 (#464).
+func _test_scrap_robot_overload_burn() -> void:
+	for kind: CombatUnit.Kind in CombatActions.SCRAP_ROBOTS:
+		var f: Fixture = _burn_fixture(kind, true)
+		var boss: CombatUnit = f.units[2]
+		var warrior: CombatUnit = f.units[0]
+		f.actions.apply_status(boss, warrior, "burn")
+		_start_boss_turn(f)
+		var durations: Array[int] = []
+		for effect: CombatUnit.StatusEffect in warrior.status_effects:
+			durations.append(effect.turns_left)
+		durations.sort()
+		_check(warrior.get_status_count("burn") == 2 and durations == [1, 2],
+			"방출은 기간 감소 뒤라 새 화상이 기간 2를 가짐 (%d)" % kind)
+		_check(f.units[1].get_status_count("burn") == 0 and f.units[3].get_status_count("burn") == 0
+			and boss.get_status_count("burn") == 0, "반경 밖 유닛과 로봇 자신은 화상을 받지 않음")
+		var before: Fixture = _burn_fixture(kind, false)
+		_start_boss_turn(before)
+		_check(before.units[0].get_status_count("burn") == 0, "과부하 전에는 방출 없음 (%d)" % kind)
+	var capped: Fixture = _burn_fixture(CombatUnit.Kind.SCRAP_ROBOT_1000, true)
+	for _i: int in range(3):
+		capped.actions.apply_status(capped.units[2], capped.units[0], "burn")
+	_start_boss_turn(capped)
+	_check(capped.units[0].get_status_count("burn") == 3, "화상 상한 3을 넘지 않음")
+	var tall: Fixture = _burn_fixture(CombatUnit.Kind.SCRAP_ROBOT_1000, true)
+	tall.units[3].cell = Vector2i(5, 5)
+	tall.actions.grid.heights[tall.units[0].cell] = 1
+	tall.actions.grid.heights[tall.units[3].cell] = 2
+	_start_boss_turn(tall)
+	_check(tall.units[0].get_status_count("burn") == 1 and tall.units[3].get_status_count("burn") == 0,
+		"높이 차 1은 맞고 2는 맞지 않음")
+	var wet: Fixture = _burn_fixture(CombatUnit.Kind.SCRAP_ROBOT_1000, true)
+	wet.actions.grid.water_cells = [wet.units[0].cell]
+	_start_boss_turn(wet)
+	_check(wet.units[0].get_status_count("burn") == 0, "물 위 유닛은 화상을 받지 않음")
+
+
+func _burn_fixture(kind: CombatUnit.Kind, overloaded: bool) -> Fixture:
+	var f: Fixture = _fixture()
+	f.actions.dice = ScriptedDice.new([], []).then_seeded()
+	f.units[2].kind = kind
+	f.units[2].hit_points = 10 if overloaded else f.units[2].get_max_hit_points()
+	return f
+
+
+## 보스 바로 앞 유닛까지 턴을 넘겨 보스의 실제 턴 시작을 일으킨다.
+func _start_boss_turn(f: Fixture) -> void:
+	ScriptedDice.arrange_turns(f.turns, f.units, [f.units[0], f.units[1], f.units[3], f.units[2]])
+	for _i: int in range(3):
+		f.turns.end_turn()
 
 
 func _test_scrap_robot_stun_immunity() -> void:
@@ -1697,9 +1787,8 @@ func _test_jump_opportunity() -> void:
 			and (scenario[1] or f.units[0].reaction_left == (0 if scenario[0] else 1)),
 			"출발에서 인접하고 착지에서 벗어나는 적에게 한 번만 기회 공격")
 		_check(actor.cell == (origin if scenario[1] else destination)
-			and actor.movement_left == (6 if scenario[1] else 4)
-			and actor.bonus_action_left == (1 if scenario[1] else 0),
-			"기회 공격 전투 불능은 원점·이동·보조 행동 보존, 생존은 착지·비용 소비")
+			and actor.movement_left == 4 and actor.bonus_action_left == 0,
+			"기회 공격 전투 불능은 원점에 남고, 전투 불능이든 생존이든 점프 비용 소비 (#407)")
 		_check(not f.actions.busy and f.actions.pending_reactor == null, "점프 반응 종료 후 잠금 해제")
 	for reactor_cell: Vector2i in [Vector2i(5, 5), Vector2i(4, 5)]:
 		var f: Fixture = _fixture()

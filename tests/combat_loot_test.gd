@@ -1018,6 +1018,12 @@ func _tooltip_rect(preparation: CombatPreparation, text: String) -> Rect2:
 		if (label as Label).text == text and (label as Label).is_visible_in_tree() \
 			and panel is PanelContainer and panel.get_parent() == preparation:
 			return (panel as Control).get_global_rect()
+	# 호버 설명은 수치 색을 위해 RichTextLabel이며, 글자는 태그를 뺀 원문으로 비교한다.
+	for label: Node in root.find_children("*", "RichTextLabel", true, false):
+		var panel: Node = label.get_parent()
+		if (label as RichTextLabel).get_parsed_text() == text and (label as RichTextLabel).is_visible_in_tree() \
+			and panel is PanelContainer and panel.get_parent() == preparation:
+			return (panel as Control).get_global_rect()
 	return Rect2()
 
 

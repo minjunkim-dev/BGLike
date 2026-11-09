@@ -7,7 +7,7 @@
 > - 상태: **개정 규칙(0장)은 [#377](https://github.com/minjunkim-dev/BGLike/issues/377)의 하위 티켓으로 구현 중입니다.** 능력치 개편([#386](https://github.com/minjunkim-dev/BGLike/issues/386), [PR #401](https://github.com/minjunkim-dev/BGLike/pull/401)), 명중굴림(#387), 피해(#388), 내성굴림(#389), 밀치기·만능팔 이관과 대결 판정 삭제(#391)를 구현했고, 충격 화살·흘려내기 이관([#390](https://github.com/minjunkim-dev/BGLike/issues/390))이 남았습니다. 구현의 개발 결정은 [능력치 기획서](ABILITY_SYSTEM.md#개정-구현의-개발-결정-377)에 모았습니다. 개정 전 요청(공격자 대 방어자 주사위 대결)은 [Issue #321](https://github.com/minjunkim-dev/BGLike/issues/321)의 구현 [PR #327](https://github.com/minjunkim-dev/BGLike/pull/327)을 `7d39beaa882cd92f053aa8cb828b0187aeacc92a`로 병합했고 alpha.3에 반영했습니다. 1~8장은 그 개정 전 요청의 기록이며, 충돌하면 0장과 능력치 기획서가 우선합니다.
 > - 실행 검수(개정 전 요청): [#307 사용자 위임 에이전트 검수](https://github.com/minjunkim-dev/BGLike/issues/307#issuecomment-6378380493)와 [이동 후조건 추가 검수](https://github.com/minjunkim-dev/BGLike/issues/307#issuecomment-6378544532)를 완료했습니다. 개정 규칙의 사람 직접 기획 검수는 0-5장입니다.
 > - 후속 구현(개정 전): 혼합된 광역 유리 조건은 [#326](https://github.com/minjunkim-dev/BGLike/issues/326)에서 확정하고 [#341](https://github.com/minjunkim-dev/BGLike/issues/341)에서 지원했으나, 개정에서 대상별 내성굴림으로 바뀌어 [#389](https://github.com/minjunkim-dev/BGLike/issues/389)에서 정리했습니다.
-> - 남은 기획: 성장 방식은 정했고(막 최초 클리어마다 파티 공통 주사위 레벨 +1) 몬스터 비강화와의 밸런스 점검, 절대성공면 획득·절대성공의 추가 이점(치명타)은 [#322](https://github.com/minjunkim-dev/BGLike/issues/322)에서 정합니다. 스킬별 내성 능력치, 무기별 능력치 배정, 최대 HP·회복의 건강 연동은 후속 기획입니다. 성장은 구현하지 않습니다.
+> - 남은 기획: 성장 방식은 정했고(막 최초 클리어마다 파티 공통 주사위 레벨 +1) 몬스터 비강화와의 밸런스 점검, 절대성공면 획득·절대성공의 추가 이점(치명타)은 [#322](https://github.com/minjunkim-dev/BGLike/issues/322)에서 정합니다. 스킬별 내성 능력치, 무기별 능력치 배정, 회복의 건강 연동은 후속 기획입니다. 막 최초 클리어 레벨업은 구현 범위입니다([#322 답](https://github.com/minjunkim-dev/BGLike/issues/322#issuecomment-6714895396), 2026-11-08). 절대성공면 획득과 치명타는 구현하지 않습니다.
 > - 배경: [M7까지 남은 작업 지도](https://github.com/minjunkim-dev/BGLike/issues/200) · [기획 현황](DESIGN_STATUS.md) · [주사위 육성 논의](DICE_GROWTH.md)
 
 ---
@@ -50,9 +50,9 @@
 
 | 항목 | 이유 |
 |---|---|
-| 능력치 성장(주사위 레벨), 절대성공면 획득, 성장 UI | [주사위 육성 논의](DICE_GROWTH.md) 에서 방식은 정했지만 별도 개발 요청 전. **육성 개발은 막아 둠** |
+| 절대성공면 획득 | [주사위 육성 논의](DICE_GROWTH.md) 5-3에서 정하기 전. **개발은 막아 둠**. 막 최초 클리어 레벨업은 구현 범위([#322 답](https://github.com/minjunkim-dev/BGLike/issues/322#issuecomment-6714895396)) |
 | 치명타 재도입, 절대성공의 추가 이점 | 나중에 다룸. 지금은 비활성 |
-| 최대 HP 식(직업 기본값 + 건강 면수 ÷ 2 + 레벨 × m)의 값, 회복량의 건강 연동 | 식의 구조는 정함. 직업 기본값과 m은 수치 설계 때 정함 (4-9). 이동력은 능력치와 연동하지 않음 |
+| 최대 HP 식(직업 기본값 + 건강 면수 ÷ 2 + 레벨 × m)의 값, 회복량의 건강 연동 | 식과 값을 정함: 직업 기본값 5, m = 건강 면수 ÷ 2 (2026-10-30, 4-9). 회복량의 건강 연동은 후속 기획. 이동력은 능력치와 연동하지 않음 |
 | 무기별 능력치 배정 변경 | 무기 기획 때 정함. 지금은 현행 지정을 유지. 단 궁수의 기본 공격·충격 화살은 임시로 솜씨로 바꿈 |
 | 스킬별 내성 능력치 재설계 | 스킬을 만들거나 고칠 때 정함. 기존 동작은 현행 능력치(힘)를 유지 |
 | 속성(피해 유형) 시스템, 새 직업·새 스킬 | 후속 기획 |
@@ -65,7 +65,7 @@
 - 시전 때 DC를 기록하는 데이터, 잔류 효과의 DC 보존
 - 광역 혼합 유리 코드([#341](https://github.com/minjunkim-dev/BGLike/issues/341))의 정리 방식
 - 저장 데이터에 건강과 절대면을 보존하는 모양
-- 성장은 만들지 않지만, 굴림 값과 표준값 계산은 "주사위 눈 + 주사위 레벨"(레벨은 0에서 시작하고 6개 능력치와 모든 캐릭터가 공유하는 파티 값 하나) 구조로 정해졌으며, 별도 개발 요청 전까지 구현하지 않음 ([주사위 육성 논의 4장](DICE_GROWTH.md#4-주사위-레벨))
+- 굴림 값은 "주사위 눈 + 주사위 레벨", 표준값은 "레벨 0 표준값 + 주사위 레벨"입니다(레벨은 0에서 시작하고 6개 능력치와 모든 캐릭터가 공유하는 파티 값 하나). 막 최초 클리어 레벨업은 구현 범위입니다 ([#322 답](https://github.com/minjunkim-dev/BGLike/issues/322#issuecomment-6714895396), [주사위 육성 논의 4장](DICE_GROWTH.md#4-주사위-레벨))
 
 ### 0-5. 기획 검수 기준
 

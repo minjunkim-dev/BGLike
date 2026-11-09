@@ -6,13 +6,14 @@
 > - 관련 문서: [몬스터 디자인 기획서](README.md) · [고철로봇-1000](scrap-robot-1000.md) · [고철로봇-2000](scrap-robot-2000.md) · [고철로봇-3000](scrap-robot-3000.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
 > - [Issue #112](https://github.com/minjunkim-dev/BGLike/issues/112)에서 회전회오리·과부하 연계와 3막 3스테이지를 구현했습니다. 직접 플레이 상태는 [M5 통합 검수](../M5_VERIFICATION.md)를 따릅니다.
+> - 과부하의 화상 방출은 [#464](https://github.com/minjunkim-dev/BGLike/issues/464)에서 구현했습니다. 설계 근거는 [Issue #460](https://github.com/minjunkim-dev/BGLike/issues/460)의 구현 결정을 따릅니다.
 
 ---
 
 | 항목 | 내용 |
 |---|---|
 | 이름 | 고철로봇-3000 ✅ |
-| 바탕 | [고철로봇-2000](scrap-robot-2000.md)의 모든 것을 그대로 씀 ✅. 과부하의 화상 방출(구현 전)도 같음 |
+| 바탕 | [고철로봇-2000](scrap-robot-2000.md)의 모든 것을 그대로 씀 ✅. 과부하의 화상 방출도 같음 |
 | 컨셉 | 1000과 같음 ✅ |
 | 추가 스킬 | 회전회오리 ✅ |
 | 장점 ✅ | 인접한 아군을 한꺼번에 공격함. 과부하 중에는 끌어온 뒤 둘을 함께 침 |

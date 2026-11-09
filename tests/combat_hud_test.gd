@@ -56,6 +56,7 @@ func _run() -> void:
 	_test_height_edges()
 	_test_unit_art()
 	_test_warrior()
+	_test_passive_slot_and_number_colors()
 	await _test_resources()
 	_test_archer_and_enemy()
 	await _test_log_and_status()
@@ -352,19 +353,65 @@ func _test_unit_art() -> void:
 			"고밀도 초상의 논리 표시 폭32 유지: " + unit.get_display_name())
 
 
+## 패시브 칸(#457): 전사에만 보이고 팔랑크스는 인접 아군이 있을 때만 켜진다. 수치 색은 가감 부호만 칠한다.
+func _test_passive_slot_and_number_colors() -> void:
+	var passives: Dictionary = hud.get("_passives")
+	var dots: Dictionary = hud.get("_passive_dots")
+	hud.refresh_actions(actions, "attack", units[0])
+	_check((passives["phalanx"] as Button).visible and (passives["brawn"] as Button).visible,
+		"패시브 칸: 전사 선택 시 팔랑크스·괴력의 사내 칸")
+	_check((dots["phalanx"] as Label).visible == (actions.grid.phalanx_bonus(units[0]) > 0),
+		"패시브 칸: 팔랑크스 강조 점은 실제 적용 중에만")
+	# 인접 아군이 없으면 팔랑크스 강조가 꺼진다. 검사 뒤 궁수 위치를 되돌린다.
+	var archer_cell: Vector2i = units[1].cell
+	units[1].cell = Vector2i(9, 1)
+	hud.refresh_actions(actions, "attack", units[0])
+	_check(actions.grid.phalanx_bonus(units[0]) == 0 and not (dots["phalanx"] as Label).visible,
+		"패시브 칸: 인접 아군이 없으면 팔랑크스 강조 꺼짐")
+	units[1].cell = archer_cell
+	hud.refresh_actions(actions, "attack", units[0])
+	_check(not (dots["brawn"] as Label).visible, "패시브 칸: 괴력의 사내는 상시 강조 없음")
+	_check(not CombatActionRules.belongs_to(units[1], "phalanx") and not CombatActionRules.belongs_to(units[1], "brawn"),
+		"패시브 칸: 궁수는 패시브가 없어 칸이 숨음")
+	var colored: String = CombatActionRules.colorize("힘 d20+2 · 공격 -1 · AC +0 · 공격 +3 · HP 5")
+	_check(colored.contains("[color=#70c76d]+2[/color]") and colored.contains("[color=#ff8a80]-1[/color]")
+		and colored.contains("[color=#70c76d]+3[/color]") and not colored.contains("+0[/color]")
+		and colored.contains("AC +0"), "수치 색: 가감 부호만 칠하고 +0은 칠하지 않음: " + colored)
+	_check(CombatActionRules.colorize("HP 5 / 9") == "HP 5 / 9", "수치 색: 가감이 없는 줄은 그대로")
+	# 방어막 바(#457): HP 뒤에 이어 그리고, 합이 최대 HP를 넘으면 합에 맞춘다. 검사 뒤 값을 되돌린다.
+	var unit: CombatUnit = units[0]
+	var saved_hp: int = unit.hit_points
+	var saved_shield: int = unit.shield_points
+	var max_hp: int = unit.get_max_hit_points()
+	unit.hit_points = max_hp
+	unit.shield_points = 0
+	_check(unit.get_bar_fractions().is_equal_approx(Vector2(1, 0)), "방어막 바: 방어막이 없으면 HP만")
+	unit.hit_points = max_hp - 4
+	unit.shield_points = 2
+	_check(unit.get_bar_fractions().is_equal_approx(Vector2(float(max_hp - 4) / max_hp, 2.0 / max_hp)),
+		"방어막 바: 합이 최대 HP 이하면 최대 HP 기준")
+	unit.hit_points = max_hp
+	unit.shield_points = max_hp
+	_check(unit.get_bar_fractions().is_equal_approx(Vector2(0.5, 0.5)), "방어막 바: 합이 넘으면 합 기준")
+	unit.shield_points = 0
+	_check(unit.get_bar_fractions().y == 0.0, "방어막 바: 방어막이 다 닳으면 사라짐")
+	unit.hit_points = saved_hp
+	unit.shield_points = saved_shield
+
+
 func _test_warrior() -> void:
 	var buttons: Dictionary = hud.get("_actions")
 	var badges: Dictionary = hud.get("_badges")
 	var costs: Dictionary = hud.get("_costs")
 	var titles: Array = hud.get("_titles")
-	_check(hud.unit_label.text == "아군 전사" and "HP 11 / 11" in hud.resource_label.text
-		and "AC 6" in hud.resource_label.text and "팔랑크스 AC +1" in hud.resource_label.text
-		and "이동" not in hud.resource_label.text,
+	_check(hud.unit_label.text == "아군 전사" and "HP 11 / 11" in hud.resource_label.get_parsed_text()
+		and "AC 6" in hud.resource_label.get_parsed_text() and "팔랑크스 AC +1" in hud.resource_label.get_parsed_text()
+		and "이동" not in hud.resource_label.get_parsed_text(),
 		"현재 유닛 정보: HP·AC(민첩 d8 표준값 5 + 인접 궁수 팔랑크스 1) 표시, 남은 이동 제거")
 	_check(hud.health_bar.value == 11, "현재 유닛 HP 바")
 	for ability: String in ["힘 d20", "민첩 d8", "솜씨 d6", "지능 d4", "의지 d8", "건강 d12"]:
-		_check(ability in hud.resource_label.text, "현재 전사의 능력치 주사위 표시: " + ability)
-	_check("자연" not in hud.resource_label.text and "정신" not in hud.resource_label.text,
+		_check(ability in hud.resource_label.get_parsed_text(), "현재 전사의 능력치 주사위 표시: " + ability)
+	_check("자연" not in hud.resource_label.get_parsed_text() and "정신" not in hud.resource_label.get_parsed_text(),
 		"폐지한 능력치는 유닛 정보에서 제거")
 	var warrior_actions: Array[String] = ["attack", "sweep", "cross_slash", "battle_cry", "holy_veil", "steel_charge",
 		"shove", "potion", "opportunity", "counter"]
@@ -421,7 +468,7 @@ func _test_resources() -> void:
 	_check((titles[0] as Label).text == "행동 ○" and (titles[1] as Label).text == "보조 행동 △"
 		and units[0].shield_points == 7 and units[0].shield_turns == CombatActionRules.SHIELD_TURNS,
 		"성스러운 장막은 보조 행동 기호 한 개만 쓰고 건강 굴림값만큼 방어막")
-	_check("방어막 7 (3턴)" in hud.resource_label.text, "유닛 정보에 방어막 값과 남은 턴 표시")
+	_check("방어막 7 (3턴)" in hud.resource_label.get_parsed_text(), "유닛 정보에 방어막 값과 남은 턴 표시")
 	_check((buttons["holy_veil"] as Button).disabled, "보조 행동 소진 비활성화")
 	units[0].clear_unit_effects()
 	units[0].movement_left = 0
@@ -440,12 +487,12 @@ func _test_archer_and_enemy() -> void:
 	hud.unit_selected.emit(units[1])
 	_check(turns.current_unit == units[1] and units[0].movement_left == before, "초상 전환 자원 유지")
 	for ability: String in ["힘 d6", "민첩 d12", "솜씨 d20", "지능 d6", "의지 d4", "건강 d8"]:
-		_check(ability in hud.resource_label.text, "궁수로 전환하면 능력치 주사위 갱신: " + ability)
+		_check(ability in hud.resource_label.get_parsed_text(), "궁수로 전환하면 능력치 주사위 갱신: " + ability)
 	_check(not (containers[2] as PanelContainer).visible, "궁수 반응 컨테이너 숨김")
 	_check((buttons["shock"] as Button).visible and not (buttons["cross_slash"] as Button).visible,
 		"궁수 스킬만 표시")
 	_check(battle.call("preview_enemy", units[2]), "적 미리보기 연결")
-	_check(hud.unit_label.text == "풋내기 야만인" and "AC 4" in hud.resource_label.text,
+	_check(hud.unit_label.text == "풋내기 야만인" and "AC 4" in hud.resource_label.get_parsed_text(),
 		"미리보기는 유닛 정보 자리를 사용하고 대상 AC를 표시")
 	_check((buttons["shock"] as Button).visible, "미리보기에도 현재 아군의 스킬 유지")
 	hud.unit_selected.emit(units[0])
@@ -490,15 +537,15 @@ func _test_log_and_status() -> void:
 	units[2].hit_points = 5
 	battle.call("_update_turn_ui")
 	hud.show_unit(units[2])
-	_check(units[2].has_mark and "기절" in hud.resource_label.text and "◎ 표식" in hud.resource_label.text,
+	_check(units[2].has_mark and "기절" in hud.resource_label.get_parsed_text() and "◎ 표식" in hud.resource_label.get_parsed_text(),
 		"기절과 표식은 유닛 표시와 정보에 함께 반영")
 	_check(hud.health_bar.value == 5, "대상 HP 갱신")
 	actions.apply_status(units[1], units[2], "burn")
 	actions.apply_status(units[1], units[2], "burn")
 	actions.apply_status(units[0], units[2], "poison")
 	hud.show_unit(units[2])
-	_check("화상2" in hud.resource_label.text and "독1" in hud.resource_label.text
-		and "기절" in hud.resource_label.text and "◎ 표식" in hud.resource_label.text,
+	_check("화상2" in hud.resource_label.get_parsed_text() and "독1" in hud.resource_label.get_parsed_text()
+		and "기절" in hud.resource_label.get_parsed_text() and "◎ 표식" in hud.resource_label.get_parsed_text(),
 		"기존 상태 정보에 화상/독 중첩 수를 함께 표시")
 	await process_frame
 	_check(hud.get_viewport_rect().encloses(hud.resource_label.get_global_rect()),
@@ -765,10 +812,10 @@ func _test_layout() -> void:
 	hud.preview_label.text = "명중률 37.5% · 유리\n고지대, 기절한 대상, ◎ 표식, 옆에 적"
 	await process_frame
 	await process_frame
-	_check(hud.unit_label.text == units[2].get_display_name() and "기절" in hud.resource_label.text
-		and "화상1" in hud.resource_label.text and "독1" in hud.resource_label.text
-		and "과부하" in hud.resource_label.text and "◎ 표식" in hud.resource_label.text,
-		"긴 유닛 정보 fixture: 대상의 상태 줄 표시: " + hud.resource_label.text.replace("\n", " | "))
+	_check(hud.unit_label.text == units[2].get_display_name() and "기절" in hud.resource_label.get_parsed_text()
+		and "화상1" in hud.resource_label.get_parsed_text() and "독1" in hud.resource_label.get_parsed_text()
+		and "과부하" in hud.resource_label.get_parsed_text() and "◎ 표식" in hud.resource_label.get_parsed_text(),
+		"긴 유닛 정보 fixture: 대상의 상태 줄 표시: " + hud.resource_label.get_parsed_text().replace("\n", " | "))
 	_check(not (hud.get_node("UnitDetails") as Control).get_global_rect().intersects(
 		(hud.get_node("CombatLog") as Control).get_global_rect()),
 		"긴 상태·공격 예측의 유닛 정보와 가장 높은 로그는 겹치지 않음: %s / %s" % [
@@ -921,7 +968,7 @@ func _test_guidance() -> void:
 		and not cells.has(Vector2i(5, 1)) and not cells.has(units[0].cell),
 		"이동 가능 범위는 남은 이동·점유 칸·현재 칸을 반영")
 	_check(hud.preview_label.text.is_empty() and not hud.preview_label.visible
-		and "이동" not in hud.resource_label.text and units[2].is_previewed,
+		and "이동" not in hud.resource_label.get_parsed_text() and units[2].is_previewed,
 		"이동 설명·남은 이동은 제거하고 도착 시 공격 대상 테두리 유지")
 	_check(units[0].cell == Vector2i(1, 1) and units[0].movement_left == 2 and units[0].action_left == 1
 		and not actions.can_target(units[0], units[2], "attack")
@@ -1094,6 +1141,9 @@ func _hover(control: Control) -> void:
 func _has_tooltip(node: Node, text: String) -> bool:
 	if node is Label and node.text == text and node.is_visible_in_tree():
 		return true
+	# 호버 설명은 수치 색을 위해 RichTextLabel이며, 글자는 태그를 뺀 원문으로 비교한다.
+	if node is RichTextLabel and (node as RichTextLabel).get_parsed_text() == text and node.is_visible_in_tree():
+		return true
 	for child: Node in node.get_children(true):
 		if _has_tooltip(child, text):
 			return true
@@ -1193,13 +1243,13 @@ func _test_mouse_controls_and_inspection() -> void:
 		and units[2].hit_points == 12 and (battle.get("selection") as CombatSelection).preview_target == null,
 		"적 초상을 반복 클릭해도 공격 준비·실행·조작 전환 없음")
 	_check(hud.unit_label.text == "풋내기 야만인" and hud.actor_label.text == "조작: 아군 전사"
-		and "힘 d10" in hud.resource_label.text and "민첩 d6" in hud.resource_label.text
-		and "솜씨 d4" in hud.resource_label.text and "지능 d4" in hud.resource_label.text
-		and "의지 d4" in hud.resource_label.text and "건강 d4" in hud.resource_label.text
-		and "자연" not in hud.resource_label.text and "정신" not in hud.resource_label.text
-		and "공격 +3" in hud.resource_label.text and "사거리 1칸" in hud.resource_label.text,
+		and "힘 d10" in hud.resource_label.get_parsed_text() and "민첩 d6" in hud.resource_label.get_parsed_text()
+		and "솜씨 d4" in hud.resource_label.get_parsed_text() and "지능 d4" in hud.resource_label.get_parsed_text()
+		and "의지 d4" in hud.resource_label.get_parsed_text() and "건강 d4" in hud.resource_label.get_parsed_text()
+		and "자연" not in hud.resource_label.get_parsed_text() and "정신" not in hud.resource_label.get_parsed_text()
+		and "공격 +3" in hud.resource_label.get_parsed_text() and "사거리 1칸" in hud.resource_label.get_parsed_text(),
 		"정보 대상·조작 유닛을 구분하고 실제 능력치·공격 수치 표시")
-	_check("행동" not in hud.resource_label.text and "반응" not in hud.resource_label.text
+	_check("행동" not in hud.resource_label.get_parsed_text() and "반응" not in hud.resource_label.get_parsed_text()
 		and (hud.get("_titles") as Array)[0].text == "행동 ●"
 		and (hud.get("_actions") as Dictionary).has("cross_slash"), "적 정보에도 현재 아군 자원 마크 유지")
 	battle.call("_update_turn_ui")
@@ -1212,7 +1262,7 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check(units[0].action_left == 0, "필드 적 두 번째 좌클릭은 공격 확정")
 	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
 	_check(turns.current_unit == units[1] and units[0].action_left == 0
-		and "힘 d6" in hud.resource_label.text and "사거리 6칸" in hud.resource_label.text,
+		and "힘 d6" in hud.resource_label.get_parsed_text() and "사거리 6칸" in hud.resource_label.get_parsed_text(),
 		"조작 가능한 아군 초상은 정보와 조작 전환, 기존 자원 유지")
 	turns.select_unit(units[0])
 	turns.end_turn()
@@ -1234,7 +1284,7 @@ func _test_mouse_controls_and_inspection() -> void:
 	units[1].is_stunned = true
 	battle.call("_update_turn_ui")
 	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
-	_check(turns.current_unit == units[0] and "기절" in hud.resource_label.text,
+	_check(turns.current_unit == units[0] and "기절" in hud.resource_label.get_parsed_text(),
 		"기절한 아군은 정보만 표시하고 조작 전환 거부")
 	units[1].is_stunned = false
 	actions.busy = true
