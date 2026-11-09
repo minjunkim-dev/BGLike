@@ -111,8 +111,11 @@ func _passive_slot(warrior: CombatUnit, archer: CombatUnit) -> void:
 	var off_style: StyleBoxFlat = phalanx.get_theme_stylebox("normal") as StyleBoxFlat
 	_check(off_style.border_width_left != 2, "인접 아군 없음: 테두리 평범")
 	await _capture("passive-phalanx-off")
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	ScriptedDice.arrange_turns(turns, units, [archer, warrior, units[2]])
 	hud.refresh_actions(actions, "attack", archer)
-	_check(not phalanx.visible and not brawn.visible, "궁수 선택: 패시브 칸 숨음")
+	_check(turns.current_unit == archer and not phalanx.visible and not brawn.visible, "궁수 차례: 패시브 칸 숨음")
+	ScriptedDice.arrange_turns(turns, units, [warrior, archer, units[2]])
 	hud.refresh_actions(actions, "attack", warrior)
 
 
