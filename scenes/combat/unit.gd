@@ -304,6 +304,10 @@ func is_boss() -> bool:
 	return not is_ally and bool(CombatEnemyDefinitions.for_kind(kind).get("boss", false))
 
 
+func is_poison_immune() -> bool:
+	return not is_ally and bool(CombatEnemyDefinitions.for_kind(kind).get("poison_immune", false))
+
+
 func can_drop_extra_reward() -> bool:
 	return not is_ally and kind != Kind.SPIDERLING
 

@@ -514,6 +514,8 @@ func apply_status(source: CombatUnit, target: CombatUnit, kind: String,
 		return false
 	if kind == "burn" and target.cell in grid.water_cells:
 		return false
+	if kind == "poison" and target.is_poison_immune():
+		return false
 	if kind == "stun":
 		if target.is_boss():
 			return false
@@ -921,6 +923,9 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	var ground_cells: Array[Vector2i] = []
 	if not actor.is_ally:
 		for ground: Ground in _grounds:
+			# 독 면역은 불이 아닌 장판(독·독안개)을 피할 이유가 없다.
+			if actor.is_poison_immune() and ground.kind != "burn":
+				continue
 			if ground.cell not in ground_cells:
 				ground_cells.append(ground.cell)
 	var path: Array[Vector2i] = grid.path_to(actor, destination, ground_cells)
@@ -1415,7 +1420,7 @@ func _apply_grounds(unit: CombatUnit, entering: bool) -> void:
 ## 독안개 칸의 건강 내성굴림. 칸 단위로 한 번 굴리고 그 칸의 모든 독안개 기록에 진입을 남긴다.
 ## 시전자가 쓰러졌어도 장판은 남으므로 시전자의 생사를 보지 않는다. DC는 칸에서 가장 먼저 시전한 기록을 쓴다.
 func _apply_fog(unit: CombatUnit, entering: bool) -> void:
-	if not is_instance_valid(unit) or unit.hit_points <= 0 or is_over():
+	if not is_instance_valid(unit) or unit.hit_points <= 0 or is_over() or unit.is_poison_immune():
 		return
 	var fogs: Array[Ground] = []
 	for ground: Ground in _grounds:
