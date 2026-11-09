@@ -856,6 +856,9 @@ func _run() -> void:
 	await _test_water_stage()
 	_test_status_application_boundaries()
 	_test_ground_creation()
+	_test_fog_cast()
+	_test_fog_cast_reset()
+	_test_fog_clock()
 	await _test_ground_walk_entry()
 	_test_ground_start_and_expiry()
 	_test_ground_cleanup()
@@ -2721,6 +2724,103 @@ func _test_ground_walk_entry() -> void:
 	_check(target.get_status_count("burn") == 1 and target.get_status_count("poison") == 1
 		and target.movement_left == 2 and target.hit_points == 9,
 		"경로 중간 재진입/다른 시전자 갱신은 진입 제한 유지, 다른 칸 독은 별도 부여")
+
+
+func _fog_count(f: Fixture) -> int:
+	return f.actions.get_grounds().filter(func(ground: CombatActions.Ground) -> bool: return ground.kind == "fog").size()
+
+
+func _fog_rolls(f: Fixture) -> int:
+	return f.logs.filter(func(message: String) -> bool: return "독안개(건강 내성)" in message).size()
+
+
+func _test_fog_cast() -> void:
+	var f: Fixture = _fixture()
+	var caster: CombatUnit = f.units[3]
+	var dc: int = CombatActionRules.save_dc(caster, "fog")
+	_check(not f.actions.cast_fog(caster, Vector2i(0, 0)) and _fog_count(f) == 0, "사거리 밖 칸에는 시전할 수 없음")
+	# 영역 (4,4)(3,4)(5,4)(4,3)(4,5)의 유닛 0·1·2가 유닛 순서대로 건강 주사위(d12, d8, d4)를 굴린다. DC는 3이다.
+	f.actions.dice = _dice_for([1, 8, 1], [12, 8, 4])
+	_check(f.actions.cast_fog(caster, Vector2i(4, 4)), "독안개 시전")
+	_check(_fog_count(f) == 5 and f.actions.get_grounds().all(func(ground: CombatActions.Ground) -> bool:
+		return ground.dc == dc and ground.turns_left == 4 and ground.source == caster), "칸마다 기록 하나, 시전 DC와 지속 4를 기록")
+	_check(f.units[0].get_status_count("poison") == 1 and f.units[1].get_status_count("poison") == 0
+		and f.units[2].get_status_count("poison") == 1, "시전 즉시 영역 안 유닛이 굴리고 실패하면 독 +1")
+	_check(f.units[0].status_effects[0].turns_left == 0 and f.units[0].status_effects[0].dc == CombatActions.Ground.POISON_DC
+		and "기간 없음" in f.units[0].get_periodic_status_text(), "독안개 중첩은 기간이 없고 제거 DC는 고정 4, 상태 줄에 기간 없음")
+	_check(_fog_rolls(f) == 3, "시전 즉시 굴림 3번")
+	# 같은 칸에 다시 시전하면 기록이 겹치고, 새 시전의 즉시 굴림은 칸 단위로 한 번이다.
+	f.actions.dice = _dice_for([8, 8, 4], [12, 8, 4])
+	_check(f.actions.cast_fog(caster, Vector2i(4, 4)) and _fog_count(f) == 10 and _fog_rolls(f) == 6
+		and f.units[0].get_status_count("poison") == 1, "겹친 시전도 칸당 굴림 한 번")
+	_check(f.actions.get_grounds().all(func(ground: CombatActions.Ground) -> bool:
+		return ground.cell not in [Vector2i(4, 4), Vector2i(5, 4)] or f.units[0] in ground.entered or f.units[2] in ground.entered),
+		"굴린 유닛은 그 칸의 모든 기록에 진입이 남음")
+	# 진입은 칸의 기록 전체에 한 번만 소비한다. 아직 들어선 적 없는 유닛은 한 번 굴리고 다시 굴리지 않는다.
+	var walker: CombatUnit = f.units[3]
+	walker.cell = Vector2i(4, 5)
+	var before: int = _fog_rolls(f)
+	f.actions.dice = _dice_for([4], [4])
+	f.actions._apply_fog(walker, true)
+	f.actions._apply_fog(walker, true)
+	_check(_fog_rolls(f) == before + 1 and walker.get_status_count("poison") == 0, "같은 칸 진입은 기록이 겹쳐도 한 번만 굴림")
+	# 턴 시작은 진입 기록과 무관하게 매번 굴린다.
+	f.actions.dice = _dice_for([4], [4])
+	f.actions._apply_fog(walker, false)
+	_check(_fog_rolls(f) == before + 2, "그 위에서 턴을 시작하면 다시 굴림")
+	# 저장·복원 왕복
+	var state: Dictionary = f.actions.save_state()
+	_check(CombatActions.is_valid_state(state, 4, Vector2i(10, 10)), "독안개 기록이 저장 검증을 통과")
+	var g: Fixture = _fixture()
+	g.actions.load_state(state)
+	var unit_data: Dictionary = f.units[0].save_state(f.units)
+	_check(g.units[0].is_valid_state(unit_data, 4, Vector2i(10, 10)), "기간 없는 독 중첩이 유닛 저장 검증을 통과")
+	g.units[0].load_state(unit_data, g.units)
+	_check(_fog_count(g) == 10 and g.units[0].get_status_count("poison") == 1 and g.units[0].status_effects[0].turns_left == 0
+		and g.actions.get_grounds()[0].dc == dc, "독안개 장판과 기간 없는 중첩이 복원됨")
+
+
+func _test_fog_cast_reset() -> void:
+	var f: Fixture = _fixture()
+	var reset: Array[bool] = [false]
+	var callback: Callable = func(message: String) -> void:
+		if reset[0] or "독안개(건강 내성)" not in message:
+			return
+		reset[0] = true
+		f.actions.initialize(f.units, f.turns)
+	f.actions.logged.connect(callback)
+	# 첫 굴림(유닛 0, d12) 뒤에 초기화하므로 남은 유닛은 굴리지 않는다.
+	f.actions.dice = _dice_for([1], [12])
+	f.actions.cast_fog(f.units[3], Vector2i(4, 4))
+	f.actions.logged.disconnect(callback)
+	_check(reset[0] and _fog_rolls(f) == 1 and _fog_count(f) == 0
+		and f.units.all(func(unit: CombatUnit) -> bool: return unit.get_status_count("poison") == 0),
+		"독안개 굴림 callback이 전투를 초기화하면 지난 시전의 독과 남은 굴림을 적용하지 않는다")
+
+
+func _test_fog_clock() -> void:
+	var f: Fixture = _fixture()
+	var caster: CombatUnit = f.units[3]
+	f.actions.dice = _dice_for([], [])
+	_check(f.actions.cast_fog(caster, Vector2i(9, 4)) and _fog_count(f) == 4, "맵 가장자리 영역은 맵 안 칸만")
+	f.actions.incapacitate(caster)
+	_check(caster.hit_points == 0 and _fog_count(f) == 4, "시전자가 쓰러져도 독안개는 남음")
+	for index: int in range(11):
+		f.turns.end_turn()
+	_check(_fog_count(f) == 4, "쓰러진 시전자의 슬롯은 네 번째 순서 전에 지우지 않음")
+	f.turns.end_turn()
+	_check(_fog_count(f) == 0 and f.logs.any(func(message: String) -> bool: return "독안개 만료" in message),
+		"쓰러진 시전자의 시계 슬롯이 네 번째 순서에 소멸")
+	var h: Fixture = _fixture()
+	h.actions.dice = _dice_for([], [])
+	_check(h.actions.cast_fog(h.units[3], Vector2i(9, 4)), "살아 있는 시전자")
+	for index: int in range(3):
+		for turn: int in range(4):
+			h.turns.end_turn()
+	_check(_fog_count(h) == 4, "살아 있는 시전자는 세 순서 뒤에도 남음")
+	for turn: int in range(4):
+		h.turns.end_turn()
+	_check(_fog_count(h) == 0, "살아 있는 시전자의 네 번째 순서 시작에 소멸")
 
 
 func _test_ground_start_and_expiry() -> void:

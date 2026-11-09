@@ -103,10 +103,12 @@ const BATTLE_CRY_TURNS: int = 2
 static var DAMAGE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {"counter": CombatUnit.Ability.AGILITY}
 ## 내성굴림 동작의 시전 능력치(DC)와 대상의 내성 능력치 (4-3, 8장). 기존 동작은 현행(힘)을 유지한다.
 const CAST_ABILITIES: Dictionary[String, CombatUnit.Ability] = {
-	"spin": CombatUnit.Ability.STRENGTH, "shove": CombatUnit.Ability.STRENGTH, "pull": CombatUnit.Ability.STRENGTH
+	"spin": CombatUnit.Ability.STRENGTH, "shove": CombatUnit.Ability.STRENGTH, "pull": CombatUnit.Ability.STRENGTH,
+	"fog": CombatUnit.Ability.HEALTH
 }
 const SAVE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {
-	"spin": CombatUnit.Ability.STRENGTH, "shove": CombatUnit.Ability.STRENGTH, "pull": CombatUnit.Ability.STRENGTH
+	"spin": CombatUnit.Ability.STRENGTH, "shove": CombatUnit.Ability.STRENGTH, "pull": CombatUnit.Ability.STRENGTH,
+	"fog": CombatUnit.Ability.HEALTH
 }
 ## 스킬의 DC 보정. 지정이 없으면 0이다. 지금 있는 스킬은 모두 0이라 비어 있다.
 static var DC_BONUSES: Dictionary[String, int] = {}
