@@ -3,7 +3,7 @@
 Godot 4 싱글 플레이 PC 게임입니다. GitHub 품질 운영은 1인 개발 기준입니다. 미확정 제품 결정은 관련 Issue에서 확인합니다.
 
 프로필: 1인
-이 파일은 사람, Claude Code, Codex의 공통 길잡이입니다. 도구별 프로젝트 지침 파일을 만들지 않습니다. Claude Code는 `CLAUDE.md`가 없으면 이 파일을 읽으므로 `CLAUDE.md`·`.claude/CLAUDE.md`·`CLAUDE.local.md`를 두지 않습니다. 하나라도 있으면 Claude Code가 이 파일을 읽지 않습니다.
+이 파일은 사람, Claude Code, Codex의 공통 길잡이입니다. 도구별 프로젝트 지침 파일을 만들지 않습니다. Claude Code는 `CLAUDE.md`가 없으면 이 파일을 읽으므로 `CLAUDE.md`·`.claude/CLAUDE.md`·`CLAUDE.local.md`를 두지 않습니다. 기본 설정에서는 하나라도 있으면 Claude Code가 이 파일을 읽지 않습니다.
 
 ## 명령
 
