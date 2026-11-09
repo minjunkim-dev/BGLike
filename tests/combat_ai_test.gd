@@ -741,6 +741,18 @@ func _test_fog_spider_fallbacks() -> void:
 		detour.actions._grounds.append(old)
 	await ai.play_turn(spider, detour.actions)
 	_check(spider.cell.x == 0 and spider.cell.y > 2, "유지 중에는 벽 너머 전사가 아니라 걸어서 가까운 궁수 쪽으로 접근")
+	# 벽 때문에 이번 턴의 모든 이동이 맨해튼 거리를 늘려도 걷는 경로를 따라 나아간다.
+	var wall: Fixture = _fog_fixture(Vector2i(0, 2), Vector2i(2, 2), Vector2i(9, 9))
+	spider = wall.units[2]
+	wall.units[1].hit_points = 0
+	for y: int in range(9):
+		wall.actions.grid.blocked_cells.append(Vector2i(1, y))
+	for turns_left: int in [2, 3]:
+		var old: CombatActions.Ground = CombatActions.Ground.new(spider, Vector2i(9, turns_left), "fog", 6)
+		old.turns_left = turns_left
+		wall.actions._grounds.append(old)
+	await ai.play_turn(spider, wall.actions)
+	_check(spider.cell.y > 2 and spider.cell.x == 0, "벽 너머 아군에게는 걷는 경로를 따라 이동")
 	var stunned: Fixture = _fog_fixture(Vector2i(4, 4), Vector2i(5, 4), Vector2i(8, 8))
 	spider = stunned.units[2]
 	spider.is_stunned = true

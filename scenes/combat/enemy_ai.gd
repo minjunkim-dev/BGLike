@@ -150,7 +150,8 @@ func _walk_nearest(actor: CombatUnit, actions: CombatActions, mark: Array[Vector
 	var nearest_free: CombatUnit
 	for ally: CombatUnit in _targets(actor, actions):
 		for neighbor: Vector2i in CombatGrid.neighbors(ally.cell):
-			if costs.has(neighbor) and costs[neighbor] + 1 < distances.get(ally, costs.size() + 2):
+			if (costs.has(neighbor) and actions.grid.are_adjacent(neighbor, ally.cell)
+				and costs[neighbor] + 1 < distances.get(ally, costs.size() + 2)):
 				distances[ally] = costs[neighbor] + 1
 		if not distances.has(ally):
 			continue
@@ -204,7 +205,8 @@ func _fog_plan_on_path(actor: CombatUnit, actions: CombatActions, ally: CombatUn
 	var approach: Vector2i = actor.cell
 	var approach_cost: int = -1
 	for neighbor: Vector2i in CombatGrid.neighbors(ally.cell):
-		if costs.has(neighbor) and (approach_cost < 0 or costs[neighbor] < approach_cost):
+		if (costs.has(neighbor) and actions.grid.are_adjacent(neighbor, ally.cell)
+			and (approach_cost < 0 or costs[neighbor] < approach_cost)):
 			approach = neighbor
 			approach_cost = costs[neighbor]
 	var path: Array[Vector2i] = [actor.cell]
@@ -324,8 +326,19 @@ func approach_cell(actor: CombatUnit, actions: CombatActions, focus: CombatUnit 
 			target = candidate
 	if focus != null:
 		target = focus
+	# focus가 있으면 벽을 돌아가는 걷기 거리로 가까운 칸을 고른다. 없으면 맨해튼 거리다.
+	var walk: Dictionary[Vector2i, int] = {}
+	if focus != null:
+		walk = actions.grid.walk_costs(focus.cell)
+	var gap: Callable = func(cell: Vector2i) -> int:
+		if focus == null:
+			return CombatGrid.distance(cell, target.cell)
+		var steps: int = walk.get(cell, 1 << 20)
+		for neighbor: Vector2i in CombatGrid.neighbors(cell):
+			steps = mini(steps, walk.get(neighbor, 1 << 20) + 1)
+		return steps
 	var best: Vector2i = actor.cell
-	var best_distance: int = CombatGrid.distance(best, target.cell)
+	var best_distance: int = gap.call(best)
 	var best_cost: int = 0
 	var reachable: Dictionary[Vector2i, int] = _movement_cells(actor, actions)
 	for x: int in range(actions.grid.map_size.x):
@@ -333,7 +346,7 @@ func approach_cell(actor: CombatUnit, actions: CombatActions, focus: CombatUnit 
 			var cell: Vector2i = Vector2i(x, y)
 			if not reachable.has(cell):
 				continue
-			var separation: int = CombatGrid.distance(cell, target.cell)
+			var separation: int = gap.call(cell)
 			var cost: int = reachable[cell]
 			# 사거리까지 가장 짧게 이동한다. 못 닿으면 가장 가까운 칸을 쓴다.
 			var reaches: bool = actions.grid.can_target(actor, target, "attack", cell)
