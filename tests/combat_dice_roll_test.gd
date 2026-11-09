@@ -328,6 +328,8 @@ func _test_scene() -> void:
 	_check(not view.visible, "명중굴림의 절대성공은 늘어난 표시 시간 뒤에 닫힌다")
 
 	play.call(CombatDiceRoll.hit(ally, 20, _result([1], 1, 4, false, CombatChecks.Face.ABSOLUTE_FAILURE), 3, 2))
+	# 절대면 바로 뒤에 일반 굴림을 이어 붙여, 뒤 굴림이 늘어난 표시 시간만큼 기다리는지 본다.
+	play.call(CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12))
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
 	dice = view.get("_dice")
 	_check(summary.text == tr("절대실패") and view.get("_gauge_filled") == true and dice[0].scale == CombatDiceRollView.ABSOLUTE_SCALE
@@ -336,11 +338,14 @@ func _test_scene() -> void:
 	_check(summary.get_combined_minimum_size().y <= CombatDiceRollView.WORD_HEIGHT,
 		"절대면의 큰 글자도 판정 단어 영역(%.0f)에 들어간다: %.1f" % [
 			CombatDiceRollView.WORD_HEIGHT, summary.get_combined_minimum_size().y])
-	await create_timer(CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME + 0.1).timeout
+	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
+	_check(summary.text == tr("절대실패"), "뒤 굴림은 절대면의 일반 표시 시간이 지나도 시작하지 않는다: " + summary.text)
+	await create_timer(CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME - CombatDiceRollView.HOLD_TIME).timeout
+	_check(summary.text == "" and (view.get_node("Target") as Label).text == "AC 12",
+		"뒤 굴림은 늘어난 표시 시간이 끝난 뒤 굴린다: " + summary.text)
+	await create_timer(CombatDiceRollView.TUMBLE_TIME).timeout
 
 	# 절대면 다음 일반 굴림은 채움·글자 크기·마커 상태를 이어받지 않는다.
-	play.call(CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12))
-	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
 	_check(view.get("_gauge_filled") == false and view.get("_total_shown") == true
 		and summary.get_theme_font_size("font_size") == CombatDiceRollView.WORD_FONT_SIZE
 		and summary.text == tr("간신히 성공") + "  ±0",
