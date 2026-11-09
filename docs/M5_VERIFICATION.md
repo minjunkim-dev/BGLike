@@ -11,7 +11,7 @@
 - 검수 당시 모든 스테이지의 맵은10×10 뾰족한 위 헥사였습니다. 현재는10×10 사각 높이 격자입니다([게임 구조 기획서 6장](GAME_STRUCTURE.md#6-사각-높이-격자)). 전사는 (1, 4), 궁수는 (0, 5)에서 오른쪽을 보고 시작합니다.
 - 몬스터7종은 `enemy_definitions.gd`의 고정 수치를 사용합니다. 막별 적 강화는 없습니다. 아군 수치와 스킬은 유지합니다.
 - 처음 배치한 새끼는 각각 이니셔티브를 굴립니다. 생성한 새끼는 엄마 직전에 생성 순서대로 들어갑니다. 생성 라운드에는 행동하지 않습니다. 엄마가 전투 불능이어도 새끼는 남습니다. 남은 새끼까지 처치해야 승리합니다.
-- 처음 배치한 새끼와 생성한 새끼는 추가 드랍에서 제외합니다. 승리 보장 아이템1개는 유지합니다. 엄마와 보스는 일반 몬스터와 같은35%를 사용합니다. 1-1은 보장1개뿐입니다. 3-1은 엄마2마리분만 추가 추첨합니다.
+- 처음 배치한 새끼와 생성한 새끼는 추가 드랍에서 제외합니다. 승리 보장 아이템1개는 유지합니다. 엄마와 보스는 일반 몬스터와 같은35%를 사용합니다. 1-1은 보장1개뿐입니다. 3-1은 엄마 거미와 독안개 거미 각 1마리분만 추가 추첨합니다.
 - 장비의 막별 범위, 추첨 비중2/2/3과 물약 한도3을 유지합니다. 보상·정비·막 재시작·다음 막·3막 졸업 연결을 유지합니다.
 - 세 보스는 기절 면역과 과부하를 사용합니다. 2000·3000은 만능팔을 사용합니다. 3000은 회전회오리와 확정 연계를 사용합니다. 과부하 자기 피해로 HP0이 되면 즉시 전투 불능입니다. 다른 적이 없으면 승리합니다. 이 정책은 사용자와 D0 결정의 확정값입니다.
 
@@ -37,7 +37,7 @@
 | 9개 실제 배치·10×10·아군 시작 좌표·방향 | `tests/combat_progression_test.gd`: `_test_spiderling_placement_and_turns`, `_test_novice_placements`, `_test_mother_stages`, 세 `_test_scrap_robot*_stage` |
 | 생성 우선·기절·빈 칸 없음·복귀·보스 연계 | `tests/combat_ai_test.gd`와 `tests/combat_actions_test.gd` |
 | 생성 라운드 대기·다음 라운드 순서·엄마 전투 불능 뒤 새끼 유지 | `tests/combat_turns_test.gd`: `_test_spawned_turn_insertion`; progression의 `_test_mother_stages` |
-| 새끼 잔존 중 승리 금지·1-1 보장1개·3-1 엄마2마리분 추가 드랍 | loot의 `_test_spiderling_rewards`; progression의 `_test_mother_stages` |
+| 새끼 잔존 중 승리 금지·1-1 보장1개·3-1 엄마·독안개 거미 각1마리분 추가 드랍 | loot의 `_test_spiderling_rewards`; progression의 `_test_mother_stages` |
 | 세 보스 실제 승리 연결의35% 경계 | `tests/combat_loot_test.gd`: `_test_boss_reward_boundary` |
 | 장비 범위·추첨 비중·장착·물약·보상·정비 | loot의 `_test_act_values`, `_test_reward_flow`, `_test_scaled_combat`, `_test_accidental_advance` |
 | 막 재시작·같은 막 자원 유지·다음 막·졸업 | progression의 `_test_stage_transition`, `_test_act_and_defeat`, `_test_graduation`, 세 보스 stage 검사 |
