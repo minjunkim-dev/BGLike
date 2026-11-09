@@ -102,7 +102,7 @@ func _pause(pause: Callable) -> void:
 		await pause.call()
 
 
-func _warrior_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:
+func _warrior_turn(actor: CombatUnit, actions: CombatActions, pause: Callable, focus: CombatUnit = null) -> void:
 	if actor.hit_points * 2 <= actor.get_max_hit_points() and actions.can_use(actor, "second_wind"):
 		actions.use_self(actor, "second_wind")
 		await _pause(pause)
@@ -110,7 +110,7 @@ func _warrior_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -
 		return
 	var target: CombatUnit = _attack_target(actor, actions)
 	if target == null:
-		var destination: Vector2i = approach_cell(actor, actions)
+		var destination: Vector2i = approach_cell(actor, actions, focus)
 		if destination != actor.cell:
 			await _move_to(actor, actions, destination)
 			await _pause(pause)
@@ -126,7 +126,7 @@ func _warrior_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -
 func _fog_spider_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:
 	if actions.fog_cast_count(actor) < 2 and actor.action_left > 0 and await _try_fog(actor, actions, pause):
 		return
-	await _warrior_turn(actor, actions, pause)
+	await _warrior_turn(actor, actions, pause, _walk_nearest(actor, actions)[0])
 
 
 func _try_fog(actor: CombatUnit, actions: CombatActions, pause: Callable) -> bool:
@@ -142,11 +142,9 @@ func _try_fog(actor: CombatUnit, actions: CombatActions, pause: Callable) -> boo
 	return true
 
 
-## [서는 칸, 지정 칸] 또는 시전할 수 없으면 빈 배열.
-## 가장 가까운 아군은 걷기 경로 거리, 같으면 공통 규칙(HP 낮은 쪽, 배치 순서)이다.
-func _fog_plan(actor: CombatUnit, actions: CombatActions) -> Array:
+## [걸어서 가장 가까운 아군, 그중 mark 칸 밖에 있는 아군]. 걷기 거리가 같으면 공통 규칙(HP 낮은 쪽, 배치 순서)이고, 없으면 null이다.
+func _walk_nearest(actor: CombatUnit, actions: CombatActions, mark: Array[Vector2i] = []) -> Array:
 	var costs: Dictionary[Vector2i, int] = actions.grid.walk_costs(actor.cell)
-	var fog: Array[Vector2i] = actions.fog_cells()
 	var distances: Dictionary[CombatUnit, int] = {}
 	var nearest: CombatUnit
 	var nearest_free: CombatUnit
@@ -158,8 +156,19 @@ func _fog_plan(actor: CombatUnit, actions: CombatActions) -> Array:
 			continue
 		if nearest == null or distances[ally] < distances[nearest]:
 			nearest = ally
-		if ally.cell not in fog and (nearest_free == null or distances[ally] < distances[nearest_free]):
+		if ally.cell not in mark and (nearest_free == null or distances[ally] < distances[nearest_free]):
 			nearest_free = ally
+	return [nearest, nearest_free]
+
+
+## [서는 칸, 지정 칸] 또는 시전할 수 없으면 빈 배열.
+## 가장 가까운 아군은 걷기 경로 거리, 같으면 공통 규칙(HP 낮은 쪽, 배치 순서)이다.
+func _fog_plan(actor: CombatUnit, actions: CombatActions) -> Array:
+	var fog: Array[Vector2i] = actions.fog_cells()
+	var found: Array = _walk_nearest(actor, actions, fog)
+	var nearest: CombatUnit = found[0]
+	var nearest_free: CombatUnit = found[1]
+	var costs: Dictionary[Vector2i, int] = actions.grid.walk_costs(actor.cell)
 	if nearest == null:
 		return []
 	var stands: Dictionary[Vector2i, int] = _movement_cells(actor, actions, false)
@@ -189,7 +198,7 @@ func _fog_plan_for_ally(actor: CombatUnit, actions: CombatActions, ally: CombatU
 
 
 ## 모든 아군이 독안개 위일 때: 가장 가까운 아군까지 걷는 경로 위 독안개 없는 칸 중 거미에서 가장 먼 칸.
-## 경로의 칸은 서로 다르므로 겹침은 따로 비교하지 않는다.
+## 영역은 겹칠 수 있으므로 자기 독안개와의 겹침이 적은 칸이 먼저이고, 같으면 더 먼 칸이다.
 func _fog_plan_on_path(actor: CombatUnit, actions: CombatActions, ally: CombatUnit, fog: Array[Vector2i],
 	stands: Dictionary[Vector2i, int], costs: Dictionary[Vector2i, int]) -> Array:
 	var approach: Vector2i = actor.cell
@@ -200,14 +209,21 @@ func _fog_plan_on_path(actor: CombatUnit, actions: CombatActions, ally: CombatUn
 			approach_cost = costs[neighbor]
 	var path: Array[Vector2i] = [actor.cell]
 	path.append_array(actions.grid.path_to(actor, approach))
+	var best: Array = []
+	var best_overlap: int = 0
+	var mine: Array[Vector2i] = actions.fog_cells(actor)
 	for index: int in range(path.size() - 1, -1, -1):
 		var aim: Vector2i = path[index]
 		if aim in fog:
 			continue
 		var stand: Vector2i = _fog_stand(actor, actions, aim, ally.cell, stands)
-		if stand != Vector2i(-1, -1):
-			return [stand, aim]
-	return []
+		if stand == Vector2i(-1, -1):
+			continue
+		var overlap: int = actions.aim_area(actor, "fog", aim).filter(func(cell: Vector2i) -> bool: return cell in mine).size()
+		if best.is_empty() or overlap < best_overlap:
+			best = [stand, aim]
+			best_overlap = overlap
+	return best
 
 
 ## aim을 사거리 안에 두는 가장 짧은 이동의 칸 (같으면 아군에게서 먼 칸). 없으면 (-1, -1).
@@ -298,7 +314,7 @@ func _attack_target(actor: CombatUnit, actions: CombatActions) -> CombatUnit:
 
 
 ## 공격 사거리까지 가장 짧게 가는 칸. 못 닿으면 가장 가까운 대상에 가장 가까운 칸이다.
-func approach_cell(actor: CombatUnit, actions: CombatActions) -> Vector2i:
+func approach_cell(actor: CombatUnit, actions: CombatActions, focus: CombatUnit = null) -> Vector2i:
 	var targets: Array[CombatUnit] = _targets(actor, actions)
 	if targets.is_empty():
 		return actor.cell
@@ -306,6 +322,8 @@ func approach_cell(actor: CombatUnit, actions: CombatActions) -> Vector2i:
 	for candidate: CombatUnit in targets:
 		if CombatGrid.distance(actor.cell, candidate.cell) < CombatGrid.distance(actor.cell, target.cell):
 			target = candidate
+	if focus != null:
+		target = focus
 	var best: Vector2i = actor.cell
 	var best_distance: int = CombatGrid.distance(best, target.cell)
 	var best_cost: int = 0

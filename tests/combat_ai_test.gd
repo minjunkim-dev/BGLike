@@ -700,8 +700,18 @@ func _test_fog_spider_aim() -> void:
 			old.turns_left = 3
 			covered.actions._grounds.append(old)
 	await ai.play_turn(spider, covered.actions)
-	_check("3, 4" in _fog_logs(covered)[0] and spider.cell == Vector2i(0, 4),
-		"모든 아군이 장판 위면 가장 가까운 아군까지의 경로 위 장판 없는 가장 먼 칸에 시전")
+	_check("2, 4" in _fog_logs(covered)[0] and spider.cell == Vector2i(0, 4),
+		"모든 아군이 장판 위면 경로 위 장판 없는 칸 중 겹침이 가장 적은(같으면 가장 먼) 칸에 시전")
+
+	# 경로 위 칸의 영역이 자기 장판과 겹치면 겹침이 적은 칸을 고른다.
+	var path_overlap: Fixture = _fog_fixture(Vector2i(0, 0), Vector2i(6, 0), Vector2i(9, 9))
+	spider = path_overlap.units[2]
+	for cell: Vector2i in [Vector2i(6, 0), Vector2i(5, 0), Vector2i(7, 0), Vector2i(6, 1), Vector2i(9, 9), Vector2i(8, 9), Vector2i(9, 8)]:
+		var old: CombatActions.Ground = CombatActions.Ground.new(spider, cell, "fog", 6)
+		old.turns_left = 3
+		path_overlap.actions._grounds.append(old)
+	await ai.play_turn(spider, path_overlap.actions)
+	_check("3, 0" in _fog_logs(path_overlap)[0], "경로 위 시전 칸도 자기 장판과 겹침이 적은 칸을 먼저 고름")
 
 
 func _test_fog_spider_fallbacks() -> void:
@@ -720,6 +730,17 @@ func _test_fog_spider_fallbacks() -> void:
 	await ai.play_turn(spider, held.actions)
 	_check(held.actions.fog_cast_count(spider) == 2 and _fog_logs(held).is_empty() and held.units[0].hit_points < 12
 		and spider.cell == Vector2i(4, 4), "유효한 시전이 2건이면 독안개 대신 인접한 아군을 기본 공격")
+	# 기본 공격으로 접근할 때도 걷기 거리로 가장 가까운 아군을 향한다.
+	var detour: Fixture = _fog_fixture(Vector2i(0, 2), Vector2i(2, 2), Vector2i(0, 6))
+	spider = detour.units[2]
+	for y: int in range(9):
+		detour.actions.grid.blocked_cells.append(Vector2i(1, y))
+	for turns_left: int in [2, 3]:
+		var old: CombatActions.Ground = CombatActions.Ground.new(spider, Vector2i(9, turns_left), "fog", 6)
+		old.turns_left = turns_left
+		detour.actions._grounds.append(old)
+	await ai.play_turn(spider, detour.actions)
+	_check(spider.cell.x == 0 and spider.cell.y > 2, "유지 중에는 벽 너머 전사가 아니라 걸어서 가까운 궁수 쪽으로 접근")
 	var stunned: Fixture = _fog_fixture(Vector2i(4, 4), Vector2i(5, 4), Vector2i(8, 8))
 	spider = stunned.units[2]
 	spider.is_stunned = true
