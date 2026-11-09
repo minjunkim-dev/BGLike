@@ -295,9 +295,9 @@ func _test_scene() -> void:
 	_check(not view.visible and finished[0], "결과를 잠시 보인 뒤 닫고 대기하던 쪽에 돌려준다")
 
 	# 실패.
-	play.call(CombatDiceRoll.save(ally, 8, _result([3], 3, 6, false), 3, tr("공격"), 8))
+	play.call(CombatDiceRoll.save(ally, 8, _result([3], 3, 6, false), 3, tr("DC"), 8))
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
-	_check(summary.text == tr("실패") + "  -2" and target.text == "공격 8"
+	_check(summary.text == tr("실패") + "  -2" and target.text == "DC 8"
 		and summary.get_theme_color("font_color") == CombatDiceRollView.FAILURE_COLOR
 		and (view.get_node("FailureSound") as AudioStreamPlayer).playing,
 		"기준에 못 미치면 실패 색과 실패 결과음을 쓴다: " + summary.text)
