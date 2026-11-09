@@ -374,5 +374,6 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 	preview.mode = CombatChecks.roll_mode(advantages, disadvantages)
 	if preview.in_range and preview.blocked_reason.is_empty():
 		preview.chance = CombatChecks.hit_chance(attacker.get_ability_sides(attacker.get_attack_ability()),
-			attacker.get_hit_bonus(), armor_class(target), preview.mode)
+			attacker.get_hit_bonus(), armor_class(target), preview.mode,
+			attacker.get_ability_modifier(attacker.get_attack_ability()))
 	return preview

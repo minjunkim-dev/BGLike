@@ -208,8 +208,9 @@ func attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
 		busy = false
 		changed.emit()
 		return true
+	var prop_ability: CombatUnit.Ability = CombatActionRules.damage_ability(actor, "attack")
 	last_damage_rolls.append(CombatChecks.damage_roll(
-		actor.get_ability_sides(CombatActionRules.damage_ability(actor, "attack")), dice))
+		actor.get_ability_sides(prop_ability), dice, actor.get_ability_modifier(prop_ability)))
 	if (prop not in grid.props or not is_instance_valid(actor) or actor not in units
 		or actor.hit_points <= 0 or is_over()):
 		busy = false
@@ -413,11 +414,11 @@ func _on_turn_started(unit: CombatUnit) -> void:
 			poison_checked = true
 			var health_sides: int = unit.get_ability_sides(CombatUnit.Ability.HEALTH)
 			var saved: CombatChecks.RollResult = CombatChecks.saving_throw(health_sides, unit.get_defense_bonus(),
-				effect.dc, CombatActionRules.save_mode(unit), dice)
+				effect.dc, CombatActionRules.save_mode(unit), dice, unit.get_ability_modifier(CombatUnit.Ability.HEALTH))
 			# 턴 시작 처리는 중간에 멈추지 않는다. 확정된 굴림을 보이기만 하고 기다리지 않는다.
-			_show_roll_in_background(CombatDiceRoll.save(unit, health_sides, saved, unit.get_defense_bonus(), tr("DC"), effect.dc))
+			_show_roll_in_background(CombatDiceRoll.save(unit, health_sides, saved, saved.added(), tr("DC"), effect.dc))
 			logged.emit(tr("%s 독 제거(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s") % [unit.get_display_name(),
-				health_sides, str(saved.rolls), unit.get_defense_bonus(), saved.total, effect.dc, _save_outcome(saved)])
+				health_sides, str(saved.rolls), saved.added(), saved.total, effect.dc, _save_outcome(saved)])
 			# 실패는 뒤따르는 `독 1` 틱 팝업이 효과 이름을 보인다.
 			if saved.success:
 				feedback.emit(unit, tr("독 제거"))
@@ -835,7 +836,7 @@ func sweep_chance(actor: CombatUnit, target: CombatUnit) -> float:
 	if not preview.blocked_reason.is_empty():
 		return 0.0
 	return CombatChecks.hit_chance(actor.get_ability_sides(actor.get_attack_ability()), actor.get_hit_bonus(),
-		grid.armor_class(target), preview.mode)
+		grid.armor_class(target), preview.mode, actor.get_ability_modifier(actor.get_attack_ability()))
 
 
 func can_use(actor: CombatUnit, action: String) -> bool:
@@ -1033,7 +1034,7 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 		"holy_veil":
 			# 굴림값은 눈 + 주사위 레벨(0)이고 기타 가산치를 더하지 않는다. 남은 방어막과 큰 값을 유지한다.
 			var health_sides: int = actor.get_ability_sides(CombatUnit.Ability.HEALTH)
-			var rolled: int = CombatChecks.damage_roll(health_sides, dice)
+			var rolled: int = CombatChecks.damage_roll(health_sides, dice, actor.get_ability_modifier(CombatUnit.Ability.HEALTH))
 			actor.shield_points = maxi(actor.shield_points, rolled)
 			actor.shield_turns = CombatActionRules.SHIELD_TURNS
 			logged.emit(tr("%s 성스러운 장막: 건강 d%d [%d] · 방어막 %d, %d턴") % [actor.get_display_name(),
@@ -1041,7 +1042,7 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 			feedback.emit(actor, tr("방어막 %d") % actor.shield_points)
 		"battle_cry":
 			var will_sides: int = actor.get_ability_sides(CombatUnit.Ability.WILL)
-			var bonus: int = CombatChecks.damage_roll(will_sides, dice)
+			var bonus: int = CombatChecks.damage_roll(will_sides, dice, actor.get_ability_modifier(CombatUnit.Ability.WILL))
 			for unit: CombatUnit in units:
 				if unit.hit_points > 0 and unit.is_ally == actor.is_ally:
 					unit.battle_cry_bonus = bonus
@@ -1274,8 +1275,9 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> b
 	var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
 	var hit_bonus: int = actor.get_hit_bonus()
 	var armor_class: int = grid.armor_class(target)
-	last_attack = CombatChecks.hit_roll(attack_sides, hit_bonus, armor_class, preview.mode, dice)
-	await _show_roll(CombatDiceRoll.hit(actor, attack_sides, last_attack, hit_bonus, armor_class))
+	last_attack = CombatChecks.hit_roll(attack_sides, hit_bonus, armor_class, preview.mode, dice,
+		actor.get_ability_modifier(attack_ability))
+	await _show_roll(CombatDiceRoll.hit(actor, attack_sides, last_attack, last_attack.added(), armor_class))
 	# 연출 중 일시정지 메뉴에서 전투를 포기할 수 있다. 끝난 전투에 결과를 적용하지 않는다.
 	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
 		return false
@@ -1286,7 +1288,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> b
 		outcome = tr("빗나감(절대실패)")
 	logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / AC %d · %s") % [
 		actor.get_display_name(), _mode_name(last_attack.mode), CombatUnit.ability_name(attack_ability), attack_sides,
-		str(last_attack.rolls), hit_bonus, last_attack.total, armor_class, outcome])
+		str(last_attack.rolls), last_attack.added(), last_attack.total, armor_class, outcome])
 	if not last_attack.success:
 		feedback.emit(target, tr("빗나감"))
 		await _counter(target, actor)
@@ -1324,17 +1326,18 @@ func _perform_save(actor: CombatUnit, target: CombatUnit, action: String, dc: in
 func _roll_save(target: CombatUnit, action: String, dc: int) -> CombatChecks.RollResult:
 	var ability: CombatUnit.Ability = CombatActionRules.SAVE_ABILITIES[action]
 	var sides: int = target.get_ability_sides(ability)
-	last_save = CombatChecks.saving_throw(sides, target.get_defense_bonus(), dc, CombatActionRules.save_mode(target), dice)
+	last_save = CombatChecks.saving_throw(sides, target.get_defense_bonus(), dc, CombatActionRules.save_mode(target), dice,
+		target.get_ability_modifier(ability))
 	logged.emit(tr("%s %s 내성(%s): %s d%d %s %+d = %d / DC %d · %s") % [target.get_display_name(),
 		CombatUnit.ability_name(ability), _mode_name(last_save.mode), CombatUnit.ability_name(ability), sides,
-		str(last_save.rolls), target.get_defense_bonus(), last_save.total, dc, _save_outcome(last_save)])
+		str(last_save.rolls), last_save.added(), last_save.total, dc, _save_outcome(last_save)])
 	return last_save
 
 
 ## 방금 굴린 내성굴림(last_save)을 화면용 굴림으로 만든다. 기준값은 DC다.
 func _save_roll(target: CombatUnit, action: String, dc: int) -> CombatDiceRoll:
 	var sides: int = target.get_ability_sides(CombatActionRules.SAVE_ABILITIES[action])
-	return CombatDiceRoll.save(target, sides, last_save, target.get_defense_bonus(), tr("DC"), dc)
+	return CombatDiceRoll.save(target, sides, last_save, last_save.added(), tr("DC"), dc)
 
 
 ## 피해는 명중·내성 굴림과 무관하게 피해 능력치 주사위를 새로 굴린다 (능력치 기획서 4-9).
@@ -1342,7 +1345,7 @@ func _deal_damage(actor: CombatUnit, target: CombatUnit, action: String, has_mar
 	assert(not (has_mark_damage and halved))
 	var damage_ability: CombatUnit.Ability = CombatActionRules.damage_ability(actor, action)
 	var damage_sides: int = actor.get_ability_sides(damage_ability)
-	last_damage_rolls.append(CombatChecks.damage_roll(damage_sides, dice))
+	last_damage_rolls.append(CombatChecks.damage_roll(damage_sides, dice, actor.get_ability_modifier(damage_ability)))
 	if has_mark_damage:
 		last_damage_rolls.append(dice.roll(6))
 	var damage_bonus: int = CombatActionRules.damage_bonus(actor, action)
@@ -1434,10 +1437,10 @@ func _apply_fog(unit: CombatUnit, entering: bool) -> void:
 	var revision: int = _revision
 	var health_sides: int = unit.get_ability_sides(CombatUnit.Ability.HEALTH)
 	var saved: CombatChecks.RollResult = CombatChecks.saving_throw(health_sides, unit.get_defense_bonus(),
-		fogs[0].dc, CombatActionRules.save_mode(unit), dice)
-	_show_roll_in_background(CombatDiceRoll.save(unit, health_sides, saved, unit.get_defense_bonus(), tr("DC"), fogs[0].dc))
+		fogs[0].dc, CombatActionRules.save_mode(unit), dice, unit.get_ability_modifier(CombatUnit.Ability.HEALTH))
+	_show_roll_in_background(CombatDiceRoll.save(unit, health_sides, saved, saved.added(), tr("DC"), fogs[0].dc))
 	logged.emit(tr("%s 독안개(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s") % [unit.get_display_name(),
-		health_sides, str(saved.rolls), unit.get_defense_bonus(), saved.total, fogs[0].dc, _save_outcome(saved)])
+		health_sides, str(saved.rolls), saved.added(), saved.total, fogs[0].dc, _save_outcome(saved)])
 	if not _same_combat(unit, revision) or saved.success or unit.get_status_count("poison") >= 3:
 		return
 	# 독안개로 얻은 독 중첩은 기간이 없고(turns_left 0) 시전자가 쓰러져도 남는다. 제거 DC는 고정 4다.

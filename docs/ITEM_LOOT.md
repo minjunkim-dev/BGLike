@@ -133,10 +133,10 @@ Issue #61의 수치 범위는 유지한다. #321에서 `attack_bonus`는 공격 
 | 공용 가방 한도 | 12칸. 사용자 선택 위임으로 채택한 초기 권장값 |
 | 등급 | 보류. 막별 수치 상승을 사용 |
 
-지원 수치는 `attack_bonus`·`damage_bonus`·`defense_bonus`·`max_hit_points`다.
+지원 수치는 `attack_bonus`·`damage_bonus`·`defense_bonus`·`max_hit_points`와, 능력치 가감 `strength_modifier`·`agility_modifier`·`finesse_modifier`·`intelligence_modifier`·`will_modifier`·`health_modifier`, `max_movement`다. 가감과 `max_movement`는 범위에 음수를 쓸 수 있다.
 `max_hit_points`는 방어구 전용이다. 무기에 넣으면 디버그 실행의 데이터 검증에서 거부한다.
 장비의 두 수치를 독립 추첨한다. 얻은 장비는 다음 막에서도 수치를 유지한다.
-현재 구현의 장비는 능력치 자체를 바꾸지 않는다. 결과값에 더하는 능력치 가감과 마이너스 가감은 [아이템 기획 폼](ITEM_FORM.md#3-수치-가감)에서 기획했고 구현 전이다.
+능력치 가감은 주사위 면 수를 바꾸지 않고 굴림값(눈+가감, 최소 1)에 더한다. AC·DC에는 표준값에 더한다. 최대 이동은 최소 1칸이다. 구현은 [#456](https://github.com/minjunkim-dev/BGLike/issues/456)이고, `item_data.json`의 시험 아이템은 아직 가감을 쓰지 않는다. 게임 안 설명은 수치에서 자동으로 만든다(`CombatLoot.describe`).
 명중 미리보기와 실제 공격·기회 공격·충격 화살은 같은 공격 가산과 대상의 방어 가산을 사용한다. 능력치 주사위 자체의 면 수는 바꾸지 않는다.
 피해 능력치 주사위(기본은 공격 능력치)와 표식 추가 1d6은 각각 한 번만 굴리고 피해 보정을 더한다. 피해 굴림에는 유리/불리를 적용하지 않는다. 치명타는 현재 없다.
 
