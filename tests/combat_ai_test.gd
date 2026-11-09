@@ -74,6 +74,10 @@ func _run() -> void:
 	await _test_scrap_robot_spin_reevaluation()
 	await _test_mother()
 	await _test_spiderling()
+	await _test_fog_spider_definition()
+	await _test_fog_spider_cycle()
+	await _test_fog_spider_aim()
+	await _test_fog_spider_fallbacks()
 	await _test_warrior()
 	await _test_ground_paths()
 	await _test_poison_immunity()
@@ -578,6 +582,149 @@ func _test_mother() -> void:
 	await ai.play_turn(mother, stunned.actions)
 	_check(stunned.units.size() == 4 and mother.action_left == 1 and stunned.logs.is_empty(),
 		"기절한 엄마의 AI는 새끼 낳기·이동·공격을 실행하지 않음")
+
+
+func _fog_fixture(spider_cell: Vector2i, warrior_cell: Vector2i, archer_cell: Vector2i) -> Fixture:
+	var f: Fixture = _fixture()
+	var spider: CombatUnit = f.units[2]
+	spider.kind = CombatUnit.Kind.FOG_SPIDER
+	spider.hit_points = 12
+	spider.cell = spider_cell
+	f.units[0].cell = warrior_cell
+	f.units[1].cell = archer_cell
+	f.units[3].cell = Vector2i(9, 0)
+	f.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: f.actions.resolve_reaction(false))
+	spider.begin_turn()
+	return f
+
+
+func _next_turn(f: Fixture, unit: CombatUnit) -> void:
+	f.turns.end_turn()
+	while f.turns.current_unit != unit:
+		f.turns.end_turn()
+
+
+func _fog_logs(f: Fixture) -> Array[String]:
+	var lines: Array[String] = []
+	for line: String in f.logs:
+		if "독안개 시전" in line:
+			lines.append(line)
+	return lines
+
+
+func _test_fog_spider_definition() -> void:
+	var f: Fixture = _fog_fixture(Vector2i(4, 4), Vector2i(5, 4), Vector2i(8, 8))
+	var spider: CombatUnit = f.units[2]
+	_check(spider.get_max_hit_points() == 12 and spider.get_armor_class() == 4 and spider.get_movement() == 4
+		and spider.get_attack_bonus() == 3 and spider.get_damage_bonus() == 1 and spider.get_attack_range() == 1
+		and spider.is_poison_immune() and not spider.is_boss() and spider.get_art_id() == "fog_spider",
+		"독안개 거미의 HP·AC·이동력·공격·독 면역")
+	_check(_ability_sides(spider) == [6, 6, 4, 4, 4, 8]
+		and CombatActionRules.belongs_to(spider, "fog") and CombatActionRules.belongs_to(spider, "opportunity")
+		and not CombatActionRules.belongs_to(f.units[0], "fog"), "독안개 거미의 능력치 주사위·스킬·기회 공격")
+	_check(CombatUnit.with_subject_particle(spider.get_display_name()) == "독안개 거미가", "독안개 거미 이름 주격 조사")
+
+
+func _ability_sides(unit: CombatUnit) -> Array[int]:
+	var sides: Array[int] = []
+	for ability: CombatUnit.Ability in CombatUnit.Ability.values():
+		sides.append(unit.get_ability_sides(ability))
+	return sides
+
+
+## 두 곳 엇갈려 유지: 시전, 시전, 기본 공격, 기본 공격, 다시 시전 (지속 4 시전자 턴).
+func _test_fog_spider_cycle() -> void:
+	var f: Fixture = _fog_fixture(Vector2i(4, 4), Vector2i(5, 4), Vector2i(8, 8))
+	var spider: CombatUnit = f.units[2]
+	await ai.play_turn(spider, f.actions)
+	_check(f.actions.fog_cast_count(spider) == 1 and f.actions.fog_cells(spider).size() == 5
+		and spider.cell == Vector2i(4, 4) and spider.movement_left == 4 and spider.action_left == 0
+		and _fog_logs(f).size() == 1 and "5, 4" in _fog_logs(f)[0],
+		"첫 턴: 가장 가까운 아군 칸에 이동 없이 시전하고 시전 후 이동하지 않음, 전투 기록에 시전 줄")
+	_next_turn(f, spider)
+	await ai.play_turn(spider, f.actions)
+	var casts: Array[String] = _fog_logs(f)
+	_check(f.actions.fog_cast_count(spider) == 2 and casts.size() == 2 and "8, 8" in casts[1]
+		and spider.cell != Vector2i(4, 4) and CombatGrid.distance(spider.cell, Vector2i(8, 8)) <= 4
+		and spider.movement_left == 4 - CombatGrid.distance(Vector2i(4, 4), spider.cell) and spider.action_left == 0,
+		"둘째 턴: 장판 없는 아군(궁수)에게 사거리까지 이동한 뒤 시전하고 정지")
+	for hold: int in range(2):
+		_next_turn(f, spider)
+		var seen: int = f.logs.size()
+		await ai.play_turn(spider, f.actions)
+		_check(_fog_logs(f).size() == 2 and f.actions.fog_cast_count(spider) == 2
+			and f.logs.slice(seen).any(func(line: String) -> bool: return "독안개 거미 공격" in line) and spider.action_left == 0,
+			"유지 중인 턴(%d): 독안개를 쓰지 않고 가장 가까운 아군에게 기본 공격" % (hold + 1))
+	_next_turn(f, spider)
+	await ai.play_turn(spider, f.actions)
+	_check(_fog_logs(f).size() == 3 and f.actions.fog_cast_count(spider) == 2,
+		"첫 장판이 만료되면 다시 시전해 두 곳을 유지")
+
+
+func _test_fog_spider_aim() -> void:
+	# 아군 칸 기준 영역이 자기 장판과 겹치면, 겹침이 가장 적은 인접 칸을 고른다.
+	var overlap: Fixture = _fog_fixture(Vector2i(2, 2), Vector2i(6, 4), Vector2i(9, 9))
+	var spider: CombatUnit = overlap.units[2]
+	for cell: Vector2i in [Vector2i(5, 5), Vector2i(4, 5), Vector2i(6, 5), Vector2i(5, 4), Vector2i(5, 6)]:
+		var old: CombatActions.Ground = CombatActions.Ground.new(spider, cell, "fog", 6)
+		old.turns_left = 2
+		overlap.actions._grounds.append(old)
+	await ai.play_turn(spider, overlap.actions)
+	_check(overlap.actions.fog_cast_count(spider) == 2 and "6, 3" in _fog_logs(overlap)[0]
+		and spider.cell in [Vector2i(3, 2), Vector2i(2, 3)] and spider.movement_left == 3,
+		"아군 칸(겹침 2)보다 겹침 0인 칸(6, 3)을 고르고, 사거리 밖이라 가장 짧은 1칸 이동 뒤 시전")
+	# 겹침을 피할 수 없으면 최소 겹침으로 시전한다.
+	var forced: Fixture = _fog_fixture(Vector2i(4, 4), Vector2i(5, 4), Vector2i(9, 9))
+	spider = forced.units[2]
+	forced.actions.grid.map_size = Vector2i(6, 6)
+	for cell: Vector2i in [Vector2i(3, 4), Vector2i(4, 3), Vector2i(3, 3), Vector2i(2, 4)]:
+		var old: CombatActions.Ground = CombatActions.Ground.new(spider, cell, "fog", 6)
+		old.turns_left = 2
+		forced.actions._grounds.append(old)
+	forced.units[1].cell = Vector2i(5, 5)
+	await ai.play_turn(spider, forced.actions)
+	_check(forced.actions.fog_cast_count(spider) == 2 and _fog_logs(forced).size() == 1, "겹침이 있어도 시전")
+	# 걷기 경로 거리: 벽 너머의 직선 거리가 짧은 전사보다 걸어서 가까운 궁수를 고른다.
+	var walled: Fixture = _fog_fixture(Vector2i(0, 2), Vector2i(2, 2), Vector2i(0, 6))
+	spider = walled.units[2]
+	for y: int in range(9):
+		walled.actions.grid.blocked_cells.append(Vector2i(1, y))
+	await ai.play_turn(spider, walled.actions)
+	_check("0, 6" in _fog_logs(walled)[0] and spider.cell == Vector2i(0, 2), "가장 가까운 아군은 걷기 경로 거리로 정함")
+	# 모든 아군가 장판 위: 경로 위 장판 없는 가장 먼 칸.
+	var covered: Fixture = _fog_fixture(Vector2i(0, 4), Vector2i(5, 4), Vector2i(8, 8))
+	spider = covered.units[2]
+	for center: Vector2i in [Vector2i(5, 4), Vector2i(8, 8)]:
+		for cell: Vector2i in [center] + CombatGrid.neighbors(center):
+			var old: CombatActions.Ground = CombatActions.Ground.new(spider, cell, "fog", 6)
+			old.turns_left = 3
+			covered.actions._grounds.append(old)
+	await ai.play_turn(spider, covered.actions)
+	_check("3, 4" in _fog_logs(covered)[0] and spider.cell == Vector2i(0, 4),
+		"모든 아군이 장판 위면 가장 가까운 아군까지의 경로 위 장판 없는 가장 먼 칸에 시전")
+
+
+func _test_fog_spider_fallbacks() -> void:
+	var far: Fixture = _fog_fixture(Vector2i(0, 0), Vector2i(9, 9), Vector2i(9, 8))
+	var spider: CombatUnit = far.units[2]
+	await ai.play_turn(spider, far.actions)
+	_check(far.actions.fog_cast_count(spider) == 0 and _fog_logs(far).is_empty() and spider.cell != Vector2i(0, 0),
+		"지정할 칸이 없으면 시전하지 않고 기본 공격 쪽으로 이동")
+	var held: Fixture = _fog_fixture(Vector2i(4, 4), Vector2i(5, 4), Vector2i(8, 8))
+	spider = held.units[2]
+	for turns_left: int in [2, 3]:
+		var old: CombatActions.Ground = CombatActions.Ground.new(spider, Vector2i(5 + turns_left, 8), "fog", 6)
+		old.turns_left = turns_left
+		held.actions._grounds.append(old)
+	held.actions.dice = ScriptedDice.new([4, 1], ScriptedDice.attack_sides(spider) + ScriptedDice.damage_sides(spider))
+	await ai.play_turn(spider, held.actions)
+	_check(held.actions.fog_cast_count(spider) == 2 and _fog_logs(held).is_empty() and held.units[0].hit_points < 12
+		and spider.cell == Vector2i(4, 4), "유효한 시전이 2건이면 독안개 대신 인접한 아군을 기본 공격")
+	var stunned: Fixture = _fog_fixture(Vector2i(4, 4), Vector2i(5, 4), Vector2i(8, 8))
+	spider = stunned.units[2]
+	spider.is_stunned = true
+	await ai.play_turn(spider, stunned.actions)
+	_check(_fog_logs(stunned).is_empty() and spider.action_left == 1, "기절한 독안개 거미는 시전하지 못함")
 
 
 func _test_spiderling() -> void:

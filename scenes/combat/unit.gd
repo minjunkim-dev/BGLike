@@ -2,7 +2,7 @@ class_name CombatUnit
 extends Node2D
 ## 팀과 직업, 격자 위치와 유닛별 턴 자원·도트 애니메이션.
 
-enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6 }
+enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6, FOG_SPIDER = 7 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Ability { STRENGTH, AGILITY, FINESSE, INTELLIGENCE, WILL, HEALTH }
 
@@ -246,7 +246,7 @@ func get_art_id() -> String:
 	if not is_ally and kind <= Kind.ARCHER:
 		return "novice_barbarian" if kind == Kind.WARRIOR else "novice_archer"
 	return ["warrior", "archer", "spiderling", "mother_spider",
-		"scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000"][kind]
+		"scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000", "fog_spider"][kind]
 
 
 func get_status_label_y() -> float:
