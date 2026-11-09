@@ -81,7 +81,7 @@ func _passive_slot(warrior: CombatUnit, archer: CombatUnit) -> void:
 	var buttons: Dictionary = hud.get("_actions")
 	var viewport: Rect2 = root.get_visible_rect()
 	warrior.cell = Vector2i(3, 5)
-	archer.cell = Vector2i(4, 6)  # 인접
+	archer.cell = Vector2i(4, 5)  # 인접
 	hud.refresh_actions(actions, "attack", warrior)
 	await create_timer(0.2).timeout
 	var phalanx: Button = passives["phalanx"]
@@ -155,7 +155,7 @@ func _shield_bar(warrior: CombatUnit) -> void:
 func _number_colors(warrior: CombatUnit, archer: CombatUnit) -> void:
 	warrior.weapon = {"stats": {"attack_bonus": 2}}
 	archer.weapon = {"stats": {"attack_bonus": -1}}  # fixture: 현재 데이터에는 해로운 수치가 없다
-	archer.cell = Vector2i(4, 6)  # 전사 인접 → 팔랑크스 AC +1
+	archer.cell = Vector2i(4, 5)  # 전사 인접 → 팔랑크스 AC +1
 	hud.show_unit(warrior)
 	var good: String = hud.resource_label.text
 	var parsed: String = hud.resource_label.get_parsed_text()
