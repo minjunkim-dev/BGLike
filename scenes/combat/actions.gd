@@ -1459,6 +1459,8 @@ func cast_fog(caster: CombatUnit, cell: Vector2i) -> bool:
 	if area.is_empty():
 		return false
 	var dc: int = CombatActionRules.save_dc(caster, "fog")
+	if not caster.spend_resource(CombatUnit.TurnResource.ACTION):
+		return false
 	for area_cell: Vector2i in area:
 		_grounds.append(Ground.new(caster, area_cell, "fog", dc))
 	var revision: int = _revision
@@ -1471,6 +1473,24 @@ func cast_fog(caster: CombatUnit, cell: Vector2i) -> bool:
 	if revision == _revision:
 		changed.emit()
 	return true
+
+
+## 시전자의 독안개 중 남은 기간 값의 종류 수. 한 턴에 한 번만 시전하므로 같은 시전의 칸은 같은 값이라 유효한 시전 수가 된다.
+func fog_cast_count(caster: CombatUnit) -> int:
+	var durations: Array[int] = []
+	for ground: Ground in _grounds:
+		if ground.kind == "fog" and ground.source == caster and ground.turns_left not in durations:
+			durations.append(ground.turns_left)
+	return durations.size()
+
+
+## caster가 시전한 독안개가 덮은 칸. caster가 null이면 모든 독안개 칸이다.
+func fog_cells(caster: CombatUnit = null) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	for ground: Ground in _grounds:
+		if ground.kind == "fog" and (caster == null or ground.source == caster) and ground.cell not in cells:
+			cells.append(ground.cell)
+	return cells
 
 
 func _clear_burn_in_water(unit: CombatUnit) -> void:

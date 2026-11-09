@@ -307,7 +307,7 @@ func _test_square_map() -> void:
 
 
 func _test_unit_art() -> void:
-	for unit_id: String in ["warrior", "archer", "spiderling", "mother_spider",
+	for unit_id: String in ["warrior", "archer", "spiderling", "mother_spider", "fog_spider",
 		"novice_barbarian", "novice_archer", "scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000"]:
 		for state: String in ["idle", "move", "attack"]:
 			for direction: String in ["left", "right"]:

@@ -99,6 +99,7 @@ func _test_ability_dice() -> void:
 		[CombatUnit.Kind.ARCHER, false, [4, 10, 4, 4, 4, 4]],
 		[CombatUnit.Kind.SPIDERLING, false, [4, 8, 4, 4, 4, 4]],
 		[CombatUnit.Kind.MOTHER_SPIDER, false, [8, 6, 4, 4, 6, 8]],
+		[CombatUnit.Kind.FOG_SPIDER, false, [6, 6, 4, 4, 4, 8]],
 		[CombatUnit.Kind.SCRAP_ROBOT_1000, false, [12, 4, 8, 4, 12, 4]],
 		[CombatUnit.Kind.SCRAP_ROBOT_2000, false, [12, 4, 8, 4, 12, 4]],
 		[CombatUnit.Kind.SCRAP_ROBOT_3000, false, [12, 4, 8, 4, 12, 4]],
@@ -628,6 +629,7 @@ func _test_monster_hit_table() -> void:
 		[CombatUnit.Kind.SCRAP_ROBOT_3000, 7, 70.0, 91.7, 75.0],
 		[CombatUnit.Kind.SPIDERLING, 5, 80.0, 75.0, 25.0],
 		[CombatUnit.Kind.MOTHER_SPIDER, 5, 80.0, 87.5, 62.5],
+		[CombatUnit.Kind.FOG_SPIDER, 4, 85.0, 83.3, 50.0],
 	]:
 		var monster: CombatUnit = _unit(row[0], false, Vector2i.ZERO)
 		_check(monster.get_armor_class() == row[1], "%s AC %d" % [monster.get_display_name(), row[1]])
