@@ -191,7 +191,7 @@
 
 | 캐릭터 | 역할 | 추상 컨셉 | 상태 |
 |---|---|---|---|
-| [전사](warrior.md) | 탱커 | 든든한 지휘관 ✅ (2026-10-30) | 재디자인 확정 · 구현 ([#423](https://github.com/minjunkim-dev/BGLike/issues/423), [#426](https://github.com/minjunkim-dev/BGLike/issues/426), [#434](https://github.com/minjunkim-dev/BGLike/issues/434)~[#438](https://github.com/minjunkim-dev/BGLike/issues/438)). 패시브 칸은 구현 전 |
+| [전사](warrior.md) | 탱커 | 든든한 지휘관 ✅ (2026-10-30) | 재디자인 확정 · 구현 ([#423](https://github.com/minjunkim-dev/BGLike/issues/423), [#426](https://github.com/minjunkim-dev/BGLike/issues/426), [#434](https://github.com/minjunkim-dev/BGLike/issues/434)~[#438](https://github.com/minjunkim-dev/BGLike/issues/438), 패시브 칸 [#457](https://github.com/minjunkim-dev/BGLike/issues/457)) |
 | [궁수](archer.md) | 딜러 | ❓ | 구현됨 |
 
 전사는 2026-10-30에 컨셉부터 다시 디자인했습니다. 궁수는 추상 컨셉 없이 스킬부터 만들었습니다 (10장).
@@ -215,7 +215,7 @@
 | 주제 | 질문 |
 |---|---|
 | 궁수의 추상 컨셉 | 지금 스킬에 맞춰 컨셉을 지을까, 컨셉부터 새로 잡고 스킬을 고칠까. 전사는 2026-10-30에 컨셉부터 새로 잡고 스킬을 새로 만들었음 ([전사](warrior.md)) |
-| 상시 효과 | 컨셉에서 "혼자일 때 강함" 같은 상시 효과가 자주 나옴. 지금 스킬은 모두 직접 쓰는 것이라 새 규칙이 필요함. 전사의 팔랑크스(인접 아군이 있으면 AC +1)가 첫 사례이고, 스킬 패널의 맨 왼쪽 패시브 칸에 보여 주고 적용 중에만 강조함 (`개발 결정` [#407](https://github.com/minjunkim-dev/BGLike/issues/407#issuecomment-6707833180), 구현 전) |
+| 상시 효과 | 컨셉에서 "혼자일 때 강함" 같은 상시 효과가 자주 나옴. 직접 쓰지 않는 패시브 스킬로 다룸. 전사의 팔랑크스(인접 아군이 있으면 AC +1)와 괴력의 사내가 첫 사례이고, 스킬 바 왼쪽 끝의 패시브 열에 보여 주고 적용 중에만 강조함 (`개발 결정` [#407](https://github.com/minjunkim-dev/BGLike/issues/407#issuecomment-6707833180), [#457](https://github.com/minjunkim-dev/BGLike/issues/457)에서 구현) |
 | 탱커 수단 | [Issue #201](https://github.com/minjunkim-dev/BGLike/issues/201)에서 도발 스킬은 만들지 않고 적 AI의 "인접 아군 우선" 조준 규칙으로 정했음(구현 전). 전사는 여기에 더해 기회 공격 명중 시 이동 정지(괴력의 사내)로 적의 길을 막음 |
 | 서포터 | 서포터 캐릭터를 추가할까, 기존 캐릭터의 스킬로 나눌까. 파티 규모(지금 2명)와 함께 정함 |
 | 상태 이상 | #178의 공통 화상·독 처리는 구현됐습니다. 캐릭터가 이를 부여할 스킬과 새 상태는 별도 기획입니다. |
