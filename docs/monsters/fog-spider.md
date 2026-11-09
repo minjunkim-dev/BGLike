@@ -5,7 +5,7 @@
 > - 기준일: 2026-11-02 ([#305 기획자 답변](https://github.com/minjunkim-dev/BGLike/issues/305#issuecomment-6581920839), [#207](https://github.com/minjunkim-dev/BGLike/issues/207))
 > - 관련 문서: [몬스터 디자인 기획서](README.md) · [엄마 거미](mother-spider.md) · [새끼 거미](spiderling.md) · [동작 유형 기획서](../SKILL_TYPES.md) · [능력치 기획서](../ABILITY_SYSTEM.md) · [전투 시스템 기획서 6-6](../COMBAT_DESIGN.md#6-6-독안개-장판) · [스테이지 배치](../stages/README.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전, 시험값 포함) · ❓ 정해야 함
-> - **상태: 기획 확정, 독안개 거미 몬스터와 AI 구현됨([#462](https://github.com/minjunkim-dev/BGLike/issues/462)), 3막 스테이지 1 배치는 구현 전.** 구현은 [칸 조준·곡사·반경(기준점 목표 칸) 도입](../SKILL_TYPES.md#9-정해야-할-것) → 칸 효과 → 독안개 거미와 AI → 3막 스테이지 1 교체 순서로 Issue를 나눕니다. 수치는 모두 시험값이며 확정은 [#205](https://github.com/minjunkim-dev/BGLike/issues/205)에서 합니다.
+> - **상태: 기획 확정, 독안개 거미 몬스터와 AI 구현됨([#462](https://github.com/minjunkim-dev/BGLike/issues/462)), 3막 스테이지 1 배치 구현됨([#463](https://github.com/minjunkim-dev/BGLike/issues/463)).** 구현은 [칸 조준·곡사·반경(기준점 목표 칸) 도입](../SKILL_TYPES.md#9-정해야-할-것) → 칸 효과 → 독안개 거미와 AI → 3막 스테이지 1 교체 순서로 Issue를 나눕니다. 수치는 모두 시험값이며 확정은 [#205](https://github.com/minjunkim-dev/BGLike/issues/205)에서 합니다.
 
 ---
 
