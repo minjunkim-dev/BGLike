@@ -67,7 +67,7 @@ const GAUGE_PILL_MIN_WIDTH: float = 28.0
 const TARGET_LABEL_Y: float = 90.0
 const WORD_FONT_SIZE: int = 13
 const ABSOLUTE_WORD_FONT_SIZE: int = 16
-const WORD_HEIGHT: float = 20.0
+const WORD_HEIGHT: float = 24.0
 
 
 class Die extends RefCounted:
@@ -151,6 +151,7 @@ static func margin(result: CombatChecks.RollResult, target_value: int) -> int:
 
 
 ## 판정 단어의 등급. 절대면은 기준값과 상관없고, 나머지는 규칙의 성공/실패를 따라 여유로 세분한다.
+## 여유의 부호가 규칙 결과와 어긋나도(성공인데 여유가 음수 등) 규칙을 따르고 여유는 있는 그대로 보인다.
 static func grade(result: CombatChecks.RollResult, target_value: int) -> Grade:
 	match result.face:
 		CombatChecks.Face.ABSOLUTE_SUCCESS:
@@ -351,6 +352,9 @@ func _draw_gauge(font: Font, font_size: int) -> void:
 	var marker_x: float = center_x + gauge_offset(_marker_margin)
 	var tip: Vector2 = Vector2(marker_x, GAUGE_TRACK_Y - 1.0)
 	if not _total_shown:
+		# 절대면은 기준값과 상관없으므로 굴리는 동안에도 결과 위치로 향하는 마커를 보이지 않는다.
+		if _roll.result.face != CombatChecks.Face.NORMAL:
+			return
 		draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(-4.0, -6.0), tip + Vector2(4.0, -6.0)]),
 			NEUTRAL_COLOR)
 		return

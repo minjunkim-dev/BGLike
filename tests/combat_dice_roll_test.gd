@@ -330,6 +330,18 @@ func _test_scene() -> void:
 	_check(summary.text == tr("절대실패") and view.get("_gauge_filled") == true and dice[0].scale == CombatDiceRollView.ABSOLUTE_SCALE
 		and dice[0].edge == CombatDiceRollView.FAILURE_COLOR and dice[0].emphasized,
 		"절대실패는 같은 실패 색에 강조를 더한다: " + summary.text)
+	_check(summary.get_combined_minimum_size().y <= CombatDiceRollView.WORD_HEIGHT,
+		"절대면의 큰 글자도 판정 단어 영역(%.0f)에 들어간다: %.1f" % [
+			CombatDiceRollView.WORD_HEIGHT, summary.get_combined_minimum_size().y])
+	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
+
+	# 절대면 다음 일반 굴림은 채움·글자 크기·마커 상태를 이어받지 않는다.
+	play.call(CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12))
+	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
+	_check(view.get("_gauge_filled") == false and view.get("_total_shown") == true
+		and summary.get_theme_font_size("font_size") == CombatDiceRollView.WORD_FONT_SIZE
+		and summary.text == tr("간신히 성공") + "  ±0",
+		"절대면 다음 일반 굴림은 게이지 채움과 글자 크기를 이어받지 않는다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
 	var halo: float = CombatDiceRollView.DIE_RADIUS * CombatDiceRollView.ABSOLUTE_SCALE * (
 		CombatDiceRollView.HALO_SCALE + CombatDiceRollView.HALO_WIDTH * 0.5)
