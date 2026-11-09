@@ -1007,6 +1007,22 @@ msgstr "절대성공"
 msgid "절대실패"
 msgstr "절대실패"
 
+#: scenes/combat/dice_roll_view.gd
+msgid "큰 성공"
+msgstr "큰 성공"
+
+#: scenes/combat/dice_roll_view.gd
+msgid "간신히 성공"
+msgstr "간신히 성공"
+
+#: scenes/combat/dice_roll_view.gd
+msgid "아깝게 실패"
+msgstr "아깝게 실패"
+
+#: scenes/combat/dice_roll_view.gd
+msgid "큰 실패"
+msgstr "큰 실패"
+
 #: scenes/combat/enemy_definitions.gd:7
 msgid "풋내기 야만인"
 msgstr "풋내기 야만인"
