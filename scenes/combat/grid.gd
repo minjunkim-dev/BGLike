@@ -158,6 +158,11 @@ func reachable_cells(actor: CombatUnit) -> Dictionary[Vector2i, int]:
 	return routes.costs
 
 
+## origin에서 이동력과 상관없이 걸어서 닿는 칸까지의 걸음 수. 점유된 칸은 지나가지 못한다.
+func walk_costs(origin: Vector2i) -> Dictionary[Vector2i, int]:
+	return _search(origin, map_size.x * map_size.y).costs
+
+
 func _search(origin: Vector2i, budget: int, destination: Vector2i = Vector2i(-1, -1)) -> Routes:
 	var routes: Routes = Routes.new()
 	if is_blocked(origin):
@@ -369,5 +374,6 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 	preview.mode = CombatChecks.roll_mode(advantages, disadvantages)
 	if preview.in_range and preview.blocked_reason.is_empty():
 		preview.chance = CombatChecks.hit_chance(attacker.get_ability_sides(attacker.get_attack_ability()),
-			attacker.get_hit_bonus(), armor_class(target), preview.mode)
+			attacker.get_hit_bonus(), armor_class(target), preview.mode,
+			attacker.get_ability_modifier(attacker.get_attack_ability()))
 	return preview
