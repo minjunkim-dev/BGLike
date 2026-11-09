@@ -295,9 +295,9 @@ func _test_scene() -> void:
 	_check(not view.visible and finished[0], "결과를 잠시 보인 뒤 닫고 대기하던 쪽에 돌려준다")
 
 	# 실패.
-	play.call(CombatDiceRoll.save(ally, 8, _result([3], 3, 6, false), 3, tr("공격"), 8))
+	play.call(CombatDiceRoll.save(ally, 8, _result([3], 3, 6, false), 3, tr("DC"), 8))
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
-	_check(summary.text == tr("실패") + "  -2" and target.text == "공격 8"
+	_check(summary.text == tr("실패") + "  -2" and target.text == "DC 8"
 		and summary.get_theme_color("font_color") == CombatDiceRollView.FAILURE_COLOR
 		and (view.get_node("FailureSound") as AudioStreamPlayer).playing,
 		"기준에 못 미치면 실패 색과 실패 결과음을 쓴다: " + summary.text)
@@ -322,7 +322,16 @@ func _test_scene() -> void:
 		and dice[0].scale == CombatDiceRollView.ABSOLUTE_SCALE
 		and dice[0].edge == CombatDiceRollView.SUCCESS_COLOR and dice[0].emphasized,
 		"절대성공은 같은 성공 색에 강조를 더한다: " + summary.text)
+	# 절대면 명중은 결과를 더 오래 보이고, 뒤에 온 굴림은 그만큼 기다린다(#488 결정).
+	actions.roll_animation.call(CombatDiceRoll.save(ally, 4, _result([4], 4, 4, true), 0, tr("DC"), 3))
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
+	_check(view.visible and summary.text == tr("절대성공") and not finished[0],
+		"절대면 명중은 일반 표시 시간이 지나도 결과를 보인다: " + summary.text)
+	await create_timer(CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME - CombatDiceRollView.HOLD_TIME).timeout
+	_check(finished[0] and view.visible and target.text == "DC 3" and summary.text == "",
+		"늘어난 표시 시간이 끝나면 돌아오고 뒤에 온 굴림을 굴린다: " + summary.text)
+	await create_timer(CombatDiceRollView.TUMBLE_TIME + CombatDiceRollView.HOLD_TIME + 0.1).timeout
+	_check(not view.visible, "뒤에 온 굴림은 일반 표시 시간으로 닫힌다")
 
 	play.call(CombatDiceRoll.hit(ally, 20, _result([1], 1, 4, false, CombatChecks.Face.ABSOLUTE_FAILURE), 3, 2))
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
@@ -333,7 +342,16 @@ func _test_scene() -> void:
 	_check(summary.get_combined_minimum_size().y <= CombatDiceRollView.WORD_HEIGHT,
 		"절대면의 큰 글자도 판정 단어 영역(%.0f)에 들어간다: %.1f" % [
 			CombatDiceRollView.WORD_HEIGHT, summary.get_combined_minimum_size().y])
+	await create_timer(CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME + 0.1).timeout
+	_check(not view.visible and finished[0], "절대실패 명중도 늘어난 표시 시간 뒤 닫힌다")
+
+	# 내성굴림의 절대면은 강조만 하고 표시 시간은 그대로다.
+	play.call(CombatDiceRoll.save(ally, 4, _result([4], 4, 4, true, CombatChecks.Face.ABSOLUTE_SUCCESS), 0, tr("DC"), 9))
+	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
+	dice = view.get("_dice")
+	_check(summary.text == tr("절대성공") and dice[0].emphasized, "내성굴림의 절대면도 강조한다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
+	_check(not view.visible and finished[0], "내성굴림의 절대면은 일반 표시 시간으로 닫힌다")
 
 	# 절대면 다음 일반 굴림은 채움·글자 크기·마커 상태를 이어받지 않는다.
 	play.call(CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12))
@@ -382,6 +400,23 @@ func _test_grades() -> void:
 		and CombatDiceRollView.gauge_offset(-100.0) == -CombatDiceRollView.GAUGE_WIDTH * 0.5
 		and CombatDiceRollView.gauge_offset(3.0) > 0.0 and CombatDiceRollView.gauge_offset(-3.0) < 0.0,
 		"게이지 마커는 기준값이 중앙이고 범위를 넘으면 끝에 붙는다")
+	# 표시 시간은 굴림 종류와 면으로만 정한다. 아군만 보이는 규칙은 전투 장면이 거른다.
+	var ally: CombatUnit = null
+	var times: Array = [
+		# [굴림, 기대 표시 시간, 이름]
+		[CombatDiceRoll.hit(ally, 20, _result([20], 20, 23, true, CombatChecks.Face.ABSOLUTE_SUCCESS), 3, 12),
+			CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME, "절대성공 명중"],
+		[CombatDiceRoll.hit(ally, 20, _result([1], 1, 4, false, CombatChecks.Face.ABSOLUTE_FAILURE), 3, 12),
+			CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME, "절대실패 명중"],
+		[CombatDiceRoll.hit(ally, 20, _result([19], 19, 22, true), 3, 12), CombatDiceRollView.HOLD_TIME, "일반 명중"],
+		[CombatDiceRoll.save(ally, 4, _result([4], 4, 4, true, CombatChecks.Face.ABSOLUTE_SUCCESS), 0, tr("DC"), 9),
+			CombatDiceRollView.HOLD_TIME, "절대성공 내성"],
+		[CombatDiceRoll.save(ally, 4, _result([1], 1, 1, false, CombatChecks.Face.ABSOLUTE_FAILURE), 0, tr("DC"), 1),
+			CombatDiceRollView.HOLD_TIME, "절대실패 내성"],
+	]
+	for entry: Array in times:
+		_check(CombatDiceRollView.hold_time(entry[0]) == entry[1], "표시 시간: " + str(entry[2]))
+	_check(CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME > CombatDiceRollView.HOLD_TIME, "절대면 명중은 일반보다 오래 보인다")
 
 
 ## 기다리지 않는 독 제거 둘이 연달아 오고 기다리는 명중굴림이 뒤따라도, 먼저 온 굴림부터 결과를 끝까지 보인다.
