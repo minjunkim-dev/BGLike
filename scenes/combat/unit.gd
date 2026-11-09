@@ -292,7 +292,11 @@ func get_periodic_status_text() -> String:
 	for kind_name: String in ["burn", "poison"]:
 		var count: int = get_status_count(kind_name)
 		if count > 0:
-			states.append("%s%d" % [tr("화상") if kind_name == "burn" else tr("독"), count])
+			var text: String = "%s%d" % [tr("화상") if kind_name == "burn" else tr("독"), count]
+			# 독안개로 얻은 중첩은 기간이 없다(turns_left 0).
+			if status_effects.any(func(effect: StatusEffect) -> bool: return effect.kind == kind_name and effect.turns_left == 0):
+				text += "(%s)" % tr("기간 없음")
+			states.append(text)
 	return " ".join(states)
 
 
@@ -409,7 +413,7 @@ func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 		return false
 	return (data.statuses as Array).all(func(saved: Variant) -> bool:
 		return (saved is Array and saved.size() == 4 and saved[0] in ["burn", "poison"]
-			and _valid_index(saved[1], count, false) and saved[2] is int and saved[2] >= 1 and saved[2] <= 4
+			and _valid_index(saved[1], count, false) and saved[2] is int and saved[2] >= (0 if saved[0] == "poison" else 1) and saved[2] <= 4
 			and saved[3] is int and saved[3] >= 0 and saved[3] <= SAVED_INT_LIMIT
 			and (saved[3] == 0 if saved[0] == "burn" else saved[3] > 0)))
 
