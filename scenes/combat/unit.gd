@@ -2,13 +2,16 @@ class_name CombatUnit
 extends Node2D
 ## 팀과 직업, 격자 위치와 유닛별 턴 자원·도트 애니메이션.
 
-enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6 }
+enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6, FOG_SPIDER = 7 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Ability { STRENGTH, AGILITY, FINESSE, INTELLIGENCE, WILL, HEALTH }
 
 ## 능력치 기획서(ABILITY_SYSTEM.md) 6-1의 전사·궁수 주사위 (#386).
 ## 전사의 의지는 재디자인(#423)에서 d8이다.
 const ALLY_ABILITY_SIDES: Array[Array] = [[20, 8, 6, 4, 8, 12], [6, 12, 20, 6, 4, 8]]
+## 아이템 `stats`의 능력치 가감 키. 순서는 Ability와 같다.
+const ABILITY_MODIFIER_KEYS: Array[String] = ["strength_modifier", "agility_modifier", "finesse_modifier",
+	"intelligence_modifier", "will_modifier", "health_modifier"]
 static var ABILITY_NAMES: Array[String] = [TranslationServer.tr("힘"), TranslationServer.tr("민첩"),
 	TranslationServer.tr("솜씨"), TranslationServer.tr("지능"), TranslationServer.tr("의지"), TranslationServer.tr("건강")]
 
@@ -155,6 +158,17 @@ static func ability_name(ability: Ability) -> String:
 	return ABILITY_NAMES[ability]
 
 
+## 장비의 능력치 가감 합. 굴림값과 표준값에 더한다 (아이템 기획 폼 3장).
+func get_ability_modifier(ability: Ability) -> int:
+	return _equipment_stat(ABILITY_MODIFIER_KEYS[ability])
+
+
+## 패널·호버의 능력치 표기. 가감이 있으면 `힘 d20+2`처럼 덧붙인다 (#456).
+static func ability_text(unit: CombatUnit, ability: Ability) -> String:
+	var modifier: int = unit.get_ability_modifier(ability)
+	return "%s d%d%s" % [ABILITY_NAMES[ability], unit.get_ability_sides(ability), "" if modifier == 0 else "%+d" % modifier]
+
+
 ## 이름 뒤에 주격 조사 이/가를 붙인다. 숫자로 끝나면 읽은 소리를 따른다(1000 → 천 → 이, #415).
 static func with_subject_particle(display_name: String) -> String:
 	if display_name.is_empty():
@@ -191,7 +205,8 @@ func get_defense_bonus() -> int:
 
 ## AC = 민첩 표준값 + 방어 가산. 몬스터 정의의 armor_class가 있으면 그 값으로 덮어쓴다 (4-3, 7장).
 func get_armor_class() -> int:
-	var armor_class: int = CombatChecks.standard_value(get_ability_sides(Ability.AGILITY)) + get_defense_bonus()
+	var armor_class: int = maxi(1, maxi(1, CombatChecks.standard_value(get_ability_sides(Ability.AGILITY))
+		+ get_ability_modifier(Ability.AGILITY)) + get_defense_bonus())
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind).get("armor_class", armor_class))
 	return armor_class
@@ -232,8 +247,9 @@ func get_attack_range() -> int:
 	return 1 if kind == Kind.WARRIOR else 6
 
 
+## 민첩 굴림값. 눈(initiative_roll)에 민첩 가감을 더한다. 0은 아직 굴리지 않은 소환 유닛이라 그대로 둔다.
 func get_initiative() -> int:
-	return initiative_roll
+	return initiative_roll if initiative_roll == 0 else maxi(1, initiative_roll + get_ability_modifier(Ability.AGILITY))
 
 
 func get_display_name() -> String:
@@ -246,7 +262,7 @@ func get_art_id() -> String:
 	if not is_ally and kind <= Kind.ARCHER:
 		return "novice_barbarian" if kind == Kind.WARRIOR else "novice_archer"
 	return ["warrior", "archer", "spiderling", "mother_spider",
-		"scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000"][kind]
+		"scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000", "fog_spider"][kind]
 
 
 func get_status_label_y() -> float:
@@ -314,7 +330,7 @@ func can_drop_extra_reward() -> bool:
 
 func get_movement() -> int:
 	if is_ally:
-		return WARRIOR_MOVEMENT if kind == Kind.WARRIOR else MOVEMENT_PER_TURN
+		return maxi(1, (WARRIOR_MOVEMENT if kind == Kind.WARRIOR else MOVEMENT_PER_TURN) + _equipment_stat("max_movement"))
 	return int(CombatEnemyDefinitions.for_kind(kind).get("movement", MOVEMENT_PER_TURN))
 
 

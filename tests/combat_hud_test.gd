@@ -307,7 +307,7 @@ func _test_square_map() -> void:
 
 
 func _test_unit_art() -> void:
-	for unit_id: String in ["warrior", "archer", "spiderling", "mother_spider",
+	for unit_id: String in ["warrior", "archer", "spiderling", "mother_spider", "fog_spider",
 		"novice_barbarian", "novice_archer", "scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000"]:
 		for state: String in ["idle", "move", "attack"]:
 			for direction: String in ["left", "right"]:
@@ -2105,12 +2105,14 @@ func _test_spawned_portrait_input() -> void:
 		return not unit.is_ally and unit.kind == CombatUnit.Kind.SPIDERLING).size()
 	var initial_mothers: int = units.filter(func(unit: CombatUnit) -> bool:
 		return not unit.is_ally and unit.kind == CombatUnit.Kind.MOTHER_SPIDER).size()
+	var initial_fogs: int = units.filter(func(unit: CombatUnit) -> bool:
+		return not unit.is_ally and unit.kind == CombatUnit.Kind.FOG_SPIDER).size()
 	var initial_ready: bool = (units.size() == 7 and initial_allies == 2
-		and initial_spiderlings == 3 and initial_mothers == 2
+		and initial_spiderlings == 3 and initial_mothers == 1 and initial_fogs == 1
 		and units[0].is_ally and units[0].kind == CombatUnit.Kind.WARRIOR
 		and units[1].is_ally and units[1].kind == CombatUnit.Kind.ARCHER)
 	_check(initial_ready,
-		"소환 전제조건: 3-1 아군2·새끼3·엄마거미2")
+		"소환 전제조건: 3-1 아군2·새끼3·엄마거미1·독안개 거미1")
 	if not initial_ready:
 		main.queue_free()
 		await process_frame
@@ -2179,7 +2181,7 @@ func _test_spawned_portrait_input() -> void:
 	for frame: int in range(4):
 		await process_frame
 	var fixture_failures: int = failures
-	_check(units.size() == 13 and turns.round_number == 3 and turns.current_unit == units[1],
+	_check(units.size() == 13 and turns.round_number == 6 and turns.current_unit == units[1],
 		"실제3-1 AI가 새끼6마리를 생성한 뒤 궁수 턴에서 누적 초상 입력 검사")
 	var portraits: Dictionary = hud.get("_portraits")
 	var spawned: Array[CombatUnit] = []

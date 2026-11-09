@@ -19,12 +19,12 @@ kind = 2
 is_ally = false
 start_cell = Vector2i(7, 7)
 
-[node name="MotherSpider1" parent="." instance=ExtResource("1_unit")]
-kind = 3
+[node name="FogSpider1" parent="." instance=ExtResource("1_unit")]
+kind = 7
 is_ally = false
 start_cell = Vector2i(9, 2)
 
-[node name="MotherSpider2" parent="." instance=ExtResource("1_unit")]
+[node name="MotherSpider1" parent="." instance=ExtResource("1_unit")]
 kind = 3
 is_ally = false
 start_cell = Vector2i(9, 7)

@@ -48,6 +48,13 @@ static var MOTHER_SPIDER: Dictionary = {
 	"attack_bonus": 3, "damage_bonus": 2, "attack_range": 1,
 	"actions": ["attack", "spawn"]
 }
+static var FOG_SPIDER: Dictionary = {
+	"abilities": [6, 6, 4, 4, 4, 8], "defense_bonus": 0,
+	"name": TranslationServer.tr("독안개 거미"), "max_hit_points": 12, "poison_immune": true,
+	"movement": 4,
+	"attack_bonus": 3, "damage_bonus": 1, "attack_range": 1,
+	"actions": ["attack", "fog"]
+}
 
 
 static func for_kind(kind: CombatUnit.Kind) -> Dictionary:
@@ -57,6 +64,8 @@ static func for_kind(kind: CombatUnit.Kind) -> Dictionary:
 		return SCRAP_ROBOT_2000
 	if kind == CombatUnit.Kind.SCRAP_ROBOT_1000:
 		return SCRAP_ROBOT_1000
+	if kind == CombatUnit.Kind.FOG_SPIDER:
+		return FOG_SPIDER
 	if kind == CombatUnit.Kind.MOTHER_SPIDER:
 		return MOTHER_SPIDER
 	if kind == CombatUnit.Kind.SPIDERLING:
