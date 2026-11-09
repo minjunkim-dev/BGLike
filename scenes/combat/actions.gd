@@ -1456,7 +1456,8 @@ func cast_fog(caster: CombatUnit, cell: Vector2i) -> bool:
 	if area.is_empty():
 		return false
 	var dc: int = CombatActionRules.save_dc(caster, "fog")
-	caster.spend_resource(CombatUnit.TurnResource.ACTION)
+	if not caster.spend_resource(CombatUnit.TurnResource.ACTION):
+		return false
 	for area_cell: Vector2i in area:
 		_grounds.append(Ground.new(caster, area_cell, "fog", dc))
 	var revision: int = _revision
