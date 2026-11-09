@@ -196,7 +196,7 @@
 | 유니크 아이템 | #200 "Out of scope"의 "아이템 등급 보류", [#456](https://github.com/minjunkim-dev/BGLike/issues/456)(아이템 능력치 가감) | 등급 없이 특수 효과 아이템으로 정의 |
 | 몬스터 스탯 | [#205](https://github.com/minjunkim-dev/BGLike/issues/205) 제안 답 대기, [#460](https://github.com/minjunkim-dev/BGLike/issues/460)~[#463](https://github.com/minjunkim-dev/BGLike/issues/463) 독안개 거미 | #205에 부분 채택 답변. 진단에 독안개 거미 포함 |
 | 마법사 | #200 "직업 컨셉과 스킬 수 확장"(기획자 작업 중), [#357](https://github.com/minjunkim-dev/BGLike/issues/357), [#407](https://github.com/minjunkim-dev/BGLike/issues/407) 전사 재디자인 구현 | 12/8에 #357의 물리/마법 2종 결정 |
-| 레벨업 | [#477](https://github.com/minjunkim-dev/BGLike/issues/477), [#322](https://github.com/minjunkim-dev/BGLike/issues/322)(절대면·치명타, 답 대기) | 충돌 없음. 확장만 제외. #322는 12/23 최종 튜닝 전에 답이 필요함 |
+| 레벨업 | [#477](https://github.com/minjunkim-dev/BGLike/issues/477), [#322](https://github.com/minjunkim-dev/BGLike/issues/322)(절대면·치명타) | 충돌 없음. 확장만 제외. 절대면은 레벨업 성장에 속하므로 레벨업 확장과 함께 이번 범위에서 제외합니다. 치명타는 전역 규칙을 만들지 않고 스킬마다 필요할 때 정합니다(마법사 스킬, 유니크 아이템 설계 때 개별 결정). #322는 일정의 선행 조건이 아닙니다 |
 | 개발자 작업 | 진행 중인 #407·#460~#463·#477·#470, M7 잔여 #306·#207·#208 | 진행 중인 작업을 먼저 끝내고 새 요청서는 그 뒤에 착수 |
 
 #200과 #205에 올릴 코멘트는 아직 올리지 않았습니다. 올리기 전에 기획자가 내용을 확인합니다.
