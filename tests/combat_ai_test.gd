@@ -753,6 +753,12 @@ func _test_fog_spider_fallbacks() -> void:
 		wall.actions._grounds.append(old)
 	await ai.play_turn(spider, wall.actions)
 	_check(spider.cell.y > 2 and spider.cell.x == 0, "벽 너머 아군에게는 걷는 경로를 따라 이동")
+	# 높이 차가 2인 이웃은 걸어서 인접하지 않으므로 접근 칸 선택에서 가까운 칸으로 세지 않는다.
+	var cliff: Fixture = _fog_fixture(Vector2i(0, 1), Vector2i(1, 0), Vector2i(9, 9))
+	spider = cliff.units[2]
+	cliff.units[1].hit_points = 0
+	cliff.actions.grid.heights[Vector2i(1, 0)] = 2
+	_check(ai.approach_cell(spider, cliff.actions, cliff.units[0]) == spider.cell, "높이 차 2 이웃은 인접으로 세지 않음")
 	var stunned: Fixture = _fog_fixture(Vector2i(4, 4), Vector2i(5, 4), Vector2i(8, 8))
 	spider = stunned.units[2]
 	spider.is_stunned = true

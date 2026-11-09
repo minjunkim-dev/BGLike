@@ -335,7 +335,8 @@ func approach_cell(actor: CombatUnit, actions: CombatActions, focus: CombatUnit 
 			return CombatGrid.distance(cell, target.cell)
 		var steps: int = walk.get(cell, 1 << 20)
 		for neighbor: Vector2i in CombatGrid.neighbors(cell):
-			steps = mini(steps, walk.get(neighbor, 1 << 20) + 1)
+			if actions.grid.are_adjacent(cell, neighbor):
+				steps = mini(steps, walk.get(neighbor, 1 << 20) + 1)
 		return steps
 	var best: Vector2i = actor.cell
 	var best_distance: int = gap.call(best)
