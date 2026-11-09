@@ -2742,6 +2742,7 @@ func _test_fog_cast() -> void:
 	# 영역 (4,4)(3,4)(5,4)(4,3)(4,5)의 유닛 0·1·2가 유닛 순서대로 건강 주사위(d12, d8, d4)를 굴린다. DC는 3이다.
 	f.actions.dice = _dice_for([1, 8, 1], [12, 8, 4])
 	_check(f.actions.cast_fog(caster, Vector2i(4, 4)), "독안개 시전")
+	_check(not f.actions.cast_fog(caster, Vector2i(4, 4)) and _fog_count(f) == 5, "행동이 없으면 시전할 수 없음")
 	_check(_fog_count(f) == 5 and f.actions.get_grounds().all(func(ground: CombatActions.Ground) -> bool:
 		return ground.dc == dc and ground.turns_left == 4 and ground.source == caster), "칸마다 기록 하나, 시전 DC와 지속 4를 기록")
 	_check(f.units[0].get_status_count("poison") == 1 and f.units[1].get_status_count("poison") == 0
@@ -2751,6 +2752,7 @@ func _test_fog_cast() -> void:
 	_check(_fog_rolls(f) == 3, "시전 즉시 굴림 3번")
 	# 같은 칸에 다시 시전하면 기록이 겹치고, 새 시전의 즉시 굴림은 칸 단위로 한 번이다.
 	f.actions.dice = _dice_for([8, 8, 4], [12, 8, 4])
+	caster.action_left = 1
 	_check(f.actions.cast_fog(caster, Vector2i(4, 4)) and _fog_count(f) == 10 and _fog_rolls(f) == 6
 		and f.units[0].get_status_count("poison") == 1, "겹친 시전도 칸당 굴림 한 번")
 	_check(f.actions.get_grounds().all(func(ground: CombatActions.Ground) -> bool:

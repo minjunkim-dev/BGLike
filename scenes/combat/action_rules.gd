@@ -81,7 +81,7 @@ const CLASS_ONLY: Dictionary[String, CombatUnit.Kind] = {
 	"mark": CombatUnit.Kind.ARCHER, "shock": CombatUnit.Kind.ARCHER, "disengage": CombatUnit.Kind.ARCHER
 }
 ## 아군이 쓰지 않는 몬스터 동작. 풋내기 야만인의 숨 고르기도 여기 있다.
-const MONSTER_ONLY: Array[String] = ["second_wind", "spawn", "pull", "spin"]
+const MONSTER_ONLY: Array[String] = ["second_wind", "spawn", "pull", "spin", "fog"]
 const USE_COUNTERS: Dictionary[String, StringName] = {
 	"second_wind": &"second_wind_left", "mark": &"mark_left",
 	"shock": &"shock_left", "disengage": &"disengage_left", "potion": &"potion_left",
