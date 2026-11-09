@@ -200,6 +200,19 @@ func _test_poison_immunity() -> void:
 	actor.kind = CombatUnit.Kind.SPIDERLING
 	_check(actor.is_poison_immune() and not f.units[3].is_poison_immune() and not f.units[0].is_poison_immune(),
 		"새끼·엄마 거미만 독 면역 속성을 가짐")
+	f.actions._grounds.clear()
+	f.actions._grounds.append(CombatActions.Ground.new(f.units[0], Vector2i(2, 0), "fog", 6))
+	actor.cell = Vector2i.ZERO
+	actor.movement_left = 6
+	walked.clear()
+	f.logs.clear()
+	await f.actions.move_to(actor, Vector2i(4, 0))
+	_check(walked.size() == 4 and Vector2i(2, 0) in walked, "독 면역은 독안개 칸도 비용 0으로 보고 곧게 지나감")
+	actor.cell = Vector2i(2, 0)
+	f.actions._apply_fog(actor, true)
+	f.actions._on_turn_started(actor)
+	_check(actor.get_status_count("poison") == 0 and not f.logs.any(func(line: String) -> bool: return "독" in line),
+		"독 면역은 독안개에 들어서거나 그 위에서 턴을 시작해도 내성굴림·독·로그가 없음")
 
 
 func _test_jump_attack() -> void:

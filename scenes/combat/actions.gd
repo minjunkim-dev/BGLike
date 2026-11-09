@@ -1420,7 +1420,7 @@ func _apply_grounds(unit: CombatUnit, entering: bool) -> void:
 ## 독안개 칸의 건강 내성굴림. 칸 단위로 한 번 굴리고 그 칸의 모든 독안개 기록에 진입을 남긴다.
 ## 시전자가 쓰러졌어도 장판은 남으므로 시전자의 생사를 보지 않는다. DC는 칸에서 가장 먼저 시전한 기록을 쓴다.
 func _apply_fog(unit: CombatUnit, entering: bool) -> void:
-	if not is_instance_valid(unit) or unit.hit_points <= 0 or is_over():
+	if not is_instance_valid(unit) or unit.hit_points <= 0 or is_over() or unit.is_poison_immune():
 		return
 	var fogs: Array[Ground] = []
 	for ground: Ground in _grounds:
