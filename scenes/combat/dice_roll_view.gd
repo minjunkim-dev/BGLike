@@ -14,6 +14,9 @@ const FAILURE_SOUND: AudioStream = preload("res://scenes/combat/audio/roll_fail.
 ## 굴림 하나의 시간. 매우 빠르게 끝나야 하며 정확한 값은 직접 플레이로 정한다.
 const TUMBLE_TIME: float = 0.45
 const HOLD_TIME: float = 0.5
+## 명중굴림에서 절대성공·절대실패면이 나왔을 때 결과를 보이는 시간(#488). 임시값이며 플레이 후 정한다.
+## 내성굴림의 절대면은 강조만 두고 시간은 늘리지 않는다.
+const ABSOLUTE_HIT_HOLD_TIME: float = 0.9
 const FACE_CHANGES: int = 8
 const DIE_RADIUS: float = 18.0
 ## 주사위 중심 높이. 절대면 강조선(가장 큰 윤곽)이 배경 위로 나가지 않게 둔다.
@@ -139,10 +142,17 @@ func play(roll: CombatDiceRoll) -> void:
 	_begin(roll)
 	await get_tree().create_timer(TUMBLE_TIME, false).timeout
 	_settle()
-	await get_tree().create_timer(HOLD_TIME, false).timeout
+	await get_tree().create_timer(hold_time(roll), false).timeout
 	visible = false
 	_serving += 1
 	_turn_passed.emit()
+
+
+## 결과를 보이는 시간. 명중굴림의 절대면만 늘린다.
+static func hold_time(roll: CombatDiceRoll) -> float:
+	if roll.category == CombatDiceRoll.Category.HIT and roll.result.face != CombatChecks.Face.NORMAL:
+		return ABSOLUTE_HIT_HOLD_TIME
+	return HOLD_TIME
 
 
 ## 합계와 기준값의 차이. 양수면 기준을 넘긴 만큼이다.
