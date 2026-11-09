@@ -17,6 +17,7 @@ var units: Array[CombatUnit]
 var spider: CombatUnit
 var log_lines: Array[String] = []
 var observer: CaptureObserver
+var capture_dir: String = ""
 var finished: bool = false
 ## 거미 순서마다 [라운드, 전 시전 수, 후 시전 수, 시전함, 칸 수] 기록.
 var history: Array = []
@@ -41,15 +42,11 @@ func _run() -> void:
 			push_error("fog spider watchdog expired")
 			quit(1))
 	root.size = Vector2i(1280, 720)
-	var capture_dir: String = ""
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--capture-dir="):
 			capture_dir = argument.trim_prefix("--capture-dir=")
 	await _open_stage()
-	if not capture_dir.is_empty():
-		observer = CaptureObserver.new()
-		battle.add_child(observer)
-		_check(observer.start(battle, capture_dir) == OK, "독립 캡처 관찰 Node 시작")
+	_attach_observer("")
 	_check_layout()
 	await _two_zones_flow()
 	var expiry_live: Array = await _death_flow(false)
@@ -60,7 +57,7 @@ func _run() -> void:
 	_check(problems.is_empty(), "준비한 주사위 모두 소비: %s" % str(problems))
 	finished = true
 	print("Fog spider QA: %d checks, %d failures;" % [checks, failures])
-	if observer != null:
+	if is_instance_valid(observer):
 		observer.stop()
 	quit(0 if failures == 0 else 1)
 
@@ -79,6 +76,17 @@ func _open_stage() -> void:
 	battle.call("start_battle")
 	_bind()
 	await create_timer(0.2).timeout
+
+
+## 관찰 Node는 전투 장면의 자식이라 장면을 다시 열면 함께 사라진다. 흐름마다 새로 붙이고 폴더를 나눈다.
+## 첫 흐름은 --capture-dir 바로 아래에, 나머지는 하위 폴더에 저장한다(start()는 기존 frames.jsonl을 거부한다).
+func _attach_observer(sub: String) -> void:
+	if capture_dir.is_empty():
+		return
+	observer = CaptureObserver.new()
+	battle.add_child(observer)
+	var directory: String = capture_dir if sub.is_empty() else capture_dir.path_join(sub)
+	_check(observer.start(battle, directory) == OK, "독립 캡처 관찰 Node 시작: %s" % directory)
 
 
 func _bind() -> void:
@@ -175,6 +183,7 @@ func _two_zones_flow() -> void:
 ## resume이 true이면 거미가 쓰러진 직후 상태를 저장해 새 전투에 복원한 뒤 이어서 확인한다.
 func _death_flow(resume: bool) -> Array:
 	await _open_stage()
+	_attach_observer("resume-before" if resume else "live-before")
 	ScriptedDice.arrange_turns(turns, units, [units[0], units[1], spider])
 	await create_timer(0.2).timeout
 	history.clear()
@@ -184,7 +193,7 @@ func _death_flow(resume: bool) -> Array:
 		"쓰러뜨리기 전제조건: 독안개 두 건 시전, 시전 라운드 %s" % str(cast_rounds))
 	var cells_before: int = actions.fog_cells(spider).size()
 	var tag: String = "이어하기" if resume else "처음부터"
-	if observer != null and not resume:
+	if is_instance_valid(observer):
 		await create_timer(1.4).timeout
 	actions.incapacitate(spider)
 	_check(spider.hit_points == 0 and actions.fog_cast_count(spider) == 2
@@ -193,13 +202,14 @@ func _death_flow(resume: bool) -> Array:
 	if resume:
 		var state: Dictionary = battle.call("combat_state")
 		await _open_stage()
+		_attach_observer("resume-after")
 		_check(battle.call("restore_combat", state), "저장 상태 복원")
 		units = battle.get("units")
 		_find_spider()
 		_check(battle.call("combat_state") == state, "복원 직후 전투 상태가 저장과 같음")
 		_check(actions.fog_cast_count(spider) == 2 and actions.fog_cells(spider).size() == cells_before,
 			"복원 뒤 독안개 두 건·같은 칸 수 유지")
-	if observer != null and not resume:
+	if is_instance_valid(observer):
 		await create_timer(1.4).timeout
 	var expiry_rounds: Array[int] = []
 	var previous: int = actions.fog_cast_count(spider)
