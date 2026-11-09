@@ -30,6 +30,7 @@ func _check(condition: bool, message: String) -> void:
 
 func _run() -> void:
 	create_timer(60.0).timeout.connect(func() -> void:
+		failures += 1
 		push_error("combat ui qa watchdog expired")
 		quit(1))
 	for argument: String in OS.get_cmdline_user_args():
