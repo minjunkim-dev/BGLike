@@ -505,6 +505,8 @@ func apply_status(source: CombatUnit, target: CombatUnit, kind: String,
 		return false
 	if kind == "burn" and target.cell in grid.water_cells:
 		return false
+	if kind == "poison" and target.is_poison_immune():
+		return false
 	if kind == "stun":
 		if target.is_boss():
 			return false
@@ -912,6 +914,9 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	var ground_cells: Array[Vector2i] = []
 	if not actor.is_ally:
 		for ground: Ground in _grounds:
+			# 독 면역은 불이 아닌 장판(독·독안개)을 피할 이유가 없다.
+			if actor.is_poison_immune() and ground.kind != "burn":
+				continue
 			if ground.cell not in ground_cells:
 				ground_cells.append(ground.cell)
 	var path: Array[Vector2i] = grid.path_to(actor, destination, ground_cells)

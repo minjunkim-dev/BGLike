@@ -76,6 +76,7 @@ func _run() -> void:
 	await _test_spiderling()
 	await _test_warrior()
 	await _test_ground_paths()
+	await _test_poison_immunity()
 	await _test_jump_attack()
 	await _test_jump_priorities()
 	await _test_jump_retreat_and_pull()
@@ -162,6 +163,43 @@ func _test_ground_paths() -> void:
 	await ai.play_turn(actor, stationary.actions)
 	_check(actor.cell == Vector2i(4, 4) and actor.movement_left == 6 and actor.action_left == 0,
 		"장판 위에서도 이미 공격할 수 있으면 별도 이탈 없이 공격")
+
+
+func _test_poison_immunity() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[2]
+	actor.kind = CombatUnit.Kind.MOTHER_SPIDER
+	actor.cell = Vector2i.ZERO
+	f.units[0].cell = Vector2i(9, 9)
+	f.units[1].cell = Vector2i(9, 8)
+	f.units[3].cell = Vector2i(9, 7)
+	f.actions.grid.map_size = Vector2i(5, 2)
+	_check(f.actions.create_ground(f.units[0], Vector2i(1, 0), "poison"), "독 면역 검사용 독 장판")
+	var walked: Array[Vector2i] = []
+	f.actions.movement_animation = func(_unit: CombatUnit, cell: Vector2i) -> void: walked.append(cell)
+	f.logs.clear()
+	actor.movement_left = 6
+	await f.actions.move_to(actor, Vector2i(4, 0))
+	_check(walked.size() == 4 and Vector2i(1, 0) in walked and actor.get_status_count("poison") == 0
+		and not f.logs.any(func(line: String) -> bool: return "독" in line),
+		"독 면역은 독 장판 칸을 비용 0으로 보고 곧게 지나가며 독과 그 로그가 없음")
+	actor.cell = Vector2i(1, 0)
+	f.logs.clear()
+	f.actions._on_turn_started(actor)
+	_check(actor.get_status_count("poison") == 0 and not f.logs.any(func(line: String) -> bool: return "독" in line),
+		"독 면역은 턴 시작에 독 장판 위에 있어도 독과 그 로그가 없음")
+	_check(f.actions.create_ground(f.units[0], Vector2i(3, 0), "burn"), "독 면역 검사용 불 장판")
+	actor.cell = Vector2i.ZERO
+	actor.movement_left = 6
+	walked.clear()
+	await f.actions.move_to(actor, Vector2i(4, 0))
+	_check(walked.size() == 6 and Vector2i(3, 0) not in walked and actor.get_status_count("burn") == 0,
+		"독 면역도 불 장판은 기존대로 피함")
+	_check(f.actions.apply_status(f.units[0], actor, "burn") and not f.actions.apply_status(f.units[0], actor, "poison"),
+		"화상은 면역이 아니고 독만 면역")
+	actor.kind = CombatUnit.Kind.SPIDERLING
+	_check(actor.is_poison_immune() and not f.units[3].is_poison_immune() and not f.units[0].is_poison_immune(),
+		"새끼·엄마 거미만 독 면역 속성을 가짐")
 
 
 func _test_jump_attack() -> void:
