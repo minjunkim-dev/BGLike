@@ -102,7 +102,7 @@
 - 슬로모션은 넣지 않는다. 적 턴 4배속이 `Engine.time_scale`을 쓰므로 전역 시간을 바꾸지 않는다.
 - 아군의 명중굴림에서 절대면이 나오면 결과 표시 시간만 일반 0.5초에서 약 0.9초로 늘린다. 임시값이며 플레이 후 조정한다. 구현은 [#491](https://github.com/minjunkim-dev/BGLike/issues/491)이다.
 - 독 제거·회전회오리·만능팔 내성은 지금의 강조(큰 주사위, 노란 외곽선)만 둔다.
-- 절대성공에 붙는 공통 추가 이점은 없다([#322](https://github.com/minjunkim-dev/BGLike/issues/322)에서 치명타 전역 규칙을 만들지 않기로 함). 그래서 위 강도를 전역으로 다시 보지 않는다. 어떤 스킬이 절대성공 추가 효과를 가지면 그 스킬 기획에서 연출을 함께 정한다([질문 4 정리](https://github.com/minjunkim-dev/BGLike/issues/488#issuecomment-6765872690)).
+- 지금 절대성공에 붙는 공통 추가 이점은 없다([#322](https://github.com/minjunkim-dev/BGLike/issues/322)에서 치명타 전역 규칙을 만들지 않기로 함). 그래서 위 강도를 전역으로 다시 보지 않는다. 어떤 스킬이 절대성공 추가 효과를 가지면 그 스킬 기획에서 연출을 함께 정한다([질문 4 정리](https://github.com/minjunkim-dev/BGLike/issues/488#issuecomment-6765872690)).
 
 ### 유리·불리
 
