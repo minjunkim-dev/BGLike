@@ -1,49 +1,18 @@
-<!-- PR 제목 예시: feat(combat): add turn order. 규칙: docs/GIT_CONVENTIONS.md -->
+Author: <도구> / <모델>   (사람이면 `사람 / 없음`)
 
-## 관련 Issue
+## Summary
+왜 바꾸는지, 바꾸기 전과 후.
 
-Refs # (Issue를 끝내는 마지막 PR이면 Closes #)
+## Evidence
+실행한 명령과 결과. 확인하지 않은 범위.
 
-## 변경 내용
+## Merge Danger
+Door: <되돌리기 쉬움 또는 되돌리기 어려움. 애매하면 어려움>
+영향 범위:
+되돌리는 법:
+신뢰 경계: <없음, 또는 걸린 경로>
 
-### Summary
-
-변경 이유와 결과를 적습니다. before/after 또는 작은 도식을 사용합니다.
-
-- 변경 전:
-- 변경 후:
-
-## 검증
-
-### Evidence
-
-- [ ] `git diff --check`
-- [ ] `python3 -m unittest discover -s scripts -p 'test_*.py'`
-- [ ] 워크플로 변경 시 `actionlint` (해당 없음이면 이유 기록)
-- [ ] Godot headless import와 메인 장면 실행
-- [ ] 필요한 Godot 회귀 검사 (문서·관리 파일만 변경하면 범위 규칙과 생략 이유 기록)
-- [ ] 최종 head의 필수 CI 통과
-- [ ] 플레이 변경 시 편집기 또는 `manual_qa.py --mode macos`에서 직접 조작 확인 (체크 기준: `docs/CAPTURE_VERIFICATION.md`의 확인 등급, 해당 없음이면 이유 기록)
-
-실제 명령, 결과와 로그 링크:
-
-- base SHA / 최종 head SHA:
-- Standards / Spec / 필요한 Security: 별도 컨텍스트, 실제 모델, 결과, 수정 커밋
-- 합격 기준과 읽은 문서 경로·SHA-256:
-- 영향 문서와 갱신 내용 또는 유지 이유 (기획서·개발 요청서의 구현 상태 포함):
-- 확인하지 못한 항목:
-
-<!-- 같은 모델이면 같은 모델의 별도 컨텍스트로 기록합니다. 실행하지 못한 리뷰는 미완료입니다. -->
-
-## 검토자에게
-
-중점적으로 볼 장면, 충돌 가능 파일, 미완성 기능의 노출 조건을 적습니다.
-
-### Merge Danger
-
-- two-way / one-way와 이유:
-- blast radius: 영향을 받는 사용자·데이터·권한·외부 시스템:
-- 되돌리는 방법과 남는 외부 상태:
-- 병합 주체·위임 근거 / 사람이 승인해야 하는 최종 head:
-
-<!-- diff 크기로 위험을 판단하지 않습니다. 권한 확대·되돌리기 어려운 데이터 변경·외부 대량 발송은 위험 변경입니다. one-way/broad 변경에는 사람이 최종 head를 승인해야 합니다. -->
+## Review
+리뷰어(구현과 다른 컨텍스트, 도구/모델):
+고친 것:
+남은 지적:

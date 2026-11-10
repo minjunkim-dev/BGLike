@@ -29,7 +29,7 @@
 기획 논의 → 기획서·개발 요청서 PR → 개발 Issue → 브랜치 → PR → 리뷰 → squash merge → 기획 검수 → 회고
 ```
 
-사람은 목표·합격 기준과 위험한 변경의 최종 병합을 승인합니다. 맡긴 작업의 `two-way/narrow` 변경은 최종 독립 리뷰·필수 CI·합격 기준을 충족하면 로컬 에이전트가 별도 병합 위임 없이 병합합니다. `one-way/broad`와 새 Draft 쓰기 권한은 사람이 최종 head를 승인해야 합니다. 자세한 절차는 [협업 규칙](docs/WORKFLOW.md)에 있습니다.
+사람은 목표·합격 기준을 정합니다. 필수 CI와 합격 기준을 충족하면 사람이 병합합니다. 에이전트는 병합하지 않습니다. 새 Draft 쓰기 권한은 [Draft Release 절차](docs/DRAFT_RELEASE.md)를 따릅니다. 자세한 절차는 [협업 규칙](docs/WORKFLOW.md)에 있습니다.
 
 ## 4. Issue
 
@@ -100,7 +100,7 @@
 - `.godot/` 캐시와 개인 설정은 커밋하지 않습니다. 큰 바이너리는 LFS 규칙(`.gitattributes`)을 따릅니다.
 - PR을 열기 전에 공백과 Python 검사를 수행합니다. 게임 변경에는 Godot import·실행·회귀 테스트를 추가합니다. [CI 범위 규칙](docs/CI.md)을 따릅니다. 플레이가 바뀌면 편집기에서 직접 조작해 보고 PR에 적습니다. CI 통과가 조작감 확인을 대신하지 않습니다.
 - PR 본문에는 변경 내용, 실행한 검증, **확인하지 못한 것**을 구분해 적습니다. 양식이 자동으로 뜹니다.
-- Standards와 Spec을 각각 별도 컨텍스트에서 검토합니다. 위험 변경에는 Security를 추가합니다. 확실한 결함을 수정·커밋한 뒤 최종 전체 diff와 CI를 확인합니다. 같은 모델이면 같은 모델의 별도 컨텍스트로 기록합니다.
+- 구현과 다른 컨텍스트에서 [REVIEW.md](REVIEW.md)로 변경분을 검토합니다. 확실한 결함을 수정·커밋한 뒤 CI를 확인합니다. 병합은 사람이 합니다.
 
 ## 10. 자동으로 되는 것
 
@@ -112,7 +112,7 @@
 | Godot import·메인 장면·전투 회귀 검사 | GitHub Actions `godot`. 문서만 바뀌면 엔진 작업은 생략 |
 | PR·CI 알림 | `#github-알림` Discord 웹훅 |
 | GitHub AI 리뷰 | GitHub Claude workflow는 사용하지 않음. 자동 리뷰는 현재 GitHub 연결·설정에서 실제 연결만 정리. 다른 저장소·계정 연결은 유지 |
-| 로컬 독립 리뷰 / 회고 | Standards·Spec·필요한 Security / 사용자 요청 시 Matt Pocock retro |
+| 로컬 리뷰 / 회고 | 다른 컨텍스트에서 `REVIEW.md` 기준, 신뢰 경계면 Security 추가 / 사용자 요청 시 Matt Pocock retro |
 | Issue·PR 양식 | `.github/` 템플릿 |
 
 동료 승인은 필수가 아닙니다. main 보호의 현재 적용 상태와 필수 검사 조건은 [협업 규칙](docs/WORKFLOW.md#현재-github-제약)을 참조합니다.

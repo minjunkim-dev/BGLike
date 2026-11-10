@@ -62,10 +62,15 @@ func _run() -> void:
 	_test_compound_costs()
 	await _test_cross_slash()
 	await _test_steel_charge()
+	_test_sweep_shape()
+	await _test_sweep()
 	_test_holy_veil()
 	await _test_battle_cry()
 	_test_battle_cry_clock_slot()
+	_test_turn_start_order()
 	_test_phalanx()
+	await _test_brawn()
+	await _test_counter()
 	_test_save_state()
 	for unit: CombatUnit in _created:
 		unit.free()
@@ -98,7 +103,7 @@ func _test_stats() -> void:
 func _test_skill_ownership() -> void:
 	var f: Fixture = _fixture()
 	var warrior: CombatUnit = f.units[0]
-	for action: String in ["cross_slash", "steel_charge", "holy_veil", "battle_cry", "phalanx", "opportunity"]:
+	for action: String in ["cross_slash", "steel_charge", "holy_veil", "battle_cry", "phalanx", "brawn", "counter", "opportunity"]:
 		_check(CombatActionRules.belongs_to(warrior, action), "아군 전사의 스킬: " + action)
 		_check(not CombatActionRules.belongs_to(f.units[1], action), "아군 궁수는 전사 스킬 없음: " + action)
 		_check(not CombatActionRules.belongs_to(f.units[2], action) or action == "opportunity",
@@ -108,7 +113,7 @@ func _test_skill_ownership() -> void:
 	for action: String in ["parry", "surge"]:
 		_check(action not in CombatActionRules.NAMES and action not in CombatActionRules.USE_COUNTERS
 			and not CombatActionRules.GROUPS.any(func(group: Array) -> bool: return action in group), "옛 스킬 삭제: " + action)
-	_check(CombatActionRules.GROUPS[2] == ["opportunity"], "반응 묶음은 기회 공격만")
+	_check(CombatActionRules.GROUPS[2] == ["opportunity", "counter"], "반응 묶음은 기회 공격과 반격")
 
 
 func _test_combat_uses() -> void:
@@ -206,12 +211,123 @@ func _test_steel_charge() -> void:
 		await blocked.actions.steel_charge(blocked.units[0], target)
 		_check(target.hit_points == 6 and blocked.units[0].cell == origin and target.cell == origin + Vector2i(1, 0),
 			"밀려날 칸이 막히면 피해만: " + blocker)
+	# #407 1단계 답 1: 피해로 쓰러지면 밀침 없이 대상 칸으로 전진하고, 떠나는 칸의 인접 적에게 기회 공격을 받지 않는다.
+	var downed: Fixture = _fixture()
+	var charger: CombatUnit = downed.units[0]
+	var watcher: CombatUnit = downed.units[3]
+	watcher.kind = CombatUnit.Kind.WARRIOR
+	watcher.cell = Vector2i(4, 3)
+	downed.units[2].hit_points = 6
+	downed.actions.dice = _dice([15, 6], [20, 20])
+	_check(await downed.actions.steel_charge(charger, downed.units[2]), "쓰러뜨리는 강철 돌진")
+	_check(downed.units[2].hit_points == 0 and charger.cell == Vector2i(5, 4), "대상이 쓰러지면 대상이 있던 칸으로 1칸 전진")
+	_check(charger.hit_points == charger.get_max_hit_points() and watcher.reaction_left == 1
+		and downed.actions.pending_reactor == null, "전진은 기회 공격을 받지 않음")
+	_check(charger.movement_left == 2 and charger.bonus_action_left == 0, "전진에 이동력을 더 쓰지 않음")
+	var walled: Fixture = _fixture()
+	walled.actions.create_prop(Vector2i(6, 4), "crate")
+	walled.units[2].hit_points = 6
+	walled.actions.dice = _dice([15, 6], [20, 20])
+	await walled.actions.steel_charge(walled.units[0], walled.units[2])
+	_check(walled.units[0].cell == Vector2i(5, 4), "밀려날 칸이 막혀도 대상이 쓰러지면 그 칸으로 전진")
 	var missed: Fixture = _fixture()
 	missed.actions.dice = _dice([1], [20])
 	await missed.actions.steel_charge(missed.units[0], missed.units[2])
 	_check(missed.units[2].cell == Vector2i(5, 4) and missed.units[0].cell == Vector2i(4, 4)
 		and missed.units[0].steel_charge_left == 0 and missed.units[0].movement_left == 2,
 		"빗나가면 밀치거나 전진하지 않고 비용은 소비")
+
+
+func _test_sweep_shape() -> void:
+	var f: Fixture = _fixture()
+	var grid: CombatGrid = f.actions.grid
+	var origin: Vector2i = Vector2i(4, 4)
+	# 정면 +x(화면 오른쪽 아래)의 오른쪽 옆은 +y(왼쪽 아래)다. 순서는 왼쪽 옆부터 시계방향이다.
+	_check(grid.sweep_cells(origin, Vector2i(5, 4)) == [Vector2i(4, 3), Vector2i(5, 3), Vector2i(5, 4), Vector2i(5, 5), Vector2i(4, 5)],
+		"정면 반달 5칸: 왼쪽 옆 → 앞왼쪽 → 앞 → 앞오른쪽 → 오른쪽 옆")
+	_check(grid.sweep_cells(origin, Vector2i(4, 3)) == [Vector2i(3, 4), Vector2i(3, 3), Vector2i(4, 3), Vector2i(5, 3), Vector2i(5, 4)],
+		"다른 방향을 조준하면 모양과 순서가 함께 돎")
+	_check(grid.sweep_cells(origin, Vector2i(6, 4)).is_empty() and grid.sweep_cells(origin, origin).is_empty(),
+		"인접하지 않은 칸은 정면이 될 수 없음")
+	grid.heights[Vector2i(5, 3)] = 2
+	grid.heights[Vector2i(5, 5)] = 1
+	grid.pits = [Vector2i(4, 3)]
+	grid.blocked_cells = [Vector2i(5, 4)]
+	f.actions.create_prop(Vector2i(4, 5), "crate")
+	_check(grid.sweep_cells(origin, Vector2i(5, 4)) == [Vector2i(5, 5)],
+		"높이 차 2 이상·낭떠러지·막힌 칸·나무 상자는 빼고, 막힌 정면 너머의 칸도 시야 없이 셈")
+	_check(grid.sweep_cells(Vector2i(0, 0), Vector2i(0, 1)) == [Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)], "맵 밖 칸은 뺌")
+	_check(grid.sweep_cells(Vector2i(0, 4), Vector2i(-1, 4)).is_empty(), "맵 밖 칸은 정면이 될 수 없음")
+
+
+func _test_sweep() -> void:
+	var f: Fixture = _fixture()
+	var warrior: CombatUnit = f.units[0]
+	var archer: CombatUnit = f.units[1]
+	var barbarian: CombatUnit = f.units[2]
+	var enemy_archer: CombatUnit = f.units[3]
+	enemy_archer.cell = Vector2i(4, 3)
+	archer.cell = Vector2i(5, 5)
+	_check(CombatActionRules.belongs_to(warrior, "sweep") and not CombatActionRules.belongs_to(archer, "sweep")
+		and not CombatActionRules.belongs_to(barbarian, "sweep"), "휩쓸기는 아군 전사만")
+	_check(CombatActionRules.resource_of("sweep") == CombatUnit.TurnResource.ACTION
+		and CombatActionRules.uses_left(warrior, "sweep") == -1, "행동 자원, 무제한")
+	var details: String = CombatActionRules.details(warrior, "sweep")
+	_check("사거리: 정면 반달 5칸" in details and "피해: 힘 d20 ÷2 올림" in details and "판정: 대상마다 힘 d20" in details,
+		"호버에 범위·피해식·판정 " + details)
+	_check(f.actions.sweep_targets(warrior, Vector2i(5, 4)) == [enemy_archer, barbarian], "영향 칸의 적만 시계방향 순서로, 아군은 제외")
+	_check(f.actions.can_sweep(warrior, Vector2i(4, 5)), "빈 칸을 정면으로 골라도 반달 안에 적이 있으면 쓸 수 있음")
+	var diagonal: float = f.actions.sweep_chance(warrior, enemy_archer)
+	var preview: CombatChecks.AttackPreview = f.actions.grid.attack_preview(warrior, enemy_archer)
+	_check(diagonal > 0.0 and is_equal_approx(diagonal, CombatChecks.hit_chance(20, warrior.get_hit_bonus(),
+		f.actions.grid.armor_class(enemy_archer), preview.mode)), "기본 공격 사거리 밖의 반달 칸도 명중률을 보임")
+	var archer_hp: int = enemy_archer.hit_points
+	f.actions.dice = _dice([15, 7, 15, 10], [20, 20, 20, 20])
+	_check(await f.actions.sweep(warrior, Vector2i(5, 4)), "휩쓸기 실행")
+	_check(archer_hp - enemy_archer.hit_points == 4 and barbarian.hit_points == 12 - 5,
+		"대상마다 명중굴림 뒤 피해 ⌈힘 d20 ÷ 2⌉ + 0을 왼쪽 옆부터 차례로 굴림")
+	_check(archer.hit_points == archer.get_max_hit_points(), "반달 안의 아군은 맞지 않음")
+	_check(warrior.action_left == 0 and warrior.bonus_action_left == 1 and warrior.movement_left == 3, "행동만 소비")
+	_check(f.logs.any(func(line: String) -> bool: return "휩쓸기: 대상 2명" in line)
+		and f.logs.any(func(line: String) -> bool: return "(휩쓸기 ÷2 올림): 힘 d20 [7] → 4 +0 = 4" in line), "대상 수와 피해식을 로그에 기록")
+	_check(not f.actions.can_use(warrior, "sweep") and f.actions.unavailable_reason(warrior, "sweep") == "자원을 이미 씀",
+		"행동을 쓰면 비활성")
+	var bonus: Fixture = _fixture()
+	bonus.units[0].weapon = {"stats": {"damage_bonus": 2}}
+	_check("피해: 힘 d20 ÷2 올림 +2" in CombatActionRules.details(bonus.units[0], "sweep"), "가산치는 ÷2 올림 뒤에 띄워 더함")
+	bonus.actions.dice = _dice([1], [20])
+	await bonus.actions.sweep(bonus.units[0], Vector2i(5, 4))
+	_check(bonus.units[2].hit_points == 12 and bonus.units[0].action_left == 0, "빗나가도 행동은 소비")
+	bonus.units[0].action_left = 1
+	bonus.actions.dice = _dice([15, 1], [20, 20])
+	await bonus.actions.sweep(bonus.units[0], Vector2i(5, 4))
+	_check(bonus.units[2].hit_points == 12 - 3, "피해는 ⌈1 ÷ 2⌉ + 기타 가산치(장비 +2)")
+	# #407 답 5a: 반달 안에 적이 없어도 실행하고 행동을 소비한다.
+	var lone: Fixture = _fixture()
+	var alone: CombatUnit = lone.units[0]
+	lone.units[2].cell = Vector2i(7, 7)
+	lone.actions.grid.blocked_cells = [Vector2i(4, 3)]
+	_check(lone.actions.can_use(alone, "sweep") and lone.actions.can_sweep(alone, Vector2i(5, 4))
+		and lone.actions.can_sweep(alone, Vector2i(4, 3)), "적이 없는 방향과 막힌 칸도 정면으로 고를 수 있어 버튼이 켜져 있음")
+	_check(not lone.actions.can_sweep(alone, Vector2i(6, 4)) and not lone.actions.can_sweep(alone, alone.cell),
+		"인접하지 않은 칸은 정면이 될 수 없음")
+	var edge: Fixture = _fixture()
+	edge.units[0].cell = Vector2i(0, 4)
+	_check(not edge.actions.can_sweep(edge.units[0], Vector2i(-1, 4)), "맵 밖 칸은 정면이 될 수 없음")
+	_check(await lone.actions.sweep(alone, Vector2i(5, 4)) and alone.action_left == 0
+		and lone.logs.any(func(line: String) -> bool: return "휩쓸기: 대상 0명" in line), "빈 반달도 실행하고 행동을 소비")
+	_check(not lone.actions.can_use(alone, "sweep") and lone.actions.unavailable_reason(alone, "sweep") == "자원을 이미 씀",
+		"빈 반달에 쓴 뒤에는 행동이 없어 비활성")
+	# 휩쓸기가 없는 유닛은 행동이 남아도 쓸 대상이 없으면 할 동작이 없다.
+	var idle: Fixture = _fixture([1, 0, 2, 3])
+	var idle_archer: CombatUnit = idle.units[1]
+	idle.units[2].cell = Vector2i(9, 9)
+	idle.units[3].cell = Vector2i(9, 8)
+	idle_archer.movement_left = 0
+	idle_archer.bonus_action_left = 0
+	_check(idle.turns.current_unit == idle_archer and idle_archer.action_left > 0
+		and not idle.actions.has_available_action(idle_archer),
+		"행동이 남아도 대상이 없는 궁수는 할 동작 없음")
 
 
 func _test_holy_veil() -> void:
@@ -338,12 +454,144 @@ func _test_battle_cry_clock_slot() -> void:
 		"다음 라운드 첫 유닛의 시작은 이미 줄인 자리라 건너뜀")
 	last.turns.turn_started.emit(last.units[2])
 	_check(last.units[1].battle_cry_turns == 1, "그다음 순환부터 줄어듦")
+	# 그 슬롯의 기준 유닛도 같은 라운드에 쓰러지면, 옮긴 유닛의 다음 라운드 시작도 이미 줄인 자리 바로 뒤다.
+	var wrap: Fixture = _fixture([2, 3, 1, 0])
+	wrap.turns.end_turn()
+	wrap.turns.end_turn()
+	wrap.turns.select_unit(wrap.units[0])
+	wrap.actions.dice = _dice([5], [8])
+	wrap.actions.use_self(wrap.units[0], "battle_cry")
+	wrap.actions.incapacitate(wrap.units[0])
+	wrap.actions.incapacitate(wrap.units[2])
+	_check(wrap.actions.save_state().clock_slots == [[0, 3, true]], "이미 시작한 기준 유닛이 쓰러져도 건너뛸 자리를 유지")
+	wrap.turns.end_turn()
+	_check(wrap.turns.current_unit == wrap.units[3] and wrap.turns.round_number == 2
+		and wrap.units[1].battle_cry_turns == 2, "옮긴 유닛의 다음 라운드 시작은 이미 줄인 자리라 건너뜀")
 	# 기존 상태 이상은 시전자 전투 불능에서 해제한다.
 	var burn: Fixture = _fixture()
 	burn.units[0].status_effects.append(CombatUnit.StatusEffect.new("burn", burn.units[2], 2))
 	burn.actions.incapacitate(burn.units[2])
 	_check(burn.units[0].status_effects.is_empty() and burn.actions.save_state().clock_slots.is_empty(),
 		"기존 화상은 시전자 전투 불능에 해제하고 시계 슬롯을 쓰지 않음")
+	_test_clock_slot_with_spawn()
+	_test_clock_slot_in_group()
+
+
+## 턴 시작은 발동(틱) 먼저, 시전자 기준 기간 감소 나중이다 (#437, 전투 시스템 기획서 6-1).
+func _test_turn_start_order() -> void:
+	var f: Fixture = _fixture()
+	var warrior: CombatUnit = f.units[0]
+	warrior.shield_points = 9
+	warrior.shield_turns = 3
+	warrior.status_effects.append(CombatUnit.StatusEffect.new("burn", f.units[2], 3))
+	f.actions.dice = _dice([1, 1, 1], [4, 4, 4])
+	for count: int in range(3):
+		f.turns.turn_started.emit(warrior)
+	_check(warrior.hit_points == warrior.get_max_hit_points() and warrior.shield_turns == 0 and warrior.shield_points == 0,
+		"방어막 3턴은 3번째 틱까지 막은 뒤 소멸")
+	# 자기 틱으로 쓰러진 시전자도 이번 순환의 기간 감소는 한 번만 하고 시계 슬롯은 지금과 같다.
+	var downed: Fixture = _fixture()
+	var caster: CombatUnit = downed.units[0]
+	var archer: CombatUnit = downed.units[1]
+	_give_battle_cry(caster, archer)
+	caster.hit_points = 1
+	caster.status_effects.append(CombatUnit.StatusEffect.new("burn", downed.units[2], 2))
+	downed.actions.dice = _dice([4], [4])
+	var seen: Array[int] = []
+	downed.turns.turn_started.connect(func(unit: CombatUnit) -> void:
+		if unit == archer:
+			seen.append(archer.battle_cry_turns))
+	for count: int in range(4):
+		downed.turns.end_turn()
+	_check(caster.hit_points == 0 and downed.turns.current_unit == archer and archer.battle_cry_turns == 1
+		and downed.actions.save_state().clock_slots == [[0, 1, false]],
+		"자기 틱으로 쓰러진 시전자의 기간도 이번 순환에 한 번 줄고 다음 유닛 앞 슬롯은 건너뛰지 않음")
+	# 바깥 전사 emit이 바뀐 current_unit(궁수)을 뒤 연결에 다시 넘겨 셋째 값이 붙는다. 앞 둘이 실제 시작이다.
+	_check(seen.slice(0, 2) == [2, 1], "쓰러진 시전자의 감소는 다음 유닛의 턴 시작 처리보다 먼저 " + str(seen))
+	# 같은 묶음에서 이미 시작한 앞 유닛으로 돌아가도 쓰러진 시전자의 이번 몫은 이미 줄었다.
+	var back: Fixture = _fixture([1, 0, 4, 2, 3], true)
+	var cried: CombatUnit = back.units[1]
+	_give_battle_cry(back.units[0], cried)
+	cried.battle_cry_turns = 1
+	back.units[0].hit_points = 1
+	back.units[0].status_effects.append(CombatUnit.StatusEffect.new("burn", back.units[2], 2))
+	back.actions.dice = _dice([4], [4])
+	back.turns.select_unit(back.units[0])
+	_check(back.units[0].hit_points == 0 and back.turns.current_unit == cried and cried.battle_cry_turns == 0
+		and back.actions.save_state().clock_slots.is_empty(), "이미 시작한 앞 유닛이 이어 움직이기 전에 기간이 끝남")
+
+
+## archer에게 caster의 전투의 함성 2턴을 건다.
+func _give_battle_cry(caster: CombatUnit, archer: CombatUnit) -> void:
+	archer.battle_cry_bonus = 3
+	archer.battle_cry_turns = 2
+	archer.battle_cry_source = caster
+
+
+## 엄마 거미가 자기 턴에 새끼를 낳는다. 새끼는 units의 끝에 붙는다.
+func _spawn(f: Fixture, mother: CombatUnit) -> CombatUnit:
+	f.actions.dice = _dice([1], [f.actions.grid.empty_neighbors(mother.cell).size()])
+	_check(f.actions.spawn_spiderling(mother), "엄마 거미가 새끼를 낳음")
+	_created.append(f.units.back())
+	return f.units.back()
+
+
+## 소환 유닛이 쓰러진 시전자의 자리 바로 뒤에 끼어도 순환마다 그 자리에서 한 번 줄인다 (#427 1·2번).
+func _test_clock_slot_with_spawn() -> void:
+	# 슬롯 (전사, 엄마)에서 엄마가 새끼를 낳으면 쓰러진 자리 바로 뒤는 새끼다.
+	var moved: Fixture = _fixture([1, 0, 2, 3])
+	moved.units[2].kind = CombatUnit.Kind.MOTHER_SPIDER
+	moved.turns.end_turn()
+	moved.turns.end_turn()
+	_give_battle_cry(moved.units[0], moved.units[1])
+	moved.actions.incapacitate(moved.units[0])
+	var child: CombatUnit = _spawn(moved, moved.units[2])
+	_check(moved.actions.save_state().clock_slots == [[0, 4, false]], "새끼를 낳으면 엄마에 걸린 슬롯을 새끼로 옮김")
+	moved.turns.end_turn()
+	moved.turns.end_turn()
+	moved.turns.end_turn()
+	_check(moved.turns.current_unit == child and moved.units[1].battle_cry_turns == 1,
+		"다음 라운드에 새끼의 턴 시작 직전에 쓰러진 자리가 줄임")
+	# 생성 라운드의 새끼는 이번 순환에 시작하지 않으므로 그 앞의 시전자가 쓰러져도 건너뛸 자리가 아니다.
+	var own: Fixture = _fixture([1, 0, 2, 3])
+	own.units[2].kind = CombatUnit.Kind.MOTHER_SPIDER
+	own.turns.end_turn()
+	own.turns.end_turn()
+	_give_battle_cry(own.units[0], own.units[1])
+	child = _spawn(own, own.units[2])
+	own.actions.incapacitate(own.units[0])
+	_check(own.actions.save_state().clock_slots == [[0, 4, false]], "생성 라운드 새끼 앞의 쓰러진 자리는 지난 자리가 아님")
+	own.turns.end_turn()
+	own.turns.end_turn()
+	own.turns.end_turn()
+	_check(own.turns.current_unit == child and own.units[1].battle_cry_turns == 1, "다음 라운드 새끼의 턴 시작에 줄임")
+	# 기준 유닛이 쓰러져 생성 라운드 새끼로 옮겨질 때도 같다.
+	var anchor: Fixture = _fixture([1, 0, 4, 2, 3], true)
+	anchor.units[2].kind = CombatUnit.Kind.MOTHER_SPIDER
+	anchor.turns.end_turn()
+	anchor.turns.end_turn()
+	anchor.turns.end_turn()
+	_give_battle_cry(anchor.units[0], anchor.units[1])
+	anchor.actions.incapacitate(anchor.units[0])
+	child = _spawn(anchor, anchor.units[2])
+	anchor.actions.incapacitate(anchor.units[4])
+	_check(anchor.actions.save_state().clock_slots == [[0, 5, false]], "생성 라운드 새끼로 옮긴 슬롯은 건너뛰지 않음")
+	anchor.turns.end_turn()
+	anchor.turns.end_turn()
+	anchor.turns.end_turn()
+	_check(anchor.turns.current_unit == child and anchor.units[1].battle_cry_turns == 1, "옮긴 새끼의 다음 라운드 턴 시작에 줄임")
+
+
+## 같은 묶음에서 뒤 유닛을 먼저 조작한 뒤 시전자가 자기 턴 전에 쓰러져도 이번 순환 몫을 줄인다 (#427 3번).
+func _test_clock_slot_in_group() -> void:
+	var f: Fixture = _fixture([4, 0, 1, 2, 3], true)
+	_give_battle_cry(f.units[0], f.units[1])
+	f.turns.select_unit(f.units[1])
+	f.actions.incapacitate(f.units[0])
+	_check(f.units[1].battle_cry_turns == 1 and f.actions.save_state().clock_slots == [[0, 1, false]],
+		"기준 유닛이 이미 시작했으면 시전자의 이번 순환 몫을 바로 줄임")
+	f.turns.turn_started.emit(f.units[1])
+	_check(f.units[1].battle_cry_turns == 0, "다음 순환의 기준 유닛 턴 시작에 다시 줄임")
 
 
 func _test_phalanx() -> void:
@@ -369,15 +617,195 @@ func _test_phalanx() -> void:
 	grid.heights[archer.cell] = 2
 	_check(grid.phalanx_bonus(archer) == 0 and grid.phalanx_bonus(warrior) == 0, "높이 차가 2 이상이면 인접 아님")
 	grid.heights.erase(archer.cell)
-	warrior.is_stunned = true
+	_check(f.actions.apply_status(f.units[3], warrior, "stun"), "적이 전사를 기절시킴")
 	_check(grid.phalanx_bonus(archer) == 0 and grid.phalanx_bonus(warrior) == 0, "전사가 기절하면 해제")
-	warrior.is_stunned = false
-	_check(grid.phalanx_bonus(archer) == 1, "기절이 풀리면 다시 켜짐 (#407 질문 5의 가정)")
+	f.actions.call("_on_turn_started", f.units[3])
+	_check(not warrior.is_stunned and grid.phalanx_bonus(archer) == 1 and grid.phalanx_bonus(warrior) == 1,
+		"기절을 건 적의 턴 시작에 기절이 풀리면 인접 아군이 있는 동안 다시 켜짐 (#407 답 5b)")
 	archer.cell = Vector2i(2, 4)
 	_check(grid.phalanx_bonus(archer) == 0 and grid.phalanx_bonus(warrior) == 0, "떨어지면 바로 꺼지는 상시 효과")
 	archer.cell = Vector2i(3, 4)
 	f.actions.incapacitate(warrior)
 	_check(grid.phalanx_bonus(archer) == 0, "전사가 전투 불능이면 사라짐")
+
+
+## 괴력의 사내(#434): 전사의 기회 공격이 명중하면 대상의 이동력을 즉시 0으로 만든다. 걷기·점프 모두 출발 칸에서 멈춘다.
+func _test_brawn() -> void:
+	for jump: bool in [false, true]:
+		var f: Fixture = _fixture([2, 0, 1, 3])
+		var warrior: CombatUnit = f.units[0]
+		var barbarian: CombatUnit = f.units[2]
+		warrior.reaction_left = 1
+		var prompts: Array[String] = []
+		f.actions.reaction_requested.connect(func(_kind: String, prompt: String) -> void:
+			prompts.append(prompt)
+			f.actions.resolve_reaction(true)
+		)
+		# 힘 d20 20은 야만인 AC 4에 명중하고, 피해 1이라 야만인은 살아남는다.
+		f.actions.dice = _dice([20, 1], ScriptedDice.attack_sides(warrior) + ScriptedDice.damage_sides(warrior))
+		var destination: Vector2i = Vector2i(5, 6)
+		var moved: bool = await f.actions.jump_to(barbarian, destination) if jump else await f.actions.move_to(barbarian, destination)
+		_check(moved, "기회 공격을 받는 이동 시도 처리")
+		var label: String = "점프" if jump else "걷기"
+		_check(prompts.size() == 1 and "명중하면 이동을 멈춥니다" in prompts[0],
+			"전사의 기회 공격 확인 창에 이동 정지 안내: %s %s" % [label, prompts])
+		_check(barbarian.hit_points == 11 and barbarian.cell == Vector2i(5, 4) and barbarian.movement_left == 0
+			and warrior.reaction_left == 0, "명중하면 대상은 출발 칸에 남고 이동력 0: " + label)
+		_check(barbarian.bonus_action_left == (0 if jump else 1) and barbarian.action_left == 1,
+			"멈춘 점프는 보조 행동도 소비하고, 행동은 남음: " + label)
+		_check(f.actions.reachable_cells(barbarian).is_empty() and f.actions.jump_cells(barbarian).is_empty()
+			and f.actions.can_target(barbarian, warrior, "attack") and not f.actions.busy,
+			"멈춘 대상은 더 움직이지 못하고 공격은 할 수 있음: " + label)
+		_check(f.logs.any(func(line: String) -> bool: return "괴력의 사내" in line), "괴력의 사내 로그: " + label)
+	# 전사의 기회 공격으로 전투 불능이 된 점프도 비용(이동력 + 보조 행동)을 소비한다 (#407 개발 결정).
+	var downed: Fixture = _fixture([2, 0, 1, 3])
+	downed.units[0].reaction_left = 1
+	downed.units[2].hit_points = 1
+	downed.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: downed.actions.resolve_reaction(true))
+	downed.actions.dice = _dice([20, 1], ScriptedDice.attack_sides(downed.units[0]) + ScriptedDice.damage_sides(downed.units[0]))
+	_check(await downed.actions.jump_to(downed.units[2], Vector2i(5, 6)) and downed.units[2].hit_points == 0
+		and downed.units[2].cell == Vector2i(5, 4) and downed.units[2].movement_left < 6
+		and downed.units[2].bonus_action_left == 0, "기회 공격으로 쓰러진 점프도 이동력·보조 행동을 소비")
+	# 적 풋내기 야만인은 전사와 같은 Kind이지만 괴력의 사내가 없다.
+	var enemy: Fixture = _fixture()
+	enemy.units[2].reaction_left = 1
+	enemy.actions.dice = _dice([10, 1], ScriptedDice.attack_sides(enemy.units[2]) + ScriptedDice.damage_sides(enemy.units[2]))
+	_check(await enemy.actions.move_to(enemy.units[0], Vector2i(4, 6)) and enemy.units[2].reaction_left == 0
+		and enemy.units[0].hit_points == 9 and enemy.units[0].cell == Vector2i(4, 6) and enemy.units[0].movement_left == 1,
+		"적의 기회 공격은 명중해도 이동을 멈추지 않음")
+	_check("괴력의 사내" in CombatActionRules.effect(enemy.units[0], "opportunity")
+		and "괴력의 사내" not in CombatActionRules.effect(enemy.units[2], "opportunity"),
+		"패시브 칸 대신 전사의 기회 공격 호버에 괴력의 사내 안내")
+
+
+## 반격 fixture: 기본은 야만인(5,4) 차례. 전사(4,4)는 반응 1, 확인 창은 answer로 답한다. prompts에 (종류, 문구)를 모은다.
+func _counter_fixture(answer: bool, prompts: Array[Array], order: Array[int] = [2, 0, 1, 3]) -> Fixture:
+	var f: Fixture = _fixture(order)
+	f.units[0].reaction_left = 1
+	f.actions.reaction_requested.connect(func(kind: String, prompt: String) -> void:
+		prompts.append([kind, prompt])
+		f.actions.resolve_reaction(answer)
+	)
+	return f
+
+
+func _test_counter() -> void:
+	# 야만인 힘 d10 2 + 3 = 5는 전사 AC 6(팔랑크스)에 빗나간다. 반격은 명중굴림 없이 민첩 d8만 굴린다.
+	var prompts: Array[Array] = []
+	var f: Fixture = _counter_fixture(true, prompts)
+	var warrior: CombatUnit = f.units[0]
+	var barbarian: CombatUnit = f.units[2]
+	warrior.weapon = {"stats": {"damage_bonus": 2}}
+	f.actions.dice = _dice([2, 3], ScriptedDice.attack_sides(barbarian) + ScriptedDice.damage_sides(warrior, "counter"))
+	_check(await f.actions.attack(barbarian, warrior), "야만인이 전사를 공격")
+	_check(f.actions.last_attack.face == CombatChecks.Face.NORMAL and not f.actions.last_attack.success,
+		"보통 빗나감에도 반격")
+	_check(prompts.size() == 1 and prompts[0][0] == "counter" and "빗나갔습니다" in prompts[0][1]
+		and "반드시 명중" in prompts[0][1] and "민첩 d8" in prompts[0][1] and "레벨" in prompts[0][1]
+		and "기타 가산치" in prompts[0][1], "반격 확인 창에 필중과 예상 피해식: " + str(prompts))
+	_check(barbarian.hit_points == 12 - 5 and warrior.reaction_left == 0,
+		"반격 피해 = 민첩 d8 3 + 레벨 0 + 기타 가산치 2, 반응 소비")
+	_check(f.logs.any(func(line: String) -> bool: return "반격" in line and "피해" in line), "반격 피해 로그: " + str(f.logs))
+	_check(not f.actions.busy, "반격 뒤 입력 잠금 해제")
+	var hover: String = CombatActionRules.details(warrior, "counter")
+	_check("사거리: 인접1칸" in hover and "피해: 민첩 d8+2" in hover and "판정: 없음(반드시 명중)" in hover
+		and "명중굴림" in CombatActionRules.effect(warrior, "counter"), "반격 호버: 사거리, 민첩 피해식, 판정 없음: " + hover)
+	# 반격 연출 중 전투를 포기하면 반격 피해를 주지 않고 입력 잠금을 푼다.
+	prompts.clear()
+	var abandoned: Fixture = _counter_fixture(true, prompts)
+	abandoned.actions.attack_animation = func(actor: CombatUnit, _target: CombatUnit) -> void:
+		if actor == abandoned.units[0]:
+			abandoned.actions.give_up()
+		await process_frame
+	abandoned.actions.dice = _dice([1], ScriptedDice.attack_sides(abandoned.units[2]))
+	await abandoned.actions.attack(abandoned.units[2], abandoned.units[0])
+	_check(prompts.size() == 1 and abandoned.actions.is_over() and abandoned.units[2].hit_points == 12
+		and not abandoned.actions.busy, "반격 연출 중 포기하면 피해 없이 잠금 해제")
+	# 넘기면 반응을 쓰지 않는다. 절대실패(1)도 빗나감이다.
+	prompts.clear()
+	var declined: Fixture = _counter_fixture(false, prompts)
+	declined.actions.dice = _dice([1], ScriptedDice.attack_sides(declined.units[2]))
+	await declined.actions.attack(declined.units[2], declined.units[0])
+	_check(prompts.size() == 1 and declined.units[0].reaction_left == 1 and declined.units[2].hit_points == 12,
+		"절대실패에도 묻고, 넘기면 반응과 피해 없음")
+	# 명중, 반응 없음, 기절이면 묻지 않는다.
+	for case: String in ["hit", "no_reaction", "stunned"]:
+		prompts.clear()
+		var quiet: Fixture = _counter_fixture(true, prompts)
+		quiet.units[0].reaction_left = 0 if case == "no_reaction" else 1
+		quiet.units[0].is_stunned = case == "stunned"
+		# 기절한 대상은 유리(2개)라 둘 다 1로 빗나가게 한다.
+		var rolls: Array[int] = []
+		rolls.assign({"hit": [10, 1], "no_reaction": [2], "stunned": [1, 1]}[case])
+		var sides: Array[int] = ScriptedDice.attack_sides(quiet.units[2], 2 if case == "stunned" else 1)
+		if case == "hit":
+			sides += ScriptedDice.damage_sides(quiet.units[2])
+		quiet.actions.dice = _dice(rolls, sides)
+		await quiet.actions.attack(quiet.units[2], quiet.units[0])
+		_check(prompts.is_empty() and quiet.units[2].hit_points == 12, "반격 확인 창 없음: " + case)
+	# 인접 아군을 겨눈 공격과 인접하지 않은 공격자에게는 발동하지 않는다.
+	prompts.clear()
+	var ally: Fixture = _counter_fixture(true, prompts)
+	# 야만인(5,4)은 전사와 인접한 채로 (5,5)의 궁수를 노린다.
+	ally.units[1].cell = Vector2i(5, 5)
+	ally.actions.dice = _dice([1], ScriptedDice.attack_sides(ally.units[2]))
+	await ally.actions.attack(ally.units[2], ally.units[1])
+	_check(prompts.is_empty(), "인접 아군을 겨눈 빗나감에는 반격 없음")
+	var ranged: Fixture = _fixture([3, 0, 1, 2])
+	ranged.units[0].reaction_left = 1
+	ranged.units[2].cell = Vector2i(5, 6)
+	var ranged_prompts: Array[String] = []
+	ranged.actions.reaction_requested.connect(func(_kind: String, prompt: String) -> void:
+		ranged_prompts.append(prompt)
+		ranged.actions.resolve_reaction(true)
+	)
+	ranged.actions.dice = _dice([1], ScriptedDice.attack_sides(ranged.units[3]))
+	await ranged.actions.attack(ranged.units[3], ranged.units[0])
+	_check(ranged_prompts.is_empty() and ranged.units[3].hit_points == 14, "3칸 밖 궁수의 빗나감에는 반격 없음")
+	# 인접해서 쏜 원거리 공격자에게는 반격한다. 옆에 적이 있어 불리(2개)다.
+	ranged.units[3].cell = Vector2i(4, 5)
+	ranged.units[3].action_left = 1
+	ranged.actions.dice = _dice([1, 1, 4], ScriptedDice.attack_sides(ranged.units[3], 2)
+		+ ScriptedDice.damage_sides(ranged.units[0], "counter"))
+	await ranged.actions.attack(ranged.units[3], ranged.units[0])
+	_check(ranged_prompts.size() == 1 and ranged.units[3].hit_points == 10, "인접 원거리 공격자에게 반격")
+	# 적의 기회 공격이 빗나가도 반격한다. 반응은 기회 공격과 나눠 쓴다.
+	prompts.clear()
+	var moving: Fixture = _counter_fixture(true, prompts, [0, 1, 2, 3])
+	moving.units[2].reaction_left = 1
+	moving.actions.dice = _dice([2, 6], ScriptedDice.attack_sides(moving.units[2])
+		+ ScriptedDice.damage_sides(moving.units[0], "counter"))
+	_check(await moving.actions.move_to(moving.units[0], Vector2i(4, 6)), "전사가 야만인 곁을 벗어남")
+	_check(prompts.size() == 1 and prompts[0][0] == "counter" and moving.units[2].hit_points == 6
+		and moving.units[0].reaction_left == 0 and moving.units[0].cell == Vector2i(4, 6),
+		"빗나간 기회 공격에 반격하고 이동은 이어 감")
+	# 걷기를 노린 마지막 적이 반격으로 쓰러지면 그 칸에서 멈춘다.
+	prompts.clear()
+	var walking: Fixture = _counter_fixture(true, prompts, [0, 1, 2, 3])
+	walking.actions.incapacitate(walking.units[3])
+	walking.units[2].hit_points = 1
+	walking.units[2].reaction_left = 1
+	walking.actions.dice = _dice([1, 1], ScriptedDice.attack_sides(walking.units[2])
+		+ ScriptedDice.damage_sides(walking.units[0], "counter"))
+	_check(await walking.actions.move_to(walking.units[0], Vector2i(4, 6)), "전사가 야만인 곁에서 걷기")
+	_check(prompts.size() == 1 and walking.actions.is_victory() and walking.units[0].cell == Vector2i(4, 4)
+		and walking.units[0].movement_left == 3 and not walking.actions.busy, "반격으로 이긴 뒤 더 걷지 않음")
+	# 점프를 노린 마지막 적이 반격으로 쓰러지면 점프는 멈추고 비용은 소비한다. 착지하지 않아 낙하 피해도 없다 (#407 답 7번).
+	prompts.clear()
+	var jumping: Fixture = _counter_fixture(true, prompts, [0, 1, 2, 3])
+	jumping.actions.incapacitate(jumping.units[3])
+	jumping.units[2].hit_points = 1
+	jumping.units[2].reaction_left = 1
+	jumping.actions.dice = _dice([1, 1], ScriptedDice.attack_sides(jumping.units[2])
+		+ ScriptedDice.damage_sides(jumping.units[0], "counter"))
+	var jump_cost: int = jumping.actions.jump_cells(jumping.units[0])[Vector2i(4, 6)]
+	var hit_points_before: int = jumping.units[0].hit_points
+	var movement_before: int = jumping.units[0].movement_left
+	_check(await jumping.actions.jump_to(jumping.units[0], Vector2i(4, 6)), "전사가 야만인 곁에서 점프")
+	_check(prompts.size() == 1 and jumping.actions.is_victory() and jumping.units[0].cell == Vector2i(4, 4)
+		and jumping.units[0].bonus_action_left == 0 and jumping.units[0].movement_left == movement_before - jump_cost
+		and jumping.units[0].hit_points == hit_points_before and not jumping.actions.busy,
+		"반격으로 이긴 뒤 점프 비용만 소비, 착지·낙하 피해 없음")
 
 
 func _test_save_state() -> void:

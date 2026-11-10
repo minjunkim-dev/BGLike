@@ -53,7 +53,7 @@ func _test_round_trip() -> void:
 	_check(not GameSave.has_save() and GameSave.read().is_empty(), "저장이 없으면 없음으로 조회")
 	_check(GameSave.write(3, 2, _sections()) == OK, "저장 쓰기 성공")
 	_check(GameSave.has_save(), "쓴 뒤 저장 있음")
-	_check(FileAccess.get_file_as_bytes(GameSave.path).decode_u32(4) == 4, "현재 형식 4의 머리로 저장")
+	_check(FileAccess.get_file_as_bytes(GameSave.path).decode_u32(4) == 5, "현재 형식 5의 머리로 저장")
 	var save: Dictionary = GameSave.read()
 	_check(save.get("act") == 3 and save.get("stage") == 2, "막과 스테이지를 그대로 읽음")
 	_check(save.get("sections") == _sections(), "64비트 난수 상태, Vector2i 키, 배열을 그대로 읽음")
@@ -66,7 +66,7 @@ func _test_round_trip() -> void:
 func _test_version_mismatch() -> void:
 	GameSave.write(1, 1, _sections())
 	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(GameSave.path)
-	for version: int in [0, 1, 2, 3, GameSave.FORMAT_VERSION + 1]:
+	for version: int in [0, 1, 2, 3, 4, GameSave.FORMAT_VERSION + 1]:
 		bytes.encode_u32(4, version)
 		_write_raw(GameSave.path, bytes)
 		_check(GameSave.has_save() and GameSave.read().is_empty(), "형식 버전 %d은 읽지 않음" % version)
@@ -116,8 +116,8 @@ func _test_interrupted_write() -> void:
 
 
 func _test_settings_survive_delete() -> void:
-	_check(GameSettings.volume() == GameSettings.VOLUME_DEFAULT and not GameSettings.fullscreen(),
-		"설정이 없으면 기본값: 음량 %d%%, 창" % GameSettings.VOLUME_DEFAULT)
+	_check(GameSettings.volume() == GameSettings.VOLUME_DEFAULT and not GameSettings.fullscreen()
+		and not GameSettings.fill_screen(), "설정이 없으면 기본값: 음량 %d%%, 창, 화면 맞춤 끔" % GameSettings.VOLUME_DEFAULT)
 	_check(GameSettings.write("master_volume", 30) == OK, "설정 쓰기 성공")
 	GameSettings.write("fullscreen", true)
 	_check(GameSettings.path != GameSave.path, "설정은 게임 저장과 다른 파일")
@@ -130,8 +130,8 @@ func _test_settings_survive_delete() -> void:
 		GameSettings.write("master_volume", case[0])
 		_check(GameSettings.volume() == case[1], "음량 %s → %d: %d" % [case[0], case[1], GameSettings.volume()])
 	_write_raw(GameSettings.path, "[settings\nmaster_volume=".to_utf8_buffer())
-	_check(GameSettings.volume() == GameSettings.VOLUME_DEFAULT and not GameSettings.fullscreen(),
-		"깨진 설정 파일은 기본값")
+	_check(GameSettings.volume() == GameSettings.VOLUME_DEFAULT and not GameSettings.fullscreen()
+		and not GameSettings.fill_screen(), "깨진 설정 파일은 기본값")
 
 
 func _write_raw(target: String, bytes: PackedByteArray) -> void:

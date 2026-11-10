@@ -1,6 +1,6 @@
 class_name SettingsScreen
 extends ColorRect
-## 설정 화면: 마스터 음량과 창 모드. 바꾸는 즉시 설정 파일에 쓰고 적용한다 (#285).
+## 설정 화면: 마스터 음량, 창 모드, 화면 맞춤. 바꾸는 즉시 설정 파일에 쓰고 적용한다 (#285).
 ## 타이틀과 일시정지 메뉴가 같은 장면을 자식으로 두고 open()으로 연다. 닫히면 closed를 보낸다.
 
 signal closed
@@ -8,6 +8,7 @@ signal closed
 @onready var volume_slider: HSlider = %Volume
 @onready var volume_label: Label = %VolumeValue
 @onready var fullscreen_box: CheckBox = %Fullscreen
+@onready var fill_box: CheckBox = %FillScreen
 @onready var back_button: Button = %Back
 
 
@@ -15,6 +16,7 @@ func _ready() -> void:
 	volume_slider.step = GameSettings.VOLUME_STEP
 	volume_slider.value_changed.connect(_on_volume_changed)
 	fullscreen_box.toggled.connect(_on_fullscreen_toggled)
+	fill_box.toggled.connect(_on_fill_toggled)
 	back_button.pressed.connect(close)
 
 
@@ -23,6 +25,8 @@ func open() -> void:
 	volume_slider.set_value_no_signal(volume)
 	_show_volume(volume)
 	fullscreen_box.set_pressed_no_signal(GameSettings.fullscreen())
+	# 쓰기에 실패했어도 적용된 값을 보인다.
+	fill_box.set_pressed_no_signal(get_window().content_scale_stretch == Window.CONTENT_SCALE_STRETCH_FRACTIONAL)
 	show()
 	volume_slider.grab_focus()
 
@@ -47,6 +51,11 @@ func _on_volume_changed(value: float) -> void:
 func _on_fullscreen_toggled(on: bool) -> void:
 	GameSettings.write("fullscreen", on)
 	GameSettings.apply_window_mode(on)
+
+
+func _on_fill_toggled(on: bool) -> void:
+	GameSettings.write("fill_screen", on)
+	GameSettings.apply_screen_fit(get_window(), on)
 
 
 func _input(event: InputEvent) -> void:

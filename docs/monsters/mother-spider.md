@@ -35,6 +35,8 @@
 |---|---|---|---|---|---|
 | 근접 | 힘 d8 | +3 | 힘 d8+2 | 1 (인접) | 가능 |
 
+- **독 면역** ✅: 거미 계열이라 독에 면역입니다 ([독안개 거미](fog-spider.md#독-면역-)). 몬스터 정의의 `poison_immune` 속성이며, 독 장판 칸은 이동 경로 비용 0으로 보고 불 장판은 기존대로 피합니다 ([#460](https://github.com/minjunkim-dev/BGLike/issues/460), [#465](https://github.com/minjunkim-dev/BGLike/issues/465)에서 구현).
+
 - HP 20의 종전 라운드·생성 수 추정은 [#109](https://github.com/minjunkim-dev/BGLike/issues/109)의 이전 결정 기록입니다. 새 판정의 밸런스는 #205에서 검토합니다.
 
 ## 스킬

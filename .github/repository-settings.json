@@ -10,7 +10,7 @@
       "allow_merge_commit": false,
       "allow_rebase_merge": false,
       "allow_squash_merge": true,
-      "allow_auto_merge": true,
+      "allow_auto_merge": false,
       "delete_branch_on_merge": true,
       "allow_update_branch": true,
       "squash_merge_commit_title": "PR_TITLE",
@@ -91,6 +91,9 @@
     "immutable_releases": {
       "enabled": true
     },
+    "private_vulnerability_reporting": {
+      "enabled": true
+    },
     "dependabot_alerts": {
       "enabled": true
     },
@@ -100,11 +103,6 @@
     "codeql_workflow": {
       "path": ".github/workflows/codeql.yml",
       "state": "active"
-    },
-    "codeql_main_source": {
-      "path": ".github/workflows/codeql.yml",
-      "type": "file",
-      "sha": "b79791819f713ab6c1e251d26e039f5e10502ec2"
     }
   },
   "observations": [

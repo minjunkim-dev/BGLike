@@ -72,7 +72,11 @@ func is_floor(cell: Vector2i) -> bool:
 
 
 func is_blocked(cell: Vector2i) -> bool:
-	return not is_inside(cell) or blocked_cells.has(cell) or prop_at(cell) != null
+	return is_wall(cell) or prop_at(cell) != null
+
+
+func is_wall(cell: Vector2i) -> bool:
+	return not is_inside(cell) or blocked_cells.has(cell)
 
 
 func are_adjacent(a: Vector2i, b: Vector2i) -> bool:
@@ -154,6 +158,11 @@ func reachable_cells(actor: CombatUnit) -> Dictionary[Vector2i, int]:
 	return routes.costs
 
 
+## origin에서 이동력과 상관없이 걸어서 닿는 칸까지의 걸음 수. 점유된 칸은 지나가지 못한다.
+func walk_costs(origin: Vector2i) -> Dictionary[Vector2i, int]:
+	return _search(origin, map_size.x * map_size.y).costs
+
+
 func _search(origin: Vector2i, budget: int, destination: Vector2i = Vector2i(-1, -1)) -> Routes:
 	var routes: Routes = Routes.new()
 	if is_blocked(origin):
@@ -203,16 +212,51 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	return false
 
 
-func area_cells(center: Vector2i, radius: int) -> Array[Vector2i]:
+## 칸 조준으로 고를 수 있는 칸 (SKILL_TYPES 5-2): 맵 안의 바닥이고 벽이 아니다. 높이·점유·상자·바위는 보지 않는다.
+func is_aimable(cell: Vector2i) -> bool:
+	return is_floor(cell) and not is_wall(cell)
+
+
+## origin에서 맨해튼 거리 minimum~maximum인 고를 수 있는 칸. 장애물과 시야는 보지 않는다(곡사).
+func aim_cells(origin: Vector2i, maximum: int, minimum: int = 0) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
-	if radius < 0 or not is_floor(center) or is_blocked(center):
+	for y: int in range(maxi(0, origin.y - maximum), mini(map_size.y, origin.y + maximum + 1)):
+		for x: int in range(maxi(0, origin.x - maximum), mini(map_size.x, origin.x + maximum + 1)):
+			var cell: Vector2i = Vector2i(x, y)
+			if in_range(origin, cell, maximum, minimum) and is_aimable(cell):
+				cells.append(cell)
+	return cells
+
+
+## props_block가 false면 상자·바위 칸도 영역에 넣는다. 칸 조준 영역이 쓴다.
+func area_cells(center: Vector2i, radius: int, props_block: bool = true) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	var blocks: Callable = is_blocked if props_block else is_wall
+	if radius < 0 or not is_floor(center) or blocks.call(center):
 		return cells
 	for y: int in range(maxi(0, center.y - radius), mini(map_size.y, center.y + radius + 1)):
 		for x: int in range(maxi(0, center.x - radius), mini(map_size.x, center.x + radius + 1)):
 			var cell: Vector2i = Vector2i(x, y)
-			if (distance(center, cell) <= radius and is_floor(cell) and not is_blocked(cell)
+			if (distance(center, cell) <= radius and is_floor(cell) and not blocks.call(cell)
 				and absi(height_at(center) - height_at(cell)) <= 1):
 				cells.append(cell)
+	return cells
+
+
+## 휩쓸기 (전사 문서): 인접한 facing 칸을 정면으로 둔 반달 5칸을 시계방향(왼쪽 옆 → 앞왼쪽 → 앞 → 앞오른쪽 → 오른쪽 옆)으로 준다.
+## origin 바닥과 높이 차 1 이하인 칸만 넣고 맵 밖·낭떠러지·막힌 칸은 뺀다. 시야와 중간 칸은 보지 않는다.
+## 정면은 맵 안의 인접 4칸 중 하나다.
+func sweep_cells(origin: Vector2i, facing: Vector2i) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	if distance(origin, facing) != 1 or not is_inside(facing):
+		return cells
+	var front: Vector2i = facing - origin
+	# 격자는 y가 아래로 커지므로 (x, y) → (-y, x)가 화면에서 시계방향 90도다.
+	var right: Vector2i = Vector2i(-front.y, front.x)
+	for offset: Vector2i in [-right, front - right, front, front + right, right]:
+		var cell: Vector2i = origin + offset
+		if is_floor(cell) and not is_blocked(cell) and absi(height_at(origin) - height_at(cell)) <= 1:
+			cells.append(cell)
 	return cells
 
 
@@ -330,5 +374,6 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 	preview.mode = CombatChecks.roll_mode(advantages, disadvantages)
 	if preview.in_range and preview.blocked_reason.is_empty():
 		preview.chance = CombatChecks.hit_chance(attacker.get_ability_sides(attacker.get_attack_ability()),
-			attacker.get_hit_bonus(), armor_class(target), preview.mode)
+			attacker.get_hit_bonus(), armor_class(target), preview.mode,
+			attacker.get_ability_modifier(attacker.get_attack_ability()))
 	return preview

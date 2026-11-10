@@ -211,6 +211,7 @@ func _check_enemy_values(battle: Node2D, act: int) -> void:
 	var expected: Dictionary = {
 		CombatUnit.Kind.WARRIOR: [12, 3, 0, 1], CombatUnit.Kind.ARCHER: [14, 0, 0, 1],
 		CombatUnit.Kind.SPIDERLING: [1, 3, 0, 1],
+		CombatUnit.Kind.FOG_SPIDER: [12, 3, 0, 1],
 		CombatUnit.Kind.MOTHER_SPIDER: [20, 3, 1, 2],
 		CombatUnit.Kind.SCRAP_ROBOT_1000: [40, 3, 2, 2],
 		CombatUnit.Kind.SCRAP_ROBOT_2000: [45, 3, 3, 2],
@@ -250,12 +251,22 @@ func _test_mother_stages() -> void:
 			await process_frame
 			continue
 		var mothers: Array[CombatUnit] = []
+		var fog_spiders: Array[CombatUnit] = []
 		for index: int in range(5):
 			var unit: CombatUnit = units[index + 2]
-			var is_mother: bool = index >= (4 if stage == 3 else 3)
-			_check(unit.cell == placements[stage][index]
-				and unit.kind == (CombatUnit.Kind.MOTHER_SPIDER if is_mother else CombatUnit.Kind.SPIDERLING),
-				"엄마·새끼의 종류·수·시작 좌표를 실제 스테이지에 연결")
+			# 3막 1스테이지는 (9,2)가 독안개 거미(#463)이고 (9,7)이 엄마다.
+			var is_fog: bool = stage == 6 and index == 3
+			var is_mother: bool = index >= (4 if stage == 3 else 3) and not is_fog
+			var expected_kind: CombatUnit.Kind = CombatUnit.Kind.SPIDERLING
+			if is_fog:
+				expected_kind = CombatUnit.Kind.FOG_SPIDER
+			elif is_mother:
+				expected_kind = CombatUnit.Kind.MOTHER_SPIDER
+			_check(unit.cell == placements[stage][index] and unit.kind == expected_kind,
+				"엄마·독안개·새끼의 종류·수·시작 좌표를 실제 스테이지에 연결")
+			if is_fog:
+				fog_spiders.append(unit)
+				_check(unit.movement_left == 4 and unit.hit_points == 12, "실제 독안개 거미는 이동력4·HP12에서 시작")
 			if is_mother:
 				mothers.append(unit)
 				_check(unit.movement_left == 4 and unit.hit_points == 20, "실제 엄마는 이동력4·HP20에서 시작")
@@ -282,6 +293,8 @@ func _test_mother_stages() -> void:
 		loot.data["items"] = [{"kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}]
 		for mother: CombatUnit in mothers:
 			actions.incapacitate(mother)
+		for fog_spider: CombatUnit in fog_spiders:
+			actions.incapacitate(fog_spider)
 		actions.changed.emit()
 		_check(child.hit_points == 1 and child.visible and child in turns.ordered_units
 			and not actions.is_victory() and progress.rewards.is_empty(),
@@ -294,7 +307,7 @@ func _test_mother_stages() -> void:
 		actions.incapacitate(child)
 		actions.changed.emit()
 		_check(actions.is_victory() and progress.rewards.size() == (2 if stage == 3 else 3),
-			"보장1개에 엄마1마리·2마리분만 추가 드랍하고 처음·생성 새끼는 모두 제외")
+			"보장1개에 엄마·독안개 거미 합쳐 1마리·2마리분만 추가 드랍하고 처음·생성 새끼는 모두 제외")
 		main.queue_free()
 		await process_frame
 

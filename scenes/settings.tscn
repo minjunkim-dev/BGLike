@@ -74,10 +74,25 @@ layout_mode = 2
 focus_neighbor_left = NodePath(".")
 focus_neighbor_top = NodePath("../VolumeRow/Volume")
 focus_neighbor_right = NodePath(".")
-focus_neighbor_bottom = NodePath("../../Back")
-focus_next = NodePath("../../Back")
+focus_neighbor_bottom = NodePath("../FillScreen")
+focus_next = NodePath("../FillScreen")
 focus_previous = NodePath("../VolumeRow/Volume")
 text = "전체 화면"
+
+[node name="FitName" type="Label" parent="Center/Layout/Grid"]
+layout_mode = 2
+text = "화면 맞춤"
+
+[node name="FillScreen" type="CheckBox" parent="Center/Layout/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_neighbor_left = NodePath(".")
+focus_neighbor_top = NodePath("../Fullscreen")
+focus_neighbor_right = NodePath(".")
+focus_neighbor_bottom = NodePath("../../Back")
+focus_next = NodePath("../../Back")
+focus_previous = NodePath("../Fullscreen")
+text = "꽉 채우기"
 
 [node name="Gap" type="Control" parent="Center/Layout"]
 custom_minimum_size = Vector2(0, 6)
@@ -89,9 +104,9 @@ custom_minimum_size = Vector2(80, 20)
 layout_mode = 2
 size_flags_horizontal = 4
 focus_neighbor_left = NodePath(".")
-focus_neighbor_top = NodePath("../Grid/Fullscreen")
+focus_neighbor_top = NodePath("../Grid/FillScreen")
 focus_neighbor_right = NodePath(".")
 focus_neighbor_bottom = NodePath(".")
 focus_next = NodePath(".")
-focus_previous = NodePath("../Grid/Fullscreen")
+focus_previous = NodePath("../Grid/FillScreen")
 text = "뒤로"

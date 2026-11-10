@@ -5,9 +5,9 @@ extends RefCounted
 ## 비용 자원(행동, 보조 행동, 반응) 순서의 묶음. HUD의 배치 순서이기도 하다.
 ## 복합 비용 스킬은 첫 자원의 묶음에 둔다(십자 베기는 임시로 행동, 9-3).
 const GROUPS: Array[Array] = [
-	["attack", "cross_slash", "battle_cry", "shock", "spawn", "pull", "spin"],
+	["attack", "sweep", "cross_slash", "battle_cry", "shock", "spawn", "pull", "spin"],
 	["holy_veil", "steel_charge", "second_wind", "mark", "disengage", "shove", "jump", "potion"],
-	["opportunity"]
+	["opportunity", "counter"]
 ]
 ## 묶음의 자원과 함께 모두 소비하는 비용. 하나라도 부족하면 쓸 수 없다 (5-3). 점프의 이동력은 칸마다 다르다.
 const EXTRA_COSTS: Dictionary[String, String] = {
@@ -15,19 +15,21 @@ const EXTRA_COSTS: Dictionary[String, String] = {
 }
 static var NAMES: Dictionary[String, String] = {
 	"attack": TranslationServer.tr("공격"), "second_wind": TranslationServer.tr("숨 고르기"),
-	"cross_slash": TranslationServer.tr("십자 베기"), "steel_charge": TranslationServer.tr("강철 돌진"),
+	"sweep": TranslationServer.tr("휩쓸기"), "cross_slash": TranslationServer.tr("십자 베기"), "steel_charge": TranslationServer.tr("강철 돌진"),
 	"holy_veil": TranslationServer.tr("성스러운 장막"), "battle_cry": TranslationServer.tr("전투의 함성"),
 	"mark": TranslationServer.tr("표식"), "shock": TranslationServer.tr("충격 화살"), "disengage": TranslationServer.tr("물러서며 쏘기"),
 	"shove": TranslationServer.tr("밀치기"), "potion": TranslationServer.tr("물약"), "opportunity": TranslationServer.tr("기회 공격"),
-	"spawn": TranslationServer.tr("새끼 낳기"), "pull": TranslationServer.tr("만능팔"), "spin": TranslationServer.tr("회전회오리"), "jump": TranslationServer.tr("점프")
+	"spawn": TranslationServer.tr("새끼 낳기"), "pull": TranslationServer.tr("만능팔"), "spin": TranslationServer.tr("회전회오리"), "jump": TranslationServer.tr("점프"),
+	"counter": TranslationServer.tr("반격")
 }
 static var EFFECTS: Dictionary[String, String] = {
 	"jump": TranslationServer.tr("1~2칸의 빈 바닥으로 점프.\n상승2까지, 낙하 차3부터 피해."),
 	"spawn": TranslationServer.tr("인접한 빈 칸에 새끼 거미1마리를 만듭니다."),
 	"spin": TranslationServer.tr("상하좌우1칸·높이 차이1 이하인 모든 아군이 각자 힘 내성굴림.\n성공하면 피해 절반. 밀어내지 않습니다. 횟수와 쉬는 턴 제한 없음."),
 	"second_wind": TranslationServer.tr("HP 1d10+1 회복.\n최대 HP를 넘지 않습니다."),
+	"sweep": TranslationServer.tr("인접한 칸을 골라 정면을 정하고\n정면 반달 5칸의 적만 시계방향으로\n각각 공격합니다. 아군은 맞지 않습니다."),
 	"cross_slash": TranslationServer.tr("인접한 적 1명을 기본 공격 2회.\n첫 타격으로 쓰러지면 둘째는 취소."),
-	"steel_charge": TranslationServer.tr("인접한 적을 공격. 명중하면 피해 후\n1칸 밀치고 빈 칸으로 1칸 전진.\n밀 수 없으면 피해만. 전진은 기회 공격 없음."),
+	"steel_charge": TranslationServer.tr("인접한 적을 공격. 명중하면 피해 후\n1칸 밀치고 빈 칸으로 1칸 전진.\n쓰러지면 그 칸으로 전진, 밀 수 없으면\n피해만. 전진은 기회 공격 없음."),
 	"holy_veil": TranslationServer.tr("건강 굴림값만큼 방어막.\nHP보다 먼저 모든 피해를 받습니다.\n3턴. 다시 쓰면 큰 값을 유지합니다."),
 	"battle_cry": TranslationServer.tr("의지 굴림값을 모든 아군의\n명중굴림에 더합니다. 2턴.\n전사가 쓰러져도 유지됩니다."),
 	"mark": TranslationServer.tr("1~6칸 적에게 표식.\n이 궁수가 맞히면 피해 +1d6.\n전투 중 유지됩니다."),
@@ -36,21 +38,50 @@ static var EFFECTS: Dictionary[String, String] = {
 	"disengage": TranslationServer.tr("이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\n공격을 실행하지 않습니다."),
 	"shove": TranslationServer.tr("대상이 힘 내성굴림.\n실패하면 1칸 밀리고, 성공하면 버팁니다.\n기절 대상은 내성 없이 밀림.\n아군은 판정 없이 밀림."),
 	"potion": TranslationServer.tr("HP 2d4+2 회복.\n최대 HP를 넘지 않습니다."),
-	"opportunity": TranslationServer.tr("적이 내 인접 칸을 벗어나면 기본 공격.")
+	"opportunity": TranslationServer.tr("적이 내 인접 칸을 벗어나면 기본 공격."),
+	"counter": TranslationServer.tr("나를 노린 인접한 적의 명중굴림이\n빗나가면 반드시 명중하는 반격.")
 }
+## 패시브 칸의 스킬(#457). 자원과 횟수가 없어 NAMES·GROUPS에 넣지 않는다. 아이콘이 생기기 전에는 이름 첫 글자를 보인다.
+const PASSIVES: Array[String] = ["phalanx", "brawn"]
+static var PASSIVE_NAMES: Dictionary[String, String] = {
+	"phalanx": TranslationServer.tr("팔랑크스"), "brawn": TranslationServer.tr("괴력의 사내")
+}
+static var PASSIVE_EFFECTS: Dictionary[String, String] = {
+	"phalanx": TranslationServer.tr("전사와 인접한 아군이 있으면\n전사와 그 아군의 AC +1. 중첩 없음."),
+	"brawn": TranslationServer.tr("기회 공격이 명중하면\n대상의 이동력을 즉시 0으로 만듭니다.")
+}
+## 이로움(초록)·해로움(빨강) 수치 색(#457). 어두운 패널(202b35) 위에서 AA 대비를 넘는다.
+const GOOD_COLOR: Color = Color("70c76d")
+const BAD_COLOR: Color = Color("ff8a80")
+# 앞 글자가 수치 가감일 때만 칠한다. +0은 가감이 아니라 칠하지 않는다.
+static var _GOOD: RegEx = RegEx.create_from_string("(d\\d+ ?|AC |명중 |공격 )(\\+(?!0(?!\\d))\\d+)")  # NO_TRANSLATE: 정규식 패턴
+static var _BAD: RegEx = RegEx.create_from_string("(d\\d+ ?|AC |명중 |공격 )(-\\d+)")  # NO_TRANSLATE: 정규식 패턴
+
+
+## 수치 가감(`힘 d20+2`, `공격 -1`)을 부호는 그대로 두고 색만 입힌 BBCode로 바꾼다.
+static func colorize(text: String) -> String:
+	var result: String = text.replace("[", "[lb]")
+	result = _GOOD.sub(result, "$1[color=#%s]$2[/color]" % GOOD_COLOR.to_html(false), true)
+	return _BAD.sub(result, "$1[color=#%s]$2[/color]" % BAD_COLOR.to_html(false), true)
+
+
 ## 대상 없이 바로 쓰는 동작.
 const SELF_TARGET: Array[String] = ["holy_veil", "battle_cry", "second_wind", "disengage", "potion"]
 ## 표식과 충격 화살의 사거리.
 const SKILL_RANGE: int = 6
-## 아군 직업의 고유 동작. 몬스터의 동작은 정의의 actions가 정한다.
+## 칸 조준 동작의 사거리와 반경 (SKILL_TYPES 5-2). 최소 사거리는 0, 곡사·기준점(목표 칸)은 기본값이라 필드가 없다.
+const AIM_RANGES: Dictionary[String, int] = {"fog": 4}
+const AIM_RADII: Dictionary[String, int] = {"fog": 1}
+## 아군 직업의 고유 동작과 패시브(팔랑크스, 괴력의 사내). 몬스터의 동작은 정의의 actions가 정한다.
+## 공용 동작(점프·기회 공격)은 belongs_to가 정한다.
 const CLASS_ONLY: Dictionary[String, CombatUnit.Kind] = {
-	"cross_slash": CombatUnit.Kind.WARRIOR, "steel_charge": CombatUnit.Kind.WARRIOR,
+	"sweep": CombatUnit.Kind.WARRIOR, "cross_slash": CombatUnit.Kind.WARRIOR, "steel_charge": CombatUnit.Kind.WARRIOR,
 	"holy_veil": CombatUnit.Kind.WARRIOR, "battle_cry": CombatUnit.Kind.WARRIOR,
-	"phalanx": CombatUnit.Kind.WARRIOR, "opportunity": CombatUnit.Kind.WARRIOR,
+	"phalanx": CombatUnit.Kind.WARRIOR, "brawn": CombatUnit.Kind.WARRIOR, "counter": CombatUnit.Kind.WARRIOR,
 	"mark": CombatUnit.Kind.ARCHER, "shock": CombatUnit.Kind.ARCHER, "disengage": CombatUnit.Kind.ARCHER
 }
 ## 아군이 쓰지 않는 몬스터 동작. 풋내기 야만인의 숨 고르기도 여기 있다.
-const MONSTER_ONLY: Array[String] = ["second_wind", "spawn", "pull", "spin"]
+const MONSTER_ONLY: Array[String] = ["second_wind", "spawn", "pull", "spin", "fog"]
 const USE_COUNTERS: Dictionary[String, StringName] = {
 	"second_wind": &"second_wind_left", "mark": &"mark_left",
 	"shock": &"shock_left", "disengage": &"disengage_left", "potion": &"potion_left",
@@ -67,15 +98,17 @@ const USES_PER_COMBAT: Dictionary[String, int] = {
 ## 성스러운 장막과 전투의 함성의 기간. 시전자 턴 시작마다 1씩 준다.
 const SHIELD_TURNS: int = 3
 const BATTLE_CRY_TURNS: int = 2
-## 피해 능력치를 명중 능력치와 다르게 지정한 동작 (능력치 기획서 4-9). 지금 있는 스킬은 모두 같아 비어 있다.
+## 피해 능력치를 명중 능력치와 다르게 지정한 동작 (능력치 기획서 4-9). 반격은 명중굴림 없이 민첩으로 피해를 준다.
 ## 동작 이름으로 찾으므로 기회 공격("opportunity")은 "attack"과 따로 지정한다.
-static var DAMAGE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {}
+static var DAMAGE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {"counter": CombatUnit.Ability.AGILITY}
 ## 내성굴림 동작의 시전 능력치(DC)와 대상의 내성 능력치 (4-3, 8장). 기존 동작은 현행(힘)을 유지한다.
 const CAST_ABILITIES: Dictionary[String, CombatUnit.Ability] = {
-	"spin": CombatUnit.Ability.STRENGTH, "shove": CombatUnit.Ability.STRENGTH, "pull": CombatUnit.Ability.STRENGTH
+	"spin": CombatUnit.Ability.STRENGTH, "shove": CombatUnit.Ability.STRENGTH, "pull": CombatUnit.Ability.STRENGTH,
+	"fog": CombatUnit.Ability.HEALTH
 }
 const SAVE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {
-	"spin": CombatUnit.Ability.STRENGTH, "shove": CombatUnit.Ability.STRENGTH, "pull": CombatUnit.Ability.STRENGTH
+	"spin": CombatUnit.Ability.STRENGTH, "shove": CombatUnit.Ability.STRENGTH, "pull": CombatUnit.Ability.STRENGTH,
+	"fog": CombatUnit.Ability.HEALTH
 }
 ## 스킬의 DC 보정. 지정이 없으면 0이다. 지금 있는 스킬은 모두 0이라 비어 있다.
 static var DC_BONUSES: Dictionary[String, int] = {}
@@ -100,12 +133,15 @@ static func damage_ability(actor: CombatUnit, action: String) -> CombatUnit.Abil
 ## 시전 때 정하는 내성굴림 동작의 DC. 대상이 어떤 능력치로 막든 같다 (4-3).
 static func save_dc(actor: CombatUnit, action: String) -> int:
 	return CombatChecks.save_dc(actor.get_ability_sides(CAST_ABILITIES[action]), actor.get_attack_bonus(),
-		DC_BONUSES.get(action, 0))
+		DC_BONUSES.get(action, 0), actor.get_ability_modifier(CAST_ABILITIES[action]))
 
 
 static func belongs_to(actor: CombatUnit, action: String) -> bool:
 	if action == "jump":
 		return true
+	# 기회 공격은 근접 기본 공격을 가진 모든 유닛의 공용 동작이다 (5-2).
+	if action == "opportunity":
+		return actor.get_attack_range() == 1
 	if not actor.is_ally:
 		return action in CombatEnemyDefinitions.for_kind(actor.kind)["actions"]
 	return action not in MONSTER_ONLY and (action not in CLASS_ONLY or actor.kind == CLASS_ONLY[action])
@@ -170,13 +206,23 @@ static func icon_of(action: String) -> Texture2D:
 static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] = []) -> String:
 	var melee: bool = actor.get_attack_range() == 1
 	var weapon: String = damage_text(actor, action)
-	var hit: String = TranslationServer.tr("%s d%d %+d 대 AC") % [CombatUnit.ability_name(actor.get_attack_ability()),
-		actor.get_ability_sides(actor.get_attack_ability()), actor.get_hit_bonus()]
+	var hit: String = TranslationServer.tr("%s %+d 대 AC") % [CombatUnit.ability_text(actor, actor.get_attack_ability()),
+		actor.get_hit_bonus()]
 	var lines: Array[String] = []
 	match action:
 		"attack", "opportunity", "cross_slash", "steel_charge":
 			lines = [TranslationServer.tr("사거리: 인접1칸") if melee else TranslationServer.tr("사거리: 1~%d칸") % actor.get_attack_range(), weapon,
 				TranslationServer.tr("판정: %s") % hit]
+		"sweep":
+			var bonus: int = damage_bonus(actor, action)
+			lines = [TranslationServer.tr("사거리: 정면 반달 5칸"), TranslationServer.tr("피해: %s ÷2 올림%s") % [
+				CombatUnit.ability_text(actor, damage_ability(actor, action)),
+				"" if bonus == 0 else " %+d" % bonus], TranslationServer.tr("판정: 대상마다 %s") % hit]
+		"counter":
+			var counter_bonus: int = damage_bonus(actor, action)
+			lines = [TranslationServer.tr("사거리: 인접1칸"), TranslationServer.tr("피해: %s%s") % [
+				CombatUnit.ability_text(actor, damage_ability(actor, action)),
+				"" if counter_bonus == 0 else "%+d" % counter_bonus], TranslationServer.tr("판정: 없음(반드시 명중)")]
 		"shock":
 			lines = [TranslationServer.tr("사거리: 1~%d칸") % SKILL_RANGE, weapon, TranslationServer.tr("판정: %s, 명중하면 기절") % hit]
 		"mark":
@@ -196,10 +242,10 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 		"disengage":
 			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("판정: 없음")]
 		"holy_veil":
-			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("방어막: 건강 d%d") % actor.get_ability_sides(CombatUnit.Ability.HEALTH),
+			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("방어막: %s") % CombatUnit.ability_text(actor, CombatUnit.Ability.HEALTH),
 				TranslationServer.tr("판정: 없음")]
 		"battle_cry":
-			lines = [TranslationServer.tr("사거리: 모든 아군"), TranslationServer.tr("명중 보너스: 의지 d%d") % actor.get_ability_sides(CombatUnit.Ability.WILL),
+			lines = [TranslationServer.tr("사거리: 모든 아군"), TranslationServer.tr("명중 보너스: %s") % CombatUnit.ability_text(actor, CombatUnit.Ability.WILL),
 				TranslationServer.tr("판정: 없음")]
 		"spin":
 			lines = [TranslationServer.tr("사거리: 인접1칸"), weapon, TranslationServer.tr("판정: 대상의 %s 내성 대 DC %d, 성공하면 피해 절반") % [
@@ -229,7 +275,7 @@ static func shove_saves(actor: CombatUnit, target: CombatUnit) -> bool:
 ## 대상의 실제 내성 성공률. 내성 능력치 주사위, 방어 가산, 유리/불리와 절대면을 반영한다.
 static func save_chance(actor: CombatUnit, target: CombatUnit, action: String) -> float:
 	return CombatChecks.save_chance(target.get_ability_sides(SAVE_ABILITIES[action]), target.get_defense_bonus(),
-		save_dc(actor, action), save_mode(target))
+		save_dc(actor, action), save_mode(target), target.get_ability_modifier(SAVE_ABILITIES[action]))
 
 
 ## 호버의 피해 줄. 피해 능력치가 명중 능력치와 다르면 둘을 함께 보인다 (4-9).
@@ -238,12 +284,15 @@ static func damage_text(actor: CombatUnit, action: String) -> String:
 	var ability: CombatUnit.Ability = damage_ability(actor, action)
 	var bonus: String = "" if damage_bonus(actor, action) == 0 else "%+d" % damage_bonus(actor, action)
 	if ability == hit_ability:
-		return TranslationServer.tr("피해: %s d%d%s") % [CombatUnit.ability_name(ability), actor.get_ability_sides(ability), bonus]
-	return TranslationServer.tr("피해: 명중 %s d%d → 피해 %s d%d%s") % [CombatUnit.ability_name(hit_ability),
-		actor.get_ability_sides(hit_ability), CombatUnit.ability_name(ability), actor.get_ability_sides(ability), bonus]
+		return TranslationServer.tr("피해: %s%s") % [CombatUnit.ability_text(actor, ability), bonus]
+	return TranslationServer.tr("피해: 명중 %s d%d → 피해 %s%s") % [CombatUnit.ability_name(hit_ability),
+		actor.get_ability_sides(hit_ability), CombatUnit.ability_text(actor, ability), bonus]
 
 
 static func effect(actor: CombatUnit, action: String) -> String:
 	if action == "attack":
 		return TranslationServer.tr("인접한 적을 기본 공격합니다.") if actor.get_attack_range() == 1 else TranslationServer.tr("1~6칸 원거리 공격.\n옆에 적이 있으면 불리.")
+	# 패시브 칸이 정해지기 전까지 괴력의 사내는 기회 공격 호버로 안내한다 (#434).
+	if action == "opportunity" and belongs_to(actor, "brawn"):
+		return EFFECTS[action] + "\n" + TranslationServer.tr("괴력의 사내: 명중하면 대상의 이동을 멈춥니다.")
 	return EFFECTS.get(action, "")

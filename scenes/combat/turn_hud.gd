@@ -31,6 +31,9 @@ var _action_slots: Array[Button] = []
 var _badges: Dictionary[String, Label] = {}
 var _costs: Dictionary[String, Label] = {}
 var _containers: Array[PanelContainer] = []
+# 스킬 컨테이너 맨 왼쪽의 패시브 칸(#457). 켜짐·적용 중에만 강조한다.
+var _passives: Dictionary[String, Button] = {}
+var _passive_dots: Dictionary[String, Label] = {}
 var _titles: Array[Label] = []
 var _log_lines: Array[String] = []
 # 기본 툴팁 창 대신 같은 HUD의 최상단에 설명을 그린다.
@@ -44,11 +47,11 @@ var grid: CombatGrid
 @onready var order_bar: HBoxContainer = $OrderScroll/OrderBar
 @onready var unit_label: Label = $UnitDetails/UnitPanel/Info/CurrentUnit
 @onready var actor_label: Label = $UnitDetails/UnitPanel/Info/Actor
-@onready var resource_label: Label = $UnitDetails/UnitPanel/Info/Resources
+@onready var resource_label: RichTextLabel = $UnitDetails/UnitPanel/Info/Resources
 @onready var health_bar: ProgressBar = $UnitDetails/UnitPanel/Info/Health
 @onready var end_button: Button = $EndTurn
 @onready var preview_label: Label = $UnitDetails/AttackPreview
-@onready var action_bar: HBoxContainer = $Skills/Groups
+@onready var action_bar: VBoxContainer = $Skills/Groups
 @onready var message_label: Label = $CombatLog/Message
 @onready var result_label: Label = $Result/Panel/Contents/Outcome
 @onready var restart_button: Button = $Result/Panel/Contents/Restart
@@ -65,31 +68,39 @@ func feedback_obstacles() -> Array[Rect2]:
 func _ready() -> void:
 	# 기본 반투명 배경은 아래 지형에 따라 대비가 바뀐다. 불투명 패널로 WCAG AA를 고정한다.
 	$CombatLog.add_theme_stylebox_override("panel", _panel_style())
-	# 스킬 설명은 전투 로그 위에 띄워 판정 기록을 가리지 않는다.
+	# 스킬 설명은 전투 로그와 스킬 패널 위에 띄워 판정 기록을 가리지 않는다.
 	_tooltip.top_of = func(target: Control) -> float:
-		return ($CombatLog as Control).get_global_rect().position.y if $Skills.is_ancestor_of(target) \
-			else target.get_global_rect().position.y
+		return minf(($CombatLog as Control).get_global_rect().position.y, ($Skills as Control).get_global_rect().position.y) \
+			if $Skills.is_ancestor_of(target) else target.get_global_rect().position.y
 	_tooltip.hidden_when = func() -> bool: return reaction_dialog.visible or $Result.visible
+	_tooltip.colorize_numbers = true
 	add_child(_tooltip)
 	end_button.pressed.connect(func() -> void: end_turn_requested.emit())
 	restart_button.pressed.connect(func() -> void: restart_requested.emit())
+	_build_passives()
 	for index: int in range(CombatActionRules.GROUPS.size()):
 		var panel: PanelContainer = PanelContainer.new()
 		panel.add_theme_stylebox_override("panel", _panel_style())
 		action_bar.add_child(panel)
 		_containers.append(panel)
-		var column: VBoxContainer = VBoxContainer.new()
-		column.add_theme_constant_override("separation", 3)
-		panel.add_child(column)
+		# 컨테이너마다 한 줄이다. 버튼이 줄을 넘치면 같은 컨테이너 안에서 다음 줄로 넘긴다(#438).
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		panel.add_child(row)
 		var title: Label = Label.new()
 		title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		title.add_theme_font_size_override("font_size", 10)
 		title.add_theme_color_override("font_color", RESOURCE_COLORS[index])
-		column.add_child(title)
+		# 제목 폭을 맞춰 세 줄의 첫 버튼을 같은 세로선에 둔다.
+		title.custom_minimum_size.x = 58
+		title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(title)
 		_titles.append(title)
-		var buttons: HBoxContainer = HBoxContainer.new()
-		buttons.add_theme_constant_override("separation", 3)
-		column.add_child(buttons)
+		var buttons: HFlowContainer = HFlowContainer.new()
+		buttons.add_theme_constant_override("h_separation", 3)
+		buttons.add_theme_constant_override("v_separation", 3)
+		buttons.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(buttons)
 		for action: String in CombatActionRules.GROUPS[index]:
 			var button: Button = HoverTooltip.HoverButton.new()
 			# 아이콘 오른쪽에 비용 마크 자리를 남긴다. 높이는 그림을 줄이기 전(#362)의 입력 영역이다.
@@ -143,6 +154,58 @@ func _ready() -> void:
 	reaction_dialog.canceled.connect(_finish_reaction.bind(false))
 
 
+## 컨테이너 묶음(Groups)을 가로 줄로 감싸고 그 왼쪽 끝에 패시브 칸을 둔다. 버튼에는 비용 기호와 횟수 배지가 없다.
+func _build_passives() -> void:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 3)
+	$Skills.add_child(row)
+	var column: VBoxContainer = VBoxContainer.new()
+	column.add_theme_constant_override("separation", 3)
+	row.add_child(column)
+	action_bar.reparent(row)
+	action_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for passive: String in CombatActionRules.PASSIVES:
+		var button: Button = HoverTooltip.HoverButton.new()
+		button.custom_minimum_size = Vector2(22, 34)
+		# 아이콘이 생기기 전에는 이름 첫 글자를 보인다.
+		button.text = CombatActionRules.PASSIVE_NAMES[passive].left(1)
+		button.add_theme_font_size_override("font_size", 12)
+		button.focus_mode = Control.FOCUS_NONE
+		button.accessibility_name = CombatActionRules.PASSIVE_NAMES[passive]
+		button.tooltip_text = CombatActionRules.PASSIVE_NAMES[passive] + "\n" + CombatActionRules.PASSIVE_EFFECTS[passive]
+		column.add_child(button)
+		_tooltip.attach(button)
+		_passives[passive] = button
+		# 켜짐 표시는 버튼 아래쪽 작은 점이다. 오른쪽 위는 횟수 배지 자리라 비운다.
+		var dot: Label = Label.new()
+		dot.text = "●"
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dot.add_theme_font_size_override("font_size", 6)
+		dot.add_theme_color_override("font_color", Color("f4ead1"))
+		button.add_child(dot)
+		dot.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+		dot.position.y -= 2
+		_passive_dots[passive] = dot
+
+
+## 패시브 칸을 갱신한다. 팔랑크스는 아군이 인접해 실제로 적용되는 동안만 강조한다. 괴력의 사내는 상태가 없어 평범한 모습이다.
+func _refresh_passives(shown: CombatUnit) -> void:
+	for passive: String in CombatActionRules.PASSIVES:
+		var button: Button = _passives[passive]
+		button.visible = shown != null and CombatActionRules.belongs_to(shown, passive)
+		if not button.visible:
+			continue
+		var on: bool = passive == "phalanx" and grid != null and grid.phalanx_bonus(shown) > 0
+		var style: StyleBoxFlat = _button_style(Color("3b4f63") if on else Color("293541"), Color("f4ead1") if on else Color("61717e"))
+		if on:
+			style.set_border_width_all(2)
+		for state: String in ["normal", "hover", "pressed", "disabled"]:
+			button.add_theme_stylebox_override(state, style)
+		# 꺼짐·조건 미충족은 어둡게 하지 않는다. 회색은 사용 불가의 뜻이라 글자색은 켜짐과 같다.
+		button.add_theme_color_override("font_color", Color.WHITE)
+		_passive_dots[passive].visible = on
+
+
 func refresh_actions(actions: CombatActions, selected: String, last_ally: CombatUnit) -> void:
 	var actor: CombatUnit = actions.turns.current_unit
 	var shown: CombatUnit = actor if actor != null and actor.is_ally else last_ally
@@ -152,6 +215,7 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 	var empty_symbols: Array[String] = ["○", "△", "◇"]
 	var names: Array[String] = [tr("행동"), tr("보조 행동"), tr("반응")]
 	_action_slots.clear()
+	_refresh_passives(shown)
 	for index: int in range(_containers.size()):
 		_containers[index].visible = shown != null and (index != 2 or shown.kind == CombatUnit.Kind.WARRIOR)
 		if shown == null:
@@ -230,7 +294,7 @@ func add_log(message: String) -> void:
 
 func show_reaction(kind: String, prompt: String) -> void:
 	reaction_dialog.dialog_text = prompt
-	reaction_dialog.get_ok_button().text = tr("공격")
+	reaction_dialog.get_ok_button().text = tr("반격") if kind == "counter" else tr("공격")
 	reaction_dialog.get_cancel_button().text = tr("넘기기")
 	reaction_dialog.exclusive = true
 	reaction_dialog.popup_centered(Vector2i(360, 110))
@@ -317,8 +381,8 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 		if unit.initiative_roll == 0:
 			button.tooltip_text = tr("%s: 엄마 거미 바로 앞 순서\n생성한 라운드에는 행동하지 않습니다.") % unit.get_display_name()
 		else:
-			button.tooltip_text = tr("%s: 민첩 d%d = %d") % [
-				unit.get_display_name(), unit.get_ability_sides(CombatUnit.Ability.AGILITY), unit.get_initiative()]
+			button.tooltip_text = tr("%s: %s = %d") % [
+				unit.get_display_name(), CombatUnit.ability_text(unit, CombatUnit.Ability.AGILITY), unit.get_initiative()]
 		var in_group: bool = unit in turns.get_current_group()
 		(button.get_node("PendingTurn") as Control).visible = (
 			in_group and not turns.is_turn_started(unit) and not turns.is_turn_finished(unit))
@@ -364,13 +428,13 @@ func show_unit(unit: CombatUnit) -> void:
 	var phalanx: int = grid.phalanx_bonus(unit) if grid != null else 0
 	if phalanx > 0:
 		states.append(tr("팔랑크스 AC +%d") % phalanx)
-	resource_label.text = tr("HP %d / %d   AC %d\n힘 d%d · 민첩 d%d · 솜씨 d%d\n지능 d%d · 의지 d%d · 건강 d%d\n공격 %+d · 사거리 %d칸\n상태: %s") % [
+	resource_label.text = CombatActionRules.colorize(tr("HP %d / %d   AC %d\n%s · %s · %s\n%s · %s · %s\n공격 %+d · 사거리 %d칸\n상태: %s") % [
 		unit.hit_points, unit.get_max_hit_points(), unit.get_armor_class() + phalanx,
-		unit.get_ability_sides(CombatUnit.Ability.STRENGTH), unit.get_ability_sides(CombatUnit.Ability.AGILITY),
-		unit.get_ability_sides(CombatUnit.Ability.FINESSE), unit.get_ability_sides(CombatUnit.Ability.INTELLIGENCE),
-		unit.get_ability_sides(CombatUnit.Ability.WILL), unit.get_ability_sides(CombatUnit.Ability.HEALTH),
+		CombatUnit.ability_text(unit, CombatUnit.Ability.STRENGTH), CombatUnit.ability_text(unit, CombatUnit.Ability.AGILITY),
+		CombatUnit.ability_text(unit, CombatUnit.Ability.FINESSE), CombatUnit.ability_text(unit, CombatUnit.Ability.INTELLIGENCE),
+		CombatUnit.ability_text(unit, CombatUnit.Ability.WILL), CombatUnit.ability_text(unit, CombatUnit.Ability.HEALTH),
 		unit.get_attack_bonus(), unit.get_attack_range(),
-		", ".join(states) if not states.is_empty() else tr("없음")]
+		", ".join(states) if not states.is_empty() else tr("없음")])
 
 
 func show_attack_preview(target: CombatUnit, preview: CombatChecks.AttackPreview) -> void:

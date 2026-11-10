@@ -5,7 +5,7 @@
 >
 > - 기준일: 2026-10-22 (2026-10-02 작성, 2026-10-22 기획자 확인 [#209](https://github.com/minjunkim-dev/BGLike/issues/209)·[#210](https://github.com/minjunkim-dev/BGLike/issues/210)·[#220](https://github.com/minjunkim-dev/BGLike/issues/220)·[#237](https://github.com/minjunkim-dev/BGLike/issues/237) 답변 반영, 2026-10-27 능력치·동작 유형 기획서 색인 반영)
 > - 남은 작업: [M7까지 남은 작업 지도](https://github.com/minjunkim-dev/BGLike/issues/200)
-> - 관련 문서: [기획 현황](DESIGN_STATUS.md) · [전투 시스템 기획서](COMBAT_DESIGN.md) · [M1 개발 요청서](DEV_REQUEST_M1.md)
+> - 관련 문서: [기획 현황](DESIGN_STATUS.md) · [전투 시스템 기획서](COMBAT_DESIGN.md) · [M1 개발 요청서](DEV_REQUEST_M1.md) · [4분기 기획 일정](SCHEDULE_2026_Q4.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) 또는 일부만 정해짐 · ❓ 정해야 함 · ⏸ 보류
 
 ---
@@ -195,7 +195,7 @@ flowchart LR
 
 | 순서 | 영역 | 정할 내용 |
 |---|---|---|
-| 1 | 캐릭터 육성 | 레벨업, 능력치 성장, 스킬 습득. 능력치 성장은 [주사위 육성 논의](DICE_GROWTH.md)(막 최초 클리어마다 전체 주사위 레벨 +1, 구현 ⏸) |
+| 1 | 캐릭터 육성 | 레벨업, 능력치 성장, 스킬 습득. 능력치 성장은 [주사위 육성 논의](DICE_GROWTH.md)(막 최초 클리어마다 전체 주사위 레벨 +1, 구현 범위: [#322 답](https://github.com/minjunkim-dev/BGLike/issues/322#issuecomment-6714895396)) |
 | 2 | 장비 | 무기와 방어구. 무기가 공격 타입을 정하는지 |
 | 3 | 아이템 | 소모품 종류, 획득 경로, 소지 한도 |
 | 4 | 성장 재화 | 재화 종류, 얻는 곳, 쓰는 곳 (재화 흐름도) |

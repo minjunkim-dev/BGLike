@@ -2,13 +2,16 @@ class_name CombatUnit
 extends Node2D
 ## 팀과 직업, 격자 위치와 유닛별 턴 자원·도트 애니메이션.
 
-enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6 }
+enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_ROBOT_1000 = 4, SCRAP_ROBOT_2000 = 5, SCRAP_ROBOT_3000 = 6, FOG_SPIDER = 7 }
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Ability { STRENGTH, AGILITY, FINESSE, INTELLIGENCE, WILL, HEALTH }
 
 ## 능력치 기획서(ABILITY_SYSTEM.md) 6-1의 전사·궁수 주사위 (#386).
 ## 전사의 의지는 재디자인(#423)에서 d8이다.
 const ALLY_ABILITY_SIDES: Array[Array] = [[20, 8, 6, 4, 8, 12], [6, 12, 20, 6, 4, 8]]
+## 아이템 `stats`의 능력치 가감 키. 순서는 Ability와 같다.
+const ABILITY_MODIFIER_KEYS: Array[String] = ["strength_modifier", "agility_modifier", "finesse_modifier",
+	"intelligence_modifier", "will_modifier", "health_modifier"]
 static var ABILITY_NAMES: Array[String] = [TranslationServer.tr("힘"), TranslationServer.tr("민첩"),
 	TranslationServer.tr("솜씨"), TranslationServer.tr("지능"), TranslationServer.tr("의지"), TranslationServer.tr("건강")]
 
@@ -25,6 +28,7 @@ const ENEMY_COLOR: Color = Color("df6256")
 const OUTLINE_COLOR: Color = Color("202b35")
 const WEAPON_COLOR: Color = Color("f4ead1")
 const HEAL_COLOR: Color = Color("70c76d")
+const SHIELD_COLOR: Color = Color("6fb7ff")
 ## 이어하기가 그대로 되돌리는 값. 저장 파일의 값은 이 변수와 같은 타입이어야 한다.
 const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initiative_roll", "movement_left",
 	"action_capacity", "bonus_action_capacity", "reaction_capacity", "action_left", "bonus_action_left",
@@ -109,7 +113,10 @@ var cross_slash_left: int = 1
 var steel_charge_left: int = 1
 var battle_cry_left: int = 1
 ## 성스러운 장막의 방어막. 피해를 HP보다 먼저 받고, 자기 턴 시작마다 shield_turns가 준다.
-var shield_points: int = 0
+var shield_points: int = 0:
+	set(value):
+		shield_points = value
+		queue_redraw()
 var shield_turns: int = 0
 ## 전투의 함성의 명중 보너스. 시전자의 턴 시작(쓰러졌으면 시계 슬롯)마다 battle_cry_turns가 준다.
 var battle_cry_bonus: int = 0
@@ -151,6 +158,17 @@ static func ability_name(ability: Ability) -> String:
 	return ABILITY_NAMES[ability]
 
 
+## 장비의 능력치 가감 합. 굴림값과 표준값에 더한다 (아이템 기획 폼 3장).
+func get_ability_modifier(ability: Ability) -> int:
+	return _equipment_stat(ABILITY_MODIFIER_KEYS[ability])
+
+
+## 패널·호버의 능력치 표기. 가감이 있으면 `힘 d20+2`처럼 덧붙인다 (#456).
+static func ability_text(unit: CombatUnit, ability: Ability) -> String:
+	var modifier: int = unit.get_ability_modifier(ability)
+	return "%s d%d%s" % [ABILITY_NAMES[ability], unit.get_ability_sides(ability), "" if modifier == 0 else "%+d" % modifier]
+
+
 ## 이름 뒤에 주격 조사 이/가를 붙인다. 숫자로 끝나면 읽은 소리를 따른다(1000 → 천 → 이, #415).
 static func with_subject_particle(display_name: String) -> String:
 	if display_name.is_empty():
@@ -187,7 +205,8 @@ func get_defense_bonus() -> int:
 
 ## AC = 민첩 표준값 + 방어 가산. 몬스터 정의의 armor_class가 있으면 그 값으로 덮어쓴다 (4-3, 7장).
 func get_armor_class() -> int:
-	var armor_class: int = CombatChecks.standard_value(get_ability_sides(Ability.AGILITY)) + get_defense_bonus()
+	var armor_class: int = maxi(1, maxi(1, CombatChecks.standard_value(get_ability_sides(Ability.AGILITY))
+		+ get_ability_modifier(Ability.AGILITY)) + get_defense_bonus())
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind).get("armor_class", armor_class))
 	return armor_class
@@ -214,7 +233,7 @@ func get_hit_bonus() -> int:
 func get_damage_bonus() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["damage_bonus"])
-	# 전사는 기본 피해 보정이 없고 장비로만 더한다. 궁수의 +1은 #407 질문 3의 답을 기다린다.
+	# 전사는 기본 피해 보정이 없고 장비로만 더한다. 궁수의 +1은 궁수 재디자인 때 정한다 (#407 답 3번).
 	return (0 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus")
 
 
@@ -228,8 +247,9 @@ func get_attack_range() -> int:
 	return 1 if kind == Kind.WARRIOR else 6
 
 
+## 민첩 굴림값. 눈(initiative_roll)에 민첩 가감을 더한다. 0은 아직 굴리지 않은 소환 유닛이라 그대로 둔다.
 func get_initiative() -> int:
-	return initiative_roll
+	return initiative_roll if initiative_roll == 0 else maxi(1, initiative_roll + get_ability_modifier(Ability.AGILITY))
 
 
 func get_display_name() -> String:
@@ -242,11 +262,18 @@ func get_art_id() -> String:
 	if not is_ally and kind <= Kind.ARCHER:
 		return "novice_barbarian" if kind == Kind.WARRIOR else "novice_archer"
 	return ["warrior", "archer", "spiderling", "mother_spider",
-		"scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000"][kind]
+		"scrap_robot_1000", "scrap_robot_2000", "scrap_robot_3000", "fog_spider"][kind]
 
 
 func get_status_label_y() -> float:
 	return _art_top_y + body_offset_y - 9.0
+
+
+## HP 바에서 HP와 방어막이 차지하는 비율(x=HP, y=방어막, #457). 방어막은 HP 뒤에 이어 그린다.
+## HP와 방어막 합이 최대 HP를 넘으면 바 전체를 합에 맞춘다. 그래서 만피에 방어막을 받으면 초록이 줄어 보인다.
+func get_bar_fractions() -> Vector2:
+	var total: float = float(maxi(get_max_hit_points(), hit_points + shield_points))
+	return Vector2(hit_points / total, shield_points / total)
 
 
 ## 유닛 위에 지금 보이는 상태 글자. 기절·화상·독·표식.
@@ -281,12 +308,20 @@ func get_periodic_status_text() -> String:
 	for kind_name: String in ["burn", "poison"]:
 		var count: int = get_status_count(kind_name)
 		if count > 0:
-			states.append("%s%d" % [tr("화상") if kind_name == "burn" else tr("독"), count])
+			var text: String = "%s%d" % [tr("화상") if kind_name == "burn" else tr("독"), count]
+			# 독안개로 얻은 중첩은 기간이 없다(turns_left 0).
+			if status_effects.any(func(effect: StatusEffect) -> bool: return effect.kind == kind_name and effect.turns_left == 0):
+				text += "(%s)" % tr("기간 없음")
+			states.append(text)
 	return " ".join(states)
 
 
 func is_boss() -> bool:
 	return not is_ally and bool(CombatEnemyDefinitions.for_kind(kind).get("boss", false))
+
+
+func is_poison_immune() -> bool:
+	return not is_ally and bool(CombatEnemyDefinitions.for_kind(kind).get("poison_immune", false))
 
 
 func can_drop_extra_reward() -> bool:
@@ -295,7 +330,7 @@ func can_drop_extra_reward() -> bool:
 
 func get_movement() -> int:
 	if is_ally:
-		return WARRIOR_MOVEMENT if kind == Kind.WARRIOR else MOVEMENT_PER_TURN
+		return maxi(1, (WARRIOR_MOVEMENT if kind == Kind.WARRIOR else MOVEMENT_PER_TURN) + _equipment_stat("max_movement"))
 	return int(CombatEnemyDefinitions.for_kind(kind).get("movement", MOVEMENT_PER_TURN))
 
 
@@ -394,7 +429,7 @@ func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 		return false
 	return (data.statuses as Array).all(func(saved: Variant) -> bool:
 		return (saved is Array and saved.size() == 4 and saved[0] in ["burn", "poison"]
-			and _valid_index(saved[1], count, false) and saved[2] is int and saved[2] >= 1 and saved[2] <= 4
+			and _valid_index(saved[1], count, false) and saved[2] is int and saved[2] >= (0 if saved[0] == "poison" else 1) and saved[2] <= 4
 			and saved[3] is int and saved[3] >= 0 and saved[3] <= SAVED_INT_LIMIT
 			and (saved[3] == 0 if saved[0] == "burn" else saved[3] > 0)))
 
@@ -530,7 +565,10 @@ func _draw() -> void:
 	draw_set_transform(Vector2(0, floor_offset_y))
 	var status_y: float = get_status_label_y()
 	draw_rect(Rect2(-9, status_y + 4, 18, 4), OUTLINE_COLOR)
-	draw_rect(Rect2(-8, status_y + 5, 16.0 * hit_points / get_max_hit_points(), 2), HEAL_COLOR)
+	var fractions: Vector2 = get_bar_fractions()
+	draw_rect(Rect2(-8, status_y + 5, 16.0 * fractions.x, 2), HEAL_COLOR)
+	if shield_points > 0:
+		draw_rect(Rect2(-8 + 16.0 * fractions.x, status_y + 5, 16.0 * fractions.y, 2), SHIELD_COLOR)
 	var status: String = get_status_text()
 	if not status.is_empty():
 		var font: Font = ThemeDB.fallback_font
