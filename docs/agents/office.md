@@ -10,7 +10,7 @@ leader 세션이 office 체크아웃의 `claude-office/`에서 한 번에 하나
 python3 ../pipeline/engine.py new <과제> --repo <BGLike 경로> --base origin/main --test 'mkdir -p "$TMPDIR/home" && HOME="$TMPDIR/home" GIT_CONFIG_GLOBAL=/dev/null GODOT=/Applications/Godot.app/Contents/MacOS/Godot sh -c "python3 scripts/check_whitespace.py && make godot-check"'
 ```
 
-`--test`는 [AGENTS.md](../../AGENTS.md)의 check 칸 중 공백 검사와 test 칸(`make godot-check`)에 아래 환경을 붙인 것입니다. `make check`의 `repository-check` 중 Python 단위 테스트(`scripts/test_*.py`)는 넣지 않았습니다. 이 테스트는 시스템 임시 폴더와 `xcrun`을 쓰고 로컬 git 훅을 push로 돌려서, office의 검사 sandbox 안에서는 실패합니다. 그 테스트는 CI와 사람이 `make check`로 돌립니다. 작업자 sandbox와 검사 단계 sandbox는 홈 폴더 읽기·쓰기를 막으므로 아래 환경이 없으면 Godot 검사도 실패합니다.
+`--test`는 [AGENTS.md](../../AGENTS.md)의 check 칸 중 공백 검사와 test 칸(`make godot-check`)에 아래 환경을 붙인 것입니다. `make check`의 `repository-check` 중 Python 단위 테스트(`scripts/test_*.py`)는 넣지 않았습니다. 이 테스트는 시스템 임시 폴더와 `xcrun`을 쓰고 로컬 git 훅을 push로 돌려서, office의 검사 sandbox 안에서는 실패합니다. 그 테스트는 CI와 사람이 `make check`로 돌립니다. 검사 단계 sandbox는 홈 폴더 읽기·쓰기를 막으므로 아래 환경이 없으면 Godot 검사도 실패합니다. 아래 환경은 검사 단계(`sandbox-exec`)에서만 확인했습니다. 작업자 sandbox에서 `engine.py test`가 `$TMPDIR/home`에 쓸 수 있는지는 확인하지 않았습니다.
 
 | 값 | 이유 |
 | --- | --- |
