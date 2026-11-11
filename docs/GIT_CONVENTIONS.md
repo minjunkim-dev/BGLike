@@ -108,4 +108,4 @@ squash merge를 하면 `main`에는 PR 제목이 커밋 제목으로 남습니�
 | push 대상 브랜치 | `.githooks/pre-push`와 CI가 공유 `scripts/check_branch_name.py`를 호출. 실제 목적지 ref를 검사하고 Git LFS에 원래 입력·인자를 전달 | 잘못된 브랜치 push 거부. 기본 브랜치·태그·삭제는 로컬 이름 검사에서 제외 |
 | 병합 방식 | 저장소 설정: squash merge만 허용, 병합 후 브랜치 자동 삭제. 병합은 사람이 함 | 다른 방식은 선택할 수 없음 |
 
-`claude/…`, `codex/…`, `dependabot/…` 브랜치는 이름 검사를 건너뜁니다. `cursor/…`는 허용하지 않습니다. main 보호의 현재 적용 상태와 필수 검사는 [협업 규칙](WORKFLOW.md#현재-github-제약)을 참조합니다.
+`claude/…`, `codex/…`, `dependabot/…`, `office/…` 브랜치는 이름 검사를 건너뜁니다. `cursor/…`는 허용하지 않습니다. main 보호의 현재 적용 상태와 필수 검사는 [협업 규칙](WORKFLOW.md#현재-github-제약)을 참조합니다.
