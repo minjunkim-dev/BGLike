@@ -7,15 +7,13 @@
 leader 세션이 office 체크아웃의 `claude-office/`에서 한 번에 하나씩 실행합니다.
 
 ```bash
-python3 ../pipeline/engine.py new <과제> --repo <BGLike 경로> --base origin/main --test 'mkdir -p "$TMPDIR/home" && HOME="$TMPDIR/home" GIT_CONFIG_GLOBAL=/dev/null GODOT=/Applications/Godot.app/Contents/MacOS/Godot sh -c "python3 scripts/check_whitespace.py && make godot-check"'
+python3 ../pipeline/engine.py new <과제> --repo <BGLike 경로> --base origin/main --test 'GODOT=/Applications/Godot.app/Contents/MacOS/Godot sh -c "python3 scripts/check_whitespace.py && make godot-check"'
 ```
 
-`--test`는 [AGENTS.md](../../AGENTS.md)의 check 칸 중 공백 검사와 test 칸(`make godot-check`)에 아래 환경을 붙인 것입니다. `make check`의 `repository-check` 중 Python 단위 테스트(`scripts/test_*.py`)는 넣지 않았습니다. 이 테스트는 시스템 임시 폴더와 `xcrun`을 쓰고 로컬 git 훅을 push로 돌려서, office의 검사 sandbox 안에서는 실패합니다. 그 테스트는 CI와 사람이 `make check`로 돌립니다. 검사 단계 sandbox는 홈 폴더 읽기·쓰기를 막으므로 아래 환경이 없으면 Godot 검사도 실패합니다. 아래 환경은 검사 단계(`sandbox-exec`)에서만 확인했습니다. 작업자 sandbox에서 `engine.py test`가 `$TMPDIR/home`에 쓸 수 있는지는 확인하지 않았습니다.
+`--test`는 [AGENTS.md](../../AGENTS.md)의 check 칸 중 공백 검사와 test 칸(`make godot-check`)에 `GODOT`를 붙인 것입니다. `make check`의 `repository-check` 중 Python 단위 테스트(`scripts/test_*.py`)는 넣지 않았습니다. 이 테스트는 시스템 임시 폴더와 `xcrun`을 쓰고 로컬 git 훅을 push로 돌려서, office의 검사 sandbox 안에서는 실패합니다. 그 테스트는 CI와 사람이 `make check`로 돌립니다. 검사 단계 sandbox(`sandbox-exec`)는 office 엔진이 `HOME=<과제>/tmp/home`과 `GIT_CONFIG_GLOBAL=/dev/null`을 기본으로 주므로(repo-baseline-office#32) 이 값은 `--test`에 붙이지 않습니다. 이 명령은 그 엔진으로 검사 단계에서 통과하는 것을 확인했습니다. 작업자 sandbox에서 `engine.py test`가 Godot를 돌릴 때 홈 폴더 쓰기가 되는지는 확인하지 않았습니다.
 
 | 값 | 이유 |
 | --- | --- |
-| `HOME="$TMPDIR/home"` | Godot가 `~/Library/Application Support/Godot`에 쓰려다 막힙니다. |
-| `GIT_CONFIG_GLOBAL=/dev/null` | git이 `~/.gitconfig`를 못 읽어 `git rev-parse`가 실패합니다. |
 | `GODOT=…/Godot` | `make godot-install`은 네트워크가 `github.com`뿐인 sandbox에서 받기 어렵습니다. 미리 설치한 4.7.2를 씁니다. `scripts/godot.env`의 버전과 다르면 검사가 실패합니다. |
 
 ## 알아둘 것
