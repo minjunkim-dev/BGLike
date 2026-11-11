@@ -67,7 +67,7 @@ flowchart LR
 |---|---|---|---|
 | **M1 전투 프로토타입** | BG3 전투를 구현해 프로젝트의 느낌을 확인 | 전투 시스템 기획서, 개발 요청서, 프로토타입 회고 | ✅ 범위 확정. 구현 완료 ([Issue #12](https://github.com/minjunkim-dev/BGLike/issues/12), [M1 검수 기록](M1_VERIFICATION.md)) |
 | **M2 게임 구조** | 무엇을 반복하는 게임인지 정함 | 게임 비전, [게임 구조 기획서](GAME_STRUCTURE.md) (코어 루프, 씬 흐름, 자원, 아이템 구조, 사각 높이 격자) | ✅ 구조 확정, 비전 ⏸ 보류 |
-| **M3 전투 확장** | 전투의 깊이와 전투 화면 | 맵, 공격 타입, 전투 UI 기획서 | 🟡 맵·높이·환경 규칙 확정(#136·#137), 구현(#163~#166, [#195](https://github.com/minjunkim-dev/BGLike/issues/195)). 전투 UI는 [#58](https://github.com/minjunkim-dev/BGLike/issues/58) 반영. 주사위 결과 피드백은 [#220](https://github.com/minjunkim-dev/BGLike/issues/220)에서 일부 정함(2026-10-22). 명칭·색 규칙은 기획자 정리 대기. 주사위·판정은 [능력치 기획서](ABILITY_SYSTEM.md)(2026-10-27 개정, [#377](https://github.com/minjunkim-dev/BGLike/issues/377) 하위 티켓 구현 완료, 사람 확인 남음). 공격 타입 규칙은 [동작 유형 기획서](SKILL_TYPES.md) 초안, 도입은 후속 |
+| **M3 전투 확장** | 전투의 깊이와 전투 화면 | 맵, 공격 타입, 전투 UI 기획서 | 🟡 맵·높이·환경 규칙 확정(#136·#137), 구현(#163~#166, [#195](https://github.com/minjunkim-dev/BGLike/issues/195)). 전투 UI는 [#58](https://github.com/minjunkim-dev/BGLike/issues/58) 반영. 주사위 결과 피드백은 [#220](https://github.com/minjunkim-dev/BGLike/issues/220)에서 일부 정함(2026-10-22). 명칭·색 규칙은 기획자 정리 대기. 주사위·판정은 [능력치 기획서](ABILITY_SYSTEM.md)(2026-10-27 개정, [#377](https://github.com/minjunkim-dev/BGLike/issues/377) 하위 티켓 구현 완료, 사람 확인 남음). 공격 타입 규칙은 [동작 유형 기획서](SKILL_TYPES.md) 초안. 칸 조준과 곡사 반경은 독안개를 첫 사례로 [#466](https://github.com/minjunkim-dev/BGLike/issues/466)·[#461](https://github.com/minjunkim-dev/BGLike/issues/461)에서 도입했고, 속성·기름 장판 등 확장은 궁수 재디자인 [#500](https://github.com/minjunkim-dev/BGLike/issues/500)이 맡음 |
 | **M4 성장과 경제** | 전투 사이에 강해지는 구조 | 아이템 수치·드랍 기획 (육성은 아이템과 막 최초 클리어 레벨업, 2026-10-28) | 🟡 수치·드랍([#61](https://github.com/minjunkim-dev/BGLike/issues/61))과 공용 가방([#175](https://github.com/minjunkim-dev/BGLike/issues/175)) 구현. 장비 수치 재검토는 [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
 | **M5 콘텐츠** | 실제로 만들 것의 목록 | 캐릭터, 몬스터, 레벨 디자인 문서 | 🟡 몬스터7종·9개 배치 구현 (#107~[#113](https://github.com/minjunkim-dev/BGLike/issues/113)). 캐릭터 컨셉·스킬셋, 몬스터 성향은 기획자가 정리 중([#210](https://github.com/minjunkim-dev/BGLike/issues/210)·[#237](https://github.com/minjunkim-dev/BGLike/issues/237), 2026-10-22) |
 | **M6 밸런스와 연출** | 수치와 손맛 | 밸런스 표, 사운드·이펙트 목록 | 🟡 밸런스 재검토 [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
@@ -171,7 +171,7 @@ flowchart LR
 | 순서 | 영역 | 정할 내용 | 순서 이유 |
 |---|---|---|---|
 | 1 | 맵 기획 | 맵 크기, 장애물, 지형 요소, 높이 | 시야·엄폐와 직사/곡사의 전제 |
-| 2 | 공격 타입 | 대상/공간 조준, 직사/곡사. 규칙은 [동작 유형 기획서](SKILL_TYPES.md)에서 정했고 칸 조준과 직사/곡사는 이 단계에서 도입 | 장애물이 있어야 의미가 생김 |
+| 2 | 공격 타입 | 대상/공간 조준, 직사/곡사. 규칙은 [동작 유형 기획서](SKILL_TYPES.md)에서 정했고 칸 조준·곡사 반경은 [#466](https://github.com/minjunkim-dev/BGLike/issues/466)에서 도입. 직사의 장애물 차단은 후속 | 장애물이 있어야 의미가 생김 |
 | 3 | 공격 속성 | 물리/마법 2종 또는 다양한 속성, 저항·취약·면역 | M5 몬스터 기획과 함께 확정 |
 | 4 | 주사위와 판정 확장 | 주사위 종류, 절대면 체계. 규칙은 [능력치와 주사위 판정 기획서](ABILITY_SYSTEM.md)에서 정했고 치명타·절대성공의 추가 이점은 ⏸ | M1의 치명타·자동 실패를 확장 |
 | 5 | 전투 UI 기획 | M1 배치를 바탕으로 레이아웃 완성, 정보 표시, 주사위 결과 피드백 | 규칙이 늘어난 뒤 한 번에 설계 |
@@ -254,7 +254,7 @@ flowchart LR
 | 게임 비전 | M2 | ⏸ 보류 |
 | [맵 기준](TERRAIN_MAPS.md)과 [게임 구조 기획서 6장](GAME_STRUCTURE.md#6-사각-높이-격자) (맵·높이·환경) | M3 | ✅ 9개 지형 맵 구현 ([#195](https://github.com/minjunkim-dev/BGLike/issues/195)) |
 | [전투 화면 정보 정리](COMBAT_UIUX.md) (전투 UI) | M3 | 🟡 [#58](https://github.com/minjunkim-dev/BGLike/issues/58) 반영. 후속 표시 Issue 진행 |
-| [동작 유형 기획서](SKILL_TYPES.md) (공격 타입) | M3 | 🟡 초안. 칸 조준·직사/곡사는 M3 공격 타입 단계에서 도입 |
+| [동작 유형 기획서](SKILL_TYPES.md) (공격 타입) | M3 | 🟡 초안. 칸 조준·곡사 반경은 [#466](https://github.com/minjunkim-dev/BGLike/issues/466)에서 도입. 속성 등 확장은 [#500](https://github.com/minjunkim-dev/BGLike/issues/500) |
 | [아이템 안내](ITEM_LOOT.md)와 [게임 구조 기획서 4장](GAME_STRUCTURE.md#4-아이템) (아이템·드랍·정비) | M4 | 🟡 수치·공용 가방 구현. 장비 수치 재검토 ❓ [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
 | [캐릭터 디자인 기획서](characters/README.md) (뼈대), [전사](characters/warrior.md), [궁수](characters/archer.md) | M5 | 🟡 항목 확정. 캐릭터 컨셉·스킬셋은 기획자가 정리 중([#210](https://github.com/minjunkim-dev/BGLike/issues/210)) |
 | [몬스터 디자인 기획서](monsters/README.md) | M5 | ✅ 몬스터7종을 #107~#112에서 구현. #113 [통합 검수](M5_VERIFICATION.md) 완료 |
