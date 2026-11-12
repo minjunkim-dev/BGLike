@@ -6,6 +6,11 @@ extends Control
 const GAME_SCENE: String = "res://scenes/game.tscn"
 ## 출처 화면에서 위아래 입력 한 번에 스크롤하는 거리(논리 px).
 const SCROLL_STEP: int = 24
+## 디버그 테스트 진입(#512)이 고르는 스테이지 수: 3막 × 3스테이지.
+const DEBUG_STAGE_COUNT: int = 9
+
+## 디버그 테스트 진입을 여는지. 출시(release) 빌드는 false라 메뉴를 만들지 않는다. 검사가 출시 빌드 차단을 확인하려고 바꾼다.
+static var debug_entry: bool = OS.is_debug_build()
 
 @onready var menu: VBoxContainer = %Menu
 @onready var new_game_button: Button = %NewGame
@@ -21,6 +26,8 @@ const SCROLL_STEP: int = 24
 @onready var back_button: Button = %Back
 @onready var notice: Label = %Notice
 @onready var overwrite: ConfirmationDialog = %Overwrite
+## 디버그 빌드에서만 메뉴 끝에 만든다. 출시 빌드에서는 null이다.
+var debug_stage: OptionButton
 
 
 func _ready() -> void:
@@ -48,6 +55,8 @@ func _ready() -> void:
 	credits_button.pressed.connect(show_credits.bind(true))
 	back_button.pressed.connect(show_credits.bind(false))
 	quit_button.pressed.connect(get_tree().quit)
+	if debug_entry:
+		_add_debug_stage()
 	new_game_button.grab_focus()
 
 
@@ -96,6 +105,37 @@ func continue_game() -> void:
 	GameSave.autosave = true
 	get_tree().current_scene = game
 	# 지워지는 프레임에 한 번 더 눌러 게임 장면을 둘 열지 않게 바로 숨긴다.
+	hide()
+	queue_free()
+
+
+## 개발자용 메뉴라 번역하지 않는다. 첫 항목은 안내문이고 고를 수 없다.
+func _add_debug_stage() -> void:
+	debug_stage = OptionButton.new()
+	debug_stage.name = "DebugStage"
+	debug_stage.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	debug_stage.custom_minimum_size = Vector2(0, 20)
+	debug_stage.add_item("테스트 진입 (디버그)")  # NO_TRANSLATE
+	debug_stage.set_item_disabled(0, true)
+	for index: int in range(DEBUG_STAGE_COUNT):
+		var act: int = index / CombatActProgress.STAGES_PER_ACT + 1
+		debug_stage.add_item("%d-%d" % [act, index % CombatActProgress.STAGES_PER_ACT + 1])
+	debug_stage.select(0)
+	# 항목 번호에서 안내문 한 칸을 빼면 스테이지 번호다.
+	debug_stage.item_selected.connect(func(item: int) -> void: start_debug_stage(item - 1))
+	menu.add_child(debug_stage)
+
+
+## 고른 스테이지의 전투를 바로 연다. 자동 저장을 꺼서 사용자의 저장 파일을 읽지도 쓰지도 않는다.
+## 파티는 새 게임 상태(빈 가방, 첫 레벨)다. 출시 빌드에서는 아무것도 하지 않는다.
+func start_debug_stage(index: int) -> void:
+	if not debug_entry or index < 0 or index >= DEBUG_STAGE_COUNT:
+		return
+	GameSave.autosave = false
+	var game: Node = (load(GAME_SCENE) as PackedScene).instantiate()
+	game.get_node("Battle").set("start_stage", index)
+	get_tree().root.add_child(game)
+	get_tree().current_scene = game
 	hide()
 	queue_free()
 
