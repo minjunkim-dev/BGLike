@@ -13,6 +13,8 @@ signal autosaved
 @export var stages: Array[CombatStage] = []
 
 var progress: CombatActProgress
+## 처음 열 스테이지 번호(0부터). 타이틀의 디버그 테스트 진입(#512)이 장면을 트리에 넣기 전에 정한다.
+var start_stage: int = 0
 var map_size: Vector2i
 var party: Array[CombatUnit] = []
 
@@ -50,6 +52,7 @@ var start_button: Button
 func _ready() -> void:
 	assert(stages.size() == 9, "전투 진행에는 스테이지 데이터9개가 필요합니다.")
 	progress = CombatActProgress.new(stages.size())
+	progress.stage_index = start_stage
 	# 파티 노드를 유지해 같은 막의 HP와 스킬 횟수를 이어 간다.
 	for child: Node in $Units.get_children():
 		party.append(child as CombatUnit)
