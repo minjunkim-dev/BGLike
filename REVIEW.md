@@ -50,4 +50,4 @@ Door가 되돌리기 어려움이거나 이 경로를 건드리면 보안 관점
 
 ## 스킬 위임
 
-이 저장소는 repo-baseline matt-skills 프로필을 쓴다. 위임 절차는 [docs/agents/review.md](docs/agents/review.md)의 「스킬 위임 (matt-skills)」을 따른다.
+이 저장소는 repo-baseline matt-skills 프로필을 쓴다. 리뷰어는 repo-baseline 클론의 `profiles/matt-skills/README.md` 「리뷰」 절차를 따른다.
