@@ -2519,24 +2519,43 @@ func _test_rock_presentation() -> void:
 	var rock: CombatGrid.Prop = actions.create_prop(Vector2i(6, 5), "rock")
 	var preview: CombatActions.RockRoll = actions.preview_rock(actor, rock)
 	var hp: int = units[2].hit_points
+	var landing: Vector2i = units[2].cell
+	for step: CombatActions.RockStep in preview.steps:
+		if step.push and step.target == units[2]:
+			landing = step.push_cell
+	_check(landing != units[2].cell, "바위 연출 검수는 유닛을 미는 경로를 쓴다")
 	battle.call("_update_turn_ui")
 	var event: InputEventMouseButton = InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = true
 	event.position = battle.map.get_global_transform_with_canvas() * (battle.map.map_to_surface(rock.cell) + Vector2(0, -8))
+	# 바위 연출 노드가 사라지는 순간 = 판정 직전. 밀린 유닛은 이미 착지 칸에 그려져 있어야 한다.
+	var at_rock_end: Array = []
+	var on_rock_end: Callable = func(node: Node) -> void:
+		if node.name == &"PropAnimation":
+			at_rock_end.append([units[2].position, units[2].cell])
+	battle.map.child_exiting_tree.connect(on_rock_end)
 	battle.call("_unhandled_input", event)
 	battle.call("_unhandled_input", event)
 	var seen: bool = false
+	var moved_during_roll: bool = false
 	while actions.busy:
 		if battle.map.has_node("PropAnimation"):
 			seen = true
 			_check(rock.cell == Vector2i(6, 5) and units[2].hit_points == hp and actor.action_left == 1,
 				"바위 연출 중 위치·피해·비용은 확정 전 상태")
+			moved_during_roll = moved_during_roll or units[2].position != battle.map.map_to_local(Vector2i(8, 5))
 			battle.call("_unhandled_input", event)
 		await process_frame
+	battle.map.child_exiting_tree.disconnect(on_rock_end)
 	_check(seen and rock.cell == preview.cells[-1] and units[2].hit_points == hp - 4
 		and actor.action_left == 0 and not battle.map.has_node("PropAnimation"),
 		"바위 연출 후 미리보기와 같은 위치·충돌4피해·비용1, 중복 입력 차단")
+	_check(moved_during_roll and at_rock_end.size() == 1
+		and at_rock_end[0][0] == battle.map.map_to_local(landing) and at_rock_end[0][1] == Vector2i(8, 5)
+		and units[2].cell == landing and units[2].position == battle.map.map_to_local(landing)
+		and not units[2].is_moving,
+		"밀린 유닛은 바위와 함께 트윈으로 움직이고 바위 연출 안에서 착지 칸에 도착한다: %s" % [at_rock_end])
 	for cancel: String in ["giveup", "rebuild"]:
 		_reset_units()
 		actions.grid.props.clear()
