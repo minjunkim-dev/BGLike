@@ -2125,6 +2125,27 @@ func _test_overload_and_water_guidance() -> void:
 		"아군 상태 줄에는 과부하 글이 없음")
 	robot.hit_points = robot.get_max_hit_points()
 	robot.overloaded = false
+	battle.call("_update_turn_ui")
+	var portraits: Dictionary = hud.get("_portraits")
+	var robot_lines: PackedStringArray = (portraits[robot] as Button).tooltip_text.split("\n")
+	_check(robot_lines.size() == 7 and robot_lines[0].begins_with("고철로봇-1000: 민첩 d4 = ")
+		and robot_lines[1] == "과부하 (꺼짐): HP 20 이하가 되면 켜짐" and robot_lines[2] == "· 턴마다 행동 2"
+		and robot_lines[3] == "· 턴 시작에 자기 피해 2"
+		and robot_lines[4] == "· 턴 시작에 반경 1(상하좌우, 높이 차 1 이하)의"
+		and robot_lines[5] == "  모든 유닛에게 화상 1, 판정 없음"
+		and robot_lines[6] == "물 칸에 선 유닛은 화상이 걸리지 않고 해제됨",
+		"로봇 초상 호버는 이니셔티브 줄 아래 과부하 조건·효과·물 칸 규칙: " + " | ".join(robot_lines))
+	for ally: CombatUnit in [units[0], units[1]]:
+		var text: String = (portraits[ally] as Button).tooltip_text
+		_check(text.split("\n").size() == 1 and "과부하" not in text and "물 칸" not in text,
+			"아군 초상 호버는 이니셔티브 줄 그대로: " + text)
+	robot.hit_points = 20
+	battle.call("_update_turn_ui")
+	_check("\n과부하 (켜짐): HP 20 이하가 되면 켜짐\n" in (portraits[robot] as Button).tooltip_text,
+		"켜진 뒤 로봇 초상 호버는 켜짐 표시")
+	robot.hit_points = robot.get_max_hit_points()
+	robot.overloaded = false
+	battle.call("_update_turn_ui")
 	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
 	await create_timer(0.08).timeout
 	main.queue_free()

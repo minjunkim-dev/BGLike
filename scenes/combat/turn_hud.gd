@@ -383,6 +383,10 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 		else:
 			button.tooltip_text = tr("%s: %s = %d") % [
 				unit.get_display_name(), CombatUnit.ability_text(unit, CombatUnit.Ability.AGILITY), unit.get_initiative()]
+		# 고철로봇은 켜지기 전부터 과부하 조건·효과와 물 칸 규칙을 읽는다(#503).
+		var overload: String = CombatActionRules.overload_text(unit)
+		if not overload.is_empty():
+			button.tooltip_text += "\n" + overload
 		var in_group: bool = unit in turns.get_current_group()
 		(button.get_node("PendingTurn") as Control).visible = (
 			in_group and not turns.is_turn_started(unit) and not turns.is_turn_finished(unit))
