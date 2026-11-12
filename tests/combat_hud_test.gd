@@ -99,6 +99,7 @@ func _run() -> void:
 	current_scene.queue_free()
 	await process_frame
 	await _test_spawned_portrait_input()
+	await _test_overload_and_water_guidance()
 	var dice_problems: Array[String] = ScriptedDice.finish()
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat HUD: %d checks, %d failures" % [checks, failures])
@@ -2081,6 +2082,52 @@ func _drag(point: Vector2, delta: Vector2) -> void:
 	event.position = motion.position
 	event.global_position = motion.position
 	Input.parse_input_event(event)
+	await process_frame
+
+
+## #503: 실제 1-3(고철로봇-1000)에서 과부하 조건·효과를 켜지기 전부터 읽는다.
+func _test_overload_and_water_guidance() -> void:
+	root.size = Vector2i(1280, 720)
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	battle = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	battle.call("start_battle")
+	(battle.get("progress") as CombatActProgress).stage_index = 2
+	battle.call("_start_stage", true)
+	battle.call("start_battle")
+	units = battle.get("units")
+	turns = battle.get("turns") as CombatTurns
+	actions = battle.get("actions") as CombatActions
+	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var robot: CombatUnit = units[2] if units.size() == 3 else null
+	_check(robot != null and robot.kind == CombatUnit.Kind.SCRAP_ROBOT_1000 and units[0].kind == CombatUnit.Kind.WARRIOR,
+		"#503 전제조건: 1-3은 아군 전사·궁수와 고철로봇-1000")
+	if robot == null or robot.kind != CombatUnit.Kind.SCRAP_ROBOT_1000:
+		main.queue_free()
+		await process_frame
+		return
+	var order: Array[CombatUnit] = [units[0], units[1], robot]
+	ScriptedDice.arrange_turns(turns, units, order)
+	battle.call("_update_turn_ui")
+	await process_frame
+	hud.show_unit(robot)
+	_check("상태: 과부하 대기(HP 20 이하)" in hud.resource_label.get_parsed_text(),
+		"켜지기 전 로봇 조회의 상태 줄에 과부하 조건")
+	robot.hit_points = 20
+	hud.show_unit(robot)
+	var status: String = hud.resource_label.get_parsed_text()
+	_check("상태: 기절 면역" not in status and "과부하, 기절 면역" in status and "과부하 대기" not in status,
+		"켜진 뒤 로봇 상태 줄은 지금처럼 과부하")
+	hud.show_unit(units[0])
+	_check("상태: 없음" in hud.resource_label.get_parsed_text() and "과부하" not in hud.resource_label.get_parsed_text(),
+		"아군 상태 줄에는 과부하 글이 없음")
+	robot.hit_points = robot.get_max_hit_points()
+	robot.overloaded = false
+	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	await create_timer(0.08).timeout
+	main.queue_free()
 	await process_frame
 
 

@@ -54,12 +54,13 @@ static var PASSIVE_EFFECTS: Dictionary[String, String] = {
 const OVERLOAD_SELF_DAMAGE: int = 2
 
 
-## 유닛 패널 상태 줄의 과부하 글(#503). 켜지기 전에는 조건을 보인다. 고철로봇이 아니면 빈 문자열이다.
+## 유닛 패널 상태 줄의 과부하 글(#503). 켜진 뒤는 전처럼 `과부하`다.
+## 켜지기 전의 조건은 고철로봇만 보이고, 그 밖의 꺼진 유닛은 빈 문자열이다.
 static func overload_status(unit: CombatUnit) -> String:
-	if unit.kind not in CombatActions.SCRAP_ROBOTS:
-		return ""
 	if unit.overloaded:
 		return TranslationServer.tr("과부하")
+	if unit.kind not in CombatActions.SCRAP_ROBOTS:
+		return ""
 	return TranslationServer.tr("과부하 대기(HP %d 이하)") % (unit.get_max_hit_points() / 2)
 
 

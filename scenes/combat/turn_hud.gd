@@ -411,8 +411,10 @@ func show_unit(unit: CombatUnit) -> void:
 	var periodic: String = unit.get_periodic_status_text()
 	if not periodic.is_empty():
 		states.append(periodic)
-	if unit.overloaded:
-		states.append(tr("과부하"))
+	# 켜지기 전에는 과부하 조건을 보인다(#503).
+	var overload: String = CombatActionRules.overload_status(unit)
+	if not overload.is_empty():
+		states.append(overload)
 	if unit.is_boss():
 		states.append(tr("기절 면역"))
 	if unit.pull_cooldown > 0:
