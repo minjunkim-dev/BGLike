@@ -275,9 +275,13 @@ func _test_scene() -> void:
 	# 아군의 명중굴림: 기준값을 먼저 보이고, 멈추면 합계와 색을 보인다.
 	var hit: CombatDiceRoll = CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12)
 	var finished: Array[bool] = [false]
+	# 돌아온 그 순간의 상태. 프레임 길이와 상관없이 바로 숨기지 않고 페이드 중인지 본다.
+	var fading_on_return: Array[bool] = [false]
 	var play: Callable = func(roll: CombatDiceRoll) -> void:
 		finished[0] = false
 		await actions.roll_animation.call(roll)
+		var tween: Tween = view.get("_fade") as Tween
+		fading_on_return[0] = view.visible and tween != null and tween.is_running()
 		finished[0] = true
 	play.call(hit)
 	await process_frame
@@ -291,13 +295,16 @@ func _test_scene() -> void:
 		"게이지 마커는 합계와 기준의 차이 위치에서 멈추고 합계를 보인다")
 	_check((view.get_node("SuccessSound") as AudioStreamPlayer).playing
 		and not (view.get_node("FailureSound") as AudioStreamPlayer).playing, "성공 결과음을 쓴다")
-	while not finished[0]:
+	for _frame: int in range(120):
+		if finished[0]:
+			break
 		await process_frame
 	var fade: Tween = view.get("_fade") as Tween
-	_check(view.visible and fade != null and fade.is_running(),
+	_check(finished[0] and fading_on_return[0],
 		"결과를 잠시 보인 뒤 바로 숨기지 않고 페이드아웃하며, 페이드를 기다리지 않고 대기하던 쪽에 돌려준다")
 
-	# 실패. 앞 결과가 페이드아웃하는 중에 시작해 페이드를 끊는다.
+	# 실패. 앞 결과가 페이드아웃하는 중에 시작해 페이드를 끊는다. 이미 다 흐려졌어도 새 굴림은 불투명해야 한다.
+	await create_timer(CombatDiceRollView.FADE_TIME * 0.5).timeout
 	play.call(CombatDiceRoll.save(ally, 8, _result([3], 3, 6, false), 3, tr("DC"), 8))
 	await process_frame
 	_check(view.visible and view.modulate.a == 1.0 and not fade.is_valid() and target.text == "DC 8",
