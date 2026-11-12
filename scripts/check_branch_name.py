@@ -8,7 +8,7 @@ DESCRIPTION = r"[a-z0-9]+(-[a-z0-9]+)*"
 
 
 def check_branch(branch):
-    if re.match(r"^(claude|codex|dependabot)/", branch):
+    if re.match(r"^(claude|codex|dependabot|office)/", branch):
         return
     if not re.fullmatch(rf"(({TYPES})/[0-9]+-{DESCRIPTION}|(docs|build|ci|chore)/[a-z]{DESCRIPTION})", branch):
         raise ValueError(f"Invalid branch name: {branch!r}; expected <type>/<issue>-<description> "

@@ -29,6 +29,7 @@ Godot 4 싱글 플레이 PC 게임입니다. GitHub 품질 운영은 1인 개발
 - 제품 사양: 관련 Issue의 목표·완료 조건과 연결한 기획 문서를 읽습니다. 용어·ADR은 [문서 길잡이](docs/agents/domain.md)를 따릅니다.
 - 검증: [CI 구성](docs/CI.md)의 범위 규칙을 확인합니다. 플레이 변경의 직접 확인 기준은 [협업 규칙](docs/WORKFLOW.md#검증과-보고)을 따릅니다.
 - 작업 진입·초기 설정 확인·명세와 티켓의 통합: [개발 절차](docs/agents/development.md). 작은 수정에는 전체 명세 절차를 강제하지 않습니다.
+- claude-office로 작업을 돌릴 때: [office 등록 절차](docs/agents/office.md). 쓰지 않으면 읽지 않습니다.
 - GitHub 설정: [설정 기준선](docs/REPOSITORY_SETUP.md). 권리·외부 자산: [COPYRIGHT](COPYRIGHT.md)와 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
 
 ## Agent skills
@@ -45,9 +46,11 @@ Godot 4 싱글 플레이 PC 게임입니다. GitHub 품질 운영은 1인 개발
 - PR 본문 Merge Danger에 되돌리기 쉬움/어려움, 영향 범위, 되돌리는 법을 적는다. 애매하면 되돌리기 어려움이다.
 - 되돌리기 어려움이거나 신뢰 경계(`REVIEW.md`)를 건드리면 보안 리뷰를 더하고, 사람이 diff를 읽고 그 head에서 병합한다.
 - 같은 실수가 두 번 나오면 린트·검사로 막고, 그다음 `REVIEW.md` 한 줄, 그다음 이 파일의 길잡이 순서로 고친다.
+- 작업 추적은 GitHub Issue 하나만 쓴다. 내부 트래커(예: Linear)는 쓰지 않는다. 일정·우선순위·기획 판단도 공개 Issue와 `docs/`에 적는다. repo-baseline 코어 `AGENTS.md`의 "우선순위·일정·내부 판단을 공개 이슈·PR·커밋에 적지 않는다" 줄은 이 저장소에 적용하지 않는다.
 
 ## 하지 않는 것
 
 - 비밀값(`.env*`, 키, 토큰, 웹훅 URL)을 읽거나 커밋하지 않는다. `.env.example`은 예외다.
+- 취약점 설명·익스플로잇을 공개 Issue·PR·커밋·댓글에 적지 않는다. 취약점은 [SECURITY.md](SECURITY.md)의 비공개 취약점 보고로 받는다.
 - `main`에 직접 push하지 않는다. PR을 병합하지 않는다. 병합은 사람이 한다.
 - 브랜치 보호·저장소 설정·CI workflow를 사람 승인 없이 바꾸지 않는다.
