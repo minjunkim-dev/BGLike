@@ -36,6 +36,7 @@ func _run() -> void:
 	GameSave.path = directory + "/save.bin"
 	GameSettings.path = directory + "/settings.cfg"
 	await _check_continue_with_save()
+	await _check_debug_entry()
 	var main_scene: String = ProjectSettings.get_setting("application/run/main_scene")
 	var title: TitleScreen = (load(main_scene) as PackedScene).instantiate() as TitleScreen
 	_check(title != null, "메인 장면의 시작점은 타이틀 화면")
@@ -49,7 +50,10 @@ func _run() -> void:
 	var shown: Array = title.menu.get_children().filter(func(node: Node) -> bool:
 		return node is Button and (node as Button).visible).map(func(button: Button) -> String:
 			return button.text)
-	_check(shown == ["새 게임", "설정", "도움말", "출처", "종료"], "저장이 없을 때 타이틀 버튼: %s" % [shown])
+	var expected: Array = ["새 게임", "설정", "도움말", "출처", "종료"]
+	if OS.is_debug_build():
+		expected.append("테스트 진입 (디버그)")
+	_check(shown == expected, "저장이 없을 때 타이틀 버튼: %s" % [shown])
 	_check((title.menu.get_node("Name") as Label).text == "BGLike", "임시 이름 BGLike")
 	_check(not title.continue_button.visible and not title.has_save(), "저장이 없으면 이어하기를 숨김")
 	_check(not title.settings_button.disabled, "설정 버튼을 누를 수 있음")
@@ -267,6 +271,56 @@ func _check_continue_with_save() -> void:
 		"저장이 있으면 새 게임 다음에 이어하기를 보임")
 	title.queue_free()
 	await process_frame
+	GameSave.delete()
+
+
+## #512 디버그 테스트 진입: 고른 막·스테이지로 바로 가고, 사용자의 저장을 읽거나 쓰지 않고, 출시 빌드에서는 열리지 않는다.
+func _check_debug_entry() -> void:
+	_check(TitleScreen.debug_entry == OS.is_debug_build(), "테스트 진입은 디버그 빌드에서만 켜짐")
+	# 출시 빌드: 메뉴를 만들지 않고 직접 불러도 전투를 열지 않는다.
+	TitleScreen.debug_entry = false
+	var title: TitleScreen = (load("res://scenes/main.tscn") as PackedScene).instantiate() as TitleScreen
+	root.add_child(title)
+	await process_frame
+	_check(title.debug_stage == null and title.menu.find_child("DebugStage", false, false) == null,
+		"출시 빌드는 테스트 진입 메뉴를 만들지 않음")
+	title.start_debug_stage(6)
+	await process_frame
+	_check(is_instance_valid(title) and title.is_inside_tree() and root.get_children().all(func(node: Node) -> bool:
+		return node.scene_file_path != TitleScreen.GAME_SCENE), "출시 빌드는 테스트 진입 호출을 무시")
+	title.queue_free()
+	await process_frame
+	TitleScreen.debug_entry = true
+	# 사용자의 저장이 있고 자동 저장이 켜진 뒤에 들어가도 저장 파일은 그대로다.
+	_check(GameSave.write(2, 1, {}) == OK, "검사용 사용자 저장 쓰기")
+	var before: PackedByteArray = FileAccess.get_file_as_bytes(GameSave.path)
+	GameSave.autosave = true
+	title = (load("res://scenes/main.tscn") as PackedScene).instantiate() as TitleScreen
+	root.add_child(title)
+	await process_frame
+	var picker: OptionButton = title.debug_stage
+	_check(picker != null and picker.get_parent() == title.menu and picker.item_count == 10
+		and picker.is_item_disabled(0) and picker.get_item_text(1) == "1-1" and picker.get_item_text(9) == "3-3",
+		"디버그 빌드는 메뉴 끝에 1-1~3-3 테스트 진입")
+	picker.select(7)
+	picker.item_selected.emit(7)
+	await process_frame
+	var game: Node = current_scene
+	_check(game != null and game.scene_file_path == TitleScreen.GAME_SCENE and not is_instance_valid(title),
+		"테스트 진입은 타이틀을 닫고 게임 장면으로 바꿈")
+	if game != null and game.has_node("Battle"):
+		var battle: Node2D = game.get_node("Battle") as Node2D
+		var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+		var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+		_check(progress.stage_index == 6 and (hud.get_node("Progress") as Label).text == "3막 · 1스테이지",
+			"3-1을 고르면 3막 1스테이지 전투")
+		_check(not GameSave.autosave, "테스트 진입은 자동 저장을 끔")
+		battle.call("start_battle")
+		for frame: int in range(5):
+			await process_frame
+		_check(FileAccess.get_file_as_bytes(GameSave.path) == before, "테스트 진입 전투는 사용자 저장을 바꾸지 않음")
+		game.queue_free()
+		await process_frame
 	GameSave.delete()
 
 
