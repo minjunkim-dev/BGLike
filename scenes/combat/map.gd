@@ -157,6 +157,7 @@ func animate_prop(prop: CombatGrid.Prop, roll: CombatActions.RockRoll, can_conti
 			tween.tween_property(sprite, "position:x", origin + offset, 0.035)
 		await tween.finished
 	else:
+		var pushed: Array[CombatUnit] = []
 		for step: CombatActions.RockStep in roll.steps:
 			if generation != revision or not can_continue.call():
 				break
@@ -166,6 +167,14 @@ func animate_prop(prop: CombatGrid.Prop, roll: CombatActions.RockRoll, can_conti
 			tween.tween_property(sprite, "position:y", map_to_surface(step.cell).y - destination.y + 4.0
 				if step.advance else sprite.position.y, 0.14)
 			tween.tween_property(sprite, "skew", 0.15, 0.07)
+			# 밀리는 유닛은 바위와 같은 트윈으로 옮긴다. 칸·피해 판정은 연출 뒤 attack_prop이 한다.
+			if step.push and is_instance_valid(step.target):
+				var unit: CombatUnit = step.target
+				var landing: Vector2 = map_to_local(step.push_cell)
+				unit.is_moving = true
+				pushed.append(unit)
+				tween.tween_property(unit, "position", landing, 0.14)
+				tween.tween_property(unit, "floor_offset_y", map_to_surface(step.push_cell).y - landing.y, 0.14)
 			await tween.finished
 			if generation != revision or not can_continue.call():
 				break
@@ -174,6 +183,15 @@ func animate_prop(prop: CombatGrid.Prop, roll: CombatActions.RockRoll, can_conti
 				prop_impact(step.cell, false)
 			if step.destroyed or not step.advance:
 				break
+		# 판정 전까지 위치 갱신이 유닛을 옛 칸으로 되돌리지 않게 연출이 끝날 때 푼다.
+		var interrupted: bool = generation != revision or not can_continue.call()
+		for unit: CombatUnit in pushed:
+			if is_instance_valid(unit):
+				unit.is_moving = false
+				# 판정 없이 끝난 연출은 유닛을 아직 바뀌지 않은 칸으로 되돌린다.
+				if interrupted:
+					unit.position = map_to_local(unit.cell)
+					unit.floor_offset_y = map_to_surface(unit.cell).y - unit.position.y
 	if _animation_marker == marker:
 		_animation_marker = null
 		_animating_prop = null
