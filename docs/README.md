@@ -78,6 +78,7 @@
 | [agents/domain.md](agents/domain.md) | 작업 시작 시 읽을 문서와 기획 결정 기준 |
 | [agents/development.md](agents/development.md) | 작업 크기별 진입 절차 |
 | [agents/review.md](agents/review.md) | 독립 리뷰 절차 |
+| [agents/office.md](agents/office.md) | claude-office로 PR 전 작업을 돌리는 방법 |
 | [agents/issue-tracker.md](agents/issue-tracker.md) | 이슈 운영 규칙 |
 | [agents/triage-labels.md](agents/triage-labels.md) | 분류 라벨 |
 
