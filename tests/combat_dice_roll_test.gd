@@ -275,9 +275,13 @@ func _test_scene() -> void:
 	# 아군의 명중굴림: 기준값을 먼저 보이고, 멈추면 합계와 색을 보인다.
 	var hit: CombatDiceRoll = CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12)
 	var finished: Array[bool] = [false]
+	# 돌아온 그 순간의 상태. 프레임 길이와 상관없이 바로 숨기지 않고 페이드 중인지 본다.
+	var fading_on_return: Array[bool] = [false]
 	var play: Callable = func(roll: CombatDiceRoll) -> void:
 		finished[0] = false
 		await actions.roll_animation.call(roll)
+		var tween: Tween = view.get("_fade") as Tween
+		fading_on_return[0] = view.visible and tween != null and tween.is_running()
 		finished[0] = true
 	play.call(hit)
 	await process_frame
@@ -291,12 +295,22 @@ func _test_scene() -> void:
 		"게이지 마커는 합계와 기준의 차이 위치에서 멈추고 합계를 보인다")
 	_check((view.get_node("SuccessSound") as AudioStreamPlayer).playing
 		and not (view.get_node("FailureSound") as AudioStreamPlayer).playing, "성공 결과음을 쓴다")
-	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
-	_check(not view.visible and finished[0], "결과를 잠시 보인 뒤 닫고 대기하던 쪽에 돌려준다")
+	for _frame: int in range(120):
+		if finished[0]:
+			break
+		await process_frame
+	var fade: Tween = view.get("_fade") as Tween
+	_check(finished[0] and fading_on_return[0],
+		"결과를 잠시 보인 뒤 바로 숨기지 않고 페이드아웃하며, 페이드를 기다리지 않고 대기하던 쪽에 돌려준다")
 
-	# 실패.
+	# 실패. 앞 결과가 페이드아웃하는 중에 시작해 페이드를 끊는다. 이미 다 흐려졌어도 새 굴림은 불투명해야 한다.
+	await create_timer(CombatDiceRollView.FADE_TIME * 0.5).timeout
 	play.call(CombatDiceRoll.save(ally, 8, _result([3], 3, 6, false), 3, tr("DC"), 8))
+	await process_frame
+	_check(view.visible and view.modulate.a == 1.0 and not fade.is_valid() and target.text == "DC 8",
+		"페이드아웃 중에 다음 굴림이 오면 페이드를 끊고 바로 새 굴림을 보인다: %.2f" % view.modulate.a)
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
+	_check(view.visible and view.modulate.a == 1.0, "끊긴 페이드는 끝난 뒤에도 새 굴림을 숨기지 않는다")
 	_check(summary.text == tr("실패") + "  -2" and target.text == "DC 8"
 		and summary.get_theme_color("font_color") == CombatDiceRollView.FAILURE_COLOR
 		and (view.get_node("FailureSound") as AudioStreamPlayer).playing,
@@ -323,9 +337,9 @@ func _test_scene() -> void:
 		and dice[0].edge == CombatDiceRollView.SUCCESS_COLOR and dice[0].emphasized,
 		"절대성공은 같은 성공 색에 강조를 더한다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
-	_check(view.visible, "명중굴림의 절대성공은 일반 표시 시간이 지나도 계속 보인다")
+	_check(view.visible and view.modulate.a == 1.0, "명중굴림의 절대성공은 일반 표시 시간이 지나도 흐려지지 않고 보인다")
 	await create_timer(CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME - CombatDiceRollView.HOLD_TIME).timeout
-	_check(not view.visible, "명중굴림의 절대성공은 늘어난 표시 시간 뒤에 닫힌다")
+	_check(view.modulate.a < 1.0, "명중굴림의 절대성공은 늘어난 표시 시간 뒤에 페이드아웃한다")
 
 	play.call(CombatDiceRoll.hit(ally, 20, _result([1], 1, 4, false, CombatChecks.Face.ABSOLUTE_FAILURE), 3, 2))
 	# 절대면 바로 뒤에 일반 굴림을 이어 붙여, 뒤 굴림이 늘어난 표시 시간만큼 기다리는지 본다.
@@ -341,8 +355,8 @@ func _test_scene() -> void:
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
 	_check(summary.text == tr("절대실패"), "뒤 굴림은 절대면의 일반 표시 시간이 지나도 시작하지 않는다: " + summary.text)
 	await create_timer(CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME - CombatDiceRollView.HOLD_TIME).timeout
-	_check(summary.text == "" and (view.get_node("Target") as Label).text == "AC 12",
-		"뒤 굴림은 늘어난 표시 시간이 끝난 뒤 굴린다: " + summary.text)
+	_check(summary.text == "" and (view.get_node("Target") as Label).text == "AC 12" and view.modulate.a == 1.0,
+		"뒤 굴림은 늘어난 표시 시간이 끝난 뒤 페이드를 기다리지 않고 굴린다: " + summary.text)
 	await create_timer(CombatDiceRollView.TUMBLE_TIME).timeout
 
 	# 절대면 다음 일반 굴림은 채움·글자 크기·마커 상태를 이어받지 않는다.
@@ -418,7 +432,8 @@ func _test_overlapping_rolls(actions: CombatActions, view: CombatDiceRollView, a
 		and (view.get_node("SuccessSound") as AudioStreamPlayer).playing,
 		"뒤 굴림이 와도 첫 굴림의 결과 숫자·색·결과음이 나온다: " + summary.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME).timeout
-	_check(view.visible and target.text == "DC 3" and summary.text == "", "첫 결과가 닫힌 뒤 두 번째 굴림을 굴린다: " + summary.text)
+	_check(view.visible and view.modulate.a == 1.0 and target.text == "DC 3" and summary.text == "",
+		"첫 결과가 닫힌 뒤 페이드를 기다리지 않고 두 번째 굴림을 굴린다: " + summary.text)
 	await create_timer(CombatDiceRollView.TUMBLE_TIME).timeout
 	_check(summary.text == tr("실패") + "  -2" and summary.get_theme_color("font_color") == CombatDiceRollView.FAILURE_COLOR
 		and (view.get_node("FailureSound") as AudioStreamPlayer).playing,
@@ -428,4 +443,6 @@ func _test_overlapping_rolls(actions: CombatActions, view: CombatDiceRollView, a
 		"기다리는 명중굴림은 앞 굴림들이 닫힌 뒤 차례로 굴리고 아직 돌아오지 않는다: " + summary.text)
 	# 뒤따르는 굴림이 없어 여유를 더 둔다. 뷰의 마지막 타이머가 이 타이머보다 늦게 만들어진다.
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + CombatDiceRollView.HOLD_TIME + 0.1).timeout
-	_check(finished[0] and not view.visible, "명중굴림은 자기 연출까지 마친 뒤 돌아온다")
+	_check(finished[0] and view.modulate.a < 1.0, "명중굴림은 자기 연출까지 마친 뒤 페이드를 기다리지 않고 돌아온다")
+	await create_timer(CombatDiceRollView.FADE_TIME).timeout
+	_check(not view.visible and view.modulate.a == 0.0, "페이드아웃이 끝나면 주사위 뷰를 숨긴다")

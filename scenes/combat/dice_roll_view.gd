@@ -17,6 +17,9 @@ const HOLD_TIME: float = 0.5
 ## 명중굴림에서 절대성공·절대실패면이 나왔을 때 결과를 보이는 시간(#488). 임시값이며 플레이 후 정한다.
 ## 내성굴림의 절대면은 강조만 두고 시간은 늘리지 않는다.
 const ABSOLUTE_HIT_HOLD_TIME: float = 0.9
+## 결과 표시가 끝난 뒤 사라지는 시간(#514). 임시값이며 플레이 후 정한다.
+## 차례는 페이드를 기다리지 않고 넘기며, 다음 굴림이 오면 페이드를 끊는다.
+const FADE_TIME: float = 0.3
 const FACE_CHANGES: int = 8
 const DIE_RADIUS: float = 18.0
 ## 주사위 중심 높이. 절대면 강조선(가장 큰 윤곽)이 배경 위로 나가지 않게 둔다.
@@ -104,6 +107,7 @@ var _target: Label
 var _roll_player: AudioStreamPlayer
 var _success_player: AudioStreamPlayer
 var _failure_player: AudioStreamPlayer
+var _fade: Tween
 
 
 func _ready() -> void:
@@ -132,7 +136,7 @@ func _ready() -> void:
 	_failure_player = _make_player("FailureSound", FAILURE_SOUND)
 
 
-## 굴리고 결과를 잠시 보인 뒤 닫는다. 앞 굴림이 보이는 중이면 그 결과가 닫힐 때까지 차례를 기다린다.
+## 굴리고 결과를 잠시 보인 뒤 페이드아웃한다. 앞 굴림이 보이는 중이면 그 결과가 닫힐 때까지 차례를 기다린다.
 ## 기다리지 않는 굴림(독 제거·만능팔)과 기다리는 굴림(명중·회전회오리)이 같은 차례 줄에 선다.
 func play(roll: CombatDiceRoll) -> void:
 	var ticket: int = _tickets
@@ -143,7 +147,9 @@ func play(roll: CombatDiceRoll) -> void:
 	await get_tree().create_timer(TUMBLE_TIME, false).timeout
 	_settle()
 	await get_tree().create_timer(hold_time(roll), false).timeout
-	visible = false
+	_fade = create_tween()
+	_fade.tween_property(self, "modulate:a", 0.0, FADE_TIME)
+	_fade.tween_callback(hide)
 	_serving += 1
 	_turn_passed.emit()
 
@@ -241,6 +247,9 @@ func _make_player(player_name: String, stream: AudioStream) -> AudioStreamPlayer
 
 
 func _begin(roll: CombatDiceRoll) -> void:
+	if _fade != null:
+		_fade.kill()
+	modulate.a = 1.0
 	_roll = roll
 	_dice.clear()
 	for index: int in range(roll.result.rolls.size()):
