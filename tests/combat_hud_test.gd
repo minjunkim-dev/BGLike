@@ -2145,7 +2145,36 @@ func _test_overload_and_water_guidance() -> void:
 		"켜진 뒤 로봇 초상 호버는 켜짐 표시")
 	robot.hit_points = robot.get_max_hit_points()
 	robot.overloaded = false
+	# 물 칸 규칙은 그 칸에 서기 전, 걷기·점프의 첫 우클릭 미리보기에서 읽는다. 1-3의 물은 (2,8)·(3,8)이다.
+	units[0].cell = Vector2i(3, 6)
+	units[1].cell = Vector2i(1, 6)
+	robot.cell = Vector2i(8, 1)
 	battle.call("_update_turn_ui")
+	await process_frame
+	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
+	var water: Vector2i = Vector2i(3, 8)
+	var dry: Vector2i = Vector2i(2, 6)
+	var water_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(water)
+	var dry_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(dry)
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	var note: String = "물 칸: 화상 해제 · 새 화상 걸리지 않음"
+	_check(water in actions.grid.water_cells and dry not in actions.grid.water_cells, "#503 전제조건: 1-3 물 칸 배치")
+	await _click(water_point, MOUSE_BUTTON_RIGHT)
+	_check(selection.preview_cell == water and units[0].cell == Vector2i(3, 6)
+		and hud.preview_label.visible and hud.preview_label.text == note,
+		"물 칸 걷기 첫 우클릭은 이동하지 않고 물 칸 화상 규칙을 보임: " + hud.preview_label.text)
+	await _click(dry_point, MOUSE_BUTTON_RIGHT)
+	_check(selection.preview_cell == dry and units[0].cell == Vector2i(3, 6) and not hud.preview_label.visible,
+		"물이 아닌 칸 걷기 미리보기는 지금처럼 안내를 숨김")
+	hud.action_selected.emit("jump")
+	await _click(water_point, MOUSE_BUTTON_RIGHT)
+	_check(selection.preview_cell == water and units[0].cell == Vector2i(3, 6) and hud.preview_label.visible
+		and hud.preview_label.text.begins_with("점프 · 이동 2 · 보조 행동1\n")
+		and hud.preview_label.text.ends_with("\n" + note),
+		"물 칸 점프 첫 우클릭은 기존 점프 안내 끝에 물 칸 화상 규칙: " + hud.preview_label.text)
+	await _click(dry_point, MOUSE_BUTTON_RIGHT)
+	_check(selection.preview_cell == dry and hud.preview_label.text.begins_with("점프 · ")
+		and "물 칸" not in hud.preview_label.text, "물이 아닌 칸 점프 안내는 그대로: " + hud.preview_label.text)
 	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
 	await create_timer(0.08).timeout
 	main.queue_free()

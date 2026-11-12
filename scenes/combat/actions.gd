@@ -761,6 +761,11 @@ func shove_landing(target: CombatUnit, destination: Vector2i) -> String:
 	return " · ".join(notes)
 
 
+## 걷기·점프 도착 칸이 물이면 서기 전에 읽는 물 칸 화상 규칙(#503). 물이 아니면 빈 문자열이다.
+func water_note(cell: Vector2i) -> String:
+	return tr("물 칸: 화상 해제 · 새 화상 걸리지 않음") if cell in grid.water_cells else ""
+
+
 # _trace_rock이 예측한 밀기마다 같은 낙하 계산을 더한다.
 func rock_landing(roll: RockRoll, target: CombatUnit) -> String:
 	var fall: int = 0
