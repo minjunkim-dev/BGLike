@@ -30,6 +30,19 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 
 실행 권한이 있는 리뷰어가 검사나 변이(mutation) 검사를 직접 실행하면 `git worktree add --detach <path> <head_sha>`로 만든 리뷰어 전용 worktree에서 실행합니다. 작성자나 다른 리뷰어의 worktree에서 실행하지 않습니다. 설치된 Godot은 `GODOT`에 실행 파일 경로를 지정해 재사용합니다. stash·branch·tag는 모든 worktree가 공유하므로 만들지 않습니다. 변이는 `git status`로 확인합니다. 변이는 `git restore`로 되돌립니다. 끝나면 `git worktree remove --force <path>`로 그 worktree를 삭제합니다. 수정·커밋하는 리뷰어는 [지적 처리](#지적-처리와-최종-검증) 1·3단계를 따릅니다.
 
+## 스킬 위임 (matt-skills)
+
+이 저장소는 repo-baseline matt-skills 프로필을 씁니다. 「별도 컨텍스트」의 Standards와 Spec 리뷰를 Matt Pocock `code-review` 스킬에 맡길 수 있습니다. Security 리뷰는 맡기지 않습니다.
+
+1. 리뷰할 작업 트리에서 `python3 -I <repo-baseline 클론>/profiles/matt-skills/check_skills.py <base_sha> --harness claude`를 실행합니다. `<base_sha>`는 리뷰 입력으로 고정한 base SHA입니다.
+   - 종료 코드 0: 아래 2~4번대로 위임합니다.
+   - 종료 코드 1: 스킬이 없습니다. 리뷰를 멈추고 Review 칸에 "리뷰 미완(스킬 없음)"과 출력을 적습니다.
+   - 종료 코드 2: 위임하지 않습니다. Standards와 Spec을 직접 보고, 출력한 이유를 Review 칸에 적습니다.
+2. 작성자와 같은 컨텍스트이거나 하위 에이전트인 리뷰어는 위임하지 않습니다. `code-review`가 축마다 하위 에이전트를 띄우기 때문입니다.
+3. 기준은 [REVIEW.md](../../REVIEW.md)의 「실패로 보는 것」·「코딩 기준」과 Issue의 합격 기준입니다. 스킬이 제시하는 스멜 목록보다 이 기준을 먼저 적용합니다.
+4. 스킬 보고의 지적은 `[Spec]`과 `[Standards]`로 나눠 옮깁니다. 심각도는 리뷰어가 REVIEW.md로 정합니다. 스킬은 고치지 않으므로 고치기는 아래 「지적 처리와 최종 검증」을 따릅니다.
+5. Review 칸에 `check_skills.py`가 출력한 `code-review` 경로와 sha256 앞 12자리를 적습니다.
+
 ## 지적 처리와 최종 검증
 
 1. 파일 소유권을 먼저 나눕니다. 리뷰어는 승인된 범위와 소유 파일 안의 확실한 결함을 직접 수정하고 커밋합니다. 다른 작업자의 변경을 되돌리지 않습니다. 읽기 전용으로 승인한 리뷰어는 수정하지 않고 소유 작업자에게 전달합니다.
