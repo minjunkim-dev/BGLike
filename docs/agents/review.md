@@ -30,6 +30,13 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 
 실행 권한이 있는 리뷰어가 검사나 변이(mutation) 검사를 직접 실행하면 `git worktree add --detach <path> <head_sha>`로 만든 리뷰어 전용 worktree에서 실행합니다. 작성자나 다른 리뷰어의 worktree에서 실행하지 않습니다. 설치된 Godot은 `GODOT`에 실행 파일 경로를 지정해 재사용합니다. stash·branch·tag는 모든 worktree가 공유하므로 만들지 않습니다. 변이는 `git status`로 확인합니다. 변이는 `git restore`로 되돌립니다. 끝나면 `git worktree remove --force <path>`로 그 worktree를 삭제합니다. 수정·커밋하는 리뷰어는 [지적 처리](#지적-처리와-최종-검증) 1·3단계를 따릅니다.
 
+## 스킬 위임 (matt-skills)
+
+이 저장소는 repo-baseline matt-skills 프로필을 씁니다. Standards와 Spec 리뷰를 맡기는 절차는 repo-baseline 클론의 `profiles/matt-skills/README.md` 「리뷰」를 그대로 따릅니다. Security 리뷰는 맡기지 않습니다. 이 저장소에서 다른 점은 기준 문서뿐입니다.
+
+- 프로필의 「코딩 기준」 자리에는 [코딩 규칙](../coding-standards.md)을 넘깁니다. 이 저장소의 REVIEW.md에는 「코딩 기준」 절이 없습니다. REVIEW.md 「실패로 보는 것」·「심각도」도 함께 넘깁니다.
+- Spec 축에는 PR 본문의 `완료 기준:`과 함께 위 표의 Issue 합격 기준도 넘깁니다.
+
 ## 지적 처리와 최종 검증
 
 1. 파일 소유권을 먼저 나눕니다. 리뷰어는 승인된 범위와 소유 파일 안의 확실한 결함을 직접 수정하고 커밋합니다. 다른 작업자의 변경을 되돌리지 않습니다. 읽기 전용으로 승인한 리뷰어는 수정하지 않고 소유 작업자에게 전달합니다.

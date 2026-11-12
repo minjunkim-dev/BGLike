@@ -47,3 +47,7 @@ Door가 되돌리기 어려움이거나 이 경로를 건드리면 보안 관점
 ## 배운 규칙
 
 리뷰가 놓친 버그나 반복된 오탐이 생기면 한 줄씩 더한다. 사용자가 승인한 것만 넣는다.
+
+## 스킬 위임
+
+이 저장소는 repo-baseline matt-skills 프로필을 쓴다. 리뷰어는 repo-baseline 클론의 `profiles/matt-skills/README.md` 「리뷰」 절차를 따른다.
