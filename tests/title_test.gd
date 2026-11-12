@@ -277,6 +277,7 @@ func _check_continue_with_save() -> void:
 ## #512 디버그 테스트 진입: 고른 막·스테이지로 바로 가고, 사용자의 저장을 읽거나 쓰지 않고, 출시 빌드에서는 열리지 않는다.
 func _check_debug_entry() -> void:
 	_check(TitleScreen.debug_entry == OS.is_debug_build(), "테스트 진입은 디버그 빌드에서만 켜짐")
+	var original: bool = TitleScreen.debug_entry
 	# 출시 빌드: 메뉴를 만들지 않고 직접 불러도 전투를 열지 않는다.
 	TitleScreen.debug_entry = false
 	var title: TitleScreen = (load("res://scenes/main.tscn") as PackedScene).instantiate() as TitleScreen
@@ -322,6 +323,7 @@ func _check_debug_entry() -> void:
 		game.queue_free()
 		await process_frame
 	GameSave.delete()
+	TitleScreen.debug_entry = original
 
 
 ## 출처 화면은 SRD 5.1 표기를 THIRD_PARTY_NOTICES.md의 원문 그대로 보이고 엔진 라이선스 전문을 싣는다.

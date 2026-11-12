@@ -115,14 +115,14 @@ func _add_debug_stage() -> void:
 	debug_stage.name = "DebugStage"
 	debug_stage.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	debug_stage.custom_minimum_size = Vector2(0, 20)
-	debug_stage.add_item("테스트 진입 (디버그)", -1)  # NO_TRANSLATE
+	debug_stage.add_item("테스트 진입 (디버그)")  # NO_TRANSLATE
 	debug_stage.set_item_disabled(0, true)
 	for index: int in range(DEBUG_STAGE_COUNT):
 		var act: int = index / CombatActProgress.STAGES_PER_ACT + 1
-		debug_stage.add_item("%d-%d" % [act, index % CombatActProgress.STAGES_PER_ACT + 1], index)
+		debug_stage.add_item("%d-%d" % [act, index % CombatActProgress.STAGES_PER_ACT + 1])
 	debug_stage.select(0)
-	debug_stage.item_selected.connect(func(item: int) -> void:
-		start_debug_stage(debug_stage.get_item_id(item)))
+	# 항목 번호에서 안내문 한 칸을 빼면 스테이지 번호다.
+	debug_stage.item_selected.connect(func(item: int) -> void: start_debug_stage(item - 1))
 	menu.add_child(debug_stage)
 
 
