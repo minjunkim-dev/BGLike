@@ -34,14 +34,16 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 
 이 저장소는 repo-baseline matt-skills 프로필을 씁니다. 「별도 컨텍스트」의 Standards와 Spec 리뷰를 Matt Pocock `code-review` 스킬에 맡길 수 있습니다. Security 리뷰는 맡기지 않습니다.
 
-1. 리뷰할 작업 트리에서 `python3 -I <repo-baseline 클론>/profiles/matt-skills/check_skills.py <base_sha> --harness claude`를 실행합니다. `<base_sha>`는 리뷰 입력으로 고정한 base SHA입니다.
-   - 종료 코드 0: 아래 2~4번대로 위임합니다.
+1. 리뷰할 작업 트리에서 `python3 -I <repo-baseline 클론>/profiles/matt-skills/check_skills.py <base_sha> --harness <리뷰어 하네스>`를 실행합니다. `<repo-baseline 클론>`은 리뷰어 기기의 `minjunkim-dev/repo-baseline` 로컬 클론 경로입니다. `<base_sha>`는 리뷰 입력으로 고정한 base SHA입니다. `<리뷰어 하네스>`는 `claude`, `codex`, `cursor` 중 리뷰어가 쓰는 것입니다.
+   - 종료 코드 0: 아래 2~5번대로 위임합니다.
    - 종료 코드 1: 스킬이 없습니다. 리뷰를 멈추고 Review 칸에 "리뷰 미완(스킬 없음)"과 출력을 적습니다.
-   - 종료 코드 2: 위임하지 않습니다. Standards와 Spec을 직접 보고, 출력한 이유를 Review 칸에 적습니다.
-2. 작성자와 같은 컨텍스트이거나 하위 에이전트인 리뷰어는 위임하지 않습니다. `code-review`가 축마다 하위 에이전트를 띄우기 때문입니다.
-3. 기준은 [REVIEW.md](../../REVIEW.md)의 「실패로 보는 것」·「코딩 기준」과 Issue의 합격 기준입니다. 스킬이 제시하는 스멜 목록보다 이 기준을 먼저 적용합니다.
-4. 스킬 보고의 지적은 `[Spec]`과 `[Standards]`로 나눠 옮깁니다. 심각도는 리뷰어가 REVIEW.md로 정합니다. 스킬은 고치지 않으므로 고치기는 아래 「지적 처리와 최종 검증」을 따릅니다.
-5. Review 칸에 `check_skills.py`가 출력한 `code-review` 경로와 sha256 앞 12자리를 적습니다.
+   - 종료 코드 2: 위임하지 않습니다. Standards와 Spec을 직접 보고, 출력한 이유를 Review 칸에 적습니다. 인자 오류도 2로 끝나므로 이유를 확인합니다.
+2. 작성자와 같은 컨텍스트이거나 하위 에이전트인 리뷰어는 위임하지 않습니다. `code-review`가 축마다 하위 에이전트를 띄우기 때문입니다. fork PR도 위임하지 않습니다. 리뷰어가 checkout하지 않으므로 작업 트리의 HEAD가 PR 내용과 다를 수 있습니다.
+3. 기준은 [REVIEW.md](../../REVIEW.md)의 「실패로 보는 것」과 [코딩 규칙](../coding-standards.md), Issue의 합격 기준입니다. 스킬이 제시하는 스멜 목록보다 이 기준을 먼저 적용합니다.
+   - 위임할 때 PR 본문에 `완료 기준:` 줄이 없으므로 Issue의 합격 기준을 저장소 밖 임시 파일에 적어 스킬에 넘깁니다.
+4. `code-review`는 플러그인 이름 `mattpocock-skills:code-review`로 부릅니다. 앞 이름 없는 `code-review`는 다른 스킬로 갈 수 있습니다.
+5. 스킬 보고의 지적은 `[Spec]`과 `[Standards]`로 나눠 옮깁니다. 심각도는 리뷰어가 REVIEW.md로 정합니다. 스킬은 고치지 않으므로 고치기는 아래 「지적 처리와 최종 검증」을 따릅니다.
+6. Review 칸에 `check_skills.py`가 출력한 `code-review` 경로와 sha256 앞 12자리를 적습니다.
 
 ## 지적 처리와 최종 검증
 
