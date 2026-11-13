@@ -55,23 +55,23 @@ const OVERLOAD_SELF_DAMAGE: int = 2
 
 
 ## 유닛 패널 상태 줄의 과부하 글(#503). 켜진 뒤는 전처럼 `과부하`다.
-## 켜지기 전의 조건은 고철로봇만 보이고, 그 밖의 꺼진 유닛은 빈 문자열이다.
+## 켜지기 전의 조건은 과부하가 켜지는 보스만 보이고, 그 밖의 꺼진 유닛은 빈 문자열이다.
 static func overload_status(unit: CombatUnit) -> String:
 	if unit.overloaded:
 		return TranslationServer.tr("과부하")
-	if unit.kind not in CombatActions.SCRAP_ROBOTS:
+	if not unit.is_boss():
 		return ""
-	return TranslationServer.tr("과부하 대기(HP %d 이하)") % (unit.get_max_hit_points() / 2)
+	return TranslationServer.tr("과부하 대기(HP %d 이하)") % (unit.overload_threshold())
 
 
 ## 초상 호버의 과부하 조건·효과와 물 칸 규칙(#503). 문구 기준은 고철로봇 문서 과부하 행과 전투 기획서 6-3이다.
-## 켜짐 조건은 unit.gd의 HP setter와 같은 식이다. 고철로봇이 아니면 빈 문자열이다.
+## 대상과 켜짐 조건은 unit.gd의 HP setter와 같은 is_boss()·overload_threshold()다. 보스가 아니면 빈 문자열이다.
 static func overload_text(unit: CombatUnit) -> String:
-	if unit.kind not in CombatActions.SCRAP_ROBOTS:
+	if not unit.is_boss():
 		return ""
 	return TranslationServer.tr("과부하 (%s): HP %d 이하가 되면 켜짐\n· 턴마다 행동 2\n· 턴 시작에 자기 피해 %d\n· 턴 시작에 반경 1(상하좌우, 높이 차 1 이하)의\n  모든 유닛에게 화상 1, 판정 없음\n물 칸에 선 유닛은 화상이 걸리지 않고 해제됨") % [
 		TranslationServer.tr("켜짐") if unit.overloaded else TranslationServer.tr("꺼짐"),
-		unit.get_max_hit_points() / 2, OVERLOAD_SELF_DAMAGE]
+		unit.overload_threshold(), OVERLOAD_SELF_DAMAGE]
 
 
 ## 이로움(초록)·해로움(빨강) 수치 색(#457). 어두운 패널(202b35) 위에서 AA 대비를 넘는다.

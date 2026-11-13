@@ -400,8 +400,8 @@ func _on_turn_started(unit: CombatUnit) -> void:
 	_clear_burn_in_water(unit)
 	if unit.overloaded and unit.hit_points > 0 and not is_over():
 		_damage(unit, CombatActionRules.OVERLOAD_SELF_DAMAGE)
-		logged.emit(tr("%s 과부하: 자기 피해 2 · HP %d") % [unit.get_display_name(), unit.hit_points])
-		feedback.emit(unit, tr("과부하 2"))
+		logged.emit(tr("%s 과부하: 자기 피해 %d · HP %d") % [unit.get_display_name(), CombatActionRules.OVERLOAD_SELF_DAMAGE, unit.hit_points])
+		feedback.emit(unit, tr("과부하 %d") % CombatActionRules.OVERLOAD_SELF_DAMAGE)
 	_apply_grounds(unit, false)
 	var poison_checked: bool = false
 	for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
