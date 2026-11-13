@@ -546,6 +546,21 @@ func _test_archer_moving_shot_input() -> void:
 		and not (dots["moving_shot"] as Label).visible and (passives["moving_shot"] as Button).disabled,
 		"궁수 패시브 칸의 무빙샷은 도약할 수 없는 동안 꺼짐")
 	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	# 활 후려치기를 고르고 인접한 적을 처음 누르면, 필드 미리보기가 힘 d6 근접 판정(원거리 불리 없음)을 보인다.
+	target.cell = Vector2i(4, 5)
+	battle.call("_update_turn_ui")
+	await process_frame
+	(buttons["bow_bash"] as Button).pressed.emit()
+	await _click(target.get_global_transform_with_canvas() * Vector2(0, -10))
+	var bash: CombatChecks.AttackPreview = actions.grid.attack_preview(archer, target, "bow_bash")
+	_check(selection.selected_action == "bow_bash" and selection.preview_target == target and archer.bonus_action_left == 1
+		and actions.grid.attack_preview(archer, target).mode == CombatChecks.RollMode.DISADVANTAGE
+		and hud.preview_label.text == tr("명중률 %.1f%% · %s") % [bash.chance * 100.0, tr("일반")],
+		"활 후려치기 필드 미리보기는 그 동작의 명중률과 일반 판정: " + hud.preview_label.text)
+	(buttons["attack"] as Button).pressed.emit()
+	target.cell = Vector2i(4, 7)
+	battle.call("_update_turn_ui")
+	await process_frame
 	actions.dice = ScriptedDice.new([15, 2], [20, 20])
 	var point: Vector2 = target.get_global_transform_with_canvas() * Vector2(0, -10)
 	await _click(point)

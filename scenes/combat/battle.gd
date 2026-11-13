@@ -857,8 +857,9 @@ func _update_turn_ui() -> void:
 		unit.is_occluded = map.occludes(unit.cell,
 			map.to_local(unit.to_global(Vector2(0, unit.floor_offset_y - 10))))
 	if selection.preview_target != null:
+		# 고른 동작의 명중 능력치·근접 여부를 따른다(활 후려치기는 힘 d6, 원거리 불리 없음).
 		var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(
-			turns.current_unit, selection.preview_target)
+			turns.current_unit, selection.preview_target, selection.selected_action)
 		hud.show_attack_preview(selection.preview_target, preview)
 		if selection.selected_action == "shove":
 			if actions.can_target(turns.current_unit, selection.preview_target, "shove"):
