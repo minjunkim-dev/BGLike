@@ -57,9 +57,9 @@ func _run() -> void:
 	ScriptedDice.arrange_turns(turns, units, units)
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	# 내성 실패·성공 피해가 같은 반복 광역에서 발생하는 통제된 재현이다.
-	# 회전회오리 두 번. 대상마다 힘 내성 → 피해: 첫 번째는 둘 다 실패, 두 번째는 전사만 절대성공면 20으로 성공.
-	# 과부하 고철로봇의 턴 시작 화상(#464)이 전사의 다음 턴 시작에 d4 하나를 굴린다.
-	actions.dice = ScriptedDice.new([1, 1, 1, 1, 20, 1, 6, 1, 4], [20, 12, 6, 12, 20, 12, 6, 12, 4])
+	# 회전회오리 두 번. 대상마다 민첩 내성(#528) → 피해: 첫 번째는 둘 다 실패, 두 번째는 궁수만 절대성공면 12로 성공.
+	# 전사 민첩 d8은 DC 10에 닿지 못한다. 과부하 고철로봇의 턴 시작 화상(#464)이 전사의 다음 턴 시작에 d4 하나를 굴린다.
+	actions.dice = ScriptedDice.new([1, 1, 1, 1, 8, 1, 12, 1, 4], [8, 12, 12, 12, 8, 12, 12, 12, 4])
 	for unit: CombatUnit in units:
 		if unit.is_ally:
 			unit.reaction_left = 0
@@ -101,7 +101,7 @@ func _run() -> void:
 		"공격자 판정 합계 팝업과 피해 부호 없음: %s" % str(popup_styles.keys()))
 	_check(messages.filter(func(line: String) -> bool: return "회전회오리:" in line).size() == 2,
 		"과부하 중 회전 공격 두 번 유지")
-	_check(units[0].hit_points == 3 and units[1].hit_points == 3 and boss.hit_points == 23
+	_check(units[0].hit_points == 1 and units[1].hit_points == 5 and boss.hit_points == 23
 		and messages.any(func(line: String) -> bool: return "피해 (내성 성공 절반)" in line),
 		"내성 실패 피해·내성 성공 절반 피해와 과부하 자해 유지")
 	_check(_popups().is_empty(), "마지막 피드백 이후 팝업 제거")
@@ -283,7 +283,7 @@ func _monitor() -> void:
 				collisions.append(outside)
 			var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 			for unit: CombatUnit in battle.get("units"):
-				var status: String = ("기절" if unit.is_stunned else "") + (" ◎" if unit.has_mark else "")
+				var status: String = "기절" if unit.is_stunned else ""
 				if status.is_empty():
 					continue
 				var font: Font = ThemeDB.fallback_font

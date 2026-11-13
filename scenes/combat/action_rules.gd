@@ -296,6 +296,8 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 					chances.append("%s %.1f%%" % [unit.get_display_name(), save_chance(actor, unit, action) * 100.0])
 			if not chances.is_empty():
 				lines.append(TranslationServer.tr("내성 성공률: %s") % " · ".join(chances))
+	if action == "attack" and actor.aegisal_left > 0:
+		lines.append(TranslationServer.tr("애기살 %d발: 피해 굴림 2번 중 높은 값") % actor.aegisal_left)
 	for line: String in [cost_text(action), combat_uses_text(actor, action)]:
 		if not line.is_empty():
 			lines.append(line)

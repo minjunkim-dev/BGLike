@@ -700,6 +700,8 @@ func _execute_target(target: CombatUnit) -> void:
 			await actions.cross_slash(actor, target)
 		"steel_charge":
 			await actions.steel_charge(actor, target)
+		"bow_bash":
+			await actions.bow_bash(actor, target)
 		"shove":
 			actions.shove(actor, target)
 	selection.finish_execution()

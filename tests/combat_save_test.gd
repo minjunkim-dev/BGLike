@@ -363,7 +363,6 @@ func _test_rejects_bad_saves() -> void:
 			var extra: Dictionary = state.units[enemy].duplicate(true)
 			extra.kind = CombatUnit.Kind.MOTHER_SPIDER
 			state.units.append(extra),
-		"없는 유닛을 가리키는 표식": func(state: Dictionary) -> void: state.units[0].marked_target = 99,
 		"모르는 상태 이상": func(state: Dictionary) -> void: state.units[0].statuses = [["curse", 0, 1, 0]],
 		"독 DC가 정수가 아님": func(state: Dictionary) -> void: state.units[0].statuses = [["poison", 0, 1, 4.0]],
 		"독 DC가 없음": func(state: Dictionary) -> void: state.units[0].statuses = [["poison", 0, 1, 0]],
