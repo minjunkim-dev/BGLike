@@ -32,8 +32,8 @@ const SHIELD_COLOR: Color = Color("6fb7ff")
 ## 이어하기가 그대로 되돌리는 값. 저장 파일의 값은 이 변수와 같은 타입이어야 한다.
 const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initiative_roll", "movement_left",
 	"action_capacity", "bonus_action_capacity", "reaction_capacity", "action_left", "bonus_action_left",
-	"reaction_left", "overloaded", "pull_cooldown", "disengaged", "second_wind_left", "mark_left",
-	"shock_left", "disengage_left", "potion_left", "cross_slash_left", "steel_charge_left", "battle_cry_left",
+	"reaction_left", "overloaded", "pull_cooldown", "disengaged", "second_wind_left",
+	"disengage_left", "potion_left", "cross_slash_left", "steel_charge_left", "battle_cry_left",
 	"shield_points", "shield_turns", "battle_cry_bonus", "battle_cry_turns"]
 ## 저장 파일의 정수 상한. 고친 저장이 끝나지 않는 턴이나 큰 목록을 만들지 않게 한다.
 const SAVED_INT_LIMIT: int = 99
@@ -101,13 +101,15 @@ var is_stunned: bool = false:
 		is_stunned = value
 		if not value:
 			stun_source = null
-var has_mark: bool = false
+## 풋내기 궁수의 물러서며 쏘기. 아군 궁수는 쓰지 않는다 (#528).
 var disengaged: bool = false
-var marked_target: CombatUnit
 var second_wind_left: int = 1
-var mark_left: int = 1
-var shock_left: int = 1
 var disengage_left: int = 2
+## 애기살 남은 발수. 애기살 급조마다 +2, 아군 궁수의 기본 공격마다 -1. 새 전투에서 0이다 (궁수 문서).
+var aegisal_left: int = 0
+## 무빙샷: 지금 1칸 도약할 수 있는지, 이번 턴의 첫 행동 원거리 공격을 이미 했는지. 자기 턴 시작에 모두 false다.
+var moving_shot_ready: bool = false
+var moving_shot_spent: bool = false
 var potion_left: int = 0
 var cross_slash_left: int = 1
 var steel_charge_left: int = 1
@@ -233,8 +235,8 @@ func get_hit_bonus() -> int:
 func get_damage_bonus() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["damage_bonus"])
-	# 전사는 기본 피해 보정이 없고 장비로만 더한다. 궁수의 +1은 궁수 재디자인 때 정한다 (#407 답 3번).
-	return (0 if kind == Kind.WARRIOR else 1) + _equipment_stat("damage_bonus")
+	# 아군은 기본 피해 보정이 없고 장비로만 더한다. 피해식은 능력치 주사위 + 레벨(0) + 기타 가산치다 (#407 답 3번, 궁수 문서).
+	return _equipment_stat("damage_bonus")
 
 
 func _equipment_stat(stat: String) -> int:
@@ -244,7 +246,7 @@ func _equipment_stat(stat: String) -> int:
 func get_attack_range() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["attack_range"])
-	return 1 if kind == Kind.WARRIOR else 6
+	return 1 if kind == Kind.WARRIOR else 4
 
 
 ## 민첩 굴림값. 눈(initiative_roll)에 민첩 가감을 더한다. 0은 아직 굴리지 않은 소환 유닛이라 그대로 둔다.
@@ -276,13 +278,11 @@ func get_bar_fractions() -> Vector2:
 	return Vector2(hit_points / total, shield_points / total)
 
 
-## 유닛 위에 지금 보이는 상태 글자. 기절·화상·독·표식.
+## 유닛 위에 지금 보이는 상태 글자. 기절·화상·독.
 func get_status_text() -> String:
 	var status: String = get_periodic_status_text()
 	if is_stunned:
 		status = tr("기절") + (" " + status if not status.is_empty() else "")
-	if has_mark:
-		status += " ◎"
 	return status
 
 
@@ -341,6 +341,8 @@ func get_movement() -> int:
 
 func begin_turn() -> void:
 	disengaged = false
+	moving_shot_ready = false
+	moving_shot_spent = false
 	pull_cooldown = maxi(0, pull_cooldown - 1)
 	movement_left = get_movement()
 	action_left = action_capacity + (1 if overloaded else 0)
@@ -359,8 +361,7 @@ func begin_stage(restore_act: bool) -> void:
 	is_stunned = false
 	status_effects.clear()
 	clear_unit_effects()
-	has_mark = false
-	marked_target = null
+	aegisal_left = 0
 	is_selected = false
 	is_previewed = false
 	begin_turn()
@@ -382,7 +383,7 @@ func save_state(units: Array[CombatUnit]) -> Dictionary:
 		statuses.append([effect.kind, units.find(effect.source), effect.turns_left, effect.dc])
 	var data: Dictionary = {"kind": kind, "ally": is_ally, "weapon": weapon, "armor": armor,
 		"hit_points": hit_points, "lost_hit_points": _lost_hit_points, "stunned": is_stunned,
-		"stun_source": units.find(stun_source), "marked_target": units.find(marked_target), "statuses": statuses,
+		"stun_source": units.find(stun_source), "statuses": statuses,
 		"battle_cry_source": units.find(battle_cry_source)}
 	for field: String in SAVED_FIELDS:
 		data[field] = get(field)
@@ -399,7 +400,6 @@ func load_state(data: Dictionary, units: Array[CombatUnit]) -> void:
 	_lost_hit_points = data.lost_hit_points
 	is_stunned = data.stunned
 	stun_source = units[data.stun_source] if data.stun_source >= 0 else null
-	marked_target = units[data.marked_target] if data.marked_target >= 0 else null
 	battle_cry_source = units[data.battle_cry_source] if data.battle_cry_source >= 0 else null
 	status_effects.clear()
 	for saved: Array in data.statuses:
@@ -416,7 +416,6 @@ func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 			and data.get("lost_hit_points") is int and data.lost_hit_points >= 0
 			and data.lost_hit_points <= SAVED_HIT_POINT_LIMIT and data.get("stunned") is bool
 			and _valid_index(data.get("stun_source"), count, true) and (not data.stunned or data.stun_source >= 0)
-			and _valid_index(data.get("marked_target"), count, true)
 			and _valid_index(data.get("battle_cry_source"), count, true)
 			and data.get("statuses") is Array and data.statuses.size() <= 6):
 		return false
@@ -616,7 +615,7 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 	var center: Vector2 = origin.clamp(first, viewport.end - popup_size - Vector2.ONE * padding)
 	# 화면 패널, 다른 대상 팝업의 상승 경로, 지금 보이는 상태 글자와 대상 자신의 상태 자리는 언제나 피한다.
 	var blocked: Array[Rect2] = obstacles.duplicate()
-	# 다른 유닛의 새 기절·표식과 현재 화상·독을 읽을 자리는 근처에 빈 자리가 있을 때만 비워 둔다.
+	# 다른 유닛의 새 기절과 현재 화상·독을 읽을 자리는 근처에 빈 자리가 있을 때만 비워 둔다.
 	var reserved: Array[Rect2] = []
 	# 같은 대상의 팝업은 이전 팝업 위에 순서대로 쌓는다(#260).
 	var ceiling: float = INF
@@ -624,7 +623,7 @@ func _feedback_position(popup: Label, obstacles: Array[Rect2]) -> Vector2:
 		if child is CombatUnit:
 			var periodic: String = child.get_periodic_status_text()
 			var area: Rect2 = child.get_status_area(
-				tr("기절") + (" " + periodic if not periodic.is_empty() else "") + " ◎", padding)
+				tr("기절") + (" " + periodic if not periodic.is_empty() else ""), padding)
 			if child == self:
 				blocked.append(area)
 			else:

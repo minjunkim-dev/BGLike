@@ -567,7 +567,7 @@ func _test_scrap_robot_3000_stage() -> void:
 	_check(not actions.grid.is_blocked(units[0].cell) and not actions.grid.is_blocked(units[1].cell)
 		and actions.grid.are_adjacent(boss.cell, units[0].cell) and actions.grid.are_adjacent(boss.cell, units[1].cell),
 		"3000 회전 fixture의 두 아군은 장애물 없는 인접 바닥에 배치")
-	actions.dice = ScriptedDice.new([1, 3, 1, 3], [20, 12, 6, 12])
+	actions.dice = ScriptedDice.new([1, 3, 1, 3], [8, 12, 12, 12])
 	_check(await actions.spin(boss) and units[0].hit_points == 6 and units[1].hit_points == 4
 		and boss.action_left == 1 and boss.hit_points == 23,
 		"실제 3000 과부하 턴 시작 자기 피해 뒤 회전회오리가 두 아군과 화면을 갱신")
@@ -686,7 +686,9 @@ func _test_stage_transition(battle: Node2D) -> void:
 	warrior.is_stunned = true
 	warrior.stun_source = (battle.get("units") as Array)[2] as CombatUnit
 	warrior.disengaged = true
-	warrior.marked_target = (battle.get("units") as Array)[2] as CombatUnit
+	warrior.aegisal_left = 3
+	warrior.moving_shot_ready = true
+	warrior.moving_shot_spent = true
 	(battle.get("actions") as CombatActions).incapacitate(archer)
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var stages: Array[CombatStage] = battle.get("stages")
@@ -715,8 +717,8 @@ func _test_stage_transition(battle: Node2D) -> void:
 		"전투 불능 아군은 같은 막 다음 전투에 나오지 않음")
 	_check(warrior.potion_left == 3, "스테이지 전환에서 가진 물약 유지")
 	_check(not warrior.is_stunned and warrior.stun_source == null and not warrior.disengaged
-		and warrior.marked_target == null and not warrior.has_mark,
-		"기절·표식·이번 턴 효과는 전투 전환에서 해제")
+		and warrior.aegisal_left == 0 and not warrior.moving_shot_ready and not warrior.moving_shot_spent,
+		"기절·애기살·이번 턴 효과(무빙샷)는 전투 전환에서 해제")
 	_check(not hud.get_node("Result").visible, "다음 전투에서 이전 승리 창 숨김")
 
 
@@ -781,19 +783,15 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	var party: Array[CombatUnit] = battle.get("party")
 	for unit: CombatUnit in party:
 		_check(unit.hit_points == unit.get_max_hit_points() and unit.second_wind_left == 1
-			and unit.cross_slash_left == 1 and unit.steel_charge_left == 1 and unit.battle_cry_left == 1 and unit.mark_left == 1
-			and unit.shock_left == 1 and unit.disengage_left == 2,
+			and unit.cross_slash_left == 1 and unit.steel_charge_left == 1 and unit.battle_cry_left == 1,
 			"막 시작에 전원 HP와 기존 스킬 횟수 회복")
 	_check(party[0].potion_left == 3 and party[1].potion_left == 0,
 		"막 시작은 물약을 지급하거나 제거하지 않음")
 	party[1].hit_points = 8
-	party[1].mark_left = 0
-	party[1].shock_left = 0
-	party[1].disengage_left = 0
+	party[1].aegisal_left = 4
 	await _next(battle)
-	_check(hud.progress_label.text == "2막 · 2스테이지" and party[1].hit_points == 8
-		and party[1].mark_left == 0 and party[1].shock_left == 0 and party[1].disengage_left == 0,
-		"같은 막에서 궁수 HP와 세 스킬 횟수 유지")
+	_check(hud.progress_label.text == "2막 · 2스테이지" and party[1].hit_points == 8 and party[1].aegisal_left == 0,
+		"같은 막에서 궁수 HP는 유지하고 애기살은 다음 전투에서 사라짐")
 	# 전투 중 결과 버튼 신호를 보내도 스테이지가 바뀌지 않는다.
 	hud.restart_button.pressed.emit()
 	_check(hud.progress_label.text == "2막 · 2스테이지", "전투 중 임의 진행 거부")
@@ -819,8 +817,8 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	_check(battle.loot.bag == expected_bag, "전멸한 막 재시작은 공용 가방 전량 보존")
 	_check_enemy_values(battle, 2)
 	for unit: CombatUnit in party:
-		_check(unit.hit_points == unit.get_max_hit_points() and unit.mark_left == 1
-			and unit.shock_left == 1 and unit.disengage_left == 2, "전멸 뒤 부활과 스킬 회복")
+		_check(unit.hit_points == unit.get_max_hit_points() and unit.cross_slash_left == 1,
+			"전멸 뒤 부활과 스킬 회복")
 	_check(party[0].potion_left == 2, "사용한 물약은 막 재시작으로 돌아오지 않음")
 
 

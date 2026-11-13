@@ -192,53 +192,37 @@ def counter(x, y):
     return short_sword(u, v, 15)
 
 
-def mark(x, y):
+def aegisal(x, y):
     px, py = x + 0.5, y + 0.5
-    # Arrow stuck in the centre, coming from the upper right.
-    u, v = rotated(x, y, 30, 34)
-    if 2 <= u <= 30 and abs(v) <= 1.3:
-        return WOOD[2] if v < 0 else WOOD[1]
-    if 22 <= u <= 31 and 1.3 < abs(v) <= 5.5 - (u - 22) * 0.35:
-        return TEAL[1] if v < 0 else TEAL[0]
-    # Target board.
-    distance = math.hypot(px - 30, py - 34)
-    if distance > 26:
-        return None
-    ring = int(distance // 5.2)
-    if ring == 0:
-        return RED[3] if px + py < 63 else RED[2]
-    if ring % 2:
-        return WHITE if px + py < 64 else STEEL[3]
-    return RED[2] if px + py < 64 else RED[1]
-
-
-def shock(x, y):
-    px, py = x + 0.5, y + 0.5
-    # Arrow flying to the upper right.
-    u, v = rotated(x, y, 30, 34)
-    if -26 <= u <= 14 and abs(v) <= 1.4:
-        return WOOD[3] if v < 0 else WOOD[1]
-    if 14 < u <= 26 and abs(v) <= (26 - u) * 0.55:
-        return STEEL[4] if v < 0 else STEEL[2]
-    if -28 <= u <= -16 and 1.4 < abs(v) <= 6 - (u + 28) * 0.25:
-        return TEAL[1] if v < 0 else TEAL[0]
-    # Lightning bolt beside the head.
-    if inside(px, py, [(36, 30), (50, 30), (44, 40), (54, 40), (34, 62), (40, 46), (30, 46)]):
-        return BRASS[2] if px < 42 else BRASS[1]
+    # Two short arrows (aegisal) flying up-right side by side: wooden shaft, steel head, teal fletching.
+    for cx, cy in ((24, 30), (36, 42)):
+        u, v = rotated(x, y, cx, cy)
+        if -12 <= u <= 6 and abs(v) <= 1.3:
+            return WOOD[3] if v < 0 else WOOD[1]
+        if 6 < u <= 14 and abs(v) <= (14 - u) * 0.6:
+            return STEEL[4] if v < 0 else STEEL[2]
+        if -16 <= u <= -9 and 1.3 < abs(v) <= 4.5:
+            return TEAL[1] if v < 0 else TEAL[0]
+    # Brass half tube (tongah) that guides the short arrow, along the lower left.
+    u, v = rotated(x, y, 22, 46)
+    if -12 <= u <= 10 and 2.5 <= v <= 6 and px > 4:
+        return BRASS[2] if v < 4.2 else BRASS[1]
     return None
 
 
-def disengage(x, y):
+def bow_bash(x, y):
     px, py = x + 0.5, y + 0.5
-    # Teal arrow pointing back to the left.
-    if inside(px, py, [(2, 16), (18, 4), (18, 11), (44, 11), (44, 21), (18, 21), (18, 28)]):
-        return TEAL[1] if py < 15 else TEAL[0]
-    # Boot sliding back to the left, with speed lines trailing on the toe side.
-    shoe = boot(px, py, 12, 34)
-    if shoe is not None:
-        return shoe
-    for line_y, start in ((40, 38), (48, 40), (56, 38)):
-        if abs(py - line_y) <= 1.2 and start <= px <= start + 18:
+    # Wooden bow limb swung like a club: an arc in the upper left with a brass grip and a thin string.
+    ring = math.hypot(px - 46, py - 46)
+    if 26 <= ring <= 30 and px <= 46 and py <= 46:
+        if math.hypot(px - 26, py - 26) <= 4.5:
+            return BRASS[2] if px + py < 52 else BRASS[1]
+        return WOOD[3] if ring < 27.5 else WOOD[1]
+    if near_segment(px, py, (46, 17, 17, 46), 0.8):
+        return STEEL[3]
+    # White impact lines where the limb strikes at the lower right.
+    for segment in ((50, 30, 60, 26), (50, 40, 61, 42), (44, 50, 52, 59)):
+        if near_segment(px, py, segment, 1.5):
             return WHITE
     return None
 
@@ -289,8 +273,8 @@ def fitted(draw):
 
 ICONS = {"attack": attack, "second_wind": fitted(second_wind), "sweep": fitted(sweep), "cross_slash": fitted(cross_slash),
          "steel_charge": fitted(steel_charge), "holy_veil": fitted(holy_veil), "battle_cry": fitted(battle_cry),
-         "opportunity": fitted(opportunity), "counter": fitted(counter), "mark": fitted(mark), "shock": fitted(shock),
-         "disengage": fitted(disengage), "shove": fitted(shove), "jump": fitted(jump), "potion": potion}
+         "opportunity": fitted(opportunity), "counter": fitted(counter), "aegisal": fitted(aegisal),
+         "bow_bash": fitted(bow_bash), "shove": fitted(shove), "jump": fitted(jump), "potion": potion}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

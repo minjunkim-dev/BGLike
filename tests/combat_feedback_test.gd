@@ -106,7 +106,7 @@ func _run() -> void:
 		"내성 실패 피해·내성 성공 절반 피해와 과부하 자해 유지")
 	_check(_popups().is_empty(), "마지막 피드백 이후 팝업 제거")
 	actions.dice = ScriptedDice.new([], []).then_seeded()
-	await _test_shock_feedback()
+	await _test_stunned_target_feedback()
 	await _test_crowded_feedback()
 	monitoring = false
 	if observer != null:
@@ -158,35 +158,29 @@ func _abort_fixture() -> void:
 	quit(1)
 
 
-func _test_shock_feedback() -> void:
-	for marked: bool in [false, true]:
-		(battle.get("progress") as CombatActProgress).stage_index = 1
-		battle.call("_start_stage", true)
-		battle.call("start_battle")
-		var units: Array[CombatUnit] = battle.get("units")
-		var archer: CombatUnit = units[1]
-		var target: CombatUnit = units[2]
-		units[0].cell = Vector2i(0, 9)
-		archer.cell = Vector2i(2, 4)
-		target.cell = Vector2i(5, 4)
-		target.reaction_left = 0
-		ScriptedDice.arrange_turns(turns, units, [archer, units[0], target])
-		var actions: CombatActions = battle.get("actions") as CombatActions
-		if marked:
-			_check(actions.mark(archer, target), "충격 화살 전 표식 적용")
-		var sides: Array[int] = ScriptedDice.attack_sides(archer) + ScriptedDice.damage_sides(archer)
-		var values: Array[int] = [15, 2]
-		if marked:
-			values.append(1)
-			sides.append(6)
-		actions.dice = ScriptedDice.new(values, sides)
-		battle.call("_update_turn_ui")
-		_check(await actions.attack(archer, target, true), "실제 충격 화살 실행")
-		_check(target.is_stunned and target.has_mark == marked, "기절·표식 상태 유지")
-		_check(target.hit_points == (8 if marked else 9), "충격 화살 피해 유지")
-		await create_timer(1.0).timeout
-		_check(collisions.is_empty(), "충격 화살 팝업·상태 표시 겹침 없음: %s" % str(collisions))
-		_check(_popups().is_empty(), "충격 화살 팝업 제거")
+## 기절 상태 글자가 떠 있는 대상의 피해 팝업. 충격 화살(#528에서 삭제) 대신 기절을 직접 건다.
+func _test_stunned_target_feedback() -> void:
+	(battle.get("progress") as CombatActProgress).stage_index = 1
+	battle.call("_start_stage", true)
+	battle.call("start_battle")
+	var units: Array[CombatUnit] = battle.get("units")
+	var archer: CombatUnit = units[1]
+	var target: CombatUnit = units[2]
+	units[0].cell = Vector2i(0, 9)
+	archer.cell = Vector2i(2, 4)
+	target.cell = Vector2i(5, 4)
+	target.reaction_left = 0
+	ScriptedDice.arrange_turns(turns, units, [archer, units[0], target])
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	_check(actions.apply_status(archer, target, "stun"), "공격 전 기절 적용")
+	# 기절한 대상은 유리라 명중굴림을 두 번 굴린다.
+	actions.dice = ScriptedDice.new([15, 15, 2], ScriptedDice.attack_sides(archer, 2) + ScriptedDice.damage_sides(archer))
+	battle.call("_update_turn_ui")
+	_check(await actions.attack(archer, target), "기절한 대상에게 실제 기본 공격")
+	_check(target.is_stunned and target.hit_points == 10, "기절 유지와 피해 2")
+	await create_timer(1.0).timeout
+	_check(collisions.is_empty(), "피해 팝업·기절 상태 표시 겹침 없음: %s" % str(collisions))
+	_check(_popups().is_empty(), "피해 팝업 제거")
 
 
 ## #260: 3-1에서 궁수를 여섯 유닛이 둘러싼 밀집 배치. 새끼 거미의 연속 피해 팝업이 대상 가까이에 순서대로 쌓여야 한다.

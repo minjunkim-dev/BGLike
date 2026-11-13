@@ -79,8 +79,8 @@ class GodotCheckTests(unittest.TestCase):
     def test_clean_output_passes_every_step(self):
         result, calls = self.run_check()
         self.assertEqual(result.returncode, 0, result.stderr)
-        # --version, --import, --quit-after, the fourteen combat tests, the save, title, pause and continue tests.
-        self.assertEqual(len(calls), 21)
+        # --version, --import, --quit-after, the fifteen combat tests, the save, title, pause and continue tests.
+        self.assertEqual(len(calls), 22)
         self.assertTrue(any("title_test.gd" in call for call in calls))
         self.assertTrue(any("combat_capture_test.gd" in call for call in calls))
         self.assertTrue(any("combat_feedback_test.gd" in call for call in calls))
@@ -89,6 +89,7 @@ class GodotCheckTests(unittest.TestCase):
         self.assertTrue(any("combat_staging_test.gd" in call for call in calls))
         self.assertTrue(any("combat_dice_roll_test.gd" in call for call in calls))
         self.assertTrue(any("combat_warrior_test.gd" in call for call in calls))
+        self.assertTrue(any("combat_archer_test.gd" in call for call in calls))
         self.assertTrue(any("save_test.gd" in call for call in calls))
         self.assertTrue(any("pause_test.gd" in call for call in calls))
         self.assertTrue(any("continue_test.gd" in call for call in calls))

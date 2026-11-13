@@ -201,10 +201,8 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 		"attack":
 			return (in_range(origin, target.cell, actor.get_attack_range())
 				and (actor.get_attack_range() > 1 or are_adjacent(origin, target.cell)))
-		"cross_slash", "steel_charge":
+		"cross_slash", "steel_charge", "bow_bash":
 			return are_adjacent(origin, target.cell)
-		"shock", "mark":
-			return in_range(origin, target.cell, CombatActionRules.SKILL_RANGE)
 		"shove":
 			return in_range(origin, target.cell, 1) and can_shove(actor, target)
 		"pull":
@@ -348,7 +346,8 @@ func armor_class(unit: CombatUnit) -> int:
 	return unit.get_armor_class() + phalanx_bonus(unit)
 
 
-func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.AttackPreview:
+## action의 명중 미리보기. 명중 능력치와 사거리는 동작을 따르고, 근접 동작(활 후려치기)은 원거리 요인을 받지 않는다.
+func attack_preview(attacker: CombatUnit, target: CombatUnit, action: String = "attack") -> CombatChecks.AttackPreview:
 	var preview: CombatChecks.AttackPreview = CombatChecks.AttackPreview.new()
 	if (attacker == null or target == null or attacker.is_ally == target.is_ally
 		or attacker.hit_points <= 0 or target.hit_points <= 0):
@@ -356,16 +355,18 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 	preview.valid_target = true
 	if attacker.is_stunned:
 		preview.blocked_reason = tr("기절하여 공격 불가")
-	preview.in_range = can_target(attacker, target, "attack")
+	# 기회 공격·휩쓸기·십자 베기·반격은 기본 공격과 같은 사거리 판정을 쓴다.
+	preview.in_range = can_target(attacker, target, action if action in CombatActionRules.MELEE_ACTIONS else "attack")
+	var ranged: bool = attacker.is_ranged_attack() and action not in CombatActionRules.MELEE_ACTIONS
 	var advantages: int = 0
 	var disadvantages: int = 0
 	if target.is_stunned:
 		advantages += 1
 		preview.reasons.append(tr("기절한 대상"))
-	if attacker.is_ranged_attack() and height_at(attacker.cell) - height_at(target.cell) >= 2:
+	if ranged and height_at(attacker.cell) - height_at(target.cell) >= 2:
 		advantages += 1
 		preview.reasons.append(tr("고지대"))
-	if attacker.is_ranged_attack():
+	if ranged:
 		for unit: CombatUnit in opponents_in_range(attacker, 1):
 			if not unit.is_stunned and are_adjacent(attacker.cell, unit.cell):
 				disadvantages += 1
@@ -373,7 +374,7 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit) -> CombatChecks.At
 				break
 	preview.mode = CombatChecks.roll_mode(advantages, disadvantages)
 	if preview.in_range and preview.blocked_reason.is_empty():
-		preview.chance = CombatChecks.hit_chance(attacker.get_ability_sides(attacker.get_attack_ability()),
-			attacker.get_hit_bonus(), armor_class(target), preview.mode,
-			attacker.get_ability_modifier(attacker.get_attack_ability()))
+		var ability: CombatUnit.Ability = CombatActionRules.hit_ability(attacker, action)
+		preview.chance = CombatChecks.hit_chance(attacker.get_ability_sides(ability),
+			attacker.get_hit_bonus(), armor_class(target), preview.mode, attacker.get_ability_modifier(ability))
 	return preview

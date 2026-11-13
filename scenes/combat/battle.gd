@@ -694,14 +694,12 @@ func _execute_target(target: CombatUnit) -> void:
 	var actor: CombatUnit = turns.current_unit
 	var action: String = selection.begin_execution()
 	match action:
-		"attack", "shock":
-			await actions.attack(actor, target, action == "shock")
+		"attack":
+			await actions.attack(actor, target)
 		"cross_slash":
 			await actions.cross_slash(actor, target)
 		"steel_charge":
 			await actions.steel_charge(actor, target)
-		"mark":
-			actions.mark(actor, target)
 		"shove":
 			actions.shove(actor, target)
 	selection.finish_execution()
@@ -797,7 +795,6 @@ func _update_turn_ui() -> void:
 	if sweeping:
 		sweep_targets = actions.sweep_targets(turns.current_unit, selection.preview_cell)
 	for unit: CombatUnit in units:
-		unit.has_mark = actions.is_marked(unit)
 		if not unit.is_moving:
 			unit.position = map.map_to_local(unit.cell)
 			unit.floor_offset_y = map.map_to_surface(unit.cell).y - unit.position.y
@@ -840,9 +837,7 @@ func _update_turn_ui() -> void:
 		var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(
 			turns.current_unit, selection.preview_target)
 		hud.show_attack_preview(selection.preview_target, preview)
-		if selection.selected_action == "mark":
-			hud.show_target_note(tr("표식 대상") if actions.can_target(turns.current_unit, selection.preview_target, "mark") else tr("표식을 사용할 수 없음"))
-		elif selection.selected_action == "shove":
+		if selection.selected_action == "shove":
 			if actions.can_target(turns.current_unit, selection.preview_target, "shove"):
 				var cell: Vector2i = actions.grid.push_destination(turns.current_unit.cell, selection.preview_target.cell)
 				var landing: String = actions.shove_landing(selection.preview_target, cell)

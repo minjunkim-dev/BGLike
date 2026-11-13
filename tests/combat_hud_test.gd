@@ -209,7 +209,7 @@ func _test_skill_icons() -> void:
 	# 새 아군 동작을 NAMES에 추가하면 아이콘도 함께 요구한다.
 	for action: String in CombatActionRules.NAMES:
 		var icon: Texture2D = CombatActionRules.icon_of(action)
-		if action in ["spawn", "pull", "spin"]:
+		if action in ["spawn", "pull", "spin", "disengage"]:
 			_check(icon == null, "적 전용 스킬은 아이콘 범위 밖: " + action)
 		else:
 			_check(icon != null and icon.get_size() == Vector2(48, 48), "#362 스킬 아이콘 48px 원본: " + action)
@@ -373,7 +373,8 @@ func _test_passive_slot_and_number_colors() -> void:
 	hud.refresh_actions(actions, "attack", units[0])
 	_check(not (dots["brawn"] as Label).visible, "패시브 칸: 괴력의 사내는 상시 강조 없음")
 	_check(not CombatActionRules.belongs_to(units[1], "phalanx") and not CombatActionRules.belongs_to(units[1], "brawn"),
-		"패시브 칸: 궁수는 패시브가 없어 칸이 숨음")
+		"패시브 칸: 궁수에게는 전사 패시브가 없음")
+	_check(not (passives["moving_shot"] as Button).visible, "패시브 칸: 전사에게는 무빙샷 칸이 없음")
 	var colored: String = CombatActionRules.colorize("힘 d20+2 · 공격 -1 · AC +0 · 공격 +3 · HP 5")
 	_check(colored.contains("[color=#70c76d]+2[/color]") and colored.contains("[color=#ff8a80]-1[/color]")
 		and colored.contains("[color=#70c76d]+3[/color]") and not colored.contains("+0[/color]")
@@ -418,8 +419,9 @@ func _test_warrior() -> void:
 		"shove", "potion", "opportunity", "counter"]
 	for action: String in warrior_actions:
 		_check((buttons[action] as Button).is_visible_in_tree(), "전사 동작 표시: " + action)
-	for action: String in ["mark", "shock", "disengage"]:
-		_check(not (buttons[action] as Button).visible, "궁수 동작 숨김: " + action)
+	for action: String in ["aegisal", "bow_bash", "disengage"]:
+		_check(not (buttons[action] as Button).visible, "궁수·몬스터 동작 숨김: " + action)
+	_check(not buttons.has("mark") and not buttons.has("shock"), "옛 궁수 스킬 버튼 없음(#528)")
 	_check(not (buttons["second_wind"] as Button).visible, "아군 전사는 몬스터 전용 숨 고르기 숨김")
 	for action: String in warrior_actions:
 		var button: Button = buttons[action]
@@ -489,13 +491,17 @@ func _test_archer_and_enemy() -> void:
 	_check(turns.current_unit == units[1] and units[0].movement_left == before, "초상 전환 자원 유지")
 	for ability: String in ["힘 d6", "민첩 d12", "솜씨 d20", "지능 d6", "의지 d4", "건강 d8"]:
 		_check(ability in hud.resource_label.get_parsed_text(), "궁수로 전환하면 능력치 주사위 갱신: " + ability)
-	_check(not (containers[2] as PanelContainer).visible, "궁수 반응 컨테이너 숨김")
-	_check((buttons["shock"] as Button).visible and not (buttons["cross_slash"] as Button).visible,
+	# 반응 칸은 반사신경 자리(#528)라 제목만 있고 버튼은 비어 있다.
+	_check((containers[2] as PanelContainer).visible and CombatActionRules.GROUPS[2].all(func(action: String) -> bool:
+		return not (buttons[action] as Button).visible), "궁수 반응 컨테이너는 비어 있는 채로 표시")
+	for action: String in ["attack", "aegisal", "bow_bash", "jump", "potion"]:
+		_check((buttons[action] as Button).visible, "궁수 스킬 표시: " + action)
+	_check(not (buttons["cross_slash"] as Button).visible and not (buttons["disengage"] as Button).visible,
 		"궁수 스킬만 표시")
 	_check(battle.call("preview_enemy", units[2]), "적 미리보기 연결")
 	_check(hud.unit_label.text == "풋내기 야만인" and "AC 4" in hud.resource_label.get_parsed_text(),
 		"미리보기는 유닛 정보 자리를 사용하고 대상 AC를 표시")
-	_check((buttons["shock"] as Button).visible, "미리보기에도 현재 아군의 스킬 유지")
+	_check((buttons["aegisal"] as Button).visible, "미리보기에도 현재 아군의 스킬 유지")
 	hud.unit_selected.emit(units[0])
 	hud.end_button.pressed.emit()
 	hud.end_button.pressed.emit()
@@ -503,8 +509,8 @@ func _test_archer_and_enemy() -> void:
 		"적 턴에는 행동 중인 적 정보")
 	_check(not hud.has_node("Move") and not hud.has_node("InputHint"), "이동 버튼과 상시 입력 안내 없음")
 	_check(hud.end_button.disabled, "적 턴 종료는 AI가 처리하며 버튼은 잠김")
-	_check((buttons["shock"] as Button).visible and (buttons["shock"] as Button).disabled
-		and not (containers[2] as PanelContainer).visible, "적 턴에는 마지막 궁수 패널 회색 유지")
+	_check((buttons["aegisal"] as Button).visible and (buttons["aegisal"] as Button).disabled
+		and (containers[2] as PanelContainer).visible, "적 턴에는 마지막 궁수 패널 회색 유지")
 	for button: Button in buttons.values():
 		if button.is_visible_in_tree():
 			_check(button.disabled, "적 턴 입력 잠금: " + button.text)
@@ -533,28 +539,29 @@ func _test_log_and_status() -> void:
 	var log_contrast: float = _contrast_ratio(hud.message_label.get_theme_color("font_color"), log_background)
 	_check(log_background.a == 1.0 and log_contrast >= 4.5,
 		"전투 로그 불투명 배경과 WCAG AA 4.5:1 이상: alpha %.2f, %.2f" % [log_background.a, log_contrast])
-	units[1].marked_target = units[2]
 	units[2].is_stunned = true
 	units[2].hit_points = 5
 	battle.call("_update_turn_ui")
 	hud.show_unit(units[2])
-	_check(units[2].has_mark and "기절" in hud.resource_label.get_parsed_text() and "◎ 표식" in hud.resource_label.get_parsed_text(),
-		"기절과 표식은 유닛 표시와 정보에 함께 반영")
+	_check("기절" in hud.resource_label.get_parsed_text() and "◎" not in hud.resource_label.get_parsed_text(),
+		"기절은 유닛 정보에 반영하고 표식(#528 삭제)은 없음")
 	_check(hud.health_bar.value == 5, "대상 HP 갱신")
 	actions.apply_status(units[1], units[2], "burn")
 	actions.apply_status(units[1], units[2], "burn")
 	actions.apply_status(units[0], units[2], "poison")
 	hud.show_unit(units[2])
 	_check("화상2" in hud.resource_label.get_parsed_text() and "독1" in hud.resource_label.get_parsed_text()
-		and "기절" in hud.resource_label.get_parsed_text() and "◎ 표식" in hud.resource_label.get_parsed_text(),
+		and "기절" in hud.resource_label.get_parsed_text(),
 		"기존 상태 정보에 화상/독 중첩 수를 함께 표시")
 	await process_frame
 	_check(hud.get_viewport_rect().encloses(hud.resource_label.get_global_rect()),
-		"기절/표식/화상/독의 상태 정보를 함께 표시해도 화면 안에 배치")
+		"기절/화상/독의 상태 정보를 함께 표시해도 화면 안에 배치")
 	units[2].begin_stage(false)
-	units[1].marked_target = null
+	units[1].aegisal_left = 2
+	hud.show_unit(units[1])
+	_check("애기살 2발" in hud.resource_label.get_parsed_text(), "애기살 남은 발수를 상태 줄에 표시")
+	units[1].aegisal_left = 0
 	battle.call("_update_turn_ui")
-	_check(not units[2].has_mark, "표식 해제 표시")
 	# 실제 동작의 판정 로그와 숫자 팝업 연결. 마지막 적이 아닌 대상에 확정 명중.
 	var hit_sound: AudioStreamPlayer = battle.get_node("HitSound") as AudioStreamPlayer
 	var hit_stream: AudioStreamOggVorbis = hit_sound.stream as AudioStreamOggVorbis
@@ -573,7 +580,6 @@ func _test_log_and_status() -> void:
 	units[2].hit_points = 12
 	ScriptedDice.arrange_turns(turns, units, units)
 	turns.select_unit(units[1])
-	units[1].marked_target = units[2]
 	units[2].cell = Vector2i(5, 8)
 	# 불리는 낮은 값 2를 골라 야만인 AC 4에 빗나간다.
 	actions.dice = ScriptedDice.new([3, 2], ScriptedDice.attack_sides(units[1], 2))
@@ -592,14 +598,12 @@ func _test_log_and_status() -> void:
 	units[1].action_left = 1
 	units[2].is_stunned = true
 	var advantage_sides: Array[int] = ScriptedDice.attack_sides(units[1], 2) + ScriptedDice.damage_sides(units[1])
-	advantage_sides.append(6)
-	actions.dice = ScriptedDice.new([17, 19, 3, 2], advantage_sides)
+	actions.dice = ScriptedDice.new([17, 19, 3], advantage_sides)
 	await actions.attack(units[1], units[2])
 	_check(hit_played == [true], "실제 피해 신호가 장면의 타격음 재생으로 연결됨")
 	actions.hit_landed.disconnect(record_hit)
 	_check(_has_two_dice_log("유리"),
 		"유리 판정은 로그에 주사위 두 값을 모두 표시")
-	_check("표식 추가" in hud.message_label.text, "표식 추가 피해를 로그에 명시")
 	_check(not _has_feedback(units[1], "공격 %d" % actions.last_attack.total),
 		"유리 공격도 공격자 판정 합계 팝업 없음")
 	_check(_has_feedback(units[2], str(actions.last_damage)), "명중 팝업은 부호 없는 피해 합계")
@@ -672,20 +676,6 @@ func _test_roll_popups() -> void:
 		"회복 팝업은 + 없는 수치를 초록색으로 표시")
 	warrior.potion_left = potions
 	warrior.hit_points = hit_points
-	# 충격 화살은 명중굴림 한 번으로 명중과 기절을 함께 정한다.
-	turns.select_unit(units[1])
-	units[1].cell = Vector2i(1, 4)
-	target.cell = Vector2i(5, 4)
-	target.is_stunned = false
-	target.reaction_left = 0
-	units[1].action_left = 1
-	units[1].shock_left = 1
-	units[1].marked_target = null
-	actions.dice = ScriptedDice.new([15, 2], ScriptedDice.attack_sides(units[1]) + ScriptedDice.damage_sides(units[1]))
-	await actions.attack(units[1], target, true)
-	_check(target.is_stunned and _has_feedback(target, "기절"), "충격 화살은 명중하면 기절 팝업 표시")
-	_check("충격 화살: 명중하여 기절" in hud.message_label.text
-		and "정신 내성" not in hud.message_label.text, "충격 화살 로그는 추가 내성 없이 기절을 표시")
 	# 아군 전사의 방어막은 피해를 HP보다 먼저 받고 흡수량을 로그에 남긴다.
 	target = warrior
 	target.cell = Vector2i(4, 4)
@@ -773,14 +763,17 @@ func _test_layout() -> void:
 				_check(bottom.position.y >= area.size.y * 0.5, "%s %s: 아래 HUD 높이 제한 %s" % [size, kind, bottom])
 			# 행동·보조 행동·반응을 위에서 아래로 한 줄씩 쌓는다. 한 줄은 높이가 같다.
 			var rows: Array = (hud.get("_containers") as Array).filter(func(panel: Control) -> bool: return panel.visible)
-			_check(rows.size() == (3 if kind == CombatUnit.Kind.WARRIOR else 2), "%s: 보이는 컨테이너 수" % kind)
+			# 궁수의 반응 칸은 반사신경 자리라 비어 있어도 보인다(#528).
+			_check(rows.size() == 3, "%s: 보이는 컨테이너 수" % kind)
 			for index: int in range(1, rows.size()):
 				var above: Rect2 = (rows[index - 1] as Control).get_global_rect()
 				var below: Rect2 = (rows[index] as Control).get_global_rect()
 				_check(below.position.y >= above.end.y and below.size.y == above.size.y,
 					"%s %s: 컨테이너 %d는 앞 컨테이너 아래 같은 줄 높이" % [size, kind, index])
 			# 제목 폭을 맞춰 각 줄의 첫 버튼이 같은 세로선에 선다.
-			var first_x: Array = rows.map(func(panel: Control) -> float:
+			var filled: Array = rows.filter(func(panel: Control) -> bool:
+				return panel.get_child(0).get_child(1).get_children().any(func(button: Control) -> bool: return button.visible))
+			var first_x: Array = filled.map(func(panel: Control) -> float:
 				return (panel.get_child(0).get_child(1).get_children().filter(
 					func(button: Control) -> bool: return button.visible)[0] as Control).global_position.x)
 			_check(first_x.all(func(x: float) -> bool: return x == first_x[0]), "%s %s: 줄마다 첫 버튼 x 같음 %s" % [size, kind, first_x])
@@ -1191,7 +1184,7 @@ func _reset_units() -> void:
 	for unit: CombatUnit in units:
 		unit.hit_points = unit.get_max_hit_points()
 		unit.is_stunned = false
-		unit.marked_target = null
+		unit.aegisal_left = 0
 		unit.clear_unit_effects()
 		CombatActionRules.restore_combat_uses(unit)
 	ScriptedDice.arrange_turns(turns, units, units)
@@ -2251,7 +2244,7 @@ func _test_spawned_portrait_input() -> void:
 	status_unit.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
 	status_unit.overloaded = true
 	status_unit.pull_cooldown = 1
-	status_unit.has_mark = true
+	status_unit.aegisal_left = 12
 	for stack: int in range(3):
 		status_unit.status_effects.append(CombatUnit.StatusEffect.new("burn", status_unit, 2))
 		status_unit.status_effects.append(CombatUnit.StatusEffect.new("poison", status_unit, 2))
@@ -2264,7 +2257,7 @@ func _test_spawned_portrait_input() -> void:
 	status_unit.kind = status_kind
 	status_unit.overloaded = false
 	status_unit.pull_cooldown = 0
-	status_unit.has_mark = false
+	status_unit.aegisal_left = 0
 	status_unit.status_effects.clear()
 	var spawn_events: Array[int] = [0]
 	actions.logged.connect(func(message: String) -> void:
@@ -2396,41 +2389,37 @@ func _test_action_animations() -> void:
 		and not units[0].is_moving and units[0].body_offset_y == 0.0 and not actions.busy,
 		"두 사각 칸 이동은 도착 후 자원 갱신과 몸통·입력 복구")
 	for side: bool in [true, false]:
-		for shock: bool in [false, true]:
-			if not side and shock:
-				continue
-			_reset_units()
-			var actor: CombatUnit = units[1] if side else units[3]
-			var target: CombatUnit = units[2] if side else units[0]
-			actor.shock_left = 1
-			actor.cell = Vector2i(1, 4) if side else Vector2i(4, 4)
-			target.cell = Vector2i(4, 4) if side else Vector2i(1, 4)
-			(units[0] if side else units[2]).cell = Vector2i(9, 9)
-			(units[3] if side else units[1]).cell = Vector2i(0, 0)
-			target.reaction_left = 0
-			if side:
-				turns.select_unit(actor)
-			else:
-				while turns.current_unit != actor:
-					turns.end_turn()
-			battle.call("_update_turn_ui")
-			actions.dice = ScriptedDice.new([20 if side else 10, 2], ScriptedDice.attack_sides(actor) + ScriptedDice.damage_sides(actor))
-			var hp: int = target.hit_points
-			finished[0] = false
-			_animated_attack(actor, target, shock, finished)
-			_check(actions.busy and battle.has_node("Arrow") and target.hit_points == hp,
-				"아군·적 궁수 기본/충격 화살은 비행 중 피해 적용 전: %s/%s" % [side, shock])
-			_check((battle.get_node("Arrow") as Node2D).position == actor.position + Vector2(
-				8 if side else -8, actor.floor_offset_y - 16),
-				"실제 도트 활의 발밑 기준 출발점과 좌우를 화살에 적용: %s/%s" % [side, shock])
-			_check(not actions.can_move(actor, Vector2i(2, 4)) and not actions.can_use(actor, "attack")
-				and not await actions.attack(actor, target, shock), "화살 비행 중 중복 입력 거부")
-			while not finished[0]:
-				await process_frame
+		_reset_units()
+		var actor: CombatUnit = units[1] if side else units[3]
+		var target: CombatUnit = units[2] if side else units[0]
+		actor.cell = Vector2i(1, 4) if side else Vector2i(4, 4)
+		target.cell = Vector2i(4, 4) if side else Vector2i(1, 4)
+		(units[0] if side else units[2]).cell = Vector2i(9, 9)
+		(units[3] if side else units[1]).cell = Vector2i(0, 0)
+		target.reaction_left = 0
+		if side:
+			turns.select_unit(actor)
+		else:
+			while turns.current_unit != actor:
+				turns.end_turn()
+		battle.call("_update_turn_ui")
+		actions.dice = ScriptedDice.new([20 if side else 10, 2], ScriptedDice.attack_sides(actor) + ScriptedDice.damage_sides(actor))
+		var hp: int = target.hit_points
+		finished[0] = false
+		_animated_attack(actor, target, finished)
+		_check(actions.busy and battle.has_node("Arrow") and target.hit_points == hp,
+			"아군·적 궁수 기본 공격은 비행 중 피해 적용 전: %s" % side)
+		_check((battle.get_node("Arrow") as Node2D).position == actor.position + Vector2(
+			8 if side else -8, actor.floor_offset_y - 16),
+			"실제 도트 활의 발밑 기준 출발점과 좌우를 화살에 적용: %s" % side)
+		_check(not actions.can_move(actor, Vector2i(2, 4)) and not actions.can_use(actor, "attack")
+			and not await actions.attack(actor, target), "화살 비행 중 중복 입력 거부")
+		while not finished[0]:
 			await process_frame
-			_check(target.hit_points < hp and actor.action_left == 0 and (not shock or actor.shock_left == 0)
-				and not battle.has_node("Arrow")
-				and not actions.busy, "화살 도착 후 피해·비용 처리와 투사체 정리")
+		await process_frame
+		_check(target.hit_points < hp and actor.action_left == 0
+			and not battle.has_node("Arrow")
+			and not actions.busy, "화살 도착 후 피해·비용 처리와 투사체 정리")
 	_reset_units()
 	units[1].cell = Vector2i(1, 4)
 	units[2].cell = Vector2i(4, 4)
@@ -2438,7 +2427,7 @@ func _test_action_animations() -> void:
 	battle.call("_update_turn_ui")
 	actions.dice = _dice_for_miss(units[1])
 	finished[0] = false
-	_animated_attack(units[1], units[2], false, finished)
+	_animated_attack(units[1], units[2], finished)
 	_check(battle.has_node("Arrow"), "확정 빗나감에도 화살 비행 표시")
 	while not finished[0]:
 		await process_frame
@@ -2712,8 +2701,8 @@ func _animated_move(actor: CombatUnit, cell: Vector2i, finished: Array[bool]) ->
 	finished[0] = true
 
 
-func _animated_attack(actor: CombatUnit, target: CombatUnit, shock: bool, finished: Array[bool]) -> void:
-	await actions.attack(actor, target, shock)
+func _animated_attack(actor: CombatUnit, target: CombatUnit, finished: Array[bool]) -> void:
+	await actions.attack(actor, target)
 	finished[0] = true
 
 

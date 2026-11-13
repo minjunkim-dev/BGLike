@@ -152,13 +152,14 @@ func _test_spin_save_is_awaited_before_damage() -> void:
 	boss.begin_turn()
 	f.turns.current_unit = boss
 	f.units[1].cell = Vector2i(5, 3)
-	f.actions.dice = _dice_for([10, 6, 2, 6], [20, 12, 6, 12])
+	# 전사 민첩 d8 8은 DC 10에 실패하고 궁수 민첩 d12 10은 성공한다 (#528).
+	f.actions.dice = _dice_for([8, 6, 10, 6], [8, 12, 12, 12])
 	_check(await f.actions.spin(boss), "회전회오리 실행")
 	_check(f.rolls.size() == 2 and f.rolls.all(func(roll: CombatDiceRoll) -> bool:
 			return roll.category == CombatDiceRoll.Category.SAVE and roll.target_label == tr("DC") and roll.target_value == 10)
-		and f.rolls[0].roller == f.units[0] and f.rolls[0].sides == 20 and f.rolls[0].result.success
-		and f.rolls[1].roller == f.units[1] and f.rolls[1].sides == 6 and not f.rolls[1].result.success,
-		"회전회오리는 대상마다 힘 내성굴림을 DC 기준으로 전달한다")
+		and f.rolls[0].roller == f.units[0] and f.rolls[0].sides == 8 and not f.rolls[0].result.success
+		and f.rolls[1].roller == f.units[1] and f.rolls[1].sides == 12 and f.rolls[1].result.success,
+		"회전회오리는 대상마다 민첩 내성굴림을 DC 기준으로 전달한다")
 	var first_damage: int = -1
 	for index: int in range(f.events.size()):
 		if f.events[index].begins_with("log: ") and "피해" in f.events[index]:

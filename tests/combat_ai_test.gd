@@ -34,9 +34,9 @@ func _pull_sides() -> Array[int]:
 	return [6]
 
 
-## 회전회오리는 시전자가 굴리지 않는다. 전사 힘 d20 내성·피해 힘 d12, 궁수 힘 d6 내성·피해 힘 d12 (#389).
+## 회전회오리는 시전자가 굴리지 않는다. 전사 민첩 d8 내성·피해 힘 d12, 궁수 민첩 d12 내성·피해 힘 d12 (#389, #528).
 func _spin_sides() -> Array[int]:
-	return [20, 12, 6, 12]
+	return [8, 12, 12, 12]
 
 
 func _fixture(archer: bool = false) -> Fixture:
@@ -879,10 +879,8 @@ func _test_archer() -> void:
 	ranged.units[1].cell = Vector2i(7, 2)
 	ranged.units[1].hit_points = 5
 	await ai.play_turn(ranged.units[3], ranged.actions)
-	_check(ranged.units[3].mark_left == 1 and ranged.units[3].marked_target == null,
-		"풋내기 궁수는 표식을 사용하지 않음")
-	_check("공격" in ranged.logs[0] and ranged.units[3].shock_left == 1
-		and not ranged.units[1].is_stunned, "풋내기 궁수는 충격 화살 없이 기본 공격")
+	_check(ranged.units[3].bonus_action_left == 1, "풋내기 궁수는 보조 행동 스킬 없이 공격")
+	_check("공격" in ranged.logs[0] and not ranged.units[1].is_stunned, "풋내기 궁수는 기절 없이 기본 공격")
 	_check(ranged.units[3].movement_left == 6 and ranged.units[3].disengage_left == 2,
 		"인접 위협이 없으면 불필요한 후퇴 없음")
 	var separated: Fixture = _fixture(true)
@@ -914,9 +912,8 @@ func _test_archer() -> void:
 		and retreat.units[3].movement_left == 5, "인접 위협에서 벗어나는 최단 후퇴")
 	_check(prompts[0] == 0 and retreat.units[0].reaction_left == 1,
 		"물러서며 쏘기 이동은 아군 기회 공격을 일으키지 않음")
-	_check(retreat.units[3].mark_left == 1 and retreat.units[3].shock_left == 1
-		and retreat.units[3].action_left == 0,
-		"후퇴 뒤 표식·충격 화살 없이 기본 공격")
+	_check(retreat.units[3].action_left == 0 and retreat.logs.any(func(line: String) -> bool: return "공격(" in line),
+		"후퇴 뒤 기본 공격")
 	_check(retreat.actions.last_attack.mode == CombatChecks.RollMode.NORMAL,
 		"후퇴 후 공격의 인접 불리 제거")
 	var approach: Fixture = _fixture(true)
@@ -928,11 +925,10 @@ func _test_archer() -> void:
 		"평면 거리12에서 사거리6까지6칸 이동 후 공격")
 	var exhausted: Fixture = _fixture(true)
 	exhausted.units[3].cell = Vector2i(2, 2)
-	exhausted.units[3].mark_left = 0
-	exhausted.units[3].shock_left = 0
+	exhausted.units[3].disengage_left = 0
 	await ai.play_turn(exhausted.units[3], exhausted.actions)
-	_check(exhausted.units[3].action_left == 0 and exhausted.units[3].bonus_action_left == 1,
-		"횟수 소진 후 기본 공격만 실행하며 횟수 회복 없음")
+	_check(exhausted.units[3].action_left == 0 and exhausted.units[3].bonus_action_left == 1
+		and exhausted.units[3].disengage_left == 0, "횟수 소진 후 기본 공격만 실행하며 횟수 회복 없음")
 	var edge: Fixture = _fixture(true)
 	edge.actions.grid.map_size = Vector2i(2, 1)
 	edge.units[3].cell = Vector2i(0, 0)
@@ -975,8 +971,8 @@ func _test_reaction_pause() -> void:
 		lethal.actions.resolve_reaction(true)
 	)
 	await ai.play_turn(lethal.units[3], lethal.actions)
-	_check(lethal.units[3].hit_points == 0 and lethal.units[3].action_left == 1
-		and lethal.units[3].shock_left == 1, "기회 공격으로 탈락한 AI는 후속 공격을 실행하지 않음")
+	_check(lethal.units[3].hit_points == 0 and lethal.units[3].action_left == 1,
+		"기회 공격으로 탈락한 AI는 후속 공격을 실행하지 않음")
 
 
 func _resolve_later(actions: CombatActions) -> void:

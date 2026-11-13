@@ -100,6 +100,8 @@ func _ready() -> void:
 		buttons.add_theme_constant_override("h_separation", 3)
 		buttons.add_theme_constant_override("v_separation", 3)
 		buttons.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# 버튼이 없는 줄(궁수의 반응 칸)도 다른 줄과 같은 높이를 둔다.
+		buttons.custom_minimum_size.y = 34
 		row.add_child(buttons)
 		for action: String in CombatActionRules.GROUPS[index]:
 			var button: Button = HoverTooltip.HoverButton.new()
@@ -217,7 +219,8 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 	_action_slots.clear()
 	_refresh_passives(shown)
 	for index: int in range(_containers.size()):
-		_containers[index].visible = shown != null and (index != 2 or shown.kind == CombatUnit.Kind.WARRIOR)
+		# 궁수의 반응 칸은 반사신경 자리라 비어 있어도 보인다(#528).
+		_containers[index].visible = shown != null
 		if shown == null:
 			continue
 		var amounts: Array[int] = [shown.action_left, shown.bonus_action_left, shown.reaction_left]
@@ -443,8 +446,8 @@ func show_unit(unit: CombatUnit) -> void:
 		states.append(tr("기절 면역"))
 	if unit.pull_cooldown > 0:
 		states.append(tr("만능팔 대기"))
-	if unit.has_mark:
-		states.append(tr("◎ 표식"))
+	if unit.aegisal_left > 0:
+		states.append(tr("애기살 %d발") % unit.aegisal_left)
 	if unit.disengaged:
 		states.append(tr("기회 공격 면제"))
 	if unit.shield_points > 0:

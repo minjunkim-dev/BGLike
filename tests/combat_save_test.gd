@@ -175,11 +175,8 @@ func _step(battle: Node2D, points: Array[Dictionary]) -> bool:
 	for target: CombatUnit in actions.units:
 		if target.hit_points <= 0 or target.is_ally:
 			continue
-		if actions.can_target(actor, target, "mark") and actor.marked_target == null:
-			actions.mark(actor, target)
-			return true
 		if actions.can_target(actor, target, "attack"):
-			await actions.attack(actor, target, actions.can_target(actor, target, "shock"))
+			await actions.attack(actor, target)
 			return true
 	for heal: String in ["second_wind", "potion"]:
 		if actor.hit_points * 2 <= actor.get_max_hit_points() and actions.can_use(actor, heal):

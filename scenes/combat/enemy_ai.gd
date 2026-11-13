@@ -269,12 +269,8 @@ func _archer_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) ->
 	target = _attack_target(actor, actions)
 	if target == null:
 		return
-	if actions.can_target(actor, target, "mark"):
-		actions.mark(actor, target)
-		await _pause(pause)
-	if _active(actor, actions):
-		await actions.attack(actor, target, actions.can_target(actor, target, "shock"))
-		await _pause(pause)
+	await actions.attack(actor, target)
+	await _pause(pause)
 
 
 func _movement_cells(actor: CombatUnit, actions: CombatActions, include_jump: bool = true) -> Dictionary[Vector2i, int]:
