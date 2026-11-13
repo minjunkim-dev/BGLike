@@ -85,6 +85,7 @@ func _run() -> void:
 	await _test_jump_priorities()
 	await _test_jump_retreat_and_pull()
 	await _test_archer()
+	await _test_water_positions()
 	await _test_reaction_pause()
 	await _test_enemy_reactions()
 	await _test_guards()
@@ -938,6 +939,39 @@ func _test_archer() -> void:
 		and edge.units[3].action_left == 0, "후퇴 칸이 없으면 헛이동·후퇴 스킬 없이 공격")
 	_check(edge.actions.last_attack.mode == CombatChecks.RollMode.DISADVANTAGE,
 		"후퇴할 수 없는 풋내기 궁수는 인접 위협의 불리 유지")
+
+
+## 환경요소 6장: 공격 위치를 고를 때 다른 조건이 같으면 물이 아닌 칸. 화상을 끄려고 물을 찾아가지는 않는다.
+func _test_water_positions() -> void:
+	for case: Array in [[[], Vector2i(0, 0), Vector2i(2, 1), "물이 없으면 지금처럼 맵 순서상 앞 칸"],
+			[[Vector2i(2, 1)], Vector2i(0, 0), Vector2i(3, 0), "같은 이동 비용이면 물이 아닌 공격 칸"],
+			[[Vector2i(3, 0)], Vector2i(0, 0), Vector2i(2, 1), "뒤 칸이 물이어도 앞의 뭍 칸 그대로"],
+			[[Vector2i(2, 1)], Vector2i(0, 1), Vector2i(2, 1), "물 칸이 더 가까우면 이동 비용이 먼저"]]:
+		for burning: bool in [false, true]:
+			var f: Fixture = _fixture()
+			var actor: CombatUnit = f.units[2]
+			actor.cell = case[1]
+			actor.movement_left = 6
+			f.units[0].cell = Vector2i(3, 1)
+			f.units[1].cell = Vector2i(9, 9)
+			f.units[3].cell = Vector2i(9, 8)
+			f.actions.grid.map_size = Vector2i(4, 3)
+			f.actions.grid.water_cells.assign(case[0])
+			if burning:
+				actor.status_effects.append(CombatUnit.StatusEffect.new("burn", f.units[0], 2, 0))
+			_check(ai.approach_cell(actor, f.actions) == case[2],
+				"%s%s: %s" % [case[3], " (화상이어도 같음)" if burning else "", ai.approach_cell(actor, f.actions)])
+	for water: Array in [[], [Vector2i(3, 4)]]:
+		var f: Fixture = _fixture(true)
+		var archer: CombatUnit = f.units[3]
+		archer.cell = Vector2i(4, 4)
+		f.units[2].cell = Vector2i(9, 0)
+		f.actions.grid.water_cells.assign(water)
+		await ai.play_turn(archer, f.actions)
+		var expected: Vector2i = Vector2i(4, 3) if not water.is_empty() else Vector2i(3, 4)
+		_check(archer.cell == expected and archer.action_left == 0
+			and f.actions.last_attack.mode == CombatChecks.RollMode.NORMAL,
+			"풋내기 궁수는 같은 비용의 후퇴 칸 중 %s 칸에서 쏨: %s" % ["물이 아닌" if not water.is_empty() else "맵 순서상 앞", archer.cell])
 
 
 func _test_reaction_pause() -> void:
