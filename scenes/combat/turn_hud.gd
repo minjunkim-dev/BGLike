@@ -405,6 +405,26 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 	end_button.add_theme_stylebox_override("pressed", _button_style(end_color.darkened(0.12)))
 
 
+## 상태 줄은 상태와 상태 사이에서만 줄을 바꾼다. 자동 줄바꿈은 한글 단어 중간(`기절 면/역`)도 끊는다(#503).
+func _join_states(states: Array[String]) -> String:
+	if states.is_empty():
+		return tr("없음")
+	var font: Font = resource_label.get_theme_font("normal_font")
+	var font_size: int = resource_label.get_theme_font_size("normal_font_size")
+	var width: float = resource_label.size.x
+	var joined: String = states[0]
+	var line: String = "상태: " + states[0]
+	for state: String in states.slice(1):
+		var candidate: String = line + ", " + state
+		if width > 0.0 and font.get_string_size(candidate + ",", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > width:
+			joined += ",\n" + state
+			line = state
+		else:
+			joined += ", " + state
+			line = candidate
+	return joined
+
+
 func show_unit(unit: CombatUnit) -> void:
 	unit_label.text = unit.get_display_name()
 	health_bar.max_value = unit.get_max_hit_points()
@@ -440,7 +460,7 @@ func show_unit(unit: CombatUnit) -> void:
 		CombatUnit.ability_text(unit, CombatUnit.Ability.FINESSE), CombatUnit.ability_text(unit, CombatUnit.Ability.INTELLIGENCE),
 		CombatUnit.ability_text(unit, CombatUnit.Ability.WILL), CombatUnit.ability_text(unit, CombatUnit.Ability.HEALTH),
 		unit.get_attack_bonus(), unit.get_attack_range(),
-		", ".join(states) if not states.is_empty() else tr("없음")])
+		_join_states(states)])
 
 
 func show_attack_preview(target: CombatUnit, preview: CombatChecks.AttackPreview) -> void:

@@ -2120,6 +2120,21 @@ func _test_overload_and_water_guidance() -> void:
 	var status: String = hud.resource_label.get_parsed_text()
 	_check("상태: 기절 면역" not in status and "과부하, 기절 면역" in status and "과부하 대기" not in status,
 		"켜진 뒤 로봇 상태 줄은 지금처럼 과부하")
+	# 가장 긴 상태 줄도 상태 사이에서만 줄을 바꾼다(자동 줄바꿈이 `기절 면/역`처럼 단어를 끊지 않음).
+	robot.hit_points = robot.get_max_hit_points()
+	robot.overloaded = false
+	for kind_name: String in ["burn", "poison"]:
+		robot.status_effects.append(CombatUnit.StatusEffect.new(kind_name, units[0], 2))
+	robot.pull_cooldown = 1
+	hud.show_unit(robot)
+	await process_frame
+	var long_status: String = hud.resource_label.get_parsed_text()
+	_check("기절 면역" in long_status and ",\n" in long_status
+		and hud.resource_label.get_line_count() == long_status.count("\n") + 1,
+		"가장 긴 상태 줄은 상태 사이에서 줄바꿈: " + long_status.replace("\n", " | "))
+	robot.status_effects.clear()
+	robot.pull_cooldown = 0
+	robot.hit_points = 20
 	hud.show_unit(units[0])
 	_check("상태: 없음" in hud.resource_label.get_parsed_text() and "과부하" not in hud.resource_label.get_parsed_text(),
 		"아군 상태 줄에는 과부하 글이 없음")
