@@ -413,7 +413,7 @@ func _join_states(states: Array[String]) -> String:
 	var font_size: int = resource_label.get_theme_font_size("normal_font_size")
 	var width: float = resource_label.size.x
 	var joined: String = states[0]
-	var line: String = "상태: " + states[0]
+	var line: String = "상태: " + states[0]  # NO_TRANSLATE: 첫 줄 폭을 재는 데만 쓴다
 	for state: String in states.slice(1):
 		var candidate: String = line + ", " + state
 		if width > 0.0 and font.get_string_size(candidate + ",", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > width:
