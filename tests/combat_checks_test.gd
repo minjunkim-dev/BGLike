@@ -187,7 +187,7 @@ func _test_saving_throws() -> void:
 	# 8장: 회전회오리 DC 10(고철로봇-3000 힘 d12 표준값 7 + 공격 가산 3), 독 장판 고정 DC 4.
 	_check(is_equal_approx(CombatChecks.save_chance(20, 0, 10, normal), 0.55)
 		and CombatChecks.save_chance(6, 0, 10, normal) == 0.0,
-		"회전회오리 DC 10: 전사 힘 d20 55%, 궁수 힘 d6 0%")
+		"회전회오리 DC 10 민첩 내성 표본: d20 55%, d6 0%")
 	_check(is_equal_approx(CombatChecks.save_chance(12, 0, 4, normal), 0.75)
 		and is_equal_approx(CombatChecks.save_chance(8, 0, 4, normal), 0.625),
 		"독 DC 4: 전사 건강 d12 75%, 궁수 건강 d8 62.5%")
