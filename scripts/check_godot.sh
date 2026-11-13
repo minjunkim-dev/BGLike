@@ -33,7 +33,7 @@ case "$actual" in
 esac
 printf 'Godot: %s\nCommit: %s\n' "$actual" "$(git rev-parse HEAD)"
 # Godot exits 0 even when a script fails to parse, so the output decides.
-log=$(mktemp)
+log=$(mktemp "${TMPDIR:-/tmp}/godot.XXXXXX")
 trap 'rm -f "$log"' EXIT
 run_godot() {
   "$godot" --headless --path . "$@" 2>&1 | tee "$log"

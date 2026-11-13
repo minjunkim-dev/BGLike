@@ -443,11 +443,11 @@ msgid "바위 정지: 최대3칸"
 msgstr ""
 
 #: scenes/combat/actions.gd:398
-msgid "%s 과부하: 자기 피해 2 · HP %d"
+msgid "%s 과부하: 자기 피해 %d · HP %d"
 msgstr ""
 
 #: scenes/combat/actions.gd:399
-msgid "과부하 2"
+msgid "과부하 %d"
 msgstr ""
 
 #: scenes/combat/actions.gd:450

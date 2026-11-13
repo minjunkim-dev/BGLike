@@ -11,7 +11,7 @@ class BranchNameTests(unittest.TestCase):
     def test_existing_ci_acceptance_rules(self):
         for branch in ["test/142-pck-bundle-regression", "feat/12-combat-base", "docs/issue-flow",
                        "build/export-preset", "ci/shared-check", "chore/ai-agents",
-                       "claude/anything", "codex/anything", "dependabot/github_actions/action-1"]:
+                       "claude/anything", "codex/anything", "office/anything", "dependabot/github_actions/action-1"]:
             with self.subTest(branch=branch):
                 check_branch(branch)
 

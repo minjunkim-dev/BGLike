@@ -68,7 +68,7 @@
 | 유니크 정의 | 아이템 등급 체계는 만들지 않습니다([#200](https://github.com/minjunkim-dev/BGLike/issues/200)의 "아이템 등급 보류" 유지). 유니크는 **특수 효과를 가진 한정 아이템**으로 정의하고, 문서와 화면에서 "등급"이라는 표현을 쓰지 않습니다. | ✅ |
 | #205 답변 | [#205](https://github.com/minjunkim-dev/BGLike/issues/205)의 "현 수치 유지·3-1 증식 구조 우선 검토" 제안을 부분 채택합니다. 3-1 거미 증식 구조와 새끼 수 상한은 제안대로 따로 검토하고, 그 외 몬스터의 수치는 11/23~11/24에 상향합니다. | ✅ |
 | #357 범위 | [#357](https://github.com/minjunkim-dev/BGLike/issues/357)은 마법사 설계 전(12/8)에 **물리/마법 2종**만 정합니다. 저항·취약·면역과 "마법 피해 경감 폐지 후보"는 후속으로 미룹니다. | ✅ |
-| 우선순위 | 개발자가 진행 중인 작업([#407](https://github.com/minjunkim-dev/BGLike/issues/407), [#477](https://github.com/minjunkim-dev/BGLike/issues/477) 등. 독안개 거미 교체 [#462](https://github.com/minjunkim-dev/BGLike/issues/462)·[#463](https://github.com/minjunkim-dev/BGLike/issues/463)은 2026-11-09 기준 main에 반영됨)을 먼저 끝내고, 새 요청서는 그 뒤에 착수합니다. 요청서 전달은 일정대로 합니다. 개발자의 현재 작업 종료일은 아직 확인하지 않았습니다. | ✅ (종료일은 ❓) |
+| 우선순위 | 개발자가 진행 중인 작업([#477](https://github.com/minjunkim-dev/BGLike/issues/477) 등. [#407](https://github.com/minjunkim-dev/BGLike/issues/407)은 2026-11-11에 닫힘. 독안개 거미 교체 [#462](https://github.com/minjunkim-dev/BGLike/issues/462)·[#463](https://github.com/minjunkim-dev/BGLike/issues/463)은 2026-11-09 기준 main에 반영됨)을 먼저 끝내고, 새 요청서는 그 뒤에 착수합니다. 요청서 전달은 일정대로 합니다. 개발자의 현재 작업 종료일은 아직 확인하지 않았습니다. | ✅ (종료일은 ❓) |
 
 기존 문서의 충돌 문장은 해당 기획을 쓰는 날 함께 갱신합니다. "같은 몬스터는 모든 막에서 같은 수치"([몬스터 디자인 기획서](monsters/README.md) 2장)는 충돌이 아니라 유지하는 원칙이며, 수치 수정만 반영합니다. 고유 스킬 "3개 이하"는 일정상 목표이고 규칙이 아니므로, [캐릭터 디자인 기획서](characters/README.md)의 "직업마다 디자이너가 정합니다"(2026-10-30)와 충돌하지 않습니다.
 
@@ -206,6 +206,6 @@
 | 몬스터 수치 | [#205](https://github.com/minjunkim-dev/BGLike/issues/205) 제안(확인 시점에는 기획자 답 대기, 같은 날 부분 채택으로 답변 완료), [#462](https://github.com/minjunkim-dev/BGLike/issues/462)·[#463](https://github.com/minjunkim-dev/BGLike/issues/463) 독안개 거미(2026-11-09 기준 main에 반영됨) | #205에 부분 채택 답변. 진단에 독안개 거미 포함 |
 | 마법사 | #200 "직업 컨셉과 스킬 수 확장"(기획자 작업 중), [#357](https://github.com/minjunkim-dev/BGLike/issues/357), [#407](https://github.com/minjunkim-dev/BGLike/issues/407) 전사 재디자인 구현 | 12/8에 #357의 물리/마법 2종 결정 |
 | 레벨업 | [#477](https://github.com/minjunkim-dev/BGLike/issues/477), [#322](https://github.com/minjunkim-dev/BGLike/issues/322)(절대면·치명타) | 충돌 없음. 확장만 제외. 절대면은 레벨업 성장에 속하므로 레벨업 확장과 함께 이번 범위에서 제외합니다. 치명타는 전역 규칙을 만들지 않고 스킬마다 필요할 때 정합니다(마법사 스킬, 유니크 아이템 설계 때 개별 결정). #322는 일정의 선행 조건이 아닙니다 |
-| 개발자 작업 | 진행 중인 #407·#477·#470, M7 잔여 #306·#207·#208. 독안개 거미 #462·#463은 main에 반영됨 | 진행 중인 작업을 먼저 끝내고 새 요청서는 그 뒤에 착수 |
+| 개발자 작업 | 진행 중인 #477·#470(#407은 2026-11-11에 닫힘), M7 잔여 #306·#207·#208. 독안개 거미 #462·#463은 main에 반영됨 | 진행 중인 작업을 먼저 끝내고 새 요청서는 그 뒤에 착수 |
 
 2026-11-09에 #200, #205, #322, #357, #358에 코멘트를 올렸습니다. 코멘트의 일정 문서 링크는 이 문서를 `main`에 병합한 뒤 `main` 링크로 바꿉니다.
