@@ -36,6 +36,7 @@ func _run() -> void:
 	_test_strength_validation()
 	_test_preview_conditions()
 	_test_water_preview()
+	await _test_water_actions()
 	_test_monster_hit_table()
 	_test_damage_table()
 	await _test_scene_input()
@@ -639,6 +640,53 @@ func _test_water_preview() -> void:
 	preview = grid.attack_preview(target, archer)
 	_check(preview.mode == CombatChecks.RollMode.DISADVANTAGE and "물 위: 불리" in preview.reasons,
 		"물 위의 적도 같은 불리 " + str(preview.reasons))
+
+
+## 환경요소 6장: 실제 명중굴림(기본 공격·기회 공격)의 물 위 불리, 물 칸의 불 장판, 독·독안개, 이동 안내.
+func _test_water_actions() -> void:
+	var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 4))
+	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 7))
+	var barbarian: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(5, 4))
+	var units: Array[CombatUnit] = [warrior, archer, barbarian]
+	var turns: CombatTurns = CombatTurns.new()
+	var actions: CombatActions = CombatActions.new()
+	actions.initialize(units, turns)
+	actions.grid.water_cells = [Vector2i(4, 4)]
+	ScriptedDice.arrange_turns(turns, units, [warrior, archer, barbarian])
+	actions.dice = ScriptedDice.new([9, 5, 2], ScriptedDice.attack_sides(warrior, 2) + ScriptedDice.damage_sides(warrior))
+	_check(await actions.attack(warrior, barbarian) and actions.last_attack.mode == CombatChecks.RollMode.DISADVANTAGE
+		and actions.last_attack.rolls == [9, 5] and actions.last_attack.selected_roll == 5,
+		"물 위 전사의 기본 공격은 두 번 굴려 낮은 값")
+	# 물 위의 야만인이 물러나는 궁수에게 기회 공격한다. 절대실패 두 면이라 빗나가고, 궁수는 반격이 없다.
+	warrior.cell = Vector2i(0, 0)
+	archer.cell = Vector2i(4, 5)
+	barbarian.cell = Vector2i(5, 5)
+	actions.grid.water_cells = [Vector2i(5, 5)]
+	turns.select_unit(archer)
+	actions.dice = ScriptedDice.new([1, 1], ScriptedDice.attack_sides(barbarian, 2))
+	_check(await actions.move_to(archer, Vector2i(3, 5)) and actions.last_attack != null
+		and actions.last_attack.mode == CombatChecks.RollMode.DISADVANTAGE and actions.last_attack.rolls == [1, 1],
+		"물 위 반응자의 기회 공격도 불리")
+	actions.grid.water_cells = [Vector2i(7, 7), Vector2i(2, 3)]
+	_check(not actions.create_ground(barbarian, Vector2i(7, 7), "burn") and actions.get_grounds().is_empty(),
+		"물 칸에는 불 장판이 생기지 않음")
+	_check(actions.create_ground(barbarian, Vector2i(7, 7), "poison"), "물 칸의 독 장판은 그대로")
+	_check(actions.create_ground(barbarian, Vector2i(8, 8), "burn"), "물이 아닌 칸의 불 장판은 그대로")
+	_check(actions.water_note(Vector2i(7, 7)).contains("물: 명중굴림 불리")
+		and actions.water_note(Vector2i(7, 7)).contains("화상 해제") and actions.water_note(Vector2i(8, 8)).is_empty(),
+		"이동 도착 칸이 물이면 명중굴림 불리와 화상 규칙을 함께 안내: " + actions.water_note(Vector2i(7, 7)))
+	turns.turn_started.disconnect(actions._on_turn_started)
+	var spider: CombatUnit = _unit(CombatUnit.Kind.FOG_SPIDER, false, Vector2i(2, 2))
+	var fog_units: Array[CombatUnit] = [spider, _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(9, 9))]
+	var fog_turns: CombatTurns = CombatTurns.new()
+	var fog_actions: CombatActions = CombatActions.new()
+	fog_actions.initialize(fog_units, fog_turns)
+	fog_actions.grid.water_cells = [Vector2i(2, 3)]
+	ScriptedDice.arrange_turns(fog_turns, fog_units, [spider])
+	fog_actions.dice = ScriptedDice.new([], []).then_seeded()
+	_check(fog_actions.cast_fog(spider, Vector2i(2, 3)) and Vector2i(2, 3) in fog_actions.fog_cells(),
+		"독안개 영역은 물 칸을 그대로 포함")
+	fog_turns.turn_started.disconnect(fog_actions._on_turn_started)
 
 
 ## 기획서 7장: 몬스터 AC와 장비 없는 전사·궁수와의 명중률을 실제 미리보기로 확인한다.

@@ -546,6 +546,10 @@ msgstr ""
 msgid "물: 화상 해제"
 msgstr ""
 
+#: scenes/combat/actions.gd:771
+msgid "물: 명중굴림 불리"
+msgstr ""
+
 #: scenes/combat/actions.gd:727
 #: scenes/combat/actions.gd:739
 #: scenes/combat/battle.gd:920
@@ -1604,7 +1608,7 @@ msgid "유리는 공격 능력치 주사위를 두 번 굴려 높은 값을, 불
 msgstr ""
 
 #: scenes/help.tscn
-msgid "기절한 대상을 공격하면 유리입니다. 원거리 공격자의 인접 칸에 기절하지 않은 적이 있으면 불리입니다. 궁수의 활 후려치기는 근접 동작이라 이 불리를 받지 않습니다."
+msgid "기절한 대상을 공격하면 유리입니다. 원거리 공격자의 인접 칸에 기절하지 않은 적이 있으면 불리입니다. 궁수의 활 후려치기는 근접 동작이라 이 불리를 받지 않습니다. 물 칸에 선 유닛의 명중굴림은 근접·원거리·기회 공격 모두 불리입니다. 물 위의 대상을 겨누는 쪽은 불리가 아닙니다."
 msgstr ""
 
 #: scenes/help.tscn

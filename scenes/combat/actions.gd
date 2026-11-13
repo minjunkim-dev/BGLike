@@ -545,7 +545,9 @@ func get_grounds() -> Array[Ground]:
 
 func create_ground(source: CombatUnit, cell: Vector2i, kind: String) -> bool:
 	if (not is_instance_valid(source) or source not in units or source.hit_points <= 0
-		or kind not in ["burn", "poison"] or not grid.is_floor(cell) or grid.is_blocked(cell)):
+		or kind not in ["burn", "poison"] or not grid.is_floor(cell) or grid.is_blocked(cell)
+		or kind == "burn" and cell in grid.water_cells):
+		# 물 칸에는 불 장판이 생기지 않는다(환경요소 6장). 범위로 깔면 칸마다 이 검사를 지나 물 칸만 빠진다.
 		return false
 	var refreshed: bool = false
 	var owner: CombatUnit = source
@@ -761,9 +763,11 @@ func shove_landing(target: CombatUnit, destination: Vector2i) -> String:
 	return " · ".join(notes)
 
 
-## 걷기·점프 도착 칸이 물이면 서기 전에 읽는 물 칸 화상 규칙(#503). 물이 아니면 빈 문자열이다.
+## 걷기·점프 도착 칸이 물이면 서기 전에 읽는 물 칸 화상 규칙(#503)과 명중굴림 불리(#532). 물이 아니면 빈 문자열이다.
 func water_note(cell: Vector2i) -> String:
-	return tr("물 칸: 화상 해제 · 새 화상 걸리지 않음") if cell in grid.water_cells else ""
+	if cell not in grid.water_cells:
+		return ""
+	return tr("물 칸: 화상 해제 · 새 화상 걸리지 않음") + "\n" + tr("물: 명중굴림 불리")
 
 
 # _trace_rock이 예측한 밀기마다 같은 낙하 계산을 더한다.

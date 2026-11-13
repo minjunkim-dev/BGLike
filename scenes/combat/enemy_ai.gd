@@ -348,8 +348,10 @@ func approach_cell(actor: CombatUnit, actions: CombatActions, focus: CombatUnit 
 			# 사거리까지 가장 짧게 이동한다. 못 닿으면 가장 가까운 칸을 쓴다.
 			var reaches: bool = actions.grid.can_target(actor, target, "attack", cell)
 			var best_reaches: bool = actions.grid.can_target(actor, target, "attack", best)
+			# 공격 칸의 이동 비용이 같으면 물 위 불리(환경요소 6장)가 없는 칸을 고른다.
+			var drier: bool = best in actions.grid.water_cells and cell not in actions.grid.water_cells
 			if ((reaches and not best_reaches)
-				or (reaches and best_reaches and cost < best_cost)
+				or (reaches and best_reaches and (cost < best_cost or cost == best_cost and drier))
 				or (not reaches and not best_reaches and (separation < best_distance
 					or (separation == best_distance and cost < best_cost)))):
 				best = cell
@@ -363,7 +365,7 @@ func _retreat(actor: CombatUnit, actions: CombatActions, include_jump: bool = tr
 	var best: Vector2i = actor.cell
 	var best_cost: int = actor.movement_left + 1
 	var reachable: Dictionary[Vector2i, int] = _movement_cells(actor, actions, include_jump)
-	# 모든 인접 위협에서 벗어나는 가장 짧은 이동. 같은 비용이면 맵 순서상 앞 칸이다.
+	# 모든 인접 위협에서 벗어나는 가장 짧은 이동. 같은 비용이면 물이 아닌 칸(그 칸에서 쏜다), 그다음 맵 순서상 앞 칸이다.
 	for x: int in range(actions.grid.map_size.x):
 		for y: int in range(actions.grid.map_size.y):
 			var cell: Vector2i = Vector2i(x, y)
@@ -371,7 +373,8 @@ func _retreat(actor: CombatUnit, actions: CombatActions, include_jump: bool = tr
 				return actions.grid.are_adjacent(cell, target.cell)):
 				continue
 			var cost: int = reachable[cell]
-			if cost < best_cost:
+			if (cost < best_cost or cost == best_cost and best in actions.grid.water_cells
+					and cell not in actions.grid.water_cells):
 				best = cell
 				best_cost = cost
 	return best
