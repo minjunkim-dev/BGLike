@@ -92,7 +92,7 @@ var hit_points: int = 12:
 			_lost_hit_points = maxi(0, get_max_hit_points() - value)
 		hit_points = value
 		# 추가 행동은 begin_turn()이 다음 자기 턴부터 준다 (#410).
-		if is_boss() and hit_points <= get_max_hit_points() / 2:
+		if is_boss() and hit_points <= overload_threshold():
 			overloaded = true
 var stun_source: CombatUnit
 var status_effects: Array[StatusEffect] = []
@@ -318,6 +318,11 @@ func get_periodic_status_text() -> String:
 
 func is_boss() -> bool:
 	return not is_ally and bool(CombatEnemyDefinitions.for_kind(kind).get("boss", false))
+
+
+## 과부하가 켜지는 HP(최대 HP의 절반). HP setter와 과부하 표시(#503)가 같이 쓴다.
+func overload_threshold() -> int:
+	return get_max_hit_points() / 2
 
 
 func is_poison_immune() -> bool:
