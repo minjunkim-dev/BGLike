@@ -3,7 +3,7 @@
 박스·바위·벽·나무·집·물·낭떠러지가 이동, 시선, 파괴, 굴리기, 장판에 어떻게 반응하는지 정한 문서입니다.
 
 - 관련 규칙: [게임 구조 기획서 6장](GAME_STRUCTURE.md#6-사각-높이-격자)(높이·점프·강제 이동·환경 오브젝트), [전투 기획서 6장](COMBAT_DESIGN.md#6-상태-이상)(장판·기절·속성), [동작 유형 기획서 5장](SKILL_TYPES.md#5-전달-방식-근접-직사-곡사)(직사·곡사), [맵 기준](TERRAIN_MAPS.md)(배치).
-- 구현 상태: 표에 **구현 전**이라고 적은 규칙은 [Issue ENV_ISSUE](https://github.com/minjunkim-dev/BGLike/issues/ENV_ISSUE)에서 구현합니다. 그 밖의 규칙은 지금 코드(`scenes/combat/grid.gd`, `stage.gd`, `actions.gd`)와 같습니다.
+- 구현 상태: 표에 **구현 전**이라고 적은 규칙은 [#529](https://github.com/minjunkim-dev/BGLike/issues/529)에서 구현합니다. 그 밖의 규칙은 지금 코드(`scenes/combat/grid.gd`, `stage.gd`, `actions.gd`)와 같습니다.
 - 표기: 가능 · 불가 · – (해당 없음)
 
 ## 목차
@@ -219,6 +219,6 @@
 | 항목 | 임시 규칙 | 결정 Issue |
 |---|---|---|
 | 직사 시선의 경로 계산과 엄폐 | 2-2의 직사 시선 차단 열. 직사 동작이 없으므로 개발 금지 | [#358](https://github.com/minjunkim-dev/BGLike/issues/358) |
-| 박스·바위 칸의 장판 | 독안개는 영역에 포함, 불·독 장판은 생성 불가(현재 동작) | [Issue ENV_ISSUE](https://github.com/minjunkim-dev/BGLike/issues/ENV_ISSUE) |
-| "벽"이라는 이름 | 이 문서의 벽은 무너진 벽 장식. 맵 가장자리는 "맵 가장자리"로 부름 | [Issue ENV_ISSUE](https://github.com/minjunkim-dev/BGLike/issues/ENV_ISSUE) |
+| 박스·바위 칸의 장판 | 독안개는 영역에 포함, 불·독 장판은 생성 불가(현재 동작) | [#529](https://github.com/minjunkim-dev/BGLike/issues/529) |
+| "벽"이라는 이름 | 이 문서의 벽은 무너진 벽 장식. 맵 가장자리는 "맵 가장자리"로 부름 | [#529](https://github.com/minjunkim-dev/BGLike/issues/529) |
 | 박스 드랍으로 늘어난 보상량 | 3-5의 값 그대로 | [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
