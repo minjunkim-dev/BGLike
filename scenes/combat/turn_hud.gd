@@ -175,6 +175,9 @@ func _build_passives() -> void:
 		button.focus_mode = Control.FOCUS_NONE
 		button.accessibility_name = CombatActionRules.PASSIVE_NAMES[passive]
 		button.tooltip_text = CombatActionRules.PASSIVE_NAMES[passive] + "\n" + CombatActionRules.PASSIVE_EFFECTS[passive]
+		# 무빙샷은 도약할 수 있는 동안 눌러 도약 선택으로 돌아간다(#528). 다른 패시브는 표시용이다.
+		if passive == "moving_shot":
+			button.pressed.connect(func() -> void: action_selected.emit("moving_shot"))
 		column.add_child(button)
 		_tooltip.attach(button)
 		_passives[passive] = button
@@ -197,7 +200,9 @@ func _refresh_passives(shown: CombatUnit) -> void:
 		button.visible = shown != null and CombatActionRules.belongs_to(shown, passive)
 		if not button.visible:
 			continue
-		var on: bool = passive == "phalanx" and grid != null and grid.phalanx_bonus(shown) > 0
+		var on: bool = (passive == "phalanx" and grid != null and grid.phalanx_bonus(shown) > 0
+			or passive == "moving_shot" and shown.moving_shot_ready)
+		button.disabled = passive == "moving_shot" and not on
 		var style: StyleBoxFlat = _button_style(Color("3b4f63") if on else Color("293541"), Color("f4ead1") if on else Color("61717e"))
 		if on:
 			style.set_border_width_all(2)

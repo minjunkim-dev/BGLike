@@ -35,6 +35,8 @@ const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initi
 	"reaction_left", "overloaded", "pull_cooldown", "disengaged", "second_wind_left",
 	"disengage_left", "potion_left", "cross_slash_left", "steel_charge_left", "battle_cry_left",
 	"shield_points", "shield_turns", "battle_cry_bonus", "battle_cry_turns"]
+## SAVED_FIELDS 밖의 선택 필드와 기본값(#528). 형식 5를 그대로 두려고, 이 필드가 없는 옛 저장은 기본값으로 읽는다.
+const OPTIONAL_FIELDS: Dictionary[String, Variant] = {"aegisal_left": 0, "moving_shot_ready": false, "moving_shot_spent": false}
 ## 저장 파일의 정수 상한. 고친 저장이 끝나지 않는 턴이나 큰 목록을 만들지 않게 한다.
 const SAVED_INT_LIMIT: int = 99
 const SAVED_HIT_POINT_LIMIT: int = 999
@@ -387,6 +389,8 @@ func save_state(units: Array[CombatUnit]) -> Dictionary:
 		"battle_cry_source": units.find(battle_cry_source)}
 	for field: String in SAVED_FIELDS:
 		data[field] = get(field)
+	for field: String in OPTIONAL_FIELDS:
+		data[field] = get(field)
 	return data
 
 
@@ -397,6 +401,8 @@ func load_state(data: Dictionary, units: Array[CombatUnit]) -> void:
 	hit_points = data.hit_points
 	for field: String in SAVED_FIELDS:
 		set(field, data[field])
+	for field: String in OPTIONAL_FIELDS:
+		set(field, data.get(field, OPTIONAL_FIELDS[field]))
 	_lost_hit_points = data.lost_hit_points
 	is_stunned = data.stunned
 	stun_source = units[data.stun_source] if data.stun_source >= 0 else null
@@ -422,6 +428,12 @@ func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 	for field: String in SAVED_FIELDS:
 		var value: Variant = data.get(field)
 		if typeof(value) != typeof(get(field)) or value is int and (value < 0 or value > SAVED_INT_LIMIT):
+			return false
+	for field: String in OPTIONAL_FIELDS:
+		if not data.has(field):
+			continue
+		var optional: Variant = data[field]
+		if typeof(optional) != typeof(OPTIONAL_FIELDS[field]) or optional is int and (optional < 0 or optional > SAVED_INT_LIMIT):
 			return false
 	var area: Rect2i = Rect2i(Vector2i.ZERO, map_size)
 	if not area.has_point(data.cell) or not area.has_point(data.start_cell):

@@ -860,6 +860,8 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 			return not reachable_cells(actor).is_empty()
 		"jump":
 			return not jump_cells(actor).is_empty()
+		"moving_shot":
+			return not moving_shot_cells(actor).is_empty()
 		"attack", "cross_slash", "steel_charge", "bow_bash", "shove", "pull":
 			for target: CombatUnit in units:
 				if can_target(actor, target, action):

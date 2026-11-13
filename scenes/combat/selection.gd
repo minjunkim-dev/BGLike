@@ -24,7 +24,7 @@ func clear_preview() -> void:
 
 
 func inspect(unit: CombatUnit) -> void:
-	if selected_action in ["move", "jump"]:
+	if selected_action in ["move", "jump", "moving_shot"]:
 		selected_action = "attack"
 	clear_preview()
 	inspected_unit = unit
@@ -42,14 +42,14 @@ func select_action(action: String) -> bool:
 
 func begin_field_input(left_click: bool) -> void:
 	inspected_unit = null
-	if left_click and selected_action in ["move", "jump"]:
+	if left_click and selected_action in ["move", "jump", "moving_shot"]:
 		selected_action = "attack"
 		clear_preview()
 
 
-## 유효한 같은 목적지를 다시 선택하면 호출자가 이동을 실행한다.
+## 유효한 같은 목적지를 다시 선택하면 호출자가 이동을 실행한다. 점프·무빙샷 도약도 같은 두 번 우클릭이다.
 func select_move(cell: Vector2i, path: Array[Vector2i]) -> bool:
-	if selected_action != "jump":
+	if selected_action not in ["jump", "moving_shot"]:
 		selected_action = "move"
 	var confirmed: bool = not path.is_empty() and cell == preview_cell
 	clear_preview()
