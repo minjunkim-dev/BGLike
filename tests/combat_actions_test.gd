@@ -691,8 +691,8 @@ func _test_crate_boundaries() -> void:
 		"근접 공격은 높이 차2의 상자를 공격하지 않는다")
 	actor.kind = CombatUnit.Kind.ARCHER
 	f.actions.dice = _dice_for([2], [20])
-	_check(f.actions.attack_prop(actor, target) and target.hit_points == 3,
-		"원거리 공격은 높이 차2에서도 솜씨 d20의2+현재 피해 보정1을 준다")
+	_check(f.actions.attack_prop(actor, target) and target.hit_points == 4,
+		"원거리 공격은 높이 차2에서도 솜씨 d20의2+피해 보정0(#528)을 준다")
 	actor.begin_turn()
 	f.actions.initialize(f.units, f.turns)
 	var replacement: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "crate")
@@ -978,12 +978,12 @@ func _test_spin_attacks() -> void:
 	boss.begin_turn()
 	f.turns.current_unit = boss
 	f.units[1].cell = Vector2i(5, 3)
-	# 소비 순서: 전사 힘 d20 내성·힘 d12 피해 → 궁수 힘 d6 내성·힘 d12 피해. 시전자는 굴리지 않는다.
-	f.actions.dice = _dice_for([10, 6, 2, 6], [20, 12, 6, 12])
+	# 소비 순서: 전사 민첩 d8 내성·힘 d12 피해 → 궁수 민첩 d12 내성·힘 d12 피해(#528). 시전자는 굴리지 않는다.
+	f.actions.dice = _dice_for([8, 6, 10, 6], [8, 12, 12, 12])
 	_check(await f.actions.spin(boss), "회전회오리 실행")
-	_check(f.units[0].hit_points == 7 and f.units[1].hit_points == 1,
-		"전사는 힘 내성 10이 DC 10과 같아 성공해 피해 6+2의 절반 4, 궁수는 2로 실패해 피해 8")
-	_check(f.actions.last_save.rolls == [2] and f.actions.last_attack == null
+	_check(f.units[0].hit_points == 3 and f.units[1].hit_points == 5,
+		"전사는 민첩 내성 8로 실패해 피해 6+2, 궁수는 10이 DC 10과 같아 성공해 피해 8의 절반 4")
+	_check(f.actions.last_save.rolls == [10] and f.actions.last_attack == null
 		and f.units[0].cell == Vector2i(4, 4) and f.units[1].cell == Vector2i(5, 3),
 		"회전회오리는 명중굴림 없이 대상만 굴리고 대상을 밀어내지 않음")
 	_check(boss.action_left == 0 and boss.bonus_action_left == 1 and boss.reaction_left == 1
@@ -1016,7 +1016,7 @@ func _test_spin_height_targets() -> void:
 	f.actions.attack_animation = func(_actor: CombatUnit, target: CombatUnit) -> void:
 		attacked.append(target)
 		await process_frame
-	f.actions.dice = _dice_for([1, 1], [6, 12])
+	f.actions.dice = _dice_for([1, 1], [12, 12])
 	_check(await f.actions.spin(boss) and attacked == [f.units[1]] and f.units[1].hit_points == 6
 		and f.units[0].hit_points == 11 and boss.action_left == 0,
 		"회전회오리는 높이1 대상만 실제 판정하고 높이2 대상·기존 유닛 순서·행동1 소비를 보존")
@@ -1037,7 +1037,7 @@ func _test_spin_height_recheck() -> void:
 		attacked.append(target)
 		f.actions.grid.heights[f.units[1].cell] = 2
 		await process_frame
-	f.actions.dice = _dice_for([1, 1], [20, 12])
+	f.actions.dice = _dice_for([1, 1], [8, 12])
 	_check(await f.actions.spin(boss) and attacked == [f.units[0]]
 		and f.units[0].hit_points == 8 and f.units[1].hit_points == 9,
 		"첫 공격 대기 뒤 두 번째 대상의 높이가 바뀌면 주사위·피해 없이 제외")
@@ -1115,17 +1115,17 @@ func _test_spin_reactions_and_reuse() -> void:
 		prompts.append(kind)
 		f.actions.resolve_reaction(true)
 	)
-	f.actions.dice = _dice_for([5, 1, 1, 1], [20, 12, 6, 12])
+	f.actions.dice = _dice_for([5, 1, 1, 1], [8, 12, 12, 12])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 8 and f.units[1].hit_points == 6
 		and prompts.is_empty() and f.units[0].reaction_left == 1,
 		"내성굴림 피해에는 공격 굴림이 없어 반응을 묻지 않고 대상마다 독립 피해")
-	f.actions.dice = _dice_for([20, 4, 6, 1], [20, 12, 6, 12])
+	f.actions.dice = _dice_for([8, 1, 12, 4], [8, 12, 12, 12])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 5 and f.units[1].hit_points == 3
 		and prompts.is_empty() and boss.action_left == 0,
-		"과부하 같은 턴에 다시 쓰며 전사 절대성공면 20은 피해 4+2의 절반, 궁수 최댓값 6은 DC 10 미만이라 실패")
+		"과부하 같은 턴에 다시 쓰며 전사 민첩 d8 최댓값 8은 DC 10 미만이라 실패해 피해 1+2, 궁수 절대성공면 12는 피해 4+2의 절반")
 	boss.begin_turn()
 	f.units[1].cell = Vector2i(9, 9)
-	f.actions.dice = _dice_for([1, 1], [20, 12])
+	f.actions.dice = _dice_for([1, 1], [8, 12])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 2 and f.units[1].hit_points == 3
 		and CombatActionRules.uses_left(boss, "spin") == -1,
 		"다음 턴에도 횟수·대기 제한 없이 쓰며 사거리 밖 아군은 굴리지 않음")
@@ -1139,7 +1139,7 @@ func _test_spin_incapacitation() -> void:
 	f.units[0].hit_points = 3
 	f.units[1].cell = Vector2i(5, 3)
 	ScriptedDice.arrange_turns(f.turns, f.units, [f.units[2], f.units[1], f.units[0], f.units[3]])
-	f.actions.dice = _dice_for([1, 1, 1, 2], [20, 12, 6, 12])
+	f.actions.dice = _dice_for([1, 1, 1, 2], [8, 12, 12, 12])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 0
 		and f.units[1].hit_points == 5 and boss.action_left == 0,
 		"첫 대상 전투 불능 뒤 남은 대상 공격과 한 번 소비한 행동을 유지")
@@ -1393,7 +1393,6 @@ func _test_scrap_robot_turn_damage() -> void:
 		var doomed: CombatUnit = dying.units[2]
 		doomed.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
 		doomed.hit_points = 2 if remaining_enemy else 1
-		dying.units[1].marked_target = doomed
 		if not remaining_enemy:
 			dying.actions.incapacitate(dying.units[3])
 		var living: Array[CombatUnit] = dying.units.duplicate()
@@ -1407,8 +1406,8 @@ func _test_scrap_robot_turn_damage() -> void:
 		if remaining_enemy:
 			dying.turns.end_turn()
 		_check(doomed.hit_points == 0 and doomed not in dying.turns.ordered_units
-			and not doomed.visible and dying.units[1].marked_target == null,
-			"자기 피해 HP 0은 즉시 전투 불능·턴 제거·표식 해제")
+			and not doomed.visible,
+			"자기 피해 HP 0은 즉시 전투 불능·턴 제거")
 		_check(dying.actions.is_victory() == not remaining_enemy
 			and dying.actions.is_over() == not remaining_enemy,
 			"다른 살아 있는 적이 없을 때만 승리")
@@ -1513,8 +1512,8 @@ func _test_novice_stats() -> void:
 	_check(_ability_sides(f.units[0]) == [20, 8, 6, 4, 8, 12]
 		and f.units[0].get_defense_bonus() == 0 and f.units[0].get_damage_bonus() == 0
 		and _ability_sides(f.units[1]) == [6, 12, 20, 6, 4, 8]
-		and f.units[1].get_defense_bonus() == 0 and f.units[1].get_damage_bonus() == 1,
-		"아군 전사·궁수의 여섯 주사위와 기존 피해 가산")
+		and f.units[1].get_defense_bonus() == 0 and f.units[1].get_damage_bonus() == 0,
+		"아군 전사·궁수의 여섯 주사위와 피해 가산 0(궁수 #528)")
 
 
 func _test_novice_damage() -> void:
@@ -1859,15 +1858,15 @@ func _test_height_adjacency() -> void:
 	var target: CombatUnit = ranged.units[2]
 	archer.kind = CombatUnit.Kind.ARCHER
 	archer.cell = Vector2i(0, 0)
-	target.cell = Vector2i(6, 0)
-	ranged.actions.grid.heights = {Vector2i(3, 0): 20, target.cell: 10}
+	target.cell = Vector2i(4, 0)
+	ranged.actions.grid.heights = {Vector2i(2, 0): 20, target.cell: 10}
 	_check(ranged.actions.can_target(archer, target, "attack")
 		and ranged.actions.grid.attack_preview(archer, target).in_range,
-		"높은 대상과 더 높은 중간 바닥이 있어도 평면 거리6 원거리 공격 허용")
-	target.cell = Vector2i(7, 0)
+		"높은 대상과 더 높은 중간 바닥이 있어도 평면 거리4 원거리 공격 허용(#528)")
+	target.cell = Vector2i(5, 0)
 	_check(not ranged.actions.can_target(archer, target, "attack")
 		and not ranged.actions.grid.attack_preview(archer, target).in_range,
-		"높이와 무관하게 평면 거리7 원거리 공격 거부")
+		"높이와 무관하게 평면 거리5 원거리 공격 거부")
 
 
 func _test_high_ground() -> void:
@@ -1923,15 +1922,12 @@ func _test_fall_damage() -> void:
 	killed.actions.grid.heights = {killed.units[0].cell: 2, target.cell: 3}
 	target.is_stunned = true
 	target.hit_points = 1
-	killed.units[0].marked_target = target
-	killed.units[1].marked_target = target
 	killed.actions.dice = _dice_for([], [])
 	_check(killed.actions.shove(killed.units[0], target) and target.hit_points == 0,
 		"낙하 피해로 HP0이면 전투 불능")
 	_check(target not in killed.turns.ordered_units and not target.visible
-		and killed.actions.grid.unit_at(Vector2i(6, 4)) == null
-		and killed.units[0].marked_target == null and killed.units[1].marked_target == null,
-		"낙하 전투 불능은 턴·표식·표시·점유를 기존 방식으로 정리")
+		and killed.actions.grid.unit_at(Vector2i(6, 4)) == null,
+		"낙하 전투 불능은 턴·표시·점유를 기존 방식으로 정리")
 	var pulled: Fixture = _fixture()
 	var boss: CombatUnit = pulled.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
@@ -2007,14 +2003,13 @@ func _test_pit_forced_movement() -> void:
 			target.is_stunned = not ally
 			f.actions.grid.heights = {actor.cell: height, target.cell: height + 1}
 			f.actions.grid.pits = [Vector2i(6, 4)]
-			f.units[3].marked_target = target
 			f.actions.dice = _dice_for([], [])
 			_check(f.actions.shove(actor, target) and target.hit_points == 0
 				and target.cell == Vector2i(6, 4) and actor.bonus_action_left == 0,
 				"아군·적 모두 낭떠러지에 밀리면 바닥 높이 비교·낙하 주사위 없이 즉시 전투 불능")
 			_check(target not in f.turns.ordered_units and not target.visible
-				and f.actions.grid.unit_at(Vector2i(6, 4)) == null and f.units[3].marked_target == null,
-				"낙사도 턴·점유·표식·표시를 함께 정리")
+				and f.actions.grid.unit_at(Vector2i(6, 4)) == null,
+				"낙사도 턴·점유·표시를 함께 정리")
 			_check(f.hits.size() == 1, "낙사도 HP 감소라 타격음을 한 번 재생")
 	var pulled: Fixture = _fixture()
 	var boss: CombatUnit = pulled.units[2]
@@ -2308,10 +2303,11 @@ func _test_square_rules() -> void:
 	ranged.units[0].kind = CombatUnit.Kind.ARCHER
 	ranged.units[0].begin_turn()
 	ranged.units[0].cell = Vector2i(0, 0)
-	ranged.units[2].cell = Vector2i(3, 3)
-	_check(ranged.actions.can_target(ranged.units[0], ranged.units[2], "attack"), "평면 거리6 공격 가능")
+	ranged.units[2].cell = Vector2i(2, 2)
+	_check(ranged.actions.can_target(ranged.units[0], ranged.units[2], "attack"), "평면 거리4 공격 가능(#528)")
+	ranged.units[2].cell = Vector2i(3, 2)
+	_check(not ranged.actions.can_target(ranged.units[0], ranged.units[2], "attack"), "평면 거리5 공격 불가")
 	ranged.units[2].cell = Vector2i(4, 3)
-	_check(not ranged.actions.can_target(ranged.units[0], ranged.units[2], "attack"), "평면 거리7 공격 불가")
 	_check(ranged.actions.grid.path_to(ranged.units[0], Vector2i(3, 3)).size() == 6
 		and ranged.actions.can_move(ranged.units[0], Vector2i(3, 3))
 		and not ranged.actions.can_move(ranged.units[0], Vector2i(4, 3)), "이동력6 경계도 사각 최단 경로 기준")

@@ -61,6 +61,10 @@ func _run() -> void:
 	await _test_range_and_damage()
 	_test_skill_ownership()
 	await _test_spin_save()
+	await _test_aegisal()
+	await _test_bow_bash()
+	await _test_moving_shot()
+	_test_stage_reset()
 	for unit: CombatUnit in _created:
 		unit.free()
 	var dice_problems: Array[String] = ScriptedDice.finish()
@@ -137,3 +141,154 @@ func _test_spin_save() -> void:
 	f.actions.dice = _dice([8, 6], [8, 12])
 	_check(await f.actions.spin(robot), "회전회오리 사용")
 	_check(warrior.hit_points == 11 - 8, "실패하면 피해 전부")
+
+
+## 애기살 급조: 보조 행동으로 +2(누적), 기본 공격마다 1발을 쓰고 피해 굴림 2번 중 높은 값.
+func _test_aegisal() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var target: CombatUnit = f.units[3]
+	_check(f.actions.can_use(archer, "aegisal") and "애기살 0발 남음" in CombatActionRules.details(archer, "aegisal"),
+		"보조 행동이 있으면 애기살 급조 사용 가능")
+	_check(f.actions.use_self(archer, "aegisal") and archer.aegisal_left == 2 and archer.bonus_action_left == 0
+		and archer.action_left == 1, "애기살 급조는 보조 행동을 쓰고 2발")
+	_check(not f.actions.can_use(archer, "aegisal"), "보조 행동을 쓰면 비활성")
+	archer.bonus_action_left = 1
+	f.actions.use_self(archer, "aegisal")
+	_check(archer.aegisal_left == 4, "다시 쓰면 누적해 4발, 상한 없음")
+	_check("애기살 4발" in CombatActionRules.details(archer, "attack"), "기본 공격 호버에 남은 애기살")
+	# 명중 15, 피해 굴림 3과 9 중 높은 9.
+	f.actions.dice = _dice([15, 3, 9], [20, 20, 20])
+	await f.actions.attack(archer, target)
+	_check(target.hit_points == 14 - 9 and archer.aegisal_left == 3 and f.actions.last_damage_rolls == [3, 9],
+		"애기살 기본 공격은 피해 굴림 두 번 중 높은 값이고 1발을 씀")
+	_check(f.logs.any(func(line: String) -> bool: return "애기살" in line and "[3, 9]" in line), "로그에 두 굴림 " + str(f.logs))
+	archer.action_left = 1
+	f.actions.dice = _dice([1], [20])
+	await f.actions.attack(archer, target)
+	_check(archer.aegisal_left == 2 and target.hit_points == 5, "빗나가도 1발을 씀")
+	var crate: CombatGrid.Prop = f.actions.create_prop(Vector2i(3, 3), "crate")
+	archer.action_left = 1
+	f.actions.dice = _dice([2, 4], [20, 20])
+	_check(f.actions.attack_prop(archer, crate) and crate.hit_points == 6 - 4 and archer.aegisal_left == 1,
+		"나무 상자 공격도 1발을 쓰고 피해 굴림 두 번 중 높은 값")
+	var rock: CombatGrid.Prop = f.actions.create_prop(Vector2i(2, 4), "rock")
+	archer.action_left = 1
+	f.actions.dice = _dice([], [])
+	_check(f.actions.attack_prop(archer, rock) and archer.aegisal_left == 0, "바위 공격은 굴림 없이 1발을 씀")
+	var plain: Fixture = _fixture()
+	plain.actions.dice = _dice([15, 7], [20, 20])
+	await plain.actions.attack(plain.units[0], plain.units[3])
+	_check(plain.actions.last_damage_rolls == [7] and plain.units[0].aegisal_left == 0, "애기살이 없으면 한 번 굴림")
+
+
+## 활 후려치기: 보조 행동, 인접한 적에게 힘 d6 명중·피해, 명중하면 1칸 밀침(내성 없음).
+func _test_bow_bash() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var barbarian: CombatUnit = f.units[2]
+	barbarian.cell = Vector2i(4, 4)
+	archer.aegisal_left = 2
+	_check(f.actions.can_target(archer, barbarian, "bow_bash") and not f.actions.can_target(archer, f.units[3], "bow_bash"),
+		"인접한 적만 대상")
+	var preview: CombatChecks.AttackPreview = f.actions.grid.attack_preview(archer, barbarian, "bow_bash")
+	_check(preview.mode == CombatChecks.RollMode.NORMAL and is_equal_approx(preview.chance, 0.5)
+		and f.actions.grid.attack_preview(archer, barbarian).mode == CombatChecks.RollMode.DISADVANTAGE,
+		"근접 동작이라 옆에 적 불리가 없고 명중률은 힘 d6 대 AC 4 = 50%")
+	var details: String = CombatActionRules.details(archer, "bow_bash")
+	_check("힘 d6" in details and "사거리: 인접1칸" in details, "호버의 힘 d6 판정 " + details)
+	f.actions.dice = _dice([4, 3], [6, 6])
+	_check(await f.actions.bow_bash(archer, barbarian), "활 후려치기 실행")
+	_check(barbarian.hit_points == 12 - 3 and barbarian.cell == Vector2i(5, 4), "명중하면 힘 d6 3 + 0 피해 뒤 1칸 밀침")
+	_check(archer.bonus_action_left == 0 and archer.action_left == 1 and archer.aegisal_left == 2,
+		"보조 행동만 쓰고 애기살은 쓰지 않음")
+	var blocked: Fixture = _fixture()
+	blocked.units[2].cell = Vector2i(4, 4)
+	blocked.actions.create_prop(Vector2i(5, 4), "crate")
+	blocked.actions.dice = _dice([4, 3], [6, 6])
+	await blocked.actions.bow_bash(blocked.units[0], blocked.units[2])
+	_check(blocked.units[2].hit_points == 9 and blocked.units[2].cell == Vector2i(4, 4), "밀려날 칸이 막히면 피해만")
+	var killed: Fixture = _fixture()
+	killed.units[2].cell = Vector2i(4, 4)
+	killed.units[2].hit_points = 2
+	killed.actions.dice = _dice([4, 3], [6, 6])
+	await killed.actions.bow_bash(killed.units[0], killed.units[2])
+	_check(killed.units[2].hit_points == 0 and killed.units[2].cell == Vector2i(4, 4), "쓰러지면 밀지 않음")
+	var missed: Fixture = _fixture()
+	missed.units[2].cell = Vector2i(4, 4)
+	missed.actions.dice = _dice([1], [6])
+	await missed.actions.bow_bash(missed.units[0], missed.units[2])
+	_check(missed.units[2].hit_points == 12 and missed.units[2].cell == Vector2i(4, 4)
+		and missed.units[0].bonus_action_left == 0, "빗나가면 피해·밀침 없이 보조 행동만 씀")
+	var fall: Fixture = _fixture()
+	fall.units[2].cell = Vector2i(4, 4)
+	fall.actions.grid.heights[Vector2i(3, 4)] = 3
+	fall.actions.grid.heights[Vector2i(4, 4)] = 3
+	fall.actions.dice = _dice([4, 3], [6, 6])
+	await fall.actions.bow_bash(fall.units[0], fall.units[2])
+	_check(fall.units[2].cell == Vector2i(5, 4) and fall.units[2].hit_points == 12 - 3 - 2,
+		"높이 차 3 아래로 밀리면 낙하 피해 2")
+
+
+## 무빙샷: 이번 턴 첫 행동 원거리 공격 뒤 인접 빈 칸으로 1칸 도약. 이동력·기회 공격 없음.
+func _test_moving_shot() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var barbarian: CombatUnit = f.units[2]
+	barbarian.cell = Vector2i(3, 3)
+	barbarian.reaction_left = 1
+	_check(f.actions.moving_shot_cells(archer).is_empty(), "공격 전에는 도약할 칸이 없음")
+	# 인접한 야만인 때문에 불리라 명중굴림을 두 번 굴린다.
+	f.actions.dice = _dice([15, 15, 2], [20, 20, 20])
+	await f.actions.attack(archer, f.units[3])
+	var cells: Array[Vector2i] = f.actions.moving_shot_cells(archer)
+	_check(archer.moving_shot_ready and cells.size() == 3 and Vector2i(2, 4) in cells and Vector2i(4, 4) in cells
+		and Vector2i(3, 5) in cells and Vector2i(3, 3) not in cells, "첫 기본 공격 뒤 인접 빈 칸만 " + str(cells))
+	_check(not await f.actions.moving_shot(archer, Vector2i(5, 4)), "인접하지 않은 칸은 거부")
+	_check(await f.actions.moving_shot(archer, Vector2i(2, 4)), "무빙샷 도약")
+	_check(archer.cell == Vector2i(2, 4) and archer.movement_left == 6 and archer.bonus_action_left == 1,
+		"이동력과 보조 행동을 쓰지 않음")
+	_check(barbarian.reaction_left == 1 and archer.hit_points == archer.get_max_hit_points()
+		and f.actions.pending_reactor == null, "인접 적을 벗어나도 기회 공격 없음")
+	_check(not archer.moving_shot_ready and f.actions.moving_shot_cells(archer).is_empty()
+		and not await f.actions.moving_shot(archer, Vector2i(1, 4)), "한 번 쓰면 끝")
+	archer.action_left = 1
+	f.units[3].cell = Vector2i(6, 4)
+	f.actions.dice = _dice([15, 2], [20, 20])
+	_check(await f.actions.attack(archer, f.units[3]) and not archer.moving_shot_ready,
+		"이번 턴 첫 공격이 아니면 켜지지 않음")
+	archer.begin_turn()
+	_check(not archer.moving_shot_ready and not archer.moving_shot_spent, "자기 턴 시작에 해제")
+	var other: Fixture = _fixture()
+	other.actions.dice = _dice([15, 2], [20, 20])
+	await other.actions.attack(other.units[0], other.units[3])
+	_check(other.units[0].moving_shot_ready, "다른 동작 전에는 남음")
+	other.actions.use_self(other.units[0], "aegisal")
+	_check(not other.units[0].moving_shot_ready, "다른 동작을 실행하면 사라짐")
+	var crate: Fixture = _fixture()
+	var prop: CombatGrid.Prop = crate.actions.create_prop(Vector2i(3, 2), "crate")
+	crate.actions.dice = _dice([2], [20])
+	crate.actions.attack_prop(crate.units[0], prop)
+	_check(crate.units[0].moving_shot_ready, "나무 상자 기본 공격 뒤에도 도약 가능")
+	var last: Fixture = _fixture()
+	last.actions.incapacitate(last.units[2])
+	last.units[3].hit_points = 1
+	last.actions.dice = _dice([15, 2], [20, 20])
+	await last.actions.attack(last.units[0], last.units[3])
+	_check(last.actions.is_over() and not last.units[0].moving_shot_ready, "전투를 끝낸 공격 뒤에는 켜지지 않음")
+	var enemy: Fixture = _fixture([3, 0, 1, 2])
+	enemy.actions.dice = _dice([1], [10])
+	await enemy.actions.attack(enemy.units[3], enemy.units[0])
+	_check(not enemy.units[3].moving_shot_ready, "풋내기 궁수에게는 무빙샷이 없음")
+
+
+## 새 전투(스테이지) 시작에는 애기살과 무빙샷 상태가 없다.
+func _test_stage_reset() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	archer.aegisal_left = 5
+	archer.moving_shot_ready = true
+	archer.moving_shot_spent = true
+	archer.begin_stage(false)
+	_check(archer.aegisal_left == 0 and not archer.moving_shot_ready and not archer.moving_shot_spent,
+		"전투 전환에서 애기살 0, 무빙샷 해제")

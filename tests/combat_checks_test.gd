@@ -587,12 +587,12 @@ func _test_preview_conditions() -> void:
 	archer.is_stunned = false
 	target.is_stunned = false
 	nearby.cell = Vector2i(0, 0)
-	target.cell = Vector2i(4, 10)
+	target.cell = Vector2i(4, 8)
 	preview = grid.attack_preview(archer, target)
-	_check(preview.in_range, "궁수 사거리6 경계 포함")
-	target.cell = Vector2i(4, 11)
+	_check(preview.in_range, "아군 궁수 사거리4 경계 포함(#528)")
+	target.cell = Vector2i(4, 9)
 	preview = grid.attack_preview(archer, target)
-	_check(not preview.in_range and preview.chance == 0.0, "궁수 사거리7 밖이면0%")
+	_check(not preview.in_range and preview.chance == 0.0, "아군 궁수 사거리5 밖이면0%")
 	archer.kind = CombatUnit.Kind.WARRIOR
 	target.cell = Vector2i(4, 5)
 	preview = grid.attack_preview(archer, target)
@@ -653,7 +653,7 @@ func _test_damage_table() -> void:
 	var strength: CombatUnit.Ability = CombatUnit.Ability.STRENGTH
 	for row: Array in [
 		[CombatUnit.Kind.WARRIOR, true, strength, 20, 0],
-		[CombatUnit.Kind.ARCHER, true, CombatUnit.Ability.FINESSE, 20, 1],
+		[CombatUnit.Kind.ARCHER, true, CombatUnit.Ability.FINESSE, 20, 0],
 		[CombatUnit.Kind.WARRIOR, false, strength, 10, 1],
 		[CombatUnit.Kind.ARCHER, false, CombatUnit.Ability.AGILITY, 10, 1],
 		[CombatUnit.Kind.SCRAP_ROBOT_1000, false, strength, 12, 2],
@@ -664,7 +664,7 @@ func _test_damage_table() -> void:
 	]:
 		var unit: CombatUnit = _unit(row[0], row[1], Vector2i.ZERO)
 		var ability: CombatUnit.Ability = row[2]
-		_check(["attack", "opportunity", "shock"].all(func(action: String) -> bool:
+		_check(["attack", "opportunity"].all(func(action: String) -> bool:
 				return CombatActionRules.damage_ability(unit, action) == unit.get_attack_ability())
 			and unit.get_attack_ability() == ability and unit.get_ability_sides(ability) == row[3]
 			and unit.get_damage_bonus() == row[4],
@@ -682,20 +682,19 @@ func _test_damage_table() -> void:
 		values.append(CombatChecks.damage_roll(sides, dice))
 	_check(values == [20, 1, 17, 12, 11, 4], "피해 굴림은 절대성공면을 최댓값, 절대실패면을 1, 일반면은 그대로 센다 " + str(values))
 	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i.ZERO)
-	_check("피해: 솜씨 d20+1\n" in CombatActionRules.details(archer, "shock")
-		and "피해: 솜씨 d20+1\n" in CombatActionRules.details(archer, "attack")
-		and "→" not in CombatActionRules.details(archer, "shock"),
+	_check("피해: 솜씨 d20\n" in CombatActionRules.details(archer, "attack")
+		and "→" not in CombatActionRules.details(archer, "attack"),
 		"같은 능력치면 호버에 피해 능력치 주사위 하나만 보임")
-	# 정적 지정은 확인 전에 되돌려 다른 검사에 남기지 않는다.
-	CombatActionRules.DAMAGE_ABILITIES["shock"] = CombatUnit.Ability.STRENGTH
-	var shock_ability: CombatUnit.Ability = CombatActionRules.damage_ability(archer, "shock")
-	var attack_ability: CombatUnit.Ability = CombatActionRules.damage_ability(archer, "attack")
-	var shock_details: String = CombatActionRules.details(archer, "shock")
-	var attack_details: String = CombatActionRules.details(archer, "attack")
-	CombatActionRules.DAMAGE_ABILITIES.erase("shock")
-	_check(shock_ability == CombatUnit.Ability.STRENGTH and attack_ability == CombatUnit.Ability.FINESSE
-		and "피해: 명중 솜씨 d20 → 피해 힘 d6+1\n" in shock_details and "피해: 솜씨 d20+1\n" in attack_details,
-		"스킬이 피해 능력치를 따로 지정하면 호버에 명중과 피해 능력치를 함께 보임 " + shock_details)
+	# 정적 지정은 확인 전에 되돌려 다른 검사에 남기지 않는다. 기본 공격에 잠시 힘을 지정하고 기회 공격과 비교한다.
+	CombatActionRules.DAMAGE_ABILITIES["attack"] = CombatUnit.Ability.STRENGTH
+	var override_ability: CombatUnit.Ability = CombatActionRules.damage_ability(archer, "attack")
+	var plain_ability: CombatUnit.Ability = CombatActionRules.damage_ability(archer, "opportunity")
+	var override_details: String = CombatActionRules.details(archer, "attack")
+	var plain_details: String = CombatActionRules.details(archer, "opportunity")
+	CombatActionRules.DAMAGE_ABILITIES.erase("attack")
+	_check(override_ability == CombatUnit.Ability.STRENGTH and plain_ability == CombatUnit.Ability.FINESSE
+		and "피해: 명중 솜씨 d20 → 피해 힘 d6\n" in override_details and "피해: 솜씨 d20\n" in plain_details,
+		"스킬이 피해 능력치를 따로 지정하면 호버에 명중과 피해 능력치를 함께 보임 " + override_details)
 
 ## 원거리 공격자는 인접 불리가 없게 세 칸 떨어뜨린다.
 func _preview_percent(attacker: CombatUnit, target: CombatUnit) -> float:
@@ -810,15 +809,15 @@ func _test_scene_spin() -> void:
 		battle.queue_free()
 		await process_frame
 		return
-	# 소비 순서: 전사 힘 내성·피해 → 궁수 힘 내성·피해. 절대실패면 1은 실패.
-	actions.dice = ScriptedDice.new([1, 1, 1, 1], [units[0].get_ability_sides(CombatUnit.Ability.STRENGTH), damage_sides,
-		units[1].get_ability_sides(CombatUnit.Ability.STRENGTH), damage_sides])
+	# 소비 순서: 전사 민첩 내성·피해 → 궁수 민첩 내성·피해(#528). 절대실패면 1은 실패.
+	actions.dice = ScriptedDice.new([1, 1, 1, 1], [units[0].get_ability_sides(CombatUnit.Ability.AGILITY), damage_sides,
+		units[1].get_ability_sides(CombatUnit.Ability.AGILITY), damage_sides])
 	var logs: Array[String] = []
 	var observe: Callable = func(message: String) -> void: logs.append(message)
 	actions.logged.connect(observe)
 	await CombatEnemyAi.new().play_turn(boss, actions)
 	_check(logs.filter(func(message: String) -> bool: return "회전회오리:" in message).size() == 1
-		and logs.filter(func(message: String) -> bool: return " 힘 내성(일반):" in message and "/ DC 10 · 실패" in message).size() == 2
+		and logs.filter(func(message: String) -> bool: return " 민첩 내성(일반):" in message and "/ DC 10 · 실패" in message).size() == 2
 		and not logs.any(func(message: String) -> bool: return "공통 공격" in message),
 		"실제 장면의 직접 AI 호출이 회전회오리를 한 번 실행하고 대상마다 내성 " + str(logs))
 	_check(units[0].hit_points == units[0].get_max_hit_points() - damage

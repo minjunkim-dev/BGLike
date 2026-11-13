@@ -797,18 +797,19 @@ func _test_layout() -> void:
 	# 상태 줄과 공격 예측 원인 줄이 모두 길어진 유닛 정보도 가장 높은 로그와 겹치지 않는다.
 	# 앞 검사가 적 턴으로 끝나므로 아군 턴으로 돌려야 적 미리보기가 유닛 정보를 바꾼다.
 	_reset_units()
-	units[1].marked_target = units[2]
+	# 상태 줄을 길게 하려고 표식(#528 삭제) 대신 애기살 발수를 둔다.
+	units[2].aegisal_left = 12
 	units[2].is_stunned = true
 	units[2].overloaded = true
 	actions.apply_status(units[1], units[2], "burn")
 	actions.apply_status(units[0], units[2], "poison")
 	_check(battle.call("preview_enemy", units[2]), "긴 유닛 정보 fixture: 아군 턴의 적 미리보기")
-	hud.preview_label.text = "명중률 37.5% · 유리\n고지대, 기절한 대상, ◎ 표식, 옆에 적"
+	hud.preview_label.text = "명중률 37.5% · 유리\n고지대, 기절한 대상, 애기살, 옆에 적"
 	await process_frame
 	await process_frame
 	_check(hud.unit_label.text == units[2].get_display_name() and "기절" in hud.resource_label.get_parsed_text()
 		and "화상1" in hud.resource_label.get_parsed_text() and "독1" in hud.resource_label.get_parsed_text()
-		and "과부하" in hud.resource_label.get_parsed_text() and "◎ 표식" in hud.resource_label.get_parsed_text(),
+		and "과부하" in hud.resource_label.get_parsed_text() and "애기살 12발" in hud.resource_label.get_parsed_text(),
 		"긴 유닛 정보 fixture: 대상의 상태 줄 표시: " + hud.resource_label.get_parsed_text().replace("\n", " | "))
 	_check(not (hud.get_node("UnitDetails") as Control).get_global_rect().intersects(
 		(hud.get_node("CombatLog") as Control).get_global_rect()),
@@ -1034,9 +1035,10 @@ func _test_guidance() -> void:
 				_check(removed not in button.tooltip_text, "호버에서 안내 제거: %s / %s" % [action, removed])
 			_check(unit.hit_points == hp and [unit.action_left, unit.bonus_action_left, unit.shield_points] == uses,
 				"호버는 동작 실행·자원 소비 없음: " + action)
-	_check("사거리: 1~6칸\n피해: 솜씨 d20+1\n판정: 솜씨 d20 +0 대 AC, 명중하면 기절" in (buttons["shock"] as Button).tooltip_text
+	_check("사거리: 인접1칸\n피해: 힘 d6\n판정: 힘 d6 +0 대 AC, 명중하면 1칸 밀침" in (buttons["bow_bash"] as Button).tooltip_text
+		and "사거리: 1~4칸\n피해: 솜씨 d20\n판정: 솜씨 d20 +0 대 AC" in (buttons["attack"] as Button).tooltip_text
 		and "판정: 대상의 힘 내성 대 DC 4, 성공하면 버팀" in (buttons["shove"] as Button).tooltip_text,
-		"궁수 충격 화살 호버에 명중 시 기절, 밀치기 호버에 대상의 힘 내성과 DC 표시")
+		"궁수 활 후려치기 호버에 힘 d6과 밀침, 기본 공격 사거리 1~4, 밀치기 호버에 대상의 힘 내성과 DC 표시")
 	await _test_focus_tooltips(buttons)
 	# 비활성 버튼은 비용 소진·횟수 소진·효과 없음의 이유를 호버에 유지한다.
 	turns.select_unit(units[0])
@@ -1256,7 +1258,7 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check(units[0].action_left == 0, "필드 적 두 번째 좌클릭은 공격 확정")
 	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
 	_check(turns.current_unit == units[1] and units[0].action_left == 0
-		and "힘 d6" in hud.resource_label.get_parsed_text() and "사거리 6칸" in hud.resource_label.get_parsed_text(),
+		and "힘 d6" in hud.resource_label.get_parsed_text() and "사거리 4칸" in hud.resource_label.get_parsed_text(),
 		"조작 가능한 아군 초상은 정보와 조작 전환, 기존 자원 유지")
 	turns.select_unit(units[0])
 	turns.end_turn()
