@@ -668,7 +668,8 @@ func _test_crate_boundaries() -> void:
 		_check(f.actions.create_prop(cell, "crate") == null, "유효하지 않은 상자 시작 칸 거부: " + str(cell))
 	_check(f.actions.create_prop(Vector2i(4, 5), "unknown") == null, "알 수 없는 환경 오브젝트 종류 거부")
 	f.actions.grid.water_cells = [Vector2i(2, 4)]
-	f.actions.create_ground(f.units[0], Vector2i(2, 4), "burn")
+	# 물 칸에는 불 장판이 생기지 않으므로(환경요소 6장) 독 장판을 깐다.
+	f.actions.create_ground(f.units[0], Vector2i(2, 4), "poison")
 	var crate: CombatGrid.Prop = f.actions.create_prop(Vector2i(2, 4), "crate")
 	_check(crate != null and f.actions.get_grounds().size() == 1
 		and f.actions.create_prop(Vector2i(2, 4), "crate") == null,
@@ -3065,14 +3066,14 @@ func _test_ground_fall_and_water() -> void:
 	var wet: Fixture = _fixture()
 	var target: CombatUnit = wet.units[2]
 	wet.actions.grid.water_cells = [target.cell]
-	wet.actions.create_ground(wet.units[3], target.cell, "burn")
+	_check(not wet.actions.create_ground(wet.units[3], target.cell, "burn"), "물 칸에는 불 장판을 겹쳐 깔 수 없음")
 	wet.actions.create_ground(wet.units[3], target.cell, "poison")
 	wet.actions.dice = _dice_for([1], [4])
 	wet.turns.end_turn()
 	wet.turns.end_turn()
 	_check(target.hit_points == 11 and target.get_status_count("burn") == 0
-		and target.get_status_count("poison") == 1 and wet.actions.get_grounds().size() == 2,
-		"물 위 겹친 장판 시작은 불 틱 없이 독만 적용하고 장판은 보존")
+		and target.get_status_count("poison") == 1 and wet.actions.get_grounds().size() == 1,
+		"물 위 장판 시작은 불 틱 없이 독만 적용하고 독 장판은 보존")
 
 
 func _test_ground_source_removed_during_entry() -> void:

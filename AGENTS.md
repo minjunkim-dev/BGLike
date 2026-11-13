@@ -29,7 +29,11 @@ Godot 4 싱글 플레이 PC 게임입니다. GitHub 품질 운영은 1인 개발
 - 제품 사양: 관련 Issue의 목표·완료 조건과 연결한 기획 문서를 읽습니다. 용어·ADR은 [문서 길잡이](docs/agents/domain.md)를 따릅니다.
 - 검증: [CI 구성](docs/CI.md)의 범위 규칙을 확인합니다. 플레이 변경의 직접 확인 기준은 [협업 규칙](docs/WORKFLOW.md#검증과-보고)을 따릅니다.
 - 작업 진입·초기 설정 확인·명세와 티켓의 통합: [개발 절차](docs/agents/development.md). 작은 수정에는 전체 명세 절차를 강제하지 않습니다.
-- repo-office로 작업을 돌릴 때: [office 등록 절차](docs/agents/office.md). 쓰지 않으면 읽지 않습니다.
+- 코드를 바꾸는 Issue 작업은 repo-office 파이프라인으로 돌립니다. 코드를 바꾸는 작업은 [브랜치 규칙](docs/GIT_CONVENTIONS.md#브랜치-이름)의 코드 type(`feat`, `fix`, `refactor`, `perf`, `test`, `revert`)입니다.
+  - 에이전트는 이 저장소에서 직접 구현하지 않습니다. 사람에게 "#번호는 repo-office leader 세션에 주세요"라고 알리고 멈춥니다. 다른 세션에 메시지를 보낼 수 있는 에이전트는 사람이 허락하면 떠 있는 leader 세션에 직접 보냅니다.
+  - leader 세션은 사람이 repo-office 체크아웃의 `leader/` 폴더에서 하나만 띄웁니다. leader는 방향 선택과 설계 승인을 사람에게 묻습니다. 등록 명령은 [office 절차](docs/agents/office.md)에 있습니다.
+  - 이 규칙은 [협업 규칙](docs/WORKFLOW.md)의 "로컬 앱으로 구현"과 [개발 절차](docs/agents/development.md)의 `implement`보다 먼저입니다. office 과제의 브랜치는 `office/<과제>`이고, 위 브랜치 이름 규칙을 따르지 않습니다.
+  - 예외: 문서·설정 작업(`docs`, `build`, `ci`, `chore`), 이미 열린 PR의 리뷰 수정과 CI 실패 수정, 사람이 여기서 하라고 한 작업.
 - GitHub 설정: [설정 기준선](docs/REPOSITORY_SETUP.md). 권리·외부 자산: [COPYRIGHT](COPYRIGHT.md)와 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
 
 ## Agent skills

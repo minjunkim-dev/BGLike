@@ -372,6 +372,10 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit, action: String = "
 				disadvantages += 1
 				preview.reasons.append(tr("옆에 적"))
 				break
+	# 물 험지(환경요소 6장): 굴림 순간 공격자가 선 칸만 본다. 근접·원거리·스킬·기회 공격 모두다.
+	if attacker.cell in water_cells:
+		disadvantages += 1
+		preview.reasons.append(tr("물 위: 불리"))
 	preview.mode = CombatChecks.roll_mode(advantages, disadvantages)
 	if preview.in_range and preview.blocked_reason.is_empty():
 		var ability: CombatUnit.Ability = CombatActionRules.hit_ability(attacker, action)

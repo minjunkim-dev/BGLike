@@ -65,6 +65,7 @@ func _run() -> void:
 	await _test_layout()
 	await _test_guidance()
 	_test_high_ground_guidance()
+	_test_water_guidance()
 	await _test_mouse_controls_and_inspection()
 	await _test_group_keyboard()
 	await _test_skill_bar_keys()
@@ -946,6 +947,26 @@ func _test_high_ground_guidance() -> void:
 	_check(" · 유리\n" in hud.preview_label.text and "상쇄" not in hud.preview_label.text,
 		"고지대·기절 두 유리만 있을 때는 상쇄로 잘못 표시하지 않음")
 	actions.grid.heights.clear()
+
+
+## 환경요소 6장: 물 위 공격자의 명중률 미리보기에 불리와 `물 위: 불리`를 보이고, 고지대와 겹치면 상쇄로 보인다.
+func _test_water_guidance() -> void:
+	_reset_units()
+	turns.select_unit(units[1])
+	units[1].cell = Vector2i(4, 4)
+	units[2].cell = Vector2i(7, 4)
+	units[3].cell = Vector2i(9, 9)
+	var saved_water: Array[Vector2i] = actions.grid.water_cells.duplicate()
+	actions.grid.water_cells.assign([units[1].cell])
+	battle.call("preview_enemy", units[2])
+	_check(" · 불리\n" in hud.preview_label.text and "물 위: 불리" in hud.preview_label.text,
+		"물 위 궁수의 명중률 미리보기에 불리와 요인 표시: " + hud.preview_label.text)
+	actions.grid.heights = {units[1].cell: 2}
+	battle.call("preview_enemy", units[2])
+	_check("유리/불리 상쇄" in hud.preview_label.text and "고지대" in hud.preview_label.text
+		and "물 위: 불리" in hud.preview_label.text, "고지대와 물 위가 겹치면 상쇄와 두 요인: " + hud.preview_label.text)
+	actions.grid.heights.clear()
+	actions.grid.water_cells.assign(saved_water)
 
 
 func _test_guidance() -> void:
@@ -2240,7 +2261,7 @@ func _test_overload_and_water_guidance() -> void:
 	var water_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(water)
 	var dry_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(dry)
 	var selection: CombatSelection = battle.get("selection") as CombatSelection
-	var note: String = "물 칸: 화상 해제 · 새 화상 걸리지 않음"
+	var note: String = "물 칸: 화상 해제 · 새 화상 걸리지 않음\n물: 명중굴림 불리"
 	_check(water in actions.grid.water_cells and dry not in actions.grid.water_cells, "#503 전제조건: 1-3 물 칸 배치")
 	await _click(water_point, MOUSE_BUTTON_RIGHT)
 	_check(selection.preview_cell == water and units[0].cell == Vector2i(3, 6)

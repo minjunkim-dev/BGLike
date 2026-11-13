@@ -160,7 +160,7 @@ autowrap_mode = 3
 
 [node name="Advantage2" type="Label" parent="Margin/Layout/HelpScroll/Topics"]
 layout_mode = 2
-text = "기절한 대상을 공격하면 유리입니다. 원거리 공격자의 인접 칸에 기절하지 않은 적이 있으면 불리입니다. 궁수의 활 후려치기는 근접 동작이라 이 불리를 받지 않습니다."
+text = "기절한 대상을 공격하면 유리입니다. 원거리 공격자의 인접 칸에 기절하지 않은 적이 있으면 불리입니다. 궁수의 활 후려치기는 근접 동작이라 이 불리를 받지 않습니다. 물 칸에 선 유닛의 명중굴림은 근접·원거리·기회 공격 모두 불리입니다. 물 위의 대상을 겨누는 쪽은 불리가 아닙니다."
 autowrap_mode = 3
 
 [node name="Advantage3" type="Label" parent="Margin/Layout/HelpScroll/Topics"]

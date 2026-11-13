@@ -35,6 +35,8 @@ func _run() -> void:
 	_test_shove_pull_preview()
 	_test_strength_validation()
 	_test_preview_conditions()
+	_test_water_preview()
+	await _test_water_actions()
 	_test_monster_hit_table()
 	_test_damage_table()
 	await _test_scene_input()
@@ -185,7 +187,7 @@ func _test_saving_throws() -> void:
 	# 8장: 회전회오리 DC 10(고철로봇-3000 힘 d12 표준값 7 + 공격 가산 3), 독 장판 고정 DC 4.
 	_check(is_equal_approx(CombatChecks.save_chance(20, 0, 10, normal), 0.55)
 		and CombatChecks.save_chance(6, 0, 10, normal) == 0.0,
-		"회전회오리 DC 10: 전사 힘 d20 55%, 궁수 힘 d6 0%")
+		"회전회오리 DC 10 민첩 내성 표본: d20 55%, d6 0%")
 	_check(is_equal_approx(CombatChecks.save_chance(12, 0, 4, normal), 0.75)
 		and is_equal_approx(CombatChecks.save_chance(8, 0, 4, normal), 0.625),
 		"독 DC 4: 전사 건강 d12 75%, 궁수 건강 d8 62.5%")
@@ -608,6 +610,103 @@ func _test_preview_conditions() -> void:
 	_check(not grid.attack_preview(archer, target).valid_target, "전투 불능 대상 거부")
 	_check(archer.get_ability_sides(CombatUnit.Ability.WILL) == 8, "전사 의지 d8")
 	_check(target.get_ability_sides(CombatUnit.Ability.WILL) == 4, "풋내기 궁수 의지 d4")
+
+
+## 환경요소 6장: 물 칸에 선 공격자의 명중굴림에 불리 요인 1개. 물 위의 대상을 겨누는 쪽은 받지 않는다.
+func _test_water_preview() -> void:
+	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 4))
+	var target: CombatUnit = _unit(CombatUnit.Kind.ARCHER, false, Vector2i(7, 4))
+	var units: Array[CombatUnit] = [archer, target]
+	var grid: CombatGrid = CombatGrid.new()
+	grid.units = units
+	grid.water_cells = [Vector2i(4, 4)]
+	var preview: CombatChecks.AttackPreview = grid.attack_preview(archer, target)
+	_check(preview.mode == CombatChecks.RollMode.DISADVANTAGE and is_equal_approx(preview.chance, 0.5625)
+		and "물 위: 불리" in preview.reasons, "물 위 아군 궁수의 원거리 공격은 불리 (75% → 56.25%) " + str(preview.reasons))
+	grid.water_cells = [Vector2i(7, 4)]
+	preview = grid.attack_preview(archer, target)
+	_check(preview.mode == CombatChecks.RollMode.NORMAL and preview.reasons.is_empty(), "물 위의 대상을 겨누는 쪽은 불리 아님")
+	grid.water_cells = [Vector2i(4, 4)]
+	grid.heights = {Vector2i(4, 4): 2}
+	preview = grid.attack_preview(archer, target)
+	_check(preview.mode == CombatChecks.RollMode.NORMAL and preview.reasons.size() == 2,
+		"고지대 유리와 물 위 불리가 겹치면 일반 " + str(preview.reasons))
+	grid.heights = {}
+	target.cell = Vector2i(5, 4)
+	preview = grid.attack_preview(archer, target, "bow_bash")
+	_check(preview.mode == CombatChecks.RollMode.DISADVANTAGE and preview.reasons == PackedStringArray(["물 위: 불리"]),
+		"근접 동작(활 후려치기)도 물 위면 불리 " + str(preview.reasons))
+	grid.water_cells = [Vector2i(5, 4)]
+	preview = grid.attack_preview(target, archer)
+	_check(preview.mode == CombatChecks.RollMode.DISADVANTAGE and "물 위: 불리" in preview.reasons,
+		"물 위의 적도 같은 불리 " + str(preview.reasons))
+
+
+## 환경요소 6장: 실제 명중굴림(기본 공격·휩쓸기·기회 공격)의 물 위 불리, 범위 불 장판, 독·독안개, 이동 안내.
+func _test_water_actions() -> void:
+	var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 4))
+	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 7))
+	var barbarian: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(5, 4))
+	var units: Array[CombatUnit] = [warrior, archer, barbarian]
+	var turns: CombatTurns = CombatTurns.new()
+	var actions: CombatActions = CombatActions.new()
+	actions.initialize(units, turns)
+	actions.grid.water_cells = [Vector2i(4, 4)]
+	ScriptedDice.arrange_turns(turns, units, [warrior, archer, barbarian])
+	actions.dice = ScriptedDice.new([9, 5, 2], ScriptedDice.attack_sides(warrior, 2) + ScriptedDice.damage_sides(warrior))
+	_check(await actions.attack(warrior, barbarian) and actions.last_attack.mode == CombatChecks.RollMode.DISADVANTAGE
+		and actions.last_attack.rolls == [9, 5] and actions.last_attack.selected_roll == 5,
+		"물 위 전사의 기본 공격은 두 번 굴려 낮은 값")
+	# 휩쓸기도 _perform_attack를 지난다. 같은 물 칸에서 행동을 다시 주고 낮은 눈을 고르는지 본다.
+	warrior.action_left = 1
+	actions.dice = ScriptedDice.new([9, 5, 4], ScriptedDice.attack_sides(warrior, 2) + ScriptedDice.damage_sides(warrior, "sweep"))
+	_check(await actions.sweep(warrior, Vector2i(5, 4)) and actions.last_attack.mode == CombatChecks.RollMode.DISADVANTAGE
+		and actions.last_attack.rolls == [9, 5] and actions.last_attack.selected_roll == 5,
+		"물 위 전사의 휩쓸기도 두 번 굴려 낮은 값")
+	# 물 위의 야만인이 물러나는 궁수에게 기회 공격한다. 절대실패 두 면이라 빗나가고, 궁수는 반격이 없다.
+	warrior.cell = Vector2i(0, 0)
+	archer.cell = Vector2i(4, 5)
+	barbarian.cell = Vector2i(5, 5)
+	actions.grid.water_cells = [Vector2i(5, 5)]
+	turns.select_unit(archer)
+	actions.dice = ScriptedDice.new([1, 1], ScriptedDice.attack_sides(barbarian, 2))
+	_check(await actions.move_to(archer, Vector2i(3, 5)) and actions.last_attack != null
+		and actions.last_attack.mode == CombatChecks.RollMode.DISADVANTAGE and actions.last_attack.rolls == [1, 1],
+		"물 위 반응자의 기회 공격도 불리")
+	actions.grid.water_cells = [Vector2i(7, 7), Vector2i(2, 3)]
+	_check(not actions.create_ground(barbarian, Vector2i(7, 7), "burn") and actions.get_grounds().is_empty(),
+		"물 칸에는 불 장판이 생기지 않음")
+	_check(actions.create_ground(barbarian, Vector2i(7, 7), "poison"), "물 칸의 독 장판은 그대로")
+	_check(actions.create_ground(barbarian, Vector2i(8, 8), "burn"), "물이 아닌 칸의 불 장판은 그대로")
+	_check(actions.water_note(Vector2i(7, 7)).contains("물: 명중굴림 불리")
+		and actions.water_note(Vector2i(7, 7)).contains("화상 해제") and actions.water_note(Vector2i(8, 8)).is_empty(),
+		"이동 도착 칸이 물이면 명중굴림 불리와 화상 규칙을 함께 안내: " + actions.water_note(Vector2i(7, 7)))
+	# 반경 1(맨해튼) 영역에 물 칸과 마른 칸이 함께 있으면 불 장판은 물 칸만 빠진다.
+	var center: Vector2i = Vector2i(6, 6)
+	actions.grid.water_cells = [center, Vector2i(7, 6)]
+	var area: Array[Vector2i] = actions.grid.area_cells(center, 1)
+	for cell: Vector2i in area:
+		actions.create_ground(barbarian, cell, "burn")
+	var burn_cells: Array[Vector2i] = []
+	for ground: CombatActions.Ground in actions.get_grounds():
+		if ground.kind == "burn":
+			burn_cells.append(ground.cell)
+	_check(center in area and Vector2i(7, 6) in area and Vector2i(6, 5) in area
+		and center not in burn_cells and Vector2i(7, 6) not in burn_cells
+		and Vector2i(5, 6) in burn_cells and Vector2i(6, 5) in burn_cells and Vector2i(6, 7) in burn_cells,
+		"반경 영역의 불 장판은 물 칸만 빠지고 나머지 칸에는 생긴다 " + str(burn_cells))
+	turns.turn_started.disconnect(actions._on_turn_started)
+	var spider: CombatUnit = _unit(CombatUnit.Kind.FOG_SPIDER, false, Vector2i(2, 2))
+	var fog_units: Array[CombatUnit] = [spider, _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(9, 9))]
+	var fog_turns: CombatTurns = CombatTurns.new()
+	var fog_actions: CombatActions = CombatActions.new()
+	fog_actions.initialize(fog_units, fog_turns)
+	fog_actions.grid.water_cells = [Vector2i(2, 3)]
+	ScriptedDice.arrange_turns(fog_turns, fog_units, [spider])
+	fog_actions.dice = ScriptedDice.new([], []).then_seeded()
+	_check(fog_actions.cast_fog(spider, Vector2i(2, 3)) and Vector2i(2, 3) in fog_actions.fog_cells(),
+		"독안개 영역은 물 칸을 그대로 포함")
+	fog_turns.turn_started.disconnect(fog_actions._on_turn_started)
 
 
 ## 기획서 7장: 몬스터 AC와 장비 없는 전사·궁수와의 명중률을 실제 미리보기로 확인한다.
