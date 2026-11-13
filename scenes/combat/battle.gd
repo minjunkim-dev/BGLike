@@ -632,6 +632,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				if prop.cell != origin:
 					map.prop_impact(origin, false)
 			selection.finish_execution()
+			_offer_moving_shot(actor)
 		_update_turn_ui()
 		return
 	if not candidates.is_empty():
@@ -651,16 +652,33 @@ func _select_move_cell(cell: Vector2i) -> void:
 	var actor: CombatUnit = turns.current_unit
 	var path: Array[Vector2i] = []
 	var jumping: bool = selection.selected_action == "jump"
+	# 무빙샷 도약도 점프처럼 착지 칸을 먼저 보고 같은 칸을 다시 우클릭하면 뛴다(#528).
+	var leaping: bool = selection.selected_action == "moving_shot"
 	if actor != null and actor.is_ally:
-		if jumping and actions.jump_cells(actor).has(cell):
+		if leaping:
+			if cell in actions.moving_shot_cells(actor):
+				path = [cell]
+		elif jumping and actions.jump_cells(actor).has(cell):
 			path = actions.grid.jump_path(actor, cell)
 		elif not jumping and actions.can_move(actor, cell):
 			path = actions.grid.path_to(actor, cell)
 	if selection.select_move(cell, path):
-		var executed: bool = await actions.jump_to(actor, cell) if jumping else await actions.move_to(actor, cell)
+		var executed: bool
+		if leaping:
+			executed = await actions.moving_shot(actor, cell)
+		elif jumping:
+			executed = await actions.jump_to(actor, cell)
+		else:
+			executed = await actions.move_to(actor, cell)
 		if executed:
 			selection.finish_execution()
 	_update_turn_ui()
+
+
+## 무빙샷을 쓸 수 있게 되면 선택을 도약으로 바꿔 도착 칸을 보인다(#528).
+func _offer_moving_shot(actor: CombatUnit) -> void:
+	if actor != null and actor.moving_shot_ready and actor == turns.current_unit:
+		selection.selected_action = "moving_shot"
 
 
 func preview_enemy(target: CombatUnit) -> bool:
@@ -694,17 +712,18 @@ func _execute_target(target: CombatUnit) -> void:
 	var actor: CombatUnit = turns.current_unit
 	var action: String = selection.begin_execution()
 	match action:
-		"attack", "shock":
-			await actions.attack(actor, target, action == "shock")
+		"attack":
+			await actions.attack(actor, target)
 		"cross_slash":
 			await actions.cross_slash(actor, target)
 		"steel_charge":
 			await actions.steel_charge(actor, target)
-		"mark":
-			actions.mark(actor, target)
+		"bow_bash":
+			await actions.bow_bash(actor, target)
 		"shove":
 			actions.shove(actor, target)
 	selection.finish_execution()
+	_offer_moving_shot(actor)
 	_update_turn_ui()
 
 
@@ -797,7 +816,6 @@ func _update_turn_ui() -> void:
 	if sweeping:
 		sweep_targets = actions.sweep_targets(turns.current_unit, selection.preview_cell)
 	for unit: CombatUnit in units:
-		unit.has_mark = actions.is_marked(unit)
 		if not unit.is_moving:
 			unit.position = map.map_to_local(unit.cell)
 			unit.floor_offset_y = map.map_to_surface(unit.cell).y - unit.position.y
@@ -816,6 +834,8 @@ func _update_turn_ui() -> void:
 			movement_cells.assign(actions.reachable_cells(turns.current_unit).keys())
 		elif selection.selected_action == "jump":
 			movement_cells.assign(actions.jump_cells(turns.current_unit).keys())
+		elif selection.selected_action == "moving_shot":
+			movement_cells.assign(actions.moving_shot_cells(turns.current_unit))
 		elif sweeping:
 			movement_cells.assign(actions.grid.sweep_cells(turns.current_unit.cell, selection.preview_cell))
 		elif selection.selected_action == "sweep":
@@ -837,12 +857,11 @@ func _update_turn_ui() -> void:
 		unit.is_occluded = map.occludes(unit.cell,
 			map.to_local(unit.to_global(Vector2(0, unit.floor_offset_y - 10))))
 	if selection.preview_target != null:
+		# 고른 동작의 명중 능력치·근접 여부를 따른다(활 후려치기는 힘 d6, 원거리 불리 없음).
 		var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(
-			turns.current_unit, selection.preview_target)
+			turns.current_unit, selection.preview_target, selection.selected_action)
 		hud.show_attack_preview(selection.preview_target, preview)
-		if selection.selected_action == "mark":
-			hud.show_target_note(tr("표식 대상") if actions.can_target(turns.current_unit, selection.preview_target, "mark") else tr("표식을 사용할 수 없음"))
-		elif selection.selected_action == "shove":
+		if selection.selected_action == "shove":
 			if actions.can_target(turns.current_unit, selection.preview_target, "shove"):
 				var cell: Vector2i = actions.grid.push_destination(turns.current_unit.cell, selection.preview_target.cell)
 				var landing: String = actions.shove_landing(selection.preview_target, cell)

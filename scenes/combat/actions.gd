@@ -200,26 +200,35 @@ func attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
 	if not can_attack_prop(actor, prop):
 		return false
 	busy = true
+	actor.moving_shot_ready = false
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	last_damage_rolls.clear()
+	# 나무 상자·바위 공격도 기본 공격이라 애기살 1발을 쓴다. 바위는 피해 굴림이 없다.
+	var aegisal: bool = _spend_aegisal(actor, "attack")
 	if prop.kind == "rock":
 		last_damage = 0
 		_roll_rock(actor, prop)
+		_arm_moving_shot(actor)
 		busy = false
 		changed.emit()
 		return true
 	var prop_ability: CombatUnit.Ability = CombatActionRules.damage_ability(actor, "attack")
-	last_damage_rolls.append(CombatChecks.damage_roll(
-		actor.get_ability_sides(prop_ability), dice, actor.get_ability_modifier(prop_ability)))
+	for roll: int in range(2 if aegisal else 1):
+		last_damage_rolls.append(CombatChecks.damage_roll(
+			actor.get_ability_sides(prop_ability), dice, actor.get_ability_modifier(prop_ability)))
 	if (prop not in grid.props or not is_instance_valid(actor) or actor not in units
 		or actor.hit_points <= 0 or is_over()):
 		busy = false
 		changed.emit()
 		return false
 	last_damage = actor.get_damage_bonus()
-	for rolled: int in last_damage_rolls:
-		last_damage += rolled
+	if aegisal:
+		last_damage += int(last_damage_rolls.max())
+	else:
+		for rolled: int in last_damage_rolls:
+			last_damage += rolled
 	last_damage = maxi(1, last_damage)
+	_arm_moving_shot(actor)
 	prop.hit_points = maxi(0, prop.hit_points - last_damage)
 	if prop.hit_points == 0:
 		grid.props.erase(prop)
@@ -554,14 +563,6 @@ func create_ground(source: CombatUnit, cell: Vector2i, kind: String) -> bool:
 	return true
 
 
-## 살아 있는 유닛이 이 대상을 표식으로 지정했는지.
-func is_marked(target: CombatUnit) -> bool:
-	for source: CombatUnit in units:
-		if source.hit_points > 0 and source.marked_target == target:
-			return true
-	return false
-
-
 ## 남은 적이 없으면 승리다.
 func is_victory() -> bool:
 	for unit: CombatUnit in units:
@@ -570,7 +571,7 @@ func is_victory() -> bool:
 	return true
 
 
-## 전투 불능 전환. 표식, 턴 순서와 표시를 함께 정리한다.
+## 전투 불능 전환. 상태 이상, 턴 순서와 표시를 함께 정리한다.
 func incapacitate(target: CombatUnit) -> void:
 	var revision: int = _revision
 	target.hit_points = 0
@@ -585,8 +586,6 @@ func incapacitate(target: CombatUnit) -> void:
 			ground_messages.append(tr("%s %s 장판 해제: %d, %d") % [target.get_display_name(),
 				tr("불") if ground.kind == "burn" else tr("독"), ground.cell.x, ground.cell.y])
 	for unit: CombatUnit in units:
-		if unit.marked_target == target:
-			unit.marked_target = null
 		if unit.stun_source == target:
 			unit.is_stunned = false
 		for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
@@ -697,6 +696,7 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	if not cells.has(destination):
 		return false
 	busy = true
+	actor.moving_shot_ready = false
 	changed.emit()
 	for reactor: CombatUnit in jump_reactors(actor, destination):
 		await _opportunity_attack(reactor, actor)
@@ -790,10 +790,8 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 			return CombatActionRules.has_uses(actor, action) and actor.action_left > 0 and actor.bonus_action_left > 0
 		"steel_charge":
 			return CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0 and actor.movement_left >= 1
-		"shock":
-			return CombatActionRules.has_uses(actor, action) and actor.action_left > 0
-		"mark":
-			return CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
+		"bow_bash":
+			return actor.bonus_action_left > 0
 		"shove":
 			return actor.bonus_action_left > 0
 		"pull":
@@ -862,7 +860,9 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 			return not reachable_cells(actor).is_empty()
 		"jump":
 			return not jump_cells(actor).is_empty()
-		"attack", "cross_slash", "steel_charge", "shock", "mark", "shove", "pull":
+		"moving_shot":
+			return not moving_shot_cells(actor).is_empty()
+		"attack", "cross_slash", "steel_charge", "bow_bash", "shove", "pull":
 			for target: CombatUnit in units:
 				if can_target(actor, target, action):
 					return true
@@ -873,7 +873,7 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 		"second_wind", "potion":
 			return (CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
 				and actor.hit_points < actor.get_max_hit_points())
-		"holy_veil":
+		"holy_veil", "aegisal":
 			return CombatActionRules.belongs_to(actor, action) and actor.bonus_action_left > 0
 		"battle_cry":
 			return CombatActionRules.has_uses(actor, action) and actor.action_left > 0
@@ -936,6 +936,7 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 				ground_cells.append(ground.cell)
 	var path: Array[Vector2i] = grid.path_to(actor, destination, ground_cells)
 	busy = true
+	actor.moving_shot_ready = false
 	changed.emit()
 	var moved: int = 0
 	for step: Vector2i in path:
@@ -965,16 +966,65 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 	return true
 
 
-func attack(actor: CombatUnit, target: CombatUnit, shock: bool = false) -> bool:
-	var action: String = "shock" if shock else "attack"
-	if not _can_act(actor) or not can_target(actor, target, action):
+func attack(actor: CombatUnit, target: CombatUnit) -> bool:
+	if not _can_act(actor) or not can_target(actor, target, "attack"):
 		return false
 	busy = true
+	actor.moving_shot_ready = false
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
-	if shock:
-		CombatActionRules.spend_use(actor, action)
 	changed.emit()
-	await _perform_attack(actor, target, action)
+	await _perform_attack(actor, target, "attack")
+	_arm_moving_shot(actor)
+	_finish()
+	return true
+
+
+## 무빙샷: 행동으로 한 원거리 공격(지금은 기본 공격)을 마친 뒤, 이번 턴 첫 공격이면 도약할 수 있다 (궁수 문서).
+func _arm_moving_shot(actor: CombatUnit) -> void:
+	if (not is_instance_valid(actor) or actor.hit_points <= 0 or not CombatActionRules.belongs_to(actor, "moving_shot")
+			or actor.moving_shot_spent):
+		return
+	actor.moving_shot_spent = true
+	actor.moving_shot_ready = not is_over()
+
+
+## 무빙샷으로 도약할 수 있는 칸: 상하좌우 1칸의 막히지 않은 빈 바닥, 높이 차 1 이하.
+func moving_shot_cells(actor: CombatUnit) -> Array[Vector2i]:
+	if actor == null or not actor.moving_shot_ready or not _can_act(actor):
+		return []
+	return grid.empty_neighbors(actor.cell)
+
+
+## 이동력을 쓰지 않고 기회 공격 없이 1칸 도약한다. 착지는 물 칸·장판을 평소대로 처리한다.
+func moving_shot(actor: CombatUnit, cell: Vector2i) -> bool:
+	if cell not in moving_shot_cells(actor):
+		return false
+	busy = true
+	actor.moving_shot_ready = false
+	changed.emit()
+	if jump_animation.is_valid():
+		await jump_animation.call(actor, cell)
+	_land(actor, cell)
+	logged.emit(tr("%s 무빙샷: %d, %d로 도약") % [actor.get_display_name(), cell.x, cell.y])
+	_finish()
+	return true
+
+
+## 활 후려치기: 보조 행동으로 인접한 적을 힘 d6 명중굴림·피해. 명중하고 대상이 살아 있으면 1칸 밀친다(내성 없음).
+## 밀려날 칸이 막혔으면 피해만 준다. 밀침은 강철 돌진과 같은 착지(낙하·낭떠러지·장판)다.
+func bow_bash(actor: CombatUnit, target: CombatUnit) -> bool:
+	if not _can_act(actor) or not can_target(actor, target, "bow_bash"):
+		return false
+	busy = true
+	actor.moving_shot_ready = false
+	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
+	changed.emit()
+	if await _perform_attack(actor, target, "bow_bash") and not is_over() and target.hit_points > 0:
+		if grid.can_shove(actor, target):
+			_land(target, grid.push_destination(actor.cell, target.cell))
+			logged.emit(tr("%s 활 후려치기: %s 1칸 밀침") % [actor.get_display_name(), target.get_display_name()])
+		else:
+			logged.emit(tr("%s 활 후려치기: 밀려날 칸이 막혀 피해만") % actor.get_display_name())
 	_finish()
 	return true
 
@@ -1031,6 +1081,7 @@ func spawn_spiderling(actor: CombatUnit) -> bool:
 func use_self(actor: CombatUnit, action: String) -> bool:
 	if not can_use(actor, action) or action not in CombatActionRules.SELF_TARGET:
 		return false
+	actor.moving_shot_ready = false
 	actor.spend_resource(CombatActionRules.resource_of(action))
 	CombatActionRules.spend_use(actor, action)
 	match action:
@@ -1056,6 +1107,11 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 					feedback.emit(unit, tr("명중 +%d") % bonus)
 			logged.emit(tr("%s 전투의 함성: 의지 d%d [%d] · 아군 명중 +%d, %d턴") % [actor.get_display_name(),
 				will_sides, bonus, bonus, CombatActionRules.BATTLE_CRY_TURNS])
+		"aegisal":
+			# 상한 없이 누적한다(궁수 문서). 기본 공격마다 1발을 쓴다.
+			actor.aegisal_left += 2
+			logged.emit(tr("%s 애기살 급조: 애기살 %d발") % [actor.get_display_name(), actor.aegisal_left])
+			feedback.emit(actor, tr("애기살 %d발") % actor.aegisal_left)
 		"disengage":
 			actor.disengaged = true
 			logged.emit(tr("%s 물러서며 쏘기: 이번 턴 이동은 기회 공격 제외") % actor.get_display_name())
@@ -1131,17 +1187,6 @@ func steel_charge(actor: CombatUnit, target: CombatUnit) -> bool:
 	return true
 
 
-func mark(actor: CombatUnit, target: CombatUnit) -> bool:
-	if not _can_act(actor) or not can_target(actor, target, "mark"):
-		return false
-	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
-	CombatActionRules.spend_use(actor, "mark")
-	actor.marked_target = target
-	logged.emit(tr("%s 표식: %s") % [actor.get_display_name(), target.get_display_name()])
-	changed.emit()
-	return true
-
-
 func pull(actor: CombatUnit, target: CombatUnit) -> bool:
 	if not _can_act(actor) or not can_target(actor, target, "pull"):
 		return false
@@ -1164,6 +1209,7 @@ func pull(actor: CombatUnit, target: CombatUnit) -> bool:
 func shove(actor: CombatUnit, target: CombatUnit) -> bool:
 	if not _can_act(actor) or not can_target(actor, target, "shove"):
 		return false
+	actor.moving_shot_ready = false
 	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
 	last_attack = null
 	last_save = null
@@ -1230,7 +1276,7 @@ func _counter(reactor: CombatUnit, attacker: CombatUnit) -> void:
 		await attack_animation.call(reactor, attacker)
 	if reactor.hit_points <= 0 or attacker.hit_points <= 0 or is_over():
 		return
-	_deal_damage(reactor, attacker, "counter", false, false)
+	_deal_damage(reactor, attacker, "counter", false)
 
 
 func _ask_reaction(reactor: CombatUnit, kind: String, prompt: String) -> bool:
@@ -1272,14 +1318,16 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> b
 		await attack_animation.call(actor, target)
 	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
 		return false
-	var attack_ability: CombatUnit.Ability = actor.get_attack_ability()
+	var attack_ability: CombatUnit.Ability = CombatActionRules.hit_ability(actor, action)
 	var attack_sides: int = actor.get_ability_sides(attack_ability)
 	last_damage = 0
 	last_damage_rolls.clear()
 	last_save = null
-	var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target)
+	var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target, action)
 	var hit_bonus: int = actor.get_hit_bonus()
 	var armor_class: int = grid.armor_class(target)
+	# 애기살은 기본 공격마다 명중과 관계없이 1발을 쓴다(궁수 문서).
+	var aegisal: bool = _spend_aegisal(actor, action)
 	last_attack = CombatChecks.hit_roll(attack_sides, hit_bonus, armor_class, preview.mode, dice,
 		actor.get_ability_modifier(attack_ability))
 	await _show_roll(CombatDiceRoll.hit(actor, attack_sides, last_attack, last_attack.added(), armor_class))
@@ -1298,20 +1346,19 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> b
 		feedback.emit(target, tr("빗나감"))
 		await _counter(target, actor)
 		return false
-	_deal_damage(actor, target, action, actor.marked_target == target, false)
-	if action == "shock" and target.hit_points > 0:
-		if target.is_boss():
-			logged.emit(tr("%s 기절 면역") % target.get_display_name())
-			feedback.emit(target, tr("기절 면역"))
-		else:
-			apply_status(actor, target, "stun")
-			logged.emit(tr("%s 충격 화살: 명중하여 기절") % target.get_display_name())
-			feedback.emit(target, tr("기절"))
+	_deal_damage(actor, target, action, false, aegisal)
+	return true
+
+
+## 기본 공격이면 애기살 1발을 쓰고 썼는지 돌려준다. 남은 발수가 없거나 다른 동작이면 false다.
+func _spend_aegisal(actor: CombatUnit, action: String) -> bool:
+	if action != "attack" or actor.aegisal_left <= 0:
+		return false
+	actor.aegisal_left -= 1
 	return true
 
 
 ## 내성굴림 피해형 동작의 대상 하나. 대상이 시전 때 정한 DC에 내성굴림하고, 성공하면 피해가 절반이다 (4-1).
-## 명중굴림이 없으므로 명중에 붙는 표식 추가 피해는 쓰지 않는다.
 func _perform_save(actor: CombatUnit, target: CombatUnit, action: String, dc: int) -> void:
 	if attack_animation.is_valid():
 		await attack_animation.call(actor, target)
@@ -1324,7 +1371,7 @@ func _perform_save(actor: CombatUnit, target: CombatUnit, action: String, dc: in
 	await _show_roll(_save_roll(target, action, dc))
 	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
 		return
-	_deal_damage(actor, target, action, false, saved.success)
+	_deal_damage(actor, target, action, saved.success)
 
 
 ## 대상이 동작의 내성 능력치로 DC에 내성굴림하고 로그를 남긴다. 결과는 last_save에도 둔다 (4-1).
@@ -1346,17 +1393,18 @@ func _save_roll(target: CombatUnit, action: String, dc: int) -> CombatDiceRoll:
 
 
 ## 피해는 명중·내성 굴림과 무관하게 피해 능력치 주사위를 새로 굴린다 (능력치 기획서 4-9).
-func _deal_damage(actor: CombatUnit, target: CombatUnit, action: String, has_mark_damage: bool, halved: bool) -> void:
-	assert(not (has_mark_damage and halved))
+func _deal_damage(actor: CombatUnit, target: CombatUnit, action: String, halved: bool, best_of_two: bool = false) -> void:
 	var damage_ability: CombatUnit.Ability = CombatActionRules.damage_ability(actor, action)
 	var damage_sides: int = actor.get_ability_sides(damage_ability)
 	last_damage_rolls.append(CombatChecks.damage_roll(damage_sides, dice, actor.get_ability_modifier(damage_ability)))
-	if has_mark_damage:
-		last_damage_rolls.append(dice.roll(6))
+	# 애기살: 피해 굴림을 두 번 해서 높은 값을 쓴다.
+	if best_of_two:
+		last_damage_rolls.append(CombatChecks.damage_roll(damage_sides, dice, actor.get_ability_modifier(damage_ability)))
 	var damage_bonus: int = CombatActionRules.damage_bonus(actor, action)
-	var rolled_total: int = damage_bonus
-	for rolled: int in last_damage_rolls:
-		rolled_total += rolled
+	var rolled_total: int = damage_bonus + (int(last_damage_rolls.max()) if best_of_two else 0)
+	if not best_of_two:
+		for rolled: int in last_damage_rolls:
+			rolled_total += rolled
 	if action == "sweep":
 		# 휩쓸기 고유 규칙: ⌈굴림값 ÷ 2⌉ + 기타 가산치. 굴림값은 눈 + 주사위 레벨이라 레벨을 따로 더하지 않는다.
 		# #407 질문 4(피해식에 레벨이 두 번 들어가는 문제)의 답이 오면 성장 구현 때 다시 확인한다. 지금 레벨은 0이다.
@@ -1372,10 +1420,10 @@ func _deal_damage(actor: CombatUnit, target: CombatUnit, action: String, has_mar
 		logged.emit(tr("%s 피해 (반격, 반드시 명중): %s d%d %s %+d = %d · HP %d") % [target.get_display_name(),
 			CombatUnit.ability_name(damage_ability), damage_sides, str(last_damage_rolls),
 			damage_bonus, last_damage, target.hit_points])
-	elif has_mark_damage:
-		logged.emit(tr("%s 피해 (표식 추가): %s d%d %s + d6 %s %+d = %d · HP %d") % [target.get_display_name(),
-			CombatUnit.ability_name(damage_ability), damage_sides, str([last_damage_rolls[0]]),
-			str([last_damage_rolls[1]]), damage_bonus, last_damage, target.hit_points])
+	elif best_of_two:
+		logged.emit(tr("%s 피해 (애기살, 높은 값): %s d%d %s %+d = %d · HP %d") % [target.get_display_name(),
+			CombatUnit.ability_name(damage_ability), damage_sides, str(last_damage_rolls),
+			damage_bonus, last_damage, target.hit_points])
 	elif halved:
 		logged.emit(tr("%s 피해 (내성 성공 절반): %s d%d %s %+d = %d → %d · HP %d") % [target.get_display_name(),
 			CombatUnit.ability_name(damage_ability), damage_sides, str(last_damage_rolls),

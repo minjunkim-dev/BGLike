@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://6mpt12ge32rb"
-path="res://.godot/imported/disengage.png-fcd2030433024126c828fd048742981e.ctex"
+uid="uid://tm8p0p2lp6op"
+path="res://.godot/imported/bow_bash.png-c624b99934d5ef19ed56803fe4d92b93.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://scenes/combat/art/icons/skills/disengage.png"
-dest_files=["res://.godot/imported/disengage.png-fcd2030433024126c828fd048742981e.ctex"]
+source_file="res://scenes/combat/art/icons/skills/bow_bash.png"
+dest_files=["res://.godot/imported/bow_bash.png-c624b99934d5ef19ed56803fe4d92b93.ctex"]
 
 [params]
 

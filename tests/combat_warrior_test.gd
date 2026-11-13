@@ -94,8 +94,8 @@ func _test_stats() -> void:
 	barbarian.begin_turn()
 	_check(warrior.movement_left == 3 and archer.movement_left == 6 and barbarian.movement_left == 6,
 		"이동력: 전사 3, 궁수와 풋내기 야만인 6")
-	_check(warrior.get_damage_bonus() == 0 and archer.get_damage_bonus() == 1,
-		"전사의 기본 피해 보정 0, 궁수 +1은 질문 3까지 유지")
+	_check(warrior.get_damage_bonus() == 0 and archer.get_damage_bonus() == 0,
+		"전사와 궁수(#528)의 기본 피해 보정 0")
 	warrior.armor = {"stats": {"max_hit_points": 2}}
 	_check(warrior.get_max_hit_points() == 13, "장비 HP는 식에 더함")
 
@@ -124,7 +124,7 @@ func _test_combat_uses() -> void:
 	warrior.battle_cry_left = 0
 	warrior.cross_slash_left = 0
 	warrior.steel_charge_left = 0
-	archer.mark_left = 0
+	warrior.second_wind_left = 0
 	_check("전투마다 1회 · 0회 남음" in CombatActionRules.details(warrior, "battle_cry"), "다 쓰면 0회 남음")
 	_check(f.actions.unavailable_reason(warrior, "battle_cry") == "이번 전투의 횟수를 모두 씀", "전투마다 횟수 소진 이유")
 	_check(not f.actions.can_use(warrior, "battle_cry"), "횟수를 다 쓰면 비활성")
@@ -134,10 +134,10 @@ func _test_combat_uses() -> void:
 	archer.begin_stage(false)
 	_check(warrior.battle_cry_left == 1 and warrior.cross_slash_left == 1 and warrior.steel_charge_left == 1,
 		"새 전투(같은 막의 다음 스테이지·재시작)에서 전투마다 횟수 회복")
-	_check(archer.mark_left == 0, "막당 횟수는 같은 막의 다음 전투에서 회복하지 않음")
+	_check(warrior.second_wind_left == 0, "막당 횟수는 같은 막의 다음 전투에서 회복하지 않음")
 	_check(warrior.shield_points == 0 and warrior.shield_turns == 0, "방어막은 전투 종료에 소멸")
-	archer.begin_stage(true)
-	_check(archer.mark_left == 1, "막당 횟수는 막 시작에 회복")
+	warrior.begin_stage(true)
+	_check(warrior.second_wind_left == 1, "막당 횟수는 막 시작에 회복")
 
 
 func _test_compound_costs() -> void:

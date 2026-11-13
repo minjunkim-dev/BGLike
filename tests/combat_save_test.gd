@@ -175,11 +175,8 @@ func _step(battle: Node2D, points: Array[Dictionary]) -> bool:
 	for target: CombatUnit in actions.units:
 		if target.hit_points <= 0 or target.is_ally:
 			continue
-		if actions.can_target(actor, target, "mark") and actor.marked_target == null:
-			actions.mark(actor, target)
-			return true
 		if actions.can_target(actor, target, "attack"):
-			await actions.attack(actor, target, actions.can_target(actor, target, "shock"))
+			await actions.attack(actor, target)
 			return true
 	for heal: String in ["second_wind", "potion"]:
 		if actor.hit_points * 2 <= actor.get_max_hit_points() and actions.can_use(actor, heal):
@@ -366,7 +363,6 @@ func _test_rejects_bad_saves() -> void:
 			var extra: Dictionary = state.units[enemy].duplicate(true)
 			extra.kind = CombatUnit.Kind.MOTHER_SPIDER
 			state.units.append(extra),
-		"없는 유닛을 가리키는 표식": func(state: Dictionary) -> void: state.units[0].marked_target = 99,
 		"모르는 상태 이상": func(state: Dictionary) -> void: state.units[0].statuses = [["curse", 0, 1, 0]],
 		"독 DC가 정수가 아님": func(state: Dictionary) -> void: state.units[0].statuses = [["poison", 0, 1, 4.0]],
 		"독 DC가 없음": func(state: Dictionary) -> void: state.units[0].statuses = [["poison", 0, 1, 0]],

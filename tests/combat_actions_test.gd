@@ -691,8 +691,8 @@ func _test_crate_boundaries() -> void:
 		"근접 공격은 높이 차2의 상자를 공격하지 않는다")
 	actor.kind = CombatUnit.Kind.ARCHER
 	f.actions.dice = _dice_for([2], [20])
-	_check(f.actions.attack_prop(actor, target) and target.hit_points == 3,
-		"원거리 공격은 높이 차2에서도 솜씨 d20의2+현재 피해 보정1을 준다")
+	_check(f.actions.attack_prop(actor, target) and target.hit_points == 4,
+		"원거리 공격은 높이 차2에서도 솜씨 d20의2+피해 보정0(#528)을 준다")
 	actor.begin_turn()
 	f.actions.initialize(f.units, f.turns)
 	var replacement: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "crate")
@@ -826,7 +826,7 @@ func _run() -> void:
 	await _test_archer_balance()
 	_test_self_actions()
 	_test_shove()
-	await _test_mark_and_stun()
+	await _test_stun()
 	await _test_stun_source_incapacitation()
 	await _test_stunned_caster_expiry()
 	await _test_deferred_stun_caster()
@@ -889,7 +889,7 @@ func _run() -> void:
 	await _test_pit_scene_victory()
 	await _test_isometric_unit_occlusion()
 	await _test_terrain_hidden_unit_outline()
-	await _test_scene_shock()
+	await _test_scene_bow_bash()
 	for f: Fixture in _fixtures:
 		for connection: Dictionary in f.actions.reaction_requested.get_connections():
 			f.actions.reaction_requested.disconnect(connection["callable"] as Callable)
@@ -978,12 +978,12 @@ func _test_spin_attacks() -> void:
 	boss.begin_turn()
 	f.turns.current_unit = boss
 	f.units[1].cell = Vector2i(5, 3)
-	# 소비 순서: 전사 힘 d20 내성·힘 d12 피해 → 궁수 힘 d6 내성·힘 d12 피해. 시전자는 굴리지 않는다.
-	f.actions.dice = _dice_for([10, 6, 2, 6], [20, 12, 6, 12])
+	# 소비 순서: 전사 민첩 d8 내성·힘 d12 피해 → 궁수 민첩 d12 내성·힘 d12 피해(#528). 시전자는 굴리지 않는다.
+	f.actions.dice = _dice_for([8, 6, 10, 6], [8, 12, 12, 12])
 	_check(await f.actions.spin(boss), "회전회오리 실행")
-	_check(f.units[0].hit_points == 7 and f.units[1].hit_points == 1,
-		"전사는 힘 내성 10이 DC 10과 같아 성공해 피해 6+2의 절반 4, 궁수는 2로 실패해 피해 8")
-	_check(f.actions.last_save.rolls == [2] and f.actions.last_attack == null
+	_check(f.units[0].hit_points == 3 and f.units[1].hit_points == 5,
+		"전사는 민첩 내성 8로 실패해 피해 6+2, 궁수는 10이 DC 10과 같아 성공해 피해 8의 절반 4")
+	_check(f.actions.last_save.rolls == [10] and f.actions.last_attack == null
 		and f.units[0].cell == Vector2i(4, 4) and f.units[1].cell == Vector2i(5, 3),
 		"회전회오리는 명중굴림 없이 대상만 굴리고 대상을 밀어내지 않음")
 	_check(boss.action_left == 0 and boss.bonus_action_left == 1 and boss.reaction_left == 1
@@ -1016,7 +1016,7 @@ func _test_spin_height_targets() -> void:
 	f.actions.attack_animation = func(_actor: CombatUnit, target: CombatUnit) -> void:
 		attacked.append(target)
 		await process_frame
-	f.actions.dice = _dice_for([1, 1], [6, 12])
+	f.actions.dice = _dice_for([1, 1], [12, 12])
 	_check(await f.actions.spin(boss) and attacked == [f.units[1]] and f.units[1].hit_points == 6
 		and f.units[0].hit_points == 11 and boss.action_left == 0,
 		"회전회오리는 높이1 대상만 실제 판정하고 높이2 대상·기존 유닛 순서·행동1 소비를 보존")
@@ -1037,7 +1037,7 @@ func _test_spin_height_recheck() -> void:
 		attacked.append(target)
 		f.actions.grid.heights[f.units[1].cell] = 2
 		await process_frame
-	f.actions.dice = _dice_for([1, 1], [20, 12])
+	f.actions.dice = _dice_for([1, 1], [8, 12])
 	_check(await f.actions.spin(boss) and attacked == [f.units[0]]
 		and f.units[0].hit_points == 8 and f.units[1].hit_points == 9,
 		"첫 공격 대기 뒤 두 번째 대상의 높이가 바뀌면 주사위·피해 없이 제외")
@@ -1115,17 +1115,17 @@ func _test_spin_reactions_and_reuse() -> void:
 		prompts.append(kind)
 		f.actions.resolve_reaction(true)
 	)
-	f.actions.dice = _dice_for([5, 1, 1, 1], [20, 12, 6, 12])
+	f.actions.dice = _dice_for([5, 1, 1, 1], [8, 12, 12, 12])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 8 and f.units[1].hit_points == 6
 		and prompts.is_empty() and f.units[0].reaction_left == 1,
 		"내성굴림 피해에는 공격 굴림이 없어 반응을 묻지 않고 대상마다 독립 피해")
-	f.actions.dice = _dice_for([20, 4, 6, 1], [20, 12, 6, 12])
+	f.actions.dice = _dice_for([8, 1, 12, 4], [8, 12, 12, 12])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 5 and f.units[1].hit_points == 3
 		and prompts.is_empty() and boss.action_left == 0,
-		"과부하 같은 턴에 다시 쓰며 전사 절대성공면 20은 피해 4+2의 절반, 궁수 최댓값 6은 DC 10 미만이라 실패")
+		"과부하 같은 턴에 다시 쓰며 전사 민첩 d8 최댓값 8은 DC 10 미만이라 실패해 피해 1+2, 궁수 절대성공면 12는 피해 4+2의 절반")
 	boss.begin_turn()
 	f.units[1].cell = Vector2i(9, 9)
-	f.actions.dice = _dice_for([1, 1], [20, 12])
+	f.actions.dice = _dice_for([1, 1], [8, 12])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 2 and f.units[1].hit_points == 3
 		and CombatActionRules.uses_left(boss, "spin") == -1,
 		"다음 턴에도 횟수·대기 제한 없이 쓰며 사거리 밖 아군은 굴리지 않음")
@@ -1139,7 +1139,7 @@ func _test_spin_incapacitation() -> void:
 	f.units[0].hit_points = 3
 	f.units[1].cell = Vector2i(5, 3)
 	ScriptedDice.arrange_turns(f.turns, f.units, [f.units[2], f.units[1], f.units[0], f.units[3]])
-	f.actions.dice = _dice_for([1, 1, 1, 2], [20, 12, 6, 12])
+	f.actions.dice = _dice_for([1, 1, 1, 2], [8, 12, 12, 12])
 	_check(await f.actions.spin(boss) and f.units[0].hit_points == 0
 		and f.units[1].hit_points == 5 and boss.action_left == 0,
 		"첫 대상 전투 불능 뒤 남은 대상 공격과 한 번 소비한 행동을 유지")
@@ -1393,7 +1393,6 @@ func _test_scrap_robot_turn_damage() -> void:
 		var doomed: CombatUnit = dying.units[2]
 		doomed.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
 		doomed.hit_points = 2 if remaining_enemy else 1
-		dying.units[1].marked_target = doomed
 		if not remaining_enemy:
 			dying.actions.incapacitate(dying.units[3])
 		var living: Array[CombatUnit] = dying.units.duplicate()
@@ -1407,8 +1406,8 @@ func _test_scrap_robot_turn_damage() -> void:
 		if remaining_enemy:
 			dying.turns.end_turn()
 		_check(doomed.hit_points == 0 and doomed not in dying.turns.ordered_units
-			and not doomed.visible and dying.units[1].marked_target == null,
-			"자기 피해 HP 0은 즉시 전투 불능·턴 제거·표식 해제")
+			and not doomed.visible,
+			"자기 피해 HP 0은 즉시 전투 불능·턴 제거")
 		_check(dying.actions.is_victory() == not remaining_enemy
 			and dying.actions.is_over() == not remaining_enemy,
 			"다른 살아 있는 적이 없을 때만 승리")
@@ -1474,12 +1473,10 @@ func _test_scrap_robot_stun_immunity() -> void:
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
 	boss.hit_points = 40
 	boss.cell = Vector2i(6, 4)
-	var archer: CombatUnit = f.units[1]
-	f.turns.select_unit(archer)
-	f.actions.dice = _dice_for([10, 3], ScriptedDice.attack_sides(archer) + ScriptedDice.damage_sides(archer))
-	_check(await f.actions.attack(archer, boss, true), "보스에게 충격 화살 공격 가능")
-	_check(boss.hit_points == 36 and not boss.is_stunned and archer.shock_left == 0,
-		"보스는 충격 화살 피해를 받지만 내성 굴림 없이 기절에 면역")
+	# 충격 화살을 없앤 뒤에도(#528) 기절 규칙과 보스 면역은 남는다.
+	_check(not f.actions.apply_status(f.units[1], boss, "stun") and not boss.is_stunned
+		and f.actions.apply_status(f.units[1], f.units[3], "stun") and f.units[3].is_stunned,
+		"보스는 내성 굴림 없이 기절에 면역, 일반 몬스터는 기절")
 
 
 func _test_scrap_robot_opportunity() -> void:
@@ -1515,8 +1512,8 @@ func _test_novice_stats() -> void:
 	_check(_ability_sides(f.units[0]) == [20, 8, 6, 4, 8, 12]
 		and f.units[0].get_defense_bonus() == 0 and f.units[0].get_damage_bonus() == 0
 		and _ability_sides(f.units[1]) == [6, 12, 20, 6, 4, 8]
-		and f.units[1].get_defense_bonus() == 0 and f.units[1].get_damage_bonus() == 1,
-		"아군 전사·궁수의 여섯 주사위와 기존 피해 가산")
+		and f.units[1].get_defense_bonus() == 0 and f.units[1].get_damage_bonus() == 0,
+		"아군 전사·궁수의 여섯 주사위와 피해 가산 0(궁수 #528)")
 
 
 func _test_novice_damage() -> void:
@@ -1861,15 +1858,15 @@ func _test_height_adjacency() -> void:
 	var target: CombatUnit = ranged.units[2]
 	archer.kind = CombatUnit.Kind.ARCHER
 	archer.cell = Vector2i(0, 0)
-	target.cell = Vector2i(6, 0)
-	ranged.actions.grid.heights = {Vector2i(3, 0): 20, target.cell: 10}
+	target.cell = Vector2i(4, 0)
+	ranged.actions.grid.heights = {Vector2i(2, 0): 20, target.cell: 10}
 	_check(ranged.actions.can_target(archer, target, "attack")
 		and ranged.actions.grid.attack_preview(archer, target).in_range,
-		"높은 대상과 더 높은 중간 바닥이 있어도 평면 거리6 원거리 공격 허용")
-	target.cell = Vector2i(7, 0)
+		"높은 대상과 더 높은 중간 바닥이 있어도 평면 거리4 원거리 공격 허용(#528)")
+	target.cell = Vector2i(5, 0)
 	_check(not ranged.actions.can_target(archer, target, "attack")
 		and not ranged.actions.grid.attack_preview(archer, target).in_range,
-		"높이와 무관하게 평면 거리7 원거리 공격 거부")
+		"높이와 무관하게 평면 거리5 원거리 공격 거부")
 
 
 func _test_high_ground() -> void:
@@ -1925,15 +1922,12 @@ func _test_fall_damage() -> void:
 	killed.actions.grid.heights = {killed.units[0].cell: 2, target.cell: 3}
 	target.is_stunned = true
 	target.hit_points = 1
-	killed.units[0].marked_target = target
-	killed.units[1].marked_target = target
 	killed.actions.dice = _dice_for([], [])
 	_check(killed.actions.shove(killed.units[0], target) and target.hit_points == 0,
 		"낙하 피해로 HP0이면 전투 불능")
 	_check(target not in killed.turns.ordered_units and not target.visible
-		and killed.actions.grid.unit_at(Vector2i(6, 4)) == null
-		and killed.units[0].marked_target == null and killed.units[1].marked_target == null,
-		"낙하 전투 불능은 턴·표식·표시·점유를 기존 방식으로 정리")
+		and killed.actions.grid.unit_at(Vector2i(6, 4)) == null,
+		"낙하 전투 불능은 턴·표시·점유를 기존 방식으로 정리")
 	var pulled: Fixture = _fixture()
 	var boss: CombatUnit = pulled.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
@@ -2009,14 +2003,13 @@ func _test_pit_forced_movement() -> void:
 			target.is_stunned = not ally
 			f.actions.grid.heights = {actor.cell: height, target.cell: height + 1}
 			f.actions.grid.pits = [Vector2i(6, 4)]
-			f.units[3].marked_target = target
 			f.actions.dice = _dice_for([], [])
 			_check(f.actions.shove(actor, target) and target.hit_points == 0
 				and target.cell == Vector2i(6, 4) and actor.bonus_action_left == 0,
 				"아군·적 모두 낭떠러지에 밀리면 바닥 높이 비교·낙하 주사위 없이 즉시 전투 불능")
 			_check(target not in f.turns.ordered_units and not target.visible
-				and f.actions.grid.unit_at(Vector2i(6, 4)) == null and f.units[3].marked_target == null,
-				"낙사도 턴·점유·표식·표시를 함께 정리")
+				and f.actions.grid.unit_at(Vector2i(6, 4)) == null,
+				"낙사도 턴·점유·표시를 함께 정리")
 			_check(f.hits.size() == 1, "낙사도 HP 감소라 타격음을 한 번 재생")
 	var pulled: Fixture = _fixture()
 	var boss: CombatUnit = pulled.units[2]
@@ -2310,10 +2303,11 @@ func _test_square_rules() -> void:
 	ranged.units[0].kind = CombatUnit.Kind.ARCHER
 	ranged.units[0].begin_turn()
 	ranged.units[0].cell = Vector2i(0, 0)
-	ranged.units[2].cell = Vector2i(3, 3)
-	_check(ranged.actions.can_target(ranged.units[0], ranged.units[2], "attack"), "평면 거리6 공격 가능")
+	ranged.units[2].cell = Vector2i(2, 2)
+	_check(ranged.actions.can_target(ranged.units[0], ranged.units[2], "attack"), "평면 거리4 공격 가능(#528)")
+	ranged.units[2].cell = Vector2i(3, 2)
+	_check(not ranged.actions.can_target(ranged.units[0], ranged.units[2], "attack"), "평면 거리5 공격 불가")
 	ranged.units[2].cell = Vector2i(4, 3)
-	_check(not ranged.actions.can_target(ranged.units[0], ranged.units[2], "attack"), "평면 거리7 공격 불가")
 	_check(ranged.actions.grid.path_to(ranged.units[0], Vector2i(3, 3)).size() == 6
 		and ranged.actions.can_move(ranged.units[0], Vector2i(3, 3))
 		and not ranged.actions.can_move(ranged.units[0], Vector2i(4, 3)), "이동력6 경계도 사각 최단 경로 기준")
@@ -2349,14 +2343,11 @@ func _test_attacks() -> void:
 	_check(f.hits.size() == 1, "최댓값 명중 타격음은 한 번")
 	var killed: Fixture = _fixture()
 	killed.units[2].hit_points = 1
-	killed.units[1].marked_target = killed.units[2]
 	killed.actions.dice = _dice_for([11, 1], ScriptedDice.attack_sides(killed.units[0]) + ScriptedDice.damage_sides(killed.units[0]))
 	await killed.actions.attack(killed.units[0], killed.units[2])
 	_check(killed.units[2].hit_points == 0 and killed.units[2] not in killed.turns.ordered_units,
 		"HP0은 즉시 전투 불능과 턴 순서 제거")
-	_check(killed.units[1].marked_target == null, "전투 불능 대상의 표식 제거")
-	_check(not killed.units[2].visible and not killed.actions.is_marked(killed.units[2]),
-		"전투 불능 대상은 숨기고 표식 표시도 해제")
+	_check(not killed.units[2].visible, "전투 불능 대상은 숨김")
 	_check(not await killed.actions.attack(killed.units[0], killed.units[2]), "전투 불능 대상 재공격 거부")
 	_check(killed.hits.size() == 1, "전투 불능 타격도 한 번 재생하고 거부한 공격은 무음")
 	f.actions._damage(target, 0)
@@ -2372,51 +2363,40 @@ func _test_attacks() -> void:
 
 func _test_archer_balance() -> void:
 	for actor_index: int in [1, 3]:
-		for marked: bool in [false, true]:
-			if actor_index == 3 and marked:
-				continue
-			for maximum: bool in [false, true]:
-				var f: Fixture = _fixture()
-				var actor: CombatUnit = f.units[actor_index]
-				var target: CombatUnit = f.units[3 if actor_index == 1 else 1]
-				if actor_index == 1:
-					f.turns.select_unit(actor)
-				else:
-					_enemy_archer(f)
-					actor.cell = Vector2i(7, 4)
-					f.units[0].cell = Vector2i(9, 9)
-					target.cell = Vector2i(3, 4)
-				var attack_sides: int = 20 if actor.is_ally else 10
-				# 7은 아군 궁수 AC 7과 풋내기 궁수 AC 6 모두에 명중하는 최소 공통값이다.
-				var attack_roll: int = attack_sides if maximum else 7
-				if not marked and not maximum:
-					var max_hit_points: int = 9 if actor.is_ally else 14
-					_check(actor.hit_points == max_hit_points and actor.get_max_hit_points() == max_hit_points,
-						"아군 궁수의 시작·최대 HP는9, 적 궁수는14")
-					_check(actor.get_ability_sides(actor.get_attack_ability()) == attack_sides
-						and actor.get_attack_bonus() == 0,
-						"아군 솜씨d20·풋내기 민첩d10은 피해 고정값과 별개")
-				if marked:
-					_check(f.actions.mark(actor, target), "궁수 피해 검사에서 표식 사용")
-				var logs: Array[String] = []
-				f.actions.logged.connect(func(line: String) -> void: logs.append(line))
-				var rolls: Array[int] = [attack_roll, 4]
-				var sides: Array[int] = ScriptedDice.attack_sides(actor) + ScriptedDice.damage_sides(actor)
-				if marked:
-					rolls.append(2)
-					sides.append(6)
-				f.actions.dice = _dice_for(rolls, sides)
-				_check(await f.actions.attack(actor, target), "양쪽 궁수 기본 공격 실행")
-				_check(f.hits.size() == 1, "아군·적 궁수와 표식 공격도 타격음 한 번")
-				var count: int = 2 if marked else 1
-				var total: int = 1
-				for rolled: int in f.actions.last_damage_rolls:
-					total += rolled
-				_check(f.actions.last_damage_rolls.size() == count and f.actions.last_damage == total
-					and target.hit_points == maxi(0, (14 if actor.is_ally else 9) - total),
-					"궁수 피해는 솜씨·표식 주사위에 고정값1을 한 번만 더함")
-				_check(" +1 = %d · HP %d" % [total, target.hit_points] in "\n".join(logs),
-					"궁수 피해 로그도 고정값1과 실제 HP를 표시")
+		for maximum: bool in [false, true]:
+			var f: Fixture = _fixture()
+			var actor: CombatUnit = f.units[actor_index]
+			var target: CombatUnit = f.units[3 if actor_index == 1 else 1]
+			if actor_index == 1:
+				f.turns.select_unit(actor)
+			else:
+				_enemy_archer(f)
+				actor.cell = Vector2i(7, 4)
+				f.units[0].cell = Vector2i(9, 9)
+				target.cell = Vector2i(3, 4)
+			var attack_sides: int = 20 if actor.is_ally else 10
+			# 7은 아군 궁수 AC 7과 풋내기 궁수 AC 6 모두에 명중하는 최소 공통값이다.
+			var attack_roll: int = attack_sides if maximum else 7
+			if not maximum:
+				var max_hit_points: int = 9 if actor.is_ally else 14
+				_check(actor.hit_points == max_hit_points and actor.get_max_hit_points() == max_hit_points,
+					"아군 궁수의 시작·최대 HP는9, 적 궁수는14")
+				_check(actor.get_ability_sides(actor.get_attack_ability()) == attack_sides
+					and actor.get_attack_bonus() == 0,
+					"아군 솜씨d20·풋내기 민첩d10은 피해 고정값과 별개")
+			var logs: Array[String] = []
+			f.actions.logged.connect(func(line: String) -> void: logs.append(line))
+			f.actions.dice = _dice_for([attack_roll, 4], ScriptedDice.attack_sides(actor) + ScriptedDice.damage_sides(actor))
+			_check(await f.actions.attack(actor, target), "양쪽 궁수 기본 공격 실행")
+			_check(f.hits.size() == 1, "아군·적 궁수 공격도 타격음 한 번")
+			# 아군 궁수는 기본 피해 보정 0(#528), 풋내기 궁수는 +1 그대로다.
+			var bonus: int = 0 if actor.is_ally else 1
+			var total: int = bonus + 4
+			_check(f.actions.last_damage_rolls == [4] and f.actions.last_damage == total
+				and target.hit_points == maxi(0, (14 if actor.is_ally else 9) - total),
+				"궁수 피해는 능력치 주사위에 고정값을 한 번만 더함(아군 0, 풋내기 +1)")
+			_check(" %+d = %d · HP %d" % [bonus, total, target.hit_points] in "\n".join(logs),
+				"궁수 피해 로그도 고정값과 실제 HP를 표시")
 
 
 func _test_self_actions() -> void:
@@ -2449,11 +2429,17 @@ func _test_self_actions() -> void:
 	_check(not f.actions.use_self(warrior, "potion"), "물약 횟수 회복 없음")
 	f.turns.select_unit(f.units[1])
 	var archer: CombatUnit = f.units[1]
-	_check(f.actions.use_self(archer, "disengage"), "물러서며 쏘기 사용")
-	_check(archer.disengaged and archer.disengage_left == 1 and archer.bonus_action_left == 0,
+	_check(not f.actions.use_self(archer, "disengage") and archer.bonus_action_left == 1,
+		"아군 궁수는 물러서며 쏘기를 쓰지 않음(#528)")
+	# 물러서며 쏘기는 풋내기 궁수의 스킬로 남는다.
+	var novice: Fixture = _fixture()
+	_enemy_archer(novice)
+	var enemy_archer: CombatUnit = novice.units[3]
+	_check(novice.actions.use_self(enemy_archer, "disengage"), "풋내기 궁수의 물러서며 쏘기 사용")
+	_check(enemy_archer.disengaged and enemy_archer.disengage_left == 1 and enemy_archer.bonus_action_left == 0,
 		"이번 턴 기회 공격 제외와 횟수 소비")
-	archer.begin_turn()
-	_check(not archer.disengaged and archer.disengage_left == 1, "다음 턴 면제만 해제")
+	enemy_archer.begin_turn()
+	_check(not enemy_archer.disengaged and enemy_archer.disengage_left == 1, "다음 턴 면제만 해제")
 	archer.is_stunned = true
 	archer.hit_points = 1
 	_check(not f.actions.use_self(archer, "potion"), "기절 중 보조 행동 거부")
@@ -2498,15 +2484,14 @@ func _test_stun_landing_incapacitation() -> void:
 		var target: CombatUnit = f.units[2]
 		f.turns.select_unit(source)
 		target.reaction_left = 0
-		f.actions.dice = _dice_for([11, 1], ScriptedDice.attack_sides(source) + ScriptedDice.damage_sides(source))
-		await f.actions.attack(source, target, true)
+		f.actions.apply_status(source, target, "stun")
 		if pit:
 			f.actions.grid.pits.append(Vector2i(2, 4))
 			f.turns.select_unit(f.units[0])
 			_check(f.actions.shove(f.units[0], source), "아군 시전자를 낭떠러지로 밀치기")
 		else:
 			f.actions.grid.heights[source.cell] = 9
-			_check(await f.actions.jump_to(source, Vector2i(3, 5)), "충격 화살 뒤 치명적인 낙하 점프")
+			_check(await f.actions.jump_to(source, Vector2i(3, 5)), "기절을 건 뒤 치명적인 낙하 점프")
 		_check(source.hit_points == 0 and not source.visible and not target.is_stunned,
 			"시전자의 실제 착지 전투 불능은 기절을 즉시 해제: " + str(pit))
 
@@ -2517,8 +2502,7 @@ func _test_finished_stun_removal() -> void:
 	var target: CombatUnit = f.units[2]
 	f.turns.select_unit(source)
 	target.reaction_left = 0
-	f.actions.dice = _dice_for([11, 1], ScriptedDice.attack_sides(source) + ScriptedDice.damage_sides(source))
-	await f.actions.attack(source, target, true)
+	f.actions.apply_status(source, target, "stun")
 	f.turns.end_turn()
 	f.turns.end_turn()
 	_check(f.turns.is_turn_finished(target) and f.turns.current_unit == f.units[3],
@@ -2537,12 +2521,10 @@ func _test_stun_reapplication() -> void:
 	latest.cell = Vector2i(2, 4)
 	f.turns.select_unit(first)
 	target.reaction_left = 0
-	f.actions.dice = _dice_for([11, 1], ScriptedDice.attack_sides(first) + ScriptedDice.damage_sides(first))
-	_check(await f.actions.attack(first, target, true) and target.is_stunned and target.hit_points > 0,
-		"첫 시전자의 충격 화살")
+	_check(f.actions.apply_status(first, target, "stun") and target.is_stunned and target.hit_points > 0,
+		"첫 시전자의 기절")
 	f.turns.select_unit(latest)
-	f.actions.dice = _dice_for([11, 11, 1], ScriptedDice.attack_sides(latest, 2) + ScriptedDice.damage_sides(latest))
-	_check(await f.actions.attack(latest, target, true) and target.is_stunned and target.hit_points > 0,
+	_check(f.actions.apply_status(latest, target, "stun") and target.is_stunned and target.stun_source == latest,
 		"기절 대상 재적용은 중첩 없이 최신 시전자로 갱신")
 	f.actions.incapacitate(first)
 	_check(target.is_stunned, "이전 시전자 전투 불능은 갱신된 기절을 해제하지 않음")
@@ -3347,8 +3329,7 @@ func _test_deferred_stun_caster() -> void:
 	var target: CombatUnit = f.units[3]
 	f.turns.select_unit(source)
 	target.reaction_left = 0
-	f.actions.dice = _dice_for([11, 1], ScriptedDice.attack_sides(source) + ScriptedDice.damage_sides(source))
-	await f.actions.attack(source, target, true)
+	f.actions.apply_status(source, target, "stun")
 	var order: Array[CombatUnit] = [f.units[0], f.units[2], source, target]
 	ScriptedDice.arrange_turns(f.turns, f.units, order)
 	f.actions.incapacitate(f.units[2])
@@ -3358,11 +3339,8 @@ func _test_deferred_stun_caster() -> void:
 	_check(target.is_stunned, "동료 선택은 지연된 시전자 턴 시작이 아님")
 	_check(f.turns.select_unit(source) and not target.is_stunned,
 		"지연된 시전자를 처음 조작할 때 기절 만료")
-	source.shock_left = 1
-	target.hit_points = target.get_max_hit_points()
-	f.actions.dice = _dice_for([11, 1], ScriptedDice.attack_sides(source) + ScriptedDice.damage_sides(source))
-	_check(await f.actions.attack(source, target, true) and target.is_stunned,
-		"시전자 턴 시작 뒤 새 충격 화살의 기절 부여")
+	_check(f.actions.apply_status(source, target, "stun") and target.is_stunned,
+		"시전자 턴 시작 뒤 새 기절 부여")
 	f.turns.end_turn()
 	_check(target.is_stunned and f.turns.select_unit(source) and target.is_stunned,
 		"턴 종료 취소는 같은 시전자 턴의 기절을 다시 만료하지 않음")
@@ -3377,8 +3355,7 @@ func _test_stunned_caster_expiry() -> void:
 	var target: CombatUnit = f.units[2]
 	f.turns.select_unit(source)
 	target.reaction_left = 0
-	f.actions.dice = _dice_for([11, 1], ScriptedDice.attack_sides(source) + ScriptedDice.damage_sides(source))
-	await f.actions.attack(source, target, true)
+	f.actions.apply_status(source, target, "stun")
 	source.is_stunned = true
 	f.turns.end_turn()
 	f.turns.end_turn()
@@ -3398,9 +3375,8 @@ func _test_stun_source_incapacitation() -> void:
 	var target: CombatUnit = f.units[3]
 	f.turns.select_unit(source)
 	target.reaction_left = 0
-	f.actions.dice = _dice_for([11, 1], ScriptedDice.attack_sides(source) + ScriptedDice.damage_sides(source))
-	_check(await f.actions.attack(source, target, true) and target.is_stunned,
-		"시전자 탈락 사례의 충격 화살")
+	_check(f.actions.apply_status(source, target, "stun") and target.is_stunned,
+		"시전자 탈락 사례의 기절")
 	f.turns.end_turn()
 	f.turns.end_turn()
 	_check(f.turns.current_unit == f.units[2] and not f.turns.is_turn_finished(target),
@@ -3412,29 +3388,14 @@ func _test_stun_source_incapacitation() -> void:
 		"해제된 기절 대상은 오래된 건너뛰기 기록 없이 남은 차례를 받음")
 
 
-func _test_mark_and_stun() -> void:
-	var f: Fixture = _fixture()
-	f.turns.select_unit(f.units[1])
-	var actor: CombatUnit = f.units[1]
-	var target: CombatUnit = f.units[3]
-	_check(f.actions.mark(actor, target), "표식 부여")
-	_check(actor.marked_target == target and actor.mark_left == 0 and actor.bonus_action_left == 0,
-		"표식은 유닛별 대상·횟수·자원 기록")
-	actor.bonus_action_left = 1
-	_check(not f.actions.mark(actor, f.units[2]), "사용한 표식 대상 변경 거부")
-	f.actions.dice = _dice_for([20, 2, 3], ScriptedDice.attack_sides(actor) + ScriptedDice.damage_sides(actor) + [6])
-	await f.actions.attack(actor, target)
-	_check(f.actions.last_damage_rolls == [2, 3],
-		"최댓값 표식도 무기와 표식을 각각 한 번만 굴림")
+## 표식·충격 화살은 #528에서 없앴다. 기절 규칙은 남아 apply_status로 건다.
+func _test_stun() -> void:
 	var shock: Fixture = _fixture()
 	_check(shock.units[1].get_ability_sides(CombatUnit.Ability.FINESSE) == 20, "아군 궁수는 솜씨d20")
 	shock.turns.select_unit(shock.units[1])
 	shock.units[2].reaction_left = 0
-	shock.actions.dice = _dice_for([11, 1], ScriptedDice.attack_sides(shock.units[1]) + ScriptedDice.damage_sides(shock.units[1]))
-	_check(await shock.actions.attack(shock.units[1], shock.units[2], true), "충격 화살 실행")
-	_check(shock.units[1].shock_left == 0 and shock.units[1].action_left == 0, "충격 화살 횟수와 행동 소비")
-	_check(shock.units[2].is_stunned and shock.units[2].hit_points > 0, "명중·피해 후 별도 방어 굴림 없이 기절")
-	_check(shock.hits.size() == 1, "충격 화살 피해와 기절은 타격음 한 번")
+	_check(shock.actions.apply_status(shock.units[1], shock.units[2], "stun"), "기절 부여")
+	_check(shock.units[2].is_stunned and shock.units[2].hit_points > 0, "별도 방어 굴림 없이 기절")
 	shock.turns.end_turn()
 	shock.turns.end_turn()
 	_check(shock.turns.current_unit == shock.units[3] and shock.turns.is_turn_finished(shock.units[2]),
@@ -3443,7 +3404,7 @@ func _test_mark_and_stun() -> void:
 	shock.turns.end_turn()
 	_check(shock.units[2].is_stunned, "다른 아군 턴 시작은 시전자의 기절을 해제하지 않음")
 	shock.turns.select_unit(shock.units[1])
-	_check(not shock.units[2].is_stunned, "충격 화살 시전자의 실제 턴 시작에 기절 해제")
+	_check(not shock.units[2].is_stunned, "기절 시전자의 실제 턴 시작에 기절 해제")
 	# 풋내기 야만인 AC 4: 3은 1 낮아 빗나가고 4는 같아서 명중한다.
 	for attack_roll: int in [3, 4]:
 		var boundary: Fixture = _fixture()
@@ -3452,10 +3413,9 @@ func _test_mark_and_stun() -> void:
 		boundary.units[2].reaction_left = 0
 		boundary.actions.dice = (_dice_for([attack_roll, 4], ScriptedDice.attack_sides(archer) + ScriptedDice.damage_sides(archer))
 			if attack_roll == 4 else _dice_for([attack_roll], ScriptedDice.attack_sides(archer)))
-		await boundary.actions.attack(archer, boundary.units[2], true)
-		_check(boundary.units[2].hit_points == (7 if attack_roll == 4 else 12), "충격 화살은 명중했을 때만 피해 적용")
-		_check(boundary.units[2].is_stunned == (attack_roll == 4),
-			"AC보다 1 낮은 공격은 무효, AC와 같은 공격은 명중해 추가 판정 없이 기절")
+		await boundary.actions.attack(archer, boundary.units[2])
+		_check(boundary.units[2].hit_points == (8 if attack_roll == 4 else 12),
+			"AC보다 1 낮은 공격은 무효, AC와 같은 공격은 명중해 피해 적용")
 	var waiting: Fixture = _fixture()
 	waiting.units[1].is_stunned = true
 	ScriptedDice.arrange_turns(waiting.turns, waiting.units, waiting.units)
@@ -3467,19 +3427,6 @@ func _test_mark_and_stun() -> void:
 	waiting.turns.end_turn()
 	_check(waiting.units[1].is_stunned and waiting.turns.is_turn_finished(waiting.units[1]),
 		"두 번째 유닛 순서를 건너뛰어도 기절 유지")
-	var missed: Fixture = _fixture()
-	missed.turns.select_unit(missed.units[1])
-	var before_miss: int = missed.units[3].hit_points
-	missed.actions.dice = _dice_for([1], ScriptedDice.attack_sides(missed.units[1]))
-	await missed.actions.attack(missed.units[1], missed.units[3], true)
-	_check(missed.units[1].action_left == 0 and missed.units[1].shock_left == 0
-		and missed.units[3].hit_points == before_miss and not missed.units[3].is_stunned,
-		"빗나가도 충격 화살 행동·횟수 모두 소비, 피해·기절 없음")
-	_check(not missed.actions.can_use(missed.units[1], "shock"), "빗나간 충격 화살 재사용 거부")
-	missed.units[1].action_left = 1
-	_check(not missed.actions.can_use(missed.units[1], "shock"), "행동만 회복해도 사용 횟수는 돌아오지 않음")
-	_check(not missed.actions.can_target(missed.units[3], missed.units[0], "shock"),
-		"풋내기 궁수의 충격 화살 실행 거부")
 
 
 func _enemy_archer(f: Fixture) -> void:
@@ -3555,15 +3502,6 @@ func _test_reactions() -> void:
 	await automatic.actions.attack(automatic.units[0], automatic.units[2])
 	_check(automatic.units[2].reaction_left == 1 and automatic.units[2].hit_points == 8,
 		"야만인은 반응 없이 아군 피해를 받음")
-	var parried_shock: Fixture = _fixture()
-	_enemy_archer(parried_shock)
-	parried_shock.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void:
-		parried_shock.actions.resolve_reaction(true)
-	)
-	_check(not await parried_shock.actions.attack(parried_shock.units[3], parried_shock.units[0], true),
-		"풋내기 궁수는 충격 화살로 공격하지 못함")
-	_check(parried_shock.units[0].hit_points == 11 and not parried_shock.units[0].is_stunned
-		and parried_shock.units[3].shock_left == 1, "불가능한 스킬은 피해·기절·횟수를 바꾸지 않음")
 
 
 ## 자기 턴에 받는 적 기회 공격은 묻지 않고 바로 피해를 준다.
@@ -4293,7 +4231,8 @@ func _test_pit_scene_victory() -> void:
 	await process_frame
 
 
-func _test_scene_shock() -> void:
+## 충격 화살(#528 삭제) 대신 활 후려치기의 실제 두 번 클릭 경로.
+func _test_scene_bow_bash() -> void:
 	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
 	var battle: Node2D = scene.instantiate() as Node2D
 	battle.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
@@ -4306,24 +4245,25 @@ func _test_scene_shock() -> void:
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	ScriptedDice.arrange_turns(turns, units, units)
+	units[1].cell = Vector2i(3, 4)
 	units[3].cell = Vector2i(3, 5)
 	turns.select_unit(units[1])
+	battle.call("_update_turn_ui")
 	var buttons: Dictionary = hud.get("_actions")
-	var shock_button: Button = buttons["shock"] as Button
-	_check(shock_button.visible and not shock_button.disabled, "실제 장면의 충격 화살 버튼 활성화")
-	shock_button.pressed.emit()
+	var bash_button: Button = buttons["bow_bash"] as Button
+	_check(bash_button.visible and not bash_button.disabled, "실제 장면의 활 후려치기 버튼 활성화")
+	bash_button.pressed.emit()
 	var before_miss: int = units[3].hit_points
-	actions.dice = _dice_for([1], ScriptedDice.attack_sides(units[1]))
+	# 힘 d6 1은 절대실패라 빗나간다.
+	actions.dice = _dice_for([1], [6])
 	var point: Vector2 = units[3].get_global_transform_with_canvas() * Vector2(0, -10)
 	await _click(point)
-	_check(units[1].action_left == 1 and units[1].shock_left == 1, "충격 화살 미리보기는 행동·횟수 유지")
+	_check(units[1].bonus_action_left == 1 and units[1].action_left == 1, "활 후려치기 미리보기는 자원 유지")
 	await _click(point)
-	_check(units[1].action_left == 0 and units[1].shock_left == 0
-		and units[3].hit_points == before_miss and not units[3].is_stunned,
-		"실제 두 번째 클릭의 충격 화살 빗나감은 행동·횟수만 소비")
-	var badges: Dictionary = hud.get("_badges")
-	_check(shock_button.disabled and (badges["shock"] as Label).text == "0",
-		"실행 후 충격 화살 비활성화와 모서리 횟수 배지 갱신")
+	_check(units[1].bonus_action_left == 0 and units[1].action_left == 1
+		and units[3].hit_points == before_miss and units[3].cell == Vector2i(3, 5),
+		"실제 두 번째 클릭의 활 후려치기 빗나감은 보조 행동만 소비")
+	_check(bash_button.disabled, "실행 후 활 후려치기 비활성화")
 	battle.queue_free()
 	await process_frame
 
