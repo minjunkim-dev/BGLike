@@ -1,0 +1,25 @@
+{
+  "generator": "scenes/ui/art/sources/draw_ui_frames.py",
+  "command": "python3 scenes/ui/art/sources/draw_ui_frames.py scenes/ui/art/frames",
+  "method": "코드로 픽셀을 찍는다. 생성 모델·외부 이미지·Pillow를 쓰지 않는다. 표준 라이브러리(zlib, struct, binascii)로 PNG를 쓰므로 같은 명령은 같은 바이트를 낸다.",
+  "size": "16x16 RGBA, 8비트",
+  "margin": "9-slice 여백 4px. 텍셀과 논리 px가 1:1이라 정수 배율(2·3)에서 축척 없이 찍힌다(docs/PIXEL_ART.md UI 절의 1배 예외).",
+  "grayscale": {
+    "outline": 0.25,
+    "face": 0.75,
+    "bright_edge": 1.0,
+    "note": "색은 원본에 넣지 않는다. StyleBoxTexture.modulate_color가 상태별 색을 정한다(scenes/ui_theme.tres)."
+  },
+  "geometry": {
+    "outline": "바깥 1px 외곽선 전체",
+    "bright_edge": "안쪽 1px 링의 위쪽 가로줄(x 1~13)과 왼쪽 세로줄(y 1~13). 광원은 왼쪽 위다.",
+    "face": "나머지 안쪽 링과 중앙",
+    "corner_cut": "네 모서리마다 2×2 블록의 바깥 3픽셀을 투명하게 깎는다. 안쪽 대각 픽셀은 밝은 모서리로 남긴다."
+  },
+  "files": {
+    "scenes/ui/art/frames/panel.png": "기본 패널. 모양은 공통 규격, 색은 패널 면 #21223D",
+    "scenes/ui/art/frames/accent_panel.png": "강조 패널. 모양은 공통 규격, 색은 강조 외곽선 #CC8E4D",
+    "scenes/ui/art/frames/button.png": "버튼. 모양은 공통 규격, 색은 상태별(기본·호버·눌림·비활성)"
+  },
+  "note": "세 파일은 같은 규격이라 바이트가 같다. 모양을 달리하려면 기획자 승인이 필요하다(설계 승인 항목 2)."
+}
