@@ -4,6 +4,7 @@ extends SceneTree
 
 const THEME_PATH: String = "res://scenes/ui_theme.tres"
 const FONT_PATH: String = "res://scenes/ui/fonts/Galmuri11.ttf"
+const FONT_IMPORT_PATH: String = "res://scenes/ui/fonts/Galmuri11.ttf.import"
 const LICENSE_PATH: String = "res://scenes/ui/fonts/LICENSE-Galmuri.txt"
 const NOTICES_PATH: String = "res://THIRD_PARTY_NOTICES.md"
 const FRAME_PATHS: Array[String] = ["res://scenes/ui/art/frames/panel.png",
@@ -36,6 +37,7 @@ func _run() -> void:
 		_finish()
 		return
 	_check_font(theme)
+	_check_font_import(theme)
 	_check_button_states(theme)
 	_check_panel(theme)
 	_check_notices()
@@ -48,6 +50,34 @@ func _check_font(theme: Theme) -> void:
 	_check(theme.default_font != null and theme.default_font.resource_path == FONT_PATH,
 		"기본 글꼴은 Galmuri11")
 	_check(theme.default_font_size == 11, "기본 글자 크기 11: %d" % theme.default_font_size)
+
+
+## 픽셀 글꼴 import. Issue #518의 안티앨리어싱이 남지 않게 끈다.
+## 대기 턴 표식 ⌛(U+231B, turn_hud.gd)가 Galmuri11 cmap에 없어 system fallback은 유지한다.
+func _check_font_import(theme: Theme) -> void:
+	var text: String = FileAccess.get_file_as_string(FONT_IMPORT_PATH)
+	_check(_import_value(text, "antialiasing") == "0",
+		"import antialiasing=0: %s" % _import_value(text, "antialiasing"))
+	_check(_import_value(text, "hinting") == "0",
+		"import hinting=0: %s" % _import_value(text, "hinting"))
+	_check(_import_value(text, "subpixel_positioning") == "0",
+		"import subpixel_positioning=0: %s" % _import_value(text, "subpixel_positioning"))
+	_check(_import_value(text, "allow_system_fallback") == "true",
+		"import allow_system_fallback=true: %s" % _import_value(text, "allow_system_fallback"))
+	var font: FontFile = theme.default_font as FontFile
+	_check(font != null and font.antialiasing == TextServer.FONT_ANTIALIASING_NONE,
+		"불러온 글꼴은 안티앨리어싱 없음")
+	_check(font != null and font.hinting == TextServer.HINTING_NONE, "불러온 글꼴은 힌팅 없음")
+	_check(font != null and font.subpixel_positioning == TextServer.SUBPIXEL_POSITIONING_DISABLED,
+		"불러온 글꼴은 서브픽셀 위치 없음")
+	_check(font != null and font.allow_system_fallback, "불러온 글꼴은 system fallback을 유지")
+
+
+func _import_value(text: String, key: String) -> String:
+	for line: String in text.split("\n"):
+		if line.begins_with(key + "="):
+			return line.substr(key.length() + 1).strip_edges()
+	return ""
 
 
 ## seam B: 버튼 네 상태는 StyleBoxTexture이고 modulate 색이 설계 표 값과 같다.
