@@ -198,7 +198,8 @@ func _test_give_up_during_spin_roll() -> void:
 		f.rolls.append(roll)
 		f.actions.give_up()
 		await process_frame
-	f.actions.dice = _dice_for([1], [20])
+	# 첫 대상(전사)은 민첩 d8로 내성굴림한다(#528).
+	f.actions.dice = _dice_for([1], [8])
 	_check(await f.actions.spin(boss), "회전회오리 실행")
 	_check(f.rolls.size() == 1 and f.actions.last_damage == 0
 		and not f.events.any(func(event: String) -> bool: return "피해" in event),

@@ -214,7 +214,7 @@ func _check_give_up(battle: Node2D, menu: PauseMenu) -> void:
 	party[0].potion_left = 2
 	party[0].hit_points = 3
 	party[0].second_wind_left = 0
-	party[1].shock_left = 0
+	party[1].aegisal_left = 3
 	actions.incapacitate(party[1])
 	actions.changed.emit()
 	await _tap(_key(KEY_ESCAPE))
@@ -243,7 +243,7 @@ func _check_give_up(battle: Node2D, menu: PauseMenu) -> void:
 	_check(hud.progress_label.text == "2막 · 1스테이지" and not hud.get_node("Result").visible, "포기한 막의 1스테이지부터")
 	for unit: CombatUnit in party:
 		_check(unit.hit_points == unit.get_max_hit_points() and unit.visible and unit.second_wind_left == 1
-			and unit.shock_left == 1, "%s: HP·전투 불능·스킬 횟수 초기화" % unit.get_display_name())
+			and unit.aegisal_left == 0, "%s: HP·전투 불능·스킬 횟수·애기살 초기화" % unit.get_display_name())
 	_check(party[0].weapon == weapon and not weapon.is_empty() and battle.loot.bag == bag and party[0].potion_left == 2,
 		"장비·가방·물약 유지")
 

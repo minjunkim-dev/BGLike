@@ -65,6 +65,8 @@ func _run() -> void:
 	await _test_bow_bash()
 	await _test_moving_shot()
 	_test_stage_reset()
+	_test_save_state()
+	await _test_battle_save()
 	for unit: CombatUnit in _created:
 		unit.free()
 	var dice_problems: Array[String] = ScriptedDice.finish()
@@ -292,3 +294,79 @@ func _test_stage_reset() -> void:
 	archer.begin_stage(false)
 	_check(archer.aegisal_left == 0 and not archer.moving_shot_ready and not archer.moving_shot_spent,
 		"전투 전환에서 애기살 0, 무빙샷 해제")
+
+
+## 애기살·무빙샷 상태는 SAVED_FIELDS 밖의 선택 필드다. 없으면 0·false, 옛 표식·충격 화살 필드는 무시한다.
+func _test_save_state() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	archer.aegisal_left = 3
+	archer.moving_shot_ready = true
+	archer.moving_shot_spent = true
+	f.units[3].disengage_left = 1
+	var saved: Array = f.units.map(func(unit: CombatUnit) -> Dictionary: return unit.save_state(f.units))
+	_check(saved.all(func(data: Dictionary) -> bool: return archer.is_valid_state(data, 4, Vector2i(10, 10))),
+		"애기살·무빙샷을 담은 유닛 저장은 유효")
+	_check("aegisal_left" not in CombatUnit.SAVED_FIELDS and "mark_left" not in CombatUnit.SAVED_FIELDS
+		and "shock_left" not in CombatUnit.SAVED_FIELDS and "disengage_left" in CombatUnit.SAVED_FIELDS,
+		"새 필드는 선택 필드, 표식·충격 화살 필드 삭제, 물러서며 쏘기 횟수 유지")
+	var restored: CombatUnit = CombatUnit.new()
+	_created.append(restored)
+	restored.load_state(saved[0], f.units)
+	_check(restored.aegisal_left == 3 and restored.moving_shot_ready and restored.moving_shot_spent,
+		"애기살 발수와 무빙샷 상태를 되돌림")
+	var novice: CombatUnit = CombatUnit.new()
+	_created.append(novice)
+	novice.load_state(saved[3], f.units)
+	_check(novice.disengage_left == 1, "풋내기 궁수의 물러서며 쏘기 남은 횟수를 되돌림")
+	var old: Dictionary = (saved[0] as Dictionary).duplicate()
+	for field: String in ["aegisal_left", "moving_shot_ready", "moving_shot_spent"]:
+		old.erase(field)
+	old.merge({"mark_left": 1, "shock_left": 0, "marked_target": 2}, true)
+	_check(archer.is_valid_state(old, 4, Vector2i(10, 10)), "새 필드가 없고 옛 필드가 남은 저장도 유효")
+	var legacy: CombatUnit = CombatUnit.new()
+	_created.append(legacy)
+	legacy.aegisal_left = 5
+	legacy.moving_shot_ready = true
+	legacy.load_state(old, f.units)
+	_check(legacy.aegisal_left == 0 and not legacy.moving_shot_ready and not legacy.moving_shot_spent,
+		"없는 선택 필드는 0·false로 읽음")
+	for broken: Dictionary in [{"aegisal_left": -1}, {"aegisal_left": CombatUnit.SAVED_INT_LIMIT + 1},
+			{"aegisal_left": "3"}, {"moving_shot_ready": 1}, {"moving_shot_spent": "true"}]:
+		var data: Dictionary = (saved[0] as Dictionary).duplicate()
+		data.merge(broken, true)
+		_check(not archer.is_valid_state(data, 4, Vector2i(10, 10)), "깨진 선택 필드 거부: " + str(broken))
+
+
+## 실제 전투 장면의 combat_state()·restore_combat()으로 애기살과 무빙샷 상태가 이어진다.
+func _test_battle_save() -> void:
+	var scene: PackedScene = load("res://scenes/combat/battle.tscn") as PackedScene
+	var first: Node2D = scene.instantiate() as Node2D
+	first.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
+	root.add_child(first)
+	first.set_process(false)
+	first.call("start_battle")
+	await process_frame
+	var archer: CombatUnit = (first.get("units") as Array[CombatUnit])[1]
+	archer.aegisal_left = 4
+	archer.moving_shot_ready = true
+	archer.moving_shot_spent = true
+	var state: Dictionary = first.call("combat_state")
+	var second: Node2D = scene.instantiate() as Node2D
+	second.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
+	root.add_child(second)
+	second.set_process(false)
+	await process_frame
+	_check(second.call("restore_combat", state), "애기살·무빙샷을 담은 전투 저장 복원")
+	var copy: CombatUnit = (second.get("units") as Array[CombatUnit])[1]
+	_check(copy.aegisal_left == 4 and copy.moving_shot_ready and copy.moving_shot_spent, "복원한 궁수의 애기살·무빙샷 상태")
+	var old: Dictionary = state.duplicate(true)
+	for field: String in ["aegisal_left", "moving_shot_ready", "moving_shot_spent"]:
+		(old.units[1] as Dictionary).erase(field)
+	(old.units[1] as Dictionary).merge({"mark_left": 1, "shock_left": 1, "marked_target": -1}, true)
+	_check(second.call("restore_combat", old), "새 필드가 없는 옛 형식 5 전투 저장도 복원")
+	copy = (second.get("units") as Array[CombatUnit])[1]
+	_check(copy.aegisal_left == 0 and not copy.moving_shot_ready, "옛 저장의 애기살 0, 무빙샷 해제")
+	first.queue_free()
+	second.queue_free()
+	await process_frame

@@ -59,6 +59,7 @@ func _run() -> void:
 	_test_passive_slot_and_number_colors()
 	await _test_resources()
 	_test_archer_and_enemy()
+	await _test_archer_moving_shot_input()
 	await _test_log_and_status()
 	await _test_hit_sound_mix()
 	await _test_layout()
@@ -518,6 +519,63 @@ func _test_archer_and_enemy() -> void:
 	battle.call("_update_turn_ui")
 	_check(hud.end_button.disabled, "반응 대기 중 턴 종료 잠금")
 	actions.busy = false
+
+
+## 궁수 스킬 패널과 무빙샷 입력(#528): 공격 뒤 선택이 무빙샷으로 바뀌고, 같은 빈 칸을 두 번 우클릭하면 도약한다.
+func _test_archer_moving_shot_input() -> void:
+	_reset_units()
+	var archer: CombatUnit = units[1]
+	var target: CombatUnit = units[3]
+	units[0].cell = Vector2i(0, 9)
+	archer.cell = Vector2i(4, 4)
+	units[2].cell = Vector2i(9, 9)
+	target.cell = Vector2i(4, 7)
+	target.reaction_left = 0
+	turns.select_unit(archer)
+	battle.call("_update_turn_ui")
+	await process_frame
+	var buttons: Dictionary = hud.get("_actions")
+	var passives: Dictionary = hud.get("_passives")
+	var dots: Dictionary = hud.get("_passive_dots")
+	var shown: Array[String] = []
+	for action: String in buttons:
+		if (buttons[action] as Button).is_visible_in_tree():
+			shown.append(action)
+	_check(shown == ["attack", "aegisal", "bow_bash", "shove", "jump", "potion"], "궁수 스킬 패널의 버튼(공용 밀치기 포함): " + str(shown))
+	_check((passives["moving_shot"] as Button).visible and not (passives["phalanx"] as Button).visible
+		and not (dots["moving_shot"] as Label).visible and (passives["moving_shot"] as Button).disabled,
+		"궁수 패시브 칸의 무빙샷은 도약할 수 없는 동안 꺼짐")
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	actions.dice = ScriptedDice.new([15, 2], [20, 20])
+	var point: Vector2 = target.get_global_transform_with_canvas() * Vector2(0, -10)
+	await _click(point)
+	await _click(point)
+	_check(archer.action_left == 0 and archer.moving_shot_ready and selection.selected_action == "moving_shot",
+		"공격 뒤 선택이 무빙샷으로 바뀜")
+	var cells: Array[Vector2i] = battle.get("movement_cells")
+	_check(cells.size() == 4 and Vector2i(5, 4) in cells and Vector2i(4, 3) in cells, "도약할 인접 빈 칸을 표시: " + str(cells))
+	_check((dots["moving_shot"] as Label).visible and not (passives["moving_shot"] as Button).disabled,
+		"도약할 수 있는 동안 무빙샷 켜짐 점")
+	(buttons["aegisal"] as Button).pressed.emit()
+	_check(selection.selected_action == "aegisal" and archer.moving_shot_ready and archer.bonus_action_left == 1,
+		"다른 버튼을 고르기만 하면 도약 기회가 남음")
+	(passives["moving_shot"] as Button).pressed.emit()
+	_check(selection.selected_action == "moving_shot", "무빙샷 패시브 버튼으로 다시 도약 선택")
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	var leap: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(Vector2i(5, 4))
+	await _click(leap, MOUSE_BUTTON_RIGHT)
+	_check(archer.cell == Vector2i(4, 4) and selection.preview_cell == Vector2i(5, 4), "첫 우클릭은 착지 칸 미리보기")
+	await _click(leap, MOUSE_BUTTON_RIGHT)
+	_check(archer.cell == Vector2i(5, 4) and archer.movement_left == archer.get_movement() and not archer.moving_shot_ready
+		and selection.selected_action == "attack" and not (dots["moving_shot"] as Label).visible,
+		"같은 칸 두 번째 우클릭으로 이동력 없이 도약하고 선택을 되돌림")
+	# 뒤 검사가 쓰는 처음 배치로 되돌린다.
+	units[0].cell = Vector2i(4, 9)
+	archer.cell = Vector2i(5, 9)
+	units[2].cell = Vector2i(4, 8)
+	target.cell = Vector2i(7, 9)
+	_reset_units()
+	battle.call("_update_turn_ui")
 
 
 # WCAG 2 상대 휘도의 명암비. Color는 sRGB 값을 담는다.
