@@ -1076,6 +1076,10 @@ msgstr ""
 msgid "옆에 적"
 msgstr ""
 
+#: scenes/combat/grid.gd:351
+msgid "물 위: 불리"
+msgstr ""
+
 #: scenes/combat/loot.gd:8
 msgid "공격 가산"
 msgstr ""

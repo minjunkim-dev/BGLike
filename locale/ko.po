@@ -1078,6 +1078,10 @@ msgstr "고지대"
 msgid "옆에 적"
 msgstr "옆에 적"
 
+#: scenes/combat/grid.gd:351
+msgid "물 위: 불리"
+msgstr "물 위: 불리"
+
 #: scenes/combat/loot.gd:8
 msgid "공격 가산"
 msgstr "공격 가산"

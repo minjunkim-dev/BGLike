@@ -35,6 +35,7 @@ func _run() -> void:
 	_test_shove_pull_preview()
 	_test_strength_validation()
 	_test_preview_conditions()
+	_test_water_preview()
 	_test_monster_hit_table()
 	_test_damage_table()
 	await _test_scene_input()
@@ -608,6 +609,36 @@ func _test_preview_conditions() -> void:
 	_check(not grid.attack_preview(archer, target).valid_target, "전투 불능 대상 거부")
 	_check(archer.get_ability_sides(CombatUnit.Ability.WILL) == 8, "전사 의지 d8")
 	_check(target.get_ability_sides(CombatUnit.Ability.WILL) == 4, "풋내기 궁수 의지 d4")
+
+
+## 환경요소 6장: 물 칸에 선 공격자의 명중굴림에 불리 요인 1개. 물 위의 대상을 겨누는 쪽은 받지 않는다.
+func _test_water_preview() -> void:
+	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 4))
+	var target: CombatUnit = _unit(CombatUnit.Kind.ARCHER, false, Vector2i(7, 4))
+	var units: Array[CombatUnit] = [archer, target]
+	var grid: CombatGrid = CombatGrid.new()
+	grid.units = units
+	grid.water_cells = [Vector2i(4, 4)]
+	var preview: CombatChecks.AttackPreview = grid.attack_preview(archer, target)
+	_check(preview.mode == CombatChecks.RollMode.DISADVANTAGE and is_equal_approx(preview.chance, 0.5625)
+		and "물 위: 불리" in preview.reasons, "물 위 아군 궁수의 원거리 공격은 불리 (75% → 56.25%) " + str(preview.reasons))
+	grid.water_cells = [Vector2i(7, 4)]
+	preview = grid.attack_preview(archer, target)
+	_check(preview.mode == CombatChecks.RollMode.NORMAL and preview.reasons.is_empty(), "물 위의 대상을 겨누는 쪽은 불리 아님")
+	grid.water_cells = [Vector2i(4, 4)]
+	grid.heights = {Vector2i(4, 4): 2}
+	preview = grid.attack_preview(archer, target)
+	_check(preview.mode == CombatChecks.RollMode.NORMAL and preview.reasons.size() == 2,
+		"고지대 유리와 물 위 불리가 겹치면 일반 " + str(preview.reasons))
+	grid.heights = {}
+	target.cell = Vector2i(5, 4)
+	preview = grid.attack_preview(archer, target, "bow_bash")
+	_check(preview.mode == CombatChecks.RollMode.DISADVANTAGE and preview.reasons == PackedStringArray(["물 위: 불리"]),
+		"근접 동작(활 후려치기)도 물 위면 불리 " + str(preview.reasons))
+	grid.water_cells = [Vector2i(5, 4)]
+	preview = grid.attack_preview(target, archer)
+	_check(preview.mode == CombatChecks.RollMode.DISADVANTAGE and "물 위: 불리" in preview.reasons,
+		"물 위의 적도 같은 불리 " + str(preview.reasons))
 
 
 ## 기획서 7장: 몬스터 AC와 장비 없는 전사·궁수와의 명중률을 실제 미리보기로 확인한다.
