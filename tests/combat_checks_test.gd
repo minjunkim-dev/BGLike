@@ -642,7 +642,7 @@ func _test_water_preview() -> void:
 		"물 위의 적도 같은 불리 " + str(preview.reasons))
 
 
-## 환경요소 6장: 실제 명중굴림(기본 공격·기회 공격)의 물 위 불리, 물 칸의 불 장판, 독·독안개, 이동 안내.
+## 환경요소 6장: 실제 명중굴림(기본 공격·휩쓸기·기회 공격)의 물 위 불리, 범위 불 장판, 독·독안개, 이동 안내.
 func _test_water_actions() -> void:
 	var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 4))
 	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 7))
@@ -657,6 +657,12 @@ func _test_water_actions() -> void:
 	_check(await actions.attack(warrior, barbarian) and actions.last_attack.mode == CombatChecks.RollMode.DISADVANTAGE
 		and actions.last_attack.rolls == [9, 5] and actions.last_attack.selected_roll == 5,
 		"물 위 전사의 기본 공격은 두 번 굴려 낮은 값")
+	# 휩쓸기도 _perform_attack를 지난다. 같은 물 칸에서 행동을 다시 주고 낮은 눈을 고르는지 본다.
+	warrior.action_left = 1
+	actions.dice = ScriptedDice.new([9, 5, 4], ScriptedDice.attack_sides(warrior, 2) + ScriptedDice.damage_sides(warrior, "sweep"))
+	_check(await actions.sweep(warrior, Vector2i(5, 4)) and actions.last_attack.mode == CombatChecks.RollMode.DISADVANTAGE
+		and actions.last_attack.rolls == [9, 5] and actions.last_attack.selected_roll == 5,
+		"물 위 전사의 휩쓸기도 두 번 굴려 낮은 값")
 	# 물 위의 야만인이 물러나는 궁수에게 기회 공격한다. 절대실패 두 면이라 빗나가고, 궁수는 반격이 없다.
 	warrior.cell = Vector2i(0, 0)
 	archer.cell = Vector2i(4, 5)
@@ -675,6 +681,20 @@ func _test_water_actions() -> void:
 	_check(actions.water_note(Vector2i(7, 7)).contains("물: 명중굴림 불리")
 		and actions.water_note(Vector2i(7, 7)).contains("화상 해제") and actions.water_note(Vector2i(8, 8)).is_empty(),
 		"이동 도착 칸이 물이면 명중굴림 불리와 화상 규칙을 함께 안내: " + actions.water_note(Vector2i(7, 7)))
+	# 반경 1(맨해튼) 영역에 물 칸과 마른 칸이 함께 있으면 불 장판은 물 칸만 빠진다.
+	var center: Vector2i = Vector2i(6, 6)
+	actions.grid.water_cells = [center, Vector2i(7, 6)]
+	var area: Array[Vector2i] = actions.grid.area_cells(center, 1)
+	for cell: Vector2i in area:
+		actions.create_ground(barbarian, cell, "burn")
+	var burn_cells: Array[Vector2i] = []
+	for ground: CombatActions.Ground in actions.get_grounds():
+		if ground.kind == "burn":
+			burn_cells.append(ground.cell)
+	_check(center in area and Vector2i(7, 6) in area and Vector2i(6, 5) in area
+		and center not in burn_cells and Vector2i(7, 6) not in burn_cells
+		and Vector2i(5, 6) in burn_cells and Vector2i(6, 5) in burn_cells and Vector2i(6, 7) in burn_cells,
+		"반경 영역의 불 장판은 물 칸만 빠지고 나머지 칸에는 생긴다 " + str(burn_cells))
 	turns.turn_started.disconnect(actions._on_turn_started)
 	var spider: CombatUnit = _unit(CombatUnit.Kind.FOG_SPIDER, false, Vector2i(2, 2))
 	var fog_units: Array[CombatUnit] = [spider, _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(9, 9))]
