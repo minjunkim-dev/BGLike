@@ -788,6 +788,7 @@ func _run() -> void:
 	_test_pull_contest_and_cooldown()
 	_test_pull_destinations()
 	_test_scrap_robot_overload()
+	_test_scrap_robot_overload_text()
 	await _test_scrap_robot_overload_timing()
 	_test_scrap_robot_turn_damage()
 	_test_scrap_robot_overload_burn()
@@ -1278,6 +1279,35 @@ func _test_pull_destinations() -> void:
 	f.actions.dice = _dice_for([], [])
 	_check(not f.actions.can_use(boss, "pull") and not f.actions.pull(boss, f.units[1])
 		and boss.action_left == 1, "인접 빈 칸이 없으면 판정·행동 소비 없이 만능팔 거부")
+
+
+## #503: 과부하 조건·효과와 물 칸 규칙을 켜지기 전부터 읽는 문구.
+func _test_scrap_robot_overload_text() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = boss.get_max_hit_points()
+	_check(CombatActionRules.overload_status(boss) == "과부하 대기(HP 20 이하)", "켜지기 전 상태 줄에 과부하 조건")
+	_check(CombatActionRules.overload_text(boss) == "과부하 (꺼짐): HP 20 이하가 되면 켜짐\n· 턴마다 행동 2\n"
+		+ "· 턴 시작에 자기 피해 2\n· 턴 시작에 반경 1(상하좌우, 높이 차 1 이하)의\n  모든 유닛에게 화상 1, 판정 없음\n"
+		+ "물 칸에 선 유닛은 화상이 걸리지 않고 해제됨", "켜지기 전 호버에 과부하 조건·효과·물 칸 규칙")
+	boss.hit_points = 20
+	_check(CombatActionRules.overload_status(boss) == "과부하", "켜진 뒤 상태 줄은 과부하")
+	_check(CombatActionRules.overload_text(boss).begins_with("과부하 (켜짐): HP 20 이하가 되면 켜짐\n"),
+		"켜진 뒤 호버는 켜짐 표시")
+	for pair: Array in [[CombatUnit.Kind.SCRAP_ROBOT_2000, "HP 22 이하"], [CombatUnit.Kind.SCRAP_ROBOT_3000, "HP 25 이하"]]:
+		var robot: CombatUnit = f.units[3]
+		robot.kind = pair[0]
+		robot.overloaded = false
+		robot.hit_points = robot.get_max_hit_points()
+		_check(CombatActionRules.overload_status(robot) == "과부하 대기(%s)" % pair[1]
+			and CombatActionRules.overload_text(robot).begins_with("과부하 (꺼짐): %s가 되면 켜짐\n" % pair[1]),
+			"모델마다 과부하 조건 숫자: " + pair[1])
+	for unit: CombatUnit in [f.units[0], f.units[1]]:
+		_check(CombatActionRules.overload_status(unit).is_empty() and CombatActionRules.overload_text(unit).is_empty(),
+			"고철로봇이 아니면 과부하 문구 없음")
+	f.units[3].kind = CombatUnit.Kind.WARRIOR
+	_check(CombatActionRules.overload_text(f.units[3]).is_empty(), "적 야만인도 과부하 문구 없음")
 
 
 func _test_scrap_robot_overload() -> void:

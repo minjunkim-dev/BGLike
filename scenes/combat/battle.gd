@@ -911,6 +911,12 @@ func _update_turn_ui() -> void:
 	hud.get_node("Skills").visible = not waiting_for_start
 	hud.get_node("EndTurn").visible = not waiting_for_start
 	hud.show_move_mode(showing_move)
+	# 걷기 미리보기는 안내를 숨기지만, 도착 칸이 물이면 서기 전에 물 칸 화상 규칙을 보인다(#503).
+	if selection.selected_action != "jump" and not selection.preview_path.is_empty():
+		var water: String = actions.water_note(selection.preview_cell)
+		if not water.is_empty():
+			hud.show_move_mode(false)
+			hud.show_target_note(water)
 	if selection.selected_action == "jump":
 		hud.show_move_mode(false)
 		var note: String = tr("점프 · 착지할 칸을 우클릭합니다.\n같은 칸을 다시 우클릭하면 확정합니다.")
@@ -922,6 +928,9 @@ func _update_turn_ui() -> void:
 			note = tr("점프 · 이동 %d · 보조 행동1\n%s · %s") % [actions.jump_cells(actor).get(cell, 0),
 				tr_n("기회 공격 %d명", "기회 공격 %d명", reactors) % reactors if reactors > 0 else tr("기회 공격 없음"),
 				tr("낙하 피해 %d") % fall if fall > 0 else tr("낙하 없음")]
+			var water: String = actions.water_note(cell)
+			if not water.is_empty():
+				note += "\n" + water
 		hud.show_target_note(note)
 	elif (selection.selected_action == "sweep" and turns.current_unit != null and turns.current_unit.is_ally
 			and not actions.busy):

@@ -99,6 +99,7 @@ func _run() -> void:
 	current_scene.queue_free()
 	await process_frame
 	await _test_spawned_portrait_input()
+	await _test_overload_and_water_guidance()
 	var dice_problems: Array[String] = ScriptedDice.finish()
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat HUD: %d checks, %d failures" % [checks, failures])
@@ -2081,6 +2082,117 @@ func _drag(point: Vector2, delta: Vector2) -> void:
 	event.position = motion.position
 	event.global_position = motion.position
 	Input.parse_input_event(event)
+	await process_frame
+
+
+## #503: 실제 1-3(고철로봇-1000)에서 과부하 조건·효과를 켜지기 전부터 읽는다.
+func _test_overload_and_water_guidance() -> void:
+	root.size = Vector2i(1280, 720)
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	battle = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	battle.call("start_battle")
+	(battle.get("progress") as CombatActProgress).stage_index = 2
+	battle.call("_start_stage", true)
+	battle.call("start_battle")
+	units = battle.get("units")
+	turns = battle.get("turns") as CombatTurns
+	actions = battle.get("actions") as CombatActions
+	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var robot: CombatUnit = units[2] if units.size() == 3 else null
+	_check(robot != null and robot.kind == CombatUnit.Kind.SCRAP_ROBOT_1000 and units[0].kind == CombatUnit.Kind.WARRIOR,
+		"#503 전제조건: 1-3은 아군 전사·궁수와 고철로봇-1000")
+	if robot == null or robot.kind != CombatUnit.Kind.SCRAP_ROBOT_1000:
+		main.queue_free()
+		await process_frame
+		return
+	var order: Array[CombatUnit] = [units[0], units[1], robot]
+	ScriptedDice.arrange_turns(turns, units, order)
+	battle.call("_update_turn_ui")
+	await process_frame
+	hud.show_unit(robot)
+	_check("상태: 과부하 대기(HP 20 이하)" in hud.resource_label.get_parsed_text(),
+		"켜지기 전 로봇 조회의 상태 줄에 과부하 조건")
+	robot.hit_points = 20
+	hud.show_unit(robot)
+	var status: String = hud.resource_label.get_parsed_text()
+	_check("상태: 기절 면역" not in status and "과부하, 기절 면역" in status and "과부하 대기" not in status,
+		"켜진 뒤 로봇 상태 줄은 지금처럼 과부하")
+	# 가장 긴 상태 줄도 상태 사이에서만 줄을 바꾼다(자동 줄바꿈이 `기절 면/역`처럼 단어를 끊지 않음).
+	robot.hit_points = robot.get_max_hit_points()
+	robot.overloaded = false
+	for kind_name: String in ["burn", "poison"]:
+		robot.status_effects.append(CombatUnit.StatusEffect.new(kind_name, units[0], 2))
+	robot.pull_cooldown = 1
+	hud.show_unit(robot)
+	await process_frame
+	var long_status: String = hud.resource_label.get_parsed_text()
+	_check("기절 면역" in long_status and ",\n" in long_status
+		and hud.resource_label.get_line_count() == long_status.count("\n") + 1,
+		"가장 긴 상태 줄은 상태 사이에서 줄바꿈: " + long_status.replace("\n", " | "))
+	robot.status_effects.clear()
+	robot.pull_cooldown = 0
+	robot.hit_points = 20
+	hud.show_unit(units[0])
+	_check("상태: 없음" in hud.resource_label.get_parsed_text() and "과부하" not in hud.resource_label.get_parsed_text(),
+		"아군 상태 줄에는 과부하 글이 없음")
+	robot.hit_points = robot.get_max_hit_points()
+	robot.overloaded = false
+	battle.call("_update_turn_ui")
+	var portraits: Dictionary = hud.get("_portraits")
+	var robot_lines: PackedStringArray = (portraits[robot] as Button).tooltip_text.split("\n")
+	_check(robot_lines.size() == 7 and robot_lines[0].begins_with("고철로봇-1000: 민첩 d4 = ")
+		and robot_lines[1] == "과부하 (꺼짐): HP 20 이하가 되면 켜짐" and robot_lines[2] == "· 턴마다 행동 2"
+		and robot_lines[3] == "· 턴 시작에 자기 피해 2"
+		and robot_lines[4] == "· 턴 시작에 반경 1(상하좌우, 높이 차 1 이하)의"
+		and robot_lines[5] == "  모든 유닛에게 화상 1, 판정 없음"
+		and robot_lines[6] == "물 칸에 선 유닛은 화상이 걸리지 않고 해제됨",
+		"로봇 초상 호버는 이니셔티브 줄 아래 과부하 조건·효과·물 칸 규칙: " + " | ".join(robot_lines))
+	for ally: CombatUnit in [units[0], units[1]]:
+		var text: String = (portraits[ally] as Button).tooltip_text
+		_check(text.split("\n").size() == 1 and "과부하" not in text and "물 칸" not in text,
+			"아군 초상 호버는 이니셔티브 줄 그대로: " + text)
+	robot.hit_points = 20
+	battle.call("_update_turn_ui")
+	_check("\n과부하 (켜짐): HP 20 이하가 되면 켜짐\n" in (portraits[robot] as Button).tooltip_text,
+		"켜진 뒤 로봇 초상 호버는 켜짐 표시")
+	robot.hit_points = robot.get_max_hit_points()
+	robot.overloaded = false
+	# 물 칸 규칙은 그 칸에 서기 전, 걷기·점프의 첫 우클릭 미리보기에서 읽는다. 1-3의 물은 (2,8)·(3,8)이다.
+	units[0].cell = Vector2i(3, 6)
+	units[1].cell = Vector2i(1, 6)
+	robot.cell = Vector2i(8, 1)
+	battle.call("_update_turn_ui")
+	await process_frame
+	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
+	var water: Vector2i = Vector2i(3, 8)
+	var dry: Vector2i = Vector2i(2, 6)
+	var water_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(water)
+	var dry_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(dry)
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	var note: String = "물 칸: 화상 해제 · 새 화상 걸리지 않음"
+	_check(water in actions.grid.water_cells and dry not in actions.grid.water_cells, "#503 전제조건: 1-3 물 칸 배치")
+	await _click(water_point, MOUSE_BUTTON_RIGHT)
+	_check(selection.preview_cell == water and units[0].cell == Vector2i(3, 6)
+		and hud.preview_label.visible and hud.preview_label.text == note,
+		"물 칸 걷기 첫 우클릭은 이동하지 않고 물 칸 화상 규칙을 보임: " + hud.preview_label.text)
+	await _click(dry_point, MOUSE_BUTTON_RIGHT)
+	_check(selection.preview_cell == dry and units[0].cell == Vector2i(3, 6) and not hud.preview_label.visible,
+		"물이 아닌 칸 걷기 미리보기는 지금처럼 안내를 숨김")
+	hud.action_selected.emit("jump")
+	await _click(water_point, MOUSE_BUTTON_RIGHT)
+	_check(selection.preview_cell == water and units[0].cell == Vector2i(3, 6) and hud.preview_label.visible
+		and hud.preview_label.text.begins_with("점프 · 이동 2 · 보조 행동1\n")
+		and hud.preview_label.text.ends_with("\n" + note),
+		"물 칸 점프 첫 우클릭은 기존 점프 안내 끝에 물 칸 화상 규칙: " + hud.preview_label.text)
+	await _click(dry_point, MOUSE_BUTTON_RIGHT)
+	_check(selection.preview_cell == dry and hud.preview_label.text.begins_with("점프 · ")
+		and "물 칸" not in hud.preview_label.text, "물이 아닌 칸 점프 안내는 그대로: " + hud.preview_label.text)
+	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	await create_timer(0.08).timeout
+	main.queue_free()
 	await process_frame
 
 
