@@ -193,10 +193,11 @@ func _force_ally_turn(battle: Node) -> void:
 	units.assign(battle.get("units"))
 	var dice: CombatDice = CombatDice.new()
 	var guard: int = 0
+	# RandomNumberGenerator는 생성 시 시각으로 시드된다. 검사 수가 실행마다 흔들리지 않게 1부터 고정한다.
 	while (turns.current_unit == null or not turns.current_unit.is_ally) and guard < 30:
-		dice.seed += 1
-		turns.start(units, dice)
 		guard += 1
+		dice.seed = guard
+		turns.start(units, dice)
 	_check(turns.current_unit != null and turns.current_unit.is_ally, "전투 HUD 검사는 아군 턴")
 
 
