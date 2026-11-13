@@ -4,7 +4,7 @@ set -euo pipefail
 tests=(
   tests/combat_save_test.gd
   tests/combat_{hud,ai,turns,checks,actions,progression,loot,capture,feedback,preparation_save,staging,dice_roll,warrior,archer}_test.gd
-  tests/{save,title,pause,continue}_test.gd
+  tests/{save,title,pause,continue,ui_theme}_test.gd
 )
 if [ "$#" -gt 0 ]; then
   registered=false

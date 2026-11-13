@@ -42,7 +42,7 @@ SRD 5.1은 CC-BY-4.0과 OGL 1.0a 중 하나를 고를 수 있습니다. BGLike�
 Git 기여 기록만으로 제3자 자료의 원저작권을 확정하지 않습니다.
 외부 원본이나 생성 도구의 별도 조건이 있으면 원래 출처와 조건을 기록하고 우선 적용합니다.
 공개 동의와 자산의 사용·공개 권한 확인은 별도로 기록합니다.
-현재 추적 파일에는 음악·폰트 원본이나 구매한 자산 패키지가 없습니다.
+현재 추적 파일에는 음악 원본이나 구매한 자산 패키지가 없습니다. 글꼴 원본은 아래 [현재 추적된 글꼴](#현재-추적된-글꼴)의 Galmuri11입니다.
 
 ## 현재 추적된 효과음
 
@@ -54,6 +54,20 @@ Git 기여 기록만으로 제3자 자료의 원저작권을 확정하지 않습
 | `scenes/combat/audio/roll_fail.ogg` | BGLike 자체 합성 임시음. 사인파 두 음(300Hz→200Hz). 주사위 굴림 실패 결과음 | 위와 같음 |
 
 효과음의 CC0는 BGLike 자체 코드에 적용하지 않습니다.
+
+## 현재 추적된 글꼴
+
+| 파일 | 버전·용도 | 조건과 출처 |
+| --- | --- | --- |
+| `scenes/ui/fonts/Galmuri11.ttf` | Galmuri v2.40.4의 `dist/Galmuri11.ttf`. 게임 UI 글꼴(기본 크기 11). 한글 도트 글꼴 | SIL Open Font License 1.1. 원본 라이선스 전문은 `scenes/ui/fonts/LICENSE-Galmuri.txt`(Galmuri 저장소의 `ofl.md` 그대로, Copyright © 2019–2025 Lee Minseo). 예약 글꼴 이름(Reserved Font Name) 지정은 없습니다. 출처는 Galmuri v2.40.4 태그입니다. [OFL 1.1 전문](https://openfontlicense.org/open-font-license-official-text/). 2026-11-13 leader 확인 |
+
+글꼴 파일을 수정하거나 나누어 배포하면 OFL 1.1의 조건을 따릅니다. 게임 안 `출처` 화면에도 같은 고지를 둡니다.
+
+## 현재 추적된 UI 프레임
+
+| 파일 | 원본·용도 | 조건과 출처 |
+| --- | --- | --- |
+| `scenes/ui/art/frames/panel.png`, `accent_panel.png`, `button.png` | 프로젝트 자체 제작 9-slice UI 프레임 3종(16×16). `scenes/ui/art/sources/draw_ui_frames.py`가 코드로 픽셀을 찍어 만든 자체 제작물. 색은 `scenes/ui_theme.tres`의 modulate로 정함 | 규격은 `scenes/ui/art/sources/ui_frame_generation.json`에 기록했습니다. 생성 모델·외부 이미지·글꼴을 입력하지 않았습니다. 스크립트를 다시 실행하면 같은 PNG를 만듭니다. 제3자의 원저작권 부재나 독점권을 확정하는 기록은 아닙니다. |
 
 ## 새 자산과 출시 전 확인
 

@@ -14,6 +14,8 @@ const HELP_TOPICS: Array[String] = ["우클릭", "좌클릭", "숫자 키 1~9", 
 ## #209 6번: 이번 도움말에 넣지 않는 메커닉. 점프는 조작만 적고 높이 규칙은 적지 않는다.
 ## 물 칸의 명중굴림 불리는 #532 완료 조건대로 유리/불리 항목에 적는다. 물 칸 화상 규칙은 여전히 넣지 않는다.
 const HELP_EXCLUDED: Array[String] = ["높이", "낙하", "낭떠러지", "화상"]
+## 출처 화면의 UI 글꼴 고지. THIRD_PARTY_NOTICES.md의 Galmuri 행과 같은 문구다 (ui-theme).
+const FONT_NOTICE: String = "UI 글꼴: Galmuri11 v2.40.4 (Copyright © 2019–2025 Lee Minseo, SIL Open Font License 1.1)"
 ## 여러 worktree가 같은 user://를 쓰므로 실행마다 폴더를 나눈다 (docs/adr/0003).
 var directory: String = "user://tests/title/%d" % OS.get_process_id()
 
@@ -343,6 +345,7 @@ func _check_notices(title: TitleScreen) -> void:
 		_check((notices.get_node(name) as Node).auto_translate_mode == Node.AUTO_TRANSLATE_MODE_DISABLED,
 			"법적 고지문 %s은 번역하지 않음" % name)
 	_check("Kenney" in (notices.get_node("Sound") as Label).text, "효과음 원본 표기")
+	_check((notices.get_node("Font") as Label).text == FONT_NOTICE, "UI 글꼴 Galmuri11 고지 문구")
 
 
 ## ADR 0002의 여섯 창에서 타이틀, 설정, 도움말, 출처 화면이 논리 화면 안에 겹치지 않고 들어간다.

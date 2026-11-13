@@ -184,6 +184,17 @@ layout_mode = 2
 text = "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
 autowrap_mode = 3
 
+[node name="FontHeading" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "글꼴"
+
+[node name="Font" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "UI 글꼴: Galmuri11 v2.40.4 (Copyright © 2019–2025 Lee Minseo, SIL Open Font License 1.1)"
+autowrap_mode = 3
+
 [node name="Back" type="Button" parent="Credits/Margin/Layout"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(80, 20)

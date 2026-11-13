@@ -102,6 +102,16 @@ HP·상태·피해 팝업은 그 유닛의 실제 그림 높이를 기준으로 
 
 ![24 논리px·48 원본: 1280×720, 1920×1080, 2560×1440의 HUD와 정비 칸](assets/icon_size_48_source.png)
 
+## UI
+
+`개발 결정`: 화면 UI도 도트 기준을 따른다. 테마 값의 원본은 `scenes/ui_theme.tres`다.
+
+- 글꼴: Galmuri11 하나(`scenes/ui/fonts/Galmuri11.ttf`, OFL-1.1). 테마 기본 크기 11. 11px 격자라 창 배율 2·3에서 정수 배율이 된다. 9·14는 쓰지 않는다. 값을 유지한 14 예외는 `scenes/ui_theme.tres`의 `Window/font_sizes/title_font_size`, `scenes/main.tscn` 출처 소제목(`FontHeading`과 같은 화면의 게임 규칙·엔진·그림·효과음), `scenes/help.tscn` 도움말 소제목, `scenes/combat/battle.gd`의 전투 시작 버튼이다. 라이선스 고지는 [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md#현재-추적된-글꼴)에 있다.
+- UI 색: 아이템 팔레트(`draw_item_icons.py`)에서 고른다. 패널 면 `#21223D`, 강조 외곽선 `#CC8E4D`, 버튼 기본 `#223940`·호버 `#365D61`·눌림 `#18292D`·비활성 `#464254`, 본문 글자 `#F5EBDB`, 보조 글자 `#C5B29F`, 강조 글자 `#EBBA84`, 비활성 글자 `#85736C`, 포커스 테두리 `#EBBA84`. 본문 글자와 패널 면은 약 13:1이다.
+- 9-slice 프레임: 16×16 RGBA 3종(`scenes/ui/art/frames/panel.png`, `accent_panel.png`, `button.png`). 바깥 1px 외곽선, 안쪽 1px 면, 왼쪽 위 1px 밝은 모서리, 모서리 2×2 깎기, 여백 4px. 원본은 회색조이고 색은 `StyleBoxTexture.modulate_color`로 정한다. 같은 명령은 같은 파일을 만든다(`scenes/ui/art/sources/draw_ui_frames.py`, 설명은 `ui_frame_generation.json`).
+- 1배 예외: `StyleBoxTexture`에는 0.5배 축척이 없어 프레임은 텍셀과 논리 px가 1:1이다. 배율 2·3에서 정수로 찍혀 셰이더가 필요 없다. 유닛·지형의 0.5배 규칙(#264)과 다른 예외다.
+- 버튼 상태: 기본·호버·눌림·비활성은 같은 `button.png`를 쓰고 색만 바꾼다. 눌림은 면만 어둡게 하고 내용물을 밀지 않는다. 선택은 강조 프레임으로 나타내고 버튼 테두리에 색을 더하지 않는다. 포커스는 빈 중앙의 테두리(`StyleBoxFlat`)다.
+
 ## 검증과 현재 상태
 
 #194의 유닛9종과108개 프레임·애니메이션·초상 연결을 포함한다. #195의 [실제 도트 지형과9개 맵](TERRAIN_MAPS.md)을 함께 통합한다. 각 티켓의 최종 Evidence가 직접 확인·독립 리뷰·CI·병합의 근거다. 파일 존재만으로 그 절차를 완료했다고 판단하지 않는다.
