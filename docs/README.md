@@ -49,6 +49,7 @@
 | [PIXEL_ART.md](PIXEL_ART.md) | 현역 (UNIT_IMAGE_TEMPLATE을 병합) | `design/pixel-art.md` |
 | [TERRAIN_MAPS.md](TERRAIN_MAPS.md) | 현역 | `design/stages/terrain-maps.md` |
 | [stages/README.md](stages/README.md) | 현역 | `design/stages/README.md` |
+| [ENVIRONMENT_ELEMENTS.md](ENVIRONMENT_ELEMENTS.md) | 현역 | `design/combat/environment.md` |
 | [characters/](characters/README.md) (README, 전사, 궁수) | 현역 | `design/characters/` |
 | [monsters/](monsters/README.md) (README, 몬스터 8종) | 현역 | `design/monsters/` |
 
