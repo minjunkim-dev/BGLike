@@ -17,7 +17,7 @@ FAKE_GODOT = """#!/bin/sh
 printf '%s\\n' "$*" >> "$CALL_LOG"
 case "$*" in
   --version) echo 4.7.2.stable.official.fixture ;;
-  *"$BROKEN"*) echo "$ERROR_LINE" >&2; exit "$BROKEN_EXIT" ;;
+  *"$BROKEN"*) echo "$ERROR_LINE" >&2; [ "$BROKEN_EXIT" = hang ] && exec sleep 60; exit "$BROKEN_EXIT" ;;
   *--script*) echo 'Fixture: 1 checks, 0 failures' ;;
 esac
 """
@@ -66,6 +66,13 @@ class GodotCheckTests(unittest.TestCase):
                 result, calls = self.run_check(selected=selected)
                 self.assertEqual(result.returncode, 2)
                 self.assertEqual(calls, [])
+
+    def test_script_error_stops_a_test_that_never_ends(self):
+        started = time.monotonic()
+        result, _ = self.run_check("combat_ai_test", SCRIPT_ERROR, "hang")
+        self.assertEqual(result.returncode, 1)
+        self.assertLess(time.monotonic() - started, 30)
+        self.assertIn("Godot script error during: --script tests/combat_ai_test.gd", result.stderr)
 
     def test_selected_script_keeps_common_setup_error_gate(self):
         for step in ("--import", "--quit-after"):
