@@ -17,7 +17,7 @@
 
 ```text
 /
-├── GLOSSARY.md          # 게임 용어집
+├── GLOSSARY.md         # 게임 용어집
 └── docs/
     ├── 기획 문서       # 규칙과 수치의 기준
     ├── agents/         # 스킬 설정과 문서 읽기 규칙
