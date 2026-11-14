@@ -492,6 +492,19 @@ func _test_rock_stun() -> void:
 	_check(f.actions.attack_prop(f.units[0], rock) and archer.is_stunned and archer.stun_source == f.units[0],
 		"민첩 내성에 실패한 궁수는 굴린 아군을 시전자로 기절한다")
 
+	# 아군: 굴린 유닛 옆의 아군도 똑같이 내성굴림을 하고, 실패하면 굴린 유닛을 시전자로 기절하며 기절 팝업이 뜬다.
+	f = _fixture()
+	var ally: CombatUnit = f.units[1]
+	ally.cell = Vector2i(4, 6)
+	rock = f.actions.create_prop(Vector2i(4, 5), "rock")
+	var popups: Array[String] = []
+	f.actions.feedback.connect(func(unit: CombatUnit, text: String) -> void:
+		if unit == ally:
+			popups.append(text))
+	f.actions.dice = _dice_for([1], [ally.get_ability_sides(agility)])
+	_check(f.actions.attack_prop(f.units[0], rock) and ally.is_stunned and ally.stun_source == f.units[0]
+		and "기절" in popups, "민첩 내성에 실패한 아군도 굴린 유닛을 시전자로 기절하고 기절 팝업을 받는다")
+
 	# 보스: 고철로봇은 기절 면역이라 내성굴림을 하지 않는다. 준비값이 없어 굴리면 실패로 남는다.
 	f = _fixture()
 	var boss: CombatUnit = f.units[2]

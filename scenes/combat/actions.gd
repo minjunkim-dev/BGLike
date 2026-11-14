@@ -414,6 +414,8 @@ func _roll_rock_stun(actor: CombatUnit, target: CombatUnit) -> void:
 	logged.emit(tr("%s %s 내성 %d 대 DC %d") % [target.get_display_name(), CombatUnit.ability_name(ability),
 		saved.total, ROCK_STUN_DC])
 	logged.emit((tr("%s: 기절") if stunned else tr("%s: 버팀")) % target.get_display_name())
+	if stunned:
+		feedback.emit(target, tr("기절"))
 
 
 ## 미리보기용: 충돌 피해 뒤에도 살아 있는 비보스 대상인지. 방어막이 먼저 흡수한다 (_damage와 같은 순서).
