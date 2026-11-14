@@ -542,7 +542,7 @@ func _test_archer_moving_shot_input() -> void:
 	for action: String in buttons:
 		if (buttons[action] as Button).is_visible_in_tree():
 			shown.append(action)
-	_check(shown == ["attack", "aegisal", "bow_bash", "shove", "jump", "potion"], "궁수 스킬 패널의 버튼(공용 밀치기 포함): " + str(shown))
+	_check(shown == ["attack", "aegisal", "bow_bash", "shove", "jump", "potion", "oil_throw"], "궁수 스킬 패널의 버튼(공용 밀치기 포함): " + str(shown))
 	_check((passives["moving_shot"] as Button).visible and not (passives["phalanx"] as Button).visible
 		and not (dots["moving_shot"] as Label).visible and (passives["moving_shot"] as Button).disabled,
 		"궁수 패시브 칸의 무빙샷은 도약할 수 없는 동안 꺼짐")

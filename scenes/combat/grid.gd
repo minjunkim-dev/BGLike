@@ -150,10 +150,11 @@ func jump_path(actor: CombatUnit, destination: Vector2i) -> Array[Vector2i]:
 	return []
 
 
-func reachable_cells(actor: CombatUnit) -> Dictionary[Vector2i, int]:
+## budget이 음수면 남은 이동력을 쓴다. 넘어진 유닛이 일어서기 비용을 뺀 이동력으로 보는 칸에 쓴다.
+func reachable_cells(actor: CombatUnit, budget: int = -1) -> Dictionary[Vector2i, int]:
 	if actor == null:
 		return {}
-	var routes: Routes = _search(actor.cell, actor.movement_left)
+	var routes: Routes = _search(actor.cell, actor.movement_left if budget < 0 else budget)
 	routes.costs.erase(actor.cell)
 	return routes.costs
 
