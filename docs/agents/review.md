@@ -64,7 +64,7 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 
 병합은 사람만 한다. 에이전트는 PR을 병합하지 않고 자동 병합을 예약하지 않는다. 저장소 `Allow auto-merge`는 Off다. `.claude/settings.json`의 거부 규칙이 `gh pr merge`와 `main` push를 막는다. 이것은 습관이지 보안 경계가 아니다.
 
-병합하는 사람은 병합 직전에 head·base와 필수 검사 결과를 다시 확인한다. 되돌리기 어려움이거나 [신뢰 경계](../../REVIEW.md#신뢰-경계)를 건드리면 diff를 직접 읽고 그 head에서 병합한다.
+병합하는 사람은 병합 직전에 head·base와 필수 검사 결과를 다시 확인한다. 되돌리기 어려움이거나 [민감한 파일](../../REVIEW.md#민감한-파일)을 건드리면 diff를 직접 읽고 그 head에서 병합한다.
 CodeQL 경고 수정 PR은 workflow 성공이 아니라 code scanning API로 판정한다.
 `refs/pull/<PR>/merge`의 Actions·Python 분석은 최종 base와 최종 head를 부모로 둔 merge 커밋에서 끝나야 한다. 각 분석의 `error`·`warning` 필드는 비어 있어야 한다. 그 ref의 열린 경고는 0건이어야 한다.
 code scanning API는 분석이 없는 ref에도 열린 경고 0건을 반환한다. 경고 수만 보고 판정하지 않는다.
@@ -85,9 +85,9 @@ code scanning API는 분석이 없는 ref에도 열린 경고 0건을 반환한�
 
 권한·Secret·workflow·저장소 설정·dependency 정책 변경에는 작성자와 다른 모델의 리뷰를 추가한다. 실행할 수 없으면 그 한계를 기록하고 프로젝트의 위험별 승인 기준을 따른다.
 
-## 프로젝트 신뢰 경계 경로
+## 프로젝트 민감한 파일 경로
 
-공통 경로는 repo-baseline `POLICY.md` §4가 정한다. 이 저장소의 경로는 [REVIEW.md의 신뢰 경계](../../REVIEW.md#신뢰-경계)에 적는다. 경로를 더하면 그 절에 적는다.
+공통 경로는 repo-baseline `POLICY.md` §4가 정한다. 이 저장소의 경로는 [REVIEW.md의 민감한 파일](../../REVIEW.md#민감한-파일)에 적는다. 경로를 더하면 그 절에 적는다.
 
 ## Matt Pocock retro로 환경 개선
 

@@ -112,7 +112,7 @@
 | Godot import·메인 장면·전투 회귀 검사 | GitHub Actions `godot`. 문서만 바뀌면 엔진 작업은 생략 |
 | PR·CI 알림 | `#github-알림` Discord 웹훅 |
 | GitHub AI 리뷰 | GitHub Claude workflow는 사용하지 않음. 자동 리뷰는 현재 GitHub 연결·설정에서 실제 연결만 정리. 다른 저장소·계정 연결은 유지 |
-| 로컬 리뷰 / 회고 | 다른 컨텍스트에서 `REVIEW.md` 기준, 신뢰 경계면 Security 추가 / 사용자 요청 시 Matt Pocock retro |
+| 로컬 리뷰 / 회고 | 다른 컨텍스트에서 `REVIEW.md` 기준, 민감한 파일이면 Security 추가 / 사용자 요청 시 Matt Pocock retro |
 | Issue·PR 양식 | `.github/` 템플릿 |
 
 동료 승인은 필수가 아닙니다. main 보호의 현재 적용 상태와 필수 검사 조건은 [협업 규칙](docs/WORKFLOW.md#현재-github-제약)을 참조합니다.
