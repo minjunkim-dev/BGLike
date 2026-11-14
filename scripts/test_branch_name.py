@@ -18,7 +18,8 @@ class BranchNameTests(unittest.TestCase):
     def test_missing_issue_and_invalid_names_are_rejected(self):
         for branch in ["test/pck-bundle-regression", "feat/combat", "Test/12-combat", "test/12-bad_name",
                        "test/12-double--dash", "test/12-trailing-", "test/12-extra/slash", "", "main",
-                       "docs/x", "docs/1invalid", "test/12-valid\nother"]:
+                       "docs/x", "docs/1invalid", "test/12-valid\nother",
+                       "feature/12-x", "feat/12", "docs/"]:
             with self.subTest(branch=branch), self.assertRaises(ValueError):
                 check_branch(branch)
 
@@ -45,10 +46,19 @@ class BranchNameTests(unittest.TestCase):
         checker = str(Path(__file__).with_name("check_branch_name.py"))
         for args, data, expected in [(["test/142-valid"], "", 0), (["test/no-issue"], "", 1),
                                      (["--pre-push", "main"], f"HEAD {'a' * 40} refs/heads/invalid {'0' * 40}\n", 1),
-                                     (["--pre-push", "main"], "", 0), ([], "", 1)]:
+                                     (["--pre-push", "main"], "", 0), ([], "", 1),
+                                     (["--pre-push"], "", 1)]:
             with self.subTest(args=args):
                 result = subprocess.run([sys.executable, checker, *args], input=data, capture_output=True, text=True)
                 self.assertEqual(result.returncode, expected, result.stderr)
+
+    def test_usage_errors_print_usage_message(self):
+        checker = str(Path(__file__).with_name("check_branch_name.py"))
+        for args in [[], ["--pre-push"]]:
+            with self.subTest(args=args):
+                result = subprocess.run([sys.executable, checker, *args], input="", capture_output=True, text=True)
+                self.assertEqual(result.returncode, 1)
+                self.assertTrue(result.stderr.startswith("branch-name: Usage:"), result.stderr)
 
 
 if __name__ == "__main__":
