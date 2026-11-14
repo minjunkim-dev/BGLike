@@ -374,7 +374,7 @@ func _test_holy_veil() -> void:
 	var rock: CombatGrid.Prop = rocky.actions.create_prop(Vector2i(4, 5), "rock")
 	var preview: CombatActions.RockRoll = rocky.actions.preview_rock(rocky.units[0], rock)
 	var pushed: bool = preview.steps.any(func(step: CombatActions.RockStep) -> bool: return step.target == target and step.push)
-	rocky.actions.dice = _dice([], [])
+	rocky.actions.dice = _dice([], []).then_seeded()
 	rocky.actions.attack_prop(rocky.units[0], rock)
 	_check(pushed and target.hit_points == 3 and target.shield_points == 1 and target.cell != Vector2i(4, 6),
 		"바위 충돌 피해 4를 방어막이 받고, 미리보기도 살아남아 밀리는 것으로 보임")

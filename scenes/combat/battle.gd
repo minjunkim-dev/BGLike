@@ -898,7 +898,7 @@ func _update_turn_ui() -> void:
 				}.get(roll.direction, tr("방향 없음"))
 				var collisions: Array[String] = []
 				for unit: CombatUnit in roll.collisions:
-					var landing: String = actions.rock_landing(roll, unit)
+					var landing: String = actions.rock_collision_note(roll, unit)
 					collisions.append((tr("아군 피해4: %s") if unit.is_ally else tr("적 피해4: %s")) % unit.get_display_name()
 						+ ("" if landing.is_empty() else " · " + landing))
 				note = tr("행동1 · 주사위 없음\n%s · %d칸 · %s\n%s\n같은 바위를 다시 좌클릭하면 굴립니다.") % [
