@@ -108,6 +108,15 @@ func _run() -> void:
 	quit(0 if failures == 0 else 1)
 
 
+## 보이는 버튼이 차지하는 줄 수. 넘쳐 접힌 줄은 2 이상이다(#500 2안).
+func _button_lines(panel: Control) -> int:
+	var ys: Array[float] = []
+	for button: Control in panel.get_child(0).get_child(1).get_children():
+		if button.visible and button.global_position.y not in ys:
+			ys.append(button.global_position.y)
+	return ys.size()
+
+
 func _test_movement_overlay() -> void:
 	var grid: CombatGrid = CombatGrid.new()
 	grid.map_size = Vector2i(3, 2)
@@ -842,7 +851,7 @@ func _test_layout() -> void:
 			for index: int in range(1, rows.size()):
 				var above: Rect2 = (rows[index - 1] as Control).get_global_rect()
 				var below: Rect2 = (rows[index] as Control).get_global_rect()
-				_check(below.position.y >= above.end.y and below.size.y == above.size.y,
+				_check(below.position.y >= above.end.y and (below.size.y == above.size.y or _button_lines(rows[index]) > 1 or _button_lines(rows[index - 1]) > 1),
 					"%s %s: 컨테이너 %d는 앞 컨테이너 아래 같은 줄 높이" % [size, kind, index])
 			# 제목 폭을 맞춰 각 줄의 첫 버튼이 같은 세로선에 선다.
 			var filled: Array = rows.filter(func(panel: Control) -> bool:
