@@ -61,12 +61,15 @@ tests = iter(sys.argv[2:])
 active = []
 status = 0
 lock = threading.Lock()
+ERRORS = ("SCRIPT ERROR", "Failed to load script")
 def say(name, started, text):
     with lock:
         print(f"[{name} {time.monotonic() - started:.0f}s] {text}", end="", flush=True)
-def relay(name, started, process, lines):
+def relay(name, started, process, lines, errored):
     for line in process.stdout:
         lines.append(line)
+        if any(error in line for error in ERRORS):
+            errored.set()
         # A broken stdout must not stop draining, or Godot blocks on a full pipe.
         try:
             say(name, started, line if line.endswith("\n") else line + "\n")
@@ -94,22 +97,27 @@ try:
             name = Path(test).stem
             started = time.monotonic()
             lines = []
+            errored = threading.Event()
             spawning = True
             process = subprocess.Popen([sys.argv[1], "--headless", "--path", ".", "--script", test],
                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                        errors="replace", start_new_session=True)
-            reader = threading.Thread(target=relay, args=(name, started, process, lines), daemon=True)
-            active.append((test, process, reader, lines, started))
+            reader = threading.Thread(target=relay, args=(name, started, process, lines, errored), daemon=True)
+            active.append((test, process, reader, lines, started, errored))
             spawning = False
             if deferred:
                 raise KeyboardInterrupt
             say(name, started, "started\n")
             reader.start()
         for item in active[:]:
-            test, process, reader, lines, started = item
+            test, process, reader, lines, started, errored = item
             result = process.poll()
-            if result is None:
-                continue
+            stopped = result is None
+            if stopped:
+                # The error already fails the test, and a scene that failed to compile can await forever.
+                if not errored.is_set():
+                    continue
+                result = 1
             # Leftover children would hold the pipe open and outlive the check.
             try:
                 os.killpg(process.pid, signal.SIGKILL)
@@ -117,12 +125,13 @@ try:
                 pass
             reader.join(timeout=5)
             output = "".join(lines)
-            say(Path(test).stem, started, f"finished with exit code {result}\n")
+            say(Path(test).stem, started, "stopped after a script error\n" if stopped
+                else f"finished with exit code {result}\n")
             if reader.is_alive():
                 # Unread output could still hold a script error, so it cannot pass.
                 print(f"Godot output did not end during: --script {test}", file=sys.stderr)
                 result = 1
-            elif "SCRIPT ERROR" in output or "Failed to load script" in output:
+            elif any(error in output for error in ERRORS):
                 print(f"Godot script error during: --script {test}", file=sys.stderr)
                 result = 1
             if result:
@@ -137,12 +146,12 @@ finally:
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
     # The group may outlive an exited test process or ignore SIGTERM, so stop it either way.
-    for _, process, _, _, _ in active:
+    for _, process, _, _, _, _ in active:
         try:
             os.killpg(process.pid, signal.SIGTERM)
         except ProcessLookupError:
             pass
-    for _, process, _, _, _ in active:
+    for _, process, _, _, _, _ in active:
         try:
             process.wait(timeout=5)
         except subprocess.TimeoutExpired:
@@ -152,7 +161,7 @@ finally:
         except ProcessLookupError:
             pass
         process.wait()
-    for _, _, reader, _, _ in active:
+    for _, _, reader, _, _, _ in active:
         if reader.is_alive():
             reader.join(timeout=1)
 sys.exit(status)
