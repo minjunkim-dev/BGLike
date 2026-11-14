@@ -126,7 +126,7 @@
 1. 이 문서 추가. 이동·삭제 없음.
 2. 문서 링크 검사 스크립트 추가.
 3. 삭제 예정 문서와 이미지 삭제. 삭제 전에 인용 위치를 `grep`으로 점검하고 링크를 정리한다.
-4. 문서 이동과 하위폴더 `README.md` 작성. 개발 PR이 `docs/`를 고치기 전에 끝낸다. 경로를 바꿔야 하는 곳은 `AGENTS.md`, `REVIEW.md`, `CONTRIBUTING.md`, `CONTEXT.md`, 루트 `README.md`, `agents/domain.md`, `agents/review.md`, `THIRD_PARTY_NOTICES.md`, 코드의 경로 문자열(스크립트·테스트 주석)이다. 코드가 `docs/` 아래 파일을 읽지는 않는다.
+4. 문서 이동과 하위폴더 `README.md` 작성. 개발 PR이 `docs/`를 고치기 전에 끝낸다. 경로를 바꿔야 하는 곳은 `AGENTS.md`, `REVIEW.md`, `CONTRIBUTING.md`, `GLOSSARY.md`, 루트 `README.md`, `agents/domain.md`, `agents/review.md`, `THIRD_PARTY_NOTICES.md`, 코드의 경로 문자열(스크립트·테스트 주석)이다. 코드가 `docs/` 아래 파일을 읽지는 않는다.
 5. `WORKFLOW.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`의 마커·개발 결정 문장 수정, 구현 상태 표기 위치 결정, `DICE_GROWTH` 축소, `characters/`·`monsters/` 표 동기화.
 
 ## 미정
