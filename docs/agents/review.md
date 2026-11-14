@@ -77,7 +77,7 @@ code scanning API는 분석이 없는 ref에도 열린 경고 0건을 반환한�
 
 | 변경 영역 | 로컬 리뷰가 선택할 상세 문서 |
 | --- | --- |
-| 게임·입력·화면 | `CONTEXT.md`, `docs/COMBAT_UIUX.md`, 관련 Issue가 연결한 기획 문서·ADR |
+| 게임·입력·화면 | `GLOSSARY.md`, `docs/COMBAT_UIUX.md`, 관련 Issue가 연결한 기획 문서·ADR |
 | 게임 검사 | `docs/M1_VERIFICATION.md`의 과거 근거 범위, 현재 티켓의 합격 조건·재현 기록 |
 | GitHub·CI·Draft | `docs/CI.md`, `docs/DRAFT_RELEASE.md`, `docs/REPOSITORY_SETUP.md`, 엔진 잠금 값 |
 | 작업·검증 | `docs/WORKFLOW.md`, `docs/GIT_CONVENTIONS.md`, `docs/agents/domain.md` |
