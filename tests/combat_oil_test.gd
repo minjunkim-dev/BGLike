@@ -271,10 +271,12 @@ func _test_fallen_limits_and_stand_up() -> void:
 	_check(not f.actions.can_use(archer, "attack") and not f.actions.can_use(archer, "jump")
 		and not f.actions.can_use(archer, "oil_throw") and not f.actions._can_react(archer),
 		"넘어짐: 행동·보조 행동·반응 불가")
-	_check(f.actions.can_move(archer, Vector2i(3, 2)) and f.actions.reachable_cells(archer).size() > 0,
+	_check(f.actions.can_move(archer, Vector2i(3, 2)) and f.actions.reachable_cells(archer).size() > 0
+		and f.actions.can_use(archer, "move"),
 		"넘어짐에서도 이동 시도는 일어서기 비용(절반)을 내고 가능")
 	archer.movement_left = 2
-	_check(not f.actions.stand_up(archer) and archer.fallen and not f.actions.can_move(archer, Vector2i(3, 2)),
+	_check(not f.actions.stand_up(archer) and archer.fallen and not f.actions.can_move(archer, Vector2i(3, 2))
+		and not f.actions.can_use(archer, "move"),
 		"이동력이 비용보다 적으면 일어나지 못하고 이동도 못함")
 	archer.movement_left = 6
 	_check(f.actions.stand_up(archer) and not archer.fallen and archer.movement_left == 3

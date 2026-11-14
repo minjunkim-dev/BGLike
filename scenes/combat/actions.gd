@@ -1003,6 +1003,9 @@ func sweep_chance(actor: CombatUnit, target: CombatUnit) -> float:
 
 
 func can_use(actor: CombatUnit, action: String) -> bool:
+	# 넘어진 유닛도 이동을 시도하면 일어서기 비용을 내고 걷는다(전투 설계 넘어짐). reachable_cells가 그 비용을 본다.
+	if action == "move":
+		return not reachable_cells(actor).is_empty()
 	if not _can_act(actor):
 		return false
 	match action:
@@ -1016,8 +1019,6 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 		"spawn":
 			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
 				and actor in turns.ordered_units and not grid.empty_neighbors(actor.cell).is_empty())
-		"move":
-			return not reachable_cells(actor).is_empty()
 		"jump":
 			return not jump_cells(actor).is_empty()
 		"moving_shot":
