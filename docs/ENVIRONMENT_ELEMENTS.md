@@ -219,6 +219,6 @@
 | 항목 | 임시 규칙 | 결정 Issue |
 |---|---|---|
 | 직사 시선의 경로 계산과 엄폐 | 2-2의 직사 시선 차단 열. 직사 동작이 없으므로 개발 금지 | [#358](https://github.com/minjunkim-dev/BGLike/issues/358) |
-| 박스·바위 칸의 장판 | 독안개는 영역에 포함, 불·독 장판은 생성 불가(현재 동작) | [#529](https://github.com/minjunkim-dev/BGLike/issues/529) |
+| 박스·바위 칸의 장판 | 독안개는 영역에 포함, 불·독 장판은 생성 불가(현재 동작). 기름 장판도 그 칸에는 깔리지 않지만 기름병은 그 칸을 목표로 고를 수 있고 나머지 십자 칸에 깔림([#549](https://github.com/minjunkim-dev/BGLike/issues/549)) | [#529](https://github.com/minjunkim-dev/BGLike/issues/529) |
 | "벽"이라는 이름 | 이 문서의 벽은 무너진 벽 장식. 맵 가장자리는 "맵 가장자리"로 부름 | [#529](https://github.com/minjunkim-dev/BGLike/issues/529) |
 | 박스 드랍으로 늘어난 보상량 | 3-5의 값 그대로 | [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
