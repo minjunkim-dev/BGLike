@@ -572,7 +572,7 @@ func create_oil(source: CombatUnit, center: Vector2i) -> bool:
 	if (not is_instance_valid(source) or source not in units or source.hit_points <= 0
 		or not _oil_site_ok(center, center)):
 		return false
-	var made: int = 0
+	var placed: Array[Vector2i] = []
 	for cell: Vector2i in CombatOil.cross_cells(center):
 		if not _oil_site_ok(center, cell):
 			continue
@@ -581,8 +581,14 @@ func create_oil(source: CombatUnit, center: Vector2i) -> bool:
 			existing.turns_left = CombatOil.TURNS
 		else:
 			_grounds.append(Ground.new(source, cell, "oil"))
-		made += 1
-	logged.emit(tr("%s 기름 장판: %d, %d · %d칸") % [source.get_display_name(), center.x, center.y, made])
+		placed.append(cell)
+	logged.emit(tr("%s 기름 장판: %d, %d · %d칸") % [source.get_display_name(), center.x, center.y, placed.size()])
+	# 불 장판 칸에 기름이 생겨도 닿은 것으로 본다(전투 설계 6장). create_ground처럼 그 칸에 불 장판을 남기지 않는다.
+	for ground: Ground in _grounds.duplicate():
+		if ground.kind == "burn" and ground.cell in placed and _oil_at(ground.cell) != null:
+			_grounds.erase(ground)
+			var alive: bool = is_instance_valid(ground.source) and ground.source in units and ground.source.hit_points > 0
+			ignite(ground.cell, ground.source if alive else source)
 	changed.emit()
 	return true
 

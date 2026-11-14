@@ -168,6 +168,10 @@ func _test_ignite() -> void:
 	h.actions.create_oil(h.units[0], Vector2i(4, 4))
 	_check(h.actions.create_ground(h.units[3], Vector2i(4, 4), "burn") and _grounds_of(h, "oil") == 0
 		and _grounds_of(h, "burn") == 0, "불 장판이 기름 칸에 생기면 점화하고 불 장판은 남지 않음")
+	var k: Fixture = _fixture()
+	k.actions.create_ground(k.units[3], Vector2i(4, 5), "burn")
+	_check(k.actions.create_oil(k.units[0], Vector2i(4, 4)) and _grounds_of(k, "oil") == 0
+		and _grounds_of(k, "burn") == 0, "불 장판 칸에 기름이 생기면 점화하고 두 장판 모두 남지 않음")
 
 
 ## 속성 반응표를 칸에 적용: 화염은 기름을 점화, 물은 닿은 칸의 기름·불 장판만 지운다.
