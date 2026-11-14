@@ -3,7 +3,7 @@ set -euo pipefail
 # The save test is the longest by far, so it starts first and the rest take whichever slot frees up.
 tests=(
   tests/combat_save_test.gd
-  tests/combat_{hud,ai,turns,checks,actions,progression,loot,capture,feedback,preparation_save,staging,dice_roll,warrior,archer}_test.gd
+  tests/combat_{hud,ai,turns,checks,actions,progression,loot,capture,feedback,preparation_save,staging,dice_roll,warrior,archer,oil}_test.gd
   tests/{save,title,pause,continue,ui_theme}_test.gd
 )
 if [ "$#" -gt 0 ]; then
