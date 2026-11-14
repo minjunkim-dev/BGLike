@@ -66,6 +66,31 @@ class WhitespaceTests(unittest.TestCase):
         self.assertNotEqual(self.check().returncode, 0)
         self.assertNotEqual(self.check("--base", "missing-ref").returncode, 0)
 
+    def test_base_ahead_with_whitespace_error_passes_when_branch_is_clean(self):
+        self.file.write_text("shared \n")
+        self.git("commit", "-qam", "fork point with whitespace error")
+        self.git("switch", "-c", "work")
+        (self.root / "work.txt").write_text("clean\n")
+        self.git("add", ".")
+        self.git("commit", "-qm", "clean branch change")
+        self.git("switch", "main")
+        self.file.write_text("shared\n")
+        (self.root / "base.txt").write_text("base \n")
+        self.git("add", ".")
+        self.git("commit", "-qm", "base ahead with whitespace error")
+        self.git("update-ref", "refs/remotes/origin/main", "HEAD")
+        self.git("switch", "work")
+        self.assertEqual(self.git("status", "--porcelain"), "")
+        result = self.check()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_failure_prints_prefix_and_exits_one(self):
+        self.file.write_text("staged \n")
+        self.git("add", ".")
+        result = self.check()
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("Whitespace check failed:", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
