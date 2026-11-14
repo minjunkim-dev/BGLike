@@ -39,6 +39,8 @@ var _log_lines: Array[String] = []
 # 기본 툴팁 창 대신 같은 HUD의 최상단에 설명을 그린다.
 var _tooltip: HoverTooltip = HoverTooltip.new()
 var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
+## 기름에서 넘어진 아군이 자기 턴에 이동력을 내고 일어나는 버튼(#500 2a). 턴 종료 버튼 바로 위에 둔다.
+var stand_button: Button = Button.new()
 ## 유닛 패널의 AC와 팔랑크스 상태를 위치로 계산한다. 없으면 유닛 AC만 보인다.
 var grid: CombatGrid
 
@@ -59,7 +61,7 @@ var grid: CombatGrid
 
 func feedback_obstacles() -> Array[Rect2]:
 	var result: Array[Rect2] = []
-	for panel: Control in [$Round, $Progress, $OrderScroll, $UnitDetails, $Skills, $CombatLog, $EndTurn]:
+	for panel: Control in [$Round, $Progress, $OrderScroll, $UnitDetails, $Skills, $CombatLog, $EndTurn, stand_button]:
 		if panel.is_visible_in_tree():
 			result.append(panel.get_global_rect())
 	return result
@@ -76,6 +78,16 @@ func _ready() -> void:
 	_tooltip.colorize_numbers = true
 	add_child(_tooltip)
 	end_button.pressed.connect(func() -> void: end_turn_requested.emit())
+	stand_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	stand_button.offset_left = end_button.offset_left
+	stand_button.offset_right = end_button.offset_right
+	stand_button.offset_bottom = end_button.offset_top - 4
+	stand_button.offset_top = stand_button.offset_bottom - 22
+	stand_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	stand_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	stand_button.visible = false
+	stand_button.pressed.connect(func() -> void: action_selected.emit("stand_up"))
+	add_child(stand_button)
 	restart_button.pressed.connect(func() -> void: restart_requested.emit())
 	_build_passives()
 	for index: int in range(CombatActionRules.GROUPS.size()):
@@ -223,6 +235,11 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 	var names: Array[String] = [tr("행동"), tr("보조 행동"), tr("반응")]
 	_action_slots.clear()
 	_refresh_passives(shown)
+	stand_button.visible = ally_turn and actor.fallen and not locked
+	if stand_button.visible:
+		var cost: int = CombatOil.standing_cost(actor.get_movement())
+		stand_button.text = tr("일어나기 · 이동력 %d") % cost
+		stand_button.disabled = actor.movement_left < cost
 	for index: int in range(_containers.size()):
 		# 궁수의 반응 칸은 반사신경 자리라 비어 있어도 보인다(#528).
 		_containers[index].visible = shown != null
@@ -440,6 +457,8 @@ func show_unit(unit: CombatUnit) -> void:
 	var states: Array[String] = []
 	if unit.is_stunned:
 		states.append(tr("기절"))
+	if unit.fallen:
+		states.append(tr("넘어짐"))
 	var periodic: String = unit.get_periodic_status_text()
 	if not periodic.is_empty():
 		states.append(periodic)

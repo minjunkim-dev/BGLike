@@ -6,7 +6,7 @@ extends RefCounted
 ## 복합 비용 스킬은 첫 자원의 묶음에 둔다(십자 베기는 임시로 행동, 9-3).
 const GROUPS: Array[Array] = [
 	["attack", "sweep", "cross_slash", "battle_cry", "spawn", "pull", "spin"],
-	["holy_veil", "steel_charge", "second_wind", "aegisal", "bow_bash", "disengage", "shove", "jump", "potion"],
+	["holy_veil", "steel_charge", "second_wind", "aegisal", "bow_bash", "disengage", "shove", "jump", "potion", "oil_throw"],
 	["opportunity", "counter"]
 ]
 ## 묶음의 자원과 함께 모두 소비하는 비용. 하나라도 부족하면 쓸 수 없다 (5-3). 점프의 이동력은 칸마다 다르다.
@@ -20,7 +20,7 @@ static var NAMES: Dictionary[String, String] = {
 	"aegisal": TranslationServer.tr("애기살 급조"), "bow_bash": TranslationServer.tr("활 후려치기"), "disengage": TranslationServer.tr("물러서며 쏘기"),
 	"shove": TranslationServer.tr("밀치기"), "potion": TranslationServer.tr("물약"), "opportunity": TranslationServer.tr("기회 공격"),
 	"spawn": TranslationServer.tr("새끼 낳기"), "pull": TranslationServer.tr("만능팔"), "spin": TranslationServer.tr("회전회오리"), "jump": TranslationServer.tr("점프"),
-	"counter": TranslationServer.tr("반격")
+	"counter": TranslationServer.tr("반격"), "oil_throw": TranslationServer.tr("기름병 던지기")
 }
 static var EFFECTS: Dictionary[String, String] = {
 	"jump": TranslationServer.tr("1~2칸의 빈 바닥으로 점프.\n상승2까지, 낙하 차3부터 피해."),
@@ -39,7 +39,8 @@ static var EFFECTS: Dictionary[String, String] = {
 	"shove": TranslationServer.tr("대상이 힘 내성굴림.\n실패하면 1칸 밀리고, 성공하면 버팁니다.\n기절 대상은 내성 없이 밀림.\n아군은 판정 없이 밀림."),
 	"potion": TranslationServer.tr("HP 2d4+2 회복.\n최대 HP를 넘지 않습니다."),
 	"opportunity": TranslationServer.tr("적이 내 인접 칸을 벗어나면 기본 공격."),
-	"counter": TranslationServer.tr("나를 노린 인접한 적의 명중굴림이\n빗나가면 반드시 명중하는 반격.")
+	"counter": TranslationServer.tr("나를 노린 인접한 적의 명중굴림이\n빗나가면 반드시 명중하는 반격."),
+	"oil_throw": TranslationServer.tr("목표 칸 십자 5칸에 기름 장판을 깝니다(3턴).\n기름 칸에 서면 솜씨 내성(DC 4)을 하고, 실패하면 넘어집니다.\n아이템을 쓰지 않습니다.")
 }
 ## 패시브 칸의 스킬(#457). 자원과 횟수가 없어 NAMES·GROUPS에 넣지 않는다. 아이콘이 생기기 전에는 이름 첫 글자를 보인다.
 const PASSIVES: Array[String] = ["phalanx", "brawn", "moving_shot"]
@@ -95,20 +96,33 @@ static func colorize(text: String) -> String:
 const SELF_TARGET: Array[String] = ["holy_veil", "battle_cry", "second_wind", "aegisal", "disengage", "potion"]
 ## 칸 조준 동작의 사거리와 반경 (SKILL_TYPES 5-2). 최소 사거리는 0, 곡사·기준점(목표 칸)은 기본값이라 필드가 없다.
 const AIM_RANGES: Dictionary[String, int] = {"fog": 4}
-const AIM_RADII: Dictionary[String, int] = {"fog": 1}
+const AIM_RADII: Dictionary[String, int] = {"fog": 1, "oil_throw": 1}
+## 사거리가 시전자의 힘 주사위 면 수 ÷ 2인 칸 조준 동작 (궁수 문서, 기름병 던지기).
+const AIM_BY_STRENGTH: Array[String] = ["oil_throw"]
+
+
+## 칸 조준 동작의 사거리. 칸 조준이 아니면 -1이다.
+static func aim_range(actor: CombatUnit, action: String) -> int:
+	if action in AIM_BY_STRENGTH:
+		return actor.get_ability_sides(CombatUnit.Ability.STRENGTH) / 2
+	return AIM_RANGES.get(action, -1)
+
+
 ## 아군 직업의 고유 동작과 패시브(팔랑크스, 괴력의 사내). 몬스터의 동작은 정의의 actions가 정한다.
 ## 공용 동작(점프·기회 공격)은 belongs_to가 정한다.
 const CLASS_ONLY: Dictionary[String, CombatUnit.Kind] = {
 	"sweep": CombatUnit.Kind.WARRIOR, "cross_slash": CombatUnit.Kind.WARRIOR, "steel_charge": CombatUnit.Kind.WARRIOR,
 	"holy_veil": CombatUnit.Kind.WARRIOR, "battle_cry": CombatUnit.Kind.WARRIOR,
 	"phalanx": CombatUnit.Kind.WARRIOR, "brawn": CombatUnit.Kind.WARRIOR, "counter": CombatUnit.Kind.WARRIOR,
-	"aegisal": CombatUnit.Kind.ARCHER, "bow_bash": CombatUnit.Kind.ARCHER, "moving_shot": CombatUnit.Kind.ARCHER
+	"aegisal": CombatUnit.Kind.ARCHER, "bow_bash": CombatUnit.Kind.ARCHER, "moving_shot": CombatUnit.Kind.ARCHER,
+	"oil_throw": CombatUnit.Kind.ARCHER
 }
 ## 아군이 쓰지 않는 몬스터 동작. 풋내기 야만인의 숨 고르기와 풋내기 궁수의 물러서며 쏘기도 여기 있다.
 const MONSTER_ONLY: Array[String] = ["second_wind", "disengage", "spawn", "pull", "spin", "fog"]
 const USE_COUNTERS: Dictionary[String, StringName] = {
 	"second_wind": &"second_wind_left", "disengage": &"disengage_left", "potion": &"potion_left",
-	"cross_slash": &"cross_slash_left", "steel_charge": &"steel_charge_left", "battle_cry": &"battle_cry_left"
+	"cross_slash": &"cross_slash_left", "steel_charge": &"steel_charge_left", "battle_cry": &"battle_cry_left",
+	"oil_throw": &"oil_throw_left"
 }
 ## 막 시작에 회복하는 횟수. 물약은 보유 개수라서 회복하지 않는다.
 const USES_PER_ACT: Dictionary[String, int] = {
@@ -116,7 +130,7 @@ const USES_PER_ACT: Dictionary[String, int] = {
 }
 ## 새 전투(스테이지)가 시작될 때 회복하는 횟수 (5-3).
 const USES_PER_COMBAT: Dictionary[String, int] = {
-	"cross_slash": 1, "steel_charge": 1, "battle_cry": 1
+	"cross_slash": 1, "steel_charge": 1, "battle_cry": 1, "oil_throw": 1
 }
 ## 성스러운 장막과 전투의 함성의 기간. 시전자 턴 시작마다 1씩 준다.
 const SHIELD_TURNS: int = 3
@@ -144,6 +158,8 @@ const SAVE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {
 static var DC_BONUSES: Dictionary[String, int] = {}
 ## 아군 스킬과 공용 동작의 아이콘. 48px 원본(64px 설계 격자)이다.
 const ICON_PATH: String = "res://scenes/combat/art/icons/skills/%s.png"
+## 아이콘 그림이 아직 없는 동작이 빌려 쓰는 그림. 기름병 던지기는 물약 병 그림을 임시로 쓴다(#500 2a, 전용 그림 필요).
+const ICON_ALIASES: Dictionary[String, String] = {"oil_throw": "potion"}
 ## #362: 스킬과 정비 아이템 그림의 표시 크기(논리 px). 버튼·칸의 입력 영역은 각 화면이 따로 유지한다.
 const ICON_SIZE: int = 24
 
@@ -234,7 +250,7 @@ static func damage_bonus(actor: CombatUnit, action: String) -> int:
 
 ## 적 전용 스킬처럼 아이콘이 없으면 null이다.
 static func icon_of(action: String) -> Texture2D:
-	var path: String = ICON_PATH % action
+	var path: String = ICON_PATH % ICON_ALIASES.get(action, action)
 	return load(path) as Texture2D if ResourceLoader.exists(path) else null
 
 
@@ -275,6 +291,9 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 				CombatUnit.ability_name(SAVE_ABILITIES[action]), save_dc(actor, action)]]
 		"jump":
 			lines = [TranslationServer.tr("사거리: 1~2칸"), TranslationServer.tr("판정: 없음")]
+		"oil_throw":
+			lines = [TranslationServer.tr("사거리: 1~%d칸 곡사") % aim_range(actor, action),
+				TranslationServer.tr("효과: 기름 장판 십자 5칸, 3턴"), TranslationServer.tr("판정: 없음")]
 		"second_wind":
 			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("회복: 1d10+1"), TranslationServer.tr("판정: 없음")]
 		"potion":
@@ -304,9 +323,10 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 	return "\n".join(lines)
 
 
-## 대상의 내성굴림 유리/불리. 굴리는 쪽(대상)의 요인만 센다 (4-7). 지금 내성굴림에 붙는 요인은 없다.
-static func save_mode(_target: CombatUnit) -> CombatChecks.RollMode:
-	return CombatChecks.roll_mode(0, 0)
+## 대상의 내성굴림 유리/불리. 굴리는 쪽(대상)의 요인만 센다 (4-7).
+## 넘어진 대상은 민첩 내성에 불리 요인 하나를 받는다 (궁수 문서, 전투 시스템 기획서 6-7).
+static func save_mode(target: CombatUnit, ability: CombatUnit.Ability) -> CombatChecks.RollMode:
+	return CombatChecks.roll_mode(0, 1 if target.fallen and ability == CombatUnit.Ability.AGILITY else 0)
 
 
 ## 밀치기에 내성굴림이 있는지. 기절한 대상과 아군은 판정 없이 밀린다 (8장).
@@ -317,7 +337,7 @@ static func shove_saves(actor: CombatUnit, target: CombatUnit) -> bool:
 ## 대상의 실제 내성 성공률. 내성 능력치 주사위, 방어 가산, 유리/불리와 절대면을 반영한다.
 static func save_chance(actor: CombatUnit, target: CombatUnit, action: String) -> float:
 	return CombatChecks.save_chance(target.get_ability_sides(SAVE_ABILITIES[action]), target.get_defense_bonus(),
-		save_dc(actor, action), save_mode(target), target.get_ability_modifier(SAVE_ABILITIES[action]))
+		save_dc(actor, action), save_mode(target, SAVE_ABILITIES[action]), target.get_ability_modifier(SAVE_ABILITIES[action]))
 
 
 ## 호버의 피해 줄. 피해 능력치가 명중 능력치와 다르면 둘을 함께 보인다 (4-9).
