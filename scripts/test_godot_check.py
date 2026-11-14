@@ -73,6 +73,7 @@ class GodotCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertLess(time.monotonic() - started, 30)
         self.assertIn("Godot script error during: --script tests/combat_ai_test.gd", result.stderr)
+        self.assertIn("stopped after a script error", result.stdout)
 
     def test_selected_script_keeps_common_setup_error_gate(self):
         for step in ("--import", "--quit-after"):
