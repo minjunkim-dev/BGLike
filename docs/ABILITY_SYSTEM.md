@@ -4,7 +4,7 @@
 >
 > - 기준일: 2026-10-27 개정 (최초 2026-10-23)
 > - 근거: 기획 논의(2026-10-22~27), 전투 코드(`scenes/combat/`), BG3(SRD 5e) 규칙과의 비교
-> - 관련 문서: [전투 시스템 기획서](COMBAT_DESIGN.md) · [동작 유형 기획서](SKILL_TYPES.md) · [용어집](../CONTEXT.md) · [게임 구조 기획서](GAME_STRUCTURE.md) · [캐릭터 디자인 기획서](characters/README.md) · [몬스터 디자인 기획서](monsters/README.md) · [아이템 기획 폼](ITEM_FORM.md)
+> - 관련 문서: [전투 시스템 기획서](COMBAT_DESIGN.md) · [동작 유형 기획서](SKILL_TYPES.md) · [용어집](../GLOSSARY.md) · [게임 구조 기획서](GAME_STRUCTURE.md) · [캐릭터 디자인 기획서](characters/README.md) · [몬스터 디자인 기획서](monsters/README.md) · [아이템 기획 폼](ITEM_FORM.md)
 > - **상태**: 2026-10-23의 "공격자 대 방어자 주사위 대결" 규칙을 이 개정이 대체합니다. 개정 전 구현([#321](https://github.com/minjunkim-dev/BGLike/issues/321), PR #327)을 [#377](https://github.com/minjunkim-dev/BGLike/issues/377)의 하위 티켓(#386~#389, #391)이 개정 규칙으로 옮겼고, 충격 화살도 [#390](https://github.com/minjunkim-dev/BGLike/issues/390)에서 옮겼습니다. 흘려내기는 전사 재디자인으로 폐지했습니다([#423](https://github.com/minjunkim-dev/BGLike/issues/423)). 규칙이 충돌하면 이 문서가 기준이고, 용어집과 다른 기획서는 구현 PR이 맞춥니다.
 > - **전사 재디자인 (2026-10-30)**: 전사의 의지 주사위(d8), 최대 HP 식, 기타 가산치 0, 흘려내기 폐지를 반영했습니다. 자세한 내용은 [전사 문서](characters/warrior.md)를 보세요.
 > - **아이템 개정 (2026-11-05)**: 장비의 능력치 가감(굴림값·표준값에 더함), 마이너스 가감, 계산 결과의 하한 1을 반영했습니다(4-6). 아이템 기획 항목은 [아이템 기획 폼](ITEM_FORM.md#3-수치-가감)을 따릅니다. [#456](https://github.com/minjunkim-dev/BGLike/issues/456)에서 구현했습니다.
@@ -509,7 +509,7 @@
 
 | 문서 | 고칠 내용 |
 |---|---|
-| [용어집](../CONTEXT.md) | 능력치(6종, 자연 → 건강), 명중굴림·내성굴림·AC·DC·표준값·절대면 등 새 용어, 공격 굴림·방어 굴림·보정값 삭제 |
+| [용어집](../GLOSSARY.md) | 능력치(6종, 자연 → 건강), 명중굴림·내성굴림·AC·DC·표준값·절대면 등 새 용어, 공격 굴림·방어 굴림·보정값 삭제 |
 | [전투 시스템 기획서](COMBAT_DESIGN.md) | 유닛 표, 4장 판정 전체, 5장 스킬 표(궁수 스킬·밀치기·회전회오리), 6-3 화상과 독(건강 내성), 용어표 |
 | [캐릭터](characters/README.md)·[몬스터](monsters/README.md) 문서 | 능력치 표(자연 → 건강, 새 직업 주사위), 방어 가산·AC 열, 피해 표기 |
 | [게임 구조 기획서](GAME_STRUCTURE.md), [아이템 전리품](ITEM_LOOT.md) | 장비 `명중`·`AC` 표기, 7장 전투 규칙 |
