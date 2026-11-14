@@ -2,6 +2,8 @@ class_name CombatActions
 extends RefCounted
 ## 아군과 적 AI가 함께 쓰는 동작 실행과 반응 대기.
 
+## 바위 충돌 뒤 살아남은 대상의 민첩 내성 DC (환경요소 4장).
+const ROCK_STUN_DC: int = 10
 const SCRAP_ROBOTS: Array[CombatUnit.Kind] = [CombatUnit.Kind.SCRAP_ROBOT_1000,
 	CombatUnit.Kind.SCRAP_ROBOT_2000, CombatUnit.Kind.SCRAP_ROBOT_3000]
 
@@ -340,6 +342,8 @@ func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
 	var direction: Vector2i = preview_rock(actor, prop).direction
 	var struck: Array[CombatUnit] = []
 	var impact_summary: String = ""
+	## 충돌 피해를 받은 대상. 밀기 전에 기절 내성을 굴린다.
+	var stun_target: CombatUnit = null
 	for index: int in range(3):
 		var origin: Vector2i = prop.cell
 		if not _can_continue_rock(actor, prop, origin) or is_over():
@@ -349,6 +353,7 @@ func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
 			var target: CombatUnit = step.target
 			struck.append(target)
 			_damage(target, step.damage)
+			stun_target = target
 			if not _can_continue_rock(actor, prop, origin) or not is_instance_valid(target) or target not in units:
 				return
 			impact_summary += (tr(" · 충돌: %s 피해4") if impact_summary.is_empty() else tr(", %s 피해4")) % target.get_display_name()
@@ -361,6 +366,13 @@ func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
 			step = _trace_rock(prop, direction, 1, struck).steps[0]
 			if step.damage > 0:
 				return
+		if stun_target != null:
+			var stunned: CombatUnit = stun_target
+			stun_target = null
+			if stunned.hit_points > 0:
+				_roll_rock_stun(actor, stunned)
+				if not _can_continue_rock(actor, prop, origin) or not is_instance_valid(stunned) or stunned not in units or is_over():
+					return
 		if step.push:
 			var target: CombatUnit = step.target
 			_land(target, step.push_cell)
@@ -389,6 +401,35 @@ func _roll_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> void:
 func _can_continue_rock(actor: CombatUnit, prop: CombatGrid.Prop, cell: Vector2i) -> bool:
 	return (prop in grid.props and prop.hit_points > 0 and prop.cell == cell and is_instance_valid(actor)
 		and actor in units and actor.hit_points > 0 and turns.current_unit == actor)
+
+
+## 바위에 부딪혀 살아남은 대상의 민첩 내성굴림(DC ROCK_STUN_DC). 실패하면 굴린 유닛을 시전자로 기절시킨다. 보스는 면역이라 굴리지 않는다 (환경요소 4장).
+func _roll_rock_stun(actor: CombatUnit, target: CombatUnit) -> void:
+	if target.is_boss():
+		return
+	var ability: CombatUnit.Ability = CombatUnit.Ability.AGILITY
+	var saved: CombatChecks.RollResult = CombatChecks.saving_throw(target.get_ability_sides(ability),
+		target.get_defense_bonus(), ROCK_STUN_DC, CombatActionRules.save_mode(target), dice,
+		target.get_ability_modifier(ability))
+	var stunned: bool = not saved.success and apply_status(actor, target, "stun")
+	logged.emit(tr("%s %s 내성 %d 대 DC %d") % [target.get_display_name(), CombatUnit.ability_name(ability),
+		saved.total, ROCK_STUN_DC])
+	logged.emit((tr("%s: 기절") if stunned else tr("%s: 버팀")) % target.get_display_name())
+	if stunned:
+		feedback.emit(target, tr("기절"))
+
+
+## 미리보기용: 충돌 피해 뒤에도 살아 있는 비보스 대상인지. 방어막이 먼저 흡수한다 (_damage와 같은 순서).
+func rock_stun_risk(target: CombatUnit) -> bool:
+	return not target.is_boss() and target.hit_points + target.shield_points > 4
+
+
+## 바위 미리보기의 충돌 대상 뒤 문구: 밀려서 받는 낙하·낙사와 기절 위험.
+func rock_collision_note(roll: RockRoll, target: CombatUnit) -> String:
+	var note: String = rock_landing(roll, target)
+	if rock_stun_risk(target):
+		note += (" · " if not note.is_empty() else "") + tr("기절 위험")
+	return note
 
 
 func _on_turn_started(unit: CombatUnit) -> void:
