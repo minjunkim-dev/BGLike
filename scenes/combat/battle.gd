@@ -486,7 +486,13 @@ func _end_turn() -> void:
 
 func _on_action_selected(action: String) -> void:
 	var actor: CombatUnit = turns.current_unit
-	if waiting_for_start or actor == null or not actor.is_ally or not actions.can_use(actor, action):
+	if waiting_for_start or actor == null or not actor.is_ally:
+		return
+	if action == "stand_up":
+		actions.stand_up(actor)
+		_update_turn_ui()
+		return
+	if not actions.can_use(actor, action):
 		return
 	if selection.select_action(action):
 		actions.use_self(actor, action)
@@ -584,6 +590,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return a.get_index() > b.get_index()
 	)
 	var prop: CombatGrid.Prop = map.prop_at_point(map.to_local(world_position))
+	if selection.selected_action == "oil_throw":
+		get_viewport().set_input_as_handled()
+		_select_oil_cell(cell)
+		return
 	if selection.selected_action == "sweep":
 		get_viewport().set_input_as_handled()
 		# 인접 칸의 몸통이나 사물을 눌러도 그 칸을 정면으로 고른다. 인접하지 않은 몸통(전사 자신 등)이 가린 칸은
@@ -645,6 +655,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		_update_turn_ui()
 		return
 	selection.clear_preview()
+	_update_turn_ui()
+
+
+## 기름병 던지기는 칸을 조준한다. 한 번 눌러 십자 범위를 보고, 같은 칸을 다시 누르면 던진다.
+func _select_oil_cell(cell: Vector2i) -> void:
+	var actor: CombatUnit = turns.current_unit
+	if selection.select_cell(cell, actions.can_aim(actor, "oil_throw", cell)):
+		selection.begin_execution()
+		actions.throw_oil(actor, cell)
+		selection.finish_execution()
 	_update_turn_ui()
 
 
@@ -838,6 +858,10 @@ func _update_turn_ui() -> void:
 			movement_cells.assign(actions.moving_shot_cells(turns.current_unit))
 		elif sweeping:
 			movement_cells.assign(actions.grid.sweep_cells(turns.current_unit.cell, selection.preview_cell))
+		elif selection.selected_action == "oil_throw":
+			var aimed: bool = actions.can_aim(turns.current_unit, "oil_throw", selection.preview_cell)
+			movement_cells.assign(actions.aim_area(turns.current_unit, "oil_throw", selection.preview_cell) if aimed
+				else actions.aim_cells(turns.current_unit, "oil_throw"))
 		elif selection.selected_action == "sweep":
 			# 정면을 고르기 전에는 고를 수 있는 인접 칸을 보인다.
 			for cell: Vector2i in CombatGrid.neighbors(turns.current_unit.cell):
@@ -962,6 +986,11 @@ func _update_turn_ui() -> void:
 				chances.append("%s %.1f%%" % [target.get_display_name(), actions.sweep_chance(turns.current_unit, target) * 100.0])
 			note = tr("휩쓸기 · 행동1 · 시계방향 명중률\n%s\n같은 칸을 다시 좌클릭하면 실행합니다.") % " → ".join(chances)
 		hud.show_target_note(note)
+	elif (selection.selected_action == "oil_throw" and turns.current_unit != null and turns.current_unit.is_ally
+			and not actions.busy):
+		hud.show_target_note(tr("기름병 던지기 · 보조 행동1 · 기름을 깔 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 던집니다.")
+			if not actions.can_aim(turns.current_unit, "oil_throw", selection.preview_cell)
+			else tr("기름병 던지기 · 보조 행동1 · 십자 5칸 기름 3턴\n같은 칸을 다시 좌클릭하면 던집니다."))
 	if actions.is_over():
 		hud.show_outcome(actions.is_victory())
 		if not preparation.visible:
