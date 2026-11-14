@@ -86,7 +86,7 @@
 | [코딩 규칙](docs/coding-standards.md), [독립 리뷰 절차](docs/agents/review.md) | Standards·Spec·Security 리뷰, 검사 근거와 사용자 요청 회고 |
 | [Draft Release 절차](docs/DRAFT_RELEASE.md) | 미공개 Draft CD와 최종 head 승인 |
 | `docs/` 기획 문서 | 기획 현황, 로드맵, 전투 기획서, 마일스톤별 개발 요청서 |
-| `CONTEXT.md` (M1 첫 PR에서 추가 예정) | 용어집. 코드, 문서, 대화에서 같은 말을 씁니다 |
+| [GLOSSARY.md](GLOSSARY.md) | 용어집. 코드, 문서, 대화에서 같은 말을 씁니다 |
 
 - **문서는 "무엇이 정답인가"(규칙, 수치), Issue는 "지금 무엇을 하는가"(진행, 결정 기록)**입니다.
 - 기획 문서도 PR로 올립니다. 필요하면 상대에게 검토를 요청합니다. 아직 정하지 않은 것은 ❓로 표시합니다.
@@ -112,7 +112,7 @@
 | Godot import·메인 장면·전투 회귀 검사 | GitHub Actions `godot`. 문서만 바뀌면 엔진 작업은 생략 |
 | PR·CI 알림 | `#github-알림` Discord 웹훅 |
 | GitHub AI 리뷰 | GitHub Claude workflow는 사용하지 않음. 자동 리뷰는 현재 GitHub 연결·설정에서 실제 연결만 정리. 다른 저장소·계정 연결은 유지 |
-| 로컬 리뷰 / 회고 | 다른 컨텍스트에서 `REVIEW.md` 기준, 신뢰 경계면 Security 추가 / 사용자 요청 시 Matt Pocock retro |
+| 로컬 리뷰 / 회고 | 다른 컨텍스트에서 `REVIEW.md` 기준, 민감한 파일이면 Security 추가 / 사용자 요청 시 Matt Pocock retro |
 | Issue·PR 양식 | `.github/` 템플릿 |
 
 동료 승인은 필수가 아닙니다. main 보호의 현재 적용 상태와 필수 검사 조건은 [협업 규칙](docs/WORKFLOW.md#현재-github-제약)을 참조합니다.
