@@ -27,9 +27,9 @@
 - 이 PR이 만들지 않은 기존 문제(필요하면 "기존 문제"로 따로 표시한다).
 - `locale/messages.pot`처럼 도구가 생성한 파일의 형식, `docs/assets/`·`docs/images/`의 캡처 이미지.
 
-## 신뢰 경계
+## 민감한 파일
 
-Door가 되돌리기 어려움이거나 이 경로를 건드리면 보안 관점의 리뷰를 더한다: `.github/workflows/**`, 저장소·CI 설정(`.github/repository-settings.json`, `.github/dependabot.yml`), 에이전트 권한 설정(`.claude/settings.json`), `scripts/godot.env`(엔진 버전·해시), `scripts/draft_release.py`(Draft의 `contents: write` 흐름). 인증·결제·권한 검사·migration 경로는 아직 없다.
+되돌리기 어려움이거나 이 경로를 건드리면 보안 관점의 리뷰를 더한다: `.github/workflows/**`, 저장소·CI 설정(`.github/repository-settings.json`, `.github/dependabot.yml`), 에이전트 설정 폴더(`.claude/`·`.agents/`·`.codex/`·`.cursor/` 같은 폴더와 그 안의 모든 파일, 하위 폴더에 있는 것 포함)와 `.mcp.json`, `scripts/godot.env`(엔진 버전·해시), `scripts/draft_release.py`(Draft의 `contents: write` 흐름). 인증·결제·권한 검사·migration 경로는 아직 없다.
 
 ## 보고와 수정
 

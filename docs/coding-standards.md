@@ -28,4 +28,4 @@
 
 ## 리뷰 기준
 
-리뷰의 실패 기준·심각도(P0·P1·P2)·신뢰 경계는 [REVIEW.md](../REVIEW.md)에 있습니다. 실행과 기록은 [리뷰 절차](agents/review.md)를 따릅니다.
+리뷰의 실패 기준·심각도(P0·P1·P2)·민감한 파일은 [REVIEW.md](../REVIEW.md)에 있습니다. 실행과 기록은 [리뷰 절차](agents/review.md)를 따릅니다.
