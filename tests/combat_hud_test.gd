@@ -2615,7 +2615,7 @@ func _test_rock_preview_guidance() -> void:
 		_check(labels[index] in hud.preview_label.text and "방향 " not in hud.preview_label.text,
 			"바위 미리보기는 화면 방향을 표시: " + labels[index])
 		_check("3칸 · 최대3칸" in hud.preview_label.text and "적 피해4: " + units[2].get_display_name() in hud.preview_label.text
-			and "행동1" in hud.preview_label.text and "주사위 없음" in hud.preview_label.text,
+			and "행동1" in hud.preview_label.text and "피해 굴림 없음" in hud.preview_label.text,
 			"네 방향에서 기존 거리·충돌 대상·피해·비용·판정 정보 유지")
 		_check(actor.action_left == 1 and rock.cell == origin and units[2].hit_points == units[2].get_max_hit_points(),
 			"첫 클릭은 바위·HP·행동을 변경하지 않음")

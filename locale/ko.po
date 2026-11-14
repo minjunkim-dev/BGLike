@@ -956,8 +956,8 @@ msgid "적 피해4: %s"
 msgstr "적 피해4: %s"
 
 #: scenes/combat/battle.gd:882
-msgid "행동1 · 주사위 없음\n%s · %d칸 · %s\n%s\n같은 바위를 다시 좌클릭하면 굴립니다."
-msgstr "행동1 · 주사위 없음\n%s · %d칸 · %s\n%s\n같은 바위를 다시 좌클릭하면 굴립니다."
+msgid "행동1 · 피해 굴림 없음\n%s · %d칸 · %s\n%s\n같은 바위를 다시 좌클릭하면 굴립니다."
+msgstr "행동1 · 피해 굴림 없음\n%s · %d칸 · %s\n%s\n같은 바위를 다시 좌클릭하면 굴립니다."
 
 #: scenes/combat/battle.gd:884
 msgid "충돌 없음"
