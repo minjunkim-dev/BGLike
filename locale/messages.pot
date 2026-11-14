@@ -1656,7 +1656,7 @@ msgid "무빙샷: 이번 턴의 첫 기본 공격 뒤 상하좌우의 빈 칸으
 msgstr ""
 
 #: scenes/help.tscn
-msgid "애기살 급조는 보조 행동으로 애기살 2발을 더합니다(누적). 기본 공격마다 1발을 쓰고, 그 공격의 피해 굴림을 두 번 해서 높은 값을 씁니다. 남은 애기살은 전투가 끝나면 사라집니다. 활 후려치기는 보조 행동으로 인접한 적을 힘 주사위로 공격하고, 명중하면 내성 없이 1칸 밀칩니다. 밀려날 칸이 막혔으면 피해만 줍니다."
+msgid "애기살 급조는 보조 행동으로 애기살 2발을 더합니다(누적). 기본 공격마다 1발을 쓰고, 그 공격의 피해 굴림을 두 번 해서 높은 값을 씁니다. 남은 애기살은 전투가 끝나면 사라집니다. 활 후려치기는 보조 행동으로 인접한 적을 힘 주사위로 공격하고, 명중하면 내성 없이 1칸 밀칩니다. 밀려날 칸이 막혔으면 피해만 줍니다. 기름병 던지기는 보조 행동으로 목표 칸 십자 5칸에 기름 장판을 깔며, 전투마다 1회입니다. 사거리는 힘 주사위 면 수의 절반입니다. 기름 칸에 들어가거나 벗어날 때 솜씨 내성(DC 4)을 하며, 실패하면 넘어집니다. 넘어진 동안에는 행동·보조 행동·반응을 쓸 수 없고 민첩 내성에 불리가 붙습니다. 자기 턴이 시작되면 풀리고, 이동을 시도하면 최대 이동력의 절반을 내고 일어납니다."
 msgstr ""
 
 #: scenes/combat/action_rules.gd
@@ -1834,4 +1834,80 @@ msgstr ""
 
 #: scenes/combat/loot.gd:9
 msgid "건강 가감"
+msgstr ""
+
+#: scenes/combat/actions.gd:514
+msgid "%s %s 만료: %d, %d"
+msgstr ""
+
+#: scenes/combat/actions.gd:585
+msgid "%s 기름 장판: %d, %d · %d칸"
+msgstr ""
+
+#: scenes/combat/actions.gd:623
+msgid "%s 넘어짐"
+msgstr ""
+
+#: scenes/combat/actions.gd:618
+msgid "%s 미끌거림(솜씨 내성): 솜씨 d%d %s %+d = %d / DC %d · %s"
+msgstr ""
+
+#: scenes/combat/actions.gd:638
+msgid "%s 일어남: 이동력 %d"
+msgstr ""
+
+#: scenes/combat/actions.gd:671
+msgid "%s 점화: 기름 %d칸"
+msgstr ""
+
+#: scenes/combat/actions.gd:675
+msgid "%s 점화: 화상 2중첩"
+msgstr ""
+
+#: scenes/combat/actions.gd:515
+msgid "기름 장판"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:23
+msgid "기름병 던지기"
+msgstr ""
+
+#: scenes/combat/battle.gd:991
+msgid "기름병 던지기 · 보조 행동1 · 기름을 깔 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 던집니다."
+msgstr ""
+
+#: scenes/combat/battle.gd:993
+msgid "기름병 던지기 · 보조 행동1 · 십자 5칸 기름 3턴\n같은 칸을 다시 좌클릭하면 던집니다."
+msgstr ""
+
+#: scenes/combat/actions.gd:624 scenes/combat/turn_hud.gd:461 scenes/combat/unit.gd:295
+msgid "넘어짐"
+msgstr ""
+
+#: scenes/combat/actions.gd:1078
+msgid "넘어짐: 일어난 뒤에 쓸 수 있음"
+msgstr ""
+
+#: scenes/combat/actions.gd:515
+msgid "독안개"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:43
+msgid "목표 칸 십자 5칸에 기름 장판을 깝니다(3턴).\n기름 칸에 서면 솜씨 내성(DC 4)을 하고, 실패하면 넘어집니다.\n아이템을 쓰지 않습니다."
+msgstr ""
+
+#: scenes/combat/action_rules.gd:295
+msgid "사거리: 1~%d칸 곡사"
+msgstr ""
+
+#: scenes/combat/actions.gd:656
+msgid "속성: 장판 삭제 %d, %d"
+msgstr ""
+
+#: scenes/combat/turn_hud.gd:241
+msgid "일어나기 · 이동력 %d"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:296
+msgid "효과: 기름 장판 십자 5칸, 3턴"
 msgstr ""

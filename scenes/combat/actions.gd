@@ -165,7 +165,7 @@ static func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> boo
 				and saved[4] is Array and saved[4].size() <= count and saved[4].all(unit_index)
 				and saved[5] is int and saved[5] >= 0 and saved[5] <= CombatUnit.SAVED_INT_LIMIT
 				and (saved[5] == 0 if saved[2] == "burn" else saved[5] > 0)
-					and (saved[5] == CombatOil.SLIP_DC if saved[2] == "oil" else true)))
+					and (saved[5] == CombatOil.SLIP_DC and saved[3] <= CombatOil.TURNS if saved[2] == "oil" else true)))
 		and data.clock_slots.all(func(saved: Variant) -> bool:
 			return (saved is Array and saved.size() == 3 and unit_index.call(saved[0])
 				and unit_index.call(saved[1]) and saved[0] != saved[1] and saved[2] is bool))
@@ -594,6 +594,8 @@ func throw_oil(caster: CombatUnit, cell: Vector2i) -> bool:
 		return false
 	caster.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
 	CombatActionRules.spend_use(caster, "oil_throw")
+	# 무빙샷 준비는 다른 동작을 실행하면 사라진다(궁수 문서).
+	caster.moving_shot_ready = false
 	return create_oil(caster, cell)
 
 
@@ -686,6 +688,7 @@ func create_ground(source: CombatUnit, cell: Vector2i, kind: String) -> bool:
 		# 물 칸에는 불 장판이 생기지 않는다(환경요소 6장). 범위로 깔면 칸마다 이 검사를 지나 물 칸만 빠진다.
 		return false
 	# 불이 기름 칸에 닿으면 점화한다. 기름이 불이 된 칸에는 불 장판을 새로 두지 않는다.
+	# shortcut: 범위 불은 첫 칸의 점화가 이어진 기름을 다 지워 남은 칸에 불이 생긴다. 범위 불 공급원(#500 2b) 전에 점화 칸 목록으로 거른다.
 	if kind == "burn" and _oil_at(cell) != null:
 		return ignite(cell, source)
 	var refreshed: bool = false
@@ -1686,7 +1689,8 @@ func _apply_fog(unit: CombatUnit, entering: bool) -> void:
 ## 독안개를 시전한다. 칸 조준으로 고른 cell 기준 영역(상자·바위 칸 포함)에 시전마다 칸당 기록 하나를 만들고,
 ## 시전 순간 영역 안의 유닛이 바로 굴린다(진입 1회로 소비).
 func cast_fog(caster: CombatUnit, cell: Vector2i) -> bool:
-	if not is_instance_valid(caster) or caster not in units or caster.hit_points <= 0 or not can_aim(caster, "fog", cell):
+	if (not is_instance_valid(caster) or caster not in units or caster.hit_points <= 0 or caster.fallen
+			or not can_aim(caster, "fog", cell)):
 		return false
 	var area: Array[Vector2i] = aim_area(caster, "fog", cell)
 	if area.is_empty():

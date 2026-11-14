@@ -552,6 +552,26 @@ func _test_archer_moving_shot_input() -> void:
 		if (buttons[action] as Button).is_visible_in_tree():
 			shown.append(action)
 	_check(shown == ["attack", "aegisal", "bow_bash", "shove", "jump", "potion", "oil_throw"], "궁수 스킬 패널의 버튼(공용 밀치기 포함): " + str(shown))
+	# 기름병 던지기: 버튼을 고르고 칸을 한 번 누르면 십자 범위를 보이고, 같은 칸을 다시 누르면 던진다(#500 2a).
+	var oil_cells: Array[Vector2i] = []
+	oil_cells.assign(actions.aim_cells(archer, "oil_throw").filter(func(cell: Vector2i) -> bool:
+		return cell != archer.cell and actions._oil_site_ok(cell, cell)))
+	_check(not oil_cells.is_empty(), "기름병 검사 전제: 던질 수 있는 칸이 있음")
+	if not oil_cells.is_empty():
+		battle.call("_on_action_selected", "oil_throw")
+		var oil_selection: CombatSelection = battle.get("selection") as CombatSelection
+		_check(oil_selection.selected_action == "oil_throw", "기름병 던지기 버튼은 칸 조준 모드로 들어감")
+		battle.call("_select_oil_cell", oil_cells[0])
+		_check(actions.get_grounds().all(func(ground: CombatActions.Ground) -> bool: return ground.kind != "oil")
+			and oil_selection.preview_cell == oil_cells[0], "첫 클릭은 칸만 고르고 던지지 않음")
+		battle.call("_select_oil_cell", oil_cells[0])
+		_check(actions.get_grounds().any(func(ground: CombatActions.Ground) -> bool:
+			return ground.kind == "oil" and ground.cell == oil_cells[0]) and archer.oil_throw_left == 0,
+			"같은 칸을 다시 누르면 그 칸에 기름을 던짐")
+		actions._grounds.assign(actions._grounds.filter(func(ground: CombatActions.Ground) -> bool: return ground.kind != "oil"))
+		archer.oil_throw_left = 1
+		archer.bonus_action_left = 1
+		battle.call("_update_turn_ui")
 	_check((passives["moving_shot"] as Button).visible and not (passives["phalanx"] as Button).visible
 		and not (dots["moving_shot"] as Label).visible and (passives["moving_shot"] as Button).disabled,
 		"궁수 패시브 칸의 무빙샷은 도약할 수 없는 동안 꺼짐")
@@ -629,6 +649,25 @@ func _test_log_and_status() -> void:
 	_check("기절" in hud.resource_label.get_parsed_text() and "◎" not in hud.resource_label.get_parsed_text(),
 		"기절은 유닛 정보에 반영하고 표식(#528 삭제)은 없음")
 	_check(hud.health_bar.value == 5, "대상 HP 갱신")
+	units[2].fallen = true
+	hud.show_unit(units[2])
+	_check("넘어짐" in hud.resource_label.get_parsed_text(), "넘어짐은 유닛 정보 상태 줄에 보임(#500 2a)")
+	units[2].fallen = false
+	# 넘어진 아군은 턴 종료 위의 일어나기 버튼으로 이동력 절반을 내고 일어난다(#500 2a 설계 결정 5).
+	var standing: CombatUnit = actions.turns.current_unit
+	_check(standing != null and standing.is_ally, "일어나기 검사 전제: 지금 턴은 아군")
+	standing.fallen = true
+	var stand_cost: int = CombatOil.standing_cost(standing.get_movement())
+	standing.movement_left = stand_cost
+	battle.call("_update_turn_ui")
+	_check(hud.stand_button.visible and not hud.stand_button.disabled
+		and hud.stand_button.text == "일어나기 · 이동력 %d" % stand_cost
+		and not hud.stand_button.get_global_rect().intersects(hud.end_button.get_global_rect()),
+		"넘어진 아군의 턴에는 비용을 적은 일어나기 버튼이 턴 종료 위에 보임")
+	hud.stand_button.pressed.emit()
+	_check(not standing.fallen and standing.movement_left == 0 and not hud.stand_button.visible,
+		"남은 이동력이 비용과 같아도 버튼으로 일어나고 버튼이 사라짐")
+	standing.movement_left = standing.get_movement()
 	actions.apply_status(units[1], units[2], "burn")
 	actions.apply_status(units[1], units[2], "burn")
 	actions.apply_status(units[0], units[2], "poison")
@@ -851,8 +890,11 @@ func _test_layout() -> void:
 			for index: int in range(1, rows.size()):
 				var above: Rect2 = (rows[index - 1] as Control).get_global_rect()
 				var below: Rect2 = (rows[index] as Control).get_global_rect()
-				_check(below.position.y >= above.end.y and (below.size.y == above.size.y or _button_lines(rows[index]) > 1 or _button_lines(rows[index - 1]) > 1),
-					"%s %s: 컨테이너 %d는 앞 컨테이너 아래 같은 줄 높이" % [size, kind, index])
+				# 접힌 줄(#438)은 버튼 줄 하나(34)와 줄 간격(3)만큼 더 높다. 그만큼 빼면 모든 줄의 높이가 같다. 빈 줄도 한 줄 높이다.
+				var above_base: float = above.size.y - (maxi(_button_lines(rows[index - 1]), 1) - 1) * 37
+				var below_base: float = below.size.y - (maxi(_button_lines(rows[index]), 1) - 1) * 37
+				_check(below.position.y >= above.end.y and below_base == above_base,
+					"%s %s: 컨테이너 %d는 앞 컨테이너 아래, 접힌 줄 수를 뺀 높이가 같음" % [size, kind, index])
 			# 제목 폭을 맞춰 각 줄의 첫 버튼이 같은 세로선에 선다.
 			var filled: Array = rows.filter(func(panel: Control) -> bool:
 				return panel.get_child(0).get_child(1).get_children().any(func(button: Control) -> bool: return button.visible))

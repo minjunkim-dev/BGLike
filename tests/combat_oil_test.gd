@@ -85,6 +85,7 @@ func _run() -> void:
 	await _test_fallen_agility_save()
 	await _test_oil_clock()
 	await _test_oil_throw()
+	await _test_fallen_fog()
 	await _test_status_text()
 	await _test_save()
 	for unit: CombatUnit in _created:
@@ -204,6 +205,15 @@ func _test_leaving_slip() -> void:
 	_check(await g.actions.move_to(walker, Vector2i(3, 2)) and walker.cell == Vector2i(3, 2)
 		and not walker.fallen and walker.movement_left == 4,
 		"떠나기 성공은 이동을 진행하고, 이어서 기름 칸을 밟아도 두 번째로 굴리지 않음")
+	# 인접한 적이 기회 공격을 할 수 있어도 떠나기 굴림을 먼저 하고, 실패하면 칸을 떠나지 않아 기회 공격이 없다.
+	# 준비한 주사위는 미끌거림 1개뿐이라 기회 공격을 굴리면 주사위 부족으로 실패한다.
+	var h: Fixture = _fixture()
+	var leaver: CombatUnit = h.units[0]
+	h.units[2].cell = Vector2i(4, 4)
+	_single_oil(h, Vector2i(3, 4), leaver)
+	h.actions.dice = _dice([1], [20])
+	_check(await h.actions.move_to(leaver, Vector2i(3, 2)) and leaver.cell == Vector2i(3, 4) and leaver.fallen
+		and h.units[2].reaction_left == 1, "인접한 적이 있어도 떠나기 굴림이 먼저이고, 실패하면 기회 공격이 없음")
 
 
 ## 들어가기 굴림: 실패하면 그 칸에서 넘어지고 이동은 그 칸에서 멈춘다. 걸음 1칸 비용은 쓴다.
@@ -321,6 +331,22 @@ func _test_oil_throw() -> void:
 		"전투 횟수를 다 쓰면 다시 던질 수 없음")
 	archer.begin_stage(false)
 	_check(archer.oil_throw_left == 1, "새 전투가 시작되면 횟수가 회복")
+	# 다른 동작을 실행하면 무빙샷 준비가 사라진다(궁수 문서).
+	var g: Fixture = _fixture()
+	g.units[0].moving_shot_ready = true
+	_check(g.actions.throw_oil(g.units[0], Vector2i(6, 4)) and not g.units[0].moving_shot_ready,
+		"기름병을 던지면 무빙샷 준비가 사라짐")
+
+
+## 넘어진 독안개 거미는 독안개를 시전하지 못한다(넘어짐은 행동 불가).
+func _test_fallen_fog() -> void:
+	var f: Fixture = _fixture()
+	var spider: CombatUnit = f.units[2]
+	spider.kind = CombatUnit.Kind.FOG_SPIDER
+	spider.fallen = true
+	f.actions.dice = _dice([], [])
+	_check(not f.actions.cast_fog(spider, Vector2i(3, 4)) and spider.action_left == 1,
+		"넘어진 독안개 거미는 독안개를 시전하지 않고 행동도 쓰지 않음")
 
 
 ## 넘어짐은 유닛 상태 줄에 보인다.
@@ -352,6 +378,9 @@ func _test_save() -> void:
 	var broken: Dictionary = state.duplicate(true)
 	broken.grounds[0][5] = 3
 	_check(not CombatActions.is_valid_state(broken, 4, Vector2i(10, 10)), "기름 장판의 DC가 4가 아니면 거부")
+	var long_oil: Dictionary = state.duplicate(true)
+	long_oil.grounds[0][3] = 4
+	_check(not CombatActions.is_valid_state(long_oil, 4, Vector2i(10, 10)), "기름 장판의 기간이 3을 넘으면 거부(ADR 0003)")
 	var kind_broken: Dictionary = state.duplicate(true)
 	kind_broken.grounds[0][2] = "ice"
 	_check(not CombatActions.is_valid_state(kind_broken, 4, Vector2i(10, 10)), "알 수 없는 장판 종류는 거부")
