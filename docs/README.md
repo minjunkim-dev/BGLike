@@ -46,7 +46,7 @@
 | [ITEM_LOOT.md](ITEM_LOOT.md) | 현역 | `design/growth/items-loot.md` |
 | [ITEM_FORM.md](ITEM_FORM.md) | 현역 | `design/growth/item-form.md` |
 | [DICE_GROWTH.md](DICE_GROWTH.md) | 축소 예정 | `design/growth/dice-growth.md` |
-| [PIXEL_ART.md](PIXEL_ART.md) | 현역 (UNIT_IMAGE_TEMPLATE을 병합) | `design/pixel-art.md` |
+| [PIXEL_ART.md](PIXEL_ART.md) | 현역 (UNIT_IMAGE_TEMPLATE을 병합할 예정) | `design/pixel-art.md` |
 | [TERRAIN_MAPS.md](TERRAIN_MAPS.md) | 현역 | `design/stages/terrain-maps.md` |
 | [stages/README.md](stages/README.md) | 현역 | `design/stages/README.md` |
 | [ENVIRONMENT_ELEMENTS.md](ENVIRONMENT_ELEMENTS.md) | 현역 | `design/combat/environment.md` |

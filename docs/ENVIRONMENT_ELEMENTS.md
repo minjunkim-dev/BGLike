@@ -3,7 +3,7 @@
 박스·바위·벽·나무·집·물·낭떠러지가 이동, 시선, 파괴, 굴리기, 장판에 어떻게 반응하는지 정한 문서입니다.
 
 - 관련 규칙: [게임 구조 기획서 6장](GAME_STRUCTURE.md#6-사각-높이-격자)(높이·점프·강제 이동·환경 오브젝트), [전투 기획서 6장](COMBAT_DESIGN.md#6-상태-이상)(장판·기절·속성), [동작 유형 기획서 5장](SKILL_TYPES.md#5-전달-방식-근접-직사-곡사)(직사·곡사), [맵 기준](TERRAIN_MAPS.md)(배치).
-- 구현 상태: 3장 박스 드랍·줍기(`scenes/combat/floor_loot.gd`, `actions.gd`)와 5장 나무 불타기는 구현했습니다. 표에 **구현 전**이라고 적은 규칙은 하단 미정 표에서 개발 금지로 둔 항목을 빼고 [#529](https://github.com/minjunkim-dev/BGLike/issues/529)에서 구현합니다. 그 밖의 규칙은 지금 코드(`scenes/combat/grid.gd`, `stage.gd`, `actions.gd`)와 같습니다.
+- 구현 상태: 1~6장은 [#529](https://github.com/minjunkim-dev/BGLike/issues/529)(#534·#542·#571·#573)에서 모두 구현했습니다. 2-2의 직사 시선 차단만 미정·개발 금지입니다([#358](https://github.com/minjunkim-dev/BGLike/issues/358)). 3-6의 기대 개수는 기름병 아이템(#575)이 들어간 뒤의 값이며, 지금 드랍 풀은 무기 2·방어구 2·회복 물약 3입니다. 그 밖의 규칙은 지금 코드(`scenes/combat/grid.gd`, `stage.gd`, `actions.gd`)와 같습니다.
 - 표기: 가능 · 불가 · – (해당 없음)
 
 ## 목차
