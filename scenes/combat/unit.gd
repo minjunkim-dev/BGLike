@@ -37,7 +37,8 @@ const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initi
 	"shield_points", "shield_turns", "battle_cry_bonus", "battle_cry_turns",
 	"fallen", "oil_slipped", "oil_throw_left"]
 ## SAVED_FIELDS 밖의 선택 필드와 기본값(#528). 형식 5를 그대로 두려고, 이 필드가 없는 옛 저장은 기본값으로 읽는다.
-const OPTIONAL_FIELDS: Dictionary[String, Variant] = {"aegisal_left": 0, "moving_shot_ready": false, "moving_shot_spent": false}
+const OPTIONAL_FIELDS: Dictionary[String, Variant] = {"aegisal_left": 0, "moving_shot_ready": false, "moving_shot_spent": false,
+	"firework_arrow_left": 1}
 ## 저장 파일의 정수 상한. 고친 저장이 끝나지 않는 턴이나 큰 목록을 만들지 않게 한다.
 const SAVED_INT_LIMIT: int = 99
 const SAVED_HIT_POINT_LIMIT: int = 999
@@ -122,6 +123,8 @@ var fallen: bool = false
 ## 이번 턴에 기름 장판의 미끌거림을 이미 굴렸는지. 기름 장판 전체에 대해 자기 턴마다 1회다.
 var oil_slipped: bool = false
 var oil_throw_left: int = 1
+## 폭죽 화살의 막당 남은 횟수. 새 막에서 1로 회복한다(궁수 문서).
+var firework_arrow_left: int = 1
 ## 성스러운 장막의 방어막. 피해를 HP보다 먼저 받고, 자기 턴 시작마다 shield_turns가 준다.
 var shield_points: int = 0:
 	set(value):

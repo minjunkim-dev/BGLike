@@ -318,7 +318,7 @@ func _test_sweep() -> void:
 		and lone.logs.any(func(line: String) -> bool: return "휩쓸기: 대상 0명" in line), "빈 반달도 실행하고 행동을 소비")
 	_check(not lone.actions.can_use(alone, "sweep") and lone.actions.unavailable_reason(alone, "sweep") == "자원을 이미 씀",
 		"빈 반달에 쓴 뒤에는 행동이 없어 비활성")
-	# 휩쓸기가 없는 유닛은 행동이 남아도 쓸 대상이 없으면 할 동작이 없다.
+	# 휩쓸기가 없는 유닛은 행동이 남아도 쓸 대상이 없으면 할 동작이 없다. 궁수는 빈 칸에도 장난스러운 화살을 쏠 수 있다(#500 2b).
 	var idle: Fixture = _fixture([1, 0, 2, 3])
 	var idle_archer: CombatUnit = idle.units[1]
 	idle.units[2].cell = Vector2i(9, 9)
@@ -326,8 +326,10 @@ func _test_sweep() -> void:
 	idle_archer.movement_left = 0
 	idle_archer.bonus_action_left = 0
 	_check(idle.turns.current_unit == idle_archer and idle_archer.action_left > 0
-		and not idle.actions.has_available_action(idle_archer),
-		"행동이 남아도 대상이 없는 궁수는 할 동작 없음")
+		and idle.actions.has_available_action(idle_archer),
+		"대상이 없어도 행동이 남은 궁수는 빈 칸에 쏠 수 있음")
+	idle_archer.action_left = 0
+	_check(not idle.actions.has_available_action(idle_archer), "행동이 없으면 궁수도 할 동작 없음")
 
 
 func _test_holy_veil() -> void:
