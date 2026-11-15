@@ -678,6 +678,10 @@ func _test_party_level_rules() -> void:
 	progress.begin_stage()
 	progress.record_victory(loot, 1, dice)
 	_check(progress.level == 1, "이미 깬 막의 재클리어와 막 재시작으로 오르지 않음")
+	progress.stage_index = 2
+	progress.begin_stage()
+	progress.record_victory(loot, 1, dice)
+	_check(progress.level == 1, "이미 깬 막의 마지막 스테이지 재클리어로 오르지 않음")
 	progress.stage_index = 5
 	progress.restart_act()
 	_check(progress.level == 1, "2막 재시작은 레벨을 건드리지 않음")
