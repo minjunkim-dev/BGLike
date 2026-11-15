@@ -27,6 +27,14 @@
       "icon": "potion",
       "weight": 3,
       "stats": {}
+    },
+    {
+      "id": "oil_bottle",
+      "name": "기름병",
+      "kind": "potion",
+      "icon": "oil_bottle",
+      "weight": 1,
+      "stats": {}
     }
   ]
 }

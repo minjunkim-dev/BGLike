@@ -171,7 +171,7 @@ func capture(label: String) -> void:
 			"movement": actor.movement_left if actor != null else -1, "state": battle.call("combat_state"), "animations": map.find_children("PropAnimation", "Node2D", false, false).size(), "effects": (map.get("_prop_effects") as Array).size()})
 		row["saved_matches"] = row.state == GameSave.read().get("sections", {}).get("combat", {}) if GameSave.has_save() else false
 		for unit: CombatUnit in battle.get("party"):
-			row.party.append({"name": unit.get_display_name(), "weapon": unit.weapon, "armor": unit.armor, "potions": unit.potion_left, "hp": unit.hit_points})
+			row.party.append({"name": unit.get_display_name(), "weapon": unit.weapon, "armor": unit.armor, "potions": unit.potions.size(), "hp": unit.hit_points})
 		for unit: CombatUnit in battle.get("units"):
 			row.units.append({"name": unit.get_display_name(), "cell": str(unit.cell), "hp": unit.hit_points})
 		for prop: CombatGrid.Prop in actions.grid.props:

@@ -96,7 +96,7 @@ func _run() -> void:
 				actions.dice = ScriptedDice.new([attack_roll], [attack_sides])
 		elif case == "battle_end":
 			# 전투 종료는 보상 d7 1회와 추가 드랍 확률 2회까지 실행한다.
-			actions.dice = ScriptedDice.new([7], [7], [0.99, 0.99])
+			actions.dice = ScriptedDice.new([7], [8], [0.99, 0.99])
 		else:
 			actions.dice = ScriptedDice.new([], [])
 		battle.call("_update_turn_ui")

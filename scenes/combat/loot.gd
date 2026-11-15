@@ -30,7 +30,10 @@ func _init() -> void:
 	assert(definitions is Array and not definitions.is_empty(),
 		"아이템 종류가 필요합니다.")
 	var total_weight: int = 0
+	var ids: Dictionary = {}
 	for item: Dictionary in data["items"]:
+		assert(not str(item.get("id", "")).is_empty() and not ids.has(item["id"]), "아이템 id가 필요하고 서로 달라야 합니다.")
+		ids[item["id"]] = true
 		assert(item.get("kind", "") in ["weapon", "armor", "potion"], "알 수 없는 아이템 종류")
 		assert(not str(item.get("name", "")).is_empty(), "아이템 이름이 필요합니다.")
 		assert(int(item.get("weight", 0)) > 0, "아이템 추첨 비중은 양수여야 합니다.")
@@ -87,7 +90,7 @@ func can_receive(unit: CombatUnit, item: Dictionary) -> bool:
 		"armor":
 			return unit.armor.is_empty() or bag.size() < int(data["bag_limit"])
 		"potion":
-			return unit.potion_left < int(data["potion_limit"])
+			return unit.potions.size() < int(data["potion_limit"])
 	return false
 
 
@@ -103,7 +106,7 @@ func receive(unit: CombatUnit, item: Dictionary) -> bool:
 			previous = unit.armor
 			unit.armor = item.duplicate(true)
 		"potion":
-			unit.potion_left += 1
+			unit.potions.append(str(item.get("id", "")))
 		_:
 			return false
 	if not previous.is_empty():
@@ -143,12 +146,26 @@ func unequip_armor(unit: CombatUnit) -> bool:
 	return true
 
 
+## 원본의 마지막 칸 물약 하나를 대상의 끝 칸으로 옮긴다(#575 개발 결정: 칸 고르기는 #577).
 func transfer_potion(source: CombatUnit, target: CombatUnit) -> bool:
-	if source == target or source.potion_left <= 0 or target.potion_left >= int(data["potion_limit"]):
+	if source == target or source.potions.is_empty() or target.potions.size() >= int(data["potion_limit"]):
 		return false
-	source.potion_left -= 1
-	target.potion_left += 1
+	target.potions.append(source.potions.pop_back())
 	return true
+
+
+## 물약류 항목(이름·아이콘 조회). 물약류가 아닌 id나 모르는 id는 빈 Dictionary다.
+func potion_definition(id: String) -> Dictionary:
+	for definition: Dictionary in data["items"]:
+		if definition["id"] == id and definition["kind"] == "potion":
+			return definition
+	return {}
+
+
+## 저장 파일의 물약 칸이 한도 이하이고 모두 물약류 id인지.
+func is_valid_potions(value: Variant) -> bool:
+	return (value is Array and value.size() <= int(data["potion_limit"])
+		and value.all(func(id: Variant) -> bool: return id is String and not potion_definition(id).is_empty()))
 
 
 ## 저장 파일의 아이템이 아이템 데이터의 한 종류이고 수치만 정수로 굴린 값인지.

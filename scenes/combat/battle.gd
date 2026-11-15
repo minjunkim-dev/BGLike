@@ -313,7 +313,8 @@ func _is_valid_state(state: Dictionary) -> bool:
 		var identity: Array = identities[index] if index < identities.size() else [CombatUnit.Kind.SPIDERLING, false]
 		if (not party[0].is_valid_state(saved, count, stage.map_size) or [saved.kind, saved.ally] != identity
 				or not (saved.weapon.is_empty() or loot.is_valid_item(saved.weapon) and saved.weapon.kind == "weapon")
-				or not (saved.armor.is_empty() or loot.is_valid_item(saved.armor) and saved.armor.kind == "armor")):
+				or not (saved.armor.is_empty() or loot.is_valid_item(saved.armor) and saved.armor.kind == "armor")
+				or not loot.is_valid_potions(saved.potions) or not (saved.ally or saved.potions.is_empty())):
 			return false
 		var agility_sides: int = (CombatUnit.ALLY_ABILITY_SIDES[saved.kind][CombatUnit.Ability.AGILITY]
 			if saved.ally else CombatEnemyDefinitions.for_kind(saved.kind)["abilities"][CombatUnit.Ability.AGILITY])
