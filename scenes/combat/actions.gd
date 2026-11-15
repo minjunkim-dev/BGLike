@@ -74,6 +74,11 @@ var units: Array[CombatUnit]:
 		return grid.units
 var turns: CombatTurns
 var dice: CombatDice = CombatDice.new()
+## 상자 드랍의 추첨 풀과 수치 범위를 정하는 막(1~3). 전투 장면이 스테이지마다 맞춘다.
+var loot: CombatLoot = CombatLoot.new()
+var act_number: int = 1
+## 상자에서 떨어진 아이템과 이번 전투에서 주운 아이템.
+var floor_loot: CombatFloorLoot = CombatFloorLoot.new()
 var busy: bool = false
 var pending_reactor: CombatUnit
 var pending_kind: String = ""
@@ -111,6 +116,7 @@ func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> v
 	# 소환과 전투 불능 이후에도 현재 유닛 배열을 그대로 조회한다.
 	grid.units = combat_units
 	grid.props.clear()
+	floor_loot.clear()
 	_grounds.clear()
 	_clock_slots.clear()
 	turns = combat_turns
@@ -129,7 +135,7 @@ func save_state() -> Dictionary:
 			ground.entered.map(func(unit: CombatUnit) -> int: return units.find(unit)), ground.dc])
 	var slots: Array = _clock_slots.map(func(slot: ClockSlot) -> Array:
 		return [units.find(slot.caster), units.find(slot.anchor), slot.skip])
-	return {"props": props, "grounds": grounds, "clock_slots": slots, "dice": dice.state}
+	return {"props": props, "floor_loot": floor_loot.save_state(), "grounds": grounds, "clock_slots": slots, "dice": dice.state}
 
 
 ## save_state()의 값으로 되돌린다. initialize() 뒤에 부르고, is_valid_state()를 먼저 확인한다.
@@ -139,6 +145,7 @@ func load_state(data: Dictionary) -> void:
 		var prop: CombatGrid.Prop = CombatGrid.Prop.new(saved[1], saved[0])
 		prop.hit_points = saved[2]
 		grid.props.append(prop)
+	floor_loot.load_state(data.floor_loot)
 	_grounds.clear()
 	for saved: Array in data.grounds:
 		var ground: Ground = Ground.new(units[saved[0]], saved[1], saved[2])
@@ -244,11 +251,46 @@ func attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
 	var message: String = tr("%s 나무 상자 공격: %d, %d · 피해 %d · 내구도 %d/6%s") % [
 		actor.get_display_name(), prop.cell.x, prop.cell.y, last_damage, prop.hit_points,
 		tr(" · 파괴") if prop.hit_points == 0 else ""]
+	var revision: int = _revision
 	hit_landed.emit()
 	logged.emit(message)
+	# 명중 callback이 전투를 다시 시작했으면 지난 전투의 상자는 아이템을 떨어뜨리지 않는다.
+	if prop.hit_points == 0 and revision == _revision:
+		_drop_crate_item(prop.cell)
 	busy = false
 	changed.emit()
 	return true
+
+
+## 부서진 상자 칸에 기존 드랍 풀의 아이템 1개를 떨어뜨린다. 보장·몬스터 드랍과 별도다 (환경요소 3-1).
+func _drop_crate_item(cell: Vector2i) -> void:
+	var item: Dictionary = loot.roll_item(dice, act_number)
+	floor_loot.drop(cell, item)
+	logged.emit(tr("나무 상자 파괴: %s 떨어짐") % CombatUnit.with_subject_particle(tr(str(item["name"]))))
+
+
+## 살아서 도착한 아군이 그 칸의 아이템을 줍는다. 비용이 없고, 전투가 끝난 뒤에는 줍지 않는다 (환경요소 3-2).
+func _pick_up(unit: CombatUnit) -> void:
+	if not is_instance_valid(unit) or not unit.is_ally or unit.hit_points <= 0 or is_over():
+		return
+	var item: Dictionary = floor_loot.pick_up(unit.cell)
+	if item.is_empty():
+		return
+	logged.emit(tr("%s: %s 획득") % [unit.get_display_name(), tr(str(item["name"]))])
+	feedback.emit(unit, tr("%s 획득") % tr(str(item["name"])))
+	changed.emit()
+
+
+## 아군이 cells에 도착하며 줍게 될 아이템 안내. 줍을 것이 없으면 빈 문자열이다 (환경요소 3-4).
+func pickup_note(unit: CombatUnit, cells: Array[Vector2i]) -> String:
+	if unit == null or not unit.is_ally:
+		return ""
+	var names: Array[String] = []
+	for cell: Vector2i in cells:
+		var item: Dictionary = floor_loot.item_at(cell)
+		if not item.is_empty():
+			names.append(tr(str(item["name"])))
+	return tr("줍기: %s") % ", ".join(names) if not names.is_empty() else ""
 
 
 func preview_rock(actor: CombatUnit, prop: CombatGrid.Prop) -> RockRoll:
@@ -986,6 +1028,9 @@ func shove_landing(target: CombatUnit, destination: Vector2i) -> String:
 	var fall: int = fall_damage(target, destination)
 	if fall > 0:
 		notes.append(tr("낙하 피해 %d") % fall)
+	var pickup: String = pickup_note(target, [destination])
+	if not pickup.is_empty():
+		notes.append(pickup)
 	return " · ".join(notes)
 
 
@@ -999,12 +1044,20 @@ func water_note(cell: Vector2i) -> String:
 # _trace_rock이 예측한 밀기마다 같은 낙하 계산을 더한다.
 func rock_landing(roll: RockRoll, target: CombatUnit) -> String:
 	var fall: int = 0
+	var landing: Array[Vector2i] = []
 	for step: RockStep in roll.steps:
 		if step.push and step.target == target:
 			if grid.pits.has(step.push_cell):
 				return tr("낙사")
 			fall += _fall_damage_from(target, step.cell, step.push_cell)
-	return tr("낙하 피해 %d") % fall if fall > 0 else ""
+			landing.append(step.push_cell)
+	var notes: Array[String] = []
+	if fall > 0:
+		notes.append(tr("낙하 피해 %d") % fall)
+	var pickup: String = pickup_note(target, landing)
+	if not pickup.is_empty():
+		notes.append(pickup)
+	return " · ".join(notes)
 
 
 func can_target(actor: CombatUnit, target: CombatUnit, action: String,
@@ -1214,6 +1267,7 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 		actor.cell = step
 		_clear_burn_in_water(actor)
 		_apply_grounds(actor, true)
+		_pick_up(actor)
 		moved += 1
 		# 들어간 기름 칸에서 넘어졌으면 이동은 거기서 멈춘다.
 		if actor.fallen:
@@ -2061,6 +2115,8 @@ func _land(target: CombatUnit, destination: Vector2i) -> void:
 	if not _same_combat(target, revision):
 		return
 	_apply_grounds(target, true)
+	if _same_combat(target, revision):
+		_pick_up(target)
 
 
 ## 방어막이 HP보다 먼저 모든 피해(공격, 화상·독, 낙하, 과부하)를 받는다. pierce는 낙사처럼 방어막을 지나친다.
