@@ -128,13 +128,29 @@ func _test_create_oil() -> void:
 		"기름 생성은 점유 유닛에게 즉시 효과를 주지 않음")
 	_check(f.actions.create_oil(f.units[1], Vector2i(4, 4)) and _grounds_of(f, "oil") == 5
 		and f.actions.get_grounds()[0].source == archer, "같은 칸 갱신은 칸 하나를 유지하고 원 시전자를 유지")
-	f.actions.grid.water_cells = [Vector2i(4, 3)]
-	_check(not f.actions.create_oil(archer, Vector2i(4, 3)), "물 칸 중심은 거부")
+	var w: Fixture = _fixture()
+	w.actions.grid.water_cells = [Vector2i(4, 3)]
+	_check(w.actions.create_oil(w.units[0], Vector2i(4, 3)) and _grounds_of(w, "oil") == 5
+		and Vector2i(4, 3) in _oil_cells(w), "물 칸 중심에도 십자 5칸 기름")
 	var g: Fixture = _fixture()
 	g.actions.grid.blocked_cells = [Vector2i(4, 3)]
 	g.actions.grid.water_cells = [Vector2i(3, 4)]
-	_check(g.actions.create_oil(g.units[0], Vector2i(4, 4)) and _grounds_of(g, "oil") == 3,
-		"막힌 칸과 물 칸을 뺀 나머지 칸에만 기름")
+	_check(g.actions.create_oil(g.units[0], Vector2i(4, 4)) and _grounds_of(g, "oil") == 4
+		and Vector2i(3, 4) in _oil_cells(g) and Vector2i(4, 3) not in _oil_cells(g),
+		"막힌 칸만 빼고 물 칸에는 기름")
+	var p: Fixture = _fixture()
+	p.actions.create_prop(Vector2i(4, 4), "crate")
+	p.actions.create_prop(Vector2i(4, 5), "rock")
+	_check(p.actions.oil_sites(Vector2i(4, 4)).size() == 3 and Vector2i(4, 4) not in p.actions.oil_sites(Vector2i(4, 4))
+		and Vector2i(4, 5) not in p.actions.oil_sites(Vector2i(4, 4)), "oil_sites: 박스·바위 칸은 중심이어도 십자 안이어도 빠짐")
+	_check(p.actions.create_oil(p.units[0], Vector2i(4, 4)) and _oil_cells(p).size() == 3
+		and _oil_cells(p).all(func(cell: Vector2i) -> bool: return cell in p.actions.oil_sites(Vector2i(4, 4))),
+		"소품 칸 중심이면 그 칸을 뺀 나머지에만 깔리고 oil_sites와 같음")
+	var q: Fixture = _fixture()
+	q.actions.grid.water_cells = [Vector2i(4, 4)]
+	q.actions.grid.heights = {Vector2i(4, 5): 2}
+	_check(q.actions.oil_sites(Vector2i(4, 4)).size() == 4 and Vector2i(4, 5) not in q.actions.oil_sites(Vector2i(4, 4))
+		and q.actions.oil_sites(Vector2i(-1, 0)).is_empty(), "oil_sites: 물 칸 포함, 높이 차 2와 맵 밖 제외")
 	var h: Fixture = _fixture()
 	h.actions.grid.heights = {Vector2i(4, 5): 2}
 	_check(h.actions.create_oil(h.units[0], Vector2i(4, 4)) and _grounds_of(h, "oil") == 4 and Vector2i(4, 5) not in _oil_cells(h),
@@ -161,6 +177,13 @@ func _test_ignite() -> void:
 	g.actions.ignite(Vector2i(4, 4), g.units[0])
 	_check(g.units[0].get_status_count("burn") == 0 and g.units[0].hit_points == g.units[0].get_max_hit_points(),
 		"물 칸 위 유닛은 화상을 받지 않음")
+	var w: Fixture = _fixture()
+	w.actions.grid.water_cells = [Vector2i(4, 5)]
+	w.actions.create_oil(w.units[0], Vector2i(4, 4))
+	_check(Vector2i(4, 5) in _oil_cells(w) and w.actions.ignite(Vector2i(4, 4), w.units[0]) and _grounds_of(w, "oil") == 0,
+		"물 칸의 기름도 이어진 기름과 함께 점화")
+	_check(not w.actions.create_ground(w.units[0], Vector2i(4, 5), "burn") and _grounds_of(w, "burn") == 0,
+		"물 칸에는 불 장판이 생기지 않음")
 	_check(f.actions.get_grounds().filter(func(ground: CombatActions.Ground) -> bool: return ground.kind == "burn").size() == 1,
 		"점화는 다른 칸의 불 장판을 건드리지 않음")
 	# 불 장판이 기름 칸에 닿으면 점화하고 그 칸에 불 장판을 새로 두지 않는다.
@@ -327,7 +350,11 @@ func _test_oil_throw() -> void:
 	_check(CombatActionRules.belongs_to(archer, "oil_throw") and not CombatActionRules.belongs_to(f.units[3], "oil_throw"),
 		"기름병 던지기는 궁수만 씀")
 	_check(f.actions.can_aim(archer, "oil_throw", Vector2i(6, 4)) and not f.actions.can_aim(archer, "oil_throw", Vector2i(7, 4))
-		and f.actions.can_aim(archer, "oil_throw", Vector2i(3, 4)), "사거리 3(맨해튼 거리 3 이하)과 자기 칸")
+		and f.actions.can_aim(archer, "oil_throw", Vector2i(4, 4)), "사거리 1~3(맨해튼 거리)")
+	_check(not f.actions.can_aim(archer, "oil_throw", Vector2i(3, 4)) and not f.actions.throw_oil(archer, Vector2i(3, 4))
+		and archer.bonus_action_left == 1 and archer.oil_throw_left == 1 and _grounds_of(f, "oil") == 0,
+		"자기 칸(거리 0)은 고를 수 없고 던지면 거부되어 자원을 쓰지 않음")
+	_check(f.actions.can_aim(archer, "fog", Vector2i(3, 4)), "독안개 조준은 거리 0도 그대로")
 	_check(f.actions.throw_oil(archer, Vector2i(6, 4)) and _grounds_of(f, "oil") == 5 and archer.bonus_action_left == 0
 		and archer.oil_throw_left == 0, "던지면 십자 5칸 기름, 보조 행동 1과 전투 횟수 1 소비")
 	_check(Vector2i(6, 4) in _oil_cells(f) and Vector2i(7, 4) in _oil_cells(f) and Vector2i(6, 5) in _oil_cells(f),
@@ -337,6 +364,27 @@ func _test_oil_throw() -> void:
 		"전투 횟수를 다 쓰면 다시 던질 수 없음")
 	archer.begin_stage(false)
 	_check(archer.oil_throw_left == 1, "새 전투가 시작되면 횟수가 회복")
+	# 박스·바위 칸 목표: 고를 수 있고 그 칸만 빼고 깔리며 미리보기가 실제 칸과 같다. 깔릴 칸이 없는 목표는 뺀다.
+	var h: Fixture = _fixture()
+	var shooter: CombatUnit = h.units[0]
+	h.actions.create_prop(Vector2i(5, 3), "crate")
+	h.actions.create_prop(Vector2i(6, 3), "rock")
+	h.actions.grid.water_cells = [Vector2i(5, 2)]
+	var preview: Array[Vector2i] = h.actions.aim_area(shooter, "oil_throw", Vector2i(5, 3))
+	_check(h.actions.can_aim(shooter, "oil_throw", Vector2i(5, 3)) and Vector2i(5, 3) not in preview
+		and Vector2i(6, 3) not in preview and Vector2i(5, 2) in preview and preview.size() == 3,
+		"소품 칸을 목표로 고를 수 있고 미리보기는 깔리는 칸만(소품 칸 빠짐, 물 칸 포함)")
+	_check(h.actions.throw_oil(shooter, Vector2i(5, 3)) and _oil_cells(h).size() == preview.size()
+		and _oil_cells(h).all(func(cell: Vector2i) -> bool: return cell in preview) and shooter.oil_throw_left == 0,
+		"소품 칸 목표로 던지면 미리보기와 같은 칸에만 기름")
+	var k: Fixture = _fixture()
+	for cell: Vector2i in [Vector2i(5, 3), Vector2i(4, 3), Vector2i(6, 3), Vector2i(5, 2), Vector2i(5, 4)]:
+		if cell == Vector2i(5, 4):
+			k.actions.grid.blocked_cells.append(cell)
+		else:
+			k.actions.create_prop(cell, "crate")
+	_check(k.actions.oil_sites(Vector2i(5, 3)).is_empty() and not k.actions.can_aim(k.units[0], "oil_throw", Vector2i(5, 3))
+		and not k.actions.throw_oil(k.units[0], Vector2i(5, 3)), "깔릴 칸이 없는 목표는 고를 수 없음")
 	# 다른 동작을 실행하면 무빙샷 준비가 사라진다(궁수 문서).
 	var g: Fixture = _fixture()
 	g.units[0].moving_shot_ready = true

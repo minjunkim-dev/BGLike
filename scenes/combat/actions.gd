@@ -601,22 +601,32 @@ func _oil_cells() -> Array[Vector2i]:
 	return cells
 
 
-## 기름을 깔 수 있는 칸: 맵 안의 바닥, 막히지 않음, 물 칸 아님, 중심과 높이 차 1 이하.
+## 기름을 깔 수 있는 칸: 맵 안의 바닥, 벽·박스·바위 아님, 중심과 높이 차 1 이하. 물 칸도 된다.
 func _oil_site_ok(center: Vector2i, cell: Vector2i) -> bool:
-	return (grid.is_floor(cell) and not grid.is_blocked(cell) and cell not in grid.water_cells
+	return (grid.is_floor(cell) and not grid.is_blocked(cell)
 		and absi(grid.height_at(center) - grid.height_at(cell)) <= 1)
+
+
+## 목표 칸 center에 던졌을 때 실제로 기름이 깔리는 칸. 생성과 미리보기가 함께 쓴다.
+## 중심이 박스·바위 칸이어도 고를 수 있고, 그 칸만 빠진 나머지가 깔린다. 중심이 고를 수 없는 칸이면 비어 있다.
+func oil_sites(center: Vector2i) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	if not grid.is_aimable(center):
+		return cells
+	for cell: Vector2i in CombatOil.cross_cells(center):
+		if _oil_site_ok(center, cell):
+			cells.append(cell)
+	return cells
 
 
 ## 중심의 십자 5칸에 기름 장판을 깐다. 같은 칸은 하나이고 다시 깔면 기간만 3으로 갱신한다(원 시전자 유지).
 ## 시전자가 쓰러져도 남는다. 칸 위의 유닛에게는 즉시 효과가 없다.
 func create_oil(source: CombatUnit, center: Vector2i) -> bool:
-	if (not is_instance_valid(source) or source not in units or source.hit_points <= 0
-		or not _oil_site_ok(center, center)):
+	var sites: Array[Vector2i] = oil_sites(center)
+	if not is_instance_valid(source) or source not in units or source.hit_points <= 0 or sites.is_empty():
 		return false
 	var placed: Array[Vector2i] = []
-	for cell: Vector2i in CombatOil.cross_cells(center):
-		if not _oil_site_ok(center, cell):
-			continue
+	for cell: Vector2i in sites:
 		var existing: Ground = _oil_at(cell)
 		if existing != null:
 			existing.turns_left = CombatOil.TURNS
@@ -637,7 +647,7 @@ func create_oil(source: CombatUnit, center: Vector2i) -> bool:
 ## 기름병 던지기(궁수, 보조 행동, 전투마다 1). 목표 칸 십자 5칸에 기름을 깐다.
 func throw_oil(caster: CombatUnit, cell: Vector2i) -> bool:
 	if (not _can_act(caster) or not CombatActionRules.has_uses(caster, "oil_throw") or caster.bonus_action_left <= 0
-		or not can_aim(caster, "oil_throw", cell) or not _oil_site_ok(cell, cell)):
+		or not can_aim(caster, "oil_throw", cell)):
 		return false
 	caster.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
 	CombatActionRules.spend_use(caster, "oil_throw")
@@ -1004,7 +1014,12 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 func aim_cells(actor: CombatUnit, action: String, from_cell: Vector2i = Vector2i(-1, -1)) -> Array[Vector2i]:
 	if actor == null or CombatActionRules.aim_range(actor, action) < 0:
 		return []
-	return grid.aim_cells(actor.cell if from_cell == Vector2i(-1, -1) else from_cell, CombatActionRules.aim_range(actor, action))
+	var cells: Array[Vector2i] = grid.aim_cells(actor.cell if from_cell == Vector2i(-1, -1) else from_cell,
+		CombatActionRules.aim_range(actor, action), CombatActionRules.aim_min_range(action))
+	if action == "oil_throw":
+		# 깔릴 칸이 하나도 없는 목표는 고를 수 없다(자원만 쓰고 효과 없는 던지기를 막는다).
+		cells = cells.filter(func(cell: Vector2i) -> bool: return not oil_sites(cell).is_empty())
+	return cells
 
 
 func can_aim(actor: CombatUnit, action: String, cell: Vector2i, from_cell: Vector2i = Vector2i(-1, -1)) -> bool:
@@ -1015,6 +1030,8 @@ func can_aim(actor: CombatUnit, action: String, cell: Vector2i, from_cell: Vecto
 func aim_area(actor: CombatUnit, action: String, cell: Vector2i) -> Array[Vector2i]:
 	if actor == null or action not in CombatActionRules.AIM_RADII:
 		return []
+	if action == "oil_throw":
+		return oil_sites(cell)
 	return grid.area_cells(cell, CombatActionRules.AIM_RADII[action], false)
 
 
