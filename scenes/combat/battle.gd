@@ -932,12 +932,17 @@ func _update_turn_ui() -> void:
 			var target: CombatUnit = selection.preview_target
 			if not actions.can_target(actor, target, "steel_charge"):
 				hud.show_target_note(tr("강철 돌진을 사용할 수 없음"))
-			elif actions.grid.can_shove(actor, target):
-				var cell: Vector2i = actions.grid.push_destination(actor.cell, target.cell)
-				var landing: String = actions.shove_landing(target, cell)
-				hud.show_target_note(tr("명중하면 밀려날 칸: %d, %d") % [cell.x, cell.y] + ("" if landing.is_empty() else " · " + landing))
 			else:
-				hud.show_target_note(tr("밀려날 칸이 막힘 · 명중하면 피해만, 쓰러뜨리면 그 칸으로 전진"))
+				# 전진하는 아군은 대상이 있던 칸에 도착해 그 칸의 아이템을 줍는다 (환경요소 3-5).
+				var advance: String = actions.pickup_note(actor, [target.cell])
+				if actions.grid.can_shove(actor, target):
+					var cell: Vector2i = actions.grid.push_destination(actor.cell, target.cell)
+					var landing: String = actions.shove_landing(target, cell)
+					hud.show_target_note(tr("명중하면 밀려날 칸: %d, %d") % [cell.x, cell.y] + ("" if landing.is_empty() else " · " + landing)
+						+ ("" if advance.is_empty() else " · " + advance))
+				else:
+					hud.show_target_note(tr("밀려날 칸이 막힘 · 명중하면 피해만, 쓰러뜨리면 그 칸으로 전진")
+						+ ("" if advance.is_empty() else " · " + advance))
 	elif selection.preview_prop != null:
 		var actor: CombatUnit = turns.current_unit
 		var prop: CombatGrid.Prop = selection.preview_prop

@@ -358,7 +358,7 @@ func show_grounds(grounds: Array[CombatActions.Ground]) -> void:
 
 
 ## 상자에서 떨어진 아이템을 칸 위에 종류별 아이콘으로 보인다. 물체가 아니라 판정에 쓰지 않는다 (환경요소 3-4).
-func show_floor_loot(drops: Dictionary) -> void:
+func show_floor_loot(drops: Dictionary[Vector2i, Dictionary]) -> void:
 	for marker: Node2D in _loot_markers:
 		marker.free()
 	_loot_markers.clear()
