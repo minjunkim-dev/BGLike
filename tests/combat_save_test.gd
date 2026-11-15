@@ -281,6 +281,14 @@ func _restore(point: Dictionary, label: String) -> Node2D:
 		_check(false, label + " 복원 실패")
 		await _free(battle)
 		return null
+	var current: CombatUnit = (battle.get("turns") as CombatTurns).current_unit
+	if current != null and not current.is_ally:
+		# 아군은 자기 묶음을 확정할 때 이미 채웠으므로 적 턴 저장에서도 이동력·행동·보조 행동이 가득 차 있다(3-3).
+		for unit: CombatUnit in battle.get("units"):
+			if unit.is_ally and unit.hit_points > 0:
+				_check(unit.movement_left == unit.get_movement() and unit.action_left == unit.action_capacity
+					and unit.bonus_action_left == unit.bonus_action_capacity,
+					label + " 적 턴 저장에서 아군 자원이 가득 찬 상태로 복원")
 	if point.save.get("replay", {}).get("actions", 0) == 0:
 		_check(battle.call("combat_state") == point.state, label + " 복원한 상태가 저장한 순간과 같음")
 		return battle
