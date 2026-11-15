@@ -668,12 +668,144 @@ func _test_crate_attack() -> void:
 	_check(not f.actions.attack_prop(actor, crate) and crate.hit_points == 2,
 		"행동이 없으면 상자를 다시 공격하거나 주사위를 굴리지 않는다")
 	ScriptedDice.start_turn(actor)
-	f.actions.dice = _dice_for([4], [20])
+	f.actions.dice = _dice_for([4], [20]).then_seeded()
 	_check(f.actions.attack_prop(actor, crate) and crate.hit_points == 0
 		and f.actions.get_props().is_empty() and f.actions.can_move(actor, Vector2i(4, 5)),
 		"상자를 부수면 즉시 빈 칸이 되어 기존 이동 경로가 열린다")
 	_check(not f.actions.attack_prop(actor, crate) and f.units.size() == 4,
 		"파괴한 상자는 재공격/드랍/유닛 변경을 만들지 않는다")
+
+
+func _floor_item(f: Fixture, kind_index: int = 0) -> Dictionary:
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 40 + kind_index
+	return f.actions.loot.roll_item(dice, 1)
+
+
+func _test_crate_drop() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	var crate: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "crate")
+	# 피해 6으로 한 번에 부순다. 이어서 추첨 2(무기), 무기 수치 1막 범위 공격 2·피해 3.
+	f.actions.dice = _dice_for([6, 1, 2, 3], [20, 7, 2, 3])
+	_check(f.actions.attack_prop(actor, crate) and f.actions.get_props().is_empty(),
+		"내구도 6 상자를 한 번에 부순다")
+	var dropped: Dictionary = f.actions.floor_loot.item_at(Vector2i(4, 5))
+	_check(dropped.get("kind") == "weapon" and dropped.get("stats") == {"attack_bonus": 2, "damage_bonus": 3}
+		and f.actions.floor_loot.cells() == [Vector2i(4, 5)] and f.actions.floor_loot.picked.is_empty(),
+		"부서지는 순간 기존 드랍 풀의 아이템 1개가 그 칸에 떨어진다")
+	_check(f.logs.any(func(line: String) -> bool: return line.contains("나무 상자 파괴: 무기가 떨어짐")),
+		"파괴 로그에 떨어진 종류를 적는다: " + str(f.logs))
+	var partial: Fixture = _fixture()
+	var other: CombatGrid.Prop = partial.actions.create_prop(Vector2i(4, 5), "crate")
+	partial.actions.dice = _dice_for([4], [20])
+	partial.actions.attack_prop(partial.units[0], other)
+	_check(partial.actions.floor_loot.cells().is_empty(), "부서지기 전에는 아이템이 떨어지지 않는다")
+	# 막 번호가 수치 범위를 정한다.
+	var third: Fixture = _fixture()
+	third.actions.act_number = 3
+	var rock_crate: CombatGrid.Prop = third.actions.create_prop(Vector2i(4, 5), "crate")
+	third.actions.dice = _dice_for([6, 1, 5, 7], [20, 7, 7, 10])
+	third.actions.attack_prop(third.units[0], rock_crate)
+	_check(third.actions.floor_loot.item_at(Vector2i(4, 5)).get("stats") == {"attack_bonus": 5, "damage_bonus": 7},
+		"3막 상자는 3막 수치 범위로 굴린다")
+
+
+func _test_floor_loot_pickup() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	f.units[2].cell = Vector2i(9, 0)
+	f.units[3].cell = Vector2i(9, 1)
+	var item: Dictionary = _floor_item(f)
+	var skipped: Dictionary = _floor_item(f, 1)
+	f.actions.floor_loot.drop(Vector2i(4, 6), item)
+	f.actions.floor_loot.drop(Vector2i(4, 5), skipped)
+	f.actions.dice = _dice_for([], [])
+	# 걷기는 지나가는 칸도 줍고 이동력·행동을 더 쓰지 않는다.
+	_check(await f.actions.move_to(actor, Vector2i(4, 7)) and actor.movement_left == 0
+		and actor.action_left == 1 and actor.bonus_action_left == 1,
+		"걷기: 이동 비용 3만 쓴다")
+	_check(f.actions.floor_loot.picked == [skipped, item] and f.actions.floor_loot.cells().is_empty(),
+		"걷기: 지나간 두 칸의 아이템을 모두 줍는다")
+	_check(f.logs.any(func(line: String) -> bool: return line.contains("획득")), "획득 로그를 남긴다")
+	# 점프는 건너뛴 칸을 줍지 않고 착지 칸만 줍는다.
+	var j: Fixture = _fixture()
+	j.units[2].cell = Vector2i(9, 0)
+	j.units[3].cell = Vector2i(9, 1)
+	var over: Dictionary = _floor_item(j)
+	var landing: Dictionary = _floor_item(j, 1)
+	j.actions.floor_loot.drop(Vector2i(4, 5), over)
+	j.actions.floor_loot.drop(Vector2i(4, 6), landing)
+	j.actions.dice = _dice_for([], [])
+	_check(await j.actions.jump_to(j.units[0], Vector2i(4, 6)) and j.actions.floor_loot.picked == [landing]
+		and j.actions.floor_loot.item_at(Vector2i(4, 5)) == over, "점프: 착지 칸만 줍고 건너뛴 칸은 줍지 않는다")
+	# 적은 줍지 않고 아이템은 그대로 남는다.
+	var e: Fixture = _fixture()
+	e.units[0].cell = Vector2i(0, 0)
+	e.units[1].cell = Vector2i(0, 1)
+	e.units[3].cell = Vector2i(9, 1)
+	var enemy_item: Dictionary = _floor_item(e)
+	e.actions.floor_loot.drop(Vector2i(5, 5), enemy_item)
+	ScriptedDice.arrange_turns(e.turns, e.units, [e.units[2]])
+	e.actions.dice = _dice_for([], [])
+	_check(await e.actions.move_to(e.units[2], Vector2i(5, 5)) and e.units[2].cell == Vector2i(5, 5)
+		and e.actions.floor_loot.picked.is_empty() and e.actions.floor_loot.item_at(Vector2i(5, 5)) == enemy_item,
+		"적이 아이템 칸에 서도 줍지 않고 아이템이 남는다")
+	# 적이 떠난 뒤 아군이 도착하면 줍는다.
+	e.units[2].cell = Vector2i(9, 0)
+	e.units[0].cell = Vector2i(5, 4)
+	ScriptedDice.arrange_turns(e.turns, e.units, [e.units[0]])
+	_check(await e.actions.move_to(e.units[0], Vector2i(5, 5)) and e.actions.floor_loot.picked == [enemy_item],
+		"적이 떠난 칸에 아군이 도착하면 줍는다")
+	# 쓰러진 아군은 줍지 않는다: 기회 공격으로 쓰러지는 이동은 도착하지 못한다.
+	var d: Fixture = _fixture()
+	d.units[0].hit_points = 0
+	d.actions.floor_loot.drop(Vector2i(4, 4), _floor_item(d))
+	d.actions._pick_up(d.units[0])
+	_check(d.actions.floor_loot.picked.is_empty(), "전투 불능 유닛은 줍지 않는다")
+	# 전투가 끝난 뒤의 도착은 줍지 않는다.
+	var o: Fixture = _fixture()
+	o.units[2].hit_points = 0
+	o.units[3].hit_points = 0
+	o.actions.floor_loot.drop(Vector2i(4, 4), _floor_item(o))
+	o.actions._pick_up(o.units[0])
+	_check(o.actions.is_over() and o.actions.floor_loot.picked.is_empty(), "전투가 끝난 뒤에는 줍지 않는다")
+
+
+func _test_floor_loot_forced_moves() -> void:
+	# 밀치기: 같은 편 아군도 밀 수 있다. 도착 칸의 아이템은 밀린 아군이 줍는다.
+	var f: Fixture = _fixture()
+	f.units[2].cell = Vector2i(9, 0)
+	f.units[3].cell = Vector2i(9, 1)
+	var item: Dictionary = _floor_item(f)
+	f.actions.floor_loot.drop(Vector2i(2, 4), item)
+	f.actions.dice = _dice_for([], []).then_seeded()
+	var pushed: bool = false
+	for seed_value: int in range(1, 40):
+		f.actions.dice = CombatDice.new()
+		f.actions.dice.seed = seed_value
+		f.units[1].cell = Vector2i(3, 4)
+		ScriptedDice.start_turn(f.units[0])
+		if f.actions.shove(f.units[0], f.units[1]) and f.units[1].cell == Vector2i(2, 4):
+			pushed = true
+			break
+	_check(pushed and f.actions.floor_loot.picked == [item] and f.actions.floor_loot.cells().is_empty(),
+		"밀치기 도착 칸의 아이템은 밀려난 아군이 줍는다")
+	# 밀려난 적은 줍지 않는다.
+	var e: Fixture = _fixture()
+	e.units[3].cell = Vector2i(9, 1)
+	e.actions.floor_loot.drop(Vector2i(6, 4), _floor_item(e))
+	var shoved: bool = false
+	for seed_value: int in range(1, 40):
+		e.actions.dice = CombatDice.new()
+		e.actions.dice.seed = seed_value
+		e.units[2].cell = Vector2i(5, 4)
+		ScriptedDice.start_turn(e.units[0])
+		if e.actions.shove(e.units[0], e.units[2]) and e.units[2].cell == Vector2i(6, 4):
+			shoved = true
+			break
+	_check(shoved and e.actions.floor_loot.picked.is_empty() and e.actions.floor_loot.cells() == [Vector2i(6, 4)],
+		"밀려난 적은 아이템을 줍지 않는다")
 
 
 func _test_crate_action_availability() -> void:
@@ -763,7 +895,7 @@ func _test_crate_scene_input() -> void:
 		"행동이 없으면 상자 안내에서 사유를 표시하고 반복 실행을 막는다")
 	ScriptedDice.start_turn(units[0])
 	hud.action_selected.emit("attack")
-	actions.dice = _dice_for([4], [20])
+	actions.dice = _dice_for([4], [20]).then_seeded()
 	await _click(point)
 	await _click(point)
 	_check(actions.get_props().is_empty() and selection.preview_prop == null
@@ -846,7 +978,7 @@ func _test_crate_ai_path() -> void:
 		"기존 적 AI는 상자로 막힌 길을 통과하거나 상자를 공격하지 않는다")
 	f.turns.end_turn()
 	await f.actions.move_to(ally, Vector2i(1, 0))
-	f.actions.dice = _dice_for([6], [20])
+	f.actions.dice = _dice_for([6], [20]).then_seeded()
 	_check(f.actions.attack_prop(ally, crate), "아군의 기본 공격으로 좁은 길의 상자를 부순다")
 	f.turns.end_turn()
 	# 빗나간 공격에 반격 창이 뜨지 않게 한다. 이 검사는 AI의 이동과 공격만 본다.
@@ -864,13 +996,14 @@ func _test_crate_callback_reset() -> void:
 		f.actions.initialize(f.units, f.turns)
 		f.actions.create_prop(Vector2i(4, 5), "crate")
 	f.actions.hit_landed.connect(reset)
-	f.actions.dice = _dice_for([6], [20])
+	f.actions.dice = _dice_for([6], [20]).then_seeded()
 	var executed: bool = f.actions.attack_prop(f.units[0], crate)
 	f.actions.hit_landed.disconnect(reset)
 	var replacement: CombatGrid.Prop = f.actions.grid.prop_at(Vector2i(4, 5))
 	_check(executed and crate.hit_points == 0 and replacement != null and replacement != crate
-		and replacement.hit_points == 6 and not f.actions.busy and f.units[0].action_left == 0,
-		"명중 callback의 전투 초기화는 새 상자에 지난 피해를 다시 적용하지 않는다")
+		and replacement.hit_points == 6 and not f.actions.busy and f.units[0].action_left == 0
+		and f.actions.floor_loot.cells().is_empty(),
+		"명중 callback의 전투 초기화는 새 상자에 지난 피해를 다시 적용하지 않고 지난 상자의 아이템도 떨어뜨리지 않는다")
 
 
 func _run() -> void:
@@ -888,6 +1021,9 @@ func _run() -> void:
 	_test_crate_creation()
 	_test_crate_blocks_routes()
 	_test_crate_attack()
+	_test_crate_drop()
+	await _test_floor_loot_pickup()
+	_test_floor_loot_forced_moves()
 	_test_crate_action_availability()
 	_test_crate_boundaries()
 	await _test_crate_ai_path()

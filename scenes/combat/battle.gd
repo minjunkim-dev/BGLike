@@ -195,6 +195,8 @@ func _build_stage() -> CombatStage:
 	camera.frame(map, map_size)
 	selection.reset()
 	hud.begin_stage(progress.act_number(), progress.stage_in_act())
+	actions.loot = loot
+	actions.act_number = progress.act_number()
 	actions.initialize(units, turns)
 	return stage
 
@@ -289,6 +291,13 @@ func _is_valid_state(state: Dictionary) -> bool:
 			and CombatTurns.is_valid_state(state.get("turns"), count)
 			and CombatActions.is_valid_state(state, count, stage.map_size, stage.tree_cells())):
 		return false
+	# 떨어진·주운 아이템은 이 스테이지의 상자 수를 넘지 않고, 남은 상자 칸에 떨어져 있지 않다.
+	var crates: Array = state.props.filter(func(saved: Array) -> bool: return saved[0] == "crate")
+	if not (CombatFloorLoot.is_valid_state(state.get("floor_loot"), stage.map_size,
+			maxi(0, stage.crate_cells.size() - crates.size()), loot.is_valid_item)
+			and crates.all(func(saved: Array) -> bool: return state.floor_loot.drops.all(
+				func(drop: Array) -> bool: return drop[0] != saved[1]))):
+		return false
 	# 턴 순서는 살아 있는 유닛 전부다. 쓰러진 유닛이나 빠진 유닛이 있으면 턴이 끝없이 넘어가거나 멈춘다.
 	var order: Array = state.turns.order
 	var living: Array = range(count).filter(func(index: int) -> bool: return saved_units[index].hit_points > 0)
@@ -347,7 +356,7 @@ func restore_save(sections: Variant) -> bool:
 		return false
 	if not screen.is_empty() and not before_battle:
 		preparation.open_rewards(loot, party, progress.rewards, progress.is_final_stage(),
-			progress.is_last_in_act(), screen.maintaining)
+			progress.is_last_in_act(), screen.maintaining, actions.floor_loot.cells().size())
 		hud.hide_result()
 		# 방금 읽은 저장과 같은 상태다.
 		_save_pending = false
@@ -369,7 +378,7 @@ func _restart() -> void:
 		if preparation.visible:
 			return
 		preparation.open_rewards(loot, party, progress.rewards, progress.is_final_stage(),
-			progress.is_last_in_act())
+			progress.is_last_in_act(), false, actions.floor_loot.cells().size())
 		hud.hide_result()
 		return
 	progress.restart_act()
@@ -515,7 +524,25 @@ func _on_action_selected(action: String) -> void:
 	_update_turn_ui()
 
 
+## 마우스가 올라간 칸. 떨어진 아이템이 있으면 종류와 수치를 안내한다.
+var _hover_cell: Vector2i = Vector2i(-1, -1)
+
+
+func _hover_floor_loot(screen_position: Vector2) -> void:
+	var world_position: Vector2 = get_canvas_transform().affine_inverse() * screen_position
+	var cell: Vector2i = map.surface_to_map(map.to_local(world_position))
+	if cell == _hover_cell:
+		return
+	var affected: bool = (not actions.floor_loot.item_at(_hover_cell).is_empty()
+		or not actions.floor_loot.item_at(cell).is_empty())
+	_hover_cell = cell
+	if affected:
+		_update_turn_ui()
+
+
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and not preparation.visible:
+		_hover_floor_loot(event.position)
 	# 반응·정비 확인 창이 떠 있으면 그 창이 Esc·Start를 먼저 받는다. Esc는 지금처럼 반응을 넘긴다.
 	if event.is_action_pressed("pause"):
 		get_viewport().set_input_as_handled()
@@ -751,7 +778,7 @@ func _on_actions_changed() -> void:
 			if unit.can_drop_extra_reward():
 				monster_count += 1
 		# 전투 주사위로 굴려 이어하기가 마지막 공격을 다시 해도 드랍이 바뀌지 않는다.
-		progress.record_victory(loot, monster_count, actions.dice)
+		progress.record_victory(loot, monster_count, actions.dice, actions.floor_loot.picked)
 		_sync_party_level()
 	_update_turn_ui()
 
@@ -925,6 +952,7 @@ func _update_turn_ui() -> void:
 		turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO)
 	map.show_grounds(actions.get_grounds())
 	map.show_trees(actions.grid.trees)
+	map.show_floor_loot(actions.floor_loot.drops)
 	map.show_props(actions.get_props(), selection.preview_prop)
 	map.reveal_units(units)
 	# 가림 판정은 방금 그린 사물 위치를 사용한다.
@@ -952,12 +980,17 @@ func _update_turn_ui() -> void:
 			var target: CombatUnit = selection.preview_target
 			if not actions.can_target(actor, target, "steel_charge"):
 				hud.show_target_note(tr("강철 돌진을 사용할 수 없음"))
-			elif actions.grid.can_shove(actor, target):
-				var cell: Vector2i = actions.grid.push_destination(actor.cell, target.cell)
-				var landing: String = actions.shove_landing(target, cell)
-				hud.show_target_note(tr("명중하면 밀려날 칸: %d, %d") % [cell.x, cell.y] + ("" if landing.is_empty() else " · " + landing))
 			else:
-				hud.show_target_note(tr("밀려날 칸이 막힘 · 명중하면 피해만, 쓰러뜨리면 그 칸으로 전진"))
+				# 전진하는 아군은 대상이 있던 칸에 도착해 그 칸의 아이템을 줍는다 (환경요소 3-5).
+				var advance: String = actions.pickup_note(actor, [target.cell])
+				if actions.grid.can_shove(actor, target):
+					var cell: Vector2i = actions.grid.push_destination(actor.cell, target.cell)
+					var landing: String = actions.shove_landing(target, cell)
+					hud.show_target_note(tr("명중하면 밀려날 칸: %d, %d") % [cell.x, cell.y] + ("" if landing.is_empty() else " · " + landing)
+						+ ("" if advance.is_empty() else " · " + advance))
+				else:
+					hud.show_target_note(tr("밀려날 칸이 막힘 · 명중하면 피해만, 쓰러뜨리면 그 칸으로 전진")
+						+ ("" if advance.is_empty() else " · " + advance))
 	elif selection.preview_prop != null:
 		var actor: CombatUnit = turns.current_unit
 		var prop: CombatGrid.Prop = selection.preview_prop
@@ -1007,10 +1040,14 @@ func _update_turn_ui() -> void:
 	hud.show_move_mode(showing_move)
 	# 걷기 미리보기는 안내를 숨기지만, 도착 칸이 물이면 서기 전에 물 칸 화상 규칙을 보인다(#503).
 	if selection.selected_action != "jump" and not selection.preview_path.is_empty():
-		var water: String = actions.water_note(selection.preview_cell)
-		if not water.is_empty():
+		var notes: Array[String] = []
+		for note: String in [actions.water_note(selection.preview_cell),
+				actions.pickup_note(turns.current_unit, selection.preview_path)]:
+			if not note.is_empty():
+				notes.append(note)
+		if not notes.is_empty():
 			hud.show_move_mode(false)
-			hud.show_target_note(water)
+			hud.show_target_note("\n".join(notes))
 	if selection.selected_action == "jump":
 		hud.show_move_mode(false)
 		var note: String = tr("점프 · 착지할 칸을 우클릭합니다.\n같은 칸을 다시 우클릭하면 확정합니다.")
@@ -1025,6 +1062,9 @@ func _update_turn_ui() -> void:
 			var water: String = actions.water_note(cell)
 			if not water.is_empty():
 				note += "\n" + water
+			var pickup: String = actions.pickup_note(actor, [cell])
+			if not pickup.is_empty():
+				note += "\n" + pickup
 		hud.show_target_note(note)
 	elif (selection.selected_action == "sweep" and turns.current_unit != null and turns.current_unit.is_ally
 			and not actions.busy):
@@ -1045,6 +1085,12 @@ func _update_turn_ui() -> void:
 	elif (selection.selected_action in ["trick_arrow", "firework_arrow"] and turns.current_unit != null
 			and turns.current_unit.is_ally and not actions.busy):
 		hud.show_target_note(_arrow_note(turns.current_unit, selection.selected_action, selection.preview_cell))
+	var hovered: Dictionary = actions.floor_loot.item_at(_hover_cell)
+	if (not hovered.is_empty() and selection.preview_target == null and selection.preview_prop == null
+			and selection.preview_path.is_empty()
+			and selection.selected_action not in ["jump", "sweep", "oil_throw", "moving_shot", "trick_arrow", "firework_arrow"]):
+		hud.show_move_mode(false)
+		hud.show_target_note(tr("바닥 아이템 · %s") % CombatLoot.describe(hovered))
 	if actions.is_over():
 		hud.show_outcome(actions.is_victory())
 		if not preparation.visible:

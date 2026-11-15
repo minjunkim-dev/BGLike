@@ -136,6 +136,19 @@ func _test_format_state() -> void:
 	state.units[1].initiative_roll = 12
 	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
 		"궁수 민첩 d12의 유효한 저장 경계: 12")
+	# 상자를 부수고 떨어진 아이템과 주운 아이템이 있는 상태(#529).
+	var floor_state: Dictionary = state.duplicate(true)
+	floor_state.props = floor_state.props.filter(func(saved: Array) -> bool: return saved[0] != "crate")
+	var item: Dictionary = (battle.get("loot") as CombatLoot).roll_item(CombatDice.new(), 1)
+	floor_state.floor_loot = {"drops": [[Vector2i(3, 4), item]], "picked": []}
+	_check(restored.call("restore_combat", floor_state) and restored.call("combat_state") == floor_state
+		and (restored.get("actions") as CombatActions).floor_loot.item_at(Vector2i(3, 4)) == item,
+		"떨어진 아이템을 저장하고 그대로 복원")
+	floor_state.floor_loot = {"drops": [], "picked": [item.duplicate(true)]}
+	_check(restored.call("restore_combat", floor_state) and restored.call("combat_state") == floor_state
+		and (restored.get("actions") as CombatActions).floor_loot.picked == [item]
+		and (restored.get("actions") as CombatActions).floor_loot.cells().is_empty(),
+		"주운 아이템을 저장하고 그대로 복원")
 	state.props = [["crate", Vector2i(2, 1), 3], ["rock", Vector2i(4, 1), 6]]
 	state.units[0].cell = Vector2i(3, 4)
 	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
@@ -497,6 +510,18 @@ func _test_rejects_bad_saves() -> void:
 			state.turns.group = Vector2i(0, 0)
 			state.turns.current = state.turns.order[1],
 		"유닛 목록이 없음": func(state: Dictionary) -> void: state.erase("units"),
+		"떨어진 아이템 칸이 없음": func(state: Dictionary) -> void: state.erase("floor_loot"),
+		"상자가 남았는데 떨어진 아이템": func(state: Dictionary) -> void:
+			state.floor_loot = {"drops": [[Vector2i(0, 0), state.bag[0].duplicate(true)]], "picked": []},
+		"상자 수보다 많이 주운 아이템": func(state: Dictionary) -> void:
+			state.props = state.props.filter(func(saved: Array) -> bool: return saved[0] != "crate")
+			state.floor_loot = {"drops": [], "picked": [state.bag[0].duplicate(true), state.bag[0].duplicate(true)]},
+		"지도 밖에 떨어진 아이템": func(state: Dictionary) -> void:
+			state.props = state.props.filter(func(saved: Array) -> bool: return saved[0] != "crate")
+			state.floor_loot = {"drops": [[Vector2i(99, 0), state.bag[0].duplicate(true)]], "picked": []},
+		"가짜 아이템을 주움": func(state: Dictionary) -> void:
+			state.props = state.props.filter(func(saved: Array) -> bool: return saved[0] != "crate")
+			state.floor_loot = {"drops": [], "picked": [{"name": "가짜", "kind": "weapon", "stats": {}}]},
 	}
 	var battle: Node2D = _battle(-1)
 	var burned: Dictionary = good.duplicate(true)
