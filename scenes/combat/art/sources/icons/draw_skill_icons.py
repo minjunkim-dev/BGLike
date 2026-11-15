@@ -297,6 +297,45 @@ def oil_throw(x, y):
     return None
 
 
+def trick_arrow(x, y):
+    # One arrow flying up-right with a two-colour head (red fire half, teal water half) and teal fletching.
+    u, v = rotated(x, y, 28, 36)
+    if -16 <= u <= 6 and abs(v) <= 1.5:
+        return WOOD[3] if v < 0 else WOOD[1]
+    if 6 < u <= 18 and abs(v) <= (18 - u) * 0.55:
+        return RED[3] if v < 0 else TEAL[1]
+    if -20 <= u <= -11 and 1.5 < abs(v) <= 5:
+        return TEAL[1] if v < 0 else TEAL[0]
+    # Two small question-mark-like sparks (the unreliable magic) at the lower left.
+    px, py = x + 0.5, y + 0.5
+    for cx, cy in ((10, 18), (16, 10)):
+        if math.hypot(px - cx, py - cy) <= 2.2:
+            return WHITE
+    return None
+
+
+def firework_arrow(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Arrow rising up-right toward a starburst: the head sits inside a ring of rays.
+    u, v = rotated(x, y, 20, 44)
+    if -14 <= u <= 10 and abs(v) <= 1.5:
+        return WOOD[3] if v < 0 else WOOD[1]
+    if 10 < u <= 18 and abs(v) <= (18 - u) * 0.5:
+        return STEEL[4] if v < 0 else STEEL[2]
+    if -18 <= u <= -11 and 1.5 < abs(v) <= 4.5:
+        return TEAL[1] if v < 0 else TEAL[0]
+    # Burst at the upper right: eight rays with a brass core.
+    cx, cy = 44, 20
+    if math.hypot(px - cx, py - cy) <= 4:
+        return BRASS[2] if px + py < cx + cy else BRASS[1]
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+        norm = math.hypot(dx, dy)
+        segment = (cx + dx / norm * 7, cy + dy / norm * 7, cx + dx / norm * 15, cy + dy / norm * 15)
+        if near_segment(px, py, segment, 1.4):
+            return RED[3] if dx * dy else WHITE
+    return None
+
+
 def fitted(draw):
     """Shrink a full-canvas drawing about the centre so it and its outline fit the item margin (asserted below)."""
     scale = 31.5 / 28
@@ -307,7 +346,7 @@ ICONS = {"attack": attack, "second_wind": fitted(second_wind), "sweep": fitted(s
          "steel_charge": fitted(steel_charge), "holy_veil": fitted(holy_veil), "battle_cry": fitted(battle_cry),
          "opportunity": fitted(opportunity), "counter": fitted(counter), "aegisal": fitted(aegisal),
          "bow_bash": fitted(bow_bash), "shove": fitted(shove), "jump": fitted(jump), "potion": potion,
-         "oil_throw": oil_throw}
+         "oil_throw": oil_throw, "trick_arrow": fitted(trick_arrow), "firework_arrow": fitted(firework_arrow)}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

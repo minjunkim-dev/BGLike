@@ -64,6 +64,11 @@ func _run() -> void:
 	await _test_aegisal()
 	await _test_bow_bash()
 	await _test_moving_shot()
+	_test_trick_attribute()
+	await _test_trick_arrow()
+	await _test_firework_arrow()
+	_test_arrow_usability()
+	_test_firework_uses_and_save()
 	_test_stage_reset()
 	_test_save_state()
 	await _test_battle_save()
@@ -282,6 +287,196 @@ func _test_moving_shot() -> void:
 	enemy.actions.dice = _dice([1], [10])
 	await enemy.actions.attack(enemy.units[3], enemy.units[0])
 	_check(not enemy.units[3].moving_shot_ready, "풋내기 궁수에게는 무빙샷이 없음")
+
+## 지능 d6 눈 → 속성 구간 (궁수 문서 장난스러운 화살).
+func _test_trick_attribute() -> void:
+	var got: Array[String] = []
+	for face: int in range(1, 7):
+		got.append(CombatOil.trick_attribute(face))
+	_check(got == ["", "water", "water", "fire", "fire", "fire"], "지능 눈 1 삐끗, 2~3 물, 4~6 화염: " + str(got))
+
+
+func _burns(unit: CombatUnit) -> int:
+	return unit.get_status_count("burn")
+
+
+## 장난스러운 화살: 행동 1, 칸 조준, 지능 d6 눈이 속성과 피해, 속성은 명중과 무관하게 칸에, 유닛 효과는 명중해야.
+func _test_trick_arrow() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var target: CombatUnit = f.units[3]
+	archer.weapon = {"stats": {"damage_bonus": 4}}
+	# 화염(눈 5): 마법 굴림 d6, 명중 d20 15. 피해는 눈 5 그대로(장비 피해 가산 없음), 화상 1중첩.
+	f.actions.dice = _dice([5, 15], [6, 20])
+	_check(await f.actions.trick_arrow(archer, Vector2i(7, 4)), "장난스러운 화살을 적 칸에 쏨")
+	_check(target.hit_points == 14 - 5 and _burns(target) == 1 and f.actions.last_damage == 5,
+		"화염 명중: 피해는 굴림 눈 5, 화상 1중첩")
+	_check(archer.action_left == 0 and archer.bonus_action_left == 1 and archer.moving_shot_ready,
+		"행동 1을 쓰고 무빙샷이 켜짐")
+	_check(not f.actions.can_use(archer, "trick_arrow"), "행동이 없으면 쓸 수 없음")
+	# 물(눈 3): 피해 3, 화상 모두 제거.
+	archer.action_left = 1
+	f.actions.apply_status(archer, target, "burn")
+	f.actions.dice = _dice([3, 15], [6, 20])
+	await f.actions.trick_arrow(archer, Vector2i(7, 4))
+	_check(target.hit_points == 9 - 3 and _burns(target) == 0, "물 명중: 피해 3, 화상 모두 제거")
+	# 삐끗(눈 1): 피해 1, 속성 없음. 기름은 그대로.
+	archer.action_left = 1
+	f.actions.create_oil(archer, Vector2i(7, 4))
+	f.actions.dice = _dice([1, 15], [6, 20])
+	await f.actions.trick_arrow(archer, Vector2i(7, 4))
+	_check(target.hit_points == 6 - 1 and _burns(target) == 0 and _oil_count(f) == 5, "삐끗: 피해 1, 장판 변화 없음")
+	# 빗나가도 속성은 칸에 닿는다: 화염이 기름을 점화하고 칸 위 유닛에 화상 2중첩. 유닛 효과(피해)는 없음.
+	archer.action_left = 1
+	f.actions.dice = _dice([5, 2], [6, 20])
+	await f.actions.trick_arrow(archer, Vector2i(7, 4))
+	_check(target.hit_points == 5 and _oil_count(f) == 0 and _burns(target) == 2, "빗나가도 점화: 기름 사라지고 화상 2중첩, 피해 없음")
+	# 물은 기름 칸 하나만 지운다(빈 칸이라 d6 하나만 굴림).
+	archer.action_left = 1
+	f.actions.create_oil(archer, Vector2i(4, 2))
+	f.actions.dice = _dice([2], [6])
+	await f.actions.trick_arrow(archer, Vector2i(4, 3))
+	_check(_oil_count(f) == 4, "물은 닿은 칸의 기름 하나를 지움")
+	# 빈 칸은 판정 없이 닿는다(d6 하나만 굴림).
+	var g: Fixture = _fixture()
+	var shooter: CombatUnit = g.units[0]
+	g.actions.create_oil(shooter, Vector2i(5, 2))
+	g.actions.dice = _dice([6], [6])
+	_check(await g.actions.trick_arrow(shooter, Vector2i(5, 2)) and _oil_count(g) == 0 and g.units[3].hit_points == 14,
+		"빈 칸에는 명중굴림 없이 속성만 닿음")
+	# 아군도 조준할 수 있다. 화염이 나오면 아군이 화상을 입는다.
+	var h: Fixture = _fixture()
+	var ally: CombatUnit = h.units[1]
+	_check(h.actions.can_aim(h.units[0], "trick_arrow", ally.cell) and not h.actions.can_aim(h.units[0], "trick_arrow", h.units[0].cell),
+		"아군 칸은 고를 수 있고 자기 칸은 못 고름")
+	h.actions.dice = _dice([4, 15], [6, 20])
+	await h.actions.trick_arrow(h.units[0], ally.cell)
+	_check(ally.hit_points == ally.get_max_hit_points() - 4 and _burns(ally) == 1, "아군 조준: 화염이 나오면 아군이 피해와 화상")
+	_check(h.units[0].aegisal_left == 0, "장난스러운 화살은 애기살과 무관")
+	var armed: Fixture = _fixture()
+	armed.units[0].aegisal_left = 2
+	armed.actions.dice = _dice([5, 15], [6, 20])
+	await armed.actions.trick_arrow(armed.units[0], Vector2i(7, 4))
+	_check(armed.units[0].aegisal_left == 2 and armed.actions.last_damage == 5, "애기살을 쓰지도 소모하지도 않음")
+
+
+func _oil_count(f: Fixture) -> int:
+	return f.actions.get_grounds().filter(func(ground: CombatActions.Ground) -> bool: return ground.kind == "oil").size()
+
+
+## 폭죽 화살: 막당 1, 반경 1 안의 모두에게 민첩 내성 DC 4, 솜씨 d20 두 번 합(레벨은 한 번), 성공 시 절반, 점화.
+func _test_firework_arrow() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var ally: CombatUnit = f.units[1]
+	var barbarian: CombatUnit = f.units[2]
+	ally.cell = Vector2i(4, 5)
+	for unit: CombatUnit in f.units:
+		unit.hit_points = 40
+	_check(f.actions.can_aim(archer, "firework_arrow", archer.cell) and f.actions.can_aim(archer, "firework_arrow", Vector2i(7, 4))
+		and not f.actions.can_aim(archer, "firework_arrow", Vector2i(8, 4)), "사거리 0~4, 자기 발밑도 고름")
+	_check(f.actions.aim_area(archer, "firework_arrow", Vector2i(4, 4)).size() == 5, "반경 1은 십자 5칸")
+	# 중심 (4,4): 궁수 자신, 아군 전사 (4,5), 적 (5,4)가 모두 맞는다. 유닛 순서대로 내성(민첩 d12, d8, d6)과 d20 두 번.
+	# 궁수 내성 12(성공) 뒤 피해 8,6 → 14 절반 7 / 전사 내성 5(성공) 피해 4,4 → 8 절반 4 / 적 내성 1(절대실패) 피해 3,2 → 5.
+	f.actions.dice = _dice([12, 8, 6, 5, 4, 4, 1, 3, 2], [12, 20, 20, 8, 20, 20, 6, 20, 20])
+	_check(await f.actions.firework_arrow(archer, Vector2i(4, 4)), "폭죽 화살을 쏨")
+	_check(archer.hit_points == 40 - 7 and ally.hit_points == 40 - 4 and barbarian.hit_points == 40 - 5,
+		"대상마다 내성: 성공은 절반(내림), 실패는 전부. 궁수와 아군도 맞음 %d %d %d" % [archer.hit_points, ally.hit_points, barbarian.hit_points])
+	_check(_burns(archer) == 0 and _burns(ally) == 0 and _burns(barbarian) == 0, "화상은 주지 않음")
+	_check(archer.action_left == 0 and archer.firework_arrow_left == 0 and archer.moving_shot_ready, "행동과 막당 횟수를 쓰고 무빙샷이 켜짐")
+	archer.action_left = 1
+	_check(not f.actions.can_use(archer, "firework_arrow") and f.actions.unavailable_reason(archer, "firework_arrow") != "",
+		"막당 횟수가 없으면 쓸 수 없음")
+	# 레벨 항(장비 능력치 가감으로 모사)은 두 굴림의 합에 한 번만 더한다. 장비 피해 가산은 더하지 않는다.
+	var g: Fixture = _fixture()
+	var shooter: CombatUnit = g.units[0]
+	shooter.weapon = {"stats": {"finesse_modifier": 3, "damage_bonus": 5}}
+	var foe: CombatUnit = g.units[3]
+	foe.hit_points = 40
+	g.actions.dice = _dice([1, 8, 6], [10, 20, 20])
+	await g.actions.firework_arrow(shooter, foe.cell)
+	_check(foe.hit_points == 40 - (8 + 6 + 3) and g.actions.last_damage_rolls == [8, 6],
+		"피해 = 두 굴림의 합 + 레벨 한 번(굴림마다 더하지 않음), 피해 가산 없음: " + str(40 - foe.hit_points))
+	# 최소 피해 1: 내성 성공 절반 내림 최소 1.
+	var m: Fixture = _fixture()
+	m.units[3].hit_points = 40
+	m.actions.dice = _dice([10, 2, 2], [10, 20, 20])
+	await m.actions.firework_arrow(m.units[0], m.units[3].cell)
+	_check(m.units[3].hit_points == 40 - 2, "성공 절반은 내림 최소 1: 합 4 → 2")
+	# 기름 점화: 영역의 기름이 타고 그 위 유닛은 화상 2중첩. 화염은 피해와 별개다.
+	var h: Fixture = _fixture()
+	var igniter: CombatUnit = h.units[0]
+	var enemy: CombatUnit = h.units[2]
+	enemy.hit_points = 40
+	h.actions.create_oil(igniter, Vector2i(5, 4))
+	h.actions.dice = _dice([1, 3, 3], [6, 20, 20])
+	await h.actions.firework_arrow(igniter, Vector2i(5, 4))
+	_check(_oil_count(h) == 0 and _burns(enemy) == 2 and enemy.hit_points == 40 - 6, "기름 점화: 기름이 사라지고 화상 2중첩, 피해는 별개")
+	# 궁수가 쓰러져도 남은 대상은 처리한다.
+	var k: Fixture = _fixture()
+	k.units[0].hit_points = 1
+	k.units[1].cell = Vector2i(3, 5)
+	k.units[1].hit_points = 40
+	k.actions.dice = _dice([1, 5, 5, 1, 5, 5], [12, 20, 20, 8, 20, 20])
+	await k.actions.firework_arrow(k.units[0], Vector2i(3, 4))
+	_check(k.units[0].hit_points <= 0 and k.units[1].hit_points == 40 - 10, "시전자가 쓰러져도 남은 대상은 내성과 피해를 받음")
+
+
+func _test_arrow_usability() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	_check(CombatActionRules.belongs_to(archer, "trick_arrow") and CombatActionRules.belongs_to(archer, "firework_arrow")
+		and not CombatActionRules.belongs_to(f.units[1], "trick_arrow") and not CombatActionRules.belongs_to(f.units[1], "firework_arrow")
+		and not CombatActionRules.belongs_to(f.units[3], "firework_arrow"), "두 화살은 아군 궁수만의 동작")
+	_check(f.actions.can_aim(archer, "trick_arrow", Vector2i(7, 4)) and not f.actions.can_aim(archer, "trick_arrow", Vector2i(8, 4))
+		and not f.actions.can_aim(archer, "trick_arrow", archer.cell) and f.actions.can_aim(archer, "trick_arrow", f.units[1].cell),
+		"장난스러운 화살 사거리 1~4")
+	_check(f.actions.can_use(archer, "trick_arrow") and f.actions.can_use(archer, "firework_arrow"), "행동이 있으면 사용 가능")
+	archer.fallen = true
+	_check(not f.actions.can_use(archer, "trick_arrow") and not f.actions.can_use(archer, "firework_arrow")
+		and f.actions.unavailable_reason(archer, "trick_arrow") != "", "넘어지면 쓸 수 없음")
+	archer.fallen = false
+	archer.action_left = 0
+	_check(not f.actions.can_use(archer, "trick_arrow") and f.actions.unavailable_reason(archer, "trick_arrow") != "", "행동이 없으면 쓸 수 없음")
+	var preview: CombatChecks.AttackPreview = f.actions.grid.attack_preview(archer, f.units[1], "trick_arrow")
+	_check(preview.valid_target and preview.in_range, "아군도 장난스러운 화살의 명중 미리보기 대상")
+	var water: Fixture = _fixture()
+	water.actions.grid.water_cells.append(water.units[0].cell)
+	var wet: CombatChecks.AttackPreview = water.actions.grid.attack_preview(water.units[0], water.units[1], "trick_arrow")
+	_check(wet.valid_target and wet.mode == CombatChecks.RollMode.DISADVANTAGE, "물 위에서 아군을 쏘면 불리")
+	var near: Fixture = _fixture()
+	near.units[2].cell = Vector2i(3, 3)
+	var close: CombatChecks.AttackPreview = near.actions.grid.attack_preview(near.units[0], near.units[1], "trick_arrow")
+	_check(close.valid_target and close.mode == CombatChecks.RollMode.DISADVANTAGE, "인접한 적이 있으면 불리")
+
+
+func _test_firework_uses_and_save() -> void:
+	var archer: CombatUnit = CombatUnit.new()
+	_created.append(archer)
+	archer.kind = CombatUnit.Kind.ARCHER
+	_check(archer.firework_arrow_left == 1 and CombatActionRules.uses_left(archer, "firework_arrow") == 1, "새 막에는 1회")
+	archer.firework_arrow_left = 0
+	archer.begin_stage(false)
+	_check(archer.firework_arrow_left == 0, "같은 막의 다음 전투에서는 회복하지 않음")
+	archer.begin_stage(true)
+	_check(archer.firework_arrow_left == 1, "새 막이 시작되면 회복")
+	_check("막당 1회" in CombatActionRules.details(archer, "firework_arrow"), "호버에 막당 횟수: " + CombatActionRules.details(archer, "firework_arrow"))
+	archer.firework_arrow_left = 0
+	var data: Dictionary = archer.save_state([archer])
+	_check(archer.is_valid_state(data, 1, Vector2i(10, 10)) and "firework_arrow_left" not in CombatUnit.SAVED_FIELDS, "선택 필드로 저장")
+	var restored: CombatUnit = CombatUnit.new()
+	_created.append(restored)
+	restored.load_state(data, [restored])
+	_check(restored.firework_arrow_left == 0, "남은 횟수를 되돌림")
+	var old: Dictionary = data.duplicate()
+	old.erase("firework_arrow_left")
+	_check(archer.is_valid_state(old, 1, Vector2i(10, 10)), "필드가 없는 저장도 유효")
+	restored.load_state(old, [restored])
+	_check(restored.firework_arrow_left == 1, "없는 필드는 1로 읽음")
+	for broken: Dictionary in [{"firework_arrow_left": -1}, {"firework_arrow_left": "1"}, {"firework_arrow_left": CombatUnit.SAVED_INT_LIMIT + 1}]:
+		var bad: Dictionary = data.duplicate()
+		bad.merge(broken, true)
+		_check(not archer.is_valid_state(bad, 1, Vector2i(10, 10)), "깨진 값 거부: " + str(broken))
 
 
 ## 새 전투(스테이지) 시작에는 애기살과 무빙샷 상태가 없다.

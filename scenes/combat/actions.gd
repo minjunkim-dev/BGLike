@@ -85,6 +85,8 @@ var last_damage: int = 0
 var movement_animation: Callable
 var jump_animation: Callable
 var attack_animation: Callable
+## 빈 칸을 겨눈 화살 연출(actor, cell). 유닛을 겨누면 attack_animation을 쓴다. 없으면 연출 없이 넘어간다.
+var cell_attack_animation: Callable
 ## 확정된 굴림(CombatDiceRoll)을 보인다. 없으면 연출 없이 넘어간다. 보일지는 훅이 정한다.
 var roll_animation: Callable
 ## 이번 적 턴에 아군이 답한 반응. 적 턴 중간 저장이 기록한다.
@@ -1102,6 +1104,9 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 			return CombatActionRules.belongs_to(actor, action) and actor.bonus_action_left > 0
 		"oil_throw":
 			return CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0 and not aim_cells(actor, action).is_empty()
+		"trick_arrow", "firework_arrow":
+			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
+				and not aim_cells(actor, action).is_empty())
 		"battle_cry":
 			return CombatActionRules.has_uses(actor, action) and actor.action_left > 0
 		"disengage":
@@ -1253,6 +1258,120 @@ func moving_shot(actor: CombatUnit, cell: Vector2i) -> bool:
 	logged.emit(tr("%s 무빙샷: %d, %d로 도약") % [actor.get_display_name(), cell.x, cell.y])
 	_finish()
 	return true
+
+
+## 장난스러운 화살(궁수, 행동, 무제한): 칸을 겨눈다. 지능 d6 눈이 속성(1 삐끗, 2~3 물, 4~6 화염)과 피해를 정한다.
+## 칸에 유닛이 있으면(아군 포함) 솜씨 명중굴림을 하고, 속성은 명중과 무관하게 칸에 닿는다. 유닛 효과(피해·화상·화상 제거)는 명중해야 한다.
+func trick_arrow(actor: CombatUnit, cell: Vector2i) -> bool:
+	if not _can_act(actor) or actor.action_left <= 0 or not can_aim(actor, "trick_arrow", cell):
+		return false
+	busy = true
+	actor.moving_shot_ready = false
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	changed.emit()
+	var revision: int = _revision
+	var sides: int = actor.get_ability_sides(CombatUnit.Ability.INTELLIGENCE)
+	var face: int = CombatChecks.face_value(sides, dice.roll(sides))
+	var attribute: String = CombatOil.trick_attribute(face)
+	logged.emit(tr("%s 장난스러운 화살: 지능 d%d = %d · %s") % [actor.get_display_name(), sides, face,
+		{"": tr("삐끗"), "water": tr("물"), "fire": tr("화염")}[attribute]])
+	var target: CombatUnit = grid.unit_at(cell)
+	if target != null and target.hit_points <= 0:
+		target = null
+	if target != null and attack_animation.is_valid():
+		await attack_animation.call(actor, target)
+	elif target == null and cell_attack_animation.is_valid():
+		await cell_attack_animation.call(actor, cell)
+	if revision != _revision or is_over():
+		return true
+	var hit: bool = false
+	if target != null and target.hit_points > 0:
+		hit = await _roll_hit(actor, target, "trick_arrow")
+		if revision != _revision or is_over():
+			return true
+	# 속성은 명중과 무관하게 먼저 칸에 닿는다. 그다음 유닛 효과를 적용한다.
+	if not attribute.is_empty():
+		touch_attribute(cell, attribute, actor)
+	if hit and is_instance_valid(target) and target.hit_points > 0:
+		last_damage_rolls = [face]
+		last_damage = face
+		_damage(target, face)
+		logged.emit(tr("%s 피해 (장난스러운 화살 굴림 값): %d · HP %d") % [target.get_display_name(), face, target.hit_points])
+		feedback.emit(target, str(face))
+		if revision == _revision and target.hit_points > 0:
+			if attribute == "fire":
+				apply_status(actor, target, "burn")
+			elif attribute == "water":
+				_remove_burns(target)
+				changed.emit()
+	if revision != _revision:
+		return true
+	_arm_moving_shot(actor)
+	_finish()
+	return true
+
+
+## 폭죽 화살(궁수, 행동, 막당 1): 반경 1의 칸에 화염이 닿아 점화하고, 영역 안의 모든 유닛(아군·자신 포함)이 민첩 내성굴림을 한다.
+## 피해는 솜씨 d20 두 번의 합 + 레벨 항(한 번만)이고 성공하면 절반이다. 화상은 주지 않는다.
+func firework_arrow(actor: CombatUnit, cell: Vector2i) -> bool:
+	if (not _can_act(actor) or not CombatActionRules.has_uses(actor, "firework_arrow") or actor.action_left <= 0
+			or not can_aim(actor, "firework_arrow", cell)):
+		return false
+	var area: Array[Vector2i] = aim_area(actor, "firework_arrow", cell)
+	if area.is_empty():
+		return false
+	var targets: Array[CombatUnit] = []
+	for unit: CombatUnit in units:
+		if unit.hit_points > 0 and unit.cell in area:
+			targets.append(unit)
+	var dc: int = CombatActionRules.save_dc(actor, "firework_arrow")
+	busy = true
+	actor.moving_shot_ready = false
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	CombatActionRules.spend_use(actor, "firework_arrow")
+	logged.emit(tr_n("%s 폭죽 화살: %d, %d · 대상 %d명 · DC %d", "%s 폭죽 화살: %d, %d · 대상 %d명 · DC %d", targets.size()) % [
+		actor.get_display_name(), cell.x, cell.y, targets.size(), dc])
+	changed.emit()
+	var revision: int = _revision
+	if cell_attack_animation.is_valid():
+		await cell_attack_animation.call(actor, cell)
+	if revision != _revision or is_over():
+		return true
+	for area_cell: Vector2i in area:
+		touch_attribute(area_cell, "fire", actor)
+	for target: CombatUnit in targets:
+		if revision != _revision or is_over():
+			return true
+		if target.hit_points > 0 and target.cell in area:
+			await _firework_hit(actor, target, dc)
+	if revision != _revision:
+		return true
+	_arm_moving_shot(actor)
+	_finish()
+	return true
+
+
+## 폭죽 화살 대상 하나: 민첩 내성굴림 뒤 솜씨 d20 두 번의 합 + 레벨 항(장비의 솜씨 가감, 한 번만). 성공하면 절반(내림, 최소 1).
+func _firework_hit(actor: CombatUnit, target: CombatUnit, dc: int) -> void:
+	last_attack = null
+	last_damage = 0
+	last_damage_rolls.clear()
+	var saved: CombatChecks.RollResult = _roll_save(target, "firework_arrow", dc)
+	await _show_roll(_save_roll(target, "firework_arrow", dc))
+	if target.hit_points <= 0 or is_over():
+		return
+	var ability: CombatUnit.Ability = CombatActionRules.damage_ability(actor, "firework_arrow")
+	var sides: int = actor.get_ability_sides(ability)
+	for _roll: int in 2:
+		last_damage_rolls.append(CombatChecks.damage_roll(sides, dice))
+	var level_term: int = actor.get_ability_modifier(ability)
+	var total: int = maxi(1, int(last_damage_rolls[0]) + int(last_damage_rolls[1]) + level_term)
+	last_damage = CombatChecks.halve_damage(total) if saved.success else total
+	_damage(target, last_damage)
+	logged.emit(tr("%s 피해 (폭죽 화살%s): %s d%d %s %+d = %d%s · HP %d") % [target.get_display_name(),
+		tr(" 내성 성공 절반") if saved.success else "", CombatUnit.ability_name(ability), sides, str(last_damage_rolls),
+		level_term, total, (" → %d" % last_damage) if saved.success else "", target.hit_points])
+	feedback.emit(target, str(last_damage))
 
 
 ## 활 후려치기: 보조 행동으로 인접한 적을 힘 d6 명중굴림·피해. 명중하고 대상이 살아 있으면 1칸 밀친다(내성 없음).
@@ -1573,6 +1692,16 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> b
 		await attack_animation.call(actor, target)
 	if actor.hit_points <= 0 or target.hit_points <= 0 or is_over():
 		return false
+	# 애기살은 기본 공격마다 명중과 관계없이 1발을 쓴다(궁수 문서).
+	var aegisal: bool = _spend_aegisal(actor, action)
+	if not await _roll_hit(actor, target, action):
+		return false
+	_deal_damage(actor, target, action, false, aegisal)
+	return true
+
+
+## 명중굴림 하나와 로그·빗나감 처리. 명중했으면 true다(피해는 호출자가 준다). 빗나가면 반격 반응을 처리한다.
+func _roll_hit(actor: CombatUnit, target: CombatUnit, action: String) -> bool:
 	var attack_ability: CombatUnit.Ability = CombatActionRules.hit_ability(actor, action)
 	var attack_sides: int = actor.get_ability_sides(attack_ability)
 	last_damage = 0
@@ -1581,8 +1710,6 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> b
 	var preview: CombatChecks.AttackPreview = grid.attack_preview(actor, target, action)
 	var hit_bonus: int = actor.get_hit_bonus()
 	var armor_class: int = grid.armor_class(target)
-	# 애기살은 기본 공격마다 명중과 관계없이 1발을 쓴다(궁수 문서).
-	var aegisal: bool = _spend_aegisal(actor, action)
 	last_attack = CombatChecks.hit_roll(attack_sides, hit_bonus, armor_class, preview.mode, dice,
 		actor.get_ability_modifier(attack_ability))
 	await _show_roll(CombatDiceRoll.hit(actor, attack_sides, last_attack, last_attack.added(), armor_class))
@@ -1601,7 +1728,6 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> b
 		feedback.emit(target, tr("빗나감"))
 		await _counter(target, actor)
 		return false
-	_deal_damage(actor, target, action, false, aegisal)
 	return true
 
 
@@ -1804,13 +1930,18 @@ func fog_cells(caster: CombatUnit = null) -> Array[Vector2i]:
 	return cells
 
 
+## 유닛의 화상 중첩을 모두 지운다.
+func _remove_burns(unit: CombatUnit) -> void:
+	for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
+		if effect.kind == "burn":
+			unit.status_effects.erase(effect)
+
+
 func _clear_burn_in_water(unit: CombatUnit) -> void:
 	if unit.cell not in grid.water_cells or unit.get_status_count("burn") == 0:
 		return
 	var revision: int = _revision
-	for effect: CombatUnit.StatusEffect in unit.status_effects.duplicate():
-		if effect.kind == "burn":
-			unit.status_effects.erase(effect)
+	_remove_burns(unit)
 	changed.emit()
 	if not _same_combat(unit, revision):
 		return
