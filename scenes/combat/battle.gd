@@ -220,6 +220,8 @@ func restore_combat(state: Variant) -> bool:
 	progress.stage_index = state.stage
 	_build_stage()
 	progress.load_state(state)
+	# 유닛 load_state 전에 맞춘다. 레벨 setter가 보정한 HP를 저장한 HP로 덮는다.
+	_sync_party_level()
 	waiting_for_start = state.get("waiting_for_start", false)
 	loot.bag.assign(state.bag)
 	for saved: Dictionary in state.units.slice(units.size()):
@@ -253,6 +255,11 @@ func _is_valid_state(state: Dictionary) -> bool:
 			and state.rewards.size() <= CombatUnit.SAVED_INT_LIMIT and state.bag.size() <= int(loot.data["bag_limit"])):
 		return false
 	if state.get("waiting_for_start", false) and state.rewarded:
+		return false
+	# 파티 레벨은 깬 막 수를 넘을 수 없다. 막의 마지막 스테이지는 승리를 기록한 뒤에 깬 것으로 센다 (#477).
+	if not (state.get("level") is int and state.level >= 0
+			and state.level <= state.stage / CombatActProgress.STAGES_PER_ACT
+			+ (1 if state.rewarded and state.stage % CombatActProgress.STAGES_PER_ACT == CombatActProgress.STAGES_PER_ACT - 1 else 0)):
 		return false
 	var stage: CombatStage = stages[state.stage]
 	var identities: Array = party.map(func(unit: CombatUnit) -> Array: return [unit.kind, true])
@@ -744,7 +751,14 @@ func _on_actions_changed() -> void:
 				monster_count += 1
 		# 전투 주사위로 굴려 이어하기가 마지막 공격을 다시 해도 드랍이 바뀌지 않는다.
 		progress.record_victory(loot, monster_count, actions.dice)
+		_sync_party_level()
 	_update_turn_ui()
+
+
+## 파티 레벨을 아군 모두에 맞춘다. 몬스터는 늘 레벨 0이다 (#477).
+func _sync_party_level() -> void:
+	for unit: CombatUnit in party:
+		unit.dice_level = progress.level
 
 
 func _on_turn_changed() -> void:

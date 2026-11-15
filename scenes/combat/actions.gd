@@ -1452,7 +1452,7 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 		"second_wind":
 			_heal(actor, dice.roll(10) + 1, tr("숨 고르기"))
 		"holy_veil":
-			# 굴림값은 눈 + 주사위 레벨(0)이고 기타 가산치를 더하지 않는다. 남은 방어막과 큰 값을 유지한다.
+			# 굴림값은 눈 + 주사위 레벨 + 능력치 가감이고 기타 가산치를 더하지 않는다. 남은 방어막과 큰 값을 유지한다.
 			var health_sides: int = actor.get_ability_sides(CombatUnit.Ability.HEALTH)
 			var rolled: int = CombatChecks.damage_roll(health_sides, dice, actor.get_ability_modifier(CombatUnit.Ability.HEALTH))
 			actor.shield_points = maxi(actor.shield_points, rolled)
@@ -1788,7 +1788,7 @@ func _deal_damage(actor: CombatUnit, target: CombatUnit, action: String, halved:
 			rolled_total += rolled
 	if action == "sweep":
 		# 휩쓸기 고유 규칙: ⌈굴림값 ÷ 2⌉ + 기타 가산치. 굴림값은 눈 + 주사위 레벨이라 레벨을 따로 더하지 않는다.
-		# #407 질문 4(피해식에 레벨이 두 번 들어가는 문제)의 답이 오면 성장 구현 때 다시 확인한다. 지금 레벨은 0이다.
+		# #407 질문 4의 답(레벨은 한 번만, 전사 문서 휩쓸기)과 같은 식이다. 파티 레벨은 #477에서 오른다.
 		last_damage = ceili(last_damage_rolls[0] / 2.0) + damage_bonus
 	else:
 		last_damage = CombatChecks.halve_damage(rolled_total) if halved else rolled_total
