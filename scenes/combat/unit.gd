@@ -38,7 +38,7 @@ const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initi
 	"fallen", "oil_slipped", "oil_throw_left"]
 ## SAVED_FIELDS 밖의 선택 필드와 기본값(#528). 형식 5를 그대로 두려고, 이 필드가 없는 옛 저장은 기본값으로 읽는다.
 const OPTIONAL_FIELDS: Dictionary[String, Variant] = {"aegisal_left": 0, "moving_shot_ready": false, "moving_shot_spent": false,
-	"firework_arrow_left": 1}
+	"firework_arrow_left": 1, "whistle_left": 1, "distracted_turns": 0}
 ## 저장 파일의 정수 상한. 고친 저장이 끝나지 않는 턴이나 큰 목록을 만들지 않게 한다.
 const SAVED_INT_LIMIT: int = 99
 const SAVED_HIT_POINT_LIMIT: int = 999
@@ -125,6 +125,11 @@ var oil_slipped: bool = false
 var oil_throw_left: int = 1
 ## 폭죽 화살의 막당 남은 횟수. 새 막에서 1로 회복한다(궁수 문서).
 var firework_arrow_left: int = 1
+## 효시의 전투마다 남은 횟수(궁수 문서).
+var whistle_left: int = 1
+## 산만함(효시): 이 유닛의 명중굴림·내성굴림이 불리다. 시전자(궁수) 턴 시작마다 1씩 줄고 0이면 사라진다. 시전자는 쓰러져도 유지한다.
+var distracted_turns: int = 0
+var distracted_source: CombatUnit
 ## 성스러운 장막의 방어막. 피해를 HP보다 먼저 받고, 자기 턴 시작마다 shield_turns가 준다.
 var shield_points: int = 0:
 	set(value):
@@ -413,6 +418,8 @@ func clear_unit_effects() -> void:
 	battle_cry_bonus = 0
 	battle_cry_turns = 0
 	battle_cry_source = null
+	distracted_turns = 0
+	distracted_source = null
 
 
 ## 이어하기용 상태. 다른 유닛은 전투 유닛 목록의 번호로 적고, 없으면 -1이다.
@@ -423,7 +430,7 @@ func save_state(units: Array[CombatUnit]) -> Dictionary:
 	var data: Dictionary = {"kind": kind, "ally": is_ally, "weapon": weapon, "armor": armor,
 		"hit_points": hit_points, "lost_hit_points": _lost_hit_points, "stunned": is_stunned,
 		"stun_source": units.find(stun_source), "statuses": statuses,
-		"battle_cry_source": units.find(battle_cry_source)}
+		"battle_cry_source": units.find(battle_cry_source), "distracted_source": units.find(distracted_source)}
 	for field: String in SAVED_FIELDS:
 		data[field] = get(field)
 	for field: String in OPTIONAL_FIELDS:
@@ -444,6 +451,8 @@ func load_state(data: Dictionary, units: Array[CombatUnit]) -> void:
 	is_stunned = data.stunned
 	stun_source = units[data.stun_source] if data.stun_source >= 0 else null
 	battle_cry_source = units[data.battle_cry_source] if data.battle_cry_source >= 0 else null
+	var distracted: int = data.get("distracted_source", -1)
+	distracted_source = units[distracted] if distracted >= 0 else null
 	status_effects.clear()
 	for saved: Array in data.statuses:
 		var effect: StatusEffect = StatusEffect.new(saved[0], units[saved[1]], saved[2], saved[3])
@@ -479,6 +488,11 @@ func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 	if (data.shield_turns > CombatActionRules.SHIELD_TURNS or (data.shield_turns == 0) != (data.shield_points == 0)
 			or data.battle_cry_turns > CombatActionRules.BATTLE_CRY_TURNS or (data.battle_cry_turns == 0) != (data.battle_cry_source == -1)
 			or (data.battle_cry_turns == 0) != (data.battle_cry_bonus == 0)):
+		return false
+	# 산만함(효시)은 2턴이고, 기간이 남은 효과만 시전자를 가진다. 키가 없는 옛 저장은 산만함 없음이다.
+	var distracted_from: Variant = data.get("distracted_source", -1)
+	if (not _valid_index(distracted_from, count, true) or data.get("distracted_turns", 0) > CombatActionRules.DISTRACTION_TURNS
+			or (data.get("distracted_turns", 0) == 0) != (distracted_from == -1)):
 		return false
 	return (data.statuses as Array).all(func(saved: Variant) -> bool:
 		return (saved is Array and saved.size() == 4 and saved[0] in ["burn", "poison"]

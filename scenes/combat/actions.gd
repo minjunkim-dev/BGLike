@@ -475,8 +475,9 @@ func _roll_rock_stun(actor: CombatUnit, target: CombatUnit) -> void:
 		target.get_ability_modifier(ability))
 	_show_roll_in_background(CombatDiceRoll.save(target, sides, saved, saved.added(), tr("DC"), ROCK_STUN_DC))
 	var stunned: bool = not saved.success and apply_status(actor, target, "stun")
-	logged.emit(tr("%s %s 내성 %d 대 DC %d") % [target.get_display_name(), CombatUnit.ability_name(ability),
-		saved.total, ROCK_STUN_DC])
+	var rock_reason: String = _save_reason(target, ability)
+	logged.emit(tr("%s %s 내성%s %d 대 DC %d") % [target.get_display_name(), CombatUnit.ability_name(ability),
+		"" if rock_reason.is_empty() else "(%s)" % rock_reason, saved.total, ROCK_STUN_DC])
 	logged.emit((tr("%s: 기절") if stunned else tr("%s: 버팀")) % target.get_display_name())
 	if stunned:
 		feedback.emit(target, tr("기절"))
@@ -534,8 +535,9 @@ func _on_turn_started(unit: CombatUnit) -> void:
 				effect.dc, CombatActionRules.save_mode(unit, CombatUnit.Ability.HEALTH), dice, unit.get_ability_modifier(CombatUnit.Ability.HEALTH))
 			# 턴 시작 처리는 중간에 멈추지 않는다. 확정된 굴림을 보이기만 하고 기다리지 않는다.
 			_show_roll_in_background(CombatDiceRoll.save(unit, health_sides, saved, saved.added(), tr("DC"), effect.dc))
-			logged.emit(tr("%s 독 제거(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s") % [unit.get_display_name(),
-				health_sides, str(saved.rolls), saved.added(), saved.total, effect.dc, _save_outcome(saved)])
+			var poison_reason: String = _save_reason(unit, CombatUnit.Ability.HEALTH)
+			logged.emit(tr("%s 독 제거(건강 내성%s): 건강 d%d %s %+d = %d / DC %d · %s") % [unit.get_display_name(),
+				"" if poison_reason.is_empty() else " · " + poison_reason, health_sides, str(saved.rolls), saved.added(), saved.total, effect.dc, _save_outcome(saved)])
 			# 실패는 뒤따르는 `독 1` 틱 팝업이 효과 이름을 보인다.
 			if saved.success:
 				feedback.emit(unit, tr("독 제거"))
@@ -609,6 +611,15 @@ func _tick_unit_effects(caster: CombatUnit) -> void:
 				expired.append(target.get_display_name())
 	if not expired.is_empty():
 		logged.emit(tr("전투의 함성 만료: %s") % ", ".join(expired))
+	var calmed: Array[String] = []
+	for target: CombatUnit in units:
+		if target.distracted_source == caster and target.distracted_turns > 0:
+			target.distracted_turns -= 1
+			if target.distracted_turns == 0:
+				target.distracted_source = null
+				calmed.append(target.get_display_name())
+	if not calmed.is_empty():
+		logged.emit(tr("산만함 만료: %s") % ", ".join(calmed))
 	# 독안개는 시전 순서대로 줄인다. 시전자가 쓰러졌어도 시계 슬롯이 이 길로 줄인다.
 	for ground: Ground in _grounds.duplicate():
 		if ground.kind in ["fog", "oil"] and ground.source == caster:
@@ -620,7 +631,7 @@ func _tick_unit_effects(caster: CombatUnit) -> void:
 
 
 func _has_unit_effects(caster: CombatUnit) -> bool:
-	return (units.any(func(unit: CombatUnit) -> bool: return unit.battle_cry_source == caster)
+	return (units.any(func(unit: CombatUnit) -> bool: return unit.battle_cry_source == caster or unit.distracted_source == caster)
 		or _grounds.any(func(ground: Ground) -> bool: return ground.kind in ["fog", "oil"] and ground.source == caster))
 
 
@@ -735,8 +746,9 @@ func _slip_roll(unit: CombatUnit) -> bool:
 	var saved: CombatChecks.RollResult = CombatChecks.saving_throw(sides, unit.get_defense_bonus(), CombatOil.SLIP_DC,
 		CombatActionRules.save_mode(unit, ability), dice, unit.get_ability_modifier(ability))
 	_show_roll_in_background(CombatDiceRoll.save(unit, sides, saved, saved.added(), tr("DC"), CombatOil.SLIP_DC))
-	logged.emit(tr("%s 미끌거림(솜씨 내성): 솜씨 d%d %s %+d = %d / DC %d · %s") % [unit.get_display_name(), sides,
-		str(saved.rolls), saved.added(), saved.total, CombatOil.SLIP_DC, _save_outcome(saved)])
+	var slip_reason: String = _save_reason(unit, ability)
+	logged.emit(tr("%s 미끌거림(솜씨 내성%s): 솜씨 d%d %s %+d = %d / DC %d · %s") % [unit.get_display_name(),
+		"" if slip_reason.is_empty() else " · " + slip_reason, sides, str(saved.rolls), saved.added(), saved.total, CombatOil.SLIP_DC, _save_outcome(saved)])
 	if saved.success:
 		return true
 	unit.fallen = true
@@ -1162,6 +1174,10 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 			for cell: Vector2i in CombatGrid.neighbors(actor.cell):
 				if can_sweep(actor, cell):
 					return true
+		"whistle":
+			for cell: Vector2i in CombatGrid.neighbors(actor.cell):
+				if can_whistle(actor, cell):
+					return true
 		"spin":
 			return (CombatActionRules.belongs_to(actor, action) and actor.action_left > 0
 				and not grid.opponents_in_area(actor, 1).is_empty())
@@ -1570,6 +1586,65 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 	return true
 
 
+## 효시의 대상: 고른 방향의 세 줄 띠 안의 살아 있는 적. 전투 유닛 목록 순서다 (궁수 문서).
+func whistle_targets(actor: CombatUnit, facing: Vector2i) -> Array[CombatUnit]:
+	var targets: Array[CombatUnit] = []
+	var band: Array[Vector2i] = grid.band_cells(actor.cell, facing)
+	for unit: CombatUnit in units:
+		if unit.hit_points > 0 and unit.is_ally != actor.is_ally and unit.cell in band:
+			targets.append(unit)
+	return targets
+
+
+## 방향은 맵 안의 인접 4칸 중 하나다. 띠 안에 적이 없어도 고를 수 있다 (휩쓸기·폭죽 화살과 같음, 개발 결정 #500).
+func can_whistle(actor: CombatUnit, facing: Vector2i) -> bool:
+	return (_can_act(actor) and CombatActionRules.has_uses(actor, "whistle") and actor.action_left > 0
+		and CombatGrid.distance(actor.cell, facing) == 1 and grid.is_inside(facing))
+
+
+## 효시(궁수, 행동, 전투마다 1): 세 줄 띠 안의 적이 의지 내성굴림(DC 11)을 하고, 실패하면 산만함 2턴을 받는다. 피해는 없다.
+## 대상은 시전 때 정하고 전투 유닛 목록 순서로 한 명씩 굴린다. 무빙샷은 켜지 않는다.
+func whistle(actor: CombatUnit, facing: Vector2i) -> bool:
+	if not can_whistle(actor, facing):
+		return false
+	var targets: Array[CombatUnit] = whistle_targets(actor, facing)
+	var dc: int = CombatActionRules.save_dc(actor, "whistle")
+	busy = true
+	actor.moving_shot_ready = false
+	actor.spend_resource(CombatUnit.TurnResource.ACTION)
+	CombatActionRules.spend_use(actor, "whistle")
+	logged.emit(tr_n("%s 효시: %d, %d 방향 · 대상 %d명 · DC %d", "%s 효시: %d, %d 방향 · 대상 %d명 · DC %d", targets.size()) % [
+		actor.get_display_name(), facing.x, facing.y, targets.size(), dc])
+	changed.emit()
+	var revision: int = _revision
+	for target: CombatUnit in targets:
+		if revision != _revision or is_over():
+			return true
+		if target.hit_points <= 0:
+			continue
+		last_attack = null
+		last_damage = 0
+		last_damage_rolls.clear()
+		var saved: CombatChecks.RollResult = _roll_save(target, "whistle", dc)
+		await _show_roll(_save_roll(target, "whistle", dc))
+		if revision != _revision or is_over():
+			return true
+		if target.hit_points <= 0:
+			continue
+		if saved.success:
+			logged.emit(tr("%s: 버팀") % target.get_display_name())
+			continue
+		target.distracted_turns = CombatActionRules.DISTRACTION_TURNS
+		target.distracted_source = actor
+		logged.emit(tr("%s: 산만함 %d턴") % [target.get_display_name(), CombatActionRules.DISTRACTION_TURNS])
+		feedback.emit(target, tr("산만함"))
+		changed.emit()
+	if revision != _revision:
+		return true
+	_finish()
+	return true
+
+
 ## 휩쓸기: 행동을 써서 facing을 정면으로 둔 반달 5칸의 적을 시전 때 확정하고, 시계방향으로 한 명씩 명중굴림한다.
 func sweep(actor: CombatUnit, facing: Vector2i) -> bool:
 	if not _can_act(actor) or not can_sweep(actor, facing):
@@ -1871,7 +1946,7 @@ func _roll_hit(actor: CombatUnit, target: CombatUnit, action: String) -> bool:
 	elif last_attack.face == CombatChecks.Face.ABSOLUTE_FAILURE:
 		outcome = tr("빗나감(절대실패)")
 	logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / AC %d · %s") % [
-		actor.get_display_name(), _mode_name(last_attack.mode), CombatUnit.ability_name(attack_ability), attack_sides,
+		actor.get_display_name(), CombatActionRules.roll_mode_text(last_attack.mode, preview.factors), CombatUnit.ability_name(attack_ability), attack_sides,
 		str(last_attack.rolls), last_attack.added(), last_attack.total, armor_class, outcome])
 	if not last_attack.success:
 		feedback.emit(target, tr("빗나감"))
@@ -1913,7 +1988,8 @@ func _roll_save(target: CombatUnit, action: String, dc: int) -> CombatChecks.Rol
 	last_save = CombatChecks.saving_throw(sides, target.get_defense_bonus(), dc, CombatActionRules.save_mode(target, ability), dice,
 		target.get_ability_modifier(ability))
 	logged.emit(tr("%s %s 내성(%s): %s d%d %s %+d = %d / DC %d · %s") % [target.get_display_name(),
-		CombatUnit.ability_name(ability), _mode_name(last_save.mode), CombatUnit.ability_name(ability), sides,
+		CombatUnit.ability_name(ability), CombatActionRules.roll_mode_text(last_save.mode, CombatActionRules.save_factors(target, ability)),
+		CombatUnit.ability_name(ability), sides,
 		str(last_save.rolls), last_save.added(), last_save.total, dc, _save_outcome(last_save)])
 	return last_save
 
@@ -1967,12 +2043,12 @@ func _deal_damage(actor: CombatUnit, target: CombatUnit, action: String, halved:
 	feedback.emit(target, str(last_damage))
 
 
-func _mode_name(mode: CombatChecks.RollMode) -> String:
-	if mode == CombatChecks.RollMode.ADVANTAGE:
-		return tr("유리")
-	if mode == CombatChecks.RollMode.DISADVANTAGE:
-		return tr("불리")
-	return tr("일반")
+## 요인이 붙은 내성굴림의 이유 글(개발 결정, #500). 요인이 없으면 빈 문자열이라 기존 로그 문구가 그대로다.
+func _save_reason(unit: CombatUnit, ability: CombatUnit.Ability) -> String:
+	var factors: CombatChecks.RollFactors = CombatActionRules.save_factors(unit, ability)
+	if factors.disadvantages.is_empty():
+		return ""
+	return CombatActionRules.roll_mode_text(factors.mode(), factors)
 
 
 func _save_outcome(result: CombatChecks.RollResult) -> String:
@@ -2026,8 +2102,9 @@ func _apply_fog(unit: CombatUnit, entering: bool) -> void:
 	var saved: CombatChecks.RollResult = CombatChecks.saving_throw(health_sides, unit.get_defense_bonus(),
 		fogs[0].dc, CombatActionRules.save_mode(unit, CombatUnit.Ability.HEALTH), dice, unit.get_ability_modifier(CombatUnit.Ability.HEALTH))
 	_show_roll_in_background(CombatDiceRoll.save(unit, health_sides, saved, saved.added(), tr("DC"), fogs[0].dc))
-	logged.emit(tr("%s 독안개(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s") % [unit.get_display_name(),
-		health_sides, str(saved.rolls), saved.added(), saved.total, fogs[0].dc, _save_outcome(saved)])
+	var fog_reason: String = _save_reason(unit, CombatUnit.Ability.HEALTH)
+	logged.emit(tr("%s 독안개(건강 내성%s): 건강 d%d %s %+d = %d / DC %d · %s") % [unit.get_display_name(),
+		"" if fog_reason.is_empty() else " · " + fog_reason, health_sides, str(saved.rolls), saved.added(), saved.total, fogs[0].dc, _save_outcome(saved)])
 	if not _same_combat(unit, revision) or saved.success or unit.get_status_count("poison") >= 3:
 		return
 	# 독안개로 얻은 독 중첩은 기간이 없고(turns_left 0) 시전자가 쓰러져도 남는다. 제거 DC는 고정 4다.

@@ -5,6 +5,8 @@ const MOVE_STEP_TIME: float = 0.09
 const ARROW_FLIGHT_TIME: float = 0.16
 ## 칸을 조준하는 동작. 한 번 눌러 칸(과 범위)을 보고, 같은 칸을 다시 누르면 실행한다.
 const AIM_ACTIONS: Array[String] = ["oil_throw", "trick_arrow", "firework_arrow"]
+## 인접한 칸을 눌러 방향(정면)을 고르는 동작. 휩쓸기는 정면 반달, 효시는 세 줄 띠다.
+const FACING_ACTIONS: Array[String] = ["sweep", "whistle"]
 const ENEMY_PAUSE_TIME: float = 0.35
 ## 적 턴에 Space를 누르고 있는 동안의 시간 배율. 규칙이 아니라 표시 속도다.
 const ENEMY_FAST_SPEED: float = 4.0
@@ -633,6 +635,28 @@ func _ally_input_open() -> bool:
 		and not hud.reaction_dialog.visible and not hud.get_node("Result").visible and not preparation.visible)
 
 
+## 방향 동작(휩쓸기·효시)의 클릭이 가리키는 방향 칸. 인접 칸의 몸통이나 사물을 눌러도 그 칸을 방향으로 고른다.
+## 인접하지 않은 몸통(자기 자신 등)이 가린 칸은 격자 위치로 고르고, 그래도 인접하지 않거나 맵 밖이면 호출자가 미리보기만 지운다.
+func _facing_at(actor: CombatUnit, cell: Vector2i, candidates: Array[CombatUnit], prop: CombatGrid.Prop,
+		world_position: Vector2) -> Vector2i:
+	var facing: Vector2i = cell
+	if not candidates.is_empty() and CombatGrid.distance(actor.cell, candidates[0].cell) == 1:
+		facing = candidates[0].cell
+	elif prop != null and CombatGrid.distance(actor.cell, prop.cell) == 1:
+		facing = prop.cell
+	elif not actions.grid.is_inside(cell):
+		# 낭떠러지 칸은 바닥 타일이 없어 격자 위치로 잡히지 않으므로 인접한 낭떠러지의 윗면으로 찾는다.
+		# 높이 때문에 윗면이 겹쳐도 맵 안 칸이 잡혔으면 그 칸을 방향으로 둔다.
+		for neighbor: Vector2i in CombatGrid.neighbors(actor.cell):
+			if actions.grid.pits.has(neighbor) and map.contains_surface(neighbor, map.to_local(world_position)):
+				facing = neighbor
+	return facing
+
+
+func _can_face(actor: CombatUnit, action: String, facing: Vector2i) -> bool:
+	return actions.can_sweep(actor, facing) if action == "sweep" else actions.can_whistle(actor, facing)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if (event is not InputEventMouseButton or not event.pressed
 		or event.button_index not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]):
@@ -681,26 +705,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			aimed_cell = prop.cell
 		await _select_aim_cell(aimed_cell)
 		return
-	if selection.selected_action == "sweep":
+	if selection.selected_action in FACING_ACTIONS:
 		get_viewport().set_input_as_handled()
-		# 인접 칸의 몸통이나 사물을 눌러도 그 칸을 정면으로 고른다. 인접하지 않은 몸통(전사 자신 등)이 가린 칸은
-		# 격자 위치로 고르고, 그래도 인접하지 않거나 맵 밖이면 미리보기만 지운다.
-		var facing: Vector2i = cell
-		if not candidates.is_empty() and CombatGrid.distance(actor.cell, candidates[0].cell) == 1:
-			facing = candidates[0].cell
-		elif prop != null and CombatGrid.distance(actor.cell, prop.cell) == 1:
-			facing = prop.cell
-		elif not actions.grid.is_inside(cell):
-			# 낭떠러지 칸은 바닥 타일이 없어 격자 위치로 잡히지 않으므로 인접한 낭떠러지의 윗면으로 찾는다.
-			# 높이 때문에 윗면이 겹쳐도 맵 안 칸이 잡혔으면 그 칸을 정면으로 둔다.
-			for neighbor: Vector2i in CombatGrid.neighbors(actor.cell):
-				if actions.grid.pits.has(neighbor) and map.contains_surface(neighbor, map.to_local(world_position)):
-					facing = neighbor
+		var facing: Vector2i = _facing_at(actor, cell, candidates, prop, world_position)
+		var facing_action: String = selection.selected_action
 		if CombatGrid.distance(actor.cell, facing) != 1 or not actions.grid.is_inside(facing):
 			selection.clear_preview()
-		elif selection.select_cell(facing, actions.can_sweep(actor, facing)):
+		elif selection.select_cell(facing, _can_face(actor, facing_action, facing)):
 			selection.begin_execution()
-			await actions.sweep(actor, facing)
+			if facing_action == "sweep":
+				await actions.sweep(actor, facing)
+			else:
+				await actions.whistle(actor, facing)
 			selection.finish_execution()
 		_update_turn_ui()
 		return
@@ -937,11 +953,12 @@ func _update_turn_ui() -> void:
 	selection.discard_incapacitated_inspection()
 	if selection.preview_prop != null and selection.preview_prop not in actions.get_props():
 		selection.clear_preview()
-	var sweeping: bool = (selection.selected_action == "sweep" and turns.current_unit != null
+	var sweeping: bool = (selection.selected_action in FACING_ACTIONS and turns.current_unit != null
 		and turns.current_unit.is_ally and selection.preview_cell != Vector2i(-1, -1))
 	var sweep_targets: Array[CombatUnit] = []
 	if sweeping:
-		sweep_targets = actions.sweep_targets(turns.current_unit, selection.preview_cell)
+		sweep_targets = (actions.sweep_targets(turns.current_unit, selection.preview_cell) if selection.selected_action == "sweep"
+			else actions.whistle_targets(turns.current_unit, selection.preview_cell))
 	for unit: CombatUnit in units:
 		if not unit.is_moving:
 			unit.position = map.map_to_local(unit.cell)
@@ -964,7 +981,8 @@ func _update_turn_ui() -> void:
 		elif selection.selected_action == "moving_shot":
 			movement_cells.assign(actions.moving_shot_cells(turns.current_unit))
 		elif sweeping:
-			movement_cells.assign(actions.grid.sweep_cells(turns.current_unit.cell, selection.preview_cell))
+			movement_cells.assign(actions.grid.sweep_cells(turns.current_unit.cell, selection.preview_cell)
+				if selection.selected_action == "sweep" else actions.grid.band_cells(turns.current_unit.cell, selection.preview_cell))
 		elif selection.selected_action in AIM_ACTIONS:
 			var aim_action: String = selection.selected_action
 			var aimed: bool = actions.can_aim(turns.current_unit, aim_action, selection.preview_cell)
@@ -974,10 +992,10 @@ func _update_turn_ui() -> void:
 				movement_cells.assign(actions.aim_area(turns.current_unit, aim_action, selection.preview_cell))
 			else:
 				movement_cells.assign(actions.aim_cells(turns.current_unit, aim_action))
-		elif selection.selected_action == "sweep":
-			# 정면을 고르기 전에는 고를 수 있는 인접 칸을 보인다.
+		elif selection.selected_action in FACING_ACTIONS:
+			# 방향을 고르기 전에는 고를 수 있는 인접 칸을 보인다.
 			for cell: Vector2i in CombatGrid.neighbors(turns.current_unit.cell):
-				if actions.can_sweep(turns.current_unit, cell):
+				if _can_face(turns.current_unit, selection.selected_action, cell):
 					movement_cells.append(cell)
 	var attack_cells: Array[Vector2i] = []
 	var origin: Vector2i = turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO
@@ -989,7 +1007,7 @@ func _update_turn_ui() -> void:
 		path = []
 	else:
 		for cell: Vector2i in movement_cells:
-			if selection.selected_action == "sweep" or not _attack_targets_from(cell).is_empty():
+			if selection.selected_action in FACING_ACTIONS or not _attack_targets_from(cell).is_empty():
 				attack_cells.append(cell)
 	map.show_movement(movement_cells, attack_cells, path, origin)
 	map.show_grounds(actions.get_grounds())
@@ -1119,6 +1137,17 @@ func _update_turn_ui() -> void:
 				chances.append("%s %.1f%%" % [target.get_display_name(), actions.sweep_chance(turns.current_unit, target) * 100.0])
 			note = tr("휩쓸기 · 행동1 · 시계방향 명중률\n%s\n같은 칸을 다시 좌클릭하면 실행합니다.") % " → ".join(chances)
 		hud.show_target_note(note)
+	elif (selection.selected_action == "whistle" and turns.current_unit != null and turns.current_unit.is_ally
+			and not actions.busy):
+		var whistle_note: String = tr("효시 · 방향으로 삼을 인접한 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 실행합니다.")
+		if sweeping and sweep_targets.is_empty():
+			whistle_note = tr("효시 · 행동1 · 영향 칸에 적이 없음\n같은 칸을 다시 좌클릭하면 실행합니다.")
+		elif sweeping:
+			var whistle_chances: Array[String] = []
+			for target: CombatUnit in sweep_targets:
+				whistle_chances.append(CombatActionRules.save_chance_text(turns.current_unit, target, "whistle"))
+			whistle_note = tr("효시 · 행동1 · 전투마다 1 · 의지 내성 성공률\n%s\n같은 칸을 다시 좌클릭하면 실행합니다.") % " · ".join(whistle_chances)
+		hud.show_target_note(whistle_note)
 	elif (selection.selected_action == "oil_throw" and turns.current_unit != null and turns.current_unit.is_ally
 			and not actions.busy):
 		hud.show_target_note(tr("기름병 던지기 · 보조 행동1 · 기름을 깔 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 던집니다.")
@@ -1130,7 +1159,7 @@ func _update_turn_ui() -> void:
 	var hovered: Dictionary = actions.floor_loot.item_at(_hover_cell)
 	if (not hovered.is_empty() and selection.preview_target == null and selection.preview_prop == null
 			and selection.preview_path.is_empty()
-			and selection.selected_action not in ["jump", "sweep", "oil_throw", "moving_shot", "trick_arrow", "firework_arrow"]):
+			and selection.selected_action not in ["jump", "sweep", "whistle", "oil_throw", "moving_shot", "trick_arrow", "firework_arrow"]):
 		hud.show_move_mode(false)
 		hud.show_target_note(tr("바닥 아이템 · %s") % CombatLoot.describe(hovered))
 	if actions.is_over():

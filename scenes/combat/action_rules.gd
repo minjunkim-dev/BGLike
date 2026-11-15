@@ -5,7 +5,7 @@ extends RefCounted
 ## 비용 자원(행동, 보조 행동, 반응) 순서의 묶음. HUD의 배치 순서이기도 하다.
 ## 복합 비용 스킬은 첫 자원의 묶음에 둔다(십자 베기는 임시로 행동, 9-3).
 const GROUPS: Array[Array] = [
-	["attack", "sweep", "cross_slash", "battle_cry", "spawn", "pull", "spin", "trick_arrow", "firework_arrow"],
+	["attack", "sweep", "cross_slash", "battle_cry", "spawn", "pull", "spin", "trick_arrow", "firework_arrow", "whistle"],
 	["holy_veil", "steel_charge", "second_wind", "aegisal", "bow_bash", "disengage", "shove", "jump", "potion", "oil_throw"],
 	["opportunity", "counter", "reflex"]
 ]
@@ -22,7 +22,7 @@ static var NAMES: Dictionary[String, String] = {
 	"spawn": TranslationServer.tr("새끼 낳기"), "pull": TranslationServer.tr("만능팔"), "spin": TranslationServer.tr("회전회오리"), "jump": TranslationServer.tr("점프"),
 	"counter": TranslationServer.tr("반격"), "oil_throw": TranslationServer.tr("기름병 던지기"),
 	"trick_arrow": TranslationServer.tr("장난스러운 화살"), "firework_arrow": TranslationServer.tr("폭죽 화살"),
-	"reflex": TranslationServer.tr("반사신경")
+	"reflex": TranslationServer.tr("반사신경"), "whistle": TranslationServer.tr("효시")
 }
 static var EFFECTS: Dictionary[String, String] = {
 	"jump": TranslationServer.tr("1~2칸의 빈 바닥으로 점프.\n상승2까지, 낙하 차3부터 피해."),
@@ -45,7 +45,8 @@ static var EFFECTS: Dictionary[String, String] = {
 	"oil_throw": TranslationServer.tr("목표 칸 십자 5칸에 기름 장판을 깝니다(3턴).\n기름 칸에 서면 솜씨 내성(DC 4)을 하고, 실패하면 넘어집니다.\n아이템을 쓰지 않습니다."),
 	"trick_arrow": TranslationServer.tr("칸을 겨눕니다(아군도 가능). 지능 d6: 1 삐끗, 2~3 물, 4~6 화염.\n속성은 그 칸에 닿습니다. 명중하면 굴림 값만큼 피해.\n화염은 화상 1중첩, 물은 화상을 모두 끕니다."),
 	"firework_arrow": TranslationServer.tr("칸을 겨눕니다(발밑도 가능). 반경 1의 모든 유닛이 민첩 내성(DC 4).\n피해 솜씨 d20 두 번의 합, 성공하면 절반.\n아군과 자신도 맞습니다. 기름은 점화됩니다."),
-	"reflex": TranslationServer.tr("명중이 확정된 공격을 회피하고\n상하좌우 1칸으로 이동합니다.\n명중굴림 공격에만 쓰고, 넘어지면 쓸 수 없습니다.")
+	"reflex": TranslationServer.tr("명중이 확정된 공격을 회피하고\n상하좌우 1칸으로 이동합니다.\n명중굴림 공격에만 쓰고, 넘어지면 쓸 수 없습니다."),
+	"whistle": TranslationServer.tr("상하좌우 한 방향의 세 줄 띠 안의 적이 의지 내성굴림.\n실패하면 산만함 2턴: 내성굴림·명중굴림 불리.\n피해는 없습니다.")
 }
 ## 패시브 칸의 스킬(#457). 자원과 횟수가 없어 NAMES·GROUPS에 넣지 않는다. 아이콘이 생기기 전에는 이름 첫 글자를 보인다.
 const PASSIVES: Array[String] = ["phalanx", "brawn", "moving_shot"]
@@ -129,14 +130,14 @@ const CLASS_ONLY: Dictionary[String, CombatUnit.Kind] = {
 	"phalanx": CombatUnit.Kind.WARRIOR, "brawn": CombatUnit.Kind.WARRIOR, "counter": CombatUnit.Kind.WARRIOR,
 	"aegisal": CombatUnit.Kind.ARCHER, "bow_bash": CombatUnit.Kind.ARCHER, "moving_shot": CombatUnit.Kind.ARCHER,
 	"oil_throw": CombatUnit.Kind.ARCHER, "trick_arrow": CombatUnit.Kind.ARCHER, "firework_arrow": CombatUnit.Kind.ARCHER,
-	"reflex": CombatUnit.Kind.ARCHER
+	"reflex": CombatUnit.Kind.ARCHER, "whistle": CombatUnit.Kind.ARCHER
 }
 ## 아군이 쓰지 않는 몬스터 동작. 풋내기 야만인의 숨 고르기와 풋내기 궁수의 물러서며 쏘기도 여기 있다.
 const MONSTER_ONLY: Array[String] = ["second_wind", "disengage", "spawn", "pull", "spin", "fog"]
 const USE_COUNTERS: Dictionary[String, StringName] = {
 	"second_wind": &"second_wind_left", "disengage": &"disengage_left", "potion": &"potion_left",
 	"cross_slash": &"cross_slash_left", "steel_charge": &"steel_charge_left", "battle_cry": &"battle_cry_left",
-	"oil_throw": &"oil_throw_left", "firework_arrow": &"firework_arrow_left"
+	"oil_throw": &"oil_throw_left", "firework_arrow": &"firework_arrow_left", "whistle": &"whistle_left"
 }
 ## 막 시작에 회복하는 횟수. 물약은 보유 개수라서 회복하지 않는다.
 const USES_PER_ACT: Dictionary[String, int] = {
@@ -144,11 +145,13 @@ const USES_PER_ACT: Dictionary[String, int] = {
 }
 ## 새 전투(스테이지)가 시작될 때 회복하는 횟수 (5-3).
 const USES_PER_COMBAT: Dictionary[String, int] = {
-	"cross_slash": 1, "steel_charge": 1, "battle_cry": 1, "oil_throw": 1
+	"cross_slash": 1, "steel_charge": 1, "battle_cry": 1, "oil_throw": 1, "whistle": 1
 }
 ## 성스러운 장막과 전투의 함성의 기간. 시전자 턴 시작마다 1씩 준다.
 const SHIELD_TURNS: int = 3
 const BATTLE_CRY_TURNS: int = 2
+## 산만함(효시)의 기간. 시전자(궁수) 턴 시작마다 1씩 준다.
+const DISTRACTION_TURNS: int = 2
 ## 피해 능력치를 명중 능력치와 다르게 지정한 동작 (능력치 기획서 4-9). 반격은 명중굴림 없이 민첩으로 피해를 준다.
 ## 동작 이름으로 찾으므로 기회 공격("opportunity")은 "attack"과 따로 지정한다.
 static var DAMAGE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {
@@ -162,12 +165,12 @@ const MELEE_ACTIONS: Array[String] = ["bow_bash"]
 ## 내성굴림 동작의 시전 능력치(DC)와 대상의 내성 능력치 (4-3, 8장). 기존 동작은 현행(힘)을 유지한다.
 const CAST_ABILITIES: Dictionary[String, CombatUnit.Ability] = {
 	"spin": CombatUnit.Ability.STRENGTH, "shove": CombatUnit.Ability.STRENGTH, "pull": CombatUnit.Ability.STRENGTH,
-	"fog": CombatUnit.Ability.HEALTH, "firework_arrow": CombatUnit.Ability.INTELLIGENCE
+	"fog": CombatUnit.Ability.HEALTH, "firework_arrow": CombatUnit.Ability.INTELLIGENCE, "whistle": CombatUnit.Ability.FINESSE
 }
 ## 회전회오리는 대상이 민첩으로 막는다(#500 결정). DC는 시전 능력치(힘)라 그대로다.
 const SAVE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {
 	"spin": CombatUnit.Ability.AGILITY, "shove": CombatUnit.Ability.STRENGTH, "pull": CombatUnit.Ability.STRENGTH,
-	"fog": CombatUnit.Ability.HEALTH, "firework_arrow": CombatUnit.Ability.AGILITY
+	"fog": CombatUnit.Ability.HEALTH, "firework_arrow": CombatUnit.Ability.AGILITY, "whistle": CombatUnit.Ability.WILL
 }
 ## 스킬의 DC 보정. 지정이 없으면 0이다. 지금 있는 스킬은 모두 0이라 비어 있다.
 static var DC_BONUSES: Dictionary[String, int] = {}
@@ -324,6 +327,10 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 			lines = [TranslationServer.tr("사거리: 0~%d칸 곡사, 반경 1") % aim_range(actor, action),
 				TranslationServer.tr("피해: 솜씨 d%d 두 번의 합") % actor.get_ability_sides(CombatUnit.Ability.FINESSE),
 				TranslationServer.tr("판정: 대상의 민첩 내성 대 DC %d, 성공하면 피해 절반") % save_dc(actor, action)]
+		"whistle":
+			lines = [TranslationServer.tr("사거리: 상하좌우 한 방향의 세 줄 띠"),
+				TranslationServer.tr("효과: 실패하면 산만함 %d턴, 피해 없음") % DISTRACTION_TURNS,
+				TranslationServer.tr("판정: 대상의 의지 내성 대 DC %d") % save_dc(actor, action)]
 		"second_wind":
 			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("회복: 1d10+1"), TranslationServer.tr("판정: 없음")]
 		"potion":
@@ -342,7 +349,7 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 			var chances: Array[String] = []
 			for unit: CombatUnit in units:
 				if unit.hit_points > 0 and unit.is_ally != actor.is_ally:
-					chances.append("%s %.1f%%" % [unit.get_display_name(), save_chance(actor, unit, action) * 100.0])
+					chances.append(save_chance_text(actor, unit, action))
 			if not chances.is_empty():
 				lines.append(TranslationServer.tr("내성 성공률: %s") % " · ".join(chances))
 	if action == "attack" and actor.aegisal_left > 0:
@@ -353,10 +360,45 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 	return "\n".join(lines)
 
 
-## 대상의 내성굴림 유리/불리. 굴리는 쪽(대상)의 요인만 센다 (4-7).
-## 넘어진 대상은 민첩 내성에 불리 요인 하나를 받는다 (궁수 문서, 전투 시스템 기획서 6-7).
+## 대상의 내성굴림 요인. 굴리는 쪽(대상)의 요인만 센다 (4-7).
+## 넘어진 대상은 민첩 내성에, 산만함인 대상은 모든 내성에 불리 요인 하나를 받는다 (궁수 문서, 전투 시스템 기획서 6-7).
+static func save_factors(target: CombatUnit, ability: CombatUnit.Ability) -> CombatChecks.RollFactors:
+	var factors: CombatChecks.RollFactors = CombatChecks.RollFactors.new()
+	if target.fallen and ability == CombatUnit.Ability.AGILITY:
+		factors.add_disadvantage(TranslationServer.tr("넘어짐"))
+	if target.distracted_turns > 0:
+		factors.add_disadvantage(TranslationServer.tr("산만함"))
+	return factors
+
+
+## 대상의 내성굴림 유리/불리.
 static func save_mode(target: CombatUnit, ability: CombatUnit.Ability) -> CombatChecks.RollMode:
-	return CombatChecks.roll_mode(0, 1 if target.fallen and ability == CombatUnit.Ability.AGILITY else 0)
+	return save_factors(target, ability).mode()
+
+
+## 로그의 굴림 방식 글(개발 결정, #500). 요인이 없으면 `일반`이고, 한쪽만 있으면 `불리: 산만함`,
+## 양쪽이 있으면 결과 방식을 앞에 두고 `일반 · 유리: 고지대 · 불리: 산만함`으로 적는다.
+static func roll_mode_text(mode: CombatChecks.RollMode, factors: CombatChecks.RollFactors) -> String:
+	var name: String = TranslationServer.tr("유리") if mode == CombatChecks.RollMode.ADVANTAGE else (
+		TranslationServer.tr("불리") if mode == CombatChecks.RollMode.DISADVANTAGE else TranslationServer.tr("일반"))
+	var good: String = ", ".join(factors.advantages)
+	var bad: String = ", ".join(factors.disadvantages)
+	if good.is_empty() and bad.is_empty():
+		return name
+	if bad.is_empty():
+		return TranslationServer.tr("%s: %s") % [name, good]
+	if good.is_empty():
+		return TranslationServer.tr("%s: %s") % [name, bad]
+	return TranslationServer.tr("%s · 유리: %s · 불리: %s") % [name, good, bad]
+
+
+## 내성 성공률 글. 요인이 붙은 대상은 이유를 괄호로 덧붙인다(개발 결정, #500). 예: `풋내기 야만인 0.0% (불리: 산만함)`.
+static func save_chance_text(actor: CombatUnit, target: CombatUnit, action: String) -> String:
+	var text: String = "%s %.1f%%" % [target.get_display_name(), save_chance(actor, target, action) * 100.0]
+	var factors: CombatChecks.RollFactors = save_factors(target, SAVE_ABILITIES[action])
+	if factors.advantages.is_empty() and factors.disadvantages.is_empty():
+		return text
+	return text + " (%s)" % roll_mode_text(factors.mode(), factors)
 
 
 ## 밀치기에 내성굴림이 있는지. 기절한 대상과 아군은 판정 없이 밀린다 (8장).

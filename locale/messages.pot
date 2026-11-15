@@ -492,7 +492,7 @@ msgid "DC"
 msgstr ""
 
 #: scenes/combat/actions.gd:415
-msgid "%s 독 제거(건강 내성): 건강 d%d %s %+d = %d / DC %d · %s"
+msgid "%s 독 제거(건강 내성%s): 건강 d%d %s %+d = %d / DC %d · %s"
 msgstr ""
 
 #: scenes/combat/actions.gd:419
@@ -806,7 +806,7 @@ msgid "기절"
 msgstr ""
 
 #: scenes/combat/actions.gd
-msgid "%s %s 내성 %d 대 DC %d"
+msgid "%s %s 내성%s %d 대 DC %d"
 msgstr ""
 
 #: scenes/combat/actions.gd
@@ -1651,7 +1651,7 @@ msgid "유리는 공격 능력치 주사위를 두 번 굴려 높은 값을, 불
 msgstr ""
 
 #: scenes/help.tscn
-msgid "기절한 대상을 공격하면 유리입니다. 원거리 공격자의 인접 칸에 기절하지 않은 적이 있으면 불리입니다. 궁수의 활 후려치기는 근접 동작이라 이 불리를 받지 않습니다. 물 칸에 선 유닛의 명중굴림은 근접·원거리·기회 공격 모두 불리입니다. 물 위의 대상을 겨누는 쪽은 불리가 아닙니다."
+msgid "기절한 대상을 공격하면 유리입니다. 원거리 공격자의 인접 칸에 기절하지 않은 적이 있으면 불리입니다. 궁수의 활 후려치기는 근접 동작이라 이 불리를 받지 않습니다. 물 칸에 선 유닛의 명중굴림은 근접·원거리·기회 공격 모두 불리입니다. 물 위의 대상을 겨누는 쪽은 불리가 아닙니다. 산만함(궁수의 효시)이 걸린 유닛은 자신의 모든 명중굴림과 내성굴림이 불리이고, 넘어진 유닛은 민첩 내성굴림이 불리입니다. 전투 로그와 명중률 미리보기에는 `불리: 산만함`처럼 유리·불리의 이유를 적습니다."
 msgstr ""
 
 #: scenes/help.tscn
@@ -1892,7 +1892,7 @@ msgid "%s 넘어짐"
 msgstr ""
 
 #: scenes/combat/actions.gd:618
-msgid "%s 미끌거림(솜씨 내성): 솜씨 d%d %s %+d = %d / DC %d · %s"
+msgid "%s 미끌거림(솜씨 내성%s): 솜씨 d%d %s %+d = %d / DC %d · %s"
 msgstr ""
 
 #: scenes/combat/actions.gd:638
@@ -2090,7 +2090,7 @@ msgid "폭죽 화살 · 행동1 · 막당 1 · 아군과 자신도 맞음\n민�
 msgstr ""
 
 #: scenes/help.tscn:243
-msgid "장난스러운 화살은 행동으로 사거리 1~4칸의 칸을 겨눕니다. 칸 위의 유닛(아군도 가능)을 겨누면 솜씨 명중굴림을 하고, 지능 d6 눈이 1이면 삐끗, 2~3이면 물, 4~6이면 화염입니다. 피해는 굴린 눈의 값이고 명중해야 들어갑니다. 화염은 닿은 칸의 기름을 점화하고, 물은 닿은 칸의 기름과 불 장판을 지웁니다. 속성은 빗나가도 그 칸에 닿습니다. 폭죽 화살은 행동으로 사거리 0~4칸의 칸을 겨누며 막마다 1회입니다. 반경 1(상하좌우 5칸) 안의 모든 유닛이 아군과 궁수 자신까지 민첩 내성(DC 4)을 하고, 피해는 솜씨 d20 두 번의 합이며 성공하면 절반입니다. 닿은 기름은 점화됩니다."
+msgid "장난스러운 화살은 행동으로 사거리 1~4칸의 칸을 겨눕니다. 칸 위의 유닛(아군도 가능)을 겨누면 솜씨 명중굴림을 하고, 지능 d6 눈이 1이면 삐끗, 2~3이면 물, 4~6이면 화염입니다. 피해는 굴린 눈의 값이고 명중해야 들어갑니다. 화염은 닿은 칸의 기름을 점화하고, 물은 닿은 칸의 기름과 불 장판을 지웁니다. 속성은 빗나가도 그 칸에 닿습니다. 폭죽 화살은 행동으로 사거리 0~4칸의 칸을 겨누며 막마다 1회입니다. 반경 1(상하좌우 5칸) 안의 모든 유닛이 아군과 궁수 자신까지 민첩 내성(DC 4)을 하고, 피해는 솜씨 d20 두 번의 합이며 성공하면 절반입니다. 닿은 기름은 점화됩니다. 효시는 행동으로 인접한 칸을 눌러 방향을 정하고 같은 칸을 다시 누르면 씁니다. 그 방향의 세 줄 띠 안의 적이 각자 의지 내성굴림(DC 11)을 하고, 실패하면 산만함 2턴이 걸립니다. 산만함인 유닛은 내성굴림과 명중굴림이 불리입니다. 피해는 없고 전투마다 1회입니다."
 msgstr ""
 
 #: scenes/combat/actions.gd:725
@@ -2103,4 +2103,70 @@ msgstr ""
 
 #: scenes/combat/battle.gd:1064
 msgid "나무가 타서 길이 열림"
+msgstr ""
+
+#: scenes/combat/action_rules.gd
+msgid "효시"
+msgstr ""
+
+#: scenes/combat/action_rules.gd
+msgid "상하좌우 한 방향의 세 줄 띠 안의 적이 의지 내성굴림.\n실패하면 산만함 2턴: 내성굴림·명중굴림 불리.\n피해는 없습니다."
+msgstr ""
+
+#: scenes/combat/action_rules.gd
+msgid "사거리: 상하좌우 한 방향의 세 줄 띠"
+msgstr ""
+
+#: scenes/combat/action_rules.gd
+msgid "효과: 실패하면 산만함 %d턴, 피해 없음"
+msgstr ""
+
+#: scenes/combat/action_rules.gd
+msgid "판정: 대상의 의지 내성 대 DC %d"
+msgstr ""
+
+#: scenes/combat/action_rules.gd
+msgid "산만함"
+msgstr ""
+
+#: scenes/combat/action_rules.gd
+msgid "%s: %s"
+msgstr ""
+
+#: scenes/combat/action_rules.gd
+msgid "%s · 유리: %s · 불리: %s"
+msgstr ""
+
+#: scenes/combat/actions.gd
+msgid "%s 효시: %d, %d 방향 · 대상 %d명 · DC %d"
+msgid_plural "%s 효시: %d, %d 방향 · 대상 %d명 · DC %d"
+msgstr[0] ""
+msgstr[1] ""
+
+#: scenes/combat/actions.gd
+msgid "%s: 산만함 %d턴"
+msgstr ""
+
+#: scenes/combat/actions.gd
+msgid "산만함 만료: %s"
+msgstr ""
+
+#: scenes/combat/turn_hud.gd
+msgid "산만함 %d턴"
+msgstr ""
+
+#: scenes/combat/actions.gd
+msgid "%s 독안개(건강 내성%s): 건강 d%d %s %+d = %d / DC %d · %s"
+msgstr ""
+
+#: scenes/combat/battle.gd
+msgid "효시 · 방향으로 삼을 인접한 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 실행합니다."
+msgstr ""
+
+#: scenes/combat/battle.gd
+msgid "효시 · 행동1 · 영향 칸에 적이 없음\n같은 칸을 다시 좌클릭하면 실행합니다."
+msgstr ""
+
+#: scenes/combat/battle.gd
+msgid "효시 · 행동1 · 전투마다 1 · 의지 내성 성공률\n%s\n같은 칸을 다시 좌클릭하면 실행합니다."
 msgstr ""
