@@ -34,6 +34,8 @@
     {"id": "shove", "name": "밀치기", "effect": "1칸 밀기", "brief": "Open leather glove, palm forward with split fingers and thumb, brass cuff, white push lines to the right."},
     {"id": "jump", "name": "점프", "effect": "1~2칸의 빈 바닥으로 점프", "brief": "Leather boot on a low wooden step, white arc arrow to a higher step on the right."},
     {"id": "potion", "name": "물약", "effect": "HP 2d4+2 회복", "brief": "The item potion: round red flask with cork and glint. Same picture as the potion slot."},
-    {"id": "oil_throw", "name": "기름병 던지기", "effect": "칸 하나에 기름 장판 생성", "brief": "Glass bottle tipped mouth-down toward the lower right with amber oil on its low side, an oil stream falling from the mouth onto an amber oil stain on the floor.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/560"}
+    {"id": "oil_throw", "name": "기름병 던지기", "effect": "칸 하나에 기름 장판 생성", "brief": "Glass bottle tipped mouth-down toward the lower right with amber oil on its low side, an oil stream falling from the mouth onto an amber oil stain on the floor.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/560"},
+    {"id": "trick_arrow", "name": "장난스러운 화살", "effect": "칸을 겨눠 지능 d6으로 삐끗·물·화염 중 하나가 닿음", "brief": "One wooden arrow flying up-right with a two-colour head, red on the upper half and teal on the lower half, teal fletching, and two small white sparks at the upper left.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/500"},
+    {"id": "firework_arrow", "name": "폭죽 화살", "effect": "반경 1 화염 폭발, 민첩 내성, 점화", "brief": "Wooden arrow with a steel head and teal fletching rising up-right toward a starburst with a brass core and eight white and red rays.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/500"}
   ]
 }

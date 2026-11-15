@@ -3,6 +3,8 @@ extends Node2D
 
 const MOVE_STEP_TIME: float = 0.09
 const ARROW_FLIGHT_TIME: float = 0.16
+## 칸을 조준하는 동작. 한 번 눌러 칸(과 범위)을 보고, 같은 칸을 다시 누르면 실행한다.
+const AIM_ACTIONS: Array[String] = ["oil_throw", "trick_arrow", "firework_arrow"]
 const ENEMY_PAUSE_TIME: float = 0.35
 ## 적 턴에 Space를 누르고 있는 동안의 시간 배율. 규칙이 아니라 표시 속도다.
 const ENEMY_FAST_SPEED: float = 4.0
@@ -108,6 +110,7 @@ func _ready() -> void:
 	actions.movement_animation = _animate_movement
 	actions.jump_animation = _animate_jump
 	actions.attack_animation = _animate_attack
+	actions.cell_attack_animation = _animate_cell_attack
 	actions.roll_animation = _animate_roll
 	turns.changed.connect(_on_turn_changed)
 	turns.order_rotated.connect(hud.prepare_order_rotation)
@@ -148,6 +151,7 @@ func _exit_tree() -> void:
 	actions.movement_animation = Callable()
 	actions.jump_animation = Callable()
 	actions.attack_animation = Callable()
+	actions.cell_attack_animation = Callable()
 	actions.roll_animation = Callable()
 	Engine.time_scale = 1.0
 
@@ -249,6 +253,8 @@ func restore_combat(state: Variant) -> bool:
 	progress.stage_index = state.stage
 	_build_stage()
 	progress.load_state(state)
+	# 유닛 load_state 전에 맞춘다. 레벨 setter가 보정한 HP를 저장한 HP로 덮는다.
+	_sync_party_level()
 	waiting_for_start = state.get("waiting_for_start", false)
 	loot.bag.assign(state.bag)
 	for saved: Dictionary in state.units.slice(units.size()):
@@ -282,6 +288,11 @@ func _is_valid_state(state: Dictionary) -> bool:
 			and state.rewards.size() <= CombatUnit.SAVED_INT_LIMIT and state.bag.size() <= int(loot.data["bag_limit"])):
 		return false
 	if state.get("waiting_for_start", false) and state.rewarded:
+		return false
+	# 파티 레벨은 깬 막 수를 넘을 수 없다. 막의 마지막 스테이지는 승리를 기록한 뒤에 깬 것으로 센다 (#477).
+	if not (state.get("level") is int and state.level >= 0
+			and state.level <= state.stage / CombatActProgress.STAGES_PER_ACT
+			+ (1 if state.rewarded and state.stage % CombatActProgress.STAGES_PER_ACT == CombatActProgress.STAGES_PER_ACT - 1 else 0)):
 		return false
 	var stage: CombatStage = stages[state.stage]
 	var identities: Array = party.map(func(unit: CombatUnit) -> Array: return [unit.kind, true])
@@ -630,7 +641,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	var prop: CombatGrid.Prop = map.prop_at_point(map.to_local(world_position))
 	if selection.selected_action == "oil_throw":
 		get_viewport().set_input_as_handled()
-		_select_oil_cell(cell)
+		_select_aim_cell(cell)
+		return
+	if selection.selected_action in AIM_ACTIONS:
+		get_viewport().set_input_as_handled()
+		# 유닛 몸통이나 사물을 눌러도 그 칸을 고른다.
+		var aimed_cell: Vector2i = cell
+		if not candidates.is_empty():
+			aimed_cell = candidates[0].cell
+		elif prop != null:
+			aimed_cell = prop.cell
+		await _select_aim_cell(aimed_cell)
 		return
 	if selection.selected_action == "sweep":
 		get_viewport().set_input_as_handled()
@@ -696,13 +717,21 @@ func _unhandled_input(event: InputEvent) -> void:
 	_update_turn_ui()
 
 
-## 기름병 던지기는 칸을 조준한다. 한 번 눌러 십자 범위를 보고, 같은 칸을 다시 누르면 던진다.
-func _select_oil_cell(cell: Vector2i) -> void:
+## 칸 조준 동작(기름병 던지기, 장난스러운 화살, 폭죽 화살). 한 번 눌러 범위를 보고, 같은 칸을 다시 누르면 실행한다.
+func _select_aim_cell(cell: Vector2i) -> void:
 	var actor: CombatUnit = turns.current_unit
-	if selection.select_cell(cell, actions.can_aim(actor, "oil_throw", cell)):
+	var action: String = selection.selected_action
+	if selection.select_cell(cell, actions.can_aim(actor, action, cell)):
 		selection.begin_execution()
-		actions.throw_oil(actor, cell)
+		match action:
+			"oil_throw":
+				actions.throw_oil(actor, cell)
+			"trick_arrow":
+				await actions.trick_arrow(actor, cell)
+			"firework_arrow":
+				await actions.firework_arrow(actor, cell)
 		selection.finish_execution()
+		_offer_moving_shot(actor)
 	_update_turn_ui()
 
 
@@ -757,7 +786,14 @@ func _on_actions_changed() -> void:
 				monster_count += 1
 		# 전투 주사위로 굴려 이어하기가 마지막 공격을 다시 해도 드랍이 바뀌지 않는다.
 		progress.record_victory(loot, monster_count, actions.dice)
+		_sync_party_level()
 	_update_turn_ui()
+
+
+## 파티 레벨을 아군 모두에 맞춘다. 몬스터는 늘 레벨 0이다 (#477).
+func _sync_party_level() -> void:
+	for unit: CombatUnit in party:
+		unit.dice_level = progress.level
 
 
 func _on_turn_changed() -> void:
@@ -842,6 +878,11 @@ func _animate_roll(roll: CombatDiceRoll) -> void:
 	await dice_view.play(roll)
 
 
+## 빈 칸을 겨눈 화살 연출.
+func _animate_cell_attack(actor: CombatUnit, cell: Vector2i) -> void:
+	await _animate_attack_at(actor, map.map_to_surface(cell) + Vector2(0, -8))
+
+
 func _animate_attack_at(actor: CombatUnit, destination: Vector2) -> void:
 	actor.face_toward(destination)
 	actor.play_attack()
@@ -896,10 +937,15 @@ func _update_turn_ui() -> void:
 			movement_cells.assign(actions.moving_shot_cells(turns.current_unit))
 		elif sweeping:
 			movement_cells.assign(actions.grid.sweep_cells(turns.current_unit.cell, selection.preview_cell))
-		elif selection.selected_action == "oil_throw":
-			var aimed: bool = actions.can_aim(turns.current_unit, "oil_throw", selection.preview_cell)
-			movement_cells.assign(actions.aim_area(turns.current_unit, "oil_throw", selection.preview_cell) if aimed
-				else actions.aim_cells(turns.current_unit, "oil_throw"))
+		elif selection.selected_action in AIM_ACTIONS:
+			var aim_action: String = selection.selected_action
+			var aimed: bool = actions.can_aim(turns.current_unit, aim_action, selection.preview_cell)
+			if aimed and aim_action == "trick_arrow":
+				movement_cells.assign([selection.preview_cell])
+			elif aimed:
+				movement_cells.assign(actions.aim_area(turns.current_unit, aim_action, selection.preview_cell))
+			else:
+				movement_cells.assign(actions.aim_cells(turns.current_unit, aim_action))
 		elif selection.selected_action == "sweep":
 			# 정면을 고르기 전에는 고를 수 있는 인접 칸을 보인다.
 			for cell: Vector2i in CombatGrid.neighbors(turns.current_unit.cell):
@@ -1036,11 +1082,36 @@ func _update_turn_ui() -> void:
 		hud.show_target_note(tr("기름병 던지기 · 보조 행동1 · 기름을 깔 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 던집니다.")
 			if not actions.can_aim(turns.current_unit, "oil_throw", selection.preview_cell)
 			else tr("기름병 던지기 · 보조 행동1 · 십자 5칸 기름 3턴\n같은 칸을 다시 좌클릭하면 던집니다."))
+	elif (selection.selected_action in ["trick_arrow", "firework_arrow"] and turns.current_unit != null
+			and turns.current_unit.is_ally and not actions.busy):
+		hud.show_target_note(_arrow_note(turns.current_unit, selection.selected_action, selection.preview_cell))
 	if actions.is_over():
 		hud.show_outcome(actions.is_victory())
 		if not preparation.visible:
 			hud.show_result(actions.is_victory(), progress.graduated, _enemy_turn_running or actions.busy)
 	queue_redraw()
+
+
+## 두 화살의 안내 문구. 칸을 고르기 전에는 사용법을, 고른 뒤에는 확률과 맞는 유닛을 보인다.
+func _arrow_note(actor: CombatUnit, action: String, cell: Vector2i) -> String:
+	var name: String = CombatActionRules.NAMES[action]
+	if not actions.can_aim(actor, action, cell):
+		return tr("%s · 행동1 · 겨눌 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 쏩니다.") % name
+	if action == "trick_arrow":
+		var note: String = tr("장난스러운 화살 · 행동1 · 삐끗 16.7% · 물 33.3% · 화염 50%")
+		var target: CombatUnit = actions.grid.unit_at(cell)
+		if target != null and target.hit_points > 0:
+			var preview: CombatChecks.AttackPreview = actions.grid.attack_preview(actor, target, action)
+			note += "\n" + tr("%s 명중률 %.1f%%") % [target.get_display_name(), preview.chance * 100.0]
+			if target.is_ally:
+				note += " · " + tr("아군")
+		return note + "\n" + tr("같은 칸을 다시 좌클릭하면 쏩니다.")
+	var chances: Array[String] = []
+	for unit: CombatUnit in units:
+		if unit.hit_points > 0 and unit.cell in actions.aim_area(actor, action, cell):
+			chances.append("%s %.1f%%" % [unit.get_display_name(), CombatActionRules.save_chance(actor, unit, action) * 100.0])
+	return tr("폭죽 화살 · 행동1 · 막당 1 · 아군과 자신도 맞음\n민첩 내성 성공률: %s\n같은 칸을 다시 좌클릭하면 쏩니다.") % (
+		" · ".join(chances) if not chances.is_empty() else tr("대상 없음"))
 
 
 func _attack_targets_from(cell: Vector2i) -> Array[CombatUnit]:
