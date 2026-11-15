@@ -94,11 +94,17 @@ static func colorize(text: String) -> String:
 
 ## 대상 없이 바로 쓰는 동작.
 const SELF_TARGET: Array[String] = ["holy_veil", "battle_cry", "second_wind", "aegisal", "disengage", "potion"]
-## 칸 조준 동작의 사거리와 반경 (SKILL_TYPES 5-2). 최소 사거리는 0, 곡사·기준점(목표 칸)은 기본값이라 필드가 없다.
+## 칸 조준 동작의 사거리와 반경 (SKILL_TYPES 5-2). 최소 사거리는 기본 0, 기름병 던지기는 1(궁수 문서). 곡사·기준점(목표 칸)은 기본값이라 필드가 없다.
 const AIM_RANGES: Dictionary[String, int] = {"fog": 4}
+const AIM_MIN_RANGES: Dictionary[String, int] = {"oil_throw": 1}
 const AIM_RADII: Dictionary[String, int] = {"fog": 1, "oil_throw": 1}
 ## 사거리가 시전자의 힘 주사위 면 수 ÷ 2인 칸 조준 동작 (궁수 문서, 기름병 던지기).
 const AIM_BY_STRENGTH: Array[String] = ["oil_throw"]
+
+
+## 칸 조준 동작의 최소 사거리. 정하지 않은 동작은 0이다.
+static func aim_min_range(action: String) -> int:
+	return AIM_MIN_RANGES.get(action, 0)
 
 
 ## 칸 조준 동작의 사거리. 칸 조준이 아니면 -1이다.
