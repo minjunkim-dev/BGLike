@@ -14,6 +14,12 @@ static var _mismatches: Array[String] = []
 static var _created: Array = []
 
 
+## 자기 턴이 막 시작한 상태를 만든다. 자원은 묶음 확정 때 채우므로(3-3) 먼저 채운 뒤 턴 시작 처리를 한다.
+static func start_turn(unit: CombatUnit) -> void:
+	unit.refill_turn_resources()
+	unit.begin_turn()
+
+
 ## 입력·연출 fixture의 순서만 저장 복원 API로 고정한다. 자연 이니셔티브의 증거로 쓰지 않는다.
 ## 모든 굴림 값은 유효한 1이며, 이니셔티브 수학은 combat_turns_test에서 실제 start()로 검사한다.
 static func arrange_turns(turns: CombatTurns, units: Array[CombatUnit], desired: Array[CombatUnit]) -> void:
@@ -26,10 +32,13 @@ static func arrange_turns(turns: CombatTurns, units: Array[CombatUnit], desired:
 	for unit: CombatUnit in ordered:
 		unit.initiative_roll = 1
 	var group: Array[int] = []
+	# 전투 시작처럼 모든 유닛의 자원이 가득 찬 상태에서 첫 묶음만 턴을 시작한다(3-3).
+	for unit: CombatUnit in ordered:
+		unit.refill_turn_resources()
 	for unit: CombatUnit in ordered:
 		if unit.is_ally != ordered[0].is_ally:
 			break
-		unit.begin_turn()
+		start_turn(unit)
 		group.append(units.find(unit))
 	turns.load_state({"order": ordered.map(func(unit: CombatUnit) -> int: return units.find(unit)),
 		"current": units.find(ordered[0]), "round": 1, "group": Vector2i(0, group.size() - 1),

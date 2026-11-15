@@ -225,7 +225,7 @@ func _test_crowded_feedback() -> void:
 					"padding": 2.0 * scale, "near": CombatUnit.FEEDBACK_NEAR * scale})
 	actions.feedback.connect(record)
 	_check(await actions.attack(attacker, archer), "밀집 배치에서 새끼 거미 공격 실행")
-	attacker.begin_turn()
+	attacker.refill_turn_resources()
 	_check(await actions.attack(attacker, archer), "첫 팝업이 남아 있을 때 같은 대상 연속 공격")
 	actions.feedback.disconnect(record)
 	var texts: Array = placed.map(func(entry: Dictionary) -> String: return entry["text"])

@@ -1098,14 +1098,14 @@ func _test_guidance() -> void:
 	battle.call("_update_turn_ui")
 	_check(titles[0].text == "행동 ○○○" and titles[1].text == "보조 행동 △△"
 		and titles[2].text == "반응 ◇◇", "전부 소비하면 가진 개수만큼 빈 마크 유지")
-	units[0].begin_turn()
+	units[0].refill_turn_resources()
 	battle.call("_update_turn_ui")
 	_check(titles[0].text == "행동 ●●●" and titles[0].tooltip_text.is_empty(),
-		"자기 턴 시작은 같은 개수의 마크를 다시 채움")
+		"자원 회복은 같은 개수의 마크를 다시 채움")
 	units[0].action_capacity = 1
 	units[0].bonus_action_capacity = 1
 	units[0].reaction_capacity = 1
-	units[0].begin_turn()
+	units[0].refill_turn_resources()
 	units[0].movement_left = 2
 	battle.call("_update_turn_ui")
 	var portraits: Dictionary = hud.get("_portraits")
@@ -1514,8 +1514,8 @@ func _test_joined_group_hud() -> void:
 	var archer: Button = portraits[units[1]]
 	var pending: Control = warrior.get_node_or_null("PendingTurn") as Control
 	_check(pending != null and pending.is_visible_in_tree()
-		and turns.current_unit == units[1] and units[0].action_left == 0,
-		"경계 묶음의 미시작 유닛은 자원을 유지하고 모래시계 표시")
+		and turns.current_unit == units[1] and units[0].action_left == 1,
+		"경계 묶음의 미시작 유닛은 직전 확정 때 채운 자원을 유지하고 모래시계 표시")
 	await process_frame
 	_check(warrior.global_position.x < archer.global_position.x,
 		"경계의 앞 초상은 기존 위치에서 합쳐지는 중간 위치를 표시")
@@ -2466,8 +2466,9 @@ func _test_spawned_portrait_input() -> void:
 	var resources: Array[int] = [units[0].movement_left, units[0].action_left,
 		units[0].bonus_action_left, units[0].reaction_left, units[1].movement_left,
 		units[1].action_left, units[1].bonus_action_left, units[1].reaction_left]
-	_check(resources == [CombatUnit.WARRIOR_MOVEMENT, 1, 1, 1,
-		CombatUnit.MOVEMENT_PER_TURN, 1, 1, 1], "소환 전제조건: 새 라운드의 두 아군 턴 자원 회복")
+	_check(resources == [CombatUnit.WARRIOR_MOVEMENT, 1, 1, 0,
+		CombatUnit.MOVEMENT_PER_TURN, 1, 1, 0],
+		"소환 전제조건: 새 라운드의 두 아군 자원은 가득, 적 턴에 쓴 반응은 자기 묶음 확정까지 비어 있음")
 	if failures != fixture_failures:
 		main.queue_free()
 		await process_frame
