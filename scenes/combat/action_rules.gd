@@ -158,8 +158,6 @@ const SAVE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {
 static var DC_BONUSES: Dictionary[String, int] = {}
 ## 아군 스킬과 공용 동작의 아이콘. 48px 원본(64px 설계 격자)이다.
 const ICON_PATH: String = "res://scenes/combat/art/icons/skills/%s.png"
-## 아이콘 그림이 아직 없는 동작이 빌려 쓰는 그림. 기름병 던지기는 물약 병 그림을 임시로 쓴다(#500 2a, 전용 그림 필요).
-const ICON_ALIASES: Dictionary[String, String] = {"oil_throw": "potion"}
 ## #362: 스킬과 정비 아이템 그림의 표시 크기(논리 px). 버튼·칸의 입력 영역은 각 화면이 따로 유지한다.
 const ICON_SIZE: int = 24
 
@@ -250,7 +248,7 @@ static func damage_bonus(actor: CombatUnit, action: String) -> int:
 
 ## 적 전용 스킬처럼 아이콘이 없으면 null이다.
 static func icon_of(action: String) -> Texture2D:
-	var path: String = ICON_PATH % ICON_ALIASES.get(action, action)
+	var path: String = ICON_PATH % action
 	return load(path) as Texture2D if ResourceLoader.exists(path) else null
 
 

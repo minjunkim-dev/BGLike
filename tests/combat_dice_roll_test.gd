@@ -40,6 +40,7 @@ func _run() -> void:
 	await _test_give_up_during_roll()
 	await _test_give_up_during_spin_roll()
 	_test_pull_save_does_not_block_the_action()
+	_test_rock_stun_save_is_presented()
 	_test_values_without_presentation()
 	await _test_scene()
 	for f: Fixture in _fixtures:
@@ -227,6 +228,32 @@ func _test_pull_save_does_not_block_the_action() -> void:
 		and f.rolls[0].roller == target and f.rolls[0].target_label == tr("DC") and not f.rolls[0].result.success,
 		"만능팔은 대상의 힘 내성굴림을 DC 기준으로 전달한다")
 	_check(f.events.find("roll end") == -1, "만능팔 연출은 동작 처리를 멈추지 않는다")
+
+
+## 바위 충돌 기절 내성굴림도 다른 내성처럼 연출 훅으로 간다. 기다리지 않고, 보스는 굴리지 않아 연출도 없다(#560).
+func _test_rock_stun_save_is_presented() -> void:
+	var agility: CombatUnit.Ability = CombatUnit.Ability.AGILITY
+	var f: Fixture = _fixture()
+	var target: CombatUnit = f.units[2]
+	target.cell = Vector2i(4, 6)
+	var rock: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "rock")
+	f.actions.dice = _dice_for([1], [target.get_ability_sides(agility)])
+	_check(f.actions.attack_prop(f.units[0], rock) and target.is_stunned, "바위 충돌 기절 전제: 내성 실패로 기절")
+	_check(f.rolls.size() == 1 and f.rolls[0].category == CombatDiceRoll.Category.SAVE
+		and f.rolls[0].roller == target and f.rolls[0].sides == target.get_ability_sides(agility)
+		and f.rolls[0].target_label == tr("DC") and f.rolls[0].target_value == CombatActions.ROCK_STUN_DC
+		and not f.rolls[0].result.success,
+		"바위 기절 내성굴림을 DC 기준 내성 연출로 전달한다")
+	_check(f.events.find("roll end") == -1, "바위 기절 연출은 바위 처리를 멈추지 않는다")
+	var boss_fixture: Fixture = _fixture()
+	var boss: CombatUnit = boss_fixture.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
+	boss.hit_points = boss.get_max_hit_points()
+	boss.cell = Vector2i(4, 6)
+	var boss_rock: CombatGrid.Prop = boss_fixture.actions.create_prop(Vector2i(4, 5), "rock")
+	boss_fixture.actions.dice = _dice_for([], [])
+	_check(boss_fixture.actions.attack_prop(boss_fixture.units[0], boss_rock) and boss_fixture.rolls.is_empty(),
+		"보스 대상은 굴리지 않아 연출도 없다")
 
 
 func _test_values_without_presentation() -> void:

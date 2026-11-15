@@ -224,6 +224,9 @@ func _test_skill_icons() -> void:
 			_check(icon == null, "적 전용 스킬은 아이콘 범위 밖: " + action)
 		else:
 			_check(icon != null and icon.get_size() == Vector2(48, 48), "#362 스킬 아이콘 48px 원본: " + action)
+	var oil_icon: Texture2D = CombatActionRules.icon_of("oil_throw")
+	_check(oil_icon != null and oil_icon.resource_path.ends_with("/skills/oil_throw.png")
+		and oil_icon != CombatActionRules.icon_of("potion"), "기름병 던지기는 물약을 빌리지 않고 전용 아이콘을 쓴다(#560)")
 
 
 func _test_selection() -> void:
@@ -664,6 +667,16 @@ func _test_log_and_status() -> void:
 		and hud.stand_button.text == "일어나기 · 이동력 %d" % stand_cost
 		and not hud.stand_button.get_global_rect().intersects(hud.end_button.get_global_rect()),
 		"넘어진 아군의 턴에는 비용을 적은 일어나기 버튼이 턴 종료 위에 보임")
+	var prone_end_style: StyleBoxFlat = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
+	_check(prone_end_style.bg_color != CombatTurnHud.END_BUTTON_COLOR,
+		"넘어진 아군의 이동력이 일어서기 비용 이상이면 턴 종료를 강조하지 않음(#560)")
+	standing.movement_left = stand_cost - 1
+	battle.call("_update_turn_ui")
+	prone_end_style = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
+	_check(prone_end_style.bg_color == CombatTurnHud.END_BUTTON_COLOR,
+		"이동력이 비용보다 적으면 턴 종료를 강조함(#560)")
+	standing.movement_left = stand_cost
+	battle.call("_update_turn_ui")
 	hud.stand_button.pressed.emit()
 	_check(not standing.fallen and standing.movement_left == 0 and not hud.stand_button.visible,
 		"남은 이동력이 비용과 같아도 버튼으로 일어나고 버튼이 사라짐")
