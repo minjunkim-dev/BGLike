@@ -361,19 +361,20 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 
 
 ## 대상의 내성굴림 요인. 굴리는 쪽(대상)의 요인만 센다 (4-7).
-## 넘어진 대상은 민첩 내성에, 산만함인 대상은 모든 내성에 불리 요인 하나를 받는다 (궁수 문서, 전투 시스템 기획서 6-7).
-static func save_factors(target: CombatUnit, ability: CombatUnit.Ability) -> CombatChecks.RollFactors:
+## 넘어진 대상은 민첩 내성에, 산만함인 대상은 효시를 뺀 모든 내성에 불리 요인 하나를 받는다
+## (궁수 문서 「효시」: 효시의 내성굴림 자체에는 산만함이 적용되지 않는다. 전투 시스템 기획서 6-7).
+static func save_factors(target: CombatUnit, ability: CombatUnit.Ability, action: String = "") -> CombatChecks.RollFactors:
 	var factors: CombatChecks.RollFactors = CombatChecks.RollFactors.new()
 	if target.fallen and ability == CombatUnit.Ability.AGILITY:
 		factors.add_disadvantage(TranslationServer.tr("넘어짐"))
-	if target.distracted_turns > 0:
+	if target.distracted_turns > 0 and action != "whistle":
 		factors.add_disadvantage(TranslationServer.tr("산만함"))
 	return factors
 
 
 ## 대상의 내성굴림 유리/불리.
-static func save_mode(target: CombatUnit, ability: CombatUnit.Ability) -> CombatChecks.RollMode:
-	return save_factors(target, ability).mode()
+static func save_mode(target: CombatUnit, ability: CombatUnit.Ability, action: String = "") -> CombatChecks.RollMode:
+	return save_factors(target, ability, action).mode()
 
 
 ## 로그의 굴림 방식 글(개발 결정, #500). 요인이 없으면 `일반`이고, 한쪽만 있으면 `불리: 산만함`,
@@ -395,7 +396,7 @@ static func roll_mode_text(mode: CombatChecks.RollMode, factors: CombatChecks.Ro
 ## 내성 성공률 글. 요인이 붙은 대상은 이유를 괄호로 덧붙인다(개발 결정, #500). 예: `풋내기 야만인 0.0% (불리: 산만함)`.
 static func save_chance_text(actor: CombatUnit, target: CombatUnit, action: String) -> String:
 	var text: String = "%s %.1f%%" % [target.get_display_name(), save_chance(actor, target, action) * 100.0]
-	var factors: CombatChecks.RollFactors = save_factors(target, SAVE_ABILITIES[action])
+	var factors: CombatChecks.RollFactors = save_factors(target, SAVE_ABILITIES[action], action)
 	if factors.advantages.is_empty() and factors.disadvantages.is_empty():
 		return text
 	return text + " (%s)" % roll_mode_text(factors.mode(), factors)
@@ -409,7 +410,7 @@ static func shove_saves(actor: CombatUnit, target: CombatUnit) -> bool:
 ## 대상의 실제 내성 성공률. 내성 능력치 주사위, 방어 가산, 유리/불리와 절대면을 반영한다.
 static func save_chance(actor: CombatUnit, target: CombatUnit, action: String) -> float:
 	return CombatChecks.save_chance(target.get_ability_sides(SAVE_ABILITIES[action]), target.get_defense_bonus(),
-		save_dc(actor, action), save_mode(target, SAVE_ABILITIES[action]), target.get_ability_modifier(SAVE_ABILITIES[action]))
+		save_dc(actor, action), save_mode(target, SAVE_ABILITIES[action], action), target.get_ability_modifier(SAVE_ABILITIES[action]))
 
 
 ## 호버의 피해 줄. 피해 능력치가 명중 능력치와 다르면 둘을 함께 보인다 (4-9).

@@ -1985,10 +1985,10 @@ func _perform_save(actor: CombatUnit, target: CombatUnit, action: String, dc: in
 func _roll_save(target: CombatUnit, action: String, dc: int) -> CombatChecks.RollResult:
 	var ability: CombatUnit.Ability = CombatActionRules.SAVE_ABILITIES[action]
 	var sides: int = target.get_ability_sides(ability)
-	last_save = CombatChecks.saving_throw(sides, target.get_defense_bonus(), dc, CombatActionRules.save_mode(target, ability), dice,
+	last_save = CombatChecks.saving_throw(sides, target.get_defense_bonus(), dc, CombatActionRules.save_mode(target, ability, action), dice,
 		target.get_ability_modifier(ability))
 	logged.emit(tr("%s %s 내성(%s): %s d%d %s %+d = %d / DC %d · %s") % [target.get_display_name(),
-		CombatUnit.ability_name(ability), CombatActionRules.roll_mode_text(last_save.mode, CombatActionRules.save_factors(target, ability)),
+		CombatUnit.ability_name(ability), CombatActionRules.roll_mode_text(last_save.mode, CombatActionRules.save_factors(target, ability, action)),
 		CombatUnit.ability_name(ability), sides,
 		str(last_save.rolls), last_save.added(), last_save.total, dc, _save_outcome(last_save)])
 	return last_save
