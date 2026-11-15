@@ -34,6 +34,7 @@ Godot 4 싱글 플레이 PC 게임입니다. GitHub 품질 운영은 1인 개발
   - leader 세션은 사람이 repo-office 체크아웃에서 hc 터미널 `office-leader`로 하나만 띄웁니다. leader는 방향 선택과 설계 승인을 사람에게 묻습니다. 병합은 사람이 합니다.
   - 이 규칙은 [협업 규칙](docs/WORKFLOW.md)의 "로컬 앱으로 구현"과 [개발 절차](docs/agents/development.md)의 `implement`보다 먼저입니다. office 과제의 브랜치는 `office/<과제>`이고, 위 브랜치 이름 규칙을 따르지 않습니다.
   - 예외: 문서·설정 작업(`docs`, `build`, `ci`, `chore`), 이미 열린 PR의 리뷰 수정과 CI 실패 수정, 사람이 여기서 하라고 한 작업.
+  - office 작업자는 이 규칙을 따르지 않습니다. 작업 폴더가 repo-office 체크아웃의 `jobs/<과제>/`이고 브랜치가 `office/<과제>`면 office 작업자입니다. office 작업자는 단계 지시서대로 일하고 leader에 넘기지 않습니다.
 - GitHub 설정: [설정 기준선](docs/REPOSITORY_SETUP.md). 권리·외부 자산: [COPYRIGHT](COPYRIGHT.md)와 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
 
 ## Agent skills
