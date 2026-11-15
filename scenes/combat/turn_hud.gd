@@ -133,8 +133,8 @@ func _ready() -> void:
 			# 곱셈 색은 채도를 빼지 못해 반투명으로 어둡게 눌러 회색 배경에 묻는다.
 			button.add_theme_color_override("icon_disabled_color", Color("8a939b", 0.55))
 			button.accessibility_name = CombatActionRules.NAMES[action]
-			# 반사신경은 아이콘이 생기기 전까지 패시브 칸처럼 이름 첫 글자를 보인다.
-			if button.icon == null and action == "reflex":
+			# 반사신경·은신은 아이콘이 생기기 전까지 패시브 칸처럼 이름 첫 글자를 보인다.
+			if button.icon == null and action in ["reflex", "stealth"]:
 				button.text = CombatActionRules.NAMES[action].left(1)
 			# 반응은 표시용이다. 자기 턴의 입력에는 연결하지 않는다.
 			if index != 2:
@@ -499,6 +499,8 @@ func show_unit(unit: CombatUnit) -> void:
 		states.append(tr("기절"))
 	if unit.fallen:
 		states.append(tr("넘어짐"))
+	if unit.stealthed:
+		states.append(tr("은신"))
 	var periodic: String = unit.get_periodic_status_text()
 	if not periodic.is_empty():
 		states.append(periodic)
