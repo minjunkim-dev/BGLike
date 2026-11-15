@@ -7,11 +7,11 @@ extends RefCounted
 const GROUPS: Array[Array] = [
 	["attack", "sweep", "cross_slash", "battle_cry", "spawn", "pull", "spin"],
 	["holy_veil", "steel_charge", "second_wind", "aegisal", "bow_bash", "disengage", "shove", "jump", "potion", "oil_throw"],
-	["opportunity", "counter"]
+	["opportunity", "counter", "reflex"]
 ]
 ## 묶음의 자원과 함께 모두 소비하는 비용. 하나라도 부족하면 쓸 수 없다 (5-3). 점프의 이동력은 칸마다 다르다.
 const EXTRA_COSTS: Dictionary[String, String] = {
-	"cross_slash": "bonus_action", "steel_charge": "movement", "jump": "movement"
+	"cross_slash": "bonus_action", "steel_charge": "movement", "jump": "movement", "reflex": "movement"
 }
 static var NAMES: Dictionary[String, String] = {
 	"attack": TranslationServer.tr("공격"), "second_wind": TranslationServer.tr("숨 고르기"),
@@ -20,7 +20,8 @@ static var NAMES: Dictionary[String, String] = {
 	"aegisal": TranslationServer.tr("애기살 급조"), "bow_bash": TranslationServer.tr("활 후려치기"), "disengage": TranslationServer.tr("물러서며 쏘기"),
 	"shove": TranslationServer.tr("밀치기"), "potion": TranslationServer.tr("물약"), "opportunity": TranslationServer.tr("기회 공격"),
 	"spawn": TranslationServer.tr("새끼 낳기"), "pull": TranslationServer.tr("만능팔"), "spin": TranslationServer.tr("회전회오리"), "jump": TranslationServer.tr("점프"),
-	"counter": TranslationServer.tr("반격"), "oil_throw": TranslationServer.tr("기름병 던지기")
+	"counter": TranslationServer.tr("반격"), "oil_throw": TranslationServer.tr("기름병 던지기"),
+	"reflex": TranslationServer.tr("반사신경")
 }
 static var EFFECTS: Dictionary[String, String] = {
 	"jump": TranslationServer.tr("1~2칸의 빈 바닥으로 점프.\n상승2까지, 낙하 차3부터 피해."),
@@ -40,7 +41,8 @@ static var EFFECTS: Dictionary[String, String] = {
 	"potion": TranslationServer.tr("HP 2d4+2 회복.\n최대 HP를 넘지 않습니다."),
 	"opportunity": TranslationServer.tr("적이 내 인접 칸을 벗어나면 기본 공격."),
 	"counter": TranslationServer.tr("나를 노린 인접한 적의 명중굴림이\n빗나가면 반드시 명중하는 반격."),
-	"oil_throw": TranslationServer.tr("목표 칸 십자 5칸에 기름 장판을 깝니다(3턴).\n기름 칸에 서면 솜씨 내성(DC 4)을 하고, 실패하면 넘어집니다.\n아이템을 쓰지 않습니다.")
+	"oil_throw": TranslationServer.tr("목표 칸 십자 5칸에 기름 장판을 깝니다(3턴).\n기름 칸에 서면 솜씨 내성(DC 4)을 하고, 실패하면 넘어집니다.\n아이템을 쓰지 않습니다."),
+	"reflex": TranslationServer.tr("명중이 확정된 공격을 회피하고\n상하좌우 1칸으로 이동합니다.\n명중굴림 공격에만 쓰고, 넘어지면 쓸 수 없습니다.")
 }
 ## 패시브 칸의 스킬(#457). 자원과 횟수가 없어 NAMES·GROUPS에 넣지 않는다. 아이콘이 생기기 전에는 이름 첫 글자를 보인다.
 const PASSIVES: Array[String] = ["phalanx", "brawn", "moving_shot"]
@@ -121,7 +123,7 @@ const CLASS_ONLY: Dictionary[String, CombatUnit.Kind] = {
 	"holy_veil": CombatUnit.Kind.WARRIOR, "battle_cry": CombatUnit.Kind.WARRIOR,
 	"phalanx": CombatUnit.Kind.WARRIOR, "brawn": CombatUnit.Kind.WARRIOR, "counter": CombatUnit.Kind.WARRIOR,
 	"aegisal": CombatUnit.Kind.ARCHER, "bow_bash": CombatUnit.Kind.ARCHER, "moving_shot": CombatUnit.Kind.ARCHER,
-	"oil_throw": CombatUnit.Kind.ARCHER
+	"oil_throw": CombatUnit.Kind.ARCHER, "reflex": CombatUnit.Kind.ARCHER
 }
 ## 아군이 쓰지 않는 몬스터 동작. 풋내기 야만인의 숨 고르기와 풋내기 궁수의 물러서며 쏘기도 여기 있다.
 const MONSTER_ONLY: Array[String] = ["second_wind", "disengage", "spawn", "pull", "spin", "fog"]
@@ -233,7 +235,7 @@ static func restore_combat_uses(unit: CombatUnit) -> void:
 static func cost_text(action: String) -> String:
 	if action not in EXTRA_COSTS:
 		return ""
-	var names: Array[String] = [TranslationServer.tr("행동 1"), TranslationServer.tr("보조 행동 1")]
+	var names: Array[String] = [TranslationServer.tr("행동 1"), TranslationServer.tr("보조 행동 1"), TranslationServer.tr("반응 1")]
 	var extra: String = {"bonus_action": TranslationServer.tr("보조 행동 1"), "movement": TranslationServer.tr("이동력 1")}[EXTRA_COSTS[action]]
 	if action == "jump":
 		extra = TranslationServer.tr("이동력(칸 수와 오르는 높이)")
@@ -295,6 +297,8 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 				CombatUnit.ability_name(SAVE_ABILITIES[action]), save_dc(actor, action)]]
 		"jump":
 			lines = [TranslationServer.tr("사거리: 1~2칸"), TranslationServer.tr("판정: 없음")]
+		"reflex":
+			lines = [TranslationServer.tr("사거리: 자신, 이동 상하좌우 1칸"), TranslationServer.tr("판정: 없음(명중이 확정된 공격)")]
 		"oil_throw":
 			lines = [TranslationServer.tr("사거리: 1~%d칸 곡사") % aim_range(actor, action),
 				TranslationServer.tr("효과: 기름 장판 십자 5칸, 3턴"), TranslationServer.tr("판정: 없음")]

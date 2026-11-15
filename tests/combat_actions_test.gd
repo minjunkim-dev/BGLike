@@ -2509,6 +2509,8 @@ func _test_archer_balance() -> void:
 					"아군 솜씨d20·풋내기 민첩d10은 피해 고정값과 별개")
 			var logs: Array[String] = []
 			f.actions.logged.connect(func(line: String) -> void: logs.append(line))
+			# 적 궁수가 아군 궁수를 맞히면 반사신경 확인 창이 뜬다(#500). 이 검사는 피해식을 보므로 넘긴다.
+			f.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: f.actions.resolve_reaction(false))
 			f.actions.dice = _dice_for([attack_roll, 4], ScriptedDice.attack_sides(actor) + ScriptedDice.damage_sides(actor))
 			_check(await f.actions.attack(actor, target), "양쪽 궁수 기본 공격 실행")
 			_check(f.hits.size() == 1, "아군·적 궁수 공격도 타격음 한 번")

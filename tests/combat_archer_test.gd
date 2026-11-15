@@ -64,6 +64,13 @@ func _run() -> void:
 	await _test_aegisal()
 	await _test_bow_bash()
 	await _test_moving_shot()
+	_test_reflex_rules()
+	await _test_reflex_dodge()
+	await _test_reflex_conditions()
+	await _test_reflex_movement()
+	await _test_reflex_oil()
+	await _test_reflex_next_turn()
+	await _test_reflex_replay()
 	_test_stage_reset()
 	_test_save_state()
 	await _test_battle_save()
@@ -284,6 +291,227 @@ func _test_moving_shot() -> void:
 	_check(not enemy.units[3].moving_shot_ready, "풋내기 궁수에게는 무빙샷이 없음")
 
 
+## 반사신경(#500): 반응 + 이동력 1. 정의는 궁수만 갖고 반응 묶음에 있다.
+func _test_reflex_rules() -> void:
+	var f: Fixture = _fixture()
+	_check(CombatActionRules.belongs_to(f.units[0], "reflex") and not CombatActionRules.belongs_to(f.units[1], "reflex")
+		and not CombatActionRules.belongs_to(f.units[3], "reflex"), "반사신경은 아군 궁수만")
+	_check(CombatActionRules.resource_of("reflex") == CombatUnit.TurnResource.REACTION, "반사신경은 반응 묶음")
+	_check(CombatActionRules.cost_text("reflex") == "비용: 반응 1 + 이동력 1", "호버 비용: " + CombatActionRules.cost_text("reflex"))
+
+
+## 야만인(3,3)이 궁수(3,4)를 노린다. 야만인 차례. 확인 창은 answer로 답한다(Vector2i는 칸, bool은 넘기기/첫 칸).
+func _reflex_fixture(answer: Variant, prompts: Array[Array], order: Array[int] = [2, 0, 1, 3]) -> Fixture:
+	var f: Fixture = _fixture(order)
+	f.units[2].cell = Vector2i(3, 3)
+	f.actions.reaction_requested.connect(func(kind: String, prompt: String) -> void:
+		prompts.append([kind, prompt])
+		if answer is Vector2i:
+			f.actions.resolve_reflex(answer)
+		else:
+			f.actions.resolve_reaction(answer))
+	return f
+
+
+func _hit_dice(f: Fixture) -> ScriptedDice:
+	var sides: Array[int] = ScriptedDice.attack_sides(f.units[2]) + ScriptedDice.damage_sides(f.units[2])
+	return _dice([sides[0], 1], sides)
+
+
+func _test_reflex_dodge() -> void:
+	var prompts: Array[Array] = []
+	var f: Fixture = _reflex_fixture(Vector2i(2, 4), prompts)
+	var archer: CombatUnit = f.units[0]
+	f.actions.dice = _dice([ScriptedDice.attack_sides(f.units[2])[0]], ScriptedDice.attack_sides(f.units[2]))
+	_check(await f.actions.attack(f.units[2], archer), "야만인이 궁수를 공격")
+	_check(f.actions.last_attack.success and prompts.size() == 1 and prompts[0][0] == "reflex"
+		and "명중했습니다" in prompts[0][1] and "이동력 1" in prompts[0][1], "명중 확정 뒤 반사신경 창: " + str(prompts))
+	_check(archer.cell == Vector2i(2, 4) and archer.hit_points == archer.get_max_hit_points()
+		and archer.reaction_left == 0 and archer.movement_left == 5 and f.actions.last_damage == 0,
+		"고른 칸으로 회피하고 피해 없음, 반응·이동력 1 소비")
+	_check(f.logs.any(func(line: String) -> bool: return "반사신경" in line and "회피" in line), "회피 로그: " + str(f.logs))
+	_check(not f.actions.busy and f.actions.pending_reactor == null, "회피 뒤 잠금·대기 해제")
+	# 넘기면 피해를 받고 반응·이동력은 그대로다.
+	prompts.clear()
+	var declined: Fixture = _reflex_fixture(false, prompts)
+	declined.actions.dice = _hit_dice(declined)
+	await declined.actions.attack(declined.units[2], declined.units[0])
+	_check(prompts.size() == 1 and declined.units[0].cell == Vector2i(3, 4) and declined.units[0].hit_points < 9
+		and declined.units[0].reaction_left == 1 and declined.units[0].movement_left == 6, "넘기면 피해, 반응·이동력 그대로")
+	# 참으로만 답하면 첫 후보 칸으로 회피한다.
+	prompts.clear()
+	var first: Fixture = _reflex_fixture(true, prompts)
+	first.actions.dice = _dice([ScriptedDice.attack_sides(first.units[2])[0]], ScriptedDice.attack_sides(first.units[2]))
+	var expected: Vector2i = first.actions.reflex_cells(first.units[0])[0]
+	await first.actions.attack(first.units[2], first.units[0])
+	_check(first.units[0].cell == expected and first.units[0].reaction_left == 0, "resolve_reaction(true)는 첫 후보 칸")
+
+
+## 창이 뜨지 않는 경우: 빗나감, 넘어짐, 기절, 반응·이동력 0, 빈 칸 없음, 내성굴림 동작, 반사신경이 없는 유닛.
+func _test_reflex_conditions() -> void:
+	var rolled: int = ScriptedDice.attack_sides(_fixture().units[2])[0]
+	for case: String in ["miss", "fallen", "stunned", "no_reaction", "no_movement", "surrounded", "wall_height"]:
+		var prompts: Array[Array] = []
+		var f: Fixture = _reflex_fixture(true, prompts)
+		var archer: CombatUnit = f.units[0]
+		var count: int = 1
+		var values: Array[int] = [rolled]
+		match case:
+			"miss":
+				values = [1]
+			"fallen":
+				archer.fallen = true
+			"stunned":
+				archer.is_stunned = true
+				# 기절한 대상은 유리(2개)라 둘 다 최대로 굴린다.
+				count = 2
+				values = [rolled, rolled]
+			"no_reaction":
+				archer.reaction_left = 0
+			"no_movement":
+				archer.movement_left = 0
+			"surrounded":
+				f.units[1].cell = Vector2i(2, 4)
+				f.units[3].cell = Vector2i(4, 4)
+				f.actions.grid.blocked_cells.append(Vector2i(3, 5))
+			"wall_height":
+				f.actions.grid.blocked_cells.append(Vector2i(2, 4))
+				f.actions.grid.blocked_cells.append(Vector2i(4, 4))
+				f.actions.grid.heights[Vector2i(3, 5)] = 2
+		var sides: Array[int] = ScriptedDice.attack_sides(f.units[2], count)
+		if case != "miss":
+			sides += ScriptedDice.damage_sides(f.units[2])
+			values.append(1)
+		f.actions.dice = _dice(values, sides)
+		await f.actions.attack(f.units[2], archer)
+		_check(prompts.is_empty(), "반사신경 창 없음: " + case + " " + str(prompts))
+	# 내성굴림 범위 효과(회전회오리)에는 묻지 않는다.
+	var spin_prompts: Array[Array] = []
+	var spin: Fixture = _reflex_fixture(true, spin_prompts)
+	spin.units[2].kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	spin.units[2].hit_points = spin.units[2].get_max_hit_points()
+	spin.actions.dice = _dice([1, 1], [12, 12])
+	await spin.actions.spin(spin.units[2])
+	_check(spin_prompts.is_empty() and spin.units[0].reaction_left == 1, "내성굴림 동작에는 반사신경 창 없음")
+	var warrior_side: Fixture = _fixture()
+	_check(warrior_side.actions.reflex_cells(warrior_side.units[1]).is_empty(), "전사는 반사신경 없음")
+	_check(warrior_side.actions.reflex_cells(warrior_side.units[0]).size() == 4, "궁수는 후보 칸 4개")
+
+
+## 자기 턴 걷기·점프 중 적의 기회 공격을 회피하면 걷기는 회피 칸에서 멈추고, 점프는 취소된다.
+func _test_reflex_movement() -> void:
+	var rolled: int = ScriptedDice.attack_sides(_fixture().units[2])[0]
+	var prompts: Array[Array] = []
+	var walk: Fixture = _reflex_fixture(Vector2i(3, 5), prompts, [0, 1, 2, 3])
+	var archer: CombatUnit = walk.units[0]
+	archer.cell = Vector2i(4, 4)
+	walk.units[2].cell = Vector2i(4, 6)
+	walk.actions.grid.blocked_cells.append(Vector2i(5, 4))
+	walk.actions.dice = _dice([rolled], ScriptedDice.attack_sides(walk.units[2]))
+	_check(await walk.actions.move_to(archer, Vector2i(5, 5)), "기회 공격을 받는 걷기")
+	_check(prompts.size() == 1 and prompts[0][0] == "reflex" and archer.cell == Vector2i(3, 5)
+		and archer.hit_points == archer.get_max_hit_points() and archer.reaction_left == 0
+		and archer.movement_left == 6 - 1 - 1 and walk.units[2].reaction_left == 0,
+		"한 칸 걷고 회피하면 회피 칸에서 멈춤, 이동력은 걸은 1 + 회피 1: " + str(archer.cell) + " " + str(archer.movement_left))
+	# 넘기면 피해를 받고 걷기를 이어 간다.
+	prompts.clear()
+	var declined: Fixture = _reflex_fixture(false, prompts, [0, 1, 2, 3])
+	declined.units[0].cell = Vector2i(4, 4)
+	declined.units[2].cell = Vector2i(4, 6)
+	declined.actions.grid.blocked_cells.append(Vector2i(5, 4))
+	declined.actions.dice = _hit_dice(declined)
+	_check(await declined.actions.move_to(declined.units[0], Vector2i(5, 5)) and declined.units[0].cell == Vector2i(5, 5)
+		and declined.units[0].hit_points < 9 and declined.units[0].reaction_left == 1, "넘기면 피해를 받고 계속 걸음")
+	# 점프: 이륙 전 회피하면 점프가 취소된다. 보조 행동은 쓰고 점프의 이동력은 쓰지 않는다.
+	prompts.clear()
+	var jump: Fixture = _reflex_fixture(Vector2i(3, 5), prompts, [0, 1, 2, 3])
+	jump.actions.dice = _dice([rolled], ScriptedDice.attack_sides(jump.units[2]))
+	_check(await jump.actions.jump_to(jump.units[0], Vector2i(1, 4)), "기회 공격을 받는 점프")
+	_check(jump.units[0].cell == Vector2i(3, 5) and jump.units[0].bonus_action_left == 0
+		and jump.units[0].movement_left == 5 and jump.units[0].hit_points == 9 and not jump.actions.busy,
+		"회피하면 점프 취소, 보조 행동 소비, 이동력은 회피 1만: " + str(jump.units[0].cell) + " " + str(jump.units[0].movement_left))
+
+
+func _with_save(attacker: CombatUnit, save_sides: int) -> Array[int]:
+	var sides: Array[int] = ScriptedDice.attack_sides(attacker)
+	sides.append(save_sides)
+	return sides
+
+
+## 기름: 떠나는 회피는 이탈 미끌거림, 들어가는 회피는 진입 미끌거림을 굴린다. 실패해도 회피는 성립한다.
+func _test_reflex_oil() -> void:
+	var rolled: int = ScriptedDice.attack_sides(_fixture().units[2])[0]
+	var finesse: int = _fixture().units[0].get_ability_sides(CombatUnit.Ability.FINESSE)
+	# 서 있는 칸이 기름: 이탈 굴림에 실패하면 제자리에서 넘어지고 공격은 무효, 반응·이동력 1은 소비한다.
+	var prompts: Array[Array] = []
+	var leave: Fixture = _reflex_fixture(Vector2i(3, 5), prompts)
+	leave.actions.create_oil(leave.units[2], Vector2i(3, 4))
+	leave.actions.dice = _dice([rolled, 1], _with_save(leave.units[2], finesse))
+	await leave.actions.attack(leave.units[2], leave.units[0])
+	var archer: CombatUnit = leave.units[0]
+	_check(archer.cell == Vector2i(3, 4) and archer.fallen and archer.hit_points == archer.get_max_hit_points()
+		and archer.reaction_left == 0 and archer.movement_left == 5, "이탈 실패: 제자리에서 넘어지고 피해 없음, 반응·이동력 소비")
+	# 이탈에 성공하면 회피 칸으로 간다.
+	prompts.clear()
+	var pass_leave: Fixture = _reflex_fixture(Vector2i(3, 5), prompts)
+	pass_leave.actions.create_oil(pass_leave.units[2], Vector2i(3, 4))
+	pass_leave.actions.dice = _dice([rolled, finesse], _with_save(pass_leave.units[2], finesse))
+	await pass_leave.actions.attack(pass_leave.units[2], pass_leave.units[0])
+	_check(pass_leave.units[0].cell == Vector2i(3, 5) and not pass_leave.units[0].fallen, "이탈 성공: 회피 칸으로 이동")
+	# 기름 칸으로 회피하면 진입 굴림을 하고, 실패하면 그 칸에서 넘어진다.
+	prompts.clear()
+	var enter: Fixture = _reflex_fixture(Vector2i(2, 4), prompts)
+	enter.actions.create_oil(enter.units[2], Vector2i(1, 4))
+	enter.actions.dice = _dice([rolled, 1], _with_save(enter.units[2], finesse))
+	await enter.actions.attack(enter.units[2], enter.units[0])
+	_check(enter.units[0].cell == Vector2i(2, 4) and enter.units[0].fallen
+		and enter.units[0].hit_points == enter.units[0].get_max_hit_points(), "진입 실패: 회피 칸에서 넘어짐")
+
+
+## 적 턴에 쓴 반응과 이동력 1은 다음 자기 묶음이 확정될 때까지 회복되지 않는다(3-3, #551).
+func _test_reflex_next_turn() -> void:
+	var rolled: int = ScriptedDice.attack_sides(_fixture().units[2])[0]
+	var prompts: Array[Array] = []
+	var f: Fixture = _reflex_fixture(Vector2i(2, 4), prompts)
+	var archer: CombatUnit = f.units[0]
+	f.actions.dice = _dice([rolled], ScriptedDice.attack_sides(f.units[2]))
+	await f.actions.attack(f.units[2], archer)
+	f.turns.end_turn()
+	_check(f.turns.current_unit == archer and archer.reaction_left == 0 and archer.movement_left == archer.get_movement() - 1,
+		"다음 자기 턴: 이동력 1 적고 반응 없음")
+	f.turns.end_turn()
+	f.turns.end_turn()
+	_check(f.turns.current_unit == f.units[3] and archer.reaction_left == 1 and archer.movement_left == archer.get_movement(),
+		"자기 묶음 확정 뒤 반응과 이동력 회복")
+
+
+## 이어하기가 다시 실행하는 적 턴: 저장한 반사신경 답(칸 또는 false)을 묻지 않고 쓴다. 후보 밖 칸과 bool은 넘기기다.
+func _test_reflex_replay() -> void:
+	var rolled: int = ScriptedDice.attack_sides(_fixture().units[2])[0]
+	var asked: Array[Array] = []
+	var f: Fixture = _reflex_fixture(true, asked)
+	f.actions.replay_answers = [Vector2i(2, 4)]
+	f.actions.dice = _dice([rolled], ScriptedDice.attack_sides(f.units[2]))
+	await f.actions.attack(f.units[2], f.units[0])
+	_check(asked.is_empty() and f.units[0].cell == Vector2i(2, 4) and f.units[0].reaction_left == 0
+		and f.actions.reaction_answers == [Vector2i(2, 4)] and f.actions.replay_answers.is_empty(),
+		"저장한 칸으로 묻지 않고 회피하고 답을 다시 기록: " + str(f.actions.reaction_answers))
+	for answer: Variant in [Vector2i(9, 9), true, false]:
+		var other: Fixture = _reflex_fixture(true, asked)
+		other.actions.replay_answers = [answer]
+		other.actions.dice = _hit_dice(other)
+		await other.actions.attack(other.units[2], other.units[0])
+		_check(asked.is_empty() and other.units[0].cell == Vector2i(3, 4) and other.units[0].hit_points < 9
+			and other.actions.reaction_answers == [false], "후보 밖 칸·bool은 넘기기: " + str(answer))
+	# 반사신경이 아닌 반응(기회 공격)은 칸 답을 쓰지 않는다.
+	var opp: Fixture = _fixture([2, 0, 1, 3])
+	opp.units[2].cell = Vector2i(3, 5)
+	opp.units[1].reaction_left = 1
+	opp.actions.replay_answers = [Vector2i(1, 1)]
+	_check(await opp.actions.move_to(opp.units[2], Vector2i(4, 5)) and opp.actions.reaction_answers == [false]
+		and opp.units[1].reaction_left == 1, "기회 공격은 칸 답을 넘기기로 봄")
+
+
 ## 새 전투(스테이지) 시작에는 애기살과 무빙샷 상태가 없다.
 func _test_stage_reset() -> void:
 	var f: Fixture = _fixture()
@@ -367,6 +595,23 @@ func _test_battle_save() -> void:
 	_check(second.call("restore_combat", old), "새 필드가 없는 옛 형식 5 전투 저장도 복원")
 	copy = (second.get("units") as Array[CombatUnit])[1]
 	_check(copy.aegisal_left == 0 and not copy.moving_shot_ready, "옛 저장의 애기살 0, 무빙샷 해제")
+	# 적 턴 중간 저장의 반응 답: bool 또는 지도 안의 칸만 받는다(형식 7 유지).
+	var combat_turns: CombatTurns = first.get("turns")
+	var guard: int = 0
+	while combat_turns.current_unit.is_ally and guard < 8:
+		combat_turns.end_turn()
+		guard += 1
+	var mid: Dictionary = first.call("combat_state")
+	var accepted: bool = true
+	for answers: Array in [[true], [false, Vector2i(0, 0)], [Vector2i(1, 1)]]:
+		var good: Dictionary = mid.duplicate(true)
+		good["replay"] = {"actions": 1, "reactions": answers}
+		accepted = accepted and second.call("restore_combat", good)
+	_check(accepted, "적 턴 저장의 반응 답에 bool과 지도 안 칸을 받음")
+	for bad_answer: Variant in [Vector2i(-1, 0), Vector2i(99, 99), "x", 3, Vector2(1, 1)]:
+		var bad: Dictionary = mid.duplicate(true)
+		bad["replay"] = {"actions": 1, "reactions": [bad_answer]}
+		_check(not second.call("restore_combat", bad), "반응 답으로 받지 않는 값: " + str(bad_answer))
 	first.queue_free()
 	second.queue_free()
 	await process_frame

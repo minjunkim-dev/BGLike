@@ -59,6 +59,7 @@ func _run() -> void:
 	_test_passive_slot_and_number_colors()
 	await _test_resources()
 	_test_archer_and_enemy()
+	_test_reflex_dialog()
 	await _test_archer_moving_shot_input()
 	await _test_log_and_status()
 	await _test_hit_sound_mix()
@@ -222,6 +223,8 @@ func _test_skill_icons() -> void:
 		var icon: Texture2D = CombatActionRules.icon_of(action)
 		if action in ["spawn", "pull", "spin", "disengage"]:
 			_check(icon == null, "적 전용 스킬은 아이콘 범위 밖: " + action)
+		elif action == "reflex":
+			_check(icon == null, "반사신경은 아이콘 자산 전까지 이름 첫 글자를 보임(아이콘은 후속)")
 		else:
 			_check(icon != null and icon.get_size() == Vector2(48, 48), "#362 스킬 아이콘 48px 원본: " + action)
 	var oil_icon: Texture2D = CombatActionRules.icon_of("oil_throw")
@@ -497,6 +500,42 @@ func _test_resources() -> void:
 	await process_frame
 
 
+## 반사신경 확인 창: 후보 칸마다 버튼 하나와 넘기기. 칸을 고르면 reflex_selected가 나온다. 다른 반응 창에는 칸 버튼이 남지 않는다.
+func _test_reflex_dialog() -> void:
+	var cells: Array[Vector2i] = [Vector2i(3, 9), Vector2i(5, 9)]
+	var picked: Array[Vector2i] = []
+	hud.reflex_selected.connect(func(cell: Vector2i) -> void: picked.append(cell))
+	hud.show_reaction("reflex", "적의 공격이 명중했습니다.", cells)
+	var dialog: ConfirmationDialog = hud.reaction_dialog
+	var reflex_buttons: Array = hud.get("_reflex_buttons")
+	_check(dialog.visible and not dialog.get_ok_button().visible and dialog.get_cancel_button().text == "넘기기"
+		and reflex_buttons.size() == 2, "반사신경 창: 후보 칸 수만큼 버튼, 넘기기, 확인 버튼 숨김")
+	(reflex_buttons[1] as Button).pressed.emit()
+	_check(picked == [cells[1]] and not dialog.visible, "칸 버튼을 누르면 그 칸을 보내고 창을 닫음: " + str(picked))
+	hud.show_reaction("opportunity", "벗어납니다.")
+	_check(dialog.get_ok_button().visible and (hud.get("_reflex_buttons") as Array).is_empty()
+		and dialog.get_ok_button().text == "공격", "다른 반응 창에는 칸 버튼이 남지 않음")
+	hud.reaction_dialog.hide()
+	hud.show_reaction("reflex", "다시 묻습니다.", cells)
+	_check((hud.get("_reflex_buttons") as Array).size() == 2, "다시 열어도 칸 버튼은 후보 수만큼만")
+	dialog.get_cancel_button().pressed.emit()
+	_check(picked == [cells[1]] and not dialog.visible, "넘기기는 칸을 보내지 않음")
+	# battle 배선: 칸 버튼 글자는 맵 투영의 화면 방향이다(x+1은 오른쪽 아래, y+1은 왼쪽 아래).
+	var at: Vector2i = units[1].cell
+	actions.pending_reactor = units[1]
+	actions.pending_kind = "reflex"
+	actions.pending_cells = [at + Vector2i(-1, 0), at + Vector2i(1, 0), at + Vector2i(0, -1), at + Vector2i(0, 1)]
+	actions.reaction_requested.emit("reflex", "배선 확인")
+	var arrows: Array[String] = []
+	for button: Button in hud.get("_reflex_buttons"):
+		arrows.append(button.text)
+	_check(arrows == ["↖", "↘", "↗", "↙"], "칸 버튼은 화면 방향 화살표: " + str(arrows))
+	dialog.get_cancel_button().pressed.emit()
+	actions.pending_kind = ""
+	actions.pending_cells = []
+	_check(actions.pending_reactor == null and not dialog.visible, "넘기기로 대기 해제")
+
+
 func _test_archer_and_enemy() -> void:
 	var buttons: Dictionary = hud.get("_actions")
 	var containers: Array = hud.get("_containers")
@@ -505,9 +544,12 @@ func _test_archer_and_enemy() -> void:
 	_check(turns.current_unit == units[1] and units[0].movement_left == before, "초상 전환 자원 유지")
 	for ability: String in ["힘 d6", "민첩 d12", "솜씨 d20", "지능 d6", "의지 d4", "건강 d8"]:
 		_check(ability in hud.resource_label.get_parsed_text(), "궁수로 전환하면 능력치 주사위 갱신: " + ability)
-	# 반응 칸은 반사신경 자리(#528)라 제목만 있고 버튼은 비어 있다.
-	_check((containers[2] as PanelContainer).visible and CombatActionRules.GROUPS[2].all(func(action: String) -> bool:
-		return not (buttons[action] as Button).visible), "궁수 반응 컨테이너는 비어 있는 채로 표시")
+	# 궁수의 반응 칸에는 반사신경만 있다. 기회 공격·반격은 없다.
+	_check((containers[2] as PanelContainer).visible and (buttons["reflex"] as Button).visible
+		and not (buttons["opportunity"] as Button).visible and not (buttons["counter"] as Button).visible,
+		"궁수 반응 컨테이너는 반사신경 버튼만 표시")
+	_check((buttons["reflex"] as Button).text == "반" and "반응 1 + 이동력 1" in (buttons["reflex"] as Button).tooltip_text,
+		"반사신경은 아이콘이 없어 이름 첫 글자를 보이고 호버에 비용: " + (buttons["reflex"] as Button).tooltip_text)
 	for action: String in ["attack", "aegisal", "bow_bash", "jump", "potion"]:
 		_check((buttons[action] as Button).visible, "궁수 스킬 표시: " + action)
 	_check(not (buttons["cross_slash"] as Button).visible and not (buttons["disengage"] as Button).visible,
@@ -554,7 +596,7 @@ func _test_archer_moving_shot_input() -> void:
 	for action: String in buttons:
 		if (buttons[action] as Button).is_visible_in_tree():
 			shown.append(action)
-	_check(shown == ["attack", "aegisal", "bow_bash", "shove", "jump", "potion", "oil_throw"], "궁수 스킬 패널의 버튼(공용 밀치기 포함): " + str(shown))
+	_check(shown == ["attack", "aegisal", "bow_bash", "shove", "jump", "potion", "oil_throw", "reflex"], "궁수 스킬 패널의 버튼(공용 밀치기 포함): " + str(shown))
 	# 기름병 던지기: 버튼을 고르고 칸을 한 번 누르면 십자 범위를 보이고, 같은 칸을 다시 누르면 던진다(#500 2a).
 	var oil_cells: Array[Vector2i] = []
 	oil_cells.assign(actions.aim_cells(archer, "oil_throw").filter(func(cell: Vector2i) -> bool:
@@ -1060,7 +1102,8 @@ func _test_guidance() -> void:
 	for action: String in buttons:
 		var icon_button: Button = buttons[action] as Button
 		var ally_action: bool = CombatActionRules.belongs_to(units[0], action) or CombatActionRules.belongs_to(units[1], action)
-		_check(icon_button.text.is_empty() and (icon_button.icon != null or not ally_action)
+		var icon_text: String = "반" if action == "reflex" else ""
+		_check(icon_button.text == icon_text and (icon_button.icon != null or not ally_action or action == "reflex")
 			and icon_button.icon == CombatActionRules.icon_of(action)
 			and icon_button.accessibility_name == CombatActionRules.NAMES[action],
 			"스킬 버튼은 이름 대신 아이콘 표시: " + action)

@@ -113,7 +113,8 @@ func _test_skill_ownership() -> void:
 	for action: String in ["parry", "surge"]:
 		_check(action not in CombatActionRules.NAMES and action not in CombatActionRules.USE_COUNTERS
 			and not CombatActionRules.GROUPS.any(func(group: Array) -> bool: return action in group), "옛 스킬 삭제: " + action)
-	_check(CombatActionRules.GROUPS[2] == ["opportunity", "counter"], "반응 묶음은 기회 공격과 반격")
+	_check(CombatActionRules.GROUPS[2] == ["opportunity", "counter", "reflex"], "반응 묶음은 기회 공격, 반격, 반사신경")
+	_check(not CombatActionRules.belongs_to(warrior, "reflex"), "전사는 반사신경이 없음")
 
 
 func _test_combat_uses() -> void:
