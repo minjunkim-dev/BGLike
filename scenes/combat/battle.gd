@@ -182,6 +182,7 @@ func _build_stage() -> CombatStage:
 	actions.grid.heights = stage.heights.duplicate()
 	actions.grid.pits = stage.pits.duplicate()
 	actions.grid.blocked_cells = stage.get_blocked_cells()
+	actions.grid.trees = stage.tree_cells()
 	actions.grid.water_cells = stage.water_cells.duplicate()
 	map.build_grid(actions.grid, stage.tile_set, stage)
 	var enemies: Node = stage.enemies.instantiate()
@@ -279,7 +280,7 @@ func _is_valid_state(state: Dictionary) -> bool:
 			return false
 	if not (state.last_ally >= 0 and state.last_ally < count and saved_units[state.last_ally].ally
 			and CombatTurns.is_valid_state(state.get("turns"), count)
-			and CombatActions.is_valid_state(state, count, stage.map_size)):
+			and CombatActions.is_valid_state(state, count, stage.map_size, stage.tree_cells())):
 		return false
 	# 턴 순서는 살아 있는 유닛 전부다. 쓰러진 유닛이나 빠진 유닛이 있으면 턴이 끝없이 넘어가거나 멈춘다.
 	var order: Array = state.turns.order
@@ -909,6 +910,7 @@ func _update_turn_ui() -> void:
 	map.show_movement(movement_cells, attack_cells, selection.preview_path,
 		turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO)
 	map.show_grounds(actions.get_grounds())
+	map.show_trees(actions.grid.trees)
 	map.show_props(actions.get_props(), selection.preview_prop)
 	map.reveal_units(units)
 	# 가림 판정은 방금 그린 사물 위치를 사용한다.
@@ -1049,13 +1051,18 @@ func _arrow_note(actor: CombatUnit, action: String, cell: Vector2i) -> String:
 			note += "\n" + tr("%s 명중률 %.1f%%") % [target.get_display_name(), preview.chance * 100.0]
 			if target.is_ally:
 				note += " · " + tr("아군")
+		if actions.grid.is_tree(cell):
+			note += "\n" + tr("화염이 나오면 나무가 타서 길이 열림")
 		return note + "\n" + tr("같은 칸을 다시 좌클릭하면 쏩니다.")
 	var chances: Array[String] = []
 	for unit: CombatUnit in units:
 		if unit.hit_points > 0 and unit.cell in actions.aim_area(actor, action, cell):
 			chances.append("%s %.1f%%" % [unit.get_display_name(), CombatActionRules.save_chance(actor, unit, action) * 100.0])
-	return tr("폭죽 화살 · 행동1 · 막당 1 · 아군과 자신도 맞음\n민첩 내성 성공률: %s\n같은 칸을 다시 좌클릭하면 쏩니다.") % (
+	var firework: String = tr("폭죽 화살 · 행동1 · 막당 1 · 아군과 자신도 맞음\n민첩 내성 성공률: %s\n같은 칸을 다시 좌클릭하면 쏩니다.") % (
 		" · ".join(chances) if not chances.is_empty() else tr("대상 없음"))
+	if actions.aim_area(actor, action, cell).any(func(area_cell: Vector2i) -> bool: return actions.grid.is_tree(area_cell)):
+		firework += "\n" + tr("나무가 타서 길이 열림")
+	return firework
 
 
 func _attack_targets_from(cell: Vector2i) -> Array[CombatUnit]:

@@ -94,6 +94,8 @@ var reaction_answers: Array[bool] = []
 ## 이어하기가 다시 실행하는 적 턴에서 묻지 않고 차례로 쓸 반응 답.
 var replay_answers: Array[bool] = []
 var _grounds: Array[Ground] = []
+## 이번 전투에서 탄 나무 칸. 전투를 다시 열면 비고 저장에 들어간다.
+var burned_trees: Array[Vector2i] = []
 var _clock_slots: Array[ClockSlot] = []
 ## 턴 시작의 틱까지 처리했고 기간 감소는 아직인 유닛. 이 틱으로 쓰러지면 쓰러질 때 바로 줄인다.
 var _pending_decrease: CombatUnit
@@ -108,6 +110,7 @@ func initialize(combat_units: Array[CombatUnit], combat_turns: CombatTurns) -> v
 	grid.units = combat_units
 	grid.props.clear()
 	_grounds.clear()
+	burned_trees.clear()
 	_clock_slots.clear()
 	turns = combat_turns
 	turns.turn_started.connect(_on_turn_started)
@@ -125,7 +128,8 @@ func save_state() -> Dictionary:
 			ground.entered.map(func(unit: CombatUnit) -> int: return units.find(unit)), ground.dc])
 	var slots: Array = _clock_slots.map(func(slot: ClockSlot) -> Array:
 		return [units.find(slot.caster), units.find(slot.anchor), slot.skip])
-	return {"props": props, "grounds": grounds, "clock_slots": slots, "dice": dice.state}
+	return {"props": props, "grounds": grounds, "clock_slots": slots, "dice": dice.state,
+		"burned_trees": burned_trees.duplicate()}
 
 
 ## save_state()의 값으로 되돌린다. initialize() 뒤에 부르고, is_valid_state()를 먼저 확인한다.
@@ -143,6 +147,10 @@ func load_state(data: Dictionary) -> void:
 		for index: int in saved[4]:
 			ground.entered.append(units[index])
 		_grounds.append(ground)
+	burned_trees.clear()
+	for saved: Vector2i in data.burned_trees:
+		if grid.burn_tree(saved):
+			burned_trees.append(saved)
 	_clock_slots.clear()
 	for saved: Array in data.clock_slots:
 		_clock_slots.append(ClockSlot.new(units[saved[0]], units[saved[1]], saved[2]))
@@ -150,12 +158,17 @@ func load_state(data: Dictionary) -> void:
 
 
 ## 저장 파일의 값을 load_state()에 넘겨도 되는지. count는 전투 유닛 수다.
-static func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
+static func is_valid_state(data: Variant, count: int, map_size: Vector2i, tree_cells: Array[Vector2i] = []) -> bool:
 	var area: Rect2i = Rect2i(Vector2i.ZERO, map_size)
 	if not (data is Dictionary and data.get("dice") is int and data.get("props") is Array
 			and data.props.size() <= area.get_area() and data.get("grounds") is Array
 			and data.grounds.size() <= area.get_area() * 2 and data.get("clock_slots") is Array
-			and data.clock_slots.size() <= count):
+			and data.clock_slots.size() <= count and data.get("burned_trees") is Array
+			and data.burned_trees.size() <= tree_cells.size()):
+		return false
+	var burned: Array = data.burned_trees
+	if not burned.all(func(saved: Variant) -> bool:
+			return saved is Vector2i and saved in tree_cells and burned.count(saved) == 1):
 		return false
 	var unit_index: Callable = func(index: Variant) -> bool: return index is int and index >= 0 and index < count
 	return (data.props.all(func(saved: Variant) -> bool:
@@ -707,6 +720,11 @@ func stand_up(actor: CombatUnit) -> bool:
 
 ## 속성 동작이 칸에 닿았을 때 반응표(CombatOil.REACTIONS)를 적용한다. 화염은 기름을 점화하고, 물은 닿은 칸의 기름과 불 장판을 지운다.
 func touch_attribute(cell: Vector2i, attribute: String, source: CombatUnit) -> bool:
+	if attribute == "fire" and grid.burn_tree(cell):
+		burned_trees.append(cell)
+		logged.emit(tr("나무가 불탐: %d, %d") % [cell.x, cell.y])
+		changed.emit()
+		return true
 	var removed: bool = false
 	for ground: Ground in _grounds.duplicate():
 		if ground.cell != cell:
@@ -1023,7 +1041,8 @@ func aim_cells(actor: CombatUnit, action: String, from_cell: Vector2i = Vector2i
 	if actor == null or CombatActionRules.aim_range(actor, action) < 0:
 		return []
 	var cells: Array[Vector2i] = grid.aim_cells(actor.cell if from_cell == Vector2i(-1, -1) else from_cell,
-		CombatActionRules.aim_range(actor, action), CombatActionRules.aim_min_range(action))
+		CombatActionRules.aim_range(actor, action), CombatActionRules.aim_min_range(action),
+		action in CombatActionRules.FIRE_ACTIONS)
 	if action == "oil_throw":
 		# 깔릴 칸이 하나도 없는 목표는 고를 수 없다(자원만 쓰고 효과 없는 던지기를 막는다).
 		cells = cells.filter(func(cell: Vector2i) -> bool: return not oil_sites(cell).is_empty())
@@ -1040,7 +1059,7 @@ func aim_area(actor: CombatUnit, action: String, cell: Vector2i) -> Array[Vector
 		return []
 	if action == "oil_throw":
 		return oil_sites(cell)
-	return grid.area_cells(cell, CombatActionRules.AIM_RADII[action], false)
+	return grid.area_cells(cell, CombatActionRules.AIM_RADII[action], false, action in CombatActionRules.FIRE_ACTIONS)
 
 
 ## 휩쓸기의 대상: facing을 정면으로 둔 반달 5칸의 살아 있는 적을 시계방향 순서로 준다. 아군은 맞지 않는다.

@@ -39,6 +39,7 @@ func _run() -> void:
 	await _test_autosave_switch()
 	GameSave.autosave = true
 	await _test_format_state()
+	await _test_tree_save()
 	for stage_index: int in range(STAGE_COUNT):
 		await _test_stage(stage_index)
 	# 흘려내기 제거(#423) 뒤 아군 반응은 기회 공격뿐이라 이 입력 규칙에서는 3-3에서만 생긴다.
@@ -138,6 +139,29 @@ func _test_format_state() -> void:
 	state.units[0].cell = Vector2i(3, 4)
 	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
 		"재배치 전 저장의 물체 좌표·상자 HP와 새 초기 상자 칸의 유닛 위치를 그대로 복원")
+	await _free(restored)
+	await _free(battle)
+
+
+## 탄 나무(#529): 저장에 칸이 들어가고, 복원하면 나무 없는 바닥이며, 스테이지를 다시 깔면 나무가 돌아온다.
+func _test_tree_save() -> void:
+	var battle: Node2D = _battle(3)
+	var actions: CombatActions = battle.get("actions")
+	var trees: Array[Vector2i] = (battle.get("stages") as Array)[3].tree_cells()
+	_check(trees.size() >= 2 and actions.grid.trees == trees, "2막 1스테이지에 나무가 있고 격자가 서 있는 나무로 가짐")
+	var source: CombatUnit = actions.units.filter(func(unit: CombatUnit) -> bool: return not unit.is_ally)[0]
+	_check(actions.touch_attribute(trees[0], "fire", source), "나무에 화염이 닿음")
+	var state: Dictionary = battle.call("combat_state")
+	_check(state.burned_trees == [trees[0]], "탄 나무를 전투 상태에 저장")
+	var restored: Node2D = _battle(-1)
+	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state, "탄 나무를 포함한 상태 왕복")
+	var grid: CombatGrid = (restored.get("actions") as CombatActions).grid
+	_check(not grid.is_tree(trees[0]) and not grid.is_blocked(trees[0]) and grid.is_tree(trees[1]) and grid.is_blocked(trees[1]),
+		"복원한 전투는 탄 나무만 열린 바닥")
+	restored.call("_start_stage", true)
+	grid = (restored.get("actions") as CombatActions).grid
+	_check(grid.trees == trees and grid.is_blocked(trees[0]) and (restored.get("actions") as CombatActions).burned_trees.is_empty(),
+		"전투를 다시 열면 나무가 초기 배치로 돌아옴")
 	await _free(restored)
 	await _free(battle)
 
@@ -377,6 +401,12 @@ func _test_rejects_bad_saves() -> void:
 		"한도 밖 독 DC": func(state: Dictionary) -> void: state.units[0].statuses = [["poison", 0, 1, 1 << 60]],
 		"턴 순서의 중복 유닛": func(state: Dictionary) -> void: state.turns.order.append(state.turns.order[0]),
 		"묶음 범위 밖": func(state: Dictionary) -> void: state.turns.group = Vector2i(0, 99),
+		"탄 나무 칸이 없음": func(state: Dictionary) -> void: state.erase("burned_trees"),
+		"탄 나무 칸이 배열이 아님": func(state: Dictionary) -> void: state.burned_trees = "tree",
+		"나무가 아닌 탄 칸": func(state: Dictionary) -> void: state.burned_trees = [Vector2i(0, 0)],
+		"탄 칸이 Vector2i가 아님": func(state: Dictionary) -> void: state.burned_trees = [[1, 1]],
+		"중복한 탄 나무": func(state: Dictionary) -> void:
+			state.burned_trees = [Vector2i(99, 99), Vector2i(99, 99)],
 		"모르는 물체": func(state: Dictionary) -> void: state.props.append(["bomb", Vector2i.ZERO, 1]),
 		"장판의 유닛 번호 밖": func(state: Dictionary) -> void: state.grounds.append([99, Vector2i.ZERO, "burn", 2, [], 0]),
 		"이전 형식의 장판": func(state: Dictionary) -> void: state.grounds.append([0, Vector2i.ZERO, "burn", 2, []]),
