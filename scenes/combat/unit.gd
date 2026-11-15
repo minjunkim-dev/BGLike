@@ -349,13 +349,20 @@ func get_movement() -> int:
 	return int(CombatEnemyDefinitions.for_kind(kind).get("movement", MOVEMENT_PER_TURN))
 
 
+## 자기 턴 시작에 처리하는 상태. 자원은 채우지 않는다(3-3). 과부하의 추가 행동(+1, #410)만 여기서 더한다.
 func begin_turn() -> void:
 	disengaged = false
 	moving_shot_ready = false
 	moving_shot_spent = false
 	pull_cooldown = maxi(0, pull_cooldown - 1)
+	if overloaded:
+		action_left += 1
+
+
+## 턴 자원 4종을 채운다. 자기 턴 묶음이 확정될 때와 전투·스테이지 시작에 부른다(3-3).
+func refill_turn_resources() -> void:
 	movement_left = get_movement()
-	action_left = action_capacity + (1 if overloaded else 0)
+	action_left = action_capacity
 	bonus_action_left = bonus_action_capacity
 	reaction_left = reaction_capacity
 
@@ -377,6 +384,7 @@ func begin_stage(restore_act: bool) -> void:
 	is_selected = false
 	is_previewed = false
 	begin_turn()
+	refill_turn_resources()
 
 
 ## 방어막과 전투의 함성. 전투 전환과 전투 불능에서 지운다.
@@ -543,6 +551,7 @@ func _ready() -> void:
 	cell = start_cell
 	hit_points = get_max_hit_points()
 	begin_turn()
+	refill_turn_resources()
 	queue_redraw()
 
 
