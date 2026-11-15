@@ -408,8 +408,11 @@ func _test_rejects_bad_saves() -> void:
 	var points: Array[Dictionary] = _track(source)
 	for step: int in range(12):
 		await _step(source, points)
+	var stages: Array = source.get("stages")
 	await _free(source)
 	var good: Dictionary = points.back().save
+	# 중복 검사는 그 스테이지의 실제 나무 칸으로 한다. 나무가 아닌 칸이면 다른 조건에서 먼저 거부된다.
+	var tree: Vector2i = (stages[good.stage] as CombatStage).tree_cells()[0]
 	var enemy: int = (good.units as Array).find_custom(func(unit: Dictionary) -> bool: return not unit.ally)
 	var cases: Dictionary[String, Callable] = {
 		"파티 레벨이 없음": func(state: Dictionary) -> void: state.erase("level"),
@@ -440,7 +443,7 @@ func _test_rejects_bad_saves() -> void:
 		"나무가 아닌 탄 칸": func(state: Dictionary) -> void: state.burned_trees = [Vector2i(0, 0)],
 		"탄 칸이 Vector2i가 아님": func(state: Dictionary) -> void: state.burned_trees = [[1, 1]],
 		"중복한 탄 나무": func(state: Dictionary) -> void:
-			state.burned_trees = [Vector2i(99, 99), Vector2i(99, 99)],
+			state.burned_trees = [tree, tree],
 		"모르는 물체": func(state: Dictionary) -> void: state.props.append(["bomb", Vector2i.ZERO, 1]),
 		"장판의 유닛 번호 밖": func(state: Dictionary) -> void: state.grounds.append([99, Vector2i.ZERO, "burn", 2, [], 0]),
 		"이전 형식의 장판": func(state: Dictionary) -> void: state.grounds.append([0, Vector2i.ZERO, "burn", 2, []]),
@@ -496,6 +499,9 @@ func _test_rejects_bad_saves() -> void:
 		"유닛 목록이 없음": func(state: Dictionary) -> void: state.erase("units"),
 	}
 	var battle: Node2D = _battle(-1)
+	var burned: Dictionary = good.duplicate(true)
+	burned.burned_trees = [tree]
+	_check(battle.call("restore_combat", burned), "실제 나무 칸 하나를 태운 저장은 복원")
 	_check(battle.call("restore_combat", good), "고치지 않은 저장은 복원")
 	var before: Dictionary = battle.call("combat_state")
 	for name: String in cases:
