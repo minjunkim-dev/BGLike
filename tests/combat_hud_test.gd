@@ -613,7 +613,7 @@ func _test_archer_moving_shot_input() -> void:
 	for action: String in buttons:
 		if (buttons[action] as Button).is_visible_in_tree():
 			shown.append(action)
-	_check(shown == ["attack", "aegisal", "bow_bash", "shove", "jump", "potion", "oil_throw"], "궁수 스킬 패널의 버튼(공용 밀치기 포함): " + str(shown))
+	_check(shown == ["attack", "trick_arrow", "firework_arrow", "aegisal", "bow_bash", "shove", "jump", "potion", "oil_throw"], "궁수 스킬 패널의 버튼(공용 밀치기 포함): " + str(shown))
 	# 기름병 던지기: 버튼을 고르고 칸을 한 번 누르면 십자 범위를 보이고, 같은 칸을 다시 누르면 던진다(#500 2a).
 	var oil_cells: Array[Vector2i] = []
 	oil_cells.assign(actions.aim_cells(archer, "oil_throw").filter(func(cell: Vector2i) -> bool:
@@ -623,16 +623,40 @@ func _test_archer_moving_shot_input() -> void:
 		battle.call("_on_action_selected", "oil_throw")
 		var oil_selection: CombatSelection = battle.get("selection") as CombatSelection
 		_check(oil_selection.selected_action == "oil_throw", "기름병 던지기 버튼은 칸 조준 모드로 들어감")
-		battle.call("_select_oil_cell", oil_cells[0])
+		battle.call("_select_aim_cell", oil_cells[0])
 		_check(actions.get_grounds().all(func(ground: CombatActions.Ground) -> bool: return ground.kind != "oil")
 			and oil_selection.preview_cell == oil_cells[0], "첫 클릭은 칸만 고르고 던지지 않음")
-		battle.call("_select_oil_cell", oil_cells[0])
+		battle.call("_select_aim_cell", oil_cells[0])
 		_check(actions.get_grounds().any(func(ground: CombatActions.Ground) -> bool:
 			return ground.kind == "oil" and ground.cell == oil_cells[0]) and archer.oil_throw_left == 0,
 			"같은 칸을 다시 누르면 그 칸에 기름을 던짐")
 		actions._grounds.assign(actions._grounds.filter(func(ground: CombatActions.Ground) -> bool: return ground.kind != "oil"))
 		archer.oil_throw_left = 1
 		archer.bonus_action_left = 1
+		battle.call("_update_turn_ui")
+	# 장난스러운 화살·폭죽 화살(#500 2b): 첫 클릭은 칸만 고르고 같은 칸을 다시 누르면 쏜다.
+	var free_cells: Array[Vector2i] = []
+	free_cells.assign(actions.aim_cells(archer, "trick_arrow").filter(func(cell: Vector2i) -> bool:
+		return actions.grid.unit_at(cell) == null and actions.grid.prop_at(cell) == null))
+	_check(not free_cells.is_empty(), "화살 검사 전제: 빈 칸이 있음")
+	if not free_cells.is_empty():
+		var arrow_selection: CombatSelection = battle.get("selection") as CombatSelection
+		for arrow: String in ["trick_arrow", "firework_arrow"]:
+			archer.action_left = 1
+			archer.firework_arrow_left = 1
+			actions.dice = ScriptedDice.new([], []).then_seeded()
+			battle.call("_on_action_selected", arrow)
+			_check(arrow_selection.selected_action == arrow, "%s 버튼은 칸 조준 모드로 들어감" % arrow)
+			await battle.call("_select_aim_cell", free_cells[0])
+			_check(archer.action_left == 1 and arrow_selection.preview_cell == free_cells[0], "%s 첫 클릭은 칸만 고름" % arrow)
+			await battle.call("_select_aim_cell", free_cells[0])
+			_check(archer.action_left == 0 and (arrow != "firework_arrow" or archer.firework_arrow_left == 0),
+				"%s 같은 칸을 다시 누르면 쏨" % arrow)
+		archer.action_left = 1
+		archer.firework_arrow_left = 1
+		archer.moving_shot_ready = false
+		archer.moving_shot_spent = false
+		arrow_selection.selected_action = "attack"
 		battle.call("_update_turn_ui")
 	_check((passives["moving_shot"] as Button).visible and not (passives["phalanx"] as Button).visible
 		and not (dots["moving_shot"] as Label).visible and (passives["moving_shot"] as Button).disabled,
@@ -1248,6 +1272,10 @@ func _test_guidance() -> void:
 			if action in CombatActionRules.USES_PER_COMBAT:
 				_check("\n전투마다 1회 · %d회 남음" % CombatActionRules.uses_left(unit, action) in button.tooltip_text,
 					"전투마다 횟수 스킬 호버에 남은 횟수 표시: " + action)
+			if action == "firework_arrow":
+				removed_hints.erase("막당 ")
+				_check("\n막당 1회 · %d회 남음" % CombatActionRules.uses_left(unit, action) in button.tooltip_text,
+					"막당 횟수 스킬 호버에 남은 횟수 표시: " + action)
 			for removed: String in removed_hints:
 				_check(removed not in button.tooltip_text, "호버에서 안내 제거: %s / %s" % [action, removed])
 			_check(unit.hit_points == hp and [unit.action_left, unit.bonus_action_left, unit.shield_points] == uses,

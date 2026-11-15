@@ -1695,7 +1695,7 @@ msgid "궁수 스킬"
 msgstr ""
 
 #: scenes/help.tscn
-msgid "무빙샷: 이번 턴의 첫 기본 공격 뒤 상하좌우의 빈 칸으로 1칸 도약할 수 있습니다. 공격이 끝나면 도약할 칸이 보이고, 빈 칸을 우클릭해 착지 칸을 본 뒤 같은 칸을 다시 우클릭하면 뜁니다. 이동력을 쓰지 않고 기회 공격을 받지 않습니다. 다른 버튼을 골랐다면 왼쪽 패시브 칸의 무빙샷을 눌러 돌아옵니다. 다른 동작을 하거나 턴을 끝내면 사라집니다."
+msgid "무빙샷: 이번 턴의 첫 행동 원거리 공격(기본 공격, 장난스러운 화살, 폭죽 화살) 뒤 상하좌우의 빈 칸으로 1칸 도약할 수 있습니다. 공격이 끝나면 도약할 칸이 보이고, 빈 칸을 우클릭해 착지 칸을 본 뒤 같은 칸을 다시 우클릭하면 뜁니다. 이동력을 쓰지 않고 기회 공격을 받지 않습니다. 다른 버튼을 골랐다면 왼쪽 패시브 칸의 무빙샷을 눌러 돌아옵니다. 다른 동작을 하거나 턴을 끝내면 사라집니다."
 msgstr ""
 
 #: scenes/help.tscn
@@ -1711,7 +1711,7 @@ msgid "무빙샷"
 msgstr ""
 
 #: scenes/combat/action_rules.gd
-msgid "이번 턴 첫 기본 공격 뒤 인접한 빈 칸으로 1칸 도약.\n이동력을 쓰지 않고 기회 공격을 받지 않습니다.\n빈 칸을 두 번 우클릭해 뜁니다. 다른 일을 하면 사라집니다."
+msgid "이번 턴 첫 행동 원거리 공격 뒤 인접한 빈 칸으로 1칸 도약.\n이동력을 쓰지 않고 기회 공격을 받지 않습니다.\n빈 칸을 두 번 우클릭해 뜁니다. 다른 일을 하면 사라집니다."
 msgstr ""
 
 #: scenes/help.tscn
@@ -1953,4 +1953,102 @@ msgstr ""
 
 #: scenes/combat/action_rules.gd:296
 msgid "효과: 기름 장판 십자 5칸, 3턴"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:150
+msgid "장난스러운 화살"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:150
+msgid "폭죽 화살"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:120
+msgid "칸을 겨눕니다(아군도 가능). 지능 d6: 1 삐끗, 2~3 물, 4~6 화염.\n속성은 그 칸에 닿습니다. 명중하면 굴림 값만큼 피해.\n화염은 화상 1중첩, 물은 화상을 모두 끕니다."
+msgstr ""
+
+#: scenes/combat/action_rules.gd:121
+msgid "칸을 겨눕니다(발밑도 가능). 반경 1의 모든 유닛이 민첩 내성(DC 4).\n피해 솜씨 d20 두 번의 합, 성공하면 절반.\n아군과 자신도 맞습니다. 기름은 점화됩니다."
+msgstr ""
+
+#: scenes/combat/action_rules.gd:300
+msgid "막당 %d회 · %d회 남음"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:301
+msgid "피해: 지능 d%d 굴림 값(명중하면)"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:302
+msgid "판정: %s 대 AC, 속성은 명중과 무관"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:305
+msgid "사거리: 0~%d칸 곡사, 반경 1"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:306
+msgid "피해: 솜씨 d%d 두 번의 합"
+msgstr ""
+
+#: scenes/combat/action_rules.gd:307
+msgid "판정: 대상의 민첩 내성 대 DC %d, 성공하면 피해 절반"
+msgstr ""
+
+#: scenes/combat/actions.gd:1230
+msgid "%s 장난스러운 화살: 지능 d%d = %d · %s"
+msgstr ""
+
+#: scenes/combat/actions.gd:1232
+msgid "삐끗"
+msgstr ""
+
+#: scenes/combat/actions.gd:1232
+msgid "물"
+msgstr ""
+
+#: scenes/combat/actions.gd:1232
+msgid "화염"
+msgstr ""
+
+#: scenes/combat/actions.gd:1260
+msgid "%s 피해 (장난스러운 화살 굴림 값): %d · HP %d"
+msgstr ""
+
+#: scenes/combat/actions.gd:1300
+msgid "%s 폭죽 화살: %d, %d · 대상 %d명 · DC %d"
+msgid_plural "%s 폭죽 화살: %d, %d · 대상 %d명 · DC %d"
+msgstr[0] ""
+msgstr[1] ""
+
+#: scenes/combat/actions.gd:1330
+msgid "%s 피해 (폭죽 화살%s): %s d%d %s %+d = %d%s · HP %d"
+msgstr ""
+
+#: scenes/combat/actions.gd:1331
+msgid " 내성 성공 절반"
+msgstr ""
+
+#: scenes/combat/battle.gd:710
+msgid "%s · 행동1 · 겨눌 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 쏩니다."
+msgstr ""
+
+#: scenes/combat/battle.gd:714
+msgid "장난스러운 화살 · 행동1 · 삐끗 16.7% · 물 33.3% · 화염 50%"
+msgstr ""
+
+#: scenes/combat/battle.gd:718
+msgid "%s 명중률 %.1f%%"
+msgstr ""
+
+#: scenes/combat/battle.gd:721
+msgid "같은 칸을 다시 좌클릭하면 쏩니다."
+msgstr ""
+
+#: scenes/combat/battle.gd:727
+msgid "폭죽 화살 · 행동1 · 막당 1 · 아군과 자신도 맞음\n민첩 내성 성공률: %s\n같은 칸을 다시 좌클릭하면 쏩니다."
+msgstr ""
+
+#: scenes/help.tscn:243
+msgid "장난스러운 화살은 행동으로 사거리 1~4칸의 칸을 겨눕니다. 칸 위의 유닛(아군도 가능)을 겨누면 솜씨 명중굴림을 하고, 지능 d6 눈이 1이면 삐끗, 2~3이면 물, 4~6이면 화염입니다. 피해는 굴린 눈의 값이고 명중해야 들어갑니다. 화염은 닿은 칸의 기름을 점화하고, 물은 닿은 칸의 기름과 불 장판을 지웁니다. 속성은 빗나가도 그 칸에 닿습니다. 폭죽 화살은 행동으로 사거리 0~4칸의 칸을 겨누며 막마다 1회입니다. 반경 1(상하좌우 5칸) 안의 모든 유닛이 아군과 궁수 자신까지 민첩 내성(DC 4)을 하고, 피해는 솜씨 d20 두 번의 합이며 성공하면 절반입니다. 닿은 기름은 점화됩니다."
 msgstr ""

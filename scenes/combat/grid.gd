@@ -202,6 +202,9 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 		"attack":
 			return (in_range(origin, target.cell, actor.get_attack_range())
 				and (actor.get_attack_range() > 1 or are_adjacent(origin, target.cell)))
+		"trick_arrow":
+			# 칸 조준 곡사 1~4. 같은 편도 겨눌 수 있어서 can_aim과 같은 거리만 본다.
+			return in_range(origin, target.cell, CombatActionRules.aim_range(actor, action), CombatActionRules.aim_min_range(action))
 		"cross_slash", "steel_charge", "bow_bash":
 			return are_adjacent(origin, target.cell)
 		"shove":
@@ -350,14 +353,15 @@ func armor_class(unit: CombatUnit) -> int:
 ## action의 명중 미리보기. 명중 능력치와 사거리는 동작을 따르고, 근접 동작(활 후려치기)은 원거리 요인을 받지 않는다.
 func attack_preview(attacker: CombatUnit, target: CombatUnit, action: String = "attack") -> CombatChecks.AttackPreview:
 	var preview: CombatChecks.AttackPreview = CombatChecks.AttackPreview.new()
-	if (attacker == null or target == null or attacker.is_ally == target.is_ally
+	if (attacker == null or target == null or (attacker.is_ally == target.is_ally and action != "trick_arrow")
 		or attacker.hit_points <= 0 or target.hit_points <= 0):
 		return preview
 	preview.valid_target = true
 	if attacker.is_stunned:
 		preview.blocked_reason = tr("기절하여 공격 불가")
 	# 기회 공격·휩쓸기·십자 베기·반격은 기본 공격과 같은 사거리 판정을 쓴다.
-	preview.in_range = can_target(attacker, target, action if action in CombatActionRules.MELEE_ACTIONS else "attack")
+	preview.in_range = can_target(attacker, target,
+		action if action in CombatActionRules.MELEE_ACTIONS or action == "trick_arrow" else "attack")
 	var ranged: bool = attacker.is_ranged_attack() and action not in CombatActionRules.MELEE_ACTIONS
 	var advantages: int = 0
 	var disadvantages: int = 0

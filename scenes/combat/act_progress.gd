@@ -7,6 +7,8 @@ const STAGES_PER_ACT: int = 3
 var stage_count: int
 var stage_index: int = 0
 var graduated: bool = false
+## 파티 주사위 레벨. 모든 캐릭터와 6개 능력치가 공유한다. 새 게임은 0이고 막의 마지막 스테이지를 처음 이길 때 1 오른다 (#477).
+var level: int = 0
 ## 이번 스테이지의 드랍. 승리를 처음 기록할 때 한 번만 굴린다.
 var rewards: Array[Dictionary] = []
 var _victory_recorded: bool = false
@@ -49,10 +51,13 @@ func record_victory(loot: CombatLoot, monster_count: int, dice: CombatDice, pick
 	rewards = loot.roll_rewards(monster_count, dice, act_number())
 	rewards.append_array(picked.duplicate(true))
 	_victory_recorded = true
+	# 깬 막 번호로 올려 이미 깬 막의 재클리어가 두 번 오르지 않게 한다.
+	if is_last_in_act():
+		level = maxi(level, act_number())
 
 
 func save_state() -> Dictionary:
-	return {"stage": stage_index, "rewards": rewards, "rewarded": _victory_recorded}
+	return {"stage": stage_index, "rewards": rewards, "rewarded": _victory_recorded, "level": level}
 
 
 ## 이어하기. 승리 뒤에 저장했다면 굴린 드랍을 그대로 쓰고 다시 굴리지 않는다.
@@ -61,6 +66,7 @@ func load_state(data: Dictionary) -> void:
 	graduated = false
 	rewards.assign(data.rewards)
 	_victory_recorded = data.rewarded
+	level = data.level
 
 
 ## 아군 전멸 뒤 그 막의 첫 스테이지로 돌아간다.

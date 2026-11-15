@@ -578,8 +578,9 @@ func _test_armor_unequip_scene() -> void:
 		"정비 화면의 장착 방어구 해제 버튼")
 	if unequip != null:
 		await _click(unequip)
-		_check(party[0].armor.is_empty() and party[0].hit_points == 1
-			and party[0].get_max_hit_points() == 11 and loot.bag.size() == 12
+		# 1막 마지막 스테이지 승리로 파티 레벨 1이 되어 최대 HP가 17이다(#477). 잃은 HP 15는 그대로다.
+		_check(party[0].armor.is_empty() and party[0].hit_points == 2
+			and party[0].get_max_hit_points() == 17 and loot.bag.size() == 12
 			and loot.bag.back() == warrior_armor and preparation.continue_button.has_focus(),
 			"실제 해제 버튼은 잃은 HP를 유지하고 방어구를 가방 빈 칸에 보관")
 		unequip = await _pick(preparation, "Armor0", "UnequipArmor0")
@@ -593,14 +594,15 @@ func _test_armor_unequip_scene() -> void:
 		if blocked != null:
 			await _click(blocked)
 		# 비활성 버튼은 pressed를 내지 않으므로 화면 처리기의 거절도 직접 확인한다.
+		# 승리로 올라간 파티 레벨 1이 궁수 최대 HP를 4 늘렸다(#477).
 		preparation._unequip_armor(1)
-		_check(party[1].armor == archer_armor and party[1].hit_points == archer_hit_points
+		_check(party[1].armor == archer_armor and party[1].hit_points == archer_hit_points + 4
 			and loot.bag.size() == 12, "가득 찬 가방에서 해제 입력은 방어구·HP·가방 보존")
 		await _check_preparation_focus_tooltips(preparation)
 		await _click(preparation.continue_button)
 		_check(not preparation.visible and battle.progress.act_number() == 2
 			and battle.progress.stage_in_act() == 1 and party[0].armor.is_empty()
-			and party[0].hit_points == 11 and party[1].armor == archer_armor
+			and party[0].hit_points == 17 and party[1].armor == archer_armor
 			and loot.bag.size() == 12 and loot.bag.back() == warrior_armor,
 			"막 전환은 해제한 장비·가방 상태 유지")
 		for unit: CombatUnit in party:
@@ -608,7 +610,7 @@ func _test_armor_unequip_scene() -> void:
 		battle.actions.changed.emit()
 		await _click(battle.hud.restart_button)
 		_check(battle.progress.act_number() == 2 and battle.progress.stage_in_act() == 1
-			and party[0].armor.is_empty() and party[0].hit_points == 11
+			and party[0].armor.is_empty() and party[0].hit_points == 17
 			and party[1].armor == archer_armor and loot.bag.size() == 12
 			and loot.bag.back() == warrior_armor, "전멸 재시작은 해제한 장비·가방 상태 유지")
 	main.queue_free()

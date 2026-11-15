@@ -44,7 +44,7 @@ static func absolute_success_faces(sides: int) -> int:
 
 
 ## 굴린 면(1~n)의 숫자 값. 가장 높은 일반면부터 절대성공면이 되어 최댓값으로 센다.
-## 성장 전이라 주사위 레벨은 0이며 더하지 않는다 (#322).
+## 주사위 레벨은 여기서 더하지 않는다. 호출자가 `modifier`(레벨 + 장비 가감)로 넘긴다 (#322, #477).
 static func face_value(sides: int, face: int) -> int:
 	return sides if face > sides - absolute_success_faces(sides) else face
 

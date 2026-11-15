@@ -28,6 +28,8 @@ func _run() -> void:
 	_test_ability_modifier_math()
 	_test_ability_modifier_units()
 	await _test_ability_modifier_attack()
+	_test_party_level_units()
+	await _test_party_level_attack()
 	await _test_battle_rolls()
 	await _test_damage_rolls()
 	await _test_spin_saves()
@@ -301,6 +303,69 @@ func _test_ability_modifier_attack() -> void:
 		and actions.last_damage_rolls == [8] and actions.last_damage == 8 + warrior.get_damage_bonus()
 		and robot.hit_points == before - 8 - warrior.get_damage_bonus(),
 		"실제 공격: 명중 굴림값 9+3, 피해 굴림값 5+3")
+
+
+## 파티 주사위 레벨(#477): 레벨은 가감 자리에 더해지고 최대 HP는 (건강 면수 ÷ 2) × (레벨 + 1) + 5다.
+func _test_party_level_units() -> void:
+	var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i.ZERO)
+	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(1, 0))
+	var robot: CombatUnit = _unit(CombatUnit.Kind.SCRAP_ROBOT_1000, false, Vector2i(2, 0))
+	var base_armor: int = warrior.get_armor_class()
+	var robot_armor: int = robot.get_armor_class()
+	var robot_hit_points: int = robot.get_max_hit_points()
+	_check(warrior.get_max_hit_points() == 11 and archer.get_max_hit_points() == 9, "레벨 0 최대 HP는 전사 11, 궁수 9")
+	for unit: CombatUnit in [warrior, archer, robot]:
+		unit.dice_level = 2
+	_check(warrior.get_max_hit_points() == 23 and archer.get_max_hit_points() == 17, "레벨 2 최대 HP는 전사 23, 궁수 17")
+	warrior.dice_level = 1
+	archer.dice_level = 1
+	_check(warrior.get_max_hit_points() == 17 and archer.get_max_hit_points() == 13, "레벨 1 최대 HP는 전사 17, 궁수 13")
+	for ability: int in range(6):
+		_check(warrior.get_ability_modifier(ability) == 1, "레벨 1은 6개 능력치 모두 굴림값에 +1")
+	_check(warrior.get_armor_class() == base_armor + 1, "AC = 레벨 0 표준값 + 레벨")
+	_check(CombatActionRules.save_dc(warrior, "spin") == CombatChecks.save_dc(20, 0, CombatActionRules.DC_BONUSES.get("spin", 0), 1),
+		"DC = 레벨 0 표준값 + 레벨")
+	warrior.initiative_roll = 5
+	_check(warrior.get_initiative() == 6, "이니셔티브 굴림값 = 눈 + 레벨")
+	warrior.weapon = {"kind": "weapon", "stats": {"strength_modifier": 2}}
+	_check(warrior.get_ability_modifier(CombatUnit.Ability.STRENGTH) == 3, "장비 가감과 레벨을 별개로 더함")
+	_check(CombatUnit.ability_text(warrior, CombatUnit.Ability.STRENGTH) == "힘 d20+2 +1"
+		and CombatUnit.ability_text(warrior, CombatUnit.Ability.AGILITY) == "민첩 d8 +1"
+		and CombatUnit.ability_text(archer, CombatUnit.Ability.FINESSE) == "솜씨 d20 +1",
+		"패널 표기는 기본 주사위 옆에 레벨: " + CombatUnit.ability_text(warrior, CombatUnit.Ability.STRENGTH))
+	_check(robot.dice_level == 2 and robot.get_armor_class() == robot_armor + 2 and robot.get_max_hit_points() == robot_hit_points,
+		"몬스터 최대 HP는 정의 값 그대로")
+	# 최대 HP가 늘면 잃은 HP는 그대로라 현재 HP도 같은 만큼 는다. 쓰러진 유닛은 0 그대로다.
+	var hurt: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(3, 0))
+	hurt.hit_points = 5
+	var downed: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 0))
+	downed.hit_points = 0
+	hurt.dice_level = 1
+	downed.dice_level = 1
+	_check(hurt.hit_points == 11 and downed.hit_points == 0, "레벨업: 잃은 HP 6 유지(5 → 11), 쓰러진 유닛은 0")
+
+
+func _test_party_level_attack() -> void:
+	var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 4))
+	var robot: CombatUnit = _unit(CombatUnit.Kind.SCRAP_ROBOT_1000, false, Vector2i(5, 4))
+	var units: Array[CombatUnit] = [warrior, robot]
+	var turns: CombatTurns = CombatTurns.new()
+	var actions: CombatActions = CombatActions.new()
+	actions.initialize(units, turns)
+	ScriptedDice.arrange_turns(turns, units, [warrior, robot])
+	warrior.dice_level = 2
+	robot.is_stunned = true
+	actions.dice = ScriptedDice.new([3, 9, 5], ScriptedDice.attack_sides(warrior, 2) + ScriptedDice.damage_sides(warrior))
+	var before: int = robot.hit_points
+	_check(await actions.attack(warrior, robot) and actions.last_attack.total == 11
+		and actions.last_damage_rolls == [7] and robot.hit_points == before - 7 - warrior.get_damage_bonus(),
+		"실제 공격: 명중 굴림값 9+레벨 2, 피해 굴림값 5+레벨 2")
+	var normal: CombatChecks.RollMode = CombatChecks.RollMode.NORMAL
+	var failure: CombatChecks.RollResult = CombatChecks.hit_roll(20, 0, 5, normal, ScriptedDice.new([1], [20]), 2)
+	var success: CombatChecks.RollResult = CombatChecks.hit_roll(20, 0, 99, normal, ScriptedDice.new([18], [20]), 2)
+	_check(not failure.success and failure.face == CombatChecks.Face.ABSOLUTE_FAILURE and failure.total == 3
+		and success.success and success.face == CombatChecks.Face.ABSOLUTE_SUCCESS and success.total == 22,
+		"절대실패는 레벨과 무관하게 실패, 절대성공은 성공, 숫자로는 최댓값·1에 레벨")
 
 
 func _test_battle_rolls() -> void:

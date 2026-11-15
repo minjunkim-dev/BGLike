@@ -37,7 +37,8 @@ const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initi
 	"shield_points", "shield_turns", "battle_cry_bonus", "battle_cry_turns",
 	"fallen", "oil_slipped", "oil_throw_left"]
 ## SAVED_FIELDS 밖의 선택 필드와 기본값(#528). 형식 5를 그대로 두려고, 이 필드가 없는 옛 저장은 기본값으로 읽는다.
-const OPTIONAL_FIELDS: Dictionary[String, Variant] = {"aegisal_left": 0, "moving_shot_ready": false, "moving_shot_spent": false}
+const OPTIONAL_FIELDS: Dictionary[String, Variant] = {"aegisal_left": 0, "moving_shot_ready": false, "moving_shot_spent": false,
+	"firework_arrow_left": 1}
 ## 저장 파일의 정수 상한. 고친 저장이 끝나지 않는 턴이나 큰 목록을 만들지 않게 한다.
 const SAVED_INT_LIMIT: int = 99
 const SAVED_HIT_POINT_LIMIT: int = 999
@@ -122,6 +123,8 @@ var fallen: bool = false
 ## 이번 턴에 기름 장판의 미끌거림을 이미 굴렸는지. 기름 장판 전체에 대해 자기 턴마다 1회다.
 var oil_slipped: bool = false
 var oil_throw_left: int = 1
+## 폭죽 화살의 막당 남은 횟수. 새 막에서 1로 회복한다(궁수 문서).
+var firework_arrow_left: int = 1
 ## 성스러운 장막의 방어막. 피해를 HP보다 먼저 받고, 자기 턴 시작마다 shield_turns가 준다.
 var shield_points: int = 0:
 	set(value):
@@ -140,6 +143,16 @@ var armor: Dictionary = {}:
 		if hit_points > 0:
 			hit_points = maxi(1, get_max_hit_points() - lost)
 			# 최소1 보정 전의 손실을 다음 장비 교체에도 보존한다.
+			_lost_hit_points = lost
+		queue_redraw()
+## 파티 주사위 레벨(#477). 파티의 값을 battle이 아군에 맞추며 저장하지 않는다. 몬스터는 늘 0이다.
+## 최대 HP가 늘면 잃은 HP는 그대로라 현재 HP도 같은 만큼 오른다. 쓰러진 유닛은 0 그대로다.
+var dice_level: int = 0:
+	set(value):
+		var lost: int = maxi(_lost_hit_points, get_max_hit_points() - hit_points)
+		dice_level = value
+		if hit_points > 0:
+			hit_points = maxi(1, get_max_hit_points() - lost)
 			_lost_hit_points = lost
 		queue_redraw()
 var is_previewed: bool = false:
@@ -168,15 +181,21 @@ static func ability_name(ability: Ability) -> String:
 	return ABILITY_NAMES[ability]
 
 
-## 장비의 능력치 가감 합. 굴림값과 표준값에 더한다 (아이템 기획 폼 3장).
+## 굴림값과 표준값에 더하는 값. 주사위 레벨(파티 공통)과 장비의 능력치 가감 합이다 (주사위 육성 4장, 아이템 기획 폼 3장).
 func get_ability_modifier(ability: Ability) -> int:
+	return dice_level + get_equipment_modifier(ability)
+
+
+## 장비의 능력치 가감 합. 레벨은 포함하지 않는다.
+func get_equipment_modifier(ability: Ability) -> int:
 	return _equipment_stat(ABILITY_MODIFIER_KEYS[ability])
 
 
-## 패널·호버의 능력치 표기. 가감이 있으면 `힘 d20+2`처럼 덧붙인다 (#456).
+## 패널·호버의 능력치 표기. 장비 가감이 있으면 `힘 d20+2`처럼, 레벨이 있으면 `힘 d20 +1`처럼 덧붙인다 (#456, #477).
 static func ability_text(unit: CombatUnit, ability: Ability) -> String:
-	var modifier: int = unit.get_ability_modifier(ability)
-	return "%s d%d%s" % [ABILITY_NAMES[ability], unit.get_ability_sides(ability), "" if modifier == 0 else "%+d" % modifier]
+	var modifier: int = unit.get_equipment_modifier(ability)
+	return "%s d%d%s%s" % [ABILITY_NAMES[ability], unit.get_ability_sides(ability), "" if modifier == 0 else "%+d" % modifier,
+		"" if unit.dice_level == 0 else " %+d" % unit.dice_level]
 
 
 ## 이름 뒤에 주격 조사 이/가를 붙인다. 숫자로 끝나면 읽은 소리를 따른다(1000 → 천 → 이, #415).
@@ -222,11 +241,11 @@ func get_armor_class() -> int:
 	return armor_class
 
 
-## 아군은 (건강 면 수 ÷ 2) × (레벨 + 1) + 5다 (능력치 기획서 4-9). 주사위 레벨은 성장 개발 전이라 0이다.
+## 아군은 (건강 면 수 ÷ 2) × (레벨 + 1) + 5다 (능력치 기획서 4-9).
 func get_max_hit_points() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["max_hit_points"])
-	return get_ability_sides(Ability.HEALTH) / 2 + 5 + _equipment_stat("max_hit_points")
+	return get_ability_sides(Ability.HEALTH) / 2 * (dice_level + 1) + 5 + _equipment_stat("max_hit_points")
 
 
 func get_attack_bonus() -> int:
@@ -243,7 +262,7 @@ func get_hit_bonus() -> int:
 func get_damage_bonus() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["damage_bonus"])
-	# 아군은 기본 피해 보정이 없고 장비로만 더한다. 피해식은 능력치 주사위 + 레벨(0) + 기타 가산치다 (#407 답 3번, 궁수 문서).
+	# 아군은 기본 피해 보정이 없고 장비로만 더한다. 피해식은 능력치 주사위 + 레벨 + 기타 가산치다 (#407 답 3번, 궁수 문서).
 	return _equipment_stat("damage_bonus")
 
 
