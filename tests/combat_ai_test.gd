@@ -310,7 +310,7 @@ func _test_jump_retreat_and_pull() -> void:
 	var boss: CombatUnit = pulled.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
 	boss.hit_points = 45
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	boss.cell = Vector2i.ZERO
 	pulled.units[0].cell = Vector2i(3, 0)
 	pulled.units[1].cell = Vector2i(9, 9)
@@ -329,7 +329,7 @@ func _test_scrap_robot() -> void:
 	var boss: CombatUnit = normal.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
 	boss.hit_points = 40
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	normal.actions.dice = ScriptedDice.new([11, 8], ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	await ai.play_turn(boss, normal.actions)
 	_check(normal.units[0].hit_points == 1 and boss.action_left == 0
@@ -339,7 +339,7 @@ func _test_scrap_robot() -> void:
 	boss = overloaded.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_1000
 	boss.hit_points = 20
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	overloaded.units[0].hit_points = 3
 	overloaded.units[1].cell = Vector2i(6, 4)
 	overloaded.actions.dice = ScriptedDice.new([11, 1, 10, 3], ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss) + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
@@ -356,7 +356,7 @@ func _test_scrap_robot() -> void:
 	boss.cell = Vector2i(8, 4)
 	distant.units[0].cell = Vector2i(1, 4)
 	distant.units[1].cell = Vector2i(0, 5)
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	distant.actions.dice = ScriptedDice.new([], [])
 	await ai.play_turn(boss, distant.actions)
 	_check(boss.movement_left == 0 and boss.action_left == 1
@@ -370,7 +370,7 @@ func _test_scrap_robot_pull_priority() -> void:
 		var boss: CombatUnit = f.units[2]
 		boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
 		boss.hit_points = 45
-		boss.begin_turn()
+		ScriptedDice.start_turn(boss)
 		f.units[0].cell = nearby
 		f.units[1].cell = Vector2i(7, 4)
 		f.actions.dice = ScriptedDice.new([6], [6])
@@ -387,7 +387,7 @@ func _test_scrap_robot_pull_movement_and_combo() -> void:
 	var boss: CombatUnit = moving.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
 	boss.hit_points = 45
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	moving.units[0].cell = Vector2i(3, 4)
 	moving.units[0].reaction_left = 1
 	moving.units[1].cell = Vector2i(9, 4)
@@ -405,7 +405,7 @@ func _test_scrap_robot_pull_movement_and_combo() -> void:
 	boss = stopped.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
 	boss.hit_points = 45
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	stopped.units[0].cell = Vector2i(3, 4)
 	stopped.units[0].reaction_left = 1
 	stopped.units[1].cell = Vector2i(9, 4)
@@ -424,14 +424,14 @@ func _test_scrap_robot_pull_movement_and_combo() -> void:
 	boss = combo.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
 	boss.hit_points = 22
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	combo.units[0].cell = Vector2i(1, 1)
 	combo.units[1].cell = Vector2i(7, 4)
 	combo.actions.dice = ScriptedDice.new([6, 10, 3], _pull_sides() + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	await ai.play_turn(boss, combo.actions)
 	_check(combo.units[1].cell == Vector2i(5, 4) and combo.units[1].hit_points == 4
 		and boss.action_left == 0, "과부하 첫 행동 만능팔 뒤 두 번째 행동으로 끌려온 아군 기본 공격")
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	combo.units[0].cell = Vector2i(9, 9)
 	combo.actions.dice = ScriptedDice.new([10, 2], ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
 	await ai.play_turn(boss, combo.actions)
@@ -441,7 +441,7 @@ func _test_scrap_robot_pull_movement_and_combo() -> void:
 	boss = unreachable.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_2000
 	boss.hit_points = 45
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	unreachable.units[0].cell = Vector2i(3, 4)
 	unreachable.units[1].cell = Vector2i(9, 9)
 	unreachable.actions.dice = ScriptedDice.new([12, 1], ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
@@ -456,7 +456,7 @@ func _test_scrap_robot_spin_combos() -> void:
 	var boss: CombatUnit = pull_basic.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
 	boss.hit_points = 25
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	pull_basic.units[0].cell = Vector2i(1, 1)
 	pull_basic.units[1].cell = Vector2i(7, 4)
 	pull_basic.actions.dice = ScriptedDice.new([6, 10, 3], _pull_sides() + ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
@@ -467,7 +467,7 @@ func _test_scrap_robot_spin_combos() -> void:
 	boss = pull_spin.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
 	boss.hit_points = 25
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	pull_spin.units[0].cell = Vector2i(3, 4)
 	pull_spin.units[1].cell = Vector2i(7, 4)
 	pull_spin.actions.dice = ScriptedDice.new([6, 1, 1, 1, 2], _pull_sides() + _spin_sides())
@@ -479,7 +479,7 @@ func _test_scrap_robot_spin_combos() -> void:
 	boss = spin_twice.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
 	boss.hit_points = 25
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	spin_twice.units[0].cell = Vector2i(3, 4)
 	spin_twice.units[1].cell = Vector2i(5, 4)
 	spin_twice.actions.dice = ScriptedDice.new([1, 1, 1, 1, 1, 1, 1, 1], _spin_sides() + _spin_sides())
@@ -497,7 +497,7 @@ func _test_scrap_robot_spin_height() -> void:
 	var boss: CombatUnit = f.units[2]
 	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
 	boss.hit_points = 50
-	boss.begin_turn()
+	ScriptedDice.start_turn(boss)
 	f.units[0].cell = Vector2i(3, 4)
 	f.units[1].cell = Vector2i(5, 4)
 	f.actions.grid.heights[f.units[1].cell] = 2
@@ -516,7 +516,7 @@ func _test_scrap_robot_spin_reevaluation() -> void:
 		var boss: CombatUnit = f.units[2]
 		boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
 		boss.hit_points = 25
-		boss.begin_turn()
+		ScriptedDice.start_turn(boss)
 		f.units[0].cell = Vector2i(3, 4)
 		f.units[0].hit_points = 3
 		f.units[1].cell = Vector2i(5, 4)
@@ -540,7 +540,7 @@ func _test_mother() -> void:
 	var mother: CombatUnit = spawning.units[2]
 	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
 	mother.hit_points = 20
-	mother.begin_turn()
+	ScriptedDice.start_turn(mother)
 	spawning.actions.dice = ScriptedDice.new([1], [3])
 	await ai.play_turn(mother, spawning.actions)
 	_check(spawning.units.size() == 5 and mother.cell == Vector2i(4, 4)
@@ -554,7 +554,7 @@ func _test_mother() -> void:
 	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
 	mother.hit_points = 20
 	mother.cell = Vector2i.ZERO
-	mother.begin_turn()
+	ScriptedDice.start_turn(mother)
 	blocked.actions.grid.map_size = Vector2i(2, 2)
 	blocked.units[0].cell = Vector2i(1, 0)
 	blocked.units[1].cell = Vector2i(0, 1)
@@ -577,7 +577,7 @@ func _test_mother() -> void:
 	var stunned: Fixture = _fixture()
 	mother = stunned.units[2]
 	mother.kind = CombatUnit.Kind.MOTHER_SPIDER
-	mother.begin_turn()
+	ScriptedDice.start_turn(mother)
 	mother.is_stunned = true
 	stunned.actions.dice = ScriptedDice.new([])
 	await ai.play_turn(mother, stunned.actions)
@@ -595,7 +595,7 @@ func _fog_fixture(spider_cell: Vector2i, warrior_cell: Vector2i, archer_cell: Ve
 	f.units[1].cell = archer_cell
 	f.units[3].cell = Vector2i(9, 0)
 	f.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: f.actions.resolve_reaction(false))
-	spider.begin_turn()
+	ScriptedDice.start_turn(spider)
 	return f
 
 

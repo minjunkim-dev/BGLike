@@ -242,7 +242,14 @@ func _select_next_or_advance() -> void:
 			return
 		_finished_units.append(unit)
 	_pending_finished_units.clear()
+	_confirm_group()
 	_start_group_at(_group_end + 1)
+
+
+## 묶음이 확정될 때 그 묶음 전원의 턴 자원을 한꺼번에 채운다(3-3, 3-5 턴 종료 4번).
+func _confirm_group() -> void:
+	for unit: CombatUnit in get_current_group():
+		unit.refill_turn_resources()
 
 
 func _activate_current_unit() -> void:
