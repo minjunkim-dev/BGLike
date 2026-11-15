@@ -79,6 +79,14 @@ func _run() -> void:
 	await _test_tree_burn()
 	_test_stage_reset()
 	_test_save_state()
+	_test_stealth_use()
+	_test_stealth_targeting()
+	await _test_stealth_breaks()
+	await _test_stealth_keeps()
+	_test_stealth_duration()
+	await _test_stealth_opportunity()
+	await _test_stealth_area()
+	_test_stealth_save()
 	await _test_battle_save()
 	for unit: CombatUnit in _created:
 		unit.free()
@@ -366,6 +374,176 @@ func _test_trick_arrow() -> void:
 	armed.actions.dice = _dice([5, 15], [6, 20])
 	await armed.actions.trick_arrow(armed.units[0], Vector2i(7, 4))
 	_check(armed.units[0].aegisal_left == 2 and armed.actions.last_damage == 5, "애기살을 쓰지도 소모하지도 않음")
+
+
+## 은신: 보조 행동·전투마다 1회, 궁수만 쓴다(궁수 문서 「은신」).
+func _test_stealth_use() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	_check(CombatActionRules.belongs_to(archer, "stealth") and not CombatActionRules.belongs_to(f.units[1], "stealth")
+		and not CombatActionRules.belongs_to(f.units[3], "stealth") and not CombatActionRules.belongs_to(f.units[2], "stealth"),
+		"은신은 아군 궁수만")
+	_check(CombatActionRules.resource_of("stealth") == CombatUnit.TurnResource.BONUS_ACTION
+		and CombatActionRules.uses_left(archer, "stealth") == 1, "은신은 보조 행동, 전투마다 1회")
+	_check(f.actions.can_use(archer, "stealth") and f.actions.use_self(archer, "stealth"), "은신 사용")
+	_check(archer.stealthed and archer.bonus_action_left == 0 and archer.action_left == 1 and archer.stealth_left == 0,
+		"은신은 보조 행동과 1회를 쓰고 행동은 남김")
+	_check(not f.actions.can_use(archer, "stealth") and not f.actions.use_self(archer, "stealth"), "횟수를 쓰면 다시 못 씀")
+	_check("전투마다 1회 · 0회 남음" in CombatActionRules.details(archer, "stealth"), "호버의 남은 횟수")
+	_check(not f.actions.use_self(f.units[3], "stealth") and not f.units[3].stealthed, "풋내기 궁수는 못 씀")
+
+
+## 적은 은신 유닛을 지정할 수 없고 아군은 지정할 수 있다.
+func _test_stealth_targeting() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var barbarian: CombatUnit = f.units[2]
+	barbarian.cell = Vector2i(4, 4)
+	f.units[1].cell = Vector2i(3, 5)
+	_check(f.actions.can_target(barbarian, archer, "attack") and f.actions.can_target(f.units[3], archer, "attack"),
+		"은신 전에는 적이 공격을 지정할 수 있음")
+	var robot: Fixture = _fixture([2, 0, 1, 3])
+	robot.units[2].kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	robot.units[2].cell = Vector2i(6, 4)
+	_check(robot.actions.can_target(robot.units[2], robot.units[0], "pull"), "은신 전에는 만능팔을 지정할 수 있음")
+	robot.units[0].stealthed = true
+	_check(not robot.actions.can_target(robot.units[2], robot.units[0], "pull"), "은신하면 만능팔도 지정 불가")
+	archer.stealthed = true
+	_check(not f.actions.can_target(barbarian, archer, "attack") and not f.actions.can_target(f.units[3], archer, "attack"),
+		"은신하면 적의 공격 지정 불가")
+	_check(f.actions.can_target(f.units[1], archer, "shove"), "아군이 은신 유닛을 대상으로 고르는 것은 막지 않음")
+	_check(f.actions.can_target(archer, barbarian, "attack"), "은신 유닛 자신의 공격은 그대로")
+
+
+## 피해를 주는 공격 동작을 쓰면 풀린다. 빗나가도, 빈 칸·상자를 쏘아도 풀린다.
+func _test_stealth_breaks() -> void:
+	var hit: Fixture = _fixture()
+	hit.units[0].stealthed = true
+	hit.actions.dice = _dice([15, 7], [20, 20])
+	await hit.actions.attack(hit.units[0], hit.units[3])
+	_check(not hit.units[0].stealthed, "기본 공격은 은신을 풂")
+	var miss: Fixture = _fixture()
+	miss.units[0].stealthed = true
+	miss.actions.dice = _dice([1], [20])
+	await miss.actions.attack(miss.units[0], miss.units[3])
+	_check(not miss.units[0].stealthed and miss.units[3].hit_points == 14, "빗나가도 풀림")
+	var crate: Fixture = _fixture()
+	crate.units[0].stealthed = true
+	var prop: CombatGrid.Prop = crate.actions.create_prop(Vector2i(4, 4), "crate")
+	crate.actions.dice = _dice([3], [20])
+	await crate.actions.attack_prop(crate.units[0], prop)
+	_check(not crate.units[0].stealthed, "나무 상자 공격도 풂")
+	var trick: Fixture = _fixture()
+	trick.units[0].stealthed = true
+	trick.actions.dice = _dice([6], [6])
+	await trick.actions.trick_arrow(trick.units[0], Vector2i(5, 2))
+	_check(not trick.units[0].stealthed, "장난스러운 화살은 빈 칸에 쏴도 풂")
+	var firework: Fixture = _fixture()
+	firework.units[0].stealthed = true
+	await firework.actions.firework_arrow(firework.units[0], Vector2i(5, 2))
+	_check(not firework.units[0].stealthed, "폭죽 화살은 풂")
+	var bash: Fixture = _fixture()
+	bash.units[0].stealthed = true
+	bash.units[2].cell = Vector2i(4, 4)
+	bash.actions.dice = _dice([1], [6])
+	await bash.actions.bow_bash(bash.units[0], bash.units[2])
+	_check(not bash.units[0].stealthed, "활 후려치기는 풂")
+
+
+## 이동·기름병 던지기·애기살 급조는 풀지 않는다.
+func _test_stealth_keeps() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	archer.stealthed = true
+	_check(f.actions.use_self(archer, "aegisal") and archer.stealthed, "애기살 급조는 풀지 않음")
+	var oil: Fixture = _fixture()
+	oil.units[0].stealthed = true
+	_check(oil.actions.throw_oil(oil.units[0], Vector2i(3, 2)) and oil.units[0].stealthed, "기름병 던지기는 풀지 않음")
+	var walk: Fixture = _fixture()
+	walk.units[0].stealthed = true
+	_check(await walk.actions.move_to(walk.units[0], Vector2i(3, 3)) and walk.units[0].stealthed, "이동은 풀지 않음")
+	var jump: Fixture = _fixture()
+	jump.units[0].stealthed = true
+	_check(await jump.actions.jump_to(jump.units[0], Vector2i(3, 2)) and jump.units[0].stealthed, "점프는 풀지 않음")
+
+
+## 다음 자기 턴 시작까지 이어지고, 새 전투와 전투 불능에서 풀린다.
+func _test_stealth_duration() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	archer.stealthed = true
+	f.turns.turn_started.emit(f.units[2])
+	_check(archer.stealthed, "적 턴이 시작되어도 유지")
+	f.turns.turn_started.emit(archer)
+	_check(not archer.stealthed, "자기 턴 시작에 풀림")
+	archer.stealthed = true
+	archer.stealth_left = 0
+	archer.begin_stage(false)
+	_check(not archer.stealthed and archer.stealth_left == 1, "새 전투에는 은신이 없고 횟수 1")
+	archer.stealthed = true
+	f.actions.incapacitate(archer)
+	_check(not archer.stealthed, "전투 불능이면 풀림")
+
+
+## 은신 유닛은 기회 공격을 받지 않는다.
+func _test_stealth_opportunity() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var barbarian: CombatUnit = f.units[2]
+	barbarian.cell = Vector2i(4, 4)
+	barbarian.reaction_left = 1
+	_check(f.actions.jump_reactors(archer, Vector2i(2, 4)).size() == 1, "은신 전에는 점프 이탈에 기회 공격")
+	archer.stealthed = true
+	_check(f.actions.jump_reactors(archer, Vector2i(2, 4)).is_empty(), "은신하면 점프 이탈에 기회 공격 없음")
+	_check(await f.actions.move_to(archer, Vector2i(2, 4)) and archer.cell == Vector2i(2, 4)
+		and archer.hit_points == archer.get_max_hit_points() and barbarian.reaction_left == 1,
+		"은신하면 걷기 이탈에 기회 공격 없음")
+
+
+## 범위 효과는 은신 유닛도 맞고 은신은 유지된다.
+func _test_stealth_area() -> void:
+	var f: Fixture = _fixture([2, 0, 1, 3])
+	var robot: CombatUnit = f.units[2]
+	var archer: CombatUnit = f.units[0]
+	robot.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	robot.hit_points = robot.get_max_hit_points()
+	archer.cell = Vector2i(5, 3)
+	f.units[1].cell = Vector2i(0, 0)
+	archer.stealthed = true
+	f.actions.dice = _dice([2, 6], [12, 12])
+	_check(await f.actions.spin(robot) and archer.hit_points == 9 - 8 and archer.stealthed,
+		"회전회오리는 은신 유닛도 맞히고 은신은 유지")
+
+
+## 은신 상태와 남은 횟수는 선택 필드다. 없으면 false·1이다.
+func _test_stealth_save() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	archer.stealthed = true
+	archer.stealth_left = 0
+	var saved: Array = f.units.map(func(unit: CombatUnit) -> Dictionary: return unit.save_state(f.units))
+	_check(saved.all(func(data: Dictionary) -> bool: return archer.is_valid_state(data, 4, Vector2i(10, 10)))
+		and "stealthed" not in CombatUnit.SAVED_FIELDS and "stealth_left" not in CombatUnit.SAVED_FIELDS
+		and "stealthed" in CombatUnit.OPTIONAL_FIELDS and "stealth_left" in CombatUnit.OPTIONAL_FIELDS, "은신은 선택 필드")
+	var restored: CombatUnit = CombatUnit.new()
+	_created.append(restored)
+	restored.load_state(saved[0], f.units)
+	_check(restored.stealthed and restored.stealth_left == 0, "은신 상태와 횟수를 되돌림")
+	var old: Dictionary = (saved[0] as Dictionary).duplicate()
+	for field: String in ["stealthed", "stealth_left"]:
+		old.erase(field)
+	var legacy: CombatUnit = CombatUnit.new()
+	_created.append(legacy)
+	legacy.stealthed = true
+	legacy.stealth_left = 0
+	legacy.load_state(old, f.units)
+	_check(archer.is_valid_state(old, 4, Vector2i(10, 10)) and not legacy.stealthed and legacy.stealth_left == 1,
+		"필드가 없는 옛 저장은 false·1로 읽음")
+	for broken: Dictionary in [{"stealthed": 1}, {"stealth_left": -1}, {"stealth_left": "1"},
+			{"stealth_left": CombatUnit.SAVED_INT_LIMIT + 1}]:
+		var data: Dictionary = (saved[0] as Dictionary).duplicate()
+		data.merge(broken, true)
+		_check(not archer.is_valid_state(data, 4, Vector2i(10, 10)), "깨진 선택 필드 거부: " + str(broken))
 
 
 func _oil_count(f: Fixture) -> int:

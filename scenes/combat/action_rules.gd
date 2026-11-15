@@ -6,7 +6,7 @@ extends RefCounted
 ## 복합 비용 스킬은 첫 자원의 묶음에 둔다(십자 베기는 임시로 행동, 9-3).
 const GROUPS: Array[Array] = [
 	["attack", "sweep", "cross_slash", "battle_cry", "spawn", "pull", "spin", "trick_arrow", "firework_arrow"],
-	["holy_veil", "steel_charge", "second_wind", "aegisal", "bow_bash", "disengage", "shove", "jump", "potion", "oil_throw"],
+	["holy_veil", "steel_charge", "second_wind", "aegisal", "bow_bash", "disengage", "shove", "jump", "potion", "oil_throw", "stealth"],
 	["opportunity", "counter", "reflex"]
 ]
 ## 묶음의 자원과 함께 모두 소비하는 비용. 하나라도 부족하면 쓸 수 없다 (5-3). 점프의 이동력은 칸마다 다르다.
@@ -22,7 +22,7 @@ static var NAMES: Dictionary[String, String] = {
 	"spawn": TranslationServer.tr("새끼 낳기"), "pull": TranslationServer.tr("만능팔"), "spin": TranslationServer.tr("회전회오리"), "jump": TranslationServer.tr("점프"),
 	"counter": TranslationServer.tr("반격"), "oil_throw": TranslationServer.tr("기름병 던지기"),
 	"trick_arrow": TranslationServer.tr("장난스러운 화살"), "firework_arrow": TranslationServer.tr("폭죽 화살"),
-	"reflex": TranslationServer.tr("반사신경")
+	"reflex": TranslationServer.tr("반사신경"), "stealth": TranslationServer.tr("은신")
 }
 static var EFFECTS: Dictionary[String, String] = {
 	"jump": TranslationServer.tr("1~2칸의 빈 바닥으로 점프.\n상승2까지, 낙하 차3부터 피해."),
@@ -45,7 +45,8 @@ static var EFFECTS: Dictionary[String, String] = {
 	"oil_throw": TranslationServer.tr("목표 칸 십자 5칸에 기름 장판을 깝니다(3턴).\n기름 칸에 서면 솜씨 내성(DC 4)을 하고, 실패하면 넘어집니다.\n아이템을 쓰지 않습니다."),
 	"trick_arrow": TranslationServer.tr("칸을 겨눕니다(아군도 가능). 지능 d6: 1 삐끗, 2~3 물, 4~6 화염.\n속성은 그 칸에 닿습니다. 명중하면 굴림 값만큼 피해.\n화염은 화상 1중첩, 물은 화상을 모두 끕니다."),
 	"firework_arrow": TranslationServer.tr("칸을 겨눕니다(발밑도 가능). 반경 1의 모든 유닛이 민첩 내성(DC 4).\n피해 솜씨 d20 두 번의 합, 성공하면 절반.\n아군과 자신도 맞습니다. 기름은 점화됩니다."),
-	"reflex": TranslationServer.tr("명중이 확정된 공격을 회피하고\n상하좌우 1칸으로 이동합니다.\n명중굴림 공격에만 쓰고, 넘어지면 쓸 수 없습니다.")
+	"reflex": TranslationServer.tr("명중이 확정된 공격을 회피하고\n상하좌우 1칸으로 이동합니다.\n명중굴림 공격에만 쓰고, 넘어지면 쓸 수 없습니다."),
+	"stealth": TranslationServer.tr("다음 내 턴 시작까지 적이 공격·스킬의\n대상으로 지정할 수 없습니다. 범위 효과와\n장판은 맞습니다. 피해를 주는 공격 동작을\n쓰면 풀립니다.")
 }
 ## 패시브 칸의 스킬(#457). 자원과 횟수가 없어 NAMES·GROUPS에 넣지 않는다. 아이콘이 생기기 전에는 이름 첫 글자를 보인다.
 const PASSIVES: Array[String] = ["phalanx", "brawn", "moving_shot"]
@@ -98,7 +99,9 @@ static func colorize(text: String) -> String:
 
 
 ## 대상 없이 바로 쓰는 동작.
-const SELF_TARGET: Array[String] = ["holy_veil", "battle_cry", "second_wind", "aegisal", "disengage", "potion"]
+const SELF_TARGET: Array[String] = ["holy_veil", "battle_cry", "second_wind", "aegisal", "disengage", "potion", "stealth"]
+## 쓰면 은신이 풀리는 피해를 주는 공격 동작 (궁수 문서 「은신」). 이동·기름병 던지기·효시·애기살 급조는 풀지 않는다.
+const STEALTH_BREAKERS: Array[String] = ["attack", "trick_arrow", "firework_arrow", "bow_bash"]
 ## 칸 조준 동작의 사거리와 반경 (SKILL_TYPES 5-2). 최소 사거리는 기본 0, 기름병 던지기는 1(궁수 문서). 곡사·기준점(목표 칸)은 기본값이라 필드가 없다.
 ## 화염 속성 동작. 나무 칸을 목표로 고를 수 있고 닿으면 나무가 탄다(환경요소 5장).
 const FIRE_ACTIONS: Array[String] = ["trick_arrow", "firework_arrow"]
@@ -129,14 +132,14 @@ const CLASS_ONLY: Dictionary[String, CombatUnit.Kind] = {
 	"phalanx": CombatUnit.Kind.WARRIOR, "brawn": CombatUnit.Kind.WARRIOR, "counter": CombatUnit.Kind.WARRIOR,
 	"aegisal": CombatUnit.Kind.ARCHER, "bow_bash": CombatUnit.Kind.ARCHER, "moving_shot": CombatUnit.Kind.ARCHER,
 	"oil_throw": CombatUnit.Kind.ARCHER, "trick_arrow": CombatUnit.Kind.ARCHER, "firework_arrow": CombatUnit.Kind.ARCHER,
-	"reflex": CombatUnit.Kind.ARCHER
+	"reflex": CombatUnit.Kind.ARCHER, "stealth": CombatUnit.Kind.ARCHER
 }
 ## 아군이 쓰지 않는 몬스터 동작. 풋내기 야만인의 숨 고르기와 풋내기 궁수의 물러서며 쏘기도 여기 있다.
 const MONSTER_ONLY: Array[String] = ["second_wind", "disengage", "spawn", "pull", "spin", "fog"]
 const USE_COUNTERS: Dictionary[String, StringName] = {
 	"second_wind": &"second_wind_left", "disengage": &"disengage_left", "potion": &"potion_left",
 	"cross_slash": &"cross_slash_left", "steel_charge": &"steel_charge_left", "battle_cry": &"battle_cry_left",
-	"oil_throw": &"oil_throw_left", "firework_arrow": &"firework_arrow_left"
+	"oil_throw": &"oil_throw_left", "firework_arrow": &"firework_arrow_left", "stealth": &"stealth_left"
 }
 ## 막 시작에 회복하는 횟수. 물약은 보유 개수라서 회복하지 않는다.
 const USES_PER_ACT: Dictionary[String, int] = {
@@ -144,7 +147,7 @@ const USES_PER_ACT: Dictionary[String, int] = {
 }
 ## 새 전투(스테이지)가 시작될 때 회복하는 횟수 (5-3).
 const USES_PER_COMBAT: Dictionary[String, int] = {
-	"cross_slash": 1, "steel_charge": 1, "battle_cry": 1, "oil_throw": 1
+	"cross_slash": 1, "steel_charge": 1, "battle_cry": 1, "oil_throw": 1, "stealth": 1
 }
 ## 성스러운 장막과 전투의 함성의 기간. 시전자 턴 시작마다 1씩 준다.
 const SHIELD_TURNS: int = 3
@@ -313,6 +316,9 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 			lines = [TranslationServer.tr("사거리: 1~2칸"), TranslationServer.tr("판정: 없음")]
 		"reflex":
 			lines = [TranslationServer.tr("사거리: 자신, 이동 상하좌우 1칸"), TranslationServer.tr("판정: 없음(명중이 확정된 공격)")]
+		"stealth":
+			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("효과: 다음 내 턴 시작까지 지정 불가"),
+				TranslationServer.tr("판정: 없음")]
 		"oil_throw":
 			lines = [TranslationServer.tr("사거리: 1~%d칸 곡사") % aim_range(actor, action),
 				TranslationServer.tr("효과: 기름 장판 십자 5칸, 3턴"), TranslationServer.tr("판정: 없음")]

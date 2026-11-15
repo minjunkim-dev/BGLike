@@ -38,7 +38,7 @@ const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initi
 	"fallen", "oil_slipped", "oil_throw_left"]
 ## SAVED_FIELDS 밖의 선택 필드와 기본값(#528). 형식 5를 그대로 두려고, 이 필드가 없는 옛 저장은 기본값으로 읽는다.
 const OPTIONAL_FIELDS: Dictionary[String, Variant] = {"aegisal_left": 0, "moving_shot_ready": false, "moving_shot_spent": false,
-	"firework_arrow_left": 1}
+	"firework_arrow_left": 1, "stealthed": false, "stealth_left": 1}
 ## 저장 파일의 정수 상한. 고친 저장이 끝나지 않는 턴이나 큰 목록을 만들지 않게 한다.
 const SAVED_INT_LIMIT: int = 99
 const SAVED_HIT_POINT_LIMIT: int = 999
@@ -125,6 +125,13 @@ var oil_slipped: bool = false
 var oil_throw_left: int = 1
 ## 폭죽 화살의 막당 남은 횟수. 새 막에서 1로 회복한다(궁수 문서).
 var firework_arrow_left: int = 1
+## 은신: 적이 공격·스킬의 대상으로 지정할 수 없다. 다음 자기 턴 시작, 피해를 주는 공격 동작, 전투 불능, 새 전투에서 풀린다 (궁수 문서).
+var stealthed: bool = false:
+	set(value):
+		stealthed = value
+		queue_redraw()
+## 은신의 전투마다 남은 횟수.
+var stealth_left: int = 1
 ## 성스러운 장막의 방어막. 피해를 HP보다 먼저 받고, 자기 턴 시작마다 shield_turns가 준다.
 var shield_points: int = 0:
 	set(value):
@@ -312,6 +319,8 @@ func get_status_text() -> String:
 		status = tr("기절") + (" " + status if not status.is_empty() else "")
 	if fallen:
 		status = tr("넘어짐") + (" " + status if not status.is_empty() else "")
+	if stealthed:
+		status = tr("은신") + (" " + status if not status.is_empty() else "")
 	return status
 
 
@@ -398,6 +407,7 @@ func begin_stage(restore_act: bool) -> void:
 	status_effects.clear()
 	clear_unit_effects()
 	aegisal_left = 0
+	stealthed = false
 	fallen = false
 	oil_slipped = false
 	is_selected = false
@@ -616,6 +626,7 @@ func _draw() -> void:
 	(_silhouette.material as ShaderMaterial).set_shader_parameter("fill_alpha", 0.22 if is_occluded else 0.0)
 	_silhouette.position = Vector2(0, floor_offset_y + body_offset_y)
 	_sprite.position = _silhouette.position
+	_sprite.modulate.a = 0.5 if stealthed else 1.0
 	draw_set_transform(Vector2(0, floor_offset_y))
 	var status_y: float = get_status_label_y()
 	draw_rect(Rect2(-9, status_y + 4, 18, 4), OUTLINE_COLOR)
