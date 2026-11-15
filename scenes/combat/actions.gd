@@ -408,9 +408,11 @@ func _roll_rock_stun(actor: CombatUnit, target: CombatUnit) -> void:
 	if target.is_boss():
 		return
 	var ability: CombatUnit.Ability = CombatUnit.Ability.AGILITY
-	var saved: CombatChecks.RollResult = CombatChecks.saving_throw(target.get_ability_sides(ability),
+	var sides: int = target.get_ability_sides(ability)
+	var saved: CombatChecks.RollResult = CombatChecks.saving_throw(sides,
 		target.get_defense_bonus(), ROCK_STUN_DC, CombatActionRules.save_mode(target, ability), dice,
 		target.get_ability_modifier(ability))
+	_show_roll_in_background(CombatDiceRoll.save(target, sides, saved, saved.added(), tr("DC"), ROCK_STUN_DC))
 	var stunned: bool = not saved.success and apply_status(actor, target, "stun")
 	logged.emit(tr("%s %s 내성 %d 대 DC %d") % [target.get_display_name(), CombatUnit.ability_name(ability),
 		saved.total, ROCK_STUN_DC])
@@ -683,13 +685,17 @@ func _slip_roll(unit: CombatUnit) -> bool:
 	return false
 
 
+## 넘어진 유닛이 지금 일어날 수 있는지. 자기 턴에 남은 이동력이 일어서기 비용 이상이어야 한다.
+func can_stand_up(actor: CombatUnit) -> bool:
+	return (_can_move_now(actor) and actor.fallen
+		and actor.movement_left >= CombatOil.standing_cost(actor.get_movement()))
+
+
 ## 넘어진 유닛이 일어난다. 비용은 최대 이동력의 절반(올림)이고 자기 턴에만 쓴다. 이동을 시도하면 먼저 이 비용을 낸다.
 func stand_up(actor: CombatUnit) -> bool:
-	if not _can_move_now(actor) or not actor.fallen:
+	if not can_stand_up(actor):
 		return false
 	var cost: int = CombatOil.standing_cost(actor.get_movement())
-	if actor.movement_left < cost:
-		return false
 	actor.spend_movement(cost)
 	actor.fallen = false
 	logged.emit(tr("%s 일어남: 이동력 %d") % [actor.get_display_name(), cost])
@@ -1105,6 +1111,9 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 
 
 func has_available_action(actor: CombatUnit) -> bool:
+	# 넘어진 유닛은 일어나기가 할 수 있는 동작이다(#560).
+	if actor != null and actor.fallen:
+		return can_stand_up(actor)
 	if not _can_act(actor):
 		return false
 	if actor.movement_left > 0 and not reachable_cells(actor).is_empty():

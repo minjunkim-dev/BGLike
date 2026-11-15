@@ -8,7 +8,7 @@ import json
 import math
 from pathlib import Path
 
-from draw_item_icons import BRASS, INDIGO, LEATHER, RED, SIZE, STEEL, TEAL, WOOD, outlined, potion, sword
+from draw_item_icons import BRASS, INDIGO, LEATHER, RED, ROOT2, SIZE, STEEL, TEAL, WOOD, outlined, potion, sword
 
 WHITE = STEEL[4]
 
@@ -265,6 +265,38 @@ def jump(x, y):
     return None
 
 
+def oil_throw(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Glass bottle tipped mouth-down toward the lower right: u runs along the axis from base to mouth, v across it.
+    cx, cy = 25, 17
+    u = (px - cx + py - cy) / ROOT2
+    v = (py - cy - (px - cx)) / ROOT2
+    lip = 12 <= u <= 15 and abs(v) <= 5.2
+    neck = 5 <= u < 12 and abs(v) <= 3.6
+    body = -13 <= u < 5 and abs(v) <= 8.2 and not (u < -9 and abs(v) > 8.2 - (-9 - u) * 1.6)
+    if lip:
+        return STEEL[3] if v < 0 else STEEL[2]
+    if neck or body:
+        edge = abs(v) > (3.6 if neck else 8.2) - 1.6
+        if v < -(3.6 if neck else 8.2) + 1.6 and u < 10:
+            return STEEL[4] if v < -(3.6 if neck else 8.2) + 0.8 else STEEL[3]
+        # Oil settles on the low side of the tipped bottle.
+        if py > 19 and not edge:
+            return BRASS[2] if py < 22 else BRASS[1]
+        return TEAL[1] if edge and v > 0 else TEAL[0] if v > 0 else INDIGO[1]
+    # Oil stream falling from the mouth and the stain on the floor.
+    if 31.5 <= px <= 35.5 and 28 <= py <= 48:
+        return BRASS[2] if px < 33 else BRASS[1]
+    stain = math.hypot((px - 36) / 21, (py - 50) / 6.5)
+    if stain <= 1:
+        if stain > 0.82:
+            return BRASS[0]
+        return BRASS[2] if py < 48 and px < 30 else BRASS[1]
+    if math.hypot((px - 18) / 5, (py - 54) / 2.5) <= 1:
+        return BRASS[0]
+    return None
+
+
 def fitted(draw):
     """Shrink a full-canvas drawing about the centre so it and its outline fit the item margin (asserted below)."""
     scale = 31.5 / 28
@@ -274,7 +306,8 @@ def fitted(draw):
 ICONS = {"attack": attack, "second_wind": fitted(second_wind), "sweep": fitted(sweep), "cross_slash": fitted(cross_slash),
          "steel_charge": fitted(steel_charge), "holy_veil": fitted(holy_veil), "battle_cry": fitted(battle_cry),
          "opportunity": fitted(opportunity), "counter": fitted(counter), "aegisal": fitted(aegisal),
-         "bow_bash": fitted(bow_bash), "shove": fitted(shove), "jump": fitted(jump), "potion": potion}
+         "bow_bash": fitted(bow_bash), "shove": fitted(shove), "jump": fitted(jump), "potion": potion,
+         "oil_throw": oil_throw}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

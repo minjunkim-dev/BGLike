@@ -33,6 +33,7 @@
     {"id": "bow_bash", "name": "활 후려치기", "effect": "인접한 적에게 힘 판정, 명중하면 1칸 밀침", "brief": "Wooden bow limb arc in the upper left with a brass grip and thin string, white impact lines at the lower right.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/528"},
     {"id": "shove", "name": "밀치기", "effect": "1칸 밀기", "brief": "Open leather glove, palm forward with split fingers and thumb, brass cuff, white push lines to the right."},
     {"id": "jump", "name": "점프", "effect": "1~2칸의 빈 바닥으로 점프", "brief": "Leather boot on a low wooden step, white arc arrow to a higher step on the right."},
-    {"id": "potion", "name": "물약", "effect": "HP 2d4+2 회복", "brief": "The item potion: round red flask with cork and glint. Same picture as the potion slot."}
+    {"id": "potion", "name": "물약", "effect": "HP 2d4+2 회복", "brief": "The item potion: round red flask with cork and glint. Same picture as the potion slot."},
+    {"id": "oil_throw", "name": "기름병 던지기", "effect": "칸 하나에 기름 장판 생성", "brief": "Glass bottle tipped mouth-down toward the lower right with amber oil on its low side, an oil stream falling from the mouth onto an amber oil stain on the floor.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/560"}
   ]
 }
