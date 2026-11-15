@@ -12,6 +12,13 @@ const REACTIONS: Dictionary = {
 }
 
 
+## 장난스러운 화살의 지능 d6 눈 → 속성 (궁수 문서). 1은 삐끗(빈 문자열), 2~3 물, 4~6 화염.
+static func trick_attribute(face: int) -> String:
+	if face <= 1:
+		return ""
+	return "water" if face <= 3 else "fire"
+
+
 static func reaction(attribute: String, ground_kind: String) -> String:
 	return REACTIONS.get(attribute, {}).get(ground_kind, "")
 
