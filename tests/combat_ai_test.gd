@@ -85,6 +85,8 @@ func _run() -> void:
 	await _test_jump_priorities()
 	await _test_jump_retreat_and_pull()
 	await _test_archer()
+	await _test_stealth_targets()
+	await _test_stealth_area_skills()
 	await _test_water_positions()
 	await _test_reaction_pause()
 	await _test_enemy_reactions()
@@ -939,6 +941,73 @@ func _test_archer() -> void:
 		and edge.units[3].action_left == 0, "후퇴 칸이 없으면 헛이동·후퇴 스킬 없이 공격")
 	_check(edge.actions.last_attack.mode == CombatChecks.RollMode.DISADVANTAGE,
 		"후퇴할 수 없는 풋내기 궁수는 인접 위협의 불리 유지")
+
+
+## 은신 유닛은 적 AI의 대상 후보에서 빠진다. 후보가 은신뿐이면 이동만 한다 (궁수 문서 「은신」, 전투 기획서 7장).
+func _test_stealth_targets() -> void:
+	# HP가 더 낮은 은신 궁수 대신 전사를 공격한다.
+	var other: Fixture = _fixture()
+	var enemy: CombatUnit = other.units[2]
+	other.units[1].cell = Vector2i(4, 5)
+	other.units[1].stealthed = true
+	other.actions.dice = ScriptedDice.new([10, 1], ScriptedDice.attack_sides(enemy) + ScriptedDice.damage_sides(enemy))
+	await ai.play_turn(enemy, other.actions)
+	_check(other.units[1].hit_points == other.units[1].get_max_hit_points() and other.units[0].hit_points < 11
+		and enemy.action_left == 0, "은신하지 않은 대상을 공격하고 은신 유닛은 건드리지 않음")
+	# 후보가 은신 유닛뿐이면 공격하지 않고 다가가기만 한다.
+	var only: Fixture = _fixture()
+	enemy = only.units[2]
+	only.actions.incapacitate(only.units[0])
+	only.units[1].cell = Vector2i(4, 8)
+	only.units[1].stealthed = true
+	var before: int = CombatGrid.distance(enemy.cell, only.units[1].cell)
+	await ai.play_turn(enemy, only.actions)
+	_check(only.units[1].hit_points == only.units[1].get_max_hit_points() and enemy.action_left == 1
+		and CombatGrid.distance(enemy.cell, only.units[1].cell) < before, "후보가 은신뿐이면 이동만 하고 은신 쪽으로 다가감")
+	# 인접해 있어도 공격하지 않는다.
+	var adjacent: Fixture = _fixture()
+	enemy = adjacent.units[2]
+	adjacent.actions.incapacitate(adjacent.units[0])
+	adjacent.units[1].cell = Vector2i(4, 5)
+	adjacent.units[1].stealthed = true
+	await ai.play_turn(enemy, adjacent.actions)
+	_check(adjacent.units[1].hit_points == adjacent.units[1].get_max_hit_points() and enemy.action_left == 1,
+		"인접한 은신 유닛도 공격하지 않음")
+	# 풋내기 궁수는 인접한 은신 유닛을 위협으로 세지 않아 물러나지 않는다.
+	var ranged: Fixture = _fixture(true)
+	ranged.units[3].cell = Vector2i(4, 4)
+	ranged.units[2].cell = Vector2i(9, 0)
+	ranged.units[0].cell = Vector2i(9, 9)
+	ranged.actions.incapacitate(ranged.units[0])
+	ranged.units[1].cell = Vector2i(4, 5)
+	ranged.units[1].stealthed = true
+	await ai.play_turn(ranged.units[3], ranged.actions)
+	_check(ranged.units[3].disengage_left == 2 and ranged.units[3].cell == Vector2i(4, 4)
+		and ranged.units[1].hit_points == ranged.units[1].get_max_hit_points(), "은신 유닛은 후퇴 판단의 위협도 아님")
+
+
+## 범위 스킬을 고를 때도 은신 유닛은 후보가 아니다. 쓰면 범위 안의 은신 유닛도 맞는다.
+func _test_stealth_area_skills() -> void:
+	var f: Fixture = _fixture()
+	var boss: CombatUnit = f.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 50
+	ScriptedDice.start_turn(boss)
+	f.units[0].cell = Vector2i(3, 4)
+	f.units[1].cell = Vector2i(5, 4)
+	f.units[1].stealthed = true
+	f.actions.dice = ScriptedDice.new([11, 1], ScriptedDice.attack_sides(boss) + ScriptedDice.damage_sides(boss))
+	await ai.play_turn(boss, f.actions)
+	_check(f.logs.filter(func(line: String) -> bool: return "회전회오리:" in line).is_empty()
+		and f.units[1].hit_points == f.units[1].get_max_hit_points() and f.units[0].hit_points < 11 and boss.action_left == 0,
+		"인접 상대가 은신 한 명 포함 둘이어도 회전회오리 대신 보이는 대상 기본 공격")
+	var fog: Fixture = _fog_fixture(Vector2i(4, 4), Vector2i(5, 4), Vector2i(8, 8))
+	fog.actions.incapacitate(fog.units[0])
+	fog.units[1].stealthed = true
+	var spider: CombatUnit = fog.units[2]
+	await ai.play_turn(spider, fog.actions)
+	_check(_fog_logs(fog).is_empty() and fog.actions.fog_cast_count(spider) == 0 and spider.action_left == 1
+		and spider.cell != Vector2i(4, 4), "후보가 은신뿐이면 독안개를 쓰지 않고 다가감")
 
 
 ## 환경요소 6장: 공격 위치를 고를 때 다른 조건이 같으면 물이 아닌 칸. 화상을 끄려고 물을 찾아가지는 않는다.
