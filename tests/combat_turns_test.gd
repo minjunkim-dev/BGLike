@@ -489,7 +489,10 @@ func _test_scene() -> void:
 	battle.stages[0] = load("res://scenes/combat/stage.tres") as CombatStage
 	root.add_child(battle)
 	battle.set_process(false)
+	var first: CombatUnit = (battle.get("party") as Array)[0]
+	first.armor = {"kind": "armor", "stats": {"max_movement": 1}}  # 시작 전 정비 화면에서 바꾼 장비
 	battle.call("start_battle")
+	_check(first.movement_left == first.get_movement(), "전투 시작 때 바뀐 장비의 최대 이동으로 이동력을 채움")
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud

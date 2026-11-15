@@ -150,6 +150,9 @@ func _start_stage(restore_act: bool) -> void:
 func start_battle() -> void:
 	if not waiting_for_start:
 		return
+	# 시작 전 정비 화면에서 장비가 바뀌면 최대 이동이 달라진다. 아직 아무 행동도 없었으므로 다시 채운다(3-3).
+	for unit: CombatUnit in party:
+		unit.refill_turn_resources()
 	waiting_for_start = false
 	_save_pending = true
 	get_viewport().gui_release_focus()
