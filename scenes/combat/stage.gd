@@ -21,6 +21,15 @@ const SCENERY_SIZE: Dictionary[String, Vector2i] = {
 @export var enemies: PackedScene
 
 
+## 서 있는 나무 칸. 나무는 1×1이라 anchor가 그 칸이다. 화염이 닿으면 타서 열린다(환경요소 5장).
+func tree_cells() -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	for anchor: Vector2i in scenery:
+		if scenery[anchor] == "tree":
+			result.append(anchor)
+	return result
+
+
 func get_blocked_cells() -> Array[Vector2i]:
 	var result: Array[Vector2i] = blocked_cells.duplicate()
 	for anchor: Vector2i in scenery:

@@ -98,6 +98,7 @@ func _run() -> void:
 	await _test_sweep_input()
 	await _test_rock_presentation()
 	await _test_results_and_restart()
+	await _test_tree_burn_ui()
 	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
 	await create_timer(0.08).timeout
 	current_scene.queue_free()
@@ -633,6 +634,55 @@ func _test_archer_and_enemy() -> void:
 	battle.call("_update_turn_ui")
 	_check(hud.end_button.disabled, "반응 대기 중 턴 종료 잠금")
 	actions.busy = false
+
+
+## 나무 불타기 안내와 그림(#529): 화살 안내 줄과, 탄 나무의 그림이 사라짐.
+func _test_tree_burn_ui() -> void:
+	_reset_units()
+	var archer: CombatUnit = units[1]
+	var grid: CombatGrid = actions.grid
+	var original: CombatStage = battle.stages[0]
+	var staged: CombatStage = original.duplicate() as CombatStage
+	staged.scenery = {Vector2i(2, 5): "tree", Vector2i(6, 5): "tree"}
+	grid.blocked_cells = staged.get_blocked_cells()
+	grid.trees = staged.tree_cells()
+	(battle.get_node("Map") as CombatMap).build_grid(grid, staged.tile_set, staged)
+	var tree: Vector2i = grid.trees[0]
+	var corners: Array[Vector2i] = [Vector2i(0, 9), Vector2i(9, 9), Vector2i(9, 0), Vector2i(0, 0)]
+	var corner: int = 0
+	for unit: CombatUnit in units:
+		if unit != archer and corner < corners.size():
+			unit.cell = corners[corner]
+			corner += 1
+	var stand: Vector2i = Vector2i(-1, -1)
+	for neighbor: Vector2i in CombatGrid.neighbors(tree):
+		if grid.is_floor(neighbor) and not grid.is_blocked(neighbor) and grid.unit_at(neighbor) == null:
+			stand = neighbor
+	archer.cell = stand
+	turns.select_unit(archer)
+	battle.call("_update_turn_ui")
+	var trick_note: String = battle.call("_arrow_note", archer, "trick_arrow", tree)
+	_check(tr("화염이 나오면 나무가 타서 길이 열림") in trick_note, "장난스러운 화살이 나무를 겨누면 안내: " + trick_note)
+	var plain: Vector2i = Vector2i(-1, -1)
+	for cell: Vector2i in actions.aim_cells(archer, "firework_arrow"):
+		if actions.aim_area(archer, "firework_arrow", cell).all(func(area_cell: Vector2i) -> bool: return not grid.is_tree(area_cell)):
+			plain = cell
+			break
+	_check(plain != Vector2i(-1, -1) and tr("나무가 타서 길이 열림") not in (battle.call("_arrow_note", archer, "firework_arrow", plain) as String)
+		and tr("나무가 타서 길이 열림") not in (battle.call("_arrow_note", archer, "trick_arrow", plain) as String), "나무가 없으면 안내 줄 없음")
+	var firework_note: String = battle.call("_arrow_note", archer, "firework_arrow", tree)
+	_check(firework_note.ends_with(tr("나무가 타서 길이 열림")), "폭죽 영역에 나무가 있으면 안내: " + firework_note)
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	var markers: Array = (map.get("_blocked_markers") as Array).filter(func(marker: Node2D) -> bool: return marker.get_meta("tree", false))
+	actions.touch_attribute(tree, "fire", archer)
+	battle.call("_update_turn_ui")
+	var left: Array = (map.get("_blocked_markers") as Array).filter(func(marker: Node2D) -> bool: return marker.get_meta("tree", false))
+	_check(left.size() == markers.size() - 1 and left.all(func(marker: Node2D) -> bool: return marker.get_meta("cell") != tree),
+		"탄 나무의 그림만 사라짐: %d → %d" % [markers.size(), left.size()])
+	grid.blocked_cells = original.get_blocked_cells()
+	grid.trees = original.tree_cells()
+	map.build_grid(grid, original.tile_set, original)
+	actions.burned_trees.clear()
 
 
 ## 궁수 스킬 패널과 무빙샷 입력(#528): 공격 뒤 선택이 무빙샷으로 바뀌고, 같은 빈 칸을 두 번 우클릭하면 도약한다.

@@ -68,6 +68,7 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = n
 			var front: Vector2i = anchor + size - Vector2i.ONE
 			var marker: Node2D = _art_marker(front, id, 8.0 if id == "cottage" else 4.0)
 			marker.set_meta("cell", front)
+			marker.set_meta("tree", id == "tree")
 			add_child(marker)
 			_blocked_markers.append(marker)
 			for y: int in range(size.y):
@@ -80,6 +81,14 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = n
 			marker.set_meta("cell", cell)
 			add_child(marker)
 			_blocked_markers.append(marker)
+
+## 서 있지 않은 나무(탄 나무)의 그림을 지운다. 그 칸의 클릭·가림은 일반 바닥과 같아진다(환경요소 5장).
+func show_trees(standing: Array[Vector2i]) -> void:
+	for marker: Node2D in _blocked_markers.duplicate():
+		if marker.get_meta("tree", false) and not standing.has(marker.get_meta("cell") as Vector2i):
+			_blocked_markers.erase(marker)
+			marker.free()
+
 
 func map_to_surface(cell: Vector2i) -> Vector2:
 	var height: int = grid.height_at(cell) if grid != null else 0

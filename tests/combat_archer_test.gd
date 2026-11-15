@@ -76,6 +76,7 @@ func _run() -> void:
 	await _test_firework_arrow()
 	_test_arrow_usability()
 	_test_firework_uses_and_save()
+	await _test_tree_burn()
 	_test_stage_reset()
 	_test_save_state()
 	await _test_battle_save()
@@ -427,6 +428,79 @@ func _test_firework_arrow() -> void:
 	k.actions.dice = _dice([1, 5, 5, 1, 5, 5], [12, 20, 20, 8, 20, 20])
 	await k.actions.firework_arrow(k.units[0], Vector2i(3, 4))
 	_check(k.units[0].hit_points <= 0 and k.units[1].hit_points == 40 - 10, "시전자가 쓰러져도 남은 대상은 내성과 피해를 받음")
+
+
+## 나무 불타기(환경요소 5장, #529): 서 있는 나무는 벽 (4,3), 나무 (5,3)·(6,3)·(8,8)이다.
+func _tree_fixture() -> Fixture:
+	var f: Fixture = _fixture()
+	f.actions.grid.blocked_cells = [Vector2i(4, 3), Vector2i(5, 3), Vector2i(6, 3), Vector2i(8, 8)]
+	f.actions.grid.trees = [Vector2i(5, 3), Vector2i(6, 3), Vector2i(8, 8)]
+	return f
+
+
+func _test_tree_burn() -> void:
+	var f: Fixture = _tree_fixture()
+	var archer: CombatUnit = f.units[0]
+	var tree: Vector2i = Vector2i(5, 3)
+	# 고르기: 화염 동작만 사거리 안의 나무를 고른다. 벽·사거리 밖 나무는 못 고른다.
+	_check(f.actions.can_aim(archer, "trick_arrow", tree) and f.actions.can_aim(archer, "firework_arrow", tree),
+		"두 화살은 사거리 안의 나무 칸을 고름")
+	_check(not f.actions.can_aim(archer, "trick_arrow", Vector2i(4, 3)) and not f.actions.can_aim(archer, "firework_arrow", Vector2i(4, 3)),
+		"벽은 고르지 못함")
+	_check(not f.actions.can_aim(archer, "trick_arrow", Vector2i(8, 8)) and not f.actions.can_aim(archer, "firework_arrow", Vector2i(8, 8)),
+		"사거리 밖 나무는 고르지 못함")
+	_check(not f.actions.can_aim(archer, "oil_throw", tree) and not f.actions.can_aim(archer, "fog", tree),
+		"기름병·독안개는 나무 칸을 고르지 못함")
+	# 영역: 폭죽은 나무 칸을 중심으로 계산하고 이웃 나무를 넣으며 벽은 뺀다. 독안개 영역은 나무를 뺀다.
+	var area: Array[Vector2i] = f.actions.aim_area(archer, "firework_arrow", tree)
+	_check(area.size() == 4 and tree in area and Vector2i(6, 3) in area and Vector2i(4, 3) not in area,
+		"폭죽 영역은 나무 칸을 중심으로 이웃 나무를 넣고 벽을 뺌 " + str(area))
+	_check(f.actions.aim_area(archer, "fog", Vector2i(5, 2)).has(tree) == false, "독안개 영역은 나무를 계속 뺌")
+	# 장난스러운 화살: 화염 면이면 탄다. 불 장판·피해 없음.
+	f.actions.dice = _dice([5], [6])
+	_check(await f.actions.trick_arrow(archer, tree), "나무 칸에 장난스러운 화살을 쏨")
+	_check(not f.actions.grid.is_tree(tree) and not f.actions.grid.is_blocked(tree) and f.actions.get_grounds().is_empty(),
+		"화염 면: 나무가 사라지고 장판은 없음")
+	_check("나무가 불탐: 5, 3" in f.logs, "불탐 로그 " + str(f.logs))
+	_check(f.actions.grid.is_tree(Vector2i(6, 3)) and f.actions.grid.is_blocked(Vector2i(6, 3)), "이웃 나무는 번지지 않음")
+	_check(not f.actions.touch_attribute(tree, "fire", archer) and f.logs.filter(func(line: String) -> bool: return "나무가 불탐" in line).size() == 1,
+		"이미 탄 칸에 다시 닿아도 다시 타지 않음")
+	# 열린 칸은 일반 바닥이다.
+	_check(f.actions.grid.walk_costs(archer.cell).has(tree) and not f.actions.grid.path_to(archer, tree).is_empty(),
+		"열린 칸으로 걸을 수 있음")
+	_check(f.actions.grid.area_cells(Vector2i(5, 2), 1).has(tree), "열린 칸은 원형 범위에 들어감")
+	_check(f.actions.create_prop(tree, "crate") != null, "열린 칸에 물체를 둘 수 있음")
+	# 삐끗·물은 태우지 않는다(나무를 겨눌 수는 있다). 점프도 막히다 열린다.
+	var g: Fixture = _tree_fixture()
+	var shooter: CombatUnit = g.units[0]
+	for face: int in [1, 3]:
+		shooter.action_left = 1
+		g.actions.dice = _dice([face], [6])
+		await g.actions.trick_arrow(shooter, tree)
+		_check(g.actions.grid.is_tree(tree) and g.actions.grid.is_blocked(tree), "삐끗·물은 나무를 태우지 않음: %d" % face)
+	_check(not g.actions.touch_attribute(tree, "water", shooter) and g.actions.grid.is_tree(tree), "물이 닿아도 나무는 그대로")
+	g.actions.create_ground(shooter, Vector2i(5, 4), "burn")
+	_check(g.actions.grid.is_tree(tree) and g.actions.grid.is_tree(Vector2i(6, 3)), "인접 칸의 불 장판은 나무를 태우지 않음")
+	shooter.cell = Vector2i(6, 5)
+	_check(g.actions.grid.jump_path(shooter, Vector2i(6, 3)).is_empty(), "서 있는 나무 칸으로는 못 뜀")
+	g.actions.touch_attribute(Vector2i(6, 3), "fire", shooter)
+	_check(g.actions.grid.jump_path(shooter, Vector2i(6, 3)) == [Vector2i(6, 4), Vector2i(6, 3)], "열린 칸은 착지 칸이 됨")
+	# 폭죽 화살: 영역 안 나무는 모두 타고(목표가 나무가 아니어도) 영역 밖 나무·벽은 그대로다.
+	var h: Fixture = _tree_fixture()
+	var bomber: CombatUnit = h.units[0]
+	h.units[2].hit_points = 40
+	h.actions.dice = _dice([1, 3, 2], [6, 20, 20])
+	_check(await h.actions.firework_arrow(bomber, Vector2i(5, 3)), "나무 칸에 폭죽 화살을 쏨")
+	_check(not h.actions.grid.is_tree(Vector2i(5, 3)) and not h.actions.grid.is_tree(Vector2i(6, 3))
+		and h.actions.grid.is_tree(Vector2i(8, 8)) and h.actions.grid.is_blocked(Vector2i(4, 3)),
+		"영역 안 나무만 타고 영역 밖 나무와 벽은 그대로")
+	_check(h.units[2].hit_points == 40 - 5, "영역 안 유닛의 내성·피해는 지금과 같음")
+	var k: Fixture = _tree_fixture()
+	k.units[0].cell = Vector2i(5, 6)
+	k.actions.dice = _dice([1, 3, 2], [6, 20, 20])
+	await k.actions.firework_arrow(k.units[0], Vector2i(5, 4))
+	_check(not k.actions.grid.is_tree(Vector2i(5, 3)) and k.actions.grid.is_tree(Vector2i(6, 3)),
+		"목표가 나무가 아니어도 영역 안 나무가 탐")
 
 
 func _test_arrow_usability() -> void:

@@ -215,6 +215,7 @@ func _build_stage() -> CombatStage:
 	actions.grid.heights = stage.heights.duplicate()
 	actions.grid.pits = stage.pits.duplicate()
 	actions.grid.blocked_cells = stage.get_blocked_cells()
+	actions.grid.trees = stage.tree_cells()
 	actions.grid.water_cells = stage.water_cells.duplicate()
 	map.build_grid(actions.grid, stage.tile_set, stage)
 	var enemies: Node = stage.enemies.instantiate()
@@ -321,7 +322,7 @@ func _is_valid_state(state: Dictionary) -> bool:
 			return false
 	if not (state.last_ally >= 0 and state.last_ally < count and saved_units[state.last_ally].ally
 			and CombatTurns.is_valid_state(state.get("turns"), count)
-			and CombatActions.is_valid_state(state, count, stage.map_size)):
+			and CombatActions.is_valid_state(state, count, stage.map_size, stage.tree_cells())):
 		return false
 	# 떨어진·주운 아이템은 이 스테이지의 상자 수를 넘지 않고, 남은 상자 칸에 떨어져 있지 않다.
 	var crates: Array = state.props.filter(func(saved: Array) -> bool: return saved[0] == "crate")
@@ -992,6 +993,7 @@ func _update_turn_ui() -> void:
 				attack_cells.append(cell)
 	map.show_movement(movement_cells, attack_cells, path, origin)
 	map.show_grounds(actions.get_grounds())
+	map.show_trees(actions.grid.trees)
 	map.show_floor_loot(actions.floor_loot.drops)
 	map.show_props(actions.get_props(), selection.preview_prop)
 	map.reveal_units(units)
@@ -1151,13 +1153,18 @@ func _arrow_note(actor: CombatUnit, action: String, cell: Vector2i) -> String:
 			note += "\n" + tr("%s 명중률 %.1f%%") % [target.get_display_name(), preview.chance * 100.0]
 			if target.is_ally:
 				note += " · " + tr("아군")
+		if actions.grid.is_tree(cell):
+			note += "\n" + tr("화염이 나오면 나무가 타서 길이 열림")
 		return note + "\n" + tr("같은 칸을 다시 좌클릭하면 쏩니다.")
 	var chances: Array[String] = []
 	for unit: CombatUnit in units:
 		if unit.hit_points > 0 and unit.cell in actions.aim_area(actor, action, cell):
 			chances.append("%s %.1f%%" % [unit.get_display_name(), CombatActionRules.save_chance(actor, unit, action) * 100.0])
-	return tr("폭죽 화살 · 행동1 · 막당 1 · 아군과 자신도 맞음\n민첩 내성 성공률: %s\n같은 칸을 다시 좌클릭하면 쏩니다.") % (
+	var firework: String = tr("폭죽 화살 · 행동1 · 막당 1 · 아군과 자신도 맞음\n민첩 내성 성공률: %s\n같은 칸을 다시 좌클릭하면 쏩니다.") % (
 		" · ".join(chances) if not chances.is_empty() else tr("대상 없음"))
+	if actions.aim_area(actor, action, cell).any(func(area_cell: Vector2i) -> bool: return actions.grid.is_tree(area_cell)):
+		firework += "\n" + tr("나무가 타서 길이 열림")
+	return firework
 
 
 func _attack_targets_from(cell: Vector2i) -> Array[CombatUnit]:
