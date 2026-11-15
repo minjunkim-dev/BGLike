@@ -1119,6 +1119,10 @@ msgstr "고지대"
 msgid "옆에 적"
 msgstr "옆에 적"
 
+#: scenes/combat/grid.gd:424
+msgid "물 위"
+msgstr "물 위"
+
 #: scenes/combat/grid.gd:351
 msgid "물 위: 불리"
 msgstr "물 위: 불리"

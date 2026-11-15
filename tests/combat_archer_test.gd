@@ -509,10 +509,10 @@ func _test_whistle() -> void:
 	h.actions.dice = _dice([2, 2], [h_will, h_will])
 	await h.actions.whistle(h.units[0], Vector2i(4, 4))
 	_check(h.units[2].distracted_turns == 2, "다시 걸리면 기간을 2로 되돌림(중첩 없음)")
-	# 산만함인 대상의 효시 내성은 불리가 아니다(실패한 뒤의 굴림부터).
+	# 산만함이 없는 대상의 효시 내성은 불리가 아니다(걸리기 전의 굴림). 이미 산만함인 대상은 위 h처럼 불리다.
 	var k: Fixture = _fixture()
 	_check(CombatActionRules.save_mode(k.units[2], CombatUnit.Ability.WILL) == CombatChecks.RollMode.NORMAL,
-		"효시 내성굴림 자체에는 산만함이 없음")
+		"산만함이 없는 대상의 효시 내성굴림은 불리가 아님")
 	# 대상이 없는 맵 안 방향은 실행되어 횟수를 쓴다. 맵 밖 방향은 거부한다.
 	var m: Fixture = _fixture()
 	m.actions.dice = _dice([], [])
