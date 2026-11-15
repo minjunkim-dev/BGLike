@@ -21,6 +21,8 @@ const UNIT_FRAME: String = "res://scenes/combat/art/units/%s/idle/right/000.png"
 var loot: CombatLoot
 var party: Array[CombatUnit] = []
 var rewards: Array[Dictionary] = []
+## 승리 때 줍지 않아 사라진 상자 아이템 수. 보상 확인 단계에서 알린다.
+var lost_floor_items: int = 0
 var maintaining: bool = false
 var final_stage: bool = false
 var last_in_act: bool = false
@@ -143,7 +145,7 @@ func _ready() -> void:
 
 func open_rewards(
 	model: CombatLoot, allies: Array[CombatUnit], drops: Array[Dictionary],
-	is_final: bool, is_last_in_act: bool, is_maintaining: bool = false
+	is_final: bool, is_last_in_act: bool, is_maintaining: bool = false, lost_drops: int = 0
 ) -> void:
 	if visible:
 		return
@@ -153,6 +155,7 @@ func open_rewards(
 	final_stage = is_final
 	last_in_act = is_last_in_act
 	maintaining = is_maintaining
+	lost_floor_items = lost_drops
 	show()
 	_render()
 	continue_button.grab_focus()
@@ -256,6 +259,9 @@ func _render() -> void:
 	enable_button.disabled = _confirm_finish
 	for index: int in range(party.size()):
 		_render_card(index)
+	if lost_floor_items > 0 and not maintaining:
+		_label(content, tr_n("줍지 않은 아이템 %d개가 사라졌습니다", "줍지 않은 아이템 %d개가 사라졌습니다", lost_floor_items)
+			% lost_floor_items, DIM_COLOR, false).name = "LostFloorItems"
 	_label(content, tr_n("받지 않은 보상 %d개",
 		"받지 않은 보상 %d개", rewards.size()) % rewards.size()
 		if not rewards.is_empty() else tr("남은 보상 없음"), GOLD_COLOR, false)

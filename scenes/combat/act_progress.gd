@@ -42,10 +42,12 @@ func begin_stage() -> void:
 	_victory_recorded = false
 
 
-func record_victory(loot: CombatLoot, monster_count: int, dice: CombatDice) -> void:
+## picked는 이번 전투에서 주운 상자 아이템이다. 굴린 드랍 뒤에 합산한다.
+func record_victory(loot: CombatLoot, monster_count: int, dice: CombatDice, picked: Array[Dictionary] = []) -> void:
 	if _victory_recorded:
 		return
 	rewards = loot.roll_rewards(monster_count, dice, act_number())
+	rewards.append_array(picked.duplicate(true))
 	_victory_recorded = true
 
 

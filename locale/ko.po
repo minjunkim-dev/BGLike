@@ -404,6 +404,22 @@ msgstr "%s 나무 상자 공격: %d, %d · 피해 %d · 내구도 %d/6%s"
 msgid " · 파괴"
 msgstr " · 파괴"
 
+#: scenes/combat/actions.gd:262
+msgid "나무 상자 파괴: %s 떨어짐"
+msgstr "나무 상자 파괴: %s 떨어짐"
+
+#: scenes/combat/actions.gd:269
+msgid "%s: %s 획득"
+msgstr "%s: %s 획득"
+
+#: scenes/combat/actions.gd:270
+msgid "%s 획득"
+msgstr "%s 획득"
+
+#: scenes/combat/actions.gd:278
+msgid "줍기: %s"
+msgstr "줍기: %s"
+
 #: scenes/combat/actions.gd:235
 msgid "대상 없음"
 msgstr "대상 없음"
@@ -923,6 +939,10 @@ msgstr "밀려날 칸이 막힘 · 명중하면 피해만, 쓰러뜨리면 그 �
 msgid "기본 공격만 가능"
 msgstr "기본 공격만 가능"
 
+#: scenes/combat/battle.gd:945
+msgid "바닥 아이템 · %s"
+msgstr "바닥 아이템 · %s"
+
 #: scenes/combat/battle.gd:868
 msgid "바위"
 msgstr "바위"
@@ -1208,6 +1228,11 @@ msgstr "다음 스테이지"
 #: scenes/combat/preparation.gd:254
 msgid "정비하기"
 msgstr "정비하기"
+
+#: scenes/combat/preparation.gd:259
+msgid "줍지 않은 아이템 %d개가 사라졌습니다"
+msgid_plural "줍지 않은 아이템 %d개가 사라졌습니다"
+msgstr[0] "줍지 않은 아이템 %d개가 사라졌습니다"
 
 #: scenes/combat/preparation.gd:259
 msgid "받지 않은 보상 %d개"

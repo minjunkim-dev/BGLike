@@ -54,15 +54,16 @@ func _init() -> void:
 
 func roll_rewards(monster_count: int, dice: CombatDice, act_number: int) -> Array[Dictionary]:
 	assert(act_number >= 1 and act_number <= 3, "아이템을 얻은 막은1~3입니다.")
-	var rewards: Array[Dictionary] = [_roll_item(dice, act_number)]
+	var rewards: Array[Dictionary] = [roll_item(dice, act_number)]
 	var chance: float = float(data["extra_drop_chance"])
 	for index: int in range(monster_count):
 		if chance >= 1.0 or dice.chance() < chance:
-			rewards.append(_roll_item(dice, act_number))
+			rewards.append(roll_item(dice, act_number))
 	return rewards
 
 
-func _roll_item(dice: CombatDice, act_number: int) -> Dictionary:
+## 기존 드랍 풀에서 아이템 하나를 정한다. 상자 드랍과 승리 보상이 같은 추첨을 쓴다.
+func roll_item(dice: CombatDice, act_number: int) -> Dictionary:
 	var total: int = 0
 	for definition: Dictionary in data["items"]:
 		total += int(definition["weight"])

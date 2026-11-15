@@ -53,6 +53,7 @@ func _run() -> void:
 	_check("이니셔티브" not in hud.message_label.text, "전투 시작 로그에 이니셔티브 계산식 없음")
 	_test_square_map()
 	_test_movement_overlay()
+	await _test_floor_loot_ui()
 	_test_height_edges()
 	_test_unit_art()
 	_test_warrior()
@@ -115,6 +116,64 @@ func _button_lines(panel: Control) -> int:
 		if button.visible and button.global_position.y not in ys:
 			ys.append(button.global_position.y)
 	return ys.size()
+
+
+## 떨어진 아이템의 칸 아이콘, 마우스 오버 수치, 이동·점프 미리보기의 줍기 표시(#529).
+func _test_floor_loot_ui() -> void:
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	var weapon: Dictionary = {"name": "무기", "kind": "weapon", "icon": "sword", "stats": {"attack_bonus": 2, "damage_bonus": 3}}
+	var armor: Dictionary = {"name": "방어구", "kind": "armor", "icon": "armor", "stats": {"defense_bonus": 1, "max_hit_points": 2}}
+	var potion: Dictionary = {"name": "회복 물약", "kind": "potion", "icon": "potion", "stats": {}}
+	actions.floor_loot.drop(Vector2i(2, 9), weapon)
+	actions.floor_loot.drop(Vector2i(3, 9), armor)
+	actions.floor_loot.drop(Vector2i(2, 8), potion)
+	selection.clear_preview()
+	battle.call("_update_turn_ui")
+	var markers: Array[Node] = _floor_loot_markers(map)
+	var icons: Array[String] = []
+	for marker: Node in markers:
+		icons.append((marker.get_node("Icon") as Sprite2D).texture.resource_path.get_file())
+	icons.sort()
+	_check(icons == ["armor.png", "potion.png", "sword.png"], "떨어진 아이템 칸마다 종류별 아이콘 하나: " + str(icons))
+	# 마우스 오버는 종류와 수치를 안내한다.
+	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(Vector2i(2, 9))
+	battle.call("_hover_floor_loot", point)
+	_check("바닥 아이템 · 무기 · 공격 가산+2 · 피해+3" in hud.preview_label.text, "아이템 칸 오버 수치: " + hud.preview_label.text)
+	battle.call("_hover_floor_loot", map.get_global_transform_with_canvas() * map.map_to_surface(Vector2i(0, 9)))
+	_check("바닥 아이템" not in hud.preview_label.text, "아이템이 없는 칸으로 옮기면 안내를 거둔다")
+	# 걷기 경로가 아이템 칸을 지나면 줍는다는 표시를 한다. 도착 칸이 아니어도 표시한다.
+	selection.selected_action = "move"
+	selection.select_move(Vector2i(2, 9), [Vector2i(3, 9), Vector2i(2, 9)])
+	battle.call("_update_turn_ui")
+	_check("줍기: 방어구, 무기" in hud.preview_label.text, "이동 미리보기의 줍기 표시: " + hud.preview_label.text)
+	# 점프는 착지 칸만 본다.
+	selection.selected_action = "jump"
+	selection.clear_preview()
+	selection.select_move(Vector2i(2, 9), [Vector2i(3, 9), Vector2i(2, 9)])
+	battle.call("_update_turn_ui")
+	_check("줍기: 무기" in hud.preview_label.text and "방어구" not in hud.preview_label.text,
+		"점프 미리보기는 착지 칸의 줍기만 표시: " + hud.preview_label.text)
+	# 아이템이 없는 칸의 경로에는 표시하지 않는다.
+	selection.selected_action = "move"
+	selection.clear_preview()
+	selection.select_move(Vector2i(0, 9), [Vector2i(0, 9)])
+	battle.call("_update_turn_ui")
+	_check("줍기" not in hud.preview_label.text, "아이템이 없는 경로는 줍기 표시가 없다")
+	# 적이 고르는 경로와 밀려난 적은 줍지 않으므로 표시하지 않는다.
+	_check(actions.pickup_note(units[2], [Vector2i(2, 9)]).is_empty() and actions.shove_landing(units[2], Vector2i(2, 9)).is_empty(),
+		"적에게는 줍기 안내가 없다")
+	_check("줍기: 무기" in actions.shove_landing(units[0], Vector2i(2, 9)), "밀려날 아군의 도착 칸에 줍기 안내")
+	selection.clear_preview()
+	selection.selected_action = "attack"
+	actions.floor_loot.clear()
+	battle.call("_hover_floor_loot", Vector2(-9999, -9999))
+	battle.call("_update_turn_ui")
+	_check(_floor_loot_markers(map).is_empty(), "아이템을 줍거나 잃으면 아이콘도 사라진다")
+
+
+func _floor_loot_markers(map: CombatMap) -> Array[Node]:
+	return map.get_children().filter(func(node: Node) -> bool: return node.has_meta("item"))
 
 
 func _test_movement_overlay() -> void:
@@ -2621,6 +2680,7 @@ func _test_action_animations() -> void:
 	for actor: CombatUnit in [units[0], units[1]]:
 		_reset_units()
 		actions.grid.props.clear()
+		actions.floor_loot.clear()
 		actor.cell = Vector2i(5, 5)
 		(units[1] if actor == units[0] else units[0]).cell = Vector2i(0, 0)
 		units[2].cell = Vector2i(8, 8)

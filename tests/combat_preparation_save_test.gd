@@ -45,6 +45,10 @@ func _won_battle() -> Node2D:
 	loot.receive(party[1], _item("armor", {"defense_bonus": 1, "max_hit_points": 2}))
 	loot.bag.append_array([_item("weapon", {"attack_bonus": 1, "damage_bonus": 2}), _item("potion", {})])
 	party[0].potion_left = 2
+	# 상자를 부숴 떨어진 아이템을 줍지 않고 이긴다. 보상 확인에 사라짐 안내가 뜬다(#529).
+	var crate: CombatGrid.Prop = actions.get_props().filter(func(prop: CombatGrid.Prop) -> bool: return prop.kind == "crate")[0]
+	actions.grid.props.erase(crate)
+	actions.floor_loot.drop(crate.cell, _item("weapon", {"attack_bonus": 2, "damage_bonus": 2}))
 	for unit: CombatUnit in actions.units:
 		if not unit.is_ally:
 			actions.incapacitate(unit)
@@ -96,6 +100,10 @@ func _check_saved(battle: Node2D, label: String) -> void:
 		label + ": 복원한 가방·장비·물약·남은 보상이 같음")
 	_check(copy.visible == preparation.visible and (not copy.visible or copy.maintaining == preparation.maintaining
 		and copy.title_label.text == preparation.title_label.text), label + ": 같은 화면 단계로 돌아옴")
+	var lost: Label = preparation.find_child("LostFloorItems", true, false) as Label
+	var lost_copy: Label = copy.find_child("LostFloorItems", true, false) as Label
+	_check((lost == null) == (lost_copy == null) and (lost == null or lost.text == lost_copy.text),
+		label + ": 줍지 않아 사라진 아이템 안내도 같음")
 	_check(not (copy.visible and (restored.get_node("UI/TurnHud/Result") as Control).visible),
 		label + ": 결과 창 없이 정비 화면만 열림")
 	restored.call("_process", 0.0)
@@ -116,6 +124,8 @@ func _test_actions() -> void:
 	var party: Array[CombatUnit] = battle.get("party")
 	_check(GameSave.read().get("sections", {}).keys() == ["combat"], "결과 창은 전투 칸만 저장")
 	battle.call("_restart")
+	var notice: Label = preparation.find_child("LostFloorItems", true, false) as Label
+	_check(notice != null and notice.text == "줍지 않은 아이템 1개가 사라졌습니다", "보상 확인 화면에 사라짐 안내")
 	await _check_saved(battle, "보상 확인 화면")
 	preparation._continue()
 	await _check_saved(battle, "정비 화면")
