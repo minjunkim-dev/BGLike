@@ -58,7 +58,7 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 
 증거의 한계:
 
-- 프로젝트는 글꼴을 넣지 않는다. 한글은 운영체제의 대체 글꼴로 그린다. 컨테이너는 Noto Sans CJK, macOS는 Apple SD Gothic Neo다. 글리프 모양·폭이 달라 줄바꿈과 넘침이 macOS와 다를 수 있다. 글자 배치가 합격 기준이면 [macOS 창 실행](#macos-창-실행---mode-macos) 또는 사람의 macOS 확인을 남긴다.
+- 메뉴·확인 창은 프로젝트 글꼴 Galmuri11(`scenes/ui_theme.tres`)로 그린다. 전투 HUD와 Galmuri11에 없는 글자는 운영체제의 대체 글꼴로 그린다. 컨테이너는 Noto Sans CJK, macOS는 Apple SD Gothic Neo다. 글리프 모양·폭이 달라 줄바꿈과 넘침이 macOS와 다를 수 있다. 글자 배치가 합격 기준이면 [macOS 창 실행](#macos-창-실행---mode-macos) 또는 사람의 macOS 확인을 남긴다.
 - Mesa llvmpipe는 CPU에서 도는 소프트웨어 Vulkan이다. macOS Metal과 셰이더 정밀도, 필터, 안티앨리어싱 결과가 픽셀 단위로 다를 수 있다. 프레임 속도와 연출 시간도 다르다. 픽셀 비교는 같은 경로에서 찍은 변경 전후끼리만 한다.
 - Retina(HiDPI) 배율, macOS 창 관리와 실제 키보드·마우스·컨트롤러 입력 전달은 확인하지 못한다. 스크립트 입력은 OS 입력 경로를 거치지 않는다. 이 항목은 [macOS 창 실행](#macos-창-실행---mode-macos) 또는 사람의 macOS 편집기 확인으로 남기고, 체크는 [확인 등급](#확인-등급)을 따른다.
 - 오디오는 dummy 드라이버로 대체된다.
