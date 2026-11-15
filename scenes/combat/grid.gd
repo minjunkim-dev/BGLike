@@ -23,6 +23,8 @@ var heights: Dictionary[Vector2i, int] = {}
 var pits: Array[Vector2i] = []
 var blocked_cells: Array[Vector2i] = []
 var water_cells: Array[Vector2i] = []
+## 서 있는 나무 칸. blocked_cells의 부분집합이고, 화염이 닿으면 둘 다에서 빠진다(환경요소 5장).
+var trees: Array[Vector2i] = []
 
 
 class Routes extends RefCounted:
@@ -77,6 +79,24 @@ func is_blocked(cell: Vector2i) -> bool:
 
 func is_wall(cell: Vector2i) -> bool:
 	return not is_inside(cell) or blocked_cells.has(cell)
+
+
+func is_tree(cell: Vector2i) -> bool:
+	return trees.has(cell)
+
+
+## 나무를 태운다. 서 있는 나무가 아니면 false다. 그 칸은 원래 높이의 열린 바닥이 된다.
+func burn_tree(cell: Vector2i) -> bool:
+	if not trees.has(cell):
+		return false
+	trees.erase(cell)
+	blocked_cells.erase(cell)
+	return true
+
+
+## trees_open이면 서 있는 나무를 벽으로 보지 않는다. 화염 동작의 목표·영역 계산이 쓴다.
+func _is_wall_for(cell: Vector2i, trees_open: bool) -> bool:
+	return not is_inside(cell) or (blocked_cells.has(cell) and not (trees_open and trees.has(cell)))
 
 
 func are_adjacent(a: Vector2i, b: Vector2i) -> bool:
@@ -215,25 +235,25 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 
 
 ## 칸 조준으로 고를 수 있는 칸 (SKILL_TYPES 5-2): 맵 안의 바닥이고 벽이 아니다. 높이·점유·상자·바위는 보지 않는다.
-func is_aimable(cell: Vector2i) -> bool:
-	return is_floor(cell) and not is_wall(cell)
+func is_aimable(cell: Vector2i, trees_open: bool = false) -> bool:
+	return is_floor(cell) and not _is_wall_for(cell, trees_open)
 
 
 ## origin에서 맨해튼 거리 minimum~maximum인 고를 수 있는 칸. 장애물과 시야는 보지 않는다(곡사).
-func aim_cells(origin: Vector2i, maximum: int, minimum: int = 0) -> Array[Vector2i]:
+func aim_cells(origin: Vector2i, maximum: int, minimum: int = 0, trees_open: bool = false) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	for y: int in range(maxi(0, origin.y - maximum), mini(map_size.y, origin.y + maximum + 1)):
 		for x: int in range(maxi(0, origin.x - maximum), mini(map_size.x, origin.x + maximum + 1)):
 			var cell: Vector2i = Vector2i(x, y)
-			if in_range(origin, cell, maximum, minimum) and is_aimable(cell):
+			if in_range(origin, cell, maximum, minimum) and is_aimable(cell, trees_open):
 				cells.append(cell)
 	return cells
 
 
 ## props_block가 false면 상자·바위 칸도 영역에 넣는다. 칸 조준 영역이 쓴다.
-func area_cells(center: Vector2i, radius: int, props_block: bool = true) -> Array[Vector2i]:
+func area_cells(center: Vector2i, radius: int, props_block: bool = true, trees_open: bool = false) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
-	var blocks: Callable = is_blocked if props_block else is_wall
+	var blocks: Callable = is_blocked if props_block else func(cell: Vector2i) -> bool: return _is_wall_for(cell, trees_open)
 	if radius < 0 or not is_floor(center) or blocks.call(center):
 		return cells
 	for y: int in range(maxi(0, center.y - radius), mini(map_size.y, center.y + radius + 1)):
