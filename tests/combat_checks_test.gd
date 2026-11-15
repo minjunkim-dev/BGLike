@@ -38,6 +38,9 @@ func _run() -> void:
 	_test_strength_validation()
 	_test_preview_conditions()
 	_test_water_preview()
+	_test_distracted_preview()
+	_test_save_factors()
+	_test_roll_mode_text()
 	await _test_water_actions()
 	_test_monster_hit_table()
 	_test_damage_table()
@@ -705,6 +708,98 @@ func _test_water_preview() -> void:
 	preview = grid.attack_preview(target, archer)
 	_check(preview.mode == CombatChecks.RollMode.DISADVANTAGE and "물 위: 불리" in preview.reasons,
 		"물 위의 적도 같은 불리 " + str(preview.reasons))
+
+
+## 산만함(효시, 능력치 기획서 4-7): 걸린 유닛이 하는 명중굴림에 불리 요인 1개. 공격 받는 쪽의 산만함은 공격자의 요인이 아니다.
+func _test_distracted_preview() -> void:
+	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 4))
+	var target: CombatUnit = _unit(CombatUnit.Kind.ARCHER, false, Vector2i(7, 4))
+	var grid: CombatGrid = CombatGrid.new()
+	grid.units = [archer, target] as Array[CombatUnit]
+	archer.distracted_turns = 2
+	archer.distracted_source = target
+	var preview: CombatChecks.AttackPreview = grid.attack_preview(archer, target)
+	_check(preview.mode == CombatChecks.RollMode.DISADVANTAGE and is_equal_approx(preview.chance, 0.5625)
+		and preview.reasons == PackedStringArray(["산만함"]) and preview.factors.disadvantages == PackedStringArray(["산만함"]),
+		"산만함 공격자는 불리 (75% → 56.25%)와 이유 `산만함` " + str(preview.reasons))
+	target.cell = Vector2i(5, 4)
+	preview = grid.attack_preview(archer, target, "bow_bash")
+	_check(preview.mode == CombatChecks.RollMode.DISADVANTAGE and "산만함" in preview.reasons, "근접 동작도 산만함이면 불리")
+	target.cell = Vector2i(7, 4)
+	grid.heights = {Vector2i(4, 4): 2}
+	preview = grid.attack_preview(archer, target)
+	_check(preview.mode == CombatChecks.RollMode.NORMAL and preview.factors.advantages == PackedStringArray(["고지대"])
+		and preview.factors.disadvantages == PackedStringArray(["산만함"]), "고지대 유리와 산만함 불리는 상쇄되어 일반")
+	grid.heights = {}
+	archer.distracted_turns = 0
+	archer.distracted_source = null
+	target.distracted_turns = 2
+	target.distracted_source = archer
+	preview = grid.attack_preview(archer, target)
+	_check(preview.mode == CombatChecks.RollMode.NORMAL and preview.reasons.is_empty() and preview.factors.disadvantages.is_empty(),
+		"대상이 산만함인 것은 공격자의 요인이 아님")
+	archer.is_stunned = false
+	var barbarian: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(4, 5))
+	grid.units = [archer, target, barbarian] as Array[CombatUnit]
+	preview = grid.attack_preview(archer, target)
+	_check(preview.reasons == PackedStringArray(["옆에 적"]) and preview.factors.disadvantages == PackedStringArray(["옆에 적"]),
+		"기존 요인의 이유 문구는 그대로")
+
+
+## 내성굴림 요인: 산만함은 모든 능력치, 넘어짐은 민첩만 (능력치 기획서 4-7, 전투 시스템 기획서 6-7).
+func _test_save_factors() -> void:
+	var unit: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(4, 4))
+	var source: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(3, 4))
+	var will: CombatUnit.Ability = CombatUnit.Ability.WILL
+	var agility: CombatUnit.Ability = CombatUnit.Ability.AGILITY
+	_check(CombatActionRules.save_mode(unit, will) == CombatChecks.RollMode.NORMAL
+		and CombatActionRules.save_factors(unit, will).disadvantages.is_empty(), "요인이 없으면 일반")
+	unit.distracted_turns = 2
+	unit.distracted_source = source
+	for ability: CombatUnit.Ability in CombatUnit.Ability.values():
+		_check(CombatActionRules.save_mode(unit, ability) == CombatChecks.RollMode.DISADVANTAGE
+			and CombatActionRules.save_factors(unit, ability).disadvantages == PackedStringArray(["산만함"]),
+			"산만함은 모든 내성 능력치에서 불리: " + CombatUnit.ability_name(ability))
+	unit.distracted_turns = 0
+	unit.distracted_source = null
+	unit.fallen = true
+	_check(CombatActionRules.save_factors(unit, agility).disadvantages == PackedStringArray(["넘어짐"])
+		and CombatActionRules.save_factors(unit, CombatUnit.Ability.FINESSE).disadvantages.is_empty(), "넘어짐은 민첩 내성만 불리")
+	unit.distracted_turns = 2
+	unit.distracted_source = source
+	_check(CombatActionRules.save_factors(unit, agility).disadvantages == PackedStringArray(["넘어짐", "산만함"])
+		and CombatActionRules.save_mode(unit, agility) == CombatChecks.RollMode.DISADVANTAGE, "넘어짐과 산만함은 요인 둘이어도 결과는 불리 하나")
+	var chance: float = CombatActionRules.save_chance(source, unit, "firework_arrow")
+	_check(is_equal_approx(chance, CombatChecks.save_chance(unit.get_ability_sides(agility), unit.get_defense_bonus(),
+		CombatActionRules.save_dc(source, "firework_arrow"), CombatChecks.RollMode.DISADVANTAGE, unit.get_ability_modifier(agility))),
+		"내성 성공률은 불리 열거값")
+	_check(CombatActionRules.save_chance_text(source, unit, "firework_arrow").ends_with("% (불리: 넘어짐, 산만함)"),
+		"요인이 있는 대상의 성공률 글 뒤에 이유 괄호: " + CombatActionRules.save_chance_text(source, unit, "firework_arrow"))
+	unit.fallen = false
+	unit.distracted_turns = 0
+	unit.distracted_source = null
+	var plain: String = CombatActionRules.save_chance_text(source, unit, "firework_arrow")
+	_check("(" not in plain and plain.begins_with(unit.get_display_name() + " "), "요인이 없는 대상은 괄호 없음: " + plain)
+
+
+## 로그의 굴림 방식 글: 요인이 없으면 지금 문구, 한쪽만이면 `불리: 이름`, 양쪽이면 결과 · 유리 · 불리.
+func _test_roll_mode_text() -> void:
+	var factors: CombatChecks.RollFactors = CombatChecks.RollFactors.new()
+	_check(CombatActionRules.roll_mode_text(CombatChecks.RollMode.NORMAL, factors) == "일반", "요인 없음은 일반")
+	factors.add_disadvantage("옆에 적")
+	factors.add_disadvantage("산만함")
+	factors.add_disadvantage("산만함")
+	_check(factors.disadvantages == PackedStringArray(["옆에 적", "산만함"]) and factors.mode() == CombatChecks.RollMode.DISADVANTAGE,
+		"같은 요인은 한 번만 센다")
+	_check(CombatActionRules.roll_mode_text(factors.mode(), factors) == "불리: 옆에 적, 산만함", "불리만")
+	var good: CombatChecks.RollFactors = CombatChecks.RollFactors.new()
+	good.add_advantage("고지대")
+	_check(CombatActionRules.roll_mode_text(good.mode(), good) == "유리: 고지대", "유리만")
+	good.add_disadvantage("산만함")
+	_check(good.mode() == CombatChecks.RollMode.NORMAL
+		and CombatActionRules.roll_mode_text(good.mode(), good) == "일반 · 유리: 고지대 · 불리: 산만함", "양쪽이면 결과 방식을 앞에 둔다")
+	good.add_advantage("기절한 대상")
+	_check(CombatActionRules.roll_mode_text(good.mode(), good) == "유리 · 유리: 고지대, 기절한 대상 · 불리: 산만함", "유리 둘 불리 하나는 유리")
 
 
 ## 환경요소 6장: 실제 명중굴림(기본 공격·휩쓸기·기회 공격)의 물 위 불리, 범위 불 장판, 독·독안개, 이동 안내.

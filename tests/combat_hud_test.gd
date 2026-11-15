@@ -96,6 +96,7 @@ func _run() -> void:
 	Engine.time_scale = previous_scale
 	await _test_rock_preview_guidance()
 	await _test_sweep_input()
+	await _test_whistle_input()
 	await _test_rock_presentation()
 	await _test_results_and_restart()
 	await _test_tree_burn_ui()
@@ -708,7 +709,7 @@ func _test_archer_moving_shot_input() -> void:
 	for action: String in buttons:
 		if (buttons[action] as Button).is_visible_in_tree():
 			shown.append(action)
-	_check(shown == ["attack", "trick_arrow", "firework_arrow", "aegisal", "bow_bash", "shove", "jump", "potion", "oil_throw", "stealth", "reflex"], "궁수 스킬 패널의 버튼(공용 밀치기 포함): " + str(shown))
+	_check(shown == ["attack", "trick_arrow", "firework_arrow", "whistle", "aegisal", "bow_bash", "shove", "jump", "potion", "oil_throw", "stealth", "reflex"], "궁수 스킬 패널의 버튼(공용 밀치기 포함): " + str(shown))
 	# 기름병 던지기: 버튼을 고르고 칸을 한 번 누르면 십자 범위를 보이고, 같은 칸을 다시 누르면 던진다(#500 2a).
 	var oil_cells: Array[Vector2i] = []
 	oil_cells.assign(actions.aim_cells(archer, "oil_throw").filter(func(cell: Vector2i) -> bool:
@@ -1026,9 +1027,9 @@ func _test_roll_popups() -> void:
 
 
 func _has_two_dice_log(mode: String) -> bool:
-	var marker: String = "공격(%s): 솜씨 d20 [" % mode
+	var marker: String = "): 솜씨 d20 ["
 	for line: String in hud.message_label.text.split("\n"):
-		if marker not in line:
+		if "공격(%s" % mode not in line or marker not in line:
 			continue
 		var values: PackedStringArray = line.get_slice(marker, 1).get_slice("]", 0).split(", ")
 		return values.size() == 2 and values[0].is_valid_int() and values[1].is_valid_int()
@@ -2955,6 +2956,61 @@ func _test_sweep_input() -> void:
 	_check(actor.action_left == 0 and selection.selected_action == "attack", "빈 반달도 같은 칸을 다시 좌클릭하면 실행")
 	actions.grid.pits.clear()
 	map.set_cell(facing, tile_source, tile_atlas)
+	_reset_units()
+
+
+## 효시(#500): 인접한 칸을 좌클릭해 방향을 고르면 띠와 대상별 의지 내성 성공률을 보이고, 같은 칸을 다시 좌클릭하면 실행한다.
+func _test_whistle_input() -> void:
+	_reset_units()
+	actions.grid.props.clear()
+	var actor: CombatUnit = units[1]
+	var map: TileMapLayer = battle.map
+	var selection: CombatSelection = battle.get("selection") as CombatSelection
+	turns.select_unit(actor)
+	actor.cell = Vector2i(4, 4)
+	units[0].cell = Vector2i(6, 5)
+	units[2].cell = Vector2i(6, 4)
+	units[3].cell = Vector2i(6, 8)
+	battle.call("_update_turn_ui")
+	var button: Button = (hud.get("_actions") as Dictionary)["whistle"] as Button
+	_check(button.icon != null and "DC 11" in button.tooltip_text and "전투마다 1회 · 1회 남음" in button.tooltip_text
+		and "산만함 2턴" in button.tooltip_text and "내성굴림·명중굴림 불리" in button.tooltip_text,
+		"효시 버튼은 아이콘과 호버(DC·횟수·산만함 효과)를 가짐: " + button.tooltip_text.replace("\n", " | "))
+	battle.call("_on_action_selected", "whistle")
+	var overlays: Array = map.get("_overlays")
+	_check(selection.selected_action == "whistle" and "방향으로 삼을 인접한 칸" in hud.preview_label.text and overlays.size() == 4,
+		"효시를 고르면 안내와 고를 수 있는 인접 칸을 보임: " + hud.preview_label.text)
+	var facing: Vector2i = Vector2i(5, 4)
+	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(facing)
+	await _click(point)
+	overlays = map.get("_overlays")
+	var chance: String = CombatActionRules.save_chance_text(actor, units[2], "whistle")
+	_check(selection.preview_cell == facing and chance in hud.preview_label.text and "의지 내성 성공률" in hud.preview_label.text
+		and overlays.size() == actions.grid.band_cells(actor.cell, facing).size() and units[2].is_previewed
+		and not units[0].is_previewed and not units[3].is_previewed and actor.action_left == 1,
+		"첫 좌클릭은 띠와 대상별 의지 내성 성공률 미리보기: " + hud.preview_label.text)
+	var saved_dice: CombatDice = actions.dice
+	actions.dice = ScriptedDice.new([2], [units[2].get_ability_sides(CombatUnit.Ability.WILL)])
+	await _click(point)
+	_check(units[2].distracted_turns == 2 and actor.action_left == 0 and actor.whistle_left == 0 and units[0].distracted_turns == 0
+		and selection.selected_action == "attack", "같은 칸을 다시 좌클릭하면 실행: 띠 안의 적만 산만함, 아군 제외")
+	hud.show_unit(units[2])
+	_check("산만함 2턴" in hud.resource_label.get_parsed_text(), "유닛 패널 상태 줄에 산만함 2턴: " + hud.resource_label.get_parsed_text())
+	actions.dice = saved_dice
+	# 인접하지 않은 칸을 누르면 미리보기만 지운다. 적이 없는 방향도 안내와 함께 고를 수 있다.
+	actor.action_left = 1
+	actor.whistle_left = 1
+	units[2].distracted_turns = 0
+	units[2].distracted_source = null
+	battle.call("_on_action_selected", "whistle")
+	await _click(map.get_global_transform_with_canvas() * map.map_to_surface(Vector2i(7, 4)))
+	_check(selection.preview_cell == Vector2i(-1, -1) and actor.action_left == 1, "인접하지 않은 칸은 방향이 될 수 없음")
+	units[2].cell = Vector2i(8, 8)
+	units[0].cell = Vector2i(0, 0)
+	battle.call("_update_turn_ui")
+	var empty_facing: Vector2i = Vector2i(4, 3)
+	await _click(map.get_global_transform_with_canvas() * map.map_to_surface(empty_facing))
+	_check(selection.preview_cell == empty_facing and "영향 칸에 적이 없음" in hud.preview_label.text, "적이 없는 방향도 안내와 함께 미리보기")
 	_reset_units()
 
 

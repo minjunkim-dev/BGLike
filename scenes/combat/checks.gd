@@ -20,12 +20,31 @@ class RollResult extends RefCounted:
 		return total - selected_roll
 
 
+## 굴림 하나에 붙은 유리·불리 요인의 이름. 같은 요인은 한 번만 넣고, 수를 비교해 방식을 정한다 (능력치 기획서 4-7).
+class RollFactors extends RefCounted:
+	var advantages: PackedStringArray = []
+	var disadvantages: PackedStringArray = []
+
+	func add_advantage(factor: String) -> void:
+		if factor not in advantages:
+			advantages.append(factor)
+
+	func add_disadvantage(factor: String) -> void:
+		if factor not in disadvantages:
+			disadvantages.append(factor)
+
+	func mode() -> RollMode:
+		return CombatChecks.roll_mode(advantages.size(), disadvantages.size())
+
+
 class AttackPreview extends RefCounted:
 	var valid_target: bool = false
 	var in_range: bool = false
 	var chance: float = 0.0
 	var mode: RollMode = RollMode.NORMAL
 	var reasons: PackedStringArray = []
+	## 이유 문구(reasons)와 별개로 요인의 이름을 유리·불리로 나눠 가진다. 로그가 쓴다.
+	var factors: RollFactors = RollFactors.new()
 	var blocked_reason: String = ""
 
 

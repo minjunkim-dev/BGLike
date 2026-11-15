@@ -336,6 +336,29 @@ def firework_arrow(x, y):
     return None
 
 
+def whistle(x, y):
+    px, py = x + 0.5, y + 0.5
+    # Whistling arrow (hyoshi) flying up-right: wooden shaft, steel head, a brass hollow bulb behind the head and teal fletching.
+    u, v = rotated(x, y, 28, 36)
+    if math.hypot((u - 6) / 6.5, v / 4.5) <= 1:
+        return LEATHER[0] if math.hypot(u - 6, v - 2.6) <= 1.3 else (BRASS[2] if v < 0 else BRASS[1])
+    if -16 <= u <= 12 and abs(v) <= 1.5:
+        return WOOD[3] if v < 0 else WOOD[1]
+    if 12 < u <= 20 and abs(v) <= (20 - u) * 0.5:
+        return STEEL[4] if v < 0 else STEEL[2]
+    if -20 <= u <= -11 and 1.5 < abs(v) <= 5:
+        return TEAL[1] if v < 0 else TEAL[0]
+    # Two sound arcs leaving the bulb hole toward the lower right.
+    cx, cy = 28 + 6 / math.sqrt(2), 36 - 6 / math.sqrt(2)
+    dx, dy = px - cx, py - cy
+    radius = math.hypot(dx, dy)
+    if radius > 0 and (dx + dy) / math.sqrt(2) / radius >= math.cos(math.radians(38)):
+        for ring in (11, 15):
+            if abs(radius - ring) <= 0.9:
+                return WHITE
+    return None
+
+
 def fitted(draw):
     """Shrink a full-canvas drawing about the centre so it and its outline fit the item margin (asserted below)."""
     scale = 31.5 / 28
@@ -346,7 +369,8 @@ ICONS = {"attack": attack, "second_wind": fitted(second_wind), "sweep": fitted(s
          "steel_charge": fitted(steel_charge), "holy_veil": fitted(holy_veil), "battle_cry": fitted(battle_cry),
          "opportunity": fitted(opportunity), "counter": fitted(counter), "aegisal": fitted(aegisal),
          "bow_bash": fitted(bow_bash), "shove": fitted(shove), "jump": fitted(jump), "potion": potion,
-         "oil_throw": oil_throw, "trick_arrow": fitted(trick_arrow), "firework_arrow": fitted(firework_arrow)}
+         "oil_throw": oil_throw, "trick_arrow": fitted(trick_arrow), "firework_arrow": fitted(firework_arrow),
+         "whistle": fitted(whistle)}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

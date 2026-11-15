@@ -282,6 +282,23 @@ func sweep_cells(origin: Vector2i, facing: Vector2i) -> Array[Vector2i]:
 	return cells
 
 
+## 효시의 세 줄 띠 (궁수 문서): facing 방향의 바로 앞 칸부터 맵 끝까지의 줄과 그 줄 칸들의 양옆 칸. 궁수가 선 줄의 양옆은 뺀다.
+## 높이·벽·낭떠러지는 보지 않는다(맵 안 칸이면 모두). facing은 맵 안의 인접 4칸 중 하나다. 순서는 앞에서 뒤로, 칸마다 왼쪽 옆 → 줄 → 오른쪽 옆이다.
+func band_cells(origin: Vector2i, facing: Vector2i) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	if distance(origin, facing) != 1 or not is_inside(facing):
+		return cells
+	var front: Vector2i = facing - origin
+	var right: Vector2i = Vector2i(-front.y, front.x)
+	var line: Vector2i = facing
+	while is_inside(line):
+		for offset: Vector2i in [-right, Vector2i.ZERO, right]:
+			if is_inside(line + offset):
+				cells.append(line + offset)
+		line += front
+	return cells
+
+
 func opponents_in_area(actor: CombatUnit, radius: int) -> Array[CombatUnit]:
 	var targets: Array[CombatUnit] = []
 	if actor == null:
@@ -388,19 +405,28 @@ func attack_preview(attacker: CombatUnit, target: CombatUnit, action: String = "
 	if target.is_stunned:
 		advantages += 1
 		preview.reasons.append(tr("기절한 대상"))
+		preview.factors.add_advantage(tr("기절한 대상"))
 	if ranged and height_at(attacker.cell) - height_at(target.cell) >= 2:
 		advantages += 1
 		preview.reasons.append(tr("고지대"))
+		preview.factors.add_advantage(tr("고지대"))
 	if ranged:
 		for unit: CombatUnit in opponents_in_range(attacker, 1):
 			if not unit.is_stunned and are_adjacent(attacker.cell, unit.cell):
 				disadvantages += 1
 				preview.reasons.append(tr("옆에 적"))
+				preview.factors.add_disadvantage(tr("옆에 적"))
 				break
 	# 물 험지(환경요소 6장): 굴림 순간 공격자가 선 칸만 본다. 근접·원거리·스킬·기회 공격 모두다.
 	if attacker.cell in water_cells:
 		disadvantages += 1
 		preview.reasons.append(tr("물 위: 불리"))
+		preview.factors.add_disadvantage(tr("물 위"))
+	# 산만함(효시): 걸린 유닛의 모든 명중굴림에 불리 요인 하나 (능력치 기획서 4-7).
+	if attacker.distracted_turns > 0:
+		disadvantages += 1
+		preview.reasons.append(tr("산만함"))
+		preview.factors.add_disadvantage(tr("산만함"))
 	preview.mode = CombatChecks.roll_mode(advantages, disadvantages)
 	if preview.in_range and preview.blocked_reason.is_empty():
 		var ability: CombatUnit.Ability = CombatActionRules.hit_ability(attacker, action)
