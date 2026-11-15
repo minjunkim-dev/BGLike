@@ -12,6 +12,7 @@
 # res://scenes/combat/enemies.tscn
 # res://scenes/combat/enemy_ai.gd
 # res://scenes/combat/enemy_definitions.gd
+# res://scenes/combat/floor_loot.gd
 # res://scenes/combat/grid.gd
 # res://scenes/combat/hover_tooltip.gd
 # res://scenes/combat/loot.gd
@@ -370,6 +371,22 @@ msgstr ""
 
 #: scenes/combat/actions.gd:223
 msgid " · 파괴"
+msgstr ""
+
+#: scenes/combat/actions.gd:262
+msgid "나무 상자 파괴: %s 떨어짐"
+msgstr ""
+
+#: scenes/combat/actions.gd:269
+msgid "%s: %s 획득"
+msgstr ""
+
+#: scenes/combat/actions.gd:270
+msgid "%s 획득"
+msgstr ""
+
+#: scenes/combat/actions.gd:278
+msgid "줍기: %s"
 msgstr ""
 
 #: scenes/combat/actions.gd:235
@@ -920,6 +937,10 @@ msgstr ""
 msgid "기본 공격만 가능"
 msgstr ""
 
+#: scenes/combat/battle.gd:945
+msgid "바닥 아이템 · %s"
+msgstr ""
+
 #: scenes/combat/battle.gd:868
 msgid "바위"
 msgstr ""
@@ -1208,6 +1229,12 @@ msgstr ""
 #: scenes/combat/preparation.gd:254
 msgid "정비하기"
 msgstr ""
+
+#: scenes/combat/preparation.gd:259
+msgid "줍지 않은 아이템 %d개가 사라졌습니다"
+msgid_plural "줍지 않은 아이템 %d개가 사라졌습니다"
+msgstr[0] ""
+msgstr[1] ""
 
 #: scenes/combat/preparation.gd:259
 msgid "받지 않은 보상 %d개"

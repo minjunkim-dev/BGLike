@@ -66,7 +66,7 @@ func _test_round_trip() -> void:
 func _test_version_mismatch() -> void:
 	GameSave.write(1, 1, _sections())
 	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(GameSave.path)
-	for version: int in [0, 1, 2, 3, 4, 5, 6, 7, GameSave.FORMAT_VERSION + 1]:
+	for version: int in [0, 1, 2, 3, 4, 5, 6, 7, 8, GameSave.FORMAT_VERSION + 1]:
 		bytes.encode_u32(4, version)
 		_write_raw(GameSave.path, bytes)
 		_check(GameSave.has_save() and GameSave.read().is_empty(), "형식 버전 %d은 읽지 않음" % version)

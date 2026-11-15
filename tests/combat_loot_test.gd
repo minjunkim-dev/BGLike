@@ -49,7 +49,11 @@ func _run() -> void:
 			"추가 드랍 굴림 0.35는 35% 실패")
 		_test_items(loot, dice)
 		_test_modifier_items(loot)
+		_test_floor_loot(loot)
+		_test_roll_item(loot)
+		_test_victory_pickups(loot)
 	await _test_reward_flow()
+	await _test_crate_loot_flow()
 	await _test_full_bag_finish()
 	await _test_bag_scene_use()
 	await _test_armor_unequip_scene()
@@ -64,6 +68,72 @@ func _run() -> void:
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat loot: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
+
+
+func _test_floor_loot(loot: CombatLoot) -> void:
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 9
+	var first: Dictionary = loot.roll_item(dice, 2)
+	var second: Dictionary = loot.roll_item(dice, 3)
+	var floor_loot: CombatFloorLoot = CombatFloorLoot.new()
+	floor_loot.drop(Vector2i(3, 4), first)
+	floor_loot.drop(Vector2i(5, 6), second)
+	_check(floor_loot.item_at(Vector2i(3, 4)) == first and floor_loot.item_at(Vector2i(5, 6)) == second
+		and floor_loot.item_at(Vector2i(0, 0)).is_empty() and floor_loot.cells().size() == 2,
+		"떨어진 아이템은 칸마다 하나씩 조회된다")
+	_check(floor_loot.pick_up(Vector2i(0, 0)).is_empty() and floor_loot.picked.is_empty(),
+		"아이템이 없는 칸은 줍지 않는다")
+	_check(floor_loot.pick_up(Vector2i(3, 4)) == first and floor_loot.item_at(Vector2i(3, 4)).is_empty()
+		and floor_loot.picked == [first] and floor_loot.cells() == [Vector2i(5, 6)],
+		"줍으면 칸이 비고 주운 목록에 들어간다")
+	var saved: Dictionary = floor_loot.save_state().duplicate(true)
+	var restored: CombatFloorLoot = CombatFloorLoot.new()
+	restored.load_state(saved)
+	_check(restored.save_state() == saved and restored.item_at(Vector2i(5, 6)) == second and restored.picked == [first],
+		"저장 왕복은 떨어진 아이템과 주운 아이템을 그대로 돌려준다")
+	var size: Vector2i = Vector2i(10, 10)
+	var valid: Callable = loot.is_valid_item
+	_check(CombatFloorLoot.is_valid_state(saved, size, 4, valid), "정상 저장은 유효하다")
+	var bad_cases: Array[Dictionary] = []
+	bad_cases.append({"drops": [[Vector2i(10, 0), second]], "picked": []})
+	bad_cases.append({"drops": [[Vector2i(1, 1), second], [Vector2i(1, 1), first]], "picked": []})
+	bad_cases.append({"drops": [[Vector2i(1, 1), {"name": "가짜", "kind": "weapon", "stats": {}}]], "picked": []})
+	bad_cases.append({"drops": [], "picked": [{"name": "가짜"}]})
+	bad_cases.append({"drops": [[Vector2i(1, 1), second], [Vector2i(2, 1), second]], "picked": [first, first, first]})
+	bad_cases.append({"drops": [[[1, 1], second]], "picked": []})
+	bad_cases.append({"drops": [], "picked": [], "extra": 1})
+	bad_cases.append({"drops": 3, "picked": []})
+	for index: int in range(bad_cases.size()):
+		_check(not CombatFloorLoot.is_valid_state(bad_cases[index], size, 4, valid), "고친 저장 거부 %d" % index)
+	_check(not CombatFloorLoot.is_valid_state(null, size, 4, valid), "저장 칸이 없으면 거부")
+
+
+func _test_roll_item(loot: CombatLoot) -> void:
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 321
+	var same: CombatDice = CombatDice.new()
+	same.seed = 321
+	var rewards: Array[Dictionary] = loot.roll_rewards(0, same, 2)
+	var item: Dictionary = loot.roll_item(dice, 2)
+	_check(rewards.size() == 1 and rewards[0] == item and loot.is_valid_item(item) and same.state == dice.state,
+		"roll_item은 roll_rewards 보장 드랍과 같은 굴림이고 유효한 아이템이다")
+
+
+func _test_victory_pickups(loot: CombatLoot) -> void:
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 77
+	var same: CombatDice = CombatDice.new()
+	same.seed = 77
+	var picked: Array[Dictionary] = [loot.roll_item(CombatDice.new(), 1), loot.roll_item(CombatDice.new(), 2)]
+	var plain: CombatActProgress = CombatActProgress.new(9)
+	plain.record_victory(loot, 1, same)
+	var progress: CombatActProgress = CombatActProgress.new(9)
+	progress.record_victory(loot, 1, dice, picked)
+	_check(progress.rewards.size() == plain.rewards.size() + 2 and progress.rewards.slice(0, plain.rewards.size()) == plain.rewards
+		and progress.rewards.slice(plain.rewards.size()) == picked and dice.state == same.state,
+		"주운 아이템은 굴린 드랍 뒤에 붙고 박스와 무관한 굴림은 그대로다")
+	progress.record_victory(loot, 1, dice, [picked[0]])
+	_check(progress.rewards.size() == plain.rewards.size() + 2, "승리는 한 번만 기록한다")
 
 
 func _test_spiderling_rewards() -> void:
@@ -746,6 +816,75 @@ func _test_full_bag_finish() -> void:
 			and loot.bag.back()["name"] == "보관 물약" and progress.rewards.is_empty(),
 			"공간 확보 후 종료는 남은 보상을 전부 보관하고 한 번 진행")
 	main.queue_free()
+	await process_frame
+
+
+func _test_crate_loot_flow() -> void:
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	battle.call("start_battle")
+	await process_frame
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+	var loot: CombatLoot = battle.get("loot") as CombatLoot
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 5
+	var picked: Dictionary = loot.roll_item(dice, 1)
+	var lost: Dictionary = loot.roll_item(dice, 1)
+	var other: Dictionary = loot.roll_item(dice, 1)
+	actions.floor_loot.drop(Vector2i(0, 0), picked)
+	actions.floor_loot.drop(Vector2i(1, 0), lost)
+	actions.floor_loot.drop(Vector2i(2, 0), other)
+	actions.floor_loot.pick_up(Vector2i(0, 0))
+	for unit: CombatUnit in battle.get("units"):
+		if not unit.is_ally:
+			actions.incapacitate(unit)
+	actions.changed.emit()
+	_check(progress.rewards.back() == picked and progress.rewards.size() >= 2,
+		"승리 보상에 주운 아이템이 합산된다")
+	var count: int = progress.rewards.size()
+	actions.changed.emit()
+	_check(progress.rewards.size() == count, "결과 갱신은 주운 아이템을 다시 합산하지 않는다")
+	await _click(hud.restart_button)
+	var notice: Label = preparation.find_child("LostFloorItems", true, false) as Label
+	_check(preparation.visible and notice != null and notice.text == "줍지 않은 아이템 2개가 사라졌습니다",
+		"보상 확인에 줍지 않은 아이템 수를 한 줄 알린다")
+	await _click(preparation.continue_button)
+	_check(preparation.find_child("LostFloorItems", true, false) == null, "정비 단계에는 사라짐 안내를 보이지 않는다")
+	# 줍지 않은 아이템이 없으면 안내하지 않는다.
+	var clean: CombatPreparation = preparation
+	clean.hide()
+	clean.open_rewards(loot, battle.get("party"), progress.rewards, false, false, false, 0)
+	_check(clean.find_child("LostFloorItems", true, false) == null, "사라진 아이템이 없으면 안내 줄이 없다")
+	clean.hide()
+	main.queue_free()
+	await process_frame
+	# 패배·막 재시작은 떨어진 아이템과 주운 아이템을 모두 잃고 상자가 돌아온다.
+	var again: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
+	root.add_child(again)
+	current_scene = again
+	var retry: Node2D = again.get_node("Battle") as Node2D
+	retry.set_process(false)
+	retry.call("start_battle")
+	await process_frame
+	var retry_actions: CombatActions = retry.get("actions") as CombatActions
+	retry_actions.floor_loot.drop(Vector2i(0, 0), picked)
+	retry_actions.floor_loot.drop(Vector2i(1, 0), lost)
+	retry_actions.floor_loot.pick_up(Vector2i(0, 0))
+	for unit: CombatUnit in retry.get("party"):
+		retry_actions.incapacitate(unit)
+	retry_actions.changed.emit()
+	_check(retry_actions.is_over() and not retry_actions.is_victory()
+		and (retry.get("progress") as CombatActProgress).rewards.is_empty(), "패배는 보상을 만들지 않는다")
+	await _click((retry.get_node("UI/TurnHud") as CombatTurnHud).restart_button)
+	_check(retry_actions.floor_loot.cells().is_empty() and retry_actions.floor_loot.picked.is_empty()
+		and not retry_actions.get_props().is_empty(), "패배 뒤 막 재시작은 아이템을 비우고 상자를 되돌린다")
+	again.queue_free()
 	await process_frame
 
 

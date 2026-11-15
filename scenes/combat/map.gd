@@ -11,6 +11,7 @@ var _overlays: Array[Node2D] = []
 var _blocked_markers: Array[Node2D] = []
 var _ground_markers: Array[Node2D] = []
 var _prop_markers: Array[Node2D] = []
+var _loot_markers: Array[Node2D] = []
 var _unit_markers: Array[Node2D] = []
 var _height_edges: Array[Node2D] = []
 static var _edge_textures: Dictionary[String, Texture2D] = {}
@@ -33,6 +34,7 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = n
 	clear()
 	show_movement([], [], [], Vector2i.ZERO)
 	show_grounds([])
+	show_floor_loot({})
 	show_props([])
 	for marker: Node2D in _blocked_markers + _height_edges:
 		marker.free()
@@ -353,6 +355,36 @@ func show_grounds(grounds: Array[CombatActions.Ground]) -> void:
 				marker.draw_circle(center + Vector2(-3 + index * 2, 6), 0.75, color))
 		add_child(marker)
 		_ground_markers.append(marker)
+
+
+## 상자에서 떨어진 아이템을 칸 위에 종류별 아이콘으로 보인다. 물체가 아니라 판정에 쓰지 않는다 (환경요소 3-4).
+func show_floor_loot(drops: Dictionary[Vector2i, Dictionary]) -> void:
+	for marker: Node2D in _loot_markers:
+		marker.free()
+	_loot_markers.clear()
+	for cell: Vector2i in drops:
+		var item: Dictionary = drops[cell]
+		var path: String = CombatLoot.icon_path(item)
+		if path.is_empty():
+			continue
+		var marker: Node2D = Node2D.new()
+		marker.name = "FloorLoot"
+		marker.position = map_to_local(cell)
+		marker.set_meta("cell", cell)
+		marker.set_meta("item", item)
+		var center: Vector2 = map_to_surface(cell) - marker.position + Vector2(0, -3)
+		marker.draw.connect(func() -> void:
+			marker.draw_circle(center, 6.5, Color(0.09, 0.11, 0.14, 0.75))
+			marker.draw_arc(center, 6.5, 0.0, TAU, 20, Color("e7bf6d"), 1.0))
+		var sprite: Sprite2D = Sprite2D.new()
+		sprite.name = "Icon"
+		sprite.texture = load(path) as Texture2D
+		sprite.position = center
+		sprite.scale = Vector2.ONE * 0.22
+		sprite.material = preload("res://scenes/combat/art/pixel_art.tres")
+		marker.add_child(sprite)
+		add_child(marker)
+		_loot_markers.append(marker)
 
 
 func prop_at_point(point: Vector2) -> CombatGrid.Prop:
