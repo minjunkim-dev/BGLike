@@ -39,6 +39,7 @@ func _run() -> void:
 	await _test_autosave_switch()
 	GameSave.autosave = true
 	await _test_format_state()
+	await _test_party_level_state()
 	for stage_index: int in range(STAGE_COUNT):
 		await _test_stage(stage_index)
 	# 흘려내기 제거(#423) 뒤 아군 반응은 기회 공격뿐이라 이 입력 규칙에서는 3-3에서만 생긴다.
@@ -138,6 +139,35 @@ func _test_format_state() -> void:
 	state.units[0].cell = Vector2i(3, 4)
 	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
 		"재배치 전 저장의 물체 좌표·상자 HP와 새 초기 상자 칸의 유닛 위치를 그대로 복원")
+	await _free(restored)
+	await _free(battle)
+
+
+## 파티 레벨(#477)은 전투 칸에 저장하고 이어하기가 아군에 다시 맞춘다. 복원이 HP를 다시 늘리지 않는다.
+func _test_party_level_state() -> void:
+	var battle: Node2D = _battle(3)
+	var party: Array[CombatUnit] = battle.get("party")
+	(battle.get("progress") as CombatActProgress).level = 1
+	battle.call("_sync_party_level")
+	party[0].hit_points = 9
+	var state: Dictionary = battle.call("combat_state")
+	_check(state.level == 1 and party[0].get_max_hit_points() == 17 and state.units[0].hit_points == 9,
+		"전투 칸에 파티 레벨과 레벨 반영 HP를 저장")
+	_check(GameSave.write(2, 1, {"combat": state}) == OK and GameSave.read().sections.combat.level == 1,
+		"파일을 거쳐도 레벨을 보존")
+	var restored: Node2D = _battle(-1)
+	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
+		"레벨 1 상태 왕복")
+	var restored_party: Array[CombatUnit] = restored.get("party")
+	_check((restored.get("progress") as CombatActProgress).level == 1
+		and restored_party.all(func(unit: CombatUnit) -> bool: return unit.dice_level == 1)
+		and restored_party[0].hit_points == 9 and restored_party[0].get_max_hit_points() == 17,
+		"복원은 모든 아군에 레벨 1을 맞추고 저장한 HP를 그대로 둠(다시 늘리지 않음)")
+	var lower: Dictionary = state.duplicate(true)
+	lower.level = 0
+	lower.units[0].hit_points = 4
+	_check(restored.call("restore_combat", lower) and restored_party[0].dice_level == 0
+		and restored_party[0].hit_points == 4, "레벨 0 저장을 복원하면 레벨이 내려가도 저장한 HP 그대로")
 	await _free(restored)
 	await _free(battle)
 
@@ -358,6 +388,10 @@ func _test_rejects_bad_saves() -> void:
 	var good: Dictionary = points.back().save
 	var enemy: int = (good.units as Array).find_custom(func(unit: Dictionary) -> bool: return not unit.ally)
 	var cases: Dictionary[String, Callable] = {
+		"파티 레벨이 없음": func(state: Dictionary) -> void: state.erase("level"),
+		"음수 파티 레벨": func(state: Dictionary) -> void: state.level = -1,
+		"파티 레벨이 정수가 아님": func(state: Dictionary) -> void: state.level = 1.0,
+		"깬 막 수보다 큰 파티 레벨": func(state: Dictionary) -> void: state.level = 2,
 		"스테이지 번호 밖": func(state: Dictionary) -> void: state.stage = 9,
 		"유닛 칸이 지도 밖": func(state: Dictionary) -> void: state.units[0].cell = Vector2i(99, 0),
 		"유닛 변수 타입이 다름": func(state: Dictionary) -> void: state.units[0].action_left = 1.0,

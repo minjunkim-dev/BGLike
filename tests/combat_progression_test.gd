@@ -656,6 +656,40 @@ func _test_act_progress() -> void:
 		"승리 기록은 스테이지마다 드랍을 한 번만 굴림")
 	progress.begin_stage()
 	_check(progress.rewards.is_empty(), "다음 스테이지 시작에서 드랍 비움")
+	_test_party_level_rules()
+
+
+## 파티 주사위 레벨(#477): 막의 마지막 스테이지를 처음 이길 때만 +1.
+func _test_party_level_rules() -> void:
+	var progress: CombatActProgress = CombatActProgress.new(9)
+	var loot: CombatLoot = CombatLoot.new()
+	var dice: CombatDice = CombatDice.new()
+	dice.seed = 11
+	_check(progress.level == 0, "새 게임은 레벨 0")
+	progress.begin_stage()
+	progress.record_victory(loot, 1, dice)
+	_check(progress.level == 0, "막의 첫 스테이지 승리는 레벨을 올리지 않음")
+	progress.stage_index = 2
+	progress.begin_stage()
+	progress.record_victory(loot, 1, dice)
+	progress.record_victory(loot, 1, dice)
+	_check(progress.level == 1, "1막 마지막 스테이지 승리로 +1, 같은 승리를 다시 기록해도 한 번")
+	progress.restart_act()
+	progress.begin_stage()
+	progress.record_victory(loot, 1, dice)
+	_check(progress.level == 1, "이미 깬 막의 재클리어와 막 재시작으로 오르지 않음")
+	progress.stage_index = 5
+	progress.restart_act()
+	_check(progress.level == 1, "2막 재시작은 레벨을 건드리지 않음")
+	progress.stage_index = 5
+	progress.begin_stage()
+	progress.record_victory(loot, 1, dice)
+	_check(progress.level == 2, "2막 마지막 스테이지 승리로 2")
+	var saved: Dictionary = progress.save_state()
+	_check(saved.level == 2, "저장 본문에 파티 레벨")
+	var loaded: CombatActProgress = CombatActProgress.new(9)
+	loaded.load_state(saved)
+	_check(loaded.level == 2, "저장한 레벨을 복원")
 
 
 func _win(battle: Node2D) -> void:
@@ -763,7 +797,17 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	_check(hud.progress_label.text == "1막 · 3스테이지", "1-2에서1-3 진행")
 	_check((battle.get_node("Map") as TileMapLayer).get_used_cells().size() == 100,
 		"다음 스테이지 데이터가 이전 맵 크기를 덮어씀")
+	var level_party: Array[CombatUnit] = battle.get("party")
+	_check(battle.progress.level == 0 and level_party[0].dice_level == 0 and level_party[0].get_max_hit_points() == 11,
+		"1막 클리어 전 파티 레벨 0, 전사 최대 HP 11")
+	level_party[0].hit_points = 7
 	_win(battle)
+	_check(battle.progress.level == 1 and level_party.all(func(unit: CombatUnit) -> bool: return unit.dice_level == 1),
+		"1막 마지막 스테이지 승리 직후 파티 레벨 1이 모든 아군에 적용")
+	_check(level_party[0].get_max_hit_points() == 17 and level_party[1].get_max_hit_points() == 13
+		and level_party[0].hit_points == 13 and level_party[0].get_ability_modifier(CombatUnit.Ability.STRENGTH) == 1
+		and CombatUnit.ability_text(level_party[0], CombatUnit.Ability.STRENGTH) == "힘 d20 +1",
+		"정비 화면의 최대 HP 17·13, 잃은 HP 유지(7 → 13), 패널 표기 힘 d20 +1")
 	var expected_bag: Array[Dictionary] = battle.loot.bag.duplicate(true)
 	expected_bag.append_array(battle.progress.rewards)
 	_check(hud.restart_button.text == "보상 확인", "막 마지막 전투도 보상 확인 안내")
@@ -778,6 +822,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	_check(hud.progress_label.text == "2막 · 1스테이지", "1-3 승리 뒤2-1 진행")
 	_check(battle.loot.bag == expected_bag, "다음 막 시작은 미수령 보상을 더한 공용 가방 보존")
 	_check_enemy_values(battle, 2)
+	_check(battle.progress.level == 1 and level_party[0].hit_points == 17, "2막 시작에도 레벨 1 유지, 막 시작 회복은 새 최대 HP")
 	_check((battle.get("turns") as CombatTurns).ordered_units.size() == 7,
 		"새 막에서 전투 불능 아군 부활과 적 재배치")
 	var party: Array[CombatUnit] = battle.get("party")
@@ -820,6 +865,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 		_check(unit.hit_points == unit.get_max_hit_points() and unit.cross_slash_left == 1,
 			"전멸 뒤 부활과 스킬 회복")
 	_check(party[0].potion_left == 2, "사용한 물약은 막 재시작으로 돌아오지 않음")
+	_check(battle.progress.level == 1 and party[0].dice_level == 1, "2막 전멸 재시작은 파티 레벨 1을 유지")
 
 
 func _test_graduation(battle: Node2D) -> void:

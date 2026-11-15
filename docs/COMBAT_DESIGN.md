@@ -73,7 +73,7 @@
 
 공격·방어 장비는 결과에 가산하고, 능력치 가감은 굴림값과 표준값에 더합니다([능력치 기획서 4-6](ABILITY_SYSTEM.md#4-6-장비-가산과-능력치-가감-)). HP·사거리·행동 수는 이번 판정 개편으로 바꾸지 않습니다. 피해는 명중하면 공격 능력치 주사위를 새로 굴린 굴림값(max(1, 눈 + 레벨 + 능력치 가감)) + 피해 보정입니다([능력치 기획서 4-9](ABILITY_SYSTEM.md#4-9-피해와-회복), [#388](https://github.com/minjunkim-dev/BGLike/issues/388)). 몬스터 시험값은 [능력치 기획서 7장](ABILITY_SYSTEM.md#7-몬스터-시험값)을 따릅니다. 장비 범위 재조정은 #205에서 기획자가 정합니다.
 
-전사의 의지 주사위(d8), 최대 HP 식, 이동력 3, 기본 공격 피해(`힘 d20 + 레벨 + 기타 가산치 0`)는 2026-10-30 재디자인으로 [전사 문서](characters/warrior.md)를 따르며 [#423](https://github.com/minjunkim-dev/BGLike/issues/423)에서 구현했습니다(레벨 0). 위 표는 현재 구현입니다. 궁수의 피해는 2026-11-09 재디자인으로 전사와 같은 식(`솜씨 d20 + 레벨 + 기타 가산치 0`)이 되었고 [#528](https://github.com/minjunkim-dev/BGLike/issues/528)에서 구현했습니다([#407](https://github.com/minjunkim-dev/BGLike/issues/407) 질문 3의 답, [궁수 문서](characters/archer.md#수치)).
+전사의 의지 주사위(d8), 최대 HP 식, 이동력 3, 기본 공격 피해(`힘 d20 + 레벨 + 기타 가산치 0`)는 2026-10-30 재디자인으로 [전사 문서](characters/warrior.md)를 따르며 [#423](https://github.com/minjunkim-dev/BGLike/issues/423)에서 구현했습니다(레벨은 파티 레벨, [#477](https://github.com/minjunkim-dev/BGLike/issues/477)). 위 표는 현재 구현입니다. 궁수의 피해는 2026-11-09 재디자인으로 전사와 같은 식(`솜씨 d20 + 레벨 + 기타 가산치 0`)이 되었고 [#528](https://github.com/minjunkim-dev/BGLike/issues/528)에서 구현했습니다([#407](https://github.com/minjunkim-dev/BGLike/issues/407) 질문 3의 답, [궁수 문서](characters/archer.md#수치)).
 
 > 현재 맵·배치·사거리 근거는 [게임 구조 기획서 6~7장](GAME_STRUCTURE.md#6-사각-높이-격자)과 [스테이지 배치 3장](stages/README.md#3-시작-위치)이 대체합니다.
 
