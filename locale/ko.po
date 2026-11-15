@@ -9,6 +9,7 @@
 # res://scenes/combat/enemies.tscn
 # res://scenes/combat/enemy_ai.gd
 # res://scenes/combat/enemy_definitions.gd
+# res://scenes/combat/floor_loot.gd
 # res://scenes/combat/grid.gd
 # res://scenes/combat/loot.gd
 # res://scenes/combat/map.gd
