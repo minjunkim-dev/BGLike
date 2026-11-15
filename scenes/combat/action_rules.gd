@@ -135,10 +135,12 @@ const CLASS_ONLY: Dictionary[String, CombatUnit.Kind] = {
 ## 아군이 쓰지 않는 몬스터 동작. 풋내기 야만인의 숨 고르기와 풋내기 궁수의 물러서며 쏘기도 여기 있다.
 const MONSTER_ONLY: Array[String] = ["second_wind", "disengage", "spawn", "pull", "spin", "fog"]
 const USE_COUNTERS: Dictionary[String, StringName] = {
-	"second_wind": &"second_wind_left", "disengage": &"disengage_left", "potion": &"potion_left",
+	"second_wind": &"second_wind_left", "disengage": &"disengage_left",
 	"cross_slash": &"cross_slash_left", "steel_charge": &"steel_charge_left", "battle_cry": &"battle_cry_left",
 	"oil_throw": &"oil_throw_left", "firework_arrow": &"firework_arrow_left", "whistle": &"whistle_left"
 }
+## 물약 동작이 쓰는 아이템 종류(id). 이 동작의 남은 횟수는 그 종류의 물약 칸 수다(#575).
+const POTION_ITEM: Dictionary[String, String] = {"potion": "healing_potion"}
 ## 막 시작에 회복하는 횟수. 물약은 보유 개수라서 회복하지 않는다.
 const USES_PER_ACT: Dictionary[String, int] = {
 	"second_wind": 1, "disengage": 2, "firework_arrow": 1
@@ -218,16 +220,20 @@ static func belongs_to(actor: CombatUnit, action: String) -> bool:
 
 ## 남은 횟수. 횟수 제한이 없는 동작은 -1이다.
 static func uses_left(actor: CombatUnit, action: String) -> int:
+	if action in POTION_ITEM:
+		return actor.potion_count(POTION_ITEM[action])
 	return int(actor.get(USE_COUNTERS[action])) if action in USE_COUNTERS else -1
 
 
 ## 직업이 쓸 수 있고 횟수가 남았는지. 턴 자원과 대상은 확인하지 않는다.
 static func has_uses(actor: CombatUnit, action: String) -> bool:
-	return belongs_to(actor, action) and (action not in USE_COUNTERS or uses_left(actor, action) > 0)
+	return belongs_to(actor, action) and (uses_left(actor, action) != 0)
 
 
 static func spend_use(actor: CombatUnit, action: String) -> void:
-	if action in USE_COUNTERS:
+	if action in POTION_ITEM:
+		actor.take_potion(POTION_ITEM[action])
+	elif action in USE_COUNTERS:
 		actor.set(USE_COUNTERS[action], uses_left(actor, action) - 1)
 
 

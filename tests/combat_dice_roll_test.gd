@@ -259,7 +259,7 @@ func _test_rock_stun_save_is_presented() -> void:
 func _test_values_without_presentation() -> void:
 	var f: Fixture = _fixture()
 	f.units[0].hit_points = 5
-	f.units[0].potion_left = 1
+	f.units[0].potions.assign(["healing_potion"])
 	f.actions.dice = _dice_for([1, 1], [4, 4])
 	_check(f.actions.use_self(f.units[0], "potion") and f.units[0].hit_points == 5 + 1 + 1 + 2, "물약 회복 실행")
 	_check(f.rolls.is_empty(), "회복 굴림은 연출하지 않는다")

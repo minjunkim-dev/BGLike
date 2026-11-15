@@ -43,7 +43,7 @@ func _run() -> void:
 	if hud.has_node("Progress"):
 		_check((hud.get_node("Progress") as Label).text == "1막 · 1스테이지", "첫 전투는1-1")
 	for unit: CombatUnit in battle.get("units"):
-		_check(unit.potion_left == 0, "드랍 전 시작 물약은0개")
+		_check(unit.potions.size() == 0, "드랍 전 시작 물약은0개")
 	_check_enemy_values(battle, 1)
 	await _test_stage_transition(battle)
 	await _test_act_and_defeat(battle)
@@ -290,7 +290,7 @@ func _test_mother_stages() -> void:
 			and "생성한 라운드" in tooltip, "생성한 새끼의 초상은 가짜 주사위 대신 생성 턴 규칙을 표시")
 		var loot: CombatLoot = battle.get("loot") as CombatLoot
 		loot.data["extra_drop_chance"] = 1.0
-		loot.data["items"] = [{"kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}]
+		loot.data["items"] = [{"id": "healing_potion", "kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}]
 		for mother: CombatUnit in mothers:
 			actions.incapacitate(mother)
 		for fog_spider: CombatUnit in fog_spiders:
@@ -707,7 +707,7 @@ func _win(battle: Node2D) -> void:
 
 func _test_stage_transition(battle: Node2D) -> void:
 	var loot: CombatLoot = battle.loot
-	var stored: Dictionary = {"kind": "potion", "name": "계속 보관할 물약", "stats": {}}
+	var stored: Dictionary = {"id": "healing_potion", "kind": "potion", "name": "계속 보관할 물약", "stats": {}}
 	loot.bag.append(stored)
 	var party: Array[CombatUnit] = []
 	for unit: CombatUnit in battle.get("units"):
@@ -720,7 +720,7 @@ func _test_stage_transition(battle: Node2D) -> void:
 	warrior.cross_slash_left = 0
 	warrior.steel_charge_left = 0
 	warrior.battle_cry_left = 0
-	warrior.potion_left = 3
+	warrior.potions.assign(["healing_potion", "healing_potion", "healing_potion"])
 	warrior.is_stunned = true
 	warrior.stun_source = (battle.get("units") as Array)[2] as CombatUnit
 	warrior.disengaged = true
@@ -753,7 +753,7 @@ func _test_stage_transition(battle: Node2D) -> void:
 	_check(archer.hit_points == 0 and not archer.visible
 		and archer not in (battle.get("turns") as CombatTurns).ordered_units,
 		"전투 불능 아군은 같은 막 다음 전투에 나오지 않음")
-	_check(warrior.potion_left == 3, "스테이지 전환에서 가진 물약 유지")
+	_check(warrior.potions.size() == 3, "스테이지 전환에서 가진 물약 유지")
 	_check(not warrior.is_stunned and warrior.stun_source == null and not warrior.disengaged
 		and warrior.aegisal_left == 0 and not warrior.moving_shot_ready and not warrior.moving_shot_spent,
 		"기절·애기살·이번 턴 효과(무빙샷)는 전투 전환에서 해제")
@@ -834,7 +834,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 		_check(unit.hit_points == unit.get_max_hit_points() and unit.second_wind_left == 1
 			and unit.cross_slash_left == 1 and unit.steel_charge_left == 1 and unit.battle_cry_left == 1,
 			"막 시작에 전원 HP와 기존 스킬 횟수 회복")
-	_check(party[0].potion_left == 3 and party[1].potion_left == 0,
+	_check(party[0].potions.size() == 3 and party[1].potions.size() == 0,
 		"막 시작은 물약을 지급하거나 제거하지 않음")
 	party[1].hit_points = 8
 	party[1].aegisal_left = 4
@@ -848,7 +848,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	expected_bag = battle.loot.bag.duplicate(true)
 	for unit: CombatUnit in party:
 		(battle.get("actions") as CombatActions).incapacitate(unit)
-	party[0].potion_left = 2
+	party[0].potions.assign(["healing_potion", "healing_potion"])
 	actions.changed.emit()
 	_check(hud.result_label.text == "패배" and hud.restart_button.text == "이 막 다시 시작",
 		"아군 전멸은 막 재시작 안내")
@@ -868,7 +868,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	for unit: CombatUnit in party:
 		_check(unit.hit_points == unit.get_max_hit_points() and unit.cross_slash_left == 1,
 			"전멸 뒤 부활과 스킬 회복")
-	_check(party[0].potion_left == 2, "사용한 물약은 막 재시작으로 돌아오지 않음")
+	_check(party[0].potions.size() == 2, "사용한 물약은 막 재시작으로 돌아오지 않음")
 	_check(battle.progress.level == 1 and party[0].dice_level == 1, "2막 전멸 재시작은 파티 레벨 1을 유지")
 
 

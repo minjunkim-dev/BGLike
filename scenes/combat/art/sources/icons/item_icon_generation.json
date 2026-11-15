@@ -38,6 +38,11 @@
       "id": "potion",
       "used_by": "healing_potion",
       "brief": "Original pixel-art item icon, transparent background: a round glass flask filled two-thirds with rust-red healing liquid, lighter surface line, dark indigo empty glass, light steel lip, brown cork, curved glass shine at the upper left. Same palette, dark outline."
+    },
+    {
+      "id": "oil_bottle",
+      "used_by": "oil_bottle (#575)",
+      "brief": "Original pixel-art item icon, transparent background: an upright squat glass bottle with rounded shoulders, filled with amber oil in brass tones, teal empty glass above the surface line, light steel lip, brown cork, steel highlight on the upper left. Same palette, dark outline."
     }
   ]
 }

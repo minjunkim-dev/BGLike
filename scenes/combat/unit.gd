@@ -33,7 +33,7 @@ const SHIELD_COLOR: Color = Color("6fb7ff")
 const SAVED_FIELDS: Array[String] = ["cell", "start_cell", "facing_left", "initiative_roll", "movement_left",
 	"action_capacity", "bonus_action_capacity", "reaction_capacity", "action_left", "bonus_action_left",
 	"reaction_left", "overloaded", "pull_cooldown", "disengaged", "second_wind_left",
-	"disengage_left", "potion_left", "cross_slash_left", "steel_charge_left", "battle_cry_left",
+	"disengage_left", "cross_slash_left", "steel_charge_left", "battle_cry_left",
 	"shield_points", "shield_turns", "battle_cry_bonus", "battle_cry_turns",
 	"fallen", "oil_slipped", "oil_throw_left"]
 ## SAVED_FIELDS 밖의 선택 필드와 기본값(#528). 형식 5를 그대로 두려고, 이 필드가 없는 옛 저장은 기본값으로 읽는다.
@@ -114,7 +114,8 @@ var aegisal_left: int = 0
 ## 무빙샷: 지금 1칸 도약할 수 있는지, 이번 턴의 첫 행동 원거리 공격을 이미 했는지. 자기 턴 시작에 모두 false다.
 var moving_shot_ready: bool = false
 var moving_shot_spent: bool = false
-var potion_left: int = 0
+## 물약류 칸마다 아이템 id(`item_data.json`). 빈 칸은 없는 압축 목록이고 길이가 쓴 칸 수다(#575). 한도는 CombatLoot가 안다.
+var potions: Array[String] = []
 var cross_slash_left: int = 1
 var steel_charge_left: int = 1
 var battle_cry_left: int = 1
@@ -422,6 +423,20 @@ func clear_unit_effects() -> void:
 	distracted_source = null
 
 
+## 그 종류(아이템 id)의 물약 칸 수.
+func potion_count(id: String) -> int:
+	return potions.count(id)
+
+
+## 그 종류의 마지막 칸 하나를 뺀다. 남은 칸은 순서를 지키고 앞으로 당긴다. 없으면 false.
+func take_potion(id: String) -> bool:
+	var slot: int = potions.rfind(id)
+	if slot < 0:
+		return false
+	potions.remove_at(slot)
+	return true
+
+
 ## 이어하기용 상태. 다른 유닛은 전투 유닛 목록의 번호로 적고, 없으면 -1이다.
 func save_state(units: Array[CombatUnit]) -> Dictionary:
 	var statuses: Array = []
@@ -430,7 +445,8 @@ func save_state(units: Array[CombatUnit]) -> Dictionary:
 	var data: Dictionary = {"kind": kind, "ally": is_ally, "weapon": weapon, "armor": armor,
 		"hit_points": hit_points, "lost_hit_points": _lost_hit_points, "stunned": is_stunned,
 		"stun_source": units.find(stun_source), "statuses": statuses,
-		"battle_cry_source": units.find(battle_cry_source), "distracted_source": units.find(distracted_source)}
+		"battle_cry_source": units.find(battle_cry_source), "distracted_source": units.find(distracted_source),
+		"potions": potions.duplicate()}
 	for field: String in SAVED_FIELDS:
 		data[field] = get(field)
 	for field: String in OPTIONAL_FIELDS:
@@ -443,6 +459,7 @@ func load_state(data: Dictionary, units: Array[CombatUnit]) -> void:
 	armor = data.armor
 	weapon = data.weapon
 	hit_points = data.hit_points
+	potions.assign(data.potions)
 	for field: String in SAVED_FIELDS:
 		set(field, data[field])
 	for field: String in OPTIONAL_FIELDS:
@@ -469,7 +486,9 @@ func is_valid_state(data: Variant, count: int, map_size: Vector2i) -> bool:
 			and data.lost_hit_points <= SAVED_HIT_POINT_LIMIT and data.get("stunned") is bool
 			and _valid_index(data.get("stun_source"), count, true) and (not data.stunned or data.stun_source >= 0)
 			and _valid_index(data.get("battle_cry_source"), count, true)
-			and data.get("statuses") is Array and data.statuses.size() <= 6):
+			and data.get("statuses") is Array and data.statuses.size() <= 6
+			and data.get("potions") is Array and data.potions.size() <= SAVED_INT_LIMIT
+			and data.potions.all(func(id: Variant) -> bool: return id is String)):
 		return false
 	for field: String in SAVED_FIELDS:
 		var value: Variant = data.get(field)
