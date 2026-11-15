@@ -98,7 +98,7 @@
 
 [#488](https://github.com/minjunkim-dev/BGLike/issues/488)에서 정했다([결정 기록](https://github.com/minjunkim-dev/BGLike/issues/488#issuecomment-6738857891)).
 
-- 카메라는 움직이지 않는다. 정수 배율([ADR 0002](adr/0002-resolution.md))과 플레이어가 옮겨 둔 화면을 지킨다.
+- 카메라는 움직이지 않는다. 정수 배율([ADR 0002](adr/0002-resolution.md))과 플레이어가 옮겨 둔 화면을 지킨다. 바뀔 예정: 2026-11-11 프로젝트 소유자 결정으로 주사위는 유닛 위에 띄우고 카메라 이동을 허용한다. 이 줄과 아래 `화면` 줄은 [#516](https://github.com/minjunkim-dev/BGLike/issues/516)·[#519](https://github.com/minjunkim-dev/BGLike/issues/519) 구현과 함께 고친다.
 - 슬로모션은 넣지 않는다. 적 턴 4배속이 `Engine.time_scale`을 쓰므로 전역 시간을 바꾸지 않는다.
 - 아군의 명중굴림에서 절대면이 나오면 결과 표시 시간만 일반 0.5초에서 약 0.9초로 늘린다. 기본값(`개발 결정`, 아래 [속도](#속도))이며 플레이 피드백으로 조정한다. 구현은 [#491](https://github.com/minjunkim-dev/BGLike/issues/491)이다.
 - 독 제거·회전회오리·만능팔 내성은 지금의 강조(큰 주사위, 노란 외곽선)만 둔다.
