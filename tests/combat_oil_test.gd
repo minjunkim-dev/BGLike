@@ -82,6 +82,7 @@ func _run() -> void:
 	await _test_forced_entry_slip()
 	await _test_turn_start_release()
 	await _test_fallen_limits_and_stand_up()
+	_test_prone_has_available_action()
 	await _test_fallen_agility_save()
 	await _test_oil_clock()
 	await _test_oil_throw()
@@ -287,6 +288,29 @@ func _test_fallen_limits_and_stand_up() -> void:
 	_check(await g.actions.move_to(g.units[0], Vector2i(3, 2)) and not g.units[0].fallen
 		and g.units[0].cell == Vector2i(3, 2) and g.units[0].movement_left == 1,
 		"이동 시도로 일어서면 비용 3을 먼저 내고 남은 이동력(3)으로 2칸 걸음")
+
+
+## 넘어진 유닛은 남은 이동력이 일어서기 비용 이상이면 할 수 있는 동작이 있다(#560). 일어나기 조건과 같다.
+func _test_prone_has_available_action() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	archer.fallen = true
+	var cost: int = CombatOil.standing_cost(archer.get_movement())
+	archer.movement_left = cost
+	_check(f.actions.has_available_action(archer) and f.actions.can_stand_up(archer),
+		"넘어진 궁수는 이동력이 비용과 같으면 할 수 있는 동작이 있다")
+	archer.movement_left = cost - 1
+	_check(not f.actions.has_available_action(archer) and not f.actions.can_stand_up(archer)
+		and not f.actions.stand_up(archer) and archer.fallen,
+		"이동력이 비용보다 1 적으면 할 수 있는 동작이 없다")
+	archer.movement_left = cost
+	archer.is_stunned = true
+	_check(not f.actions.has_available_action(archer) and not f.actions.can_stand_up(archer),
+		"기절한 넘어진 유닛은 일어날 수 없다")
+	archer.is_stunned = false
+	f.turns.current_unit = f.units[1]
+	_check(not f.actions.has_available_action(archer) and not f.actions.can_stand_up(archer),
+		"자기 턴이 아니면 일어날 수 없다")
 
 
 ## 넘어짐은 민첩 내성에만 불리(회전회오리). 다른 능력치는 그대로다.
