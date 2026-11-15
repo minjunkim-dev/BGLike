@@ -971,10 +971,10 @@ func _test_roll_popups() -> void:
 	actions.feedback.connect(capture)
 	actions.shove(warrior, target)
 	_check(emitted == ["밀치기 성공"], "기절 대상의 자동 밀치기도 결과만 표시: %s" % str(emitted))
-	var potions: int = warrior.potion_left
+	var potions: Array[String] = warrior.potions.duplicate()
 	var hit_points: int = warrior.hit_points
 	warrior.bonus_action_left = 1
-	warrior.potion_left = 1
+	warrior.potions.assign(["healing_potion"])
 	warrior.hit_points = 1
 	_check(actions.use_self(warrior, "potion"), "물약 실행")
 	var healed: String = str(warrior.hit_points - 1)
@@ -984,7 +984,7 @@ func _test_roll_popups() -> void:
 			heal_popup = child
 	_check(heal_popup != null and heal_popup.get_theme_color("font_color") == CombatUnit.HEAL_COLOR,
 		"회복 팝업은 + 없는 수치를 초록색으로 표시")
-	warrior.potion_left = potions
+	warrior.potions.assign(potions)
 	warrior.hit_points = hit_points
 	# 아군 전사의 방어막은 피해를 HP보다 먼저 받고 흡수량을 로그에 남긴다.
 	target = warrior
@@ -1225,13 +1225,13 @@ func _test_guidance() -> void:
 		"공격 버튼 호버에 효과와 사용 불가 이유 유지")
 	_check("아군은 판정 없이 밀림" in (buttons["shove"] as Button).tooltip_text,
 		"밀치기 호버에 아군 무판정 안내")
-	units[0].potion_left = 1
+	units[0].potions.assign(["healing_potion"])
 	battle.call("_update_turn_ui")
 	await _hover((buttons["potion"] as Button))
 	_check((buttons["potion"] as Button).tooltip_text ==
 		"물약\nHP 2d4+2 회복.\n최대 HP를 넘지 않습니다.\n사거리: 자신\n회복: 2d4+2\n판정: 없음\n지금 사용 불가: HP가 이미 최대",
 		"비활성 물약은 이름·효과·사거리·회복·판정·이유를 표시")
-	units[0].potion_left = 0
+	units[0].potions.assign([])
 	for action: String in buttons:
 		var icon_button: Button = buttons[action] as Button
 		var ally_action: bool = CombatActionRules.belongs_to(units[0], action) or CombatActionRules.belongs_to(units[1], action)
@@ -1382,14 +1382,14 @@ func _test_guidance() -> void:
 	turns.select_unit(units[0])
 	units[0].action_left = 0
 	units[0].cross_slash_left = 0
-	units[0].potion_left = 1
+	units[0].potions.assign(["healing_potion"])
 	battle.call("_update_turn_ui")
 	_check("자원을 이미 씀" in (buttons["attack"] as Button).tooltip_text
 		and "이번 전투의 횟수를 모두 씀" in (buttons["cross_slash"] as Button).tooltip_text
 		and "HP가 이미 최대" in (buttons["potion"] as Button).tooltip_text,
 		"사용 불가 이유는 비활성 버튼 호버에 유지")
 	units[0].cross_slash_left = 1
-	units[0].potion_left = 0
+	units[0].potions.assign([])
 	units[0].reaction_left = 0
 	battle.call("_update_turn_ui")
 	_check("자원을 이미 씀" in (buttons["opportunity"] as Button).tooltip_text,
@@ -1511,7 +1511,7 @@ func _test_results_and_restart() -> void:
 		and not hud.get_node("Result").visible and hud.progress_label.text == "1막 · 2스테이지",
 		"승리 뒤 보상·정비 종료로 다음 스테이지 진입")
 	for index: int in range(2):
-		_check(units[index].hit_points == ally_hp[index] and units[index].potion_left == 0,
+		_check(units[index].hit_points == ally_hp[index] and units[index].potions.size() == 0,
 			"같은 막은 HP를 유지하고 물약을 지급하지 않음")
 	for unit: CombatUnit in units:
 		if unit.is_ally:

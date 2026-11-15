@@ -363,18 +363,19 @@ func _render_card(index: int) -> void:
 		pip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		pip.custom_minimum_size = Vector2(16, 16)
 		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		if slot >= unit.potion_left:
+		if slot >= unit.potions.size():
 			pip.modulate = Color(1, 1, 1, 0.18)
 		potions.add_child(pip)
-	_label(potions, tr("물약 %d/%d") % [unit.potion_left, int(loot.data["potion_limit"])], DIM_COLOR, false).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_label(potions, tr("물약 %d/%d") % [unit.potions.size(), int(loot.data["potion_limit"])], DIM_COLOR, false).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	potions.tooltip_text = ", ".join(unit.potions.map(func(id: String) -> String: return tr(str(loot.potion_definition(id).get("name", id)))))
 	for target: int in range(party.size()):
 		if target == index or not maintaining:
 			continue
-		var button: Button = _button(potions, tr("물약 1개 → %s") % _short_name(party[target]),
+		var button: Button = _button(potions, tr("%s 1개 → %s") % [_next_potion_name(unit), _short_name(party[target])],
 			"Transfer%dTo%d" % [index, target])
-		button.tooltip_text = (tr("넘길 물약이 없습니다.") if unit.potion_left <= 0
+		button.tooltip_text = (tr("넘길 물약이 없습니다.") if unit.potions.is_empty()
 			else tr("받는 캐릭터의 물약이 가득 찼습니다.")
-			if party[target].potion_left >= int(loot.data["potion_limit"]) else "")
+			if party[target].potions.size() >= int(loot.data["potion_limit"]) else "")
 		button.disabled = not button.tooltip_text.is_empty()
 		button.pressed.connect(func() -> void: _transfer(index, target))
 
@@ -481,7 +482,7 @@ func _receive_button(parent: Node, item: Dictionary, index: int, ally: int, from
 	var potion: bool = item["kind"] == "potion"
 	var button: Button = _button(parent, _receive_label(unit, item),
 		"Ally%d" % ally)
-	var full: bool = (potion and unit.potion_left >= int(loot.data["potion_limit"])) if from_bag \
+	var full: bool = (potion and unit.potions.size() >= int(loot.data["potion_limit"])) if from_bag \
 		else not loot.can_receive(unit, item)
 	button.tooltip_text = "" if not full else (tr("물약을 더 가질 수 없습니다.") if potion
 		else tr("공용 가방에 빈 칸이 없어 지금 장비를 보관할 수 없습니다."))
@@ -490,7 +491,7 @@ func _receive_button(parent: Node, item: Dictionary, index: int, ally: int, from
 		button.pressed.connect(func() -> void: _receive_bag(index, ally))
 	else:
 		button.pressed.connect(func() -> void: _receive(index, ally))
-	var compare: String = tr("물약 %d/%d") % [unit.potion_left, int(loot.data["potion_limit"])]
+	var compare: String = tr("물약 %d/%d") % [unit.potions.size(), int(loot.data["potion_limit"])]
 	if not potion:
 		var current: Dictionary = (unit.weapon if item["kind"] == "weapon" else unit.armor).get("stats", {})
 		var parts: PackedStringArray = []
@@ -503,7 +504,7 @@ func _receive_button(parent: Node, item: Dictionary, index: int, ally: int, from
 
 func _receive_label(unit: CombatUnit, item: Dictionary) -> String:
 	if item.kind == "potion":
-		return tr("%s: 물약 1개 전달") % _short_name(unit)
+		return tr("%s: %s 1개 전달") % [_short_name(unit), tr(str(item["name"]))]
 	var current: Dictionary = unit.weapon if item.kind == "weapon" else unit.armor
 	return (tr("%s: 장착") if current.is_empty() else tr("%s: 교체")) % _short_name(unit)
 
@@ -527,7 +528,7 @@ func _process(_delta: float) -> void:
 	if kind == "empty_bag":
 		hint_label.text = tr("가방으로 해제") if data.kind == "armor" else tr("가방에 보관")
 	elif data.kind == "potion":
-		hint_label.text = tr("%s: 물약 1개 전달") % _short_name(party[index])
+		hint_label.text = tr("%s: %s 1개 전달") % [_short_name(party[index]), _next_potion_name(party[data.index])]
 	else:
 		hint_label.text = _receive_label(party[index], data.item)
 		if data.item.kind != "potion":
@@ -577,8 +578,8 @@ func _drag_item(control: Control, kind: String, index: int) -> Variant:
 	if not visible or not maintaining or discard_dialog.visible:
 		return null
 	var item: Dictionary = (rewards[index] if kind == "reward" else loot.bag[index] if kind == "bag"
-		else party[index].armor if kind == "armor" else {"icon": "potion"} if kind == "potion"
-		and party[index].potion_left > 0 else {})
+		else party[index].armor if kind == "armor" else loot.potion_definition(party[index].potions.back()) if kind == "potion"
+		and not party[index].potions.is_empty() else {})
 	if item.is_empty():
 		return null
 	var preview: TextureRect = TextureRect.new()
@@ -607,14 +608,14 @@ func _can_drop_item(data: Variant, kind: String, index: int) -> bool:
 			return source == "reward" and loot.bag.size() < int(loot.data["bag_limit"])
 		return kind in [item.kind, "ally"] and index >= 0 and index < party.size() and (
 			loot.can_receive(party[index], item) if source == "reward" else
-			party[index].potion_left < int(loot.data["potion_limit"]) if item.kind == "potion" else true)
+			party[index].potions.size() < int(loot.data["potion_limit"]) if item.kind == "potion" else true)
 	if at < 0 or at >= party.size():
 		return false
 	if source == "armor":
 		return kind == "empty_bag" and data.get("item") == party[at].armor \
 			and loot.armor_unequip_blocker(party[at]).is_empty()
 	return (source == "potion" and kind in ["potion", "ally"] and index >= 0 and index < party.size()
-		and at != index and party[at].potion_left > 0 and party[index].potion_left < int(loot.data["potion_limit"]))
+		and at != index and not party[at].potions.is_empty() and party[index].potions.size() < int(loot.data["potion_limit"]))
 
 
 func _drop_item(data: Variant, kind: String, index: int) -> void:
@@ -657,6 +658,11 @@ func _short_name(unit: CombatUnit) -> String:
 
 func _equipment_text(item: Dictionary, empty: String) -> String:
 	return empty if item.is_empty() else CombatLoot.describe(item)
+
+
+## 이 캐릭터가 넘길 물약(마지막 칸)의 이름.
+func _next_potion_name(unit: CombatUnit) -> String:
+	return tr(str(loot.potion_definition(unit.potions.back()).get("name", ""))) if not unit.potions.is_empty() else tr("물약")
 
 
 func _icon(item: Dictionary, unit_id: String) -> Texture2D:

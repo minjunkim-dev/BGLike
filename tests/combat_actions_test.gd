@@ -687,7 +687,7 @@ func _test_crate_drop() -> void:
 	var actor: CombatUnit = f.units[0]
 	var crate: CombatGrid.Prop = f.actions.create_prop(Vector2i(4, 5), "crate")
 	# 피해 6으로 한 번에 부순다. 이어서 추첨 2(무기), 무기 수치 1막 범위 공격 2·피해 3.
-	f.actions.dice = _dice_for([6, 1, 2, 3], [20, 7, 2, 3])
+	f.actions.dice = _dice_for([6, 1, 2, 3], [20, 8, 2, 3])
 	_check(f.actions.attack_prop(actor, crate) and f.actions.get_props().is_empty(),
 		"내구도 6 상자를 한 번에 부순다")
 	var dropped: Dictionary = f.actions.floor_loot.item_at(Vector2i(4, 5))
@@ -705,7 +705,7 @@ func _test_crate_drop() -> void:
 	var third: Fixture = _fixture()
 	third.actions.act_number = 3
 	var rock_crate: CombatGrid.Prop = third.actions.create_prop(Vector2i(4, 5), "crate")
-	third.actions.dice = _dice_for([6, 1, 5, 7], [20, 7, 7, 10])
+	third.actions.dice = _dice_for([6, 1, 5, 7], [20, 8, 7, 10])
 	third.actions.attack_prop(third.units[0], rock_crate)
 	_check(third.actions.floor_loot.item_at(Vector2i(4, 5)).get("stats") == {"attack_bonus": 5, "damage_bonus": 7},
 		"3막 상자는 3막 수치 범위로 굴린다")
@@ -2682,12 +2682,22 @@ func _test_self_actions() -> void:
 		"자기 턴은 전투마다 횟수를 회복하지 않음")
 	ScriptedDice.start_turn(warrior)
 	warrior.hit_points = 1
-	warrior.potion_left = 1
+	warrior.potions.assign(["healing_potion"])
 	f.actions.dice = _dice_for([4, 4], [4, 4])
 	_check(f.actions.use_self(warrior, "potion"), "물약 사용")
-	_check(warrior.hit_points == 11 and warrior.potion_left == 0, "보유 물약 소비와2d4+2 회복")
+	_check(warrior.hit_points == 11 and warrior.potions.size() == 0, "보유 물약 소비와2d4+2 회복")
 	ScriptedDice.start_turn(warrior)
 	_check(not f.actions.use_self(warrior, "potion"), "물약 횟수 회복 없음")
+	# #575: 기름병은 회복 물약의 개수에 들지 않고, 회복은 회복 물약 칸 하나만 비운다.
+	warrior.hit_points = 1
+	warrior.potions.assign(["oil_bottle"])
+	_check(not f.actions.can_use(warrior, "potion") and f.actions.unavailable_reason(warrior, "potion") == tr("보유 물약 없음")
+		and not f.actions.use_self(warrior, "potion") and warrior.potions == ["oil_bottle"], "기름병만 있으면 회복 물약을 쓸 수 없다")
+	warrior.potions.assign(["oil_bottle", "healing_potion", "healing_potion"])
+	f.actions.dice = _dice_for([4, 4], [4, 4])
+	_check(f.actions.use_self(warrior, "potion") and warrior.hit_points == 11
+		and warrior.potions == ["oil_bottle", "healing_potion"], "회복 물약 사용은 회복 물약 한 칸만 비우고 2d4+2 회복")
+	warrior.potions.clear()
 	f.turns.select_unit(f.units[1])
 	var archer: CombatUnit = f.units[1]
 	_check(not f.actions.use_self(archer, "disengage") and archer.bonus_action_left == 1,
