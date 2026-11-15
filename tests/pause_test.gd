@@ -209,9 +209,9 @@ func _check_give_up(battle: Node2D, menu: PauseMenu) -> void:
 			break
 	_check(battle.loot.receive(party[0], item), "검사용 무기 장착")
 	var weapon: Dictionary = party[0].weapon.duplicate(true)
-	battle.loot.bag.append({"kind": "potion", "name": "가방의 물약", "stats": {}})
+	battle.loot.bag.append({"id": "healing_potion", "kind": "potion", "name": "가방의 물약", "stats": {}})
 	var bag: Array[Dictionary] = battle.loot.bag.duplicate(true)
-	party[0].potion_left = 2
+	party[0].potions.assign(["healing_potion", "healing_potion"])
 	party[0].hit_points = 3
 	party[0].second_wind_left = 0
 	party[1].aegisal_left = 3
@@ -244,7 +244,7 @@ func _check_give_up(battle: Node2D, menu: PauseMenu) -> void:
 	for unit: CombatUnit in party:
 		_check(unit.hit_points == unit.get_max_hit_points() and unit.visible and unit.second_wind_left == 1
 			and unit.aegisal_left == 0, "%s: HP·전투 불능·스킬 횟수·애기살 초기화" % unit.get_display_name())
-	_check(party[0].weapon == weapon and not weapon.is_empty() and battle.loot.bag == bag and party[0].potion_left == 2,
+	_check(party[0].weapon == weapon and not weapon.is_empty() and battle.loot.bag == bag and party[0].potions.size() == 2,
 		"장비·가방·물약 유지")
 
 

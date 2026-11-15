@@ -104,7 +104,7 @@ func _equip() -> void:
 			for stat: String in item.stats: item.stats[stat] = int(item.stats[stat][-1][1])
 			assert(loot.receive(unit, item))
 		unit.hit_points = unit.get_max_hit_points()
-		unit.potion_left = int(loot.data.potion_limit)
+		unit.potions.assign(["healing_potion", "healing_potion", "healing_potion"])
 	(battle.get("actions") as CombatActions).dice.seed = 351 + fights
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 10351 + fights

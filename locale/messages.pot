@@ -1286,7 +1286,7 @@ msgid "물약 %d/%d"
 msgstr ""
 
 #: scenes/combat/preparation.gd:367
-msgid "물약 1개 → %s"
+msgid "%s 1개 → %s"
 msgstr ""
 
 #: scenes/combat/preparation.gd:369
@@ -1352,7 +1352,7 @@ msgstr ""
 
 #: scenes/combat/preparation.gd:500
 #: scenes/combat/preparation.gd:524
-msgid "%s: 물약 1개 전달"
+msgid "%s: %s 1개 전달"
 msgstr ""
 
 #: scenes/combat/preparation.gd:502

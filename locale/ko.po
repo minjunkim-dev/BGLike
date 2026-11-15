@@ -1284,8 +1284,8 @@ msgid "물약 %d/%d"
 msgstr "물약 %d/%d"
 
 #: scenes/combat/preparation.gd:367
-msgid "물약 1개 → %s"
-msgstr "물약 1개 → %s"
+msgid "%s 1개 → %s"
+msgstr "%s 1개 → %s"
 
 #: scenes/combat/preparation.gd:369
 msgid "넘길 물약이 없습니다."
@@ -1350,8 +1350,8 @@ msgstr "공용 가방에 빈 칸이 없어 지금 장비를 보관할 수 없습
 
 #: scenes/combat/preparation.gd:500
 #: scenes/combat/preparation.gd:524
-msgid "%s: 물약 1개 전달"
-msgstr "%s: 물약 1개 전달"
+msgid "%s: %s 1개 전달"
+msgstr "%s: %s 1개 전달"
 
 #: scenes/combat/preparation.gd:502
 msgid "%s: 장착"

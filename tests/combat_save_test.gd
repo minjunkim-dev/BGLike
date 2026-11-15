@@ -83,7 +83,7 @@ func _battle(stage_index: int) -> Node2D:
 	loot.receive(party[0], weapon)
 	loot.receive(party[1], armor)
 	loot.bag.append(items[2].duplicate(true))
-	party[0].potion_left = 1
+	party[0].potions.assign(["healing_potion", "oil_bottle"])
 	(battle.get("progress") as CombatActProgress).stage_index = stage_index
 	battle.call("_start_stage", true)
 	battle.call("start_battle")
@@ -466,6 +466,13 @@ func _test_rejects_bad_saves() -> void:
 		"난수 상태가 정수가 아님": func(state: Dictionary) -> void: state.dice = "seed",
 		"아이콘 경로를 바꾼 아이템": func(state: Dictionary) -> void: state.bag[0].icon = "../../../../project",
 		"수치가 정수가 아닌 장비": func(state: Dictionary) -> void: state.units[0].weapon.stats.attack_bonus = [1],
+		"물약 칸이 없음": func(state: Dictionary) -> void: state.units[0].erase("potions"),
+		"물약 칸이 배열이 아님": func(state: Dictionary) -> void: state.units[0].potions = "oil_bottle",
+		"한도보다 많은 물약 칸": func(state: Dictionary) -> void: state.units[0].potions = ["oil_bottle", "oil_bottle", "oil_bottle", "oil_bottle"],
+		"모르는 물약 종류": func(state: Dictionary) -> void: state.units[0].potions = ["독약"],
+		"물약이 아닌 아이템 종류": func(state: Dictionary) -> void: state.units[0].potions = ["trial_weapon"],
+		"문자열이 아닌 물약 칸": func(state: Dictionary) -> void: state.units[0].potions = [1],
+		"적이 가진 물약": func(state: Dictionary) -> void: state.units[enemy].potions = ["oil_bottle"],
 		"무기 칸의 방어구": func(state: Dictionary) -> void: state.units[0].weapon = state.units[1].armor.duplicate(true),
 		"아군 차례의 적 턴 다시 실행": func(state: Dictionary) -> void:
 			state.turns.current = 0

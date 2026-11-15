@@ -101,7 +101,7 @@ func _test_preparation_screens() -> void:
 	var party: Array[CombatUnit] = battle.get("party")
 	var actions: CombatActions = battle.get("actions")
 	loot.bag.append_array([_item("weapon", {"attack_bonus": 1, "damage_bonus": 2}), _item("potion", {})])
-	party[0].potion_left = 2
+	party[0].potions.assign(["healing_potion", "healing_potion"])
 	for unit: CombatUnit in actions.units:
 		if not unit.is_ally:
 			actions.incapacitate(unit)
@@ -120,7 +120,7 @@ func _test_preparation_screens() -> void:
 	loot = battle.get("loot")
 	_check(preparation.visible and not preparation.maintaining and preparation.rewards == rewards
 		and battle.call("combat_state") == state and loot.bag.size() == 2
-		and (battle.get("party") as Array)[0].potion_left == 2, "보상 확인 화면에서 같은 가방·물약·보상으로 이어함")
+		and (battle.get("party") as Array)[0].potions.size() == 2, "보상 확인 화면에서 같은 가방·물약·보상으로 이어함")
 	preparation.continue_button.pressed.emit()
 	await process_frame
 	_check(preparation.maintaining and GameSave.read().sections.get("preparation") == {"maintaining": true},
@@ -159,7 +159,7 @@ func _test_overwrite() -> void:
 	var party: Array[CombatUnit] = battle.get("party")
 	_check((battle.get("loot") as CombatLoot).bag.is_empty() and (battle.get("progress") as CombatActProgress).stage_index == 0
 		and party.all(func(unit: CombatUnit) -> bool:
-			return unit.potion_left == 0 and unit.weapon.is_empty() and unit.armor.is_empty()),
+			return unit.potions.size() == 0 and unit.weapon.is_empty() and unit.armor.is_empty()),
 		"새 게임은 1-1, 빈 가방, 물약 0개, 장비 없음")
 	save = GameSave.read()
 	_check(save.get("act") == 1 and save.get("stage") == 1 and save.sections.combat.bag.is_empty()
@@ -169,7 +169,7 @@ func _test_overwrite() -> void:
 ## 읽을 수 없는 저장은 없는 것처럼 이어하기를 숨기고 이유를 보인다. 새 게임은 그래도 덮어쓰기를 묻는다.
 func _test_unreadable() -> void:
 	var title: TitleScreen
-	for version: int in [1, 2, 3, 4, 5, 6, 7, 8, 9, GameSave.FORMAT_VERSION + 1]:
+	for version: int in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, GameSave.FORMAT_VERSION + 1]:
 		var data: PackedByteArray = "BGLS".to_ascii_buffer()
 		data.resize(GameSave.HEADER_SIZE)
 		data.encode_u32(4, version)

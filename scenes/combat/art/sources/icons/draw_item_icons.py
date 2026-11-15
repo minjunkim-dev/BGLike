@@ -133,6 +133,31 @@ def potion(x, y):
     return INDIGO[1] if px < 36 else INDIGO[0]
 
 
+def oil_bottle(x, y):
+    """Upright squat glass bottle filled with amber oil (#575); the healing flask stays round and red."""
+    px, py = x + 0.5, y + 0.5 - 3
+    body = abs(px - 32) <= 15 and 28 <= py <= 53 and not (abs(px - 32) > 11 and (py < 33 or py > 48))
+    shoulder = abs(px - 32) <= 9 + (py - 22) * 0.7 and 22 <= py < 28
+    neck = abs(px - 32) <= 5 and 14 <= py < 22
+    lip = abs(px - 32) <= 7 and 11 <= py < 15
+    cork = abs(px - 32) <= 4.5 and 4 <= py < 11
+    if cork:
+        return CORK[1] if px < 31 else CORK[0]
+    if lip:
+        return STEEL[3] if py < 13 else STEEL[2]
+    if not (body or shoulder or neck):
+        return None
+    if px < 22 and 30 <= py <= 48 and body:
+        return STEEL[4] if px < 20 else STEEL[3]
+    if neck and px < 30:
+        return STEEL[3]
+    if (body or shoulder) and py >= 31:
+        if py < 33:
+            return BRASS[2]
+        return BRASS[2] if px < 28 else BRASS[1] if px < 40 else BRASS[0]
+    return TEAL[1] if px < 36 else TEAL[0]
+
+
 def outlined(draw, size=SIZE):
     image = Image.new("RGBA", (size, size))
     filled = set()
@@ -152,7 +177,7 @@ def outlined(draw, size=SIZE):
     return image
 
 
-ICONS = {"sword": sword, "bow": bow, "armor": armor, "potion": potion}
+ICONS = {"sword": sword, "bow": bow, "armor": armor, "potion": potion, "oil_bottle": oil_bottle}
 
 # draw_skill_icons.py imports the palette, sword, potion and outlined from this file.
 if __name__ == "__main__":

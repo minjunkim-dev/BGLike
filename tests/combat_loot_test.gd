@@ -52,10 +52,13 @@ func _run() -> void:
 		_test_floor_loot(loot)
 		_test_roll_item(loot)
 		_test_victory_pickups(loot)
+		_test_potion_kinds(loot)
+		_test_potion_slots()
 	await _test_reward_flow()
 	await _test_crate_loot_flow()
 	await _test_full_bag_finish()
 	await _test_bag_scene_use()
+	await _test_oil_bottle_scene()
 	await _test_armor_unequip_scene()
 	await _test_finish_preference()
 	await _test_accidental_advance()
@@ -108,6 +111,60 @@ func _test_floor_loot(loot: CombatLoot) -> void:
 	_check(not CombatFloorLoot.is_valid_state(null, size, 4, valid), "저장 칸이 없으면 거부")
 
 
+## #575: 물약류는 회복 물약과 기름병 두 종류이고 id로 구분한다.
+func _test_potion_kinds(_shared: CombatLoot) -> void:
+	var loot: CombatLoot = CombatLoot.new()
+	var ids: Array = loot.data["items"].map(func(item: Dictionary) -> String: return item["id"])
+	var unique: Dictionary = {}
+	for id: String in ids:
+		unique[id] = true
+	_check(ids.size() == unique.size(), "아이템 id는 서로 다르다")
+	var oil: Dictionary = loot.potion_definition("oil_bottle")
+	_check(oil.get("kind") == "potion" and oil.get("name") == "기름병" and oil.get("weight") == 1 and oil.get("stats") == {},
+		"기름병 항목: 물약류, 비중1, 수치 없음")
+	_check(loot.potion_definition("healing_potion").get("name") == "회복 물약" and loot.potion_definition("trial_weapon").is_empty()
+		and loot.potion_definition("없는 물약").is_empty(), "물약 조회는 물약류 id만 돌려준다")
+	# 표 번호 8(2+2+3+1)은 기름병, 5~7은 회복 물약, 3~4는 방어구다.
+	var scripted: CombatDice = ScriptedDice.new([8, 7, 6, 4]).then_seeded()
+	_check(loot.roll_item(scripted, 1)["id"] == "oil_bottle" and loot.roll_item(scripted, 1)["id"] == "healing_potion"
+		and loot.roll_item(scripted, 1)["id"] == "healing_potion" and loot.roll_item(scripted, 1)["id"] == "trial_armor",
+		"고정 표 번호로 기름병이 드랍 풀에서 나온다")
+	_check(loot.is_valid_item(loot.potion_definition("oil_bottle").duplicate(true)), "기름병은 유효한 아이템이다")
+	_check(loot.is_valid_potions([]) and loot.is_valid_potions(["healing_potion", "oil_bottle", "oil_bottle"])
+		and not loot.is_valid_potions(["healing_potion", "healing_potion", "oil_bottle", "oil_bottle"])
+		and not loot.is_valid_potions(["없는 물약"]) and not loot.is_valid_potions(["trial_weapon"])
+		and not loot.is_valid_potions([1]) and not loot.is_valid_potions("oil_bottle") and not loot.is_valid_potions(null),
+		"저장된 물약 칸은 3칸 이하의 물약류 id만 받는다")
+
+
+## #575: 캐릭터당 물약류 3칸을 두 종류가 공유한다.
+func _test_potion_slots() -> void:
+	var loot: CombatLoot = CombatLoot.new()
+	var heal: Dictionary = loot.potion_definition("healing_potion").duplicate(true)
+	var oil: Dictionary = loot.potion_definition("oil_bottle").duplicate(true)
+	var a: CombatUnit = CombatUnit.new()
+	var b: CombatUnit = CombatUnit.new()
+	_check(loot.receive(a, heal) and loot.receive(a, heal) and loot.receive(a, oil)
+		and a.potions == ["healing_potion", "healing_potion", "oil_bottle"], "회복 물약 2 + 기름병 1을 받는다")
+	_check(not loot.can_receive(a, oil) and not loot.receive(a, heal) and a.potions.size() == 3, "두 종류가 3칸을 공유한다")
+	_check(a.potion_count("healing_potion") == 2 and a.potion_count("oil_bottle") == 1, "종류별 칸 수")
+	loot.bag.append(oil.duplicate(true))
+	_check(not loot.receive_from_bag(a, 0) and loot.bag.size() == 1, "가방의 기름병도 한도를 지킨다")
+	_check(loot.transfer_potion(a, b) and a.potions == ["healing_potion", "healing_potion"] and b.potions == ["oil_bottle"],
+		"넘기기는 마지막 칸의 종류를 옮긴다")
+	_check(loot.receive_from_bag(a, 0) and a.potions == ["healing_potion", "healing_potion", "oil_bottle"] and loot.bag.is_empty(),
+		"가방의 물약은 한도 안에서 한 칸을 쓴다")
+	b.potions.assign(["oil_bottle", "oil_bottle", "oil_bottle"])
+	_check(not loot.transfer_potion(a, b) and a.potions.size() == 3 and b.potions.size() == 3, "가득 찬 대상에게 넘기면 양쪽을 보존한다")
+	_check(not loot.transfer_potion(a, a) and not loot.transfer_potion(CombatUnit.new(), a), "자기에게나 빈 칸은 넘기지 않는다")
+	# 압축 목록: 회복 물약의 마지막 칸만 빠지고 순서가 유지된다.
+	a.potions.assign(["healing_potion", "oil_bottle", "healing_potion"])
+	_check(a.take_potion("healing_potion") and a.potions == ["healing_potion", "oil_bottle"], "같은 종류의 마지막 칸을 뺀다")
+	_check(a.take_potion("oil_bottle") and a.potions == ["healing_potion"] and not a.take_potion("oil_bottle"), "없는 종류는 빼지 못한다")
+	a.free()
+	b.free()
+
+
 func _test_roll_item(loot: CombatLoot) -> void:
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 321
@@ -149,7 +206,7 @@ func _test_spiderling_rewards() -> void:
 		var loot: CombatLoot = battle.get("loot") as CombatLoot
 		# 추가 추첨을 모두 성공시켜도 새끼는 보상 수를 늘리지 않아야 한다.
 		loot.data["extra_drop_chance"] = 1.0
-		loot.data["items"] = [{"kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}]
+		loot.data["items"] = [{"id": "healing_potion", "kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}]
 		if mixed:
 			units[2].kind = CombatUnit.Kind.WARRIOR
 			units[2].hit_points = units[2].get_max_hit_points()
@@ -192,7 +249,7 @@ func _test_boss_reward_boundary() -> void:
 			# 승리 연결이 만든 주사위만 교체한다. 추첨과 드랍 대상 수는 실제 코드를 실행한다.
 			loot.scripted_dice = (ScriptedDice.new([1, 1], [1, 1], [0.349]) if extra
 				else ScriptedDice.new([1], [1], [0.35]))
-			loot.data["items"] = [{"kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}]
+			loot.data["items"] = [{"id": "healing_potion", "kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}]
 			battle.set("loot", loot)
 			var actions: CombatActions = battle.get("actions") as CombatActions
 			actions.incapacitate(units[2])
@@ -208,7 +265,7 @@ func _test_bag_use() -> void:
 	var unit: CombatUnit = CombatUnit.new()
 	var old: Dictionary = {"kind": "armor", "name": "이전 방어구", "stats": {"max_hit_points": 2}}
 	var next: Dictionary = {"kind": "armor", "name": "다음 방어구", "stats": {"max_hit_points": 5}}
-	var potion: Dictionary = {"kind": "potion", "name": "물약", "stats": {}}
+	var potion: Dictionary = {"id": "healing_potion", "kind": "potion", "name": "물약", "stats": {}}
 	unit.armor = old
 	unit.hit_points = 5
 	loot.bag.append(next)
@@ -220,11 +277,11 @@ func _test_bag_use() -> void:
 	unit.hit_points = 0
 	_check(loot.receive_from_bag(unit, 0) and unit.hit_points == 0 and loot.bag.size() == 12,
 		"가방 방어구 교체는 전투 불능 캐릭터를 부활시키지 않음")
-	unit.potion_left = 2
-	_check(loot.receive_from_bag(unit, 1) and unit.potion_left == 3 and loot.bag.size() == 11,
+	unit.potions.assign(["healing_potion", "healing_potion"])
+	_check(loot.receive_from_bag(unit, 1) and unit.potions.size() == 3 and loot.bag.size() == 11,
 		"가방 물약은 한 개를 분배하고 캐릭터 한도3 적용")
 	var stored: Array[Dictionary] = loot.bag.duplicate(true)
-	_check(not loot.receive_from_bag(unit, 1) and unit.potion_left == 3 and loot.bag == stored,
+	_check(not loot.receive_from_bag(unit, 1) and unit.potions.size() == 3 and loot.bag == stored,
 		"물약 한도에서 가방 수령 실패는 양쪽 소유권 보존")
 	_check(not loot.receive_from_bag(unit, -1) and not loot.receive_from_bag(unit, 11)
 		and loot.bag == stored, "무효 가방 칸은 소유권을 바꾸지 않음")
@@ -250,7 +307,7 @@ func _test_armor_unequip() -> void:
 		and unit.hit_points == 1 and unit.get_max_hit_points() == 16, "다시 장착하면 1/16")
 	unit.hit_points = 10
 	for index: int in range(12):
-		loot.bag.append({"kind": "potion", "name": "물약", "stats": {}})
+		loot.bag.append({"id": "healing_potion", "kind": "potion", "name": "물약", "stats": {}})
 	var stored: Array[Dictionary] = loot.bag.duplicate(true)
 	_check("빈 칸" in loot.armor_unequip_blocker(unit) and not loot.unequip_armor(unit)
 		and unit.armor == armor and unit.hit_points == 10 and unit.get_max_hit_points() == 16
@@ -265,7 +322,7 @@ func _test_armor_unequip() -> void:
 func _test_bag_capacity() -> void:
 	var loot: CombatLoot = CombatLoot.new()
 	_check(int(loot.data.get("bag_limit", 0)) == 12, "공용 가방의 제품 데이터 한도12칸")
-	var potion: Dictionary = {"kind": "potion", "name": "물약", "stats": {}}
+	var potion: Dictionary = {"id": "healing_potion", "kind": "potion", "name": "물약", "stats": {}}
 	for index: int in range(12):
 		loot.bag.append(potion.duplicate(true))
 	var stored: Array[Dictionary] = loot.bag.duplicate(true)
@@ -285,7 +342,7 @@ func _test_bag_capacity() -> void:
 	var empty: CombatUnit = CombatUnit.new()
 	_check(loot.receive(empty, {"kind": "weapon", "name": "첫 무기", "stats": {}})
 		and loot.bag == stored, "빈 장착 칸은 가방이 가득 차도 수령 가능")
-	_check(loot.receive(empty, potion) and empty.potion_left == 1 and loot.bag == stored,
+	_check(loot.receive(empty, potion) and empty.potions.size() == 1 and loot.bag == stored,
 		"물약 캐릭터 분배는 가방이 가득 차도 가능")
 	empty.free()
 
@@ -364,22 +421,22 @@ func _test_armor_hit_points(loot: CombatLoot) -> void:
 
 
 func _test_icons(loot: CombatLoot) -> void:
-	var expected: Dictionary = {"weapon": "sword", "armor": "armor", "potion": "potion"}
+	var expected: Dictionary = {"trial_weapon": "sword", "trial_armor": "armor", "healing_potion": "potion", "oil_bottle": "oil_bottle"}
 	for item: Dictionary in loot.data["items"]:
 		var texture: Texture2D = load(CombatLoot.icon_path(item)) as Texture2D
 		_check(texture != null and texture.get_size() == Vector2(48, 48)
-			and CombatLoot.icon_path(item).get_file() == expected[item["kind"]] + ".png",
+			and CombatLoot.icon_path(item).get_file() == expected[item["id"]] + ".png",
 			"#362 실제 아이템 데이터의 48px 아이콘: " + str(item["id"]))
 		_check(CombatLoot.icon_path(item, "warrior") == CombatLoot.icon_path(item),
 			"전사는 공용 아이콘: " + str(item["id"]))
 		var archer_path: String = CombatLoot.icon_path(item, "archer")
-		_check(archer_path.get_file() == ("bow.png" if item["kind"] == "weapon" else expected[item["kind"]] + ".png")
+		_check(archer_path.get_file() == ("bow.png" if item["kind"] == "weapon" else expected[item["id"]] + ".png")
 			and load(archer_path) is Texture2D, "궁수 무기는 활, 나머지는 공용 아이콘: " + str(item["id"]))
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 224
 	var rolled: Array[Dictionary] = loot.roll_rewards(4, dice, 1)
 	for item: Dictionary in rolled:
-		_check(CombatLoot.icon_path(item, "warrior") == CombatLoot.ICON_PATH % expected[item["kind"]],
+		_check(CombatLoot.icon_path(item, "warrior") == CombatLoot.ICON_PATH % expected[item["id"]],
 			"추첨한 아이템도 아이콘을 유지")
 	_check(CombatLoot.icon_path({"kind": "potion"}).is_empty(), "아이콘이 없는 검사 데이터는 빈 경로")
 
@@ -394,7 +451,7 @@ func _test_items(loot: CombatLoot, dice: CombatDice) -> void:
 				"damage_bonus": [[1, 3], [1, 3], [1, 3]]}},
 		{"kind": "armor", "name": "검사 방어구", "weight": 1,
 			"stats": {"defense_bonus": [[1, 3], [1, 3], [1, 3]]}},
-		{"kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}
+		{"id": "healing_potion", "kind": "potion", "name": "검사 물약", "weight": 1, "stats": {}}
 	]
 	var seen: Dictionary = {}
 	var in_bounds: bool = true
@@ -429,21 +486,21 @@ func _test_items(loot: CombatLoot, dice: CombatDice) -> void:
 		"장비 교체는 이전 장비를 대체하고 합산하지 않음")
 	_check(loot.receive(archer, armor) and archer.hit_points == 0
 		and archer.get_defense_bonus() == 3, "전투 불능 캐릭터도 장비를 받고 전투 불능 유지")
-	var potion: Dictionary = {"kind": "potion", "name": "물약", "stats": {}}
+	var potion: Dictionary = {"id": "healing_potion", "kind": "potion", "name": "물약", "stats": {}}
 	for index: int in range(3):
 		_check(loot.receive(archer, potion), "전투 불능 캐릭터도 물약 수령")
-	_check(not loot.receive(archer, potion) and archer.potion_left == 3, "물약3개 한도")
-	_check(loot.transfer_potion(archer, warrior) and archer.potion_left == 2
-		and warrior.potion_left == 1, "전투 불능 캐릭터의 물약을 다른 캐릭터에게 양도")
-	warrior.potion_left = 3
-	_check(not loot.transfer_potion(archer, warrior) and archer.potion_left == 2,
+	_check(not loot.receive(archer, potion) and archer.potions.size() == 3, "물약3개 한도")
+	_check(loot.transfer_potion(archer, warrior) and archer.potions.size() == 2
+		and warrior.potions.size() == 1, "전투 불능 캐릭터의 물약을 다른 캐릭터에게 양도")
+	warrior.potions.assign(["healing_potion", "healing_potion", "healing_potion"])
+	_check(not loot.transfer_potion(archer, warrior) and archer.potions.size() == 2,
 		"물약 한도에 걸린 양도는 양쪽 개수를 보존")
 	loot.data["potion_limit"] = 4
-	_check(loot.transfer_potion(archer, warrior) and warrior.potion_left == 4, "데이터 물약 한도 적용")
+	_check(loot.transfer_potion(archer, warrior) and warrior.potions.size() == 4, "데이터 물약 한도 적용")
 	warrior.begin_stage(true)
 	archer.begin_stage(true)
 	_check(warrior.weapon["stats"]["attack_bonus"] == 1 and archer.get_defense_bonus() == 3
-		and warrior.potion_left == 4 and archer.hit_points == 9, "막 복구는 장비·남은 물약 유지")
+		and warrior.potions.size() == 4 and archer.hit_points == 9, "막 복구는 장비·남은 물약 유지")
 	warrior.free()
 	archer.free()
 
@@ -458,10 +515,10 @@ func _test_act_values(loot: CombatLoot, dice: CombatDice) -> void:
 	}
 	var weights: Dictionary = {}
 	for definition: Dictionary in loot.data["items"]:
-		weights[definition["kind"]] = int(definition["weight"])
-	_check(weights == {"weapon": 2, "armor": 2, "potion": 3}
+		weights[definition["id"]] = int(definition["weight"])
+	_check(weights == {"trial_weapon": 2, "trial_armor": 2, "healing_potion": 3, "oil_bottle": 1}
 		and is_equal_approx(float(loot.data["extra_drop_chance"]), 0.35),
-		"실제 데이터 비중2/2/3과 몬스터당35%")
+		"실제 데이터 비중2/2/3/1과 몬스터당35%")
 	loot.data["extra_drop_chance"] = 1.0
 	for act: int in range(1, 4):
 		var combinations: Dictionary = {"weapon": {}, "armor": {}}
@@ -498,11 +555,11 @@ func _test_bag_scene_use() -> void:
 	var next: Dictionary = {"kind": "armor", "name": "새 방어구", "stats": {"max_hit_points": 5}}
 	party[0].armor = old
 	party[0].hit_points = 5
-	party[1].potion_left = 2
+	party[1].potions.assign(["healing_potion", "healing_potion"])
 	battle.actions.incapacitate(party[1])
 	loot.bag.append(next)
 	for index: int in range(11):
-		loot.bag.append({"kind": "potion", "name": "가방 물약", "stats": {}})
+		loot.bag.append({"id": "healing_potion", "kind": "potion", "name": "가방 물약", "stats": {}})
 	for unit: CombatUnit in battle.units:
 		if not unit.is_ally:
 			battle.actions.incapacitate(unit)
@@ -519,10 +576,51 @@ func _test_bag_scene_use() -> void:
 			and loot.bag.size() == 12 and loot.bag[0] == old,
 			"실제 가방 장착 버튼은 같은 칸 교환과 잃은 HP 유지")
 		await _click(await _pick(preparation, "BagItem1", "Ally1"))
-		_check(party[1].potion_left == 3 and party[1].hit_points == 0 and loot.bag.size() == 11,
+		_check(party[1].potions.size() == 3 and party[1].hit_points == 0 and loot.bag.size() == 11,
 			"실제 가방 물약 버튼은 한도·전투 불능을 유지하며 한 개 분배")
 		_check((await _pick(preparation, "BagItem1", "Ally1")).disabled,
 			"한도에 도달하면 남은 가방 물약 분배 버튼 잠금")
+	main.queue_free()
+	await process_frame
+
+
+## #575: 정비 화면에서 기름병이 회복 물약과 같은 3칸을 공유하고 받기·가방·넘기기가 두 종류에서 동작한다.
+func _test_oil_bottle_scene() -> void:
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	current_scene = main
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	battle.call("start_battle")
+	var loot: CombatLoot = battle.loot
+	var party: Array[CombatUnit] = battle.party
+	var oil: Dictionary = loot.potion_definition("oil_bottle").duplicate(true)
+	party[1].potions.assign(["healing_potion", "healing_potion"])
+	loot.bag.append(oil.duplicate(true))
+	loot.bag.append(oil.duplicate(true))
+	for unit: CombatUnit in battle.units:
+		if not unit.is_ally:
+			battle.actions.incapacitate(unit)
+	battle.actions.changed.emit()
+	battle.progress.rewards.clear()
+	battle.progress.rewards.append(oil.duplicate(true))
+	await _click(battle.hud.restart_button)
+	var preparation: CombatPreparation = battle.preparation
+	await _click(preparation.continue_button)
+	var cell: Button = preparation.find_child("Item0", true, false) as Button
+	_check(cell != null and cell.icon != null and cell.icon.resource_path.get_file() == "oil_bottle.png", "보상 칸에 기름병 아이콘")
+	await _click(await _pick(preparation, "Item0", "Ally1"))
+	_check(party[1].potions == ["healing_potion", "healing_potion", "oil_bottle"], "보상 기름병을 회복 물약 2개와 같은 3칸에 받는다")
+	var potions: Control = preparation.find_child("Potions1", true, false) as Control
+	_check(potions.tooltip_text == "회복 물약, 회복 물약, 기름병", "물약 줄 툴팁이 칸마다 종류를 보인다: " + potions.tooltip_text)
+	var bag_button: Button = await _pick(preparation, "BagItem0", "Ally1")
+	_check(bag_button != null and bag_button.disabled and "기름병" in bag_button.text, "가방의 기름병도 한도 3칸에서 잠기고 종류 이름을 보인다")
+	var transfer: Button = preparation.find_child("Transfer1To0", true, false) as Button
+	_check("기름병" in transfer.text, "넘기기 버튼은 넘길 마지막 칸의 종류를 보인다: " + transfer.text)
+	await _click(transfer)
+	_check(party[1].potions == ["healing_potion", "healing_potion"] and party[0].potions == ["oil_bottle"], "넘기기는 마지막 칸의 기름병을 옮긴다")
+	await _click(await _pick(preparation, "BagItem0", "Ally1"))
+	_check(party[1].potions == ["healing_potion", "healing_potion", "oil_bottle"] and loot.bag.size() == 1, "가방의 기름병을 받는다")
 	main.queue_free()
 	await process_frame
 
@@ -542,11 +640,11 @@ func _test_armor_unequip_scene() -> void:
 	party[0].hit_points = 1
 	party[1].armor = archer_armor
 	# 꺼진 주기(궁수 물약 한도)·넘기기(전사 물약 없음)의 포커스 설명 검사에 쓴다(#274).
-	party[0].potion_left = 0
-	party[1].potion_left = int(loot.data["potion_limit"])
+	party[0].potions.assign([])
+	party[1].potions.assign(["healing_potion", "healing_potion", "healing_potion"])
 	var archer_hit_points: int = party[1].hit_points
 	for index: int in range(11):
-		loot.bag.append({"kind": "potion", "name": "가방 물약", "stats": {}})
+		loot.bag.append({"id": "healing_potion", "kind": "potion", "name": "가방 물약", "stats": {}})
 	# 1막 마지막 스테이지 승리로 다음 막 전환까지 확인한다.
 	battle.progress.stage_index = 2
 	for unit: CombatUnit in battle.units:
@@ -672,7 +770,7 @@ func _test_finish_preference() -> void:
 			_check(preparation.discard_dialog.visible and not skip.button_pressed,
 				"취소한 생략 설정은 적용하지 않음: " + choice)
 		for index: int in range(12):
-			loot.bag.append({"kind": "potion", "name": "가방 물약", "stats": {}})
+			loot.bag.append({"id": "healing_potion", "kind": "potion", "name": "가방 물약", "stats": {}})
 		skip.button_pressed = true
 		preparation.discard_dialog.get_ok_button().grab_focus()
 		await _enter_dialog(preparation.discard_dialog)
@@ -761,7 +859,7 @@ func _test_full_bag_finish() -> void:
 	battle.call("start_battle")
 	var loot: CombatLoot = battle.loot
 	var progress: CombatActProgress = battle.progress
-	var potion: Dictionary = {"kind": "potion", "name": "보관 물약", "stats": {}}
+	var potion: Dictionary = {"id": "healing_potion", "kind": "potion", "name": "보관 물약", "stats": {}}
 	for index: int in range(12):
 		var stored: Dictionary = potion.duplicate(true)
 		stored["name"] = "가방 물약%d" % index
@@ -904,7 +1002,7 @@ func _test_reward_flow() -> void:
 		loot.data["potion_limit"] = 3
 		var party: Array[CombatUnit] = battle.get("party")
 		await _test_equipped_attack(battle)
-		party[1].potion_left = 1
+		party[1].potions.assign(["healing_potion"])
 		(battle.get("actions") as CombatActions).incapacitate(party[1])
 		for unit: CombatUnit in battle.get("units"):
 			if not unit.is_ally:
@@ -918,7 +1016,7 @@ func _test_reward_flow() -> void:
 		actual_rewards.clear()
 		actual_rewards.append({"kind": "armor", "name": "검사 방어구",
 			"stats": {"defense_bonus": 2, "max_hit_points": 4}})
-		actual_rewards.append({"kind": "potion", "name": "검사 물약", "stats": {}})
+		actual_rewards.append({"id": "healing_potion", "kind": "potion", "name": "검사 물약", "stats": {}})
 		actual_rewards.append({"kind": "weapon", "name": "버릴 무기", "stats": {"damage_bonus": 1}})
 		await _click(hud.restart_button)
 		var preparation: CombatPreparation = battle.get_node("UI/Preparation") as CombatPreparation
@@ -944,15 +1042,15 @@ func _test_reward_flow() -> void:
 		_check_pixel_art(main, ["AnimatedSprite2D", "Sprite2D", "Button", "TextureRect"])
 		_check(preparation.continue_button.has_focus(), "분배 뒤 키보드 포커스 유지")
 		await _click(await _pick(preparation, "Item0", "Ally1"))
-		_check(party[1].potion_left == 2 and actual_rewards.size() == 1, "물약 분배와 보상 목록에서 제거")
-		actual_rewards.append({"kind": "potion", "name": "검사 물약", "stats": {}})
+		_check(party[1].potions.size() == 2 and actual_rewards.size() == 1, "물약 분배와 보상 목록에서 제거")
+		actual_rewards.append({"id": "healing_potion", "kind": "potion", "name": "검사 물약", "stats": {}})
 		# 다음 정비 조작에서 화면을 갱신한 뒤 한도 수령을 검사한다.
 		var transfer: Button = preparation.find_child("Transfer1To0", true, false) as Button
 		await _click(transfer)
-		_check(party[1].potion_left == 1 and party[0].potion_left == 1, "정비 양도 버튼은 물약1개 이동")
+		_check(party[1].potions.size() == 1 and party[0].potions.size() == 1, "정비 양도 버튼은 물약1개 이동")
 		_check(preparation.continue_button.has_focus(), "양도 뒤 키보드 포커스 유지")
-		actual_rewards.append({"kind": "potion", "name": "검사 물약", "stats": {}})
-		actual_rewards.append({"kind": "potion", "name": "검사 물약", "stats": {}})
+		actual_rewards.append({"id": "healing_potion", "kind": "potion", "name": "검사 물약", "stats": {}})
+		actual_rewards.append({"id": "healing_potion", "kind": "potion", "name": "검사 물약", "stats": {}})
 		await _click(await _pick(preparation, "Item1", "Ally1"))
 		await _click(await _pick(preparation, "Item1", "Ally1"))
 		_check((await _pick(preparation, "Item1", "Ally1")).disabled
@@ -960,7 +1058,7 @@ func _test_reward_flow() -> void:
 			"물약3개 캐릭터는 수령·양도 도착 버튼 잠금")
 		await _click(preparation.find_child("Transfer1To0", true, false) as Button)
 		await _click(preparation.find_child("Transfer1To0", true, false) as Button)
-		_check(party[1].potion_left == 1 and party[0].potion_left == 3, "양도 도착 한도3까지")
+		_check(party[1].potions.size() == 1 and party[0].potions.size() == 3, "양도 도착 한도3까지")
 		await _click(preparation.continue_button)
 		preparation.discard_dialog.confirmed.emit()
 		await process_frame
@@ -982,15 +1080,15 @@ func _test_reward_flow() -> void:
 				living.append(unit)
 		turns.start(living, dice)
 		party[0].hit_points = 4
-		_check(actions.use_self(party[0], "potion") and party[0].potion_left == 2
+		_check(actions.use_self(party[0], "potion") and party[0].potions.size() == 2
 			and party[0].bonus_action_left == 0, "드랍 물약은 전투 보조 행동으로1개 소비")
 		for unit: CombatUnit in party:
 			(battle.get("actions") as CombatActions).incapacitate(unit)
 		actions.changed.emit()
 		_check((battle.get("progress") as CombatActProgress).rewards.is_empty(), "패배는 드랍을 주지 않음")
 		await _click(hud.restart_button)
-		_check((battle.get("progress") as CombatActProgress).stage_index == 0 and party[0].potion_left == 2
-			and party[1].potion_left == 1 and party[1].get_defense_bonus() == 2,
+		_check((battle.get("progress") as CombatActProgress).stage_index == 0 and party[0].potions.size() == 2
+			and party[1].potions.size() == 1 and party[1].get_defense_bonus() == 2,
 			"막 재시작은 장비·남은 물약 유지, 소비한 물약 복구 없음")
 		_check(party[1].hit_points == 13, "실제 막 재시작에서 방어구 최대 HP 포함 부활")
 		_check(loot.bag.size() == 2 and loot.bag[0]["name"] == "버릴 무기"
@@ -1274,7 +1372,7 @@ func _test_scaled_combat() -> void:
 	loot.receive(units[1], {"kind": "armor", "name": "검사 방어구",
 		"stats": {"defense_bonus": 7, "max_hit_points": 14}})
 	units[1].hit_points = 21
-	units[1].potion_left = 1
+	units[1].potions.assign(["healing_potion"])
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33
 	ScriptedDice.arrange_turns(turns, units, [units[0], units[1]])

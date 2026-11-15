@@ -44,7 +44,7 @@ func _won_battle() -> Node2D:
 	loot.receive(party[0], _item("weapon", {"attack_bonus": 1, "damage_bonus": 1}))
 	loot.receive(party[1], _item("armor", {"defense_bonus": 1, "max_hit_points": 2}))
 	loot.bag.append_array([_item("weapon", {"attack_bonus": 1, "damage_bonus": 2}), _item("potion", {})])
-	party[0].potion_left = 2
+	party[0].potions.assign(["healing_potion", "healing_potion"])
 	# 상자를 부숴 떨어진 아이템을 줍지 않고 이긴다. 보상 확인에 사라짐 안내가 뜬다(#529).
 	var crate: CombatGrid.Prop = actions.get_props().filter(func(prop: CombatGrid.Prop) -> bool: return prop.kind == "crate")[0]
 	actions.grid.props.erase(crate)
@@ -133,7 +133,7 @@ func _test_actions() -> void:
 	_check(party[0].weapon.stats.damage_bonus == 3 and loot.bag.size() == 3, "보상 장착으로 무기 교체")
 	await _check_saved(battle, "보상 장착·교체")
 	preparation._receive(0, 1)
-	_check(party[1].potion_left == 1, "보상 물약 주기")
+	_check(party[1].potions.size() == 1, "보상 물약 주기")
 	await _check_saved(battle, "보상 물약 주기")
 	preparation._receive(0, 0)
 	_check(party[0].armor.stats.defense_bonus == 2, "보상 방어구 장착")
@@ -142,13 +142,13 @@ func _test_actions() -> void:
 	_check(party[0].weapon.stats.damage_bonus == 2, "가방 무기 장착")
 	await _check_saved(battle, "가방에서 장착")
 	preparation._receive_bag(loot.bag.find_custom(func(item: Dictionary) -> bool: return item.kind == "potion"), 1)
-	_check(party[1].potion_left == 2, "가방 물약 주기")
+	_check(party[1].potions.size() == 2, "가방 물약 주기")
 	await _check_saved(battle, "가방에서 물약 주기")
 	preparation._unequip_armor(1)
 	_check(party[1].armor.is_empty(), "방어구 해제")
 	await _check_saved(battle, "방어구 해제")
 	preparation._transfer(0, 1)
-	_check(party[0].potion_left == 1 and party[1].potion_left == 3, "물약 넘기기")
+	_check(party[0].potions.size() == 1 and party[1].potions.size() == 3, "물약 넘기기")
 	await _check_saved(battle, "물약 넘기기")
 
 	# 칸 선택과 열린 확인 창은 상태를 바꾸지 않아 저장하지 않는다.
@@ -237,6 +237,6 @@ func _test_continue_after_restore() -> void:
 	battle.call("_process", 0.0)
 	var saved: Dictionary = GameSave.read().sections
 	_check(_save_count == before + 1 and saved.combat.rewards.size() == 3
-		and saved.combat.units[1].potion_left == 1 and saved.preparation == {"maintaining": true},
+		and saved.combat.units[1].potions.size() == 1 and saved.preparation == {"maintaining": true},
 		"이어한 정비 화면의 물약 주기가 남은 보상과 함께 저장됨")
 	await _free(battle)
