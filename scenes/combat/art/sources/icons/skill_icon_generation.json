@@ -36,6 +36,7 @@
     {"id": "potion", "name": "물약", "effect": "HP 2d4+2 회복", "brief": "The item potion: round red flask with cork and glint. Same picture as the potion slot."},
     {"id": "oil_throw", "name": "기름병 던지기", "effect": "칸 하나에 기름 장판 생성", "brief": "Glass bottle tipped mouth-down toward the lower right with amber oil on its low side, an oil stream falling from the mouth onto an amber oil stain on the floor.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/560"},
     {"id": "trick_arrow", "name": "장난스러운 화살", "effect": "칸을 겨눠 지능 d6으로 삐끗·물·화염 중 하나가 닿음", "brief": "One wooden arrow flying up-right with a two-colour head, red on the upper half and teal on the lower half, teal fletching, and two small white sparks at the upper left.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/500"},
-    {"id": "firework_arrow", "name": "폭죽 화살", "effect": "반경 1 화염 폭발, 민첩 내성, 점화", "brief": "Wooden arrow with a steel head and teal fletching rising up-right toward a starburst with a brass core and eight white and red rays.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/500"}
+    {"id": "firework_arrow", "name": "폭죽 화살", "effect": "반경 1 화염 폭발, 민첩 내성, 점화", "brief": "Wooden arrow with a steel head and teal fletching rising up-right toward a starburst with a brass core and eight white and red rays.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/500"},
+    {"id": "whistle", "name": "효시", "effect": "방향의 세 줄 띠, 의지 내성, 실패하면 산만함", "brief": "Wooden arrow with a steel head and teal fletching flying up-right, a hollow brass whistle bulb with a dark hole behind the head, and two white sound arcs leaving the hole toward the lower right.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/500"}
   ]
 }

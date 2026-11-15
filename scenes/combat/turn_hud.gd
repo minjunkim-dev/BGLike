@@ -520,6 +520,8 @@ func show_unit(unit: CombatUnit) -> void:
 		states.append(tr("방어막 %d (%d턴)") % [unit.shield_points, unit.shield_turns])
 	if unit.battle_cry_turns > 0:
 		states.append(tr("전투의 함성 명중 +%d (%d턴)") % [unit.battle_cry_bonus, unit.battle_cry_turns])
+	if unit.distracted_turns > 0:
+		states.append(tr("산만함 %d턴") % unit.distracted_turns)
 	var phalanx: int = grid.phalanx_bonus(unit) if grid != null else 0
 	if phalanx > 0:
 		states.append(tr("팔랑크스 AC +%d") % phalanx)

@@ -75,10 +75,16 @@ func _run() -> void:
 	await _test_trick_arrow()
 	await _test_firework_arrow()
 	_test_arrow_usability()
+	_test_whistle_band()
+	await _test_whistle()
+	_test_whistle_unusable()
+	await _test_distraction_clock()
+	await _test_distraction_logs()
 	_test_firework_uses_and_save()
 	await _test_tree_burn()
 	_test_stage_reset()
 	_test_save_state()
+	_test_whistle_save_state()
 	_test_stealth_use()
 	_test_stealth_targeting()
 	await _test_stealth_breaks()
@@ -608,6 +614,195 @@ func _test_firework_arrow() -> void:
 	_check(k.units[0].hit_points <= 0 and k.units[1].hit_points == 40 - 10, "시전자가 쓰러져도 남은 대상은 내성과 피해를 받음")
 
 
+## 효시의 세 줄 띠: 고른 방향의 모든 칸과 그 양옆 칸. 궁수 줄의 양옆은 뺀다. 높이·벽은 보지 않는다.
+func _test_whistle_band() -> void:
+	var f: Fixture = _fixture()
+	var grid: CombatGrid = f.actions.grid
+	_check(grid.band_cells(Vector2i(8, 4), Vector2i(9, 4)) == [Vector2i(9, 3), Vector2i(9, 4), Vector2i(9, 5)],
+		"맵 끝까지 한 줄 앞이면 앞 칸과 그 양옆 셋")
+	var right: Array[Vector2i] = grid.band_cells(Vector2i(4, 4), Vector2i(5, 4))
+	_check(right.size() == 15 and Vector2i(5, 3) in right and Vector2i(9, 5) in right and Vector2i(4, 3) not in right
+		and Vector2i(4, 5) not in right and Vector2i(4, 4) not in right, "오른쪽 방향: 5줄×3칸, 궁수 줄의 양옆과 자신은 제외")
+	var up: Array[Vector2i] = grid.band_cells(Vector2i(4, 4), Vector2i(4, 3))
+	_check(up.size() == 12 and Vector2i(3, 0) in up and Vector2i(5, 3) in up and Vector2i(3, 4) not in up, "위쪽 방향은 맵 끝(y=0)까지")
+	_check(grid.band_cells(Vector2i(4, 4), Vector2i(3, 4)).size() == 12 and grid.band_cells(Vector2i(4, 4), Vector2i(4, 5)).size() == 15,
+		"왼쪽·아래쪽 방향도 같은 모양")
+	_check(grid.band_cells(Vector2i(0, 0), Vector2i(1, 0)).size() == 18, "맵 밖 옆 칸은 잘림")
+	grid.heights[Vector2i(6, 4)] = 3
+	grid.pits = [Vector2i(7, 5)]
+	grid.blocked_cells = [Vector2i(5, 4)]
+	_check(grid.band_cells(Vector2i(4, 4), Vector2i(5, 4)).size() == 15, "높이·낭떠러지·막힌 칸도 범위에 포함")
+	_check(grid.band_cells(Vector2i(4, 4), Vector2i(6, 4)).is_empty() and grid.band_cells(Vector2i(0, 4), Vector2i(-1, 4)).is_empty(),
+		"인접하지 않거나 맵 밖인 방향은 빈 목록")
+
+
+func _logged(f: Fixture, text: String) -> bool:
+	return f.logs.any(func(message: String) -> bool: return text in message)
+
+
+## 효시(궁수 문서): 띠 안의 적만 의지 내성(DC 11). 실패하면 산만함 2턴, 피해 없음, 행동과 전투마다 1회를 쓴다.
+func _test_whistle() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var ally: CombatUnit = f.units[1]
+	var barbarian: CombatUnit = f.units[2]
+	var foe: CombatUnit = f.units[3]
+	ally.cell = Vector2i(5, 5)
+	foe.cell = Vector2i(7, 6)
+	for unit: CombatUnit in f.units:
+		unit.hit_points = 40
+	var facing: Vector2i = Vector2i(4, 4)
+	_check(f.actions.whistle_targets(archer, facing) == [barbarian], "띠 안의 적만 대상: 아군과 띠 밖의 적은 제외")
+	_check(f.actions.can_whistle(archer, facing) and f.actions.can_use(archer, "whistle"), "효시를 쓸 수 있음")
+	_check(CombatActionRules.save_dc(archer, "whistle") == 11, "DC는 솜씨 표준값 11")
+	archer.moving_shot_ready = true
+	var will: int = barbarian.get_ability_sides(CombatUnit.Ability.WILL)
+	f.actions.dice = _dice([2], [will])
+	_check(await f.actions.whistle(archer, facing), "효시를 씀")
+	_check(barbarian.distracted_turns == 2 and barbarian.distracted_source == archer and ally.distracted_turns == 0
+		and foe.distracted_turns == 0, "내성에 실패한 대상만 산만함 2턴, 시전자는 궁수")
+	_check(f.units.all(func(unit: CombatUnit) -> bool: return unit.hit_points == 40), "피해 없음")
+	_check(archer.action_left == 0 and archer.whistle_left == 0 and not archer.moving_shot_ready and not archer.moving_shot_spent,
+		"행동과 전투마다 횟수를 쓰고 무빙샷을 켜지 않음")
+	_check(_logged(f, "효시") and _logged(f, "의지 내성") and _logged(f, "산만함 2턴"), "시전·내성·결과 로그 " + str(f.logs))
+	archer.action_left = 1
+	_check(not f.actions.can_use(archer, "whistle") and f.actions.unavailable_reason(archer, "whistle") != "", "전투마다 1회라 다시 쓸 수 없음")
+	archer.begin_stage(false)
+	_check(archer.whistle_left == 1, "새 전투에서 횟수 회복")
+	# 성공하면 걸리지 않는다. 의지 가감으로 DC를 넘긴다.
+	var g: Fixture = _fixture()
+	var target: CombatUnit = g.units[2]
+	target.weapon = {"stats": {"will_modifier": 20}}
+	g.units[3].cell = Vector2i(7, 8)
+	g.actions.dice = _dice([3], [target.get_ability_sides(CombatUnit.Ability.WILL)])
+	await g.actions.whistle(g.units[0], Vector2i(4, 4))
+	_check(target.distracted_turns == 0 and _logged(g, "버팀"), "내성에 성공하면 걸리지 않고 로그는 버팀")
+	# 이미 산만함인 대상이 다시 실패하면 기간만 되돌린다.
+	var h: Fixture = _fixture()
+	h.units[2].distracted_turns = 1
+	h.units[2].distracted_source = h.units[0]
+	h.units[3].cell = Vector2i(7, 8)
+	var h_will: int = h.units[2].get_ability_sides(CombatUnit.Ability.WILL)
+	# 효시의 내성굴림 자체에는 산만함이 붙지 않아 이미 산만함이어도 한 번만 굴린다(궁수 문서 「효시」).
+	h.actions.dice = _dice([2], [h_will])
+	await h.actions.whistle(h.units[0], Vector2i(4, 4))
+	_check(h.units[2].distracted_turns == 2, "다시 걸리면 기간을 2로 되돌림(중첩 없음)")
+	_check(h.actions.last_save.mode == CombatChecks.RollMode.NORMAL and not _logged(h, "불리: 산만함"),
+		"이미 산만함인 대상의 효시 내성굴림은 불리가 아님")
+	# 산만함은 효시가 아닌 내성굴림에는 그대로 불리다.
+	var k: Fixture = _fixture()
+	k.units[2].distracted_turns = 1
+	_check(CombatActionRules.save_mode(k.units[2], CombatUnit.Ability.WILL, "whistle") == CombatChecks.RollMode.NORMAL
+		and CombatActionRules.save_mode(k.units[2], CombatUnit.Ability.WILL) == CombatChecks.RollMode.DISADVANTAGE,
+		"산만함은 효시 내성만 면제하고 다른 내성은 불리")
+	# 대상이 없는 맵 안 방향은 실행되어 횟수를 쓴다. 맵 밖 방향은 거부한다.
+	var m: Fixture = _fixture()
+	m.actions.dice = _dice([], [])
+	_check(m.actions.can_whistle(m.units[0], Vector2i(3, 3)) and m.actions.whistle_targets(m.units[0], Vector2i(3, 3)).is_empty()
+		and await m.actions.whistle(m.units[0], Vector2i(3, 3)) and m.units[0].whistle_left == 0,
+		"적이 없는 방향도 실행되고 횟수를 씀")
+	var n: Fixture = _fixture()
+	n.units[0].cell = Vector2i(0, 4)
+	_check(not n.actions.can_whistle(n.units[0], Vector2i(-1, 4)) and not await n.actions.whistle(n.units[0], Vector2i(-1, 4))
+		and n.units[0].whistle_left == 1 and n.units[0].action_left == 1, "맵 밖 방향은 거부하고 아무것도 쓰지 않음")
+
+
+func _test_whistle_unusable() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var facing: Vector2i = Vector2i(4, 4)
+	archer.fallen = true
+	_check(not f.actions.can_whistle(archer, facing) and not f.actions.can_use(archer, "whistle"), "넘어진 궁수는 쓸 수 없음")
+	archer.fallen = false
+	archer.is_stunned = true
+	_check(not f.actions.can_use(archer, "whistle"), "기절한 궁수는 쓸 수 없음")
+	archer.is_stunned = false
+	archer.action_left = 0
+	_check(not f.actions.can_whistle(archer, facing), "행동을 쓴 뒤에는 쓸 수 없음")
+	_check(not CombatActionRules.belongs_to(f.units[3], "whistle") and not CombatActionRules.belongs_to(f.units[1], "whistle"),
+		"적 궁수와 전사는 효시를 갖지 않음")
+	_check(CombatActionRules.belongs_to(archer, "whistle") and "whistle" in CombatActionRules.GROUPS[0], "아군 궁수의 행동 스킬")
+
+
+## 산만함 기간: 시전자 턴 시작마다 1씩 줄고, 시전자가 쓰러져도 시계 슬롯이 줄이며, 대상이 쓰러지면 지워진다.
+func _test_distraction_clock() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var barbarian: CombatUnit = f.units[2]
+	barbarian.distracted_turns = 2
+	barbarian.distracted_source = archer
+	f.turns.turn_started.emit(archer)
+	_check(barbarian.distracted_turns == 1, "시전자 턴 시작마다 1턴 줄어듦")
+	f.turns.turn_started.emit(barbarian)
+	_check(barbarian.distracted_turns == 1, "대상의 턴 시작에는 줄지 않음")
+	f.turns.turn_started.emit(archer)
+	_check(barbarian.distracted_turns == 0 and barbarian.distracted_source == null and _logged(f, "산만함 만료"),
+		"2턴 뒤 소멸하고 만료 로그")
+	var g: Fixture = _fixture()
+	var caster: CombatUnit = g.units[0]
+	var victim: CombatUnit = g.units[2]
+	victim.distracted_turns = 2
+	victim.distracted_source = caster
+	g.actions.incapacitate(caster)
+	_check(victim.distracted_turns == 2 and victim.distracted_source == caster and g.actions.save_state().clock_slots == [[0, 1, false]],
+		"시전자가 쓰러져도 산만함 유지, 턴 자리는 시계 슬롯으로 보관")
+	g.turns.turn_started.emit(g.units[1])
+	_check(victim.distracted_turns == 1, "시계 슬롯 자리마다 1턴 줄어듦")
+	g.turns.turn_started.emit(g.units[1])
+	_check(victim.distracted_turns == 0 and g.actions.save_state().clock_slots.is_empty(), "소멸하면 슬롯 제거")
+	var h: Fixture = _fixture()
+	h.units[2].distracted_turns = 2
+	h.units[2].distracted_source = h.units[0]
+	h.actions.incapacitate(h.units[2])
+	_check(h.units[2].distracted_turns == 0 and h.units[2].distracted_source == null, "대상이 쓰러지면 지워짐")
+	var k: Fixture = _fixture()
+	k.units[2].distracted_turns = 2
+	k.units[2].distracted_source = k.units[0]
+	k.units[2].begin_stage(true)
+	_check(k.units[2].distracted_turns == 0, "새 전투에서 사라짐")
+
+
+## 로그에 불리의 이유를 적는다(개발 결정, #500): 요인이 없으면 지금 문구 그대로다.
+func _test_distraction_logs() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	f.actions.dice = _dice([1], [20])
+	await f.actions.attack(archer, f.units[2])
+	_check(_logged(f, "공격(일반)") and not _logged(f, "산만함"), "요인이 없는 굴림은 기존 문구")
+	var g: Fixture = _fixture()
+	g.units[0].distracted_turns = 2
+	g.units[0].distracted_source = g.units[3]
+	g.actions.dice = _dice([1, 1], ScriptedDice.attack_sides(g.units[0], 2))
+	await g.actions.attack(g.units[0], g.units[2])
+	_check(_logged(g, "공격(불리: 산만함)"), "산만함 공격자의 공격 로그 " + str(g.logs))
+	# 넘어짐과 산만함이 함께인 대상의 폭죽 화살 민첩 내성.
+	var h: Fixture = _fixture()
+	var target: CombatUnit = h.units[2]
+	target.fallen = true
+	target.distracted_turns = 2
+	target.distracted_source = h.units[0]
+	h.units[0].hit_points = 40
+	target.hit_points = 40
+	var agility: int = target.get_ability_sides(CombatUnit.Ability.AGILITY)
+	h.actions.dice = _dice([1, 1, 3, 3], [agility, agility, 20, 20])
+	await h.actions.firework_arrow(h.units[0], target.cell)
+	_check(_logged(h, "민첩 내성(불리: 넘어짐, 산만함)"), "내성 로그에 요인 둘 " + str(h.logs))
+	# 기름 미끌거림 로그.
+	var k: Fixture = _fixture()
+	var walker: CombatUnit = k.units[0]
+	k.actions.create_oil(walker, Vector2i(3, 4))
+	walker.distracted_turns = 2
+	walker.distracted_source = k.units[3]
+	k.actions.dice = _dice([1, 1], [20, 20])
+	await k.actions.move_to(walker, Vector2i(3, 2))
+	_check(_logged(k, "미끌거림(솜씨 내성 · 불리: 산만함)"), "미끌거림 로그에 이유 " + str(k.logs))
+	var m: Fixture = _fixture()
+	m.actions.create_oil(m.units[0], Vector2i(3, 4))
+	m.actions.dice = _dice([10], [20])
+	await m.actions.move_to(m.units[0], Vector2i(3, 2))
+	_check(_logged(m, "미끌거림(솜씨 내성):"), "요인이 없는 미끌거림은 기존 문구")
+
+
 ## 나무 불타기(환경요소 5장, #529): 서 있는 나무는 벽 (4,3), 나무 (5,3)·(6,3)·(8,8)이다.
 func _tree_fixture() -> Fixture:
 	var f: Fixture = _fixture()
@@ -1011,6 +1206,47 @@ func _test_save_state() -> void:
 		var data: Dictionary = (saved[0] as Dictionary).duplicate()
 		data.merge(broken, true)
 		_check(not archer.is_valid_state(data, 4, Vector2i(10, 10)), "깨진 선택 필드 거부: " + str(broken))
+
+
+## 효시 횟수와 산만함(기간·시전자)은 선택 필드로 저장한다. 옛 형식 10 저장은 기본값으로 읽고 형식 번호는 그대로다.
+func _test_whistle_save_state() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var victim: CombatUnit = f.units[2]
+	archer.whistle_left = 0
+	victim.distracted_turns = 1
+	victim.distracted_source = archer
+	var saved: Array = f.units.map(func(unit: CombatUnit) -> Dictionary: return unit.save_state(f.units))
+	_check(saved.all(func(data: Dictionary) -> bool: return archer.is_valid_state(data, 4, Vector2i(10, 10))), "산만함을 담은 유닛 저장은 유효")
+	_check("whistle_left" not in CombatUnit.SAVED_FIELDS and "distracted_turns" not in CombatUnit.SAVED_FIELDS and GameSave.FORMAT_VERSION == 11,
+		"새 필드는 선택 필드이고 저장 형식 버전은 11 그대로(#575가 올린 번호)")
+	var restored: CombatUnit = CombatUnit.new()
+	_created.append(restored)
+	restored.load_state(saved[2], f.units)
+	_check(restored.distracted_turns == 1 and restored.distracted_source == archer, "산만함 기간과 시전자를 되돌림")
+	var shooter: CombatUnit = CombatUnit.new()
+	_created.append(shooter)
+	shooter.load_state(saved[0], f.units)
+	_check(shooter.whistle_left == 0 and shooter.distracted_turns == 0 and shooter.distracted_source == null, "효시 남은 횟수를 되돌리고 산만함은 없음")
+	var old: Dictionary = (saved[2] as Dictionary).duplicate()
+	for field: String in ["whistle_left", "distracted_turns", "distracted_source"]:
+		old.erase(field)
+	_check(archer.is_valid_state(old, 4, Vector2i(10, 10)), "새 필드가 없는 옛 저장도 유효")
+	var legacy: CombatUnit = CombatUnit.new()
+	_created.append(legacy)
+	legacy.whistle_left = 0
+	legacy.distracted_turns = 2
+	legacy.distracted_source = archer
+	legacy.load_state(old, f.units)
+	_check(legacy.whistle_left == 1 and legacy.distracted_turns == 0 and legacy.distracted_source == null, "없는 필드는 효시 1회·산만함 없음으로 읽음")
+	for broken: Dictionary in [{"distracted_turns": 3}, {"distracted_turns": -1}, {"distracted_turns": 2, "distracted_source": -1},
+			{"distracted_turns": 0, "distracted_source": 0}, {"distracted_source": 4}, {"distracted_source": "0"}, {"whistle_left": -1}]:
+		var data: Dictionary = (saved[2] as Dictionary).duplicate()
+		data.merge(broken, true)
+		_check(not archer.is_valid_state(data, 4, Vector2i(10, 10)), "깨진 산만함 필드 거부: " + str(broken))
+	var keyless: Dictionary = (saved[2] as Dictionary).duplicate()
+	keyless.erase("distracted_source")
+	_check(not archer.is_valid_state(keyless, 4, Vector2i(10, 10)), "기간이 남았는데 시전자가 없는 저장 거부")
 
 
 ## 실제 전투 장면의 combat_state()·restore_combat()으로 애기살과 무빙샷 상태가 이어진다.
