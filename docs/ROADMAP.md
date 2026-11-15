@@ -187,7 +187,7 @@ flowchart LR
 | 유리/불리는 어떻게 보여주나 | ✅ 팝업에서는 보이지 않음. 명중률 미리보기, 로그, 아군 굴림의 [주사위 연출](DICE_PRESENTATION.md)에서 두 주사위로 확인 |
 | 치명타·자동 실패 연출 | ⏸ 치명타는 비활성, 팝업 없음([#321](https://github.com/minjunkim-dev/BGLike/issues/321), [팝업 문구 규칙](COMBAT_UIUX.md#팝업-문구-규칙)). 빗나감은 `빗나감`. 절대성공의 추가 이점은 [능력치 기획서 4-12](ABILITY_SYSTEM.md#4-12-치명타와-절대성공의-이점-) ⏸ |
 | 연출이 턴 속도를 늦추면 | ✅ 빠르게 보기([#221](https://github.com/minjunkim-dev/BGLike/issues/221), 개발 결정) |
-| 회복 수치 | ✅ 초록색, 부호 없음. 나머지 이로운/해로운 수치의 색은 [#457](https://github.com/minjunkim-dev/BGLike/issues/457) 개발 결정(이로우면 초록, 해로우면 빨강, 부호 함께, [전투 화면 정보 정리](COMBAT_UIUX.md)) |
+| 회복 수치 | ✅ 초록색, 부호 없음. 유닛 패널·호버의 수치 가감은 [#457](https://github.com/minjunkim-dev/BGLike/issues/457) 개발 결정(이로우면 초록, 해로우면 빨강, 부호 함께, [전투 화면 정보 정리](COMBAT_UIUX.md)). 팝업·로그를 포함한 나머지 색은 ❓ |
 
 ---
 
