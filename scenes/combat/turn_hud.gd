@@ -6,6 +6,10 @@ signal unit_selected(unit: CombatUnit)
 signal end_turn_requested
 signal action_selected(action: String)
 signal reaction_selected(use_reaction: bool)
+## 반사신경 확인 창에서 회피할 칸을 골랐다.
+signal reflex_selected(cell: Vector2i)
+## 반사신경 창의 칸 버튼에 마우스·포커스가 올라 미리 보일 칸. 벗어나면 (-1, -1)이다.
+signal reflex_previewed(cell: Vector2i)
 signal restart_requested
 
 # Space는 적 턴 가속 키다. 반응 확인 창의 포커스된 버튼을 누르지 않는다.
@@ -39,6 +43,10 @@ var _log_lines: Array[String] = []
 # 기본 툴팁 창 대신 같은 HUD의 최상단에 설명을 그린다.
 var _tooltip: HoverTooltip = HoverTooltip.new()
 var reaction_dialog: ConfirmationDialog = ConfirmationDialog.new()
+## 칸을 화면 방향 글자(↖ ↗ ↙ ↘)로 바꾸는 함수. battle이 맵 투영으로 정한다. 없으면 좌표를 보인다.
+var reflex_label: Callable
+var _reflex_buttons: Array[Button] = []
+var _reflex_cells: Dictionary[StringName, Vector2i] = {}
 ## 기름에서 넘어진 아군이 자기 턴에 이동력을 내고 일어나는 버튼(#500 2a). 턴 종료 버튼 바로 위에 둔다.
 var stand_button: Button = Button.new()
 ## 유닛 패널의 AC와 팔랑크스 상태를 위치로 계산한다. 없으면 유닛 AC만 보인다.
@@ -125,6 +133,9 @@ func _ready() -> void:
 			# 곱셈 색은 채도를 빼지 못해 반투명으로 어둡게 눌러 회색 배경에 묻는다.
 			button.add_theme_color_override("icon_disabled_color", Color("8a939b", 0.55))
 			button.accessibility_name = CombatActionRules.NAMES[action]
+			# 반사신경은 아이콘이 생기기 전까지 패시브 칸처럼 이름 첫 글자를 보인다.
+			if button.icon == null and action == "reflex":
+				button.text = CombatActionRules.NAMES[action].left(1)
 			# 반응은 표시용이다. 자기 턴의 입력에는 연결하지 않는다.
 			if index != 2:
 				button.pressed.connect(func() -> void: action_selected.emit(action))
@@ -166,6 +177,7 @@ func _ready() -> void:
 	reaction_dialog.dialog_hide_on_ok = false
 	reaction_dialog.confirmed.connect(_finish_reaction.bind(true))
 	reaction_dialog.canceled.connect(_finish_reaction.bind(false))
+	reaction_dialog.custom_action.connect(_on_reflex_action)
 
 
 ## 컨테이너 묶음(Groups)을 가로 줄로 감싸고 그 왼쪽 끝에 패시브 칸을 둔다. 버튼에는 비용 기호와 횟수 배지가 없다.
@@ -317,12 +329,40 @@ func add_log(message: String) -> void:
 	message_label.text = "\n".join(_log_lines)
 
 
-func show_reaction(kind: String, prompt: String) -> void:
+func show_reaction(kind: String, prompt: String, cells: Array[Vector2i] = []) -> void:
+	_clear_reflex_buttons()
 	reaction_dialog.dialog_text = prompt
 	reaction_dialog.get_ok_button().text = tr("반격") if kind == "counter" else tr("공격")
+	reaction_dialog.get_ok_button().visible = kind != "reflex"
 	reaction_dialog.get_cancel_button().text = tr("넘기기")
+	if kind == "reflex":
+		for cell: Vector2i in cells:
+			var label: String = reflex_label.call(cell) if reflex_label.is_valid() else "%d, %d" % [cell.x, cell.y]
+			var action: StringName = StringName("reflex_%d_%d" % [cell.x, cell.y])
+			var button: Button = reaction_dialog.add_button(label, false, action)
+			button.mouse_entered.connect(reflex_previewed.emit.bind(cell))
+			button.focus_entered.connect(reflex_previewed.emit.bind(cell))
+			button.mouse_exited.connect(reflex_previewed.emit.bind(Vector2i(-1, -1)))
+			_reflex_buttons.append(button)
+			_reflex_cells[action] = cell
 	reaction_dialog.exclusive = true
 	reaction_dialog.popup_centered(Vector2i(360, 110))
+
+
+## 반사신경 창에서 만든 칸 버튼을 지운다. 다른 반응 창에는 남지 않는다.
+func _clear_reflex_buttons() -> void:
+	for button: Button in _reflex_buttons:
+		reaction_dialog.remove_button(button)
+		button.queue_free()
+	_reflex_buttons.clear()
+	_reflex_cells.clear()
+
+
+func _on_reflex_action(action: StringName) -> void:
+	if action in _reflex_cells:
+		var cell: Vector2i = _reflex_cells[action]
+		_hide_reaction()
+		reflex_selected.emit(cell)
 
 
 func _hide_reaction() -> void:
