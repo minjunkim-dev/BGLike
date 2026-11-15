@@ -230,6 +230,7 @@ func attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
 		return false
 	busy = true
 	actor.moving_shot_ready = false
+	_break_stealth(actor)
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	last_damage_rolls.clear()
 	# 나무 상자·바위 공격도 기본 공격이라 애기살 1발을 쓴다. 바위는 피해 굴림이 없다.
@@ -509,6 +510,9 @@ func _on_turn_started(unit: CombatUnit) -> void:
 	# 넘어짐은 자기 실제 턴 시작에 비용과 굴림 없이 풀린다. 기름 1회 굴림도 이 턴을 위해 다시 연다 (궁수 문서).
 	unit.fallen = false
 	unit.oil_slipped = false
+	if unit.stealthed:
+		unit.stealthed = false
+		logged.emit(tr("%s 은신 해제") % unit.get_display_name())
 	for target: CombatUnit in units:
 		if target.stun_source == unit:
 			target.is_stunned = false
@@ -850,6 +854,7 @@ func incapacitate(target: CombatUnit) -> void:
 	target.hit_points = 0
 	target.status_effects.clear()
 	target.clear_unit_effects()
+	target.stealthed = false
 	_keep_clock_slot(target)
 	var ground_messages: Array[String] = []
 	for ground: Ground in _grounds.duplicate():
@@ -1017,7 +1022,7 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 
 func jump_reactors(actor: CombatUnit, destination: Vector2i) -> Array[CombatUnit]:
 	var reactors: Array[CombatUnit] = []
-	if actor == null or actor.disengaged:
+	if actor == null or actor.disengaged or actor.stealthed:
 		return reactors
 	for reactor: CombatUnit in units:
 		if (_can_react(reactor) and reactor.is_ally != actor.is_ally
@@ -1083,6 +1088,9 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	if (actor == null or target == null or target.hit_points <= 0
 		or (actor.is_ally == target.is_ally and action != "shove")
 		or not CombatActionRules.belongs_to(actor, action) or not grid.can_target(actor, target, action, from_cell)):
+		return false
+	# 은신 유닛은 적이 지정할 수 없다. 같은 편(플레이어의 밀치기 등)은 막지 않는다.
+	if target.stealthed and actor.is_ally != target.is_ally:
 		return false
 	match action:
 		"attack":
@@ -1185,6 +1193,8 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 				and actor.hit_points < actor.get_max_hit_points())
 		"holy_veil", "aegisal":
 			return CombatActionRules.belongs_to(actor, action) and actor.bonus_action_left > 0
+		"stealth":
+			return CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
 		"oil_throw":
 			return CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0 and not aim_cells(actor, action).is_empty()
 		"trick_arrow", "firework_arrow":
@@ -1269,7 +1279,7 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 		if _oil_at(actor.cell) != null and not actor.oil_slipped and not _slip_roll(actor):
 			break
 		var origin: Vector2i = actor.cell
-		if not actor.disengaged:
+		if not actor.disengaged and not actor.stealthed:
 			for reactor: CombatUnit in units:
 				if (_can_react(reactor) and reactor.is_ally != actor.is_ally
 					and CombatActionRules.belongs_to(reactor, "opportunity") and reactor.reaction_left > 0
@@ -1302,12 +1312,20 @@ func attack(actor: CombatUnit, target: CombatUnit) -> bool:
 		return false
 	busy = true
 	actor.moving_shot_ready = false
+	_break_stealth(actor)
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	changed.emit()
 	await _perform_attack(actor, target, "attack")
 	_arm_moving_shot(actor)
 	_finish()
 	return true
+
+
+## 피해를 주는 공격 동작을 쓰는 순간 은신이 풀린다. 빗나가도 풀린다 (궁수 문서 「은신」).
+func _break_stealth(actor: CombatUnit) -> void:
+	if actor.stealthed:
+		actor.stealthed = false
+		logged.emit(tr("%s 은신 해제") % actor.get_display_name())
 
 
 ## 무빙샷: 행동으로 한 원거리 공격(지금은 기본 공격)을 마친 뒤, 이번 턴 첫 공격이면 도약할 수 있다 (궁수 문서).
@@ -1352,6 +1370,7 @@ func trick_arrow(actor: CombatUnit, cell: Vector2i) -> bool:
 		return false
 	busy = true
 	actor.moving_shot_ready = false
+	_break_stealth(actor)
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	changed.emit()
 	var revision: int = _revision
@@ -1412,6 +1431,7 @@ func firework_arrow(actor: CombatUnit, cell: Vector2i) -> bool:
 	var dc: int = CombatActionRules.save_dc(actor, "firework_arrow")
 	busy = true
 	actor.moving_shot_ready = false
+	_break_stealth(actor)
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	CombatActionRules.spend_use(actor, "firework_arrow")
 	logged.emit(tr_n("%s 폭죽 화살: %d, %d · 대상 %d명 · DC %d", "%s 폭죽 화살: %d, %d · 대상 %d명 · DC %d", targets.size()) % [
@@ -1466,6 +1486,7 @@ func bow_bash(actor: CombatUnit, target: CombatUnit) -> bool:
 		return false
 	busy = true
 	actor.moving_shot_ready = false
+	_break_stealth(actor)
 	actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
 	changed.emit()
 	if await _perform_attack(actor, target, "bow_bash") and not is_over() and target.hit_points > 0:
@@ -1556,6 +1577,10 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 					feedback.emit(unit, tr("명중 +%d") % bonus)
 			logged.emit(tr("%s 전투의 함성: 의지 d%d [%d] · 아군 명중 +%d, %d턴") % [actor.get_display_name(),
 				will_sides, bonus, bonus, CombatActionRules.BATTLE_CRY_TURNS])
+		"stealth":
+			actor.stealthed = true
+			logged.emit(tr("%s 은신: 다음 턴 시작까지 적이 지정할 수 없음") % actor.get_display_name())
+			feedback.emit(actor, tr("은신"))
 		"aegisal":
 			# 상한 없이 누적한다(궁수 문서). 기본 공격마다 1발을 쓴다.
 			actor.aegisal_left += 2

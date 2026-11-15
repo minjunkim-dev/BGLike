@@ -21,7 +21,8 @@ func play_turn(actor: CombatUnit, actions: CombatActions, pause: Callable = Call
 
 func _boss_turn(actor: CombatUnit, actions: CombatActions, pause: Callable) -> void:
 	while _active(actor, actions) and actor.action_left > 0:
-		if (CombatActionRules.belongs_to(actor, "spin") and actions.grid.opponents_in_area(actor, 1).size() >= 2
+		if (CombatActionRules.belongs_to(actor, "spin")
+			and actions.grid.opponents_in_area(actor, 1).filter(func(unit: CombatUnit) -> bool: return not unit.stealthed).size() >= 2
 			and await actions.spin(actor)):
 			await _pause(pause)
 			continue
@@ -290,10 +291,17 @@ func _move_to(actor: CombatUnit, actions: CombatActions, destination: Vector2i) 
 		await actions.jump_to(actor, destination)
 
 
+## 지정할 수 있는 상대. 은신 유닛은 후보에서 뺀다 (전투 기획서 7장).
 func _targets(actor: CombatUnit, actions: CombatActions) -> Array[CombatUnit]:
+	return _sorted_opponents(actor, actions, false)
+
+
+## 살아 있는 상대. include_stealth면 은신 유닛도 담는다(후보가 은신뿐일 때 다가가는 이동에 쓴다).
+## HP가 낮은 대상이 먼저, 같으면 배치 순서다.
+func _sorted_opponents(actor: CombatUnit, actions: CombatActions, include_stealth: bool) -> Array[CombatUnit]:
 	var targets: Array[CombatUnit] = []
 	for unit: CombatUnit in actions.units:
-		if unit.hit_points > 0 and unit.is_ally != actor.is_ally:
+		if unit.hit_points > 0 and unit.is_ally != actor.is_ally and (include_stealth or not unit.stealthed):
 			targets.append(unit)
 	# HP가 같으면 배치 순서를 보존한다. HP가 낮은 대상을 우선한다.
 	targets.sort_custom(func(a: CombatUnit, b: CombatUnit) -> bool:
@@ -314,6 +322,9 @@ func _attack_target(actor: CombatUnit, actions: CombatActions) -> CombatUnit:
 ## 공격 사거리까지 가장 짧게 가는 칸. 못 닿으면 가장 가까운 대상에 가장 가까운 칸이다.
 func approach_cell(actor: CombatUnit, actions: CombatActions, focus: CombatUnit = null) -> Vector2i:
 	var targets: Array[CombatUnit] = _targets(actor, actions)
+	# 후보가 은신 유닛뿐이면 공격은 하지 않지만 그쪽으로 다가가는 이동은 한다 (궁수 문서 「은신」).
+	if targets.is_empty():
+		targets = _sorted_opponents(actor, actions, true)
 	if targets.is_empty():
 		return actor.cell
 	var target: CombatUnit = targets[0]
