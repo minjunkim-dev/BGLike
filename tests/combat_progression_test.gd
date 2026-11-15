@@ -1032,6 +1032,8 @@ func _test_large_map_battle() -> void:
 	var destination: Vector2i = stage.crate_cells[0] + Vector2i(-1, 0)
 	_check(await actions.move_to(warrior, destination) and warrior.cell == destination and warrior.movement_left == 0,
 		label + " 아군이 상자 앞까지 걸어서 이동")
+	# 묶음 확정이 아군 반응을 다시 채우므로, 적 궁수가 아군 궁수를 맞히면 반사신경 창이 뜬다(#500). 이 검사는 이동을 보므로 넘긴다.
+	actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: actions.resolve_reaction(false))
 	var starts: Dictionary[CombatUnit, Vector2i] = {}
 	for unit: CombatUnit in units:
 		unit.reaction_left = 0

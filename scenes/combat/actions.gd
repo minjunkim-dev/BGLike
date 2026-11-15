@@ -82,6 +82,9 @@ var floor_loot: CombatFloorLoot = CombatFloorLoot.new()
 var busy: bool = false
 var pending_reactor: CombatUnit
 var pending_kind: String = ""
+## 지금 반사신경 확인 창이 묻는 후보 칸.
+var pending_cells: Array[Vector2i] = []
+var _reflex_cell: Vector2i = Vector2i(-1, -1)
 var last_attack: CombatChecks.RollResult
 ## 마지막 내성굴림. 회전회오리처럼 시전자가 굴리지 않는 동작의 대상 굴림이다.
 var last_save: CombatChecks.RollResult
@@ -95,9 +98,10 @@ var cell_attack_animation: Callable
 ## 확정된 굴림(CombatDiceRoll)을 보인다. 없으면 연출 없이 넘어간다. 보일지는 훅이 정한다.
 var roll_animation: Callable
 ## 이번 적 턴에 아군이 답한 반응. 적 턴 중간 저장이 기록한다.
-var reaction_answers: Array[bool] = []
+## 반사신경의 답은 고른 칸(Vector2i)이거나 false다.
+var reaction_answers: Array = []
 ## 이어하기가 다시 실행하는 적 턴에서 묻지 않고 차례로 쓸 반응 답.
-var replay_answers: Array[bool] = []
+var replay_answers: Array = []
 var _grounds: Array[Ground] = []
 ## 이번 전투에서 탄 나무 칸. 전투를 다시 열면 비고 저장에 들어간다.
 var burned_trees: Array[Vector2i] = []
@@ -975,14 +979,21 @@ func jump_to(actor: CombatUnit, destination: Vector2i) -> bool:
 		# 떠나기에서 넘어지면 도약이 취소되고 비용은 쓰지 않는다 (궁수 문서).
 		_finish()
 		return true
+	var origin: Vector2i = actor.cell
 	for reactor: CombatUnit in jump_reactors(actor, destination):
 		await _opportunity_attack(reactor, actor)
-		if actor.hit_points <= 0 or actor.movement_left == 0 or is_over():
+		if actor.hit_points <= 0 or actor.movement_left == 0 or is_over() or _dodged(actor, origin):
 			break
 	if actor.hit_points <= 0:
 		# 기회 공격으로 쓰러져도 점프 비용은 소비한다 (#407 개발 결정).
 		actor.spend_movement(cells[destination])
 		actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
+		_finish()
+		return true
+	# 반사신경으로 회피한 점프는 취소된다. 보조 행동은 쓰고 점프의 이동력은 쓰지 않는다(회피의 이동력 1만 쓴 상태).
+	if _dodged(actor, origin):
+		actor.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
+		logged.emit(tr("%s 점프: 회피로 취소, 보조 행동1 소비") % actor.get_display_name())
 		_finish()
 		return true
 	# 괴력의 사내로 멈춘 점프는 비용을 돌려주지 않고 출발 칸에 남는다 (전사 문서).
@@ -1257,16 +1268,17 @@ func move_to(actor: CombatUnit, destination: Vector2i) -> bool:
 		# 기름 칸을 떠나기 직전에 미끌거림을 먼저 굴린다. 실패하면 이동이 취소되어 칸을 떠나지 않으므로 기회 공격도 없다.
 		if _oil_at(actor.cell) != null and not actor.oil_slipped and not _slip_roll(actor):
 			break
+		var origin: Vector2i = actor.cell
 		if not actor.disengaged:
 			for reactor: CombatUnit in units:
 				if (_can_react(reactor) and reactor.is_ally != actor.is_ally
 					and CombatActionRules.belongs_to(reactor, "opportunity") and reactor.reaction_left > 0
 					and grid.leaves_reach(reactor, actor.cell, step)):
 					await _opportunity_attack(reactor, actor)
-					if actor.hit_points <= 0 or actor.movement_left == 0 or is_over():
+					if actor.hit_points <= 0 or actor.movement_left == 0 or is_over() or _dodged(actor, origin):
 						break
-		# 반격으로 마지막 적이 쓰러지면 전투가 끝나 더 걷지 않는다.
-		if actor.hit_points <= 0 or actor.movement_left == 0 or is_over():
+		# 반격으로 마지막 적이 쓰러지면 전투가 끝나 더 걷지 않는다. 반사신경으로 회피했으면 회피 칸에서 멈춘다.
+		if actor.hit_points <= 0 or actor.movement_left == 0 or is_over() or _dodged(actor, origin):
 			break
 		if movement_animation.is_valid():
 			await movement_animation.call(actor, step)
@@ -1669,8 +1681,30 @@ func resolve_reaction(use_reaction: bool) -> bool:
 	# 중복 클릭은 같은 반응을 두 번 소비하지 않는다.
 	var reactor: CombatUnit = pending_reactor
 	pending_reactor = null
+	# 칸 없이 참으로만 답한 반사신경은 첫 후보 칸으로 회피한다.
+	if use_reaction and pending_kind == "reflex" and not pending_cells.is_empty():
+		_reflex_cell = pending_cells[0]
 	reaction_decided.emit(use_reaction and _can_react(reactor))
 	return true
+
+
+## 반사신경 확인 창에서 회피할 칸을 고른다. 후보 칸이 아니면 거부한다.
+func resolve_reflex(cell: Vector2i) -> bool:
+	if pending_reactor == null or pending_kind != "reflex" or cell not in pending_cells:
+		return false
+	var reactor: CombatUnit = pending_reactor
+	pending_reactor = null
+	_reflex_cell = cell
+	reaction_decided.emit(_can_react(reactor))
+	return true
+
+
+## 반사신경으로 회피할 수 있는 칸: 반응과 이동력 1이 남은 아군 궁수의 상하좌우 빈 칸. 쓸 수 없으면 빈 목록이다.
+func reflex_cells(unit: CombatUnit) -> Array[Vector2i]:
+	if (unit == null or not CombatActionRules.belongs_to(unit, "reflex") or unit.reaction_left <= 0
+			or unit.movement_left < 1 or not _can_react(unit) or is_over()):
+		return []
+	return grid.empty_neighbors(unit.cell)
 
 
 ## 반응(기회 공격·반격)을 쓸 수 있는 유닛. 넘어지면 반응도 못 쓴다 (궁수 문서).
@@ -1686,6 +1720,11 @@ func _can_act(actor: CombatUnit) -> bool:
 func _can_move_now(actor: CombatUnit) -> bool:
 	return (actor != null and actor == turns.current_unit and actor.hit_points > 0
 		and not actor.is_stunned and not busy and not is_over())
+
+
+## 기회 공격을 반사신경으로 회피했는지. 회피로 옮겼거나(칸이 바뀜), 기름 이탈에 실패해 제자리에서 넘어졌으면 이동은 멈춘다.
+func _dodged(actor: CombatUnit, origin: Vector2i) -> bool:
+	return actor.cell != origin or actor.fallen
 
 
 ## 인접 칸을 벗어나려는 actor에게 reactor가 하는 기회 공격. 아군은 확인 창으로 묻는다.
@@ -1726,21 +1765,58 @@ func _counter(reactor: CombatUnit, attacker: CombatUnit) -> void:
 	_deal_damage(reactor, attacker, "counter", false)
 
 
-func _ask_reaction(reactor: CombatUnit, kind: String, prompt: String) -> bool:
+func _ask_reaction(reactor: CombatUnit, kind: String, prompt: String, cells: Array[Vector2i] = []) -> bool:
 	if not reactor.is_ally:
 		return true
 	var accepted: bool
+	_reflex_cell = Vector2i(-1, -1)
 	if not replay_answers.is_empty():
-		accepted = replay_answers.pop_front()
+		var answer: Variant = replay_answers.pop_front()
+		# 다시 실행: 반사신경만 후보 칸 안의 Vector2i를 쓰고, 그 밖의 답(옛 저장의 bool 포함)은 넘기기다.
+		if kind == "reflex":
+			accepted = answer is Vector2i and answer in cells
+			if accepted:
+				_reflex_cell = answer
+		else:
+			accepted = answer is bool and answer
 	else:
 		pending_reactor = reactor
 		pending_kind = kind
+		pending_cells = cells
 		_emit_reaction.call_deferred(kind, prompt)
 		accepted = await reaction_decided
-	reaction_answers.append(accepted)
+	reaction_answers.append(_reflex_cell if accepted and kind == "reflex" else accepted)
 	logged.emit("%s %s: %s" % [reactor.get_display_name(), CombatActionRules.NAMES[kind], tr("사용") if accepted else tr("넘기기")])
 	pending_kind = ""
+	pending_cells = []
 	return accepted
+
+
+## 명중이 확정된 공격을 반사신경으로 피한다. 피했으면 true(피해·부가 효과 없음).
+func _reflex(target: CombatUnit, attacker: CombatUnit) -> bool:
+	var cells: Array[Vector2i] = reflex_cells(target)
+	if cells.is_empty() or target.is_ally == attacker.is_ally:
+		return false
+	var prompt: String = tr("%s의 공격이 명중했습니다. 피할까요? (이동력 1 사용)") % attacker.get_display_name()
+	if not await _ask_reaction(target, "reflex", prompt, cells):
+		return false
+	var cell: Vector2i = _reflex_cell
+	if target.hit_points <= 0 or is_over():
+		return true
+	target.spend_resource(CombatUnit.TurnResource.REACTION)
+	target.spend_movement(1)
+	feedback.emit(target, tr("회피"))
+	# 기름 칸을 떠나기 직전에 미끌거림을 굴린다. 실패하면 회피는 성립하고 이동만 취소되어 그 자리에서 넘어진다.
+	if _oil_at(target.cell) != null and not target.oil_slipped and not _slip_roll(target):
+		logged.emit(tr("%s 반사신경: 회피, 기름에 미끄러져 제자리에서 넘어짐") % target.get_display_name())
+		return true
+	if jump_animation.is_valid():
+		await jump_animation.call(target, cell)
+	if target.hit_points <= 0 or is_over():
+		return true
+	logged.emit(tr("%s 반사신경: %d, %d로 회피") % [target.get_display_name(), cell.x, cell.y])
+	_land(target, cell)
+	return true
 
 
 ## 굴림 연출이 끝날 때까지 기다린다. 연출 훅이 없으면 바로 넘어간다.
@@ -1773,7 +1849,7 @@ func _perform_attack(actor: CombatUnit, target: CombatUnit, action: String) -> b
 	return true
 
 
-## 명중굴림 하나와 로그·빗나감 처리. 명중했으면 true다(피해는 호출자가 준다). 빗나가면 반격 반응을 처리한다.
+## 명중굴림 하나와 로그·빗나감 처리. 명중했으면 true다(피해는 호출자가 준다). 빗나가면 반격, 명중하면 반사신경 반응을 처리하고, 반사신경으로 피하면 false다.
 func _roll_hit(actor: CombatUnit, target: CombatUnit, action: String) -> bool:
 	var attack_ability: CombatUnit.Ability = CombatActionRules.hit_ability(actor, action)
 	var attack_sides: int = actor.get_ability_sides(attack_ability)
@@ -1800,6 +1876,8 @@ func _roll_hit(actor: CombatUnit, target: CombatUnit, action: String) -> bool:
 	if not last_attack.success:
 		feedback.emit(target, tr("빗나감"))
 		await _counter(target, actor)
+		return false
+	if await _reflex(target, actor):
 		return false
 	return true
 

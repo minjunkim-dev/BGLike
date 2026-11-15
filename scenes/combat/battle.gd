@@ -102,7 +102,10 @@ func _ready() -> void:
 	actions.hit_landed.connect(func() -> void:
 		if not _replaying():
 			$HitSound.play())
-	actions.reaction_requested.connect(hud.show_reaction)
+	actions.reaction_requested.connect(_on_reaction_requested)
+	hud.reflex_selected.connect(_on_reflex_selected)
+	hud.reflex_previewed.connect(_on_reflex_previewed)
+	hud.reflex_label = _reflex_arrow
 	hud.grid = actions.grid
 	actions.movement_animation = _animate_movement
 	actions.jump_animation = _animate_jump
@@ -112,6 +115,36 @@ func _ready() -> void:
 	turns.changed.connect(_on_turn_changed)
 	turns.order_rotated.connect(hud.prepare_order_rotation)
 	_start_stage(true)
+
+
+## 반응 확인 창을 띄운다. 반사신경이면 후보 칸을 맵에 보인다.
+func _on_reaction_requested(kind: String, prompt: String) -> void:
+	hud.show_reaction(kind, prompt, actions.pending_cells)
+	if kind == "reflex":
+		_update_turn_ui()
+
+
+func _on_reflex_selected(cell: Vector2i) -> void:
+	actions.resolve_reflex(cell)
+	_update_turn_ui()
+
+
+## 칸 버튼에 올린 칸으로 가는 경로를 미리 보인다. 벗어나면 후보 칸만 보인다.
+func _on_reflex_previewed(cell: Vector2i) -> void:
+	if actions.pending_kind != "reflex" or actions.pending_reactor == null:
+		return
+	var path: Array[Vector2i] = []
+	if cell != Vector2i(-1, -1):
+		path.append(cell)
+	map.show_movement(actions.pending_cells, [], path, actions.pending_reactor.cell)
+
+
+## 반사신경 칸 버튼의 글자: 화면에서 본 방향이다. 칸 좌표가 아니라 맵 투영의 화면 위치로 정한다.
+func _reflex_arrow(cell: Vector2i) -> String:
+	if actions.pending_reactor == null:
+		return "%d, %d" % [cell.x, cell.y]
+	var delta: Vector2 = map.map_to_local(cell) - map.map_to_local(actions.pending_reactor.cell)
+	return ("↖" if delta.y < 0 else "↙") if delta.x < 0 else ("↗" if delta.y < 0 else "↘")
 
 
 func _exit_tree() -> void:
@@ -317,7 +350,9 @@ func _is_valid_state(state: Dictionary) -> bool:
 	if not (replay is Dictionary and replay.get("actions", 0) is int
 			and replay.get("actions", 0) <= CombatUnit.SAVED_INT_LIMIT and replay.get("reactions", []) is Array
 			and replay.get("reactions", []).size() <= CombatUnit.SAVED_INT_LIMIT
-			and replay.get("reactions", []).all(func(answer: Variant) -> bool: return answer is bool)
+			# 반응 답은 bool이거나, 반사신경이 고른 지도 안의 칸이다.
+			and replay.get("reactions", []).all(func(answer: Variant) -> bool:
+				return answer is bool or answer is Vector2i and Rect2i(Vector2i.ZERO, stage.map_size).has_point(answer))
 			and (replay.get("actions", 0) > 0 or replay.get("reactions", []).is_empty())):
 		return false
 	if state.get("waiting_for_start", false) and (state.turns.round != 1 or replay.get("actions", 0) != 0):
@@ -945,11 +980,18 @@ func _update_turn_ui() -> void:
 				if actions.can_sweep(turns.current_unit, cell):
 					movement_cells.append(cell)
 	var attack_cells: Array[Vector2i] = []
-	for cell: Vector2i in movement_cells:
-		if selection.selected_action == "sweep" or not _attack_targets_from(cell).is_empty():
-			attack_cells.append(cell)
-	map.show_movement(movement_cells, attack_cells, selection.preview_path,
-		turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO)
+	var origin: Vector2i = turns.current_unit.cell if turns.current_unit != null else Vector2i.ZERO
+	var path: Array[Vector2i] = selection.preview_path
+	if actions.pending_kind == "reflex" and actions.pending_reactor != null:
+		# 반사신경 확인 창이 열린 동안에는 회피할 후보 칸만 이동 칸처럼 보인다.
+		movement_cells.assign(actions.pending_cells)
+		origin = actions.pending_reactor.cell
+		path = []
+	else:
+		for cell: Vector2i in movement_cells:
+			if selection.selected_action == "sweep" or not _attack_targets_from(cell).is_empty():
+				attack_cells.append(cell)
+	map.show_movement(movement_cells, attack_cells, path, origin)
 	map.show_grounds(actions.get_grounds())
 	map.show_trees(actions.grid.trees)
 	map.show_floor_loot(actions.floor_loot.drops)
