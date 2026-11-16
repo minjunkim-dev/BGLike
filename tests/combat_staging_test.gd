@@ -115,8 +115,47 @@ func _run() -> void:
 	ck(party[0].armor.is_empty() and loot.bag.size() == 2 and party[0].hit_points <= hp, "방어구를 가방으로 해제하며 무료 회복 없음")
 	await _drag("BagItem0", "Potions0")
 	ck(party[0].potions.size() == 1 and loot.bag.size() == 1, "가방 물약을 캐릭터 물약 칸에 분배")
-	await _drag("Potions0", "Potions1")
+	await _drag("PotionSlot0_0", "Potions1")
 	ck(party[0].potions.size() == 0 and party[1].potions.size() == 1, "캐릭터 물약을 다른 캐릭터에게 한 개 양도")
+	# #577: 칸 단위 끌기. 고른 칸 하나만 받는 쪽의 다음 빈 칸으로 간다.
+	party[0].potions.assign(["healing_potion", "oil_bottle", "healing_potion"])
+	party[1].potions.assign([])
+	preparation._render()
+	await _settle()
+	await _drag("PotionSlot0_1", "PotionSlot1_2")
+	ck(party[0].potions == ["healing_potion", "healing_potion"] and party[1].potions == ["oil_bottle"],
+		"가운데 칸의 기름병만 받는 쪽의 빈 칸에 들어간다")
+	await _drag("PotionSlot0_0", "PotionSlot0_1")
+	await _drag("PotionSlot0_0", "Card0")
+	ck(party[0].potions == ["healing_potion", "healing_potion"] and party[1].potions == ["oil_bottle"],
+		"자기 칸·자기 카드에 놓으면 아무것도 바뀌지 않는다")
+	await _drag("PotionSlot0_1", "Card1")
+	ck(party[0].potions == ["healing_potion"] and party[1].potions == ["oil_bottle", "healing_potion"],
+		"상대 카드 본문에 놓아도 양도한다")
+	var heal_item: Dictionary = loot.potion_definition("healing_potion").duplicate(true)
+	var oil_item: Dictionary = loot.potion_definition("oil_bottle").duplicate(true)
+	var slot_drag: Dictionary = {"owner": preparation.get_instance_id(), "kind": "potion", "index": 0, "slot": 0, "item": heal_item}
+	ck(preparation._can_drop_item(slot_drag, "potion", 1), "끌기 시작 때와 같은 칸이면 놓을 수 있다")
+	slot_drag["item"] = oil_item
+	ck(not preparation._can_drop_item(slot_drag, "potion", 1), "끌기 시작 뒤 원본 칸의 물약이 바뀌면 놓지 않는다")
+	slot_drag["item"] = heal_item
+	slot_drag["slot"] = 5
+	ck(not preparation._can_drop_item(slot_drag, "potion", 1), "범위 밖 칸은 놓지 않는다")
+	party[1].potions.assign(["oil_bottle", "oil_bottle", "oil_bottle"])
+	preparation._render()
+	await _settle()
+	await _drag("PotionSlot0_0", "Potions1")
+	ck(party[0].potions == ["healing_potion"] and party[1].potions.size() == 3, "가득 찬 대상에게는 놓지 못한다")
+	var empty_slot: Vector2 = _point("PotionSlot0_2")
+	await _motion(empty_slot, Vector2.ZERO)
+	await _mouse(empty_slot, true)
+	await _motion(empty_slot + root.get_final_transform().basis_xform(Vector2(24, 0)), Vector2(24, 0))
+	ck(not root.gui_is_dragging(), "빈 물약 칸에서는 끌기가 시작되지 않는다")
+	await _mouse(empty_slot, false)
+	party[0].potions.assign([])
+	party[1].potions.assign(["healing_potion"])
+	preparation._render()
+	await _settle()
 	bag_before = loot.bag.duplicate(true)
 	await _begin_drag("BagItem0")
 	var cancel: InputEventKey = InputEventKey.new()
