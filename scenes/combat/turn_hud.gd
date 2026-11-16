@@ -142,7 +142,7 @@ func _ready() -> void:
 			# 곱셈 색은 채도를 빼지 못해 반투명으로 어둡게 눌러 회색 배경에 묻는다.
 			button.add_theme_color_override("icon_disabled_color", Color("8a939b", 0.55))
 			button.accessibility_name = CombatActionRules.NAMES[action]
-			# 반사신경·은신은 아이콘이 생기기 전까지 패시브 칸처럼 이름 첫 글자를 보인다.
+			# 반사신경·은신은 아이콘이 생기기 전까지 이름 첫 글자를 보인다.
 			if button.icon == null and action in ["reflex", "stealth"]:
 				button.text = CombatActionRules.NAMES[action].left(1)
 			# 반응은 표시용이다. 자기 턴의 입력에는 연결하지 않는다.
@@ -202,9 +202,15 @@ func _build_passives() -> void:
 	for passive: String in CombatActionRules.PASSIVES:
 		var button: Button = HoverTooltip.HoverButton.new()
 		button.custom_minimum_size = Vector2(22, 34)
-		# 아이콘이 생기기 전에는 이름 첫 글자를 보인다.
-		button.text = CombatActionRules.PASSIVE_NAMES[passive].left(1)
-		button.add_theme_font_size_override("font_size", 12)
+		# 아이콘이 없으면 이름 첫 글자를 보인다.
+		button.icon = CombatActionRules.passive_icon_of(passive)
+		if button.icon == null:
+			button.text = CombatActionRules.PASSIVE_NAMES[passive].left(1)
+			button.add_theme_font_size_override("font_size", 12)
+		else:
+			button.material = preload("res://scenes/combat/art/pixel_art.tres")
+			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			button.add_theme_constant_override("icon_max_width", CombatActionRules.PASSIVE_ICON_SIZE)
 		button.focus_mode = Control.FOCUS_NONE
 		button.accessibility_name = CombatActionRules.PASSIVE_NAMES[passive]
 		button.tooltip_text = CombatActionRules.PASSIVE_NAMES[passive] + "\n" + CombatActionRules.PASSIVE_EFFECTS[passive]
@@ -237,6 +243,9 @@ func _refresh_passives(shown: CombatUnit) -> void:
 			or passive == "moving_shot" and shown.moving_shot_ready)
 		button.disabled = passive == "moving_shot" and not on
 		var style: StyleBoxFlat = _button_style(Color("3b4f63") if on else Color("293541"), Color("f4ead1") if on else Color("61717e"))
+		# 칸 폭 22 안에 16 논리px 아이콘이 들어가도록 좌우 여백을 3으로 줄인다(#517).
+		style.content_margin_left = 3
+		style.content_margin_right = 3
 		if on:
 			style.set_border_width_all(2)
 		for state: String in ["normal", "hover", "pressed", "disabled"]:

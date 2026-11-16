@@ -1,0 +1,26 @@
+{
+  "issue": "https://github.com/minjunkim-dev/BGLike/issues/517",
+  "generator": {
+    "tool": "draw_passive_icons.py",
+    "mode": "pixels placed by code from the briefs below with the item icon palette and outline; no generative image model and no input image",
+    "author": "Claude Code (claude-sonnet-5-5) for Issue #517",
+    "date": "2026-11-16",
+    "command": "/usr/bin/python3 scenes/combat/art/sources/icons/draw_passive_icons.py scenes/combat/art/icons/passives"
+  },
+  "spec": {
+    "canvas": [32, 32],
+    "design_grid": [64, 64],
+    "display_scale": 0.5,
+    "logical_size": [16, 16],
+    "outline": "2 source px (1 logical px) of #120d16, shared with draw_item_icons.py",
+    "palette": "the item icon palette imported from draw_item_icons.py",
+    "light": "upper left",
+    "background": "transparent",
+    "filter": "nearest; no resampling after drawing"
+  },
+  "icons": [
+    {"id": "phalanx", "name": "팔랑크스", "effect": "인접 아군이 있으면 전사와 그 아군의 AC +1", "brief": "Two overlapping heater shields with steel rims: an indigo one in front and a teal one behind it, shifted up and to the right."},
+    {"id": "brawn", "name": "괴력의 사내", "effect": "기회 공격이 명중하면 대상의 이동력을 0으로", "brief": "Clenched leather fist seen from the front under a brass cuff, with three white impact lines below it."},
+    {"id": "moving_shot", "name": "무빙샷", "effect": "원거리 공격 뒤 1칸 도약", "brief": "Arrow flying to the right with a steel head, wooden shaft and teal fletching, and a white leap arc with an arrow tip under it."}
+  ]
+}

@@ -487,6 +487,31 @@ func _test_unit_art() -> void:
 			"고밀도 초상의 논리 표시 폭32 유지: " + unit.get_display_name())
 
 
+## 패시브 아이콘(#517): 32px 원본이 16 논리px로 칸에 보이고 칸 크기·이름·설명은 그대로다.
+func _test_passive_icons(passives: Dictionary) -> void:
+	for passive: String in CombatActionRules.PASSIVES:
+		var icon: Texture2D = CombatActionRules.passive_icon_of(passive)
+		_check(icon != null and icon.get_size() == Vector2(32, 32)
+			and icon.resource_path == "res://scenes/combat/art/icons/passives/%s.png" % passive,
+			"패시브 아이콘 32×32 원본: " + passive)
+		var button: Button = passives[passive]
+		_check(button.icon == icon and button.text.is_empty()
+			and button.get_theme_constant("icon_max_width") == CombatActionRules.PASSIVE_ICON_SIZE
+			and CombatActionRules.PASSIVE_ICON_SIZE == 16
+			and button.material == preload("res://scenes/combat/art/pixel_art.tres"),
+			"패시브 칸은 첫 글자 대신 16 논리px 아이콘과 도트 셰이더: " + passive)
+		_check(button.accessibility_name == CombatActionRules.PASSIVE_NAMES[passive]
+			and button.tooltip_text == CombatActionRules.PASSIVE_NAMES[passive] + "\n" + CombatActionRules.PASSIVE_EFFECTS[passive],
+			"패시브 칸 이름·설명 그대로: " + passive)
+		if button.visible:
+			# 숨은 칸은 갱신 때 건너뛰므로 스타일은 보이는 칸만 본다.
+			for state: String in ["normal", "hover", "pressed", "disabled"]:
+				var style: StyleBoxFlat = button.get_theme_stylebox(state) as StyleBoxFlat
+				_check(style != null and style.content_margin_left == 3 and style.content_margin_right == 3,
+					"패시브 칸 좌우 여백 3: %s %s" % [passive, state])
+			_check(button.size == Vector2(22, 34), "패시브 칸 크기 22×34 그대로: %s %s" % [passive, button.size])
+
+
 ## 패시브 칸(#457): 전사에만 보이고 팔랑크스는 인접 아군이 있을 때만 켜진다. 수치 색은 가감 부호만 칠한다.
 func _test_passive_slot_and_number_colors() -> void:
 	var passives: Dictionary = hud.get("_passives")
@@ -508,6 +533,7 @@ func _test_passive_slot_and_number_colors() -> void:
 	_check(not CombatActionRules.belongs_to(units[1], "phalanx") and not CombatActionRules.belongs_to(units[1], "brawn"),
 		"패시브 칸: 궁수에게는 전사 패시브가 없음")
 	_check(not (passives["moving_shot"] as Button).visible, "패시브 칸: 전사에게는 무빙샷 칸이 없음")
+	_test_passive_icons(passives)
 	var colored: String = CombatActionRules.colorize("힘 d20+2 · 공격 -1 · AC +0 · 공격 +3 · HP 5")
 	_check(colored.contains("[color=#70c76d]+2[/color]") and colored.contains("[color=#ff8a80]-1[/color]")
 		and colored.contains("[color=#70c76d]+3[/color]") and not colored.contains("+0[/color]")

@@ -50,7 +50,7 @@ static var EFFECTS: Dictionary[String, String] = {
 	"whistle": TranslationServer.tr("상하좌우 한 방향의 세 줄 띠 안의 적이 의지 내성굴림.\n실패하면 산만함 2턴: 내성굴림·명중굴림 불리.\n피해는 없습니다."),
 	"stealth": TranslationServer.tr("다음 내 턴 시작까지 적이 공격·스킬의\n대상으로 지정할 수 없습니다. 범위 효과와\n장판은 맞습니다. 피해를 주는 공격 동작을\n쓰면 풀립니다.")
 }
-## 패시브 칸의 스킬(#457). 자원과 횟수가 없어 NAMES·GROUPS에 넣지 않는다. 아이콘이 생기기 전에는 이름 첫 글자를 보인다.
+## 패시브 칸의 스킬(#457). 자원과 횟수가 없어 NAMES·GROUPS에 넣지 않는다. 아이콘(passive_icon_of)이 없으면 이름 첫 글자를 보인다.
 const PASSIVES: Array[String] = ["phalanx", "brawn", "moving_shot"]
 static var PASSIVE_NAMES: Dictionary[String, String] = {
 	"phalanx": TranslationServer.tr("팔랑크스"), "brawn": TranslationServer.tr("괴력의 사내"),
@@ -187,6 +187,9 @@ const ICON_PATH: String = "res://scenes/combat/art/icons/skills/%s.png"
 const ITEM_ICON_PATH: String = "res://scenes/combat/art/icons/items/%s.png"
 ## #362: 스킬과 정비 아이템 그림의 표시 크기(논리 px). 버튼·칸의 입력 영역은 각 화면이 따로 유지한다.
 const ICON_SIZE: int = 24
+## 패시브 칸의 아이콘은 32px 원본을 0.5배로 써 16 논리px다(#517). 칸 크기 22×34를 그대로 둔다.
+const PASSIVE_ICON_SIZE: int = 16
+const PASSIVE_ICON_PATH: String = "res://scenes/combat/art/icons/passives/%s.png"
 
 
 static func resource_of(action: String) -> CombatUnit.TurnResource:
@@ -290,6 +293,12 @@ static func icon_of(action: String) -> Texture2D:
 	if not ResourceLoader.exists(path) and action in POTION_ITEM:
 		# 스킬 아이콘이 없는 물약류는 정비 화면의 아이템 아이콘을 쓴다(#576).
 		path = ITEM_ICON_PATH % action
+	return load(path) as Texture2D if ResourceLoader.exists(path) else null
+
+
+## 패시브 칸의 아이콘. 없으면 null이라 칸이 이름 첫 글자로 되돌아간다.
+static func passive_icon_of(passive: String) -> Texture2D:
+	var path: String = PASSIVE_ICON_PATH % passive
 	return load(path) as Texture2D if ResourceLoader.exists(path) else null
 
 
