@@ -225,7 +225,11 @@ func _check_text_layout() -> void:
 		title.show_help(true)
 		await process_frame
 		await process_frame
-		_audit_text(title.help, size, "도움말")
+		for section: int in range(title.help.section_count()):
+			title.help.show_section(section)
+			await process_frame
+			await process_frame
+			_audit_text(title.help, size, "도움말 %d번 탭" % section)
 		title.help.close()
 		title.show_credits(true)
 		await process_frame

@@ -11,6 +11,17 @@ const EXTRA_WINDOWS: Array[Vector2i] = [Vector2i(2560, 1600), Vector2i(2560, 108
 const HELP_TOPICS: Array[String] = ["우클릭", "좌클릭", "숫자 키 1~9", "방향키", "D-pad", "Enter", "Tab",
 	"Space 누르고 있기", "Esc", "휠", "가운데 버튼 드래그", "WASD", "C:", "점프", "유리", "불리", "능력치 주사위와 AC", "건강", "반응", "기회 공격", "전사 스킬", "십자 베기", "강철 돌진", "성스러운 장막", "전투의 함성", "팔랑크스", "장난스러운 화살", "폭죽 화살", "은신", "효시", "산만함",
 	"전투 시작 버튼", "정비:", "정비 버튼:", "물약 1개", "설명 보기"]
+## 도움말 탭(#557): 탭 제목과 각 섹션이 담는 본문 노드. 본문 문구는 바꾸지 않고 묶기만 한다.
+const HELP_SECTIONS: Array = [
+	["마우스", ["Mouse1", "MouseJump", "Mouse2", "Mouse3", "Mouse4", "Mouse5", "MouseStart", "MouseTooltip", "MouseCamera"]],
+	["키보드·컨트롤러", ["Keys1", "Keys2", "Keys3", "Keys4", "Keys5", "Keys6", "KeysCamera", "KeysThreat"]],
+	["정비", ["MousePreparation", "MousePreparation2"]],
+	["유리 / 불리", ["Advantage1", "Advantage2", "Advantage3"]],
+	["능력치 주사위와 AC", ["Saves1", "Saves2"]],
+	["반응", ["Reactions1", "Reactions2", "Reactions3", "Reactions4"]],
+	["전사 스킬", ["Warrior1", "Warrior2"]],
+	["궁수 스킬", ["Archer1", "Archer2", "Archer3"]],
+]
 ## #209 6번: 이번 도움말에 넣지 않는 메커닉. 점프는 조작만 적고 높이 규칙은 적지 않는다.
 ## 물 칸의 명중굴림 불리는 #532 완료 조건대로 유리/불리 항목에 적는다. 물 칸 화상 규칙은 여전히 넣지 않는다.
 const HELP_EXCLUDED: Array[String] = ["높이", "낙하", "낭떠러지", "화상"]
@@ -126,11 +137,19 @@ func _check_help(title: TitleScreen) -> void:
 		_check(topic in text, "도움말에 %s" % topic)
 	for excluded: String in HELP_EXCLUDED:
 		_check(excluded not in text, "도움말에 새 메커닉 %s를 넣지 않음" % excluded)
+	_check_help_tabs(help)
+	await _check_layout(title)
+	# 오른쪽 방향키로 끝(궁수 스킬) 탭까지 간다. 끝에서 멈추고, 탭을 바꾸면 맨 위부터 읽는다.
+	for step: int in range(HELP_SECTIONS.size() - 1):
+		await _tap(_action("ui_right"))
+	_check(help.tabs.current_tab == 7 and help.back_button.has_focus(), "오른쪽 방향키로 마지막 탭, 포커스는 뒤로 그대로")
+	await _tap(_joypad(JOY_BUTTON_DPAD_RIGHT))
+	_check(help.tabs.current_tab == 7, "마지막 탭에서 오른쪽은 멈춤")
 	await _check_layout(title)
 	# 1280×720에서 글이 화면보다 길어도 컨트롤러만으로 끝까지 읽는다.
 	var bar: VScrollBar = help.scroll.get_v_scroll_bar()
 	var bottom: int = int(bar.max_value - bar.page)
-	_check(bottom > 0, "1280×720에서 도움말은 스크롤이 필요한 길이: %d" % bottom)
+	_check(bottom > 0, "1280×720에서 궁수 스킬 탭은 스크롤이 필요한 길이: %d" % bottom)
 	var taps: int = 0
 	while help.scroll.scroll_vertical < bottom and taps < 100:
 		await _tap(_joypad(JOY_BUTTON_DPAD_DOWN))
@@ -139,11 +158,19 @@ func _check_help(title: TitleScreen) -> void:
 		"D-pad 아래로 도움말 끝까지 스크롤: %d/%d" % [help.scroll.scroll_vertical, bottom])
 	await _tap(_action("ui_up"))
 	_check(help.scroll.scroll_vertical < bottom, "위 방향키로 도움말 글 되돌림")
+	await _tap(_action("ui_left"))
+	_check(help.tabs.current_tab == 6 and help.scroll.scroll_vertical == 0, "왼쪽 방향키로 이전 탭, 맨 위부터")
+	help.tabs.current_tab = 1
+	_check(not help.sections[0].visible and help.sections[1].visible, "탭을 눌러도 그 섹션만 보임")
+	await _tap(_action("ui_left"))
+	await _tap(_joypad(JOY_BUTTON_DPAD_LEFT))
+	_check(help.tabs.current_tab == 0, "첫 탭에서 왼쪽은 멈춤")
 	await _tap(_action("ui_cancel"))
 	_check(not help.visible and title.menu.visible and title.help_button.has_focus(),
 		"Esc로 도움말을 닫고 도움말 버튼으로 포커스 복귀")
 	await _tap(_action("ui_accept"))
-	_check(help.visible and help.scroll.scroll_vertical == 0, "다시 열면 도움말 맨 위부터")
+	_check(help.visible and help.scroll.scroll_vertical == 0 and help.tabs.current_tab == 0
+		and help.back_button.has_focus(), "다시 열면 첫 탭의 맨 위부터, 포커스는 뒤로")
 	await _tap(_joypad(JOY_BUTTON_A))
 	_check(not help.visible and title.help_button.has_focus(), "컨트롤러 A로 뒤로 버튼을 눌러 도움말을 닫음")
 
@@ -202,6 +229,21 @@ func _check_backdrop_centered(title: TitleScreen, size: Vector2i, screen: Rect2)
 	_check(center.distance_to(screen.get_center()) <= 1.0, "%s: 배경 맵의 가운데가 화면 가운데: %s / %s" % [size, center, screen.get_center()])
 
 
+## 도움말 탭(#557): 제목 순서, 섹션이 담는 본문 노드, 한 번에 한 섹션만 보임.
+func _check_help_tabs(help: HelpScreen) -> void:
+	_check(help.tabs.tab_count == HELP_SECTIONS.size() and help.sections.size() == HELP_SECTIONS.size(),
+		"도움말 탭 %d개" % HELP_SECTIONS.size())
+	for index: int in range(mini(help.sections.size(), HELP_SECTIONS.size())):
+		var section: Control = help.sections[index]
+		_check(help.tabs.get_tab_title(index) == HELP_SECTIONS[index][0], "탭 %d 제목: %s" % [index, HELP_SECTIONS[index][0]])
+		var names: Array = []
+		for child: Node in section.get_children():
+			if child is Label and (child as Label).visible:
+				names.append(String(child.name))
+		_check(names == HELP_SECTIONS[index][1], "탭 %s의 본문 노드: %s" % [HELP_SECTIONS[index][0], names])
+		_check(section.visible == (index == 0), "처음에는 첫 섹션만 보임: %d" % index)
+
+
 ## 일시정지 메뉴(#286)가 쓸 진입점: 도움말 장면만 넣고 `open()`을 부르면 게임을 멈춘 동안에도 읽고 닫는다.
 func _check_help_entry() -> void:
 	var help: HelpScreen = (load("res://scenes/help.tscn") as PackedScene).instantiate() as HelpScreen
@@ -213,6 +255,10 @@ func _check_help_entry() -> void:
 	help.open()
 	await process_frame
 	_check(help.visible and help.back_button.has_focus() and help.theme != null, "도움말 장면만으로 열림, 공용 테마")
+	await _tap(_joypad(JOY_BUTTON_DPAD_RIGHT))
+	_check(help.tabs.current_tab == 1, "게임을 멈춘 동안에도 D-pad 오른쪽으로 탭 이동")
+	for step: int in range(6):
+		await _tap(_joypad(JOY_BUTTON_DPAD_RIGHT))
 	await _tap(_joypad(JOY_BUTTON_DPAD_DOWN))
 	_check(help.scroll.scroll_vertical > 0, "게임을 멈춘 동안에도 D-pad로 도움말 스크롤")
 	await _tap(_action("ui_cancel"))
@@ -480,7 +526,9 @@ func _check_layout(title: TitleScreen) -> void:
 					areas.append(node as Control)
 		elif title.help.visible:
 			_check(title.help.get_global_rect() == screen, "%s: 도움말이 논리 화면 전체를 채움" % size)
-			areas = [title.help.find_child("Heading") as Control, title.help.scroll, title.help.back_button]
+			areas = [title.help.find_child("Heading") as Control, title.help.tabs, title.help.scroll, title.help.back_button]
+			_check(not title.help.tabs.get_offset_buttons_visible() and title.help.tabs.get_tab_rect(
+				title.help.tabs.tab_count - 1).end.x <= title.help.tabs.size.x, "%s: 도움말 탭이 모두 한 줄에 들어감" % size)
 			var topics: Control = title.help.scroll.get_child(0) as Control
 			_check(topics.size.x <= title.help.scroll.size.x, "%s: 도움말 글이 가로로 넘치지 않음" % size)
 		else:
