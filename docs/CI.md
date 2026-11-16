@@ -16,7 +16,7 @@ PR에서는 제목과 브랜치 규칙도 검사합니다. 머지 큐 실행은 
 먼저 `git fetch origin main`으로 기준을 갱신합니다. 다른 기준은
 `python3 scripts/check_whitespace.py --base <ref>`로 지정합니다. 기준 ref를 찾지 못하면 실패합니다.
 
-policy와 `make repository-check`는 전체 scripts 탐색으로 Python 테스트를 실행합니다. 리뷰 기준은 [REVIEW.md](../REVIEW.md), 리뷰의 자료 선택과 사용자 요청 회고는 `docs/agents/review.md`를 따릅니다. PR 본문 형식과 리뷰는 CI가 검사하지 않습니다.
+policy와 `make repository-check`는 전체 scripts 탐색으로 Python 테스트를 실행합니다. 이 테스트에 `scripts/check_doc_links.py`가 있어서, 마크다운 링크·이미지·앵커와 코드·자동화 파일이 적은 `docs/` 파일 경로가 실제로 있는지 함께 검사합니다. 문서를 옮기거나 지우면 이 검사가 끊어진 곳을 알려 줍니다. 리뷰 기준은 [REVIEW.md](../REVIEW.md), 리뷰의 자료 선택과 사용자 요청 회고는 `docs/agents/review.md`를 따릅니다. PR 본문 형식과 리뷰는 CI가 검사하지 않습니다.
 
 - Markdown, `docs/` 자료와 `scripts/ci_scope.py`에 명시된 관리 파일만 바뀌면 Godot 작업을 선택하지 않습니다.
 - 게임 코드·장면·자산·프로젝트 설정, CI 선택기와 게임 검사 워크플로 변경은 모든 기존 Godot 검사를 선택합니다.
