@@ -1,15 +1,15 @@
 # CI 구성과 실행 범위
 
-Godot 워크플로는 main push, main 대상 PR과 수동 실행을 검사합니다.
+Godot 워크플로는 main push, main 대상 PR, 머지 큐(`merge_group`)와 수동 실행을 검사합니다.
 문서 변경에도 워크플로 자체는 실행합니다. 워크플로 전체의 paths-ignore로 필수 상태 검사를 대기 상태에 두지 않습니다.
 
 ## 검사 선택
 
 첫 작업은 재사용 PR lint의 `PR conventions and scope`입니다.
-선택기는 PR 기준 SHA 또는 main push의 before SHA에서 가져옵니다. PR이 수정한 선택기로 자신의 엔진 검사를 생략하지 않습니다.
+선택기는 PR 기준 SHA, 머지 큐의 `merge_group.base_sha` 또는 main push의 before SHA에서 가져옵니다. PR이 수정한 선택기로 자신의 엔진 검사를 생략하지 않습니다.
 기준 선택기가 없으면 엔진 검사를 선택합니다. 새 선택기 규칙은 main 반영 뒤 후속 변경부터 사용합니다.
-전체 PR diff와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인하고 Python 회귀 테스트를 실행합니다.
-PR에서는 제목과 브랜치 규칙도 검사합니다.
+전체 PR diff, 머지 큐의 base SHA와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인하고 Python 회귀 테스트를 실행합니다.
+PR에서는 제목과 브랜치 규칙도 검사합니다. 머지 큐 실행은 PR에서 본 제목·브랜치 단계를 건너뜁니다.
 
 로컬 `make repository-check`와 `make check`는 `scripts/check_whitespace.py`로
 `origin/main`과 HEAD의 공통 기준점부터 커밋된 변경, 스테이징, 미스테이징 변경을 각각 검사합니다.
@@ -25,7 +25,7 @@ policy와 `make repository-check`는 전체 scripts 탐색으로 Python 테스�
 - 수동 실행은 항상 Godot 검사를 수행합니다. PR의 edited 이벤트는 별도 PR lint workflow에서 처리합니다.
 - 제목·본문 수정은 실행 중인 Godot workflow를 취소하거나 같은 이름의 smoke 검사를 skipped로 덮어쓰지 않습니다.
 - main push 실행은 후속 문서 push로 취소하지 않습니다. PR 실행만 같은 PR의 후속 실행으로 취소합니다.
-- main과 수동 실행은 실행 ID별 concurrency 그룹을 사용합니다. 대기 중인 기능 검사도 후속 문서 push로 대체하지 않습니다.
+- main, 머지 큐와 수동 실행은 실행 ID별 concurrency 그룹을 사용합니다. 대기 중인 기능 검사도 후속 문서 push로 대체하지 않습니다.
 
 제목 수정만으로 재사용 policy 검사의 과거 실패가 바뀌지는 않습니다.
 제목 수정 후 새 커밋을 push하여 최신 제목의 policy 검사를 실행합니다. 기존 실행의 재실행은 과거 이벤트의 제목을 사용합니다.
