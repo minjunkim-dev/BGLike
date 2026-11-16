@@ -12,6 +12,8 @@ signal logged(message: String)
 signal feedback(unit: CombatUnit, text: String)
 signal healed(unit: CombatUnit, amount: int)
 signal hit_landed
+## 공격이 대상에 닿았거나(hit) 빗나갔다. 표시용이다. 나무 상자는 target이 null이고 cell이 상자 칸이다.
+signal struck(attacker: CombatUnit, target: CombatUnit, cell: Vector2i, hit: bool)
 signal reaction_requested(kind: String, prompt: String)
 signal reaction_decided(use_reaction: bool)
 
@@ -267,6 +269,7 @@ func attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
 		tr(" · 파괴") if prop.hit_points == 0 else ""]
 	var revision: int = _revision
 	hit_landed.emit()
+	struck.emit(actor, null, prop.cell, true)
 	logged.emit(message)
 	# 명중 callback이 전투를 다시 시작했으면 지난 전투의 상자는 아이템을 떨어뜨리지 않는다.
 	if prop.hit_points == 0 and revision == _revision:
@@ -1454,6 +1457,7 @@ func trick_arrow(actor: CombatUnit, cell: Vector2i) -> bool:
 		_damage(target, face)
 		logged.emit(tr("%s 피해 (장난스러운 화살 굴림 값): %d · HP %d") % [target.get_display_name(), face, target.hit_points])
 		feedback.emit(target, str(face))
+		struck.emit(actor, target, target.cell, true)
 		if revision == _revision and target.hit_points > 0:
 			if attribute == "fire":
 				apply_status(actor, target, "burn")
@@ -1529,6 +1533,7 @@ func _firework_hit(actor: CombatUnit, target: CombatUnit, dc: int) -> void:
 		tr(" 내성 성공 절반") if saved.success else "", CombatUnit.ability_name(ability), sides, str(last_damage_rolls),
 		level_term, total, (" → %d" % last_damage) if saved.success else "", target.hit_points])
 	feedback.emit(target, str(last_damage))
+	struck.emit(actor, target, target.cell, true)
 
 
 ## 활 후려치기: 보조 행동으로 인접한 적을 힘 d6 명중굴림·피해. 명중하고 대상이 살아 있으면 1칸 밀친다(내성 없음).
@@ -2010,6 +2015,7 @@ func _roll_hit(actor: CombatUnit, target: CombatUnit, action: String) -> bool:
 		actor.get_display_name(), CombatActionRules.roll_mode_text(last_attack.mode, preview.factors), CombatUnit.ability_name(attack_ability), attack_sides,
 		str(last_attack.rolls), last_attack.added(), last_attack.total, armor_class, outcome])
 	if not last_attack.success:
+		struck.emit(actor, target, target.cell, false)
 		feedback.emit(target, tr("빗나감"))
 		await _counter(target, actor)
 		return false
@@ -2102,6 +2108,8 @@ func _deal_damage(actor: CombatUnit, target: CombatUnit, action: String, halved:
 			CombatUnit.ability_name(damage_ability), damage_sides, str(last_damage_rolls),
 			damage_bonus, last_damage, target.hit_points])
 	feedback.emit(target, str(last_damage))
+	if is_instance_valid(target):
+		struck.emit(actor, target, target.cell, true)
 
 
 ## 요인이 붙은 내성굴림의 이유 글(개발 결정, #500). 요인이 없으면 빈 문자열이라 기존 로그 문구가 그대로다.

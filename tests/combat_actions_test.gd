@@ -7,6 +7,7 @@ class Fixture extends RefCounted:
 	var actions: CombatActions = CombatActions.new()
 	var hits: Array[bool] = []
 	var logs: Array[String] = []
+	var strikes: Array[Dictionary] = []
 
 
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
@@ -47,6 +48,8 @@ func _fixture() -> Fixture:
 	f.actions.initialize(f.units, f.turns)
 	f.actions.hit_landed.connect(f.hits.append.bind(true))
 	f.actions.logged.connect(f.logs.append)
+	f.actions.struck.connect(func(attacker: CombatUnit, target: CombatUnit, cell: Vector2i, hit: bool) -> void:
+		f.strikes.append({"attacker": attacker, "target": target, "cell": cell, "hit": hit}))
 	return f
 
 
@@ -61,6 +64,53 @@ func _ability_sides(unit: CombatUnit) -> Array[int]:
 	for ability: CombatUnit.Ability in CombatUnit.Ability.values():
 		sides.append(unit.get_ability_sides(ability))
 	return sides
+
+
+func _test_struck_signal() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	var target: CombatUnit = f.units[2]
+	var before: int = target.hit_points
+	f.actions.dice = _dice_for([1], ScriptedDice.attack_sides(actor))
+	await f.actions.attack(actor, target)
+	_check(f.strikes.size() == 1 and f.strikes[0]["hit"] == false and f.strikes[0]["attacker"] == actor
+		and f.strikes[0]["target"] == target and f.strikes[0]["cell"] == target.cell and target.hit_points == before,
+		"빗나간 공격은 hit=false 한 번을 알린다")
+	f.strikes.clear()
+	actor.action_left = 1
+	f.actions.dice = _dice_for([20, 1], ScriptedDice.attack_sides(actor) + ScriptedDice.damage_sides(actor))
+	await f.actions.attack(actor, target)
+	_check(f.strikes.size() == 1 and f.strikes[0]["hit"] == true and f.strikes[0]["target"] == target
+		and f.strikes[0]["cell"] == target.cell and target.hit_points < before,
+		"명중한 공격은 피해와 함께 hit=true 한 번을 알린다")
+	# 회전회오리: 대상마다 한 번, 내성 성공 절반 피해도 명중으로 본다.
+	var g: Fixture = _fixture()
+	var boss: CombatUnit = g.units[2]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	boss.hit_points = 50
+	ScriptedDice.start_turn(boss)
+	g.turns.current_unit = boss
+	g.units[1].cell = Vector2i(5, 3)
+	g.actions.dice = _dice_for([8, 6, 10, 6], [8, 12, 12, 12])
+	await g.actions.spin(boss)
+	_check(g.strikes.size() == 2 and g.strikes.all(func(strike: Dictionary) -> bool: return strike["hit"] == true)
+		and g.strikes[0]["target"] == g.units[0] and g.strikes[1]["target"] == g.units[1],
+		"내성형 피해는 대상마다 hit=true 한 번(절반 피해 포함)")
+	# 나무 상자: 대상 유닛 없이 상자 칸.
+	var h: Fixture = _fixture()
+	var crate: CombatGrid.Prop = h.actions.create_prop(Vector2i(4, 5), "crate")
+	h.actions.dice = _dice_for([4], [20])
+	h.actions.attack_prop(h.units[0], crate)
+	_check(h.strikes.size() == 1 and h.strikes[0]["target"] == null and h.strikes[0]["cell"] == Vector2i(4, 5)
+		and h.strikes[0]["hit"] == true, "나무 상자 공격은 target=null과 상자 칸으로 알린다")
+	# 공격이 아닌 피해(화상 틱)는 알리지 않는다.
+	var k: Fixture = _fixture()
+	var burned: CombatUnit = k.units[2]
+	k.actions.apply_status(k.units[1], burned, "burn")
+	k.actions.dice = _dice_for([3], [4])
+	k.turns.end_turn()
+	k.turns.end_turn()
+	_check(burned.hit_points == 9 and k.strikes.is_empty(), "화상 틱 피해는 struck을 알리지 않는다")
 
 
 func _test_subject_particle() -> void:
@@ -1080,6 +1130,7 @@ func _run() -> void:
 	_test_ally_shove()
 	_test_grid_queries()
 	_test_subject_particle()
+	await _test_struck_signal()
 	await _test_square_rules()
 	await _test_attacks()
 	await _test_archer_balance()
