@@ -108,6 +108,7 @@ func _run() -> void:
 	actions.dice = ScriptedDice.new([], []).then_seeded()
 	await _test_stunned_target_feedback()
 	await _test_crowded_feedback()
+	await _test_hit_effects()
 	monitoring = false
 	if observer != null:
 		_check(observer.last_error == OK and observer.frame_count > 0, "Forward+ 원본 프레임 저장")
@@ -246,6 +247,78 @@ func _test_crowded_feedback() -> void:
 	await create_timer(1.0).timeout
 	_check(collisions.is_empty(), "밀집 배치 팝업 겹침·화면 밖·HUD 침범 없음: %s" % str(collisions))
 	_check(_popups().is_empty(), "밀집 배치 팝업 제거")
+
+
+## 명중 섬광·히트스톱·빗나감 잔상(#559). actions.struck 신호를 보내 전투 장면의 연결을 본다.
+func _test_hit_effects() -> void:
+	var units: Array[CombatUnit] = battle.get("units")
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var effects: Node = battle.get_node_or_null("HitEffects")
+	_check(effects != null, "전투 장면에 HitEffects 노드가 있다")
+	if effects == null:
+		return
+	var attacker: CombatUnit = units[0]
+	var target: CombatUnit = units[1]
+	var home: Vector2 = target.position
+	var shader: Material = load("res://scenes/combat/art/pixel_art.tres")
+	actions.struck.emit(attacker, target, target.cell, true)
+	await process_frame
+	var flash: AnimatedSprite2D
+	for child: Node in effects.get_children():
+		if child is AnimatedSprite2D:
+			flash = child
+	_check(flash != null and flash.material == shader and absf(flash.scale.x - 0.5) < 0.001,
+		"명중하면 pixel_art 재질의 0.5배 섬광이 생긴다")
+	var paused_seen: bool = false
+	var recoil_seen: float = 0.0
+	var deadline: int = Time.get_ticks_msec() + 1500
+	while effects.get_child_count() > 0 and Time.get_ticks_msec() < deadline:
+		paused_seen = paused_seen or target.get_node("Sprite").speed_scale == 0.0
+		recoil_seen = maxf(recoil_seen, absf(target.recoil_offset.x))
+		await process_frame
+	await create_timer(0.15).timeout
+	_check(paused_seen and recoil_seen > 1.0 and recoil_seen <= 2.001,
+		"히트스톱 동안 대상 그림이 멈추고 2 논리px 안으로 밀린다")
+	_check(effects.get_child_count() == 0 and target.recoil_offset == Vector2.ZERO
+		and target.position == home and target.get_node("Sprite").speed_scale == 1.0,
+		"끝나면 섬광이 사라지고 밀림·멈춤이 풀리며 위치는 그대로다")
+	actions.struck.emit(attacker, target, target.cell, false)
+	await process_frame
+	var afterimage: Sprite2D
+	for child: Node in effects.get_children():
+		if child is Sprite2D:
+			afterimage = child
+	_check(afterimage != null and afterimage.material == shader and target.recoil_offset == Vector2.ZERO,
+		"빗나가면 대상은 움직이지 않고 잔상 그림이 생긴다")
+	await create_timer(0.5).timeout
+	_check(effects.get_child_count() == 0, "잔상은 0.5초 안에 사라진다")
+	Engine.time_scale = 4.0
+	var started: int = Time.get_ticks_msec()
+	actions.struck.emit(attacker, target, target.cell, true)
+	await process_frame
+	while effects.get_child_count() > 0 and Time.get_ticks_msec() - started < 2000:
+		await process_frame
+	var fast_msec: int = Time.get_ticks_msec() - started
+	Engine.time_scale = 1.0
+	_check(fast_msec < 200, "4배속에서는 1배속 섬광 길이(250ms)보다 짧은 실제 시간에 끝난다: %dms" % fast_msec)
+	await create_timer(0.1).timeout
+	var turn_actions: int = battle.get("_turn_actions")
+	battle.set("_turn_actions", 0)
+	battle.set("_replay_actions", 1)
+	actions.struck.emit(attacker, target, target.cell, true)
+	actions.struck.emit(attacker, target, target.cell, false)
+	await process_frame
+	_check(effects.get_child_count() == 0 and target.recoil_offset == Vector2.ZERO,
+		"이어하기 재실행 중에는 이펙트를 만들지 않는다")
+	battle.set("_replay_actions", 0)
+	battle.set("_turn_actions", turn_actions)
+	var temporary: CombatUnit = CombatUnit.new()
+	battle.get_node("Units").add_child(temporary)
+	actions.struck.emit(attacker, temporary, temporary.cell, true)
+	await process_frame
+	temporary.free()
+	await create_timer(0.5).timeout
+	_check(effects.get_child_count() == 0, "이펙트 도중 대상이 해제되어도 정리된다")
 
 
 func _wait_for(predicate: Callable, seconds: float) -> bool:

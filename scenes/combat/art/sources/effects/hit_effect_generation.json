@@ -1,0 +1,26 @@
+{
+  "issue": "https://github.com/minjunkim-dev/BGLike/issues/559",
+  "generator": {
+    "tool": "draw_hit_effects.py",
+    "mode": "pixels placed by code; no generative model, no input image, no external effect pack (#193)",
+    "date": "2026-11-16",
+    "command": "python3 scenes/combat/art/sources/effects/draw_hit_effects.py scenes/combat/art/effects"
+  },
+  "spec": {
+    "canvas": [48, 48],
+    "max_content": [44, 44],
+    "display_scale": 0.5,
+    "logical_size": [24, 24],
+    "fps": 12,
+    "loop": false,
+    "palette": [[18, 13, 22], [245, 235, 219], [235, 186, 132], [204, 142, 77], [155, 99, 51]],
+    "palette_source": "draw_item_icons.py (outline, steel highlight, brass)",
+    "alpha": "0 or 255 only",
+    "filter": "nearest; no resampling after drawing"
+  },
+  "frames": [
+    {"file": "hit_flash/000.png", "brief": "Small white four-point star with a dark outline."},
+    {"file": "hit_flash/001.png", "brief": "Large eight-ray flash: white core, light-brass ring, brass ray tips, dark outline."},
+    {"file": "hit_flash/002.png", "brief": "Scattered 2px fragments in brass and white around the center."}
+  ]
+}
