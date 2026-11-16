@@ -21,9 +21,7 @@
 [ext_resource type="Script" path="res://scenes/combat/map.gd" id="16_map"]
 [ext_resource type="PackedScene" path="res://scenes/pause_menu.tscn" id="17_pause"]
 [ext_resource type="Script" path="res://scenes/combat/camera.gd" id="18_camera"]
-
-[sub_resource type="Theme" id="Theme_legend"]
-default_font_size = 12
+[ext_resource type="Theme" path="res://scenes/ui_theme.tres" id="20_theme"]
 
 [sub_resource type="Gradient" id="Gradient_order_fade"]
 colors = PackedColorArray(0.08, 0.11, 0.15, 1, 0.08, 0.11, 0.15, 0)
@@ -72,7 +70,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme = SubResource("Theme_legend")
+theme = ExtResource("20_theme")
 script = ExtResource("4_hud")
 
 [node name="Round" type="Label" parent="UI/TurnHud"]
@@ -80,7 +78,6 @@ offset_left = 8.0
 offset_top = 8.0
 offset_right = 220.0
 offset_bottom = 22.0
-theme_override_font_sizes/font_size = 10
 mouse_filter = 2
 
 [node name="OrderScroll" type="ScrollContainer" parent="UI/TurnHud"]
@@ -117,7 +114,6 @@ offset_left = 230.0
 offset_top = 8.0
 offset_right = 420.0
 offset_bottom = 22.0
-theme_override_font_sizes/font_size = 10
 mouse_filter = 2
 text = "1막 · 1스테이지"
 
@@ -134,6 +130,7 @@ theme_override_constants/separation = 6
 
 [node name="UnitPanel" type="PanelContainer" parent="UI/TurnHud/UnitDetails"]
 layout_mode = 2
+theme_type_variation = &"HudPanel"
 
 [node name="Info" type="VBoxContainer" parent="UI/TurnHud/UnitDetails/UnitPanel"]
 layout_mode = 2
@@ -141,7 +138,6 @@ theme_override_constants/separation = 2
 
 [node name="Actor" type="Label" parent="UI/TurnHud/UnitDetails/UnitPanel/Info"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 10
 mouse_filter = 2
 
 [node name="CurrentUnit" type="Label" parent="UI/TurnHud/UnitDetails/UnitPanel/Info"]
@@ -156,7 +152,6 @@ mouse_filter = 2
 
 [node name="Resources" type="RichTextLabel" parent="UI/TurnHud/UnitDetails/UnitPanel/Info"]
 layout_mode = 2
-theme_override_font_sizes/normal_font_size = 10
 mouse_filter = 2
 bbcode_enabled = true
 fit_content = true
@@ -164,11 +159,11 @@ scroll_active = false
 
 [node name="AttackPreview" type="Label" parent="UI/TurnHud/UnitDetails"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 10
 mouse_filter = 2
 autowrap_mode = 2
 
 [node name="CombatLog" type="PanelContainer" parent="UI/TurnHud"]
+theme_type_variation = &"HudPanel"
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
@@ -182,7 +177,6 @@ grow_vertical = 0
 
 [node name="Message" type="Label" parent="UI/TurnHud/CombatLog"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 10
 text = "전투 시작"
 mouse_filter = 2
 autowrap_mode = 3
@@ -225,6 +219,7 @@ color = Color(0.04, 0.06, 0.08, 0.8)
 
 [node name="Panel" type="PanelContainer" parent="UI/TurnHud/Result"]
 layout_mode = 0
+theme_type_variation = &"HudPanel"
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
