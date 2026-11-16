@@ -46,7 +46,7 @@
 | [ITEM_LOOT.md](ITEM_LOOT.md) | 현역 | `design/growth/items-loot.md` |
 | [ITEM_FORM.md](ITEM_FORM.md) | 현역 | `design/growth/item-form.md` |
 | [DICE_GROWTH.md](DICE_GROWTH.md) | 축소 예정 | `design/growth/dice-growth.md` |
-| [PIXEL_ART.md](PIXEL_ART.md) | 현역 (UNIT_IMAGE_TEMPLATE을 병합할 예정) | `design/pixel-art.md` |
+| [PIXEL_ART.md](PIXEL_ART.md) | 현역 (유닛 이미지 납품 규격 포함) | `design/pixel-art.md` |
 | [TERRAIN_MAPS.md](TERRAIN_MAPS.md) | 현역 | `design/stages/terrain-maps.md` |
 | [stages/README.md](stages/README.md) | 현역 | `design/stages/README.md` |
 | [ENVIRONMENT_ELEMENTS.md](ENVIRONMENT_ELEMENTS.md) | 현역 | `design/combat/environment.md` |
@@ -98,22 +98,16 @@
 
 | 문서 | 이유 |
 |---|---|
-| [DESIGN_STATUS.md](DESIGN_STATUS.md) | 결정 이력과 지난 스프린트 기록. 인용하는 곳이 많다. [ADR 0001](adr/0001-gettext-localization.md)은 링크만 제거하고, 나머지는 인용된 결정이 각 기획서에 있는지 확인한다 |
-| [ROADMAP.md](ROADMAP.md) | 현황은 Issue #200과 일정 문서가 맡는다. 색인은 이 문서가 대체한다. 미정 항목의 인용은 해당 Issue로 바꾼다(예: [동작 유형 기획서](SKILL_TYPES.md)의 공격 속성 축은 Issue #357) |
-| [M1_VERIFICATION.md](M1_VERIFICATION.md), [DEV_REQUEST_M1.md](DEV_REQUEST_M1.md) | M1 완료 기록 |
-| [M5_VERIFICATION.md](M5_VERIFICATION.md) | 완료한 검수 기록. 9개 스테이지 관측과 병합 결과는 Issue #113 댓글에 있다. 병합 뒤의 후속 검증(정상 9전투 연속 진행, 확인 창 포커스 오류)은 git 이력에만 남는다. 인용하는 현역 문서는 Issue #113 링크로 바꾼다 |
-| [HEX_GRID_PREVIEW.md](HEX_GRID_PREVIEW.md) | 격자 변경(Issue #136)으로 대체됨 |
-| [ACT_PROGRESSION.md](ACT_PROGRESSION.md) | 규칙은 게임 구조 기획서 3장에 있고, 검사는 `tests/combat_progression_test.gd`가 한다. 사람이 확인하던 체크리스트는 시작 경로가 바뀌어 낡았으므로 옮기지 않는다 |
-| [UNIT_IMAGE_TEMPLATE.md](UNIT_IMAGE_TEMPLATE.md) | 도트 아트 문서에 병합 |
+| [ROADMAP.md](ROADMAP.md) | 현황은 Issue #200과 일정 문서가 맡는다. 색인은 이 문서가 대체한다. #558·#559 브랜치가 이 문서에 `개발 결정`을 적고 있으므로 두 PR이 병합되고 그 결정이 Issue에 있는지 확인한 뒤 삭제한다(3b). 그때까지 다른 문서가 가리키는 앵커는 그대로 둔다. 미정 항목의 인용은 해당 Issue로 바꾼다(예: [동작 유형 기획서](SKILL_TYPES.md)의 공격 속성 축은 Issue #357). [주사위 연출 기획서](DICE_PRESENTATION.md)의 ROADMAP 인용도 그때 지운다 |
+
+3a에서 삭제한 문서는 git 이력에서 복구한다: `DESIGN_STATUS`, `M1_VERIFICATION`, `M5_VERIFICATION`, `DEV_REQUEST_M1`, `HEX_GRID_PREVIEW`, `ACT_PROGRESSION`, `UNIT_IMAGE_TEMPLATE`(내용은 도트 아트 문서의 「유닛 이미지 납품 규격」에 병합). `M5_VERIFICATION`의 후속 검증 두 절(정상 9전투 연속 진행, 확인 창 포커스 오류)은 Issue에 없고 git 이력에만 남는다. `ACT_PROGRESSION`의 사람이 확인하던 체크리스트는 시작 경로가 바뀌어 낡았으므로 옮기지 않았다.
 
 ### 3-6. 이미지
 
 | 위치 | 처리 |
 |---|---|
-| `docs/images/`의 참조 없는 캡처 5개(`pixel_arrow_flight_640`, `pixel_units_poses_640`·`1280`, `terrain_maps_640`·`1280`) | 삭제 예정. `THIRD_PARTY_NOTICES.md`의 해당 행도 함께 지운다 |
 | `docs/images/combat_ui_*.png` 3개 | 전투 기획서가 쓰므로 유지. 이동하면 `THIRD_PARTY_NOTICES.md`의 경로도 고친다 |
-| `docs/assets/` 중 삭제 예정 문서 전용 5개(`act_progression_*` 3개, `hex_grid_*` 2개) | 문서와 함께 삭제 |
-| `docs/assets/unit_template_grid.svg` | 병합하는 도트 아트 문서(`design/pixel-art.md`)로 이전 |
+| `docs/assets/unit_template_grid.svg` | 도트 아트 문서가 쓴다. 4단계에서 문서와 같은 폴더로 이동 |
 | `docs/assets/`의 나머지 | 규칙 5에 따라 소유 문서와 같은 폴더로 이동 |
 | `docs/assets/pixel_art_1080p_before.png`·`after.png` | [도트 아트 문서](PIXEL_ART.md)와 [ADR 0002](adr/0002-resolution.md)가 함께 쓴다. 위치는 아래 "미정" 표 |
 
@@ -126,6 +120,8 @@
 1. 이 문서 추가. 이동·삭제 없음.
 2. 문서 링크 검사 스크립트 추가(`scripts/check_doc_links.py`, `make repository-check`에 포함).
 3. 삭제 예정 문서와 이미지 삭제. 삭제 전에 인용 위치를 `grep`으로 점검하고 링크를 정리한다.
+   - 3a: `ROADMAP`을 뺀 문서 7개와 이미지 10개 삭제(완료). `THIRD_PARTY_NOTICES.md`의 캡처 행도 지웠다.
+   - 3b: `ROADMAP` 삭제. #558·#559 병합 뒤에 한다.
 4. 문서 이동과 하위폴더 `README.md` 작성. 개발 PR이 `docs/`를 고치기 전에 끝낸다. 경로를 바꿔야 하는 곳은 `AGENTS.md`, `REVIEW.md`, `CONTRIBUTING.md`, `GLOSSARY.md`, 루트 `README.md`, `agents/domain.md`, `agents/review.md`, `THIRD_PARTY_NOTICES.md`, 코드의 경로 문자열(스크립트·테스트 주석)이다. 코드가 `docs/` 아래 파일을 읽지는 않는다. 링크 검사가 보지 못하는 곳(`scripts/test_*.py`의 경로, 링크가 아닌 평문 경로)은 `grep`으로 따로 확인한다.
 5. `WORKFLOW.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`의 마커·개발 결정 문장 수정, 구현 상태 표기 위치 결정, `DICE_GROWTH` 축소, `characters/`·`monsters/` 표 동기화.
 

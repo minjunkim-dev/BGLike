@@ -8,7 +8,7 @@
 > - 실행 검수(개정 전 요청): [#307 사용자 위임 에이전트 검수](https://github.com/minjunkim-dev/BGLike/issues/307#issuecomment-6378380493)와 [이동 후조건 추가 검수](https://github.com/minjunkim-dev/BGLike/issues/307#issuecomment-6378544532)를 완료했습니다. 개정 규칙의 사람 직접 기획 검수는 0-5장입니다.
 > - 후속 구현(개정 전): 혼합된 광역 유리 조건은 [#326](https://github.com/minjunkim-dev/BGLike/issues/326)에서 확정하고 [#341](https://github.com/minjunkim-dev/BGLike/issues/341)에서 지원했으나, 개정에서 대상별 내성굴림으로 바뀌어 [#389](https://github.com/minjunkim-dev/BGLike/issues/389)에서 정리했습니다.
 > - 남은 기획: 성장 방식은 정했고(막 최초 클리어마다 파티 공통 주사위 레벨 +1) 몬스터 비강화와의 밸런스 점검, 절대성공면 획득·절대성공의 추가 이점(치명타)은 [#322](https://github.com/minjunkim-dev/BGLike/issues/322)에서 정합니다. 스킬별 내성 능력치, 무기별 능력치 배정, 회복의 건강 연동은 후속 기획입니다. 막 최초 클리어 레벨업은 구현 범위입니다([#322 답](https://github.com/minjunkim-dev/BGLike/issues/322#issuecomment-6714895396), 2026-11-08). 절대성공면 획득과 치명타는 구현하지 않습니다.
-> - 배경: [M7까지 남은 작업 지도](https://github.com/minjunkim-dev/BGLike/issues/200) · [기획 현황](DESIGN_STATUS.md) · [주사위 육성 논의](DICE_GROWTH.md)
+> - 배경: [M7까지 남은 작업 지도](https://github.com/minjunkim-dev/BGLike/issues/200) · [주사위 육성 논의](DICE_GROWTH.md)
 
 ---
 
