@@ -1864,6 +1864,14 @@ msgid "마스터 음량"
 msgstr ""
 
 #: scenes/settings.tscn
+msgid "배경음 음량"
+msgstr ""
+
+#: scenes/settings.tscn
+msgid "효과음 음량"
+msgstr ""
+
+#: scenes/settings.tscn
 msgid "창 모드"
 msgstr ""
 

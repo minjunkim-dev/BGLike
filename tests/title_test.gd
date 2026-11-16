@@ -176,6 +176,11 @@ func _check_settings(title: TitleScreen) -> void:
 	_check(settings.visible and not title.menu.visible and settings.volume_slider.has_focus(),
 		"Enter로 설정 화면을 열고 음량 슬라이더에 포커스")
 	_check(settings.volume_slider.value == 80 and settings.volume_label.text == "80%", "처음 음량은 80%")
+	_check(settings.bgm_slider.value == 100 and settings.bgm_label.text == "100%"
+		and settings.sfx_slider.value == 100 and settings.sfx_label.text == "100%", "처음 배경음·효과음 음량은 100%")
+	_check(is_equal_approx(AudioServer.get_bus_volume_linear(AudioServer.get_bus_index(GameSettings.BUS_BGM)), 1.0)
+		and is_equal_approx(AudioServer.get_bus_volume_linear(AudioServer.get_bus_index(GameSettings.BUS_SFX)), 1.0),
+		"시작할 때 배경음·효과음 버스에도 처음 음량을 적용")
 	_check(not settings.fullscreen_box.button_pressed, "처음 창 모드는 창")
 	_check(is_equal_approx(AudioServer.get_bus_volume_linear(0), 0.8), "시작할 때 처음 음량을 Master 버스에 적용")
 	await _check_layout(title)
@@ -199,7 +204,29 @@ func _check_settings(title: TitleScreen) -> void:
 	await _tap(_action("ui_up"))
 	_check(settings.volume_slider.has_focus(), "음량 위로는 포커스가 나가지 않음")
 	await _tap(_joypad(JOY_BUTTON_DPAD_DOWN))
-	_check(settings.fullscreen_box.has_focus(), "D-pad 아래로 전체 화면 칸")
+	_check(settings.bgm_slider.has_focus(), "D-pad 아래로 배경음 슬라이더")
+	for step: int in range(3):
+		await _tap(_action("ui_left"))
+	var bgm_bus: int = AudioServer.get_bus_index(GameSettings.BUS_BGM)
+	var sfx_bus: int = AudioServer.get_bus_index(GameSettings.BUS_SFX)
+	_check(settings.bgm_slider.value == 70 and settings.bgm_label.text == "70%"
+		and GameSettings.volume(GameSettings.BUS_BGM) == 70 and is_equal_approx(AudioServer.get_bus_volume_linear(bgm_bus), 0.7),
+		"배경음 70%를 파일에 쓰고 BGM 버스에 적용")
+	_check(GameSettings.volume() == 10 and is_equal_approx(AudioServer.get_bus_volume_linear(0), 0.1)
+		and GameSettings.volume(GameSettings.BUS_SFX) == 100 and is_equal_approx(AudioServer.get_bus_volume_linear(sfx_bus), 1.0),
+		"배경음을 바꿔도 마스터·효과음은 그대로")
+	await _tap(_action("ui_down"))
+	_check(settings.sfx_slider.has_focus(), "아래로 효과음 슬라이더")
+	for step: int in range(10):
+		await _tap(_action("ui_left"))
+	_check(settings.sfx_slider.value == 0 and settings.sfx_label.text == "음소거"
+		and AudioServer.get_bus_volume_linear(sfx_bus) == 0.0 and GameSettings.volume(GameSettings.BUS_SFX) == 0,
+		"효과음 0은 음소거로 보이고 SFX 버스를 끄고 파일에 씀")
+	await _tap(_action("ui_right"))
+	_check(settings.sfx_slider.value == 10 and is_equal_approx(AudioServer.get_bus_volume_linear(sfx_bus), 0.1)
+		and is_equal_approx(AudioServer.get_bus_volume_linear(bgm_bus), 0.7), "효과음 10%, 배경음 버스는 그대로")
+	await _tap(_action("ui_down"))
+	_check(settings.fullscreen_box.has_focus(), "아래로 전체 화면 칸")
 	await _tap(_joypad(JOY_BUTTON_A))
 	_check(settings.fullscreen_box.button_pressed and GameSettings.fullscreen(), "컨트롤러 A로 전체 화면을 켜고 파일에 씀")
 	await _tap(_action("ui_down"))
@@ -218,6 +245,8 @@ func _check_settings(title: TitleScreen) -> void:
 	await _tap(_action("ui_accept"))
 	_check(settings.visible and settings.volume_slider.value == 10 and settings.fullscreen_box.button_pressed
 		and settings.fill_box.button_pressed, "다시 열면 저장한 값")
+	_check(settings.bgm_slider.value == 70 and settings.sfx_slider.value == 10
+		and settings.bgm_label.text == "70%" and settings.sfx_label.text == "10%", "다시 열면 저장한 배경음·효과음 음량")
 	await _tap(_action("ui_cancel"))
 	_check(not settings.visible and title.settings_button.has_focus(), "Esc로 설정 화면을 닫음")
 	title.new_game_button.grab_focus()
@@ -225,14 +254,20 @@ func _check_settings(title: TitleScreen) -> void:
 
 ## 새 게임은 설정 파일을 지우지 않는다. 게임을 다시 켠 것처럼 타이틀을 새로 열면 저장한 설정을 적용한다.
 func _check_settings_kept() -> void:
-	_check(GameSettings.volume() == 10 and GameSettings.fullscreen() and GameSettings.fill_screen(),
+	_check(GameSettings.volume() == 10 and GameSettings.fullscreen() and GameSettings.fill_screen()
+		and GameSettings.volume(GameSettings.BUS_BGM) == 70 and GameSettings.volume(GameSettings.BUS_SFX) == 10,
 		"새 게임 뒤에도 설정 유지")
 	AudioServer.set_bus_volume_linear(0, 1.0)
+	AudioServer.set_bus_volume_linear(AudioServer.get_bus_index(GameSettings.BUS_BGM), 1.0)
+	AudioServer.set_bus_volume_linear(AudioServer.get_bus_index(GameSettings.BUS_SFX), 1.0)
 	GameSettings.apply_screen_fit(root, false)  # 저장한 값(켬)을 새 타이틀이 적용하는지 보려고 되돌린다.
 	var title: TitleScreen = (load("res://scenes/main.tscn") as PackedScene).instantiate() as TitleScreen
 	root.add_child(title)
 	await process_frame
 	_check(is_equal_approx(AudioServer.get_bus_volume_linear(0), 0.1), "다시 시작하면 저장한 음량 10%를 적용")
+	_check(is_equal_approx(AudioServer.get_bus_volume_linear(AudioServer.get_bus_index(GameSettings.BUS_BGM)), 0.7)
+		and is_equal_approx(AudioServer.get_bus_volume_linear(AudioServer.get_bus_index(GameSettings.BUS_SFX)), 0.1),
+		"다시 시작하면 저장한 배경음 70%·효과음 10%를 적용")
 	_check(root.content_scale_stretch == Window.CONTENT_SCALE_STRETCH_FRACTIONAL, "다시 시작하면 저장한 화면 맞춤을 적용")
 	_check(title.settings_button.visible, "다시 시작한 타이틀에서도 설정을 엶")
 	title.queue_free()
