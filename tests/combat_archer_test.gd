@@ -80,6 +80,7 @@ func _run() -> void:
 	_test_whistle_unusable()
 	await _test_distraction_clock()
 	await _test_distraction_logs()
+	await _test_help_dc_basis()
 	_test_firework_uses_and_save()
 	_test_firework_effect_dc()
 	await _test_tree_burn()
@@ -639,6 +640,24 @@ func _test_whistle_band() -> void:
 
 func _logged(f: Fixture, text: String) -> bool:
 	return f.logs.any(func(message: String) -> bool: return text in message)
+
+
+## 도움말(#600): 폭죽 화살·효시·일반 DC 문구는 고정 숫자 대신 계산 기준을 적고, 레벨 0·장비 없음의 값은 실제 DC와 같다.
+func _test_help_dc_basis() -> void:
+	var help: Control = (load("res://scenes/help.tscn") as PackedScene).instantiate() as Control
+	root.add_child(help)
+	await process_frame
+	var text: String = "\n".join(help.find_children("*", "Label", true, false).map(
+		func(label: Label) -> String: return label.text))
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var firework: int = CombatActionRules.save_dc(archer, "firework_arrow")
+	var whistle: int = CombatActionRules.save_dc(archer, "whistle")
+	_check("DC는 지능 표준값 + 지능 가감 + 공격 가산, 레벨업·장비 전 %d" % firework in text, "도움말 폭죽 화살: 기준과 시작 값 %d" % firework)
+	_check("DC는 솜씨 표준값 + 솜씨 가감 + 공격 가산, 레벨업·장비 전 %d" % whistle in text, "도움말 효시: 기준과 시작 값 %d" % whistle)
+	_check("민첩 내성(DC 4)" not in text and "의지 내성굴림(DC 11)" not in text, "도움말에 고정 DC 표기가 남지 않음")
+	_check("DC(시전 능력치 표준값 + 능력치 가감 + 공격 가산)" in text, "도움말 일반 DC 공식에 가감 포함")
+	help.free()
 
 
 ## 효시(궁수 문서): 띠 안의 적만 의지 내성(DC 11). 실패하면 산만함 2턴, 피해 없음, 행동과 전투마다 1회를 쓴다.

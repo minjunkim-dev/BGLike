@@ -1142,6 +1142,7 @@ func _run() -> void:
 	await _test_height_scene_input()
 	await _test_blocked_scene_input()
 	await _test_jump_scene_input()
+	await _test_jump_slip_note()
 	await _test_jump_scene_animation()
 	await _test_scene_fall_feedback()
 	await _test_pit_scene_input()
@@ -4293,6 +4294,52 @@ func _test_jump_scene_input() -> void:
 		"같은 착지 두 번째 우클릭은 점프 비용만 쓰고 기본 공격으로 복귀")
 	_check(jumper.position + Vector2(0, jumper.floor_offset_y) == map.map_to_surface(destination),
 		"점프 실행 후 표시한 발 위치는 착지 표면과 일치")
+	battle.queue_free()
+	await process_frame
+
+
+## 점프 미리보기(#600): 출발 칸이나 착지 칸이 기름이면 걷기와 같은 미끌거림 안내를 보인다. 넘어가는 중간 칸은 굴리지 않아 안내하지 않는다.
+func _test_jump_slip_note() -> void:
+	var battle: Node2D = (load("res://scenes/combat/battle.tscn") as PackedScene).instantiate() as Node2D
+	var stage: CombatStage = (load("res://scenes/combat/stage.tres") as CombatStage).duplicate() as CombatStage
+	var destination: Vector2i = Vector2i(1, 6)
+	stage.pits = [Vector2i(1, 5)]
+	stage.heights = {destination: 2}
+	stage.blocked_cells = [Vector2i(2, 5)]
+	stage.ally_cells = [Vector2i(0, 5), Vector2i(1, 4)]
+	battle.stages[0] = stage
+	root.add_child(battle)
+	battle.set_process(false)
+	battle.call("start_battle")
+	await process_frame
+	var units: Array[CombatUnit] = battle.get("units")
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var turns: CombatTurns = battle.get("turns") as CombatTurns
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var map: CombatMap = battle.get_node("Map") as CombatMap
+	var jumper: CombatUnit = units[1]
+	ScriptedDice.arrange_turns(turns, units, [units[1], units[0], units[3], units[2]])
+	turns.select_unit(jumper)
+	actions.dice = _dice_for([], [])
+	var button: Button = (hud.get("_actions") as Dictionary)["jump"] as Button
+	var point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_surface(destination)
+	var note: String = "미끌거림: 솜씨 내성 DC %d" % CombatOil.SLIP_DC
+	var cases: Array = [
+		["기름이 없으면", [], false, false],
+		["착지 칸이 기름이면", [destination], false, true],
+		["출발 칸이 기름이면", [jumper.cell], false, true],
+		["넘어가는 중간 칸만 기름이면", [Vector2i(1, 5)], false, false],
+		["이번 턴에 이미 굴렸으면", [destination], true, false]]
+	for entry: Array in cases:
+		actions._grounds.clear()
+		for cell: Vector2i in entry[1]:
+			actions._grounds.append(CombatActions.Ground.new(jumper, cell, "oil"))
+		jumper.oil_slipped = entry[2]
+		button.pressed.emit()
+		await _click(point, MOUSE_BUTTON_RIGHT)
+		_check(hud.preview_label.visible and "점프 · 이동" in hud.preview_label.text
+			and (note in hud.preview_label.text) == entry[3],
+			"점프 미리보기: %s 미끌거림 안내 %s: %s" % [entry[0], "있음" if entry[3] else "없음", hud.preview_label.text])
 	battle.queue_free()
 	await process_frame
 
