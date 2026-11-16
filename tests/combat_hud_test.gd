@@ -981,6 +981,7 @@ func _test_log_and_status() -> void:
 		"타격음은0.5초 미만의 반복 없는 OGG")
 	_check(not hit_sound.autoplay and hit_sound.volume_db == -12.0
 		and hit_sound.max_polyphony == 4, "타격음 자동 재생 없음·음량-12dB·동시4개 제한")
+	_check(hit_sound.bus == GameSettings.BUS_SFX, "타격음은 SFX 버스로 나감")
 	hit_sound.stop()
 	# 짧은 타격음이 다음 프레임 전에 끝날 수 있어 피해 신호 시점의 재생을 관찰한다.
 	var hit_played: Array[bool] = []

@@ -132,6 +132,36 @@ func _test_settings_survive_delete() -> void:
 	_write_raw(GameSettings.path, "[settings\nmaster_volume=".to_utf8_buffer())
 	_check(GameSettings.volume() == GameSettings.VOLUME_DEFAULT and not GameSettings.fullscreen()
 		and not GameSettings.fill_screen(), "깨진 설정 파일은 기본값")
+	_test_bus_volumes()
+	_test_bus_layout()
+
+
+## 배경음·효과음 음량은 마스터와 따로 저장하고 처음에는 100%다 (#558).
+func _test_bus_volumes() -> void:
+	DirAccess.remove_absolute(GameSettings.path)
+	_check(GameSettings.volume() == 80 and GameSettings.volume(GameSettings.BUS_BGM) == 100
+		and GameSettings.volume(GameSettings.BUS_SFX) == 100, "처음 음량: 마스터 80%, 배경음·효과음 100%")
+	GameSettings.write("bgm_volume", 30)
+	_check(GameSettings.volume(GameSettings.BUS_BGM) == 30 and GameSettings.volume(GameSettings.BUS_SFX) == 100
+		and GameSettings.volume() == 80, "배경음 키는 효과음·마스터와 섞이지 않음")
+	GameSettings.write("sfx_volume", 60)
+	_check(GameSettings.volume(GameSettings.BUS_SFX) == 60 and GameSettings.volume(GameSettings.BUS_BGM) == 30,
+		"효과음 키는 따로 저장")
+	for case: Array in [[34, 30], [35, 40], [-5, 0], [300, 100], [0.5, 100]]:
+		GameSettings.write("sfx_volume", case[0])
+		_check(GameSettings.volume(GameSettings.BUS_SFX) == case[1],
+			"효과음 음량 %s → %d: %d" % [case[0], case[1], GameSettings.volume(GameSettings.BUS_SFX)])
+	DirAccess.remove_absolute(GameSettings.path)
+
+
+## 버스 배치(default_bus_layout.tres): Master ← BGM, Master ← SFX ← UI.
+func _test_bus_layout() -> void:
+	for bus_name: String in [GameSettings.BUS_MASTER, GameSettings.BUS_BGM, GameSettings.BUS_SFX, GameSettings.BUS_UI]:
+		_check(AudioServer.get_bus_index(bus_name) != -1, "오디오 버스 %s가 있음" % bus_name)
+	_check(AudioServer.get_bus_send(AudioServer.get_bus_index(GameSettings.BUS_BGM)) == GameSettings.BUS_MASTER
+		and AudioServer.get_bus_send(AudioServer.get_bus_index(GameSettings.BUS_SFX)) == GameSettings.BUS_MASTER
+		and AudioServer.get_bus_send(AudioServer.get_bus_index(GameSettings.BUS_UI)) == GameSettings.BUS_SFX,
+		"BGM·SFX는 Master로, UI는 SFX로 보냄")
 
 
 func _write_raw(target: String, bytes: PackedByteArray) -> void:
