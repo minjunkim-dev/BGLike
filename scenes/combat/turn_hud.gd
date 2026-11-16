@@ -272,7 +272,9 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 		_titles[index].modulate = Color.WHITE if ally_turn else Color("888888")
 		for action: String in CombatActionRules.GROUPS[index]:
 			var button: Button = _actions[action]
-			button.visible = CombatActionRules.belongs_to(shown, action)
+			# 물약류는 가진 종류만 보인다. 없는 종류는 꺼진 버튼이 아니라 숨긴다(#576).
+			button.visible = (CombatActionRules.belongs_to(shown, action)
+				and not (action in CombatActionRules.POTION_ITEM and CombatActionRules.uses_left(shown, action) == 0))
 			if button.visible and _containers[index].visible:
 				_action_slots.append(button)
 			# 복합 비용은 함께 소비하는 턴 자원 기호를 잇는다. 이동력은 기호가 없다.

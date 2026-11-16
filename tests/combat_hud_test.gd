@@ -494,9 +494,11 @@ func _test_warrior() -> void:
 	_check("자연" not in hud.resource_label.get_parsed_text() and "정신" not in hud.resource_label.get_parsed_text(),
 		"폐지한 능력치는 유닛 정보에서 제거")
 	var warrior_actions: Array[String] = ["attack", "sweep", "cross_slash", "battle_cry", "holy_veil", "steel_charge",
-		"shove", "potion", "opportunity", "counter"]
+		"shove", "opportunity", "counter"]
 	for action: String in warrior_actions:
 		_check((buttons[action] as Button).is_visible_in_tree(), "전사 동작 표시: " + action)
+	_check(not (buttons["potion"] as Button).is_visible_in_tree() and not (buttons["oil_bottle"] as Button).is_visible_in_tree(),
+		"물약 칸이 빈 전사에게 물약류 버튼은 숨김(#576)")
 	for action: String in ["aegisal", "bow_bash", "disengage"]:
 		_check(not (buttons[action] as Button).visible, "궁수·몬스터 동작 숨김: " + action)
 	_check(not buttons.has("mark") and not buttons.has("shock"), "옛 궁수 스킬 버튼 없음(#528)")
@@ -611,7 +613,7 @@ func _test_archer_and_enemy() -> void:
 		"궁수 반응 컨테이너는 반사신경 버튼만 표시")
 	_check((buttons["reflex"] as Button).text == "반" and "반응 1 + 이동력 1" in (buttons["reflex"] as Button).tooltip_text,
 		"반사신경은 아이콘이 없어 이름 첫 글자를 보이고 호버에 비용: " + (buttons["reflex"] as Button).tooltip_text)
-	for action: String in ["attack", "aegisal", "bow_bash", "jump", "potion", "stealth"]:
+	for action: String in ["attack", "aegisal", "bow_bash", "jump", "stealth"]:
 		_check((buttons[action] as Button).visible, "궁수 스킬 표시: " + action)
 	_check((buttons["stealth"] as Button).text == "은" and "전투마다 1회 · 1회 남음" in (buttons["stealth"] as Button).tooltip_text
 		and (buttons["stealth"] as Button).tooltip_text.begins_with("은신\n"),
@@ -709,7 +711,7 @@ func _test_archer_moving_shot_input() -> void:
 	for action: String in buttons:
 		if (buttons[action] as Button).is_visible_in_tree():
 			shown.append(action)
-	_check(shown == ["attack", "trick_arrow", "firework_arrow", "whistle", "aegisal", "bow_bash", "shove", "jump", "potion", "oil_throw", "stealth", "reflex"], "궁수 스킬 패널의 버튼(공용 밀치기 포함): " + str(shown))
+	_check(shown == ["attack", "trick_arrow", "firework_arrow", "whistle", "aegisal", "bow_bash", "shove", "jump", "oil_throw", "stealth", "reflex"], "궁수 스킬 패널의 버튼(공용 밀치기 포함, 물약 칸이 비면 물약류 버튼은 숨김): " + str(shown))
 	# 기름병 던지기: 버튼을 고르고 칸을 한 번 누르면 십자 범위를 보이고, 같은 칸을 다시 누르면 던진다(#500 2a).
 	var oil_cells: Array[Vector2i] = []
 	oil_cells.assign(actions.aim_cells(archer, "oil_throw").filter(func(cell: Vector2i) -> bool:
@@ -728,6 +730,41 @@ func _test_archer_moving_shot_input() -> void:
 			"같은 칸을 다시 누르면 그 칸에 기름을 던짐")
 		actions._grounds.assign(actions._grounds.filter(func(ground: CombatActions.Ground) -> bool: return ground.kind != "oil"))
 		archer.oil_throw_left = 1
+		archer.bonus_action_left = 1
+		battle.call("_update_turn_ui")
+	# 물약류 버튼(#576): 가진 종류만 보이고 개수를 배지로 보이며 기름병 던지기 앞에 놓인다.
+	var potion_button: Button = buttons["potion"]
+	var bottle_button: Button = buttons["oil_bottle"]
+	_check(not potion_button.is_visible_in_tree() and not bottle_button.is_visible_in_tree(), "물약 칸이 비면 두 종류 버튼 모두 숨김")
+	archer.potions.assign(["healing_potion", "oil_bottle", "oil_bottle"])
+	battle.call("_update_turn_ui")
+	var badges: Dictionary = hud.get("_badges")
+	_check(potion_button.is_visible_in_tree() and bottle_button.is_visible_in_tree()
+		and (badges["potion"] as Label).text == "1" and (badges["oil_bottle"] as Label).text == "2",
+		"가진 종류마다 버튼과 남은 개수 배지")
+	_check(potion_button.get_index() < bottle_button.get_index() and bottle_button.get_index() < (buttons["oil_throw"] as Button).get_index(),
+		"버튼 순서는 회복 물약, 기름병, 기름병 던지기")
+	var bottle_icon: Texture2D = bottle_button.icon
+	_check(bottle_icon != null and bottle_icon != (buttons["oil_throw"] as Button).icon and bottle_icon != potion_button.icon,
+		"기름병 버튼은 던지기·회복 물약과 다른 그림")
+	archer.potions.assign(["oil_bottle"])
+	battle.call("_update_turn_ui")
+	_check(not potion_button.is_visible_in_tree() and bottle_button.is_visible_in_tree(), "회복 물약이 없으면 그 버튼만 숨김")
+	var bottle_cells: Array[Vector2i] = []
+	bottle_cells.assign(actions.aim_cells(archer, "oil_bottle").filter(func(cell: Vector2i) -> bool:
+		return cell != archer.cell and actions._oil_site_ok(cell, cell)))
+	_check(not bottle_cells.is_empty(), "기름병 검사 전제: 던질 수 있는 칸이 있음")
+	if not bottle_cells.is_empty():
+		battle.call("_on_action_selected", "oil_bottle")
+		var bottle_selection: CombatSelection = battle.get("selection") as CombatSelection
+		_check(bottle_selection.selected_action == "oil_bottle", "기름병 버튼은 칸 조준 모드로 들어감")
+		battle.call("_select_aim_cell", bottle_cells[0])
+		_check(archer.potions == ["oil_bottle"] and bottle_selection.preview_cell == bottle_cells[0], "첫 클릭은 칸만 고름")
+		battle.call("_select_aim_cell", bottle_cells[0])
+		_check(actions.get_grounds().any(func(ground: CombatActions.Ground) -> bool:
+			return ground.kind == "oil" and ground.cell == bottle_cells[0]) and archer.potions.is_empty() and archer.oil_throw_left == 1
+			and not bottle_button.is_visible_in_tree(), "같은 칸을 다시 누르면 던지고 마지막 기름병이면 버튼이 사라짐")
+		actions._grounds.assign(actions._grounds.filter(func(ground: CombatActions.Ground) -> bool: return ground.kind != "oil"))
 		archer.bonus_action_left = 1
 		battle.call("_update_turn_ui")
 	# 장난스러운 화살·폭죽 화살(#500 2b): 첫 클릭은 칸만 고르고 같은 칸을 다시 누르면 쏜다.
@@ -1238,7 +1275,7 @@ func _test_guidance() -> void:
 	battle.call("_update_turn_ui")
 	await _hover((buttons["potion"] as Button))
 	_check((buttons["potion"] as Button).tooltip_text ==
-		"물약\nHP 2d4+2 회복.\n최대 HP를 넘지 않습니다.\n사거리: 자신\n회복: 2d4+2\n판정: 없음\n지금 사용 불가: HP가 이미 최대",
+		"회복 물약\nHP 2d4+2 회복.\n최대 HP를 넘지 않습니다.\n사거리: 자신\n회복: 2d4+2\n판정: 없음\n지금 사용 불가: HP가 이미 최대",
 		"비활성 물약은 이름·효과·사거리·회복·판정·이유를 표시")
 	units[0].potions.assign([])
 	for action: String in buttons:
@@ -1435,6 +1472,8 @@ func _test_focus_tooltips(buttons: Dictionary) -> void:
 	var timer: Timer = hud.get("_tooltip").get("_timer") as Timer
 	turns.select_unit(units[0])
 	battle.call("_update_turn_ui")
+	units[0].potions.assign(["healing_potion"])
+	battle.call("_update_turn_ui")
 	var hovered: Button = buttons["potion"] as Button
 	await _hover(hovered)
 	hovered.grab_focus()
@@ -1444,6 +1483,8 @@ func _test_focus_tooltips(buttons: Dictionary) -> void:
 	_check(hovered.has_focus() and not hovered.has_focus(true),
 		"클릭 포커스는 숨긴 포커스라 흰 테두리가 선택 금색 테두리를 덮지 않음")
 	hovered.release_focus()
+	units[0].potions.clear()
+	battle.call("_update_turn_ui")
 	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900)]:
 		root.size = size
 		await process_frame
@@ -1863,6 +1904,7 @@ func _test_boundary_incapacitated_portrait_join() -> void:
 
 func _test_skill_bar_keys() -> void:
 	_reset_units()
+	units[0].potions.assign(["healing_potion"])
 	turns.select_unit(units[0])
 	battle.call("_update_turn_ui")
 	root.gui_release_focus()
@@ -1991,6 +2033,7 @@ func _test_skill_bar_keys() -> void:
 	await _key(KEY_RIGHT)
 	_check(root.gui_get_focus_owner() == null and selection.selected_action == "attack",
 		"적 턴에 숫자 키·방향키는 스킬을 고르지 않음")
+	units[0].potions.clear()
 	_reset_units()
 	battle.call("_update_turn_ui")
 
