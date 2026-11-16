@@ -80,6 +80,7 @@ func _run() -> void:
 	await _test_leaving_slip()
 	await _test_entering_slip()
 	await _test_forced_entry_slip()
+	_test_slip_note()
 	await _test_turn_start_release()
 	await _test_fallen_limits_and_stand_up()
 	_test_prone_has_available_action()
@@ -259,6 +260,27 @@ func _test_entering_slip() -> void:
 	_check(await g.actions.move_to(g.units[0], Vector2i(3, 2)) and g.units[0].cell == Vector2i(3, 2)
 		and not g.units[0].fallen, "들어가기 성공은 이동을 계속함")
 	_check(_oil_cells(g).size() == 1, "기름 칸 밖의 다른 기름은 그대로")
+
+
+## 걷기 미리보기 안내: 이번 걷기에서 미끌거림을 굴리게 되면 실제 DC를 한 줄로 보인다.
+func _test_slip_note() -> void:
+	var expected: String = "미끌거림: 솜씨 내성 DC %d" % CombatOil.SLIP_DC
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var path: Array[Vector2i] = [Vector2i(3, 3), Vector2i(3, 2)]
+	_check(f.actions.slip_note(archer, path).is_empty(), "기름이 없으면 안내 없음")
+	_single_oil(f, Vector2i(3, 3), archer)
+	_check(f.actions.slip_note(archer, path) == expected, "경로가 기름 칸에 들어가면 안내: " + f.actions.slip_note(archer, path))
+	_check(f.actions.slip_note(archer, [Vector2i(2, 4), Vector2i(2, 5)]).is_empty(), "경로가 기름을 지나지 않으면 안내 없음")
+	_check(f.actions.slip_note(archer, []).is_empty(), "빈 경로는 안내 없음")
+	archer.oil_slipped = true
+	_check(f.actions.slip_note(archer, path).is_empty(), "이번 턴에 이미 굴렸으면 안내 없음")
+	var g: Fixture = _fixture()
+	var walker: CombatUnit = g.units[0]
+	_single_oil(g, walker.cell, walker)
+	_check(g.actions.slip_note(walker, [Vector2i(3, 3), Vector2i(3, 2)]) == expected, "출발 칸이 기름이면 떠나기 안내")
+	_single_oil(g, Vector2i(3, 3), walker)
+	_check(g.actions.slip_note(walker, [Vector2i(3, 3), Vector2i(3, 2)]) == expected, "기름에서 기름으로 가도 한 줄")
 
 
 ## 강제 이동 착지는 진입 굴림만 한다(떠나기 없음).

@@ -1069,6 +1069,17 @@ func shove_landing(target: CombatUnit, destination: Vector2i) -> String:
 	return " · ".join(notes)
 
 
+## 걷기 경로(출발 칸 제외)에서 미끌거림을 굴리게 되면 그 DC 안내. 굴림은 턴마다 한 번이라 안내도 한 줄이다.
+## 출발 칸이 기름이면 떠나기, 경로에 기름 칸이 있으면 들어가기다. 이미 굴렸거나 기름을 지나지 않으면 빈 문자열이다.
+func slip_note(unit: CombatUnit, path: Array[Vector2i]) -> String:
+	if not is_instance_valid(unit) or path.is_empty() or unit.oil_slipped:
+		return ""
+	var leaving: bool = _oil_at(unit.cell) != null
+	if not leaving and not path.any(func(cell: Vector2i) -> bool: return _oil_at(cell) != null):
+		return ""
+	return tr("미끌거림: 솜씨 내성 DC %d") % CombatOil.SLIP_DC
+
+
 ## 걷기·점프 도착 칸이 물이면 서기 전에 읽는 물 칸 화상 규칙(#503)과 명중굴림 불리(#532). 물이 아니면 빈 문자열이다.
 func water_note(cell: Vector2i) -> String:
 	if cell not in grid.water_cells:
