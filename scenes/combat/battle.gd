@@ -46,6 +46,7 @@ var waiting_for_start: bool = true
 var staging: HBoxContainer
 var start_button: Button
 
+var hit_effects: CombatHitEffects
 @onready var map: CombatMap = $Map
 @onready var camera: CombatCamera = $Camera
 @onready var hud: CombatTurnHud = $UI/TurnHud
@@ -104,6 +105,11 @@ func _ready() -> void:
 	actions.hit_landed.connect(func() -> void:
 		if not _replaying():
 			$HitSound.play())
+	hit_effects = CombatHitEffects.new()
+	hit_effects.name = "HitEffects"
+	hit_effects.z_index = 5
+	add_child(hit_effects)
+	actions.struck.connect(_on_struck)
 	actions.reaction_requested.connect(_on_reaction_requested)
 	hud.reflex_selected.connect(_on_reflex_selected)
 	hud.reflex_previewed.connect(_on_reflex_previewed)
@@ -117,6 +123,18 @@ func _ready() -> void:
 	turns.changed.connect(_on_turn_changed)
 	turns.order_rotated.connect(hud.prepare_order_rotation)
 	_start_stage(true)
+
+
+## 타격 섬광·히트스톱·빗나감 잔상(#559). 이어하기 재실행에서는 피해 팝업·피격음처럼 생략한다.
+func _on_struck(attacker: CombatUnit, target: CombatUnit, cell: Vector2i, hit: bool) -> void:
+	if _replaying():
+		return
+	if not hit:
+		hit_effects.play_miss(attacker, target)
+	elif target == null:
+		hit_effects.play_hit(attacker, null, map.map_to_surface(cell) + Vector2(0, -8))
+	else:
+		hit_effects.play_hit(attacker, target, target.position + Vector2(0, target.floor_offset_y - 14))
 
 
 ## 반응 확인 창을 띄운다. 반사신경이면 후보 칸을 맵에 보인다.
