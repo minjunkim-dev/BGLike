@@ -130,6 +130,13 @@ class DocLinkTests(unittest.TestCase):
         self.assertEqual(self.problems(), [])
         self.assertEqual(slug("__init__ 와 *강조*"), "init-와-강조")
 
+    def test_underscores_in_code_spans_and_unpaired_underscores_stay_in_anchors(self):
+        self.write("docs/a.md", "[a](#__init__) [b](#_ready-함수) [c](#_private-값)\n\n"
+                   "## `__init__`\n\n## `_ready` 함수\n\n## _private 값\n")
+        self.assertEqual(self.problems(), [])
+        self.assertEqual(slug("`_ready` 함수"), "_ready-함수")
+        self.assertEqual(slug("__굵게__ 와 _기울임_"), "굵게-와-기울임")
+
     def test_generated_anchor_that_collides_gets_the_next_suffix(self):
         self.write("docs/a.md", "[third](#foo-1-1)\n\n## Foo\n\n## Foo\n\n## Foo-1\n")
         self.assertEqual(self.problems(), [])
@@ -142,6 +149,15 @@ class DocLinkTests(unittest.TestCase):
     def test_docs_path_inside_an_external_url_is_not_a_local_reference(self):
         self.write("scripts/tool.py", '"https://example.com/docs/guide.md" docs/gone.md\n')
         self.assertEqual(self.problems(), ["scripts/tool.py:1: docs 경로가 없음: docs/gone.md"])
+
+    def test_local_docs_path_after_an_external_url_is_still_checked(self):
+        self.write("scripts/tool.py", '{"url":"https://a.com/x","path":"docs/gone.md"}\n')
+        self.assertEqual(self.problems(), ["scripts/tool.py:1: docs 경로가 없음: docs/gone.md"])
+
+    def test_query_before_fragment_resolves_the_heading(self):
+        self.write("docs/a.md", "[s](b.md?plain=1#제목) [x](b.md?plain=1#없음)\n")
+        self.write("docs/b.md", "# 제목\n")
+        self.assertEqual(self.problems(), ["docs/a.md:1: 제목이 없음: b.md?plain=1#없음"])
 
     def test_repository_doc_links_resolve(self):
         self.assertEqual(check(ROOT), [])

@@ -25,7 +25,11 @@ SCHEME = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|//)")
 # Plain-text references to docs files in code, scripts and workflows. Partial names such as
 # "docs/adr/0003" are not checked: only a full file name can be proven missing.
 CODE_REFERENCE = re.compile(r"docs/[\w./-]*\w\.(?:md|png|svg)")
-URL = re.compile(r"[a-zA-Z][a-zA-Z0-9+.-]*://\S+")
+# A URL ends at the first quote, bracket or separator, so a docs/ path after it is still checked.
+URL = re.compile(r"[a-zA-Z][a-zA-Z0-9+.-]*://[^\s\"'`<>\[\]()\\,;]+")
+# Underscore emphasis wraps a word: "_x_" or "__x__", not the underscore inside "a_b".
+EMPHASIS = re.compile(r"(?<!\w)(_{1,2})(?=\S)(.+?)(?<=\S)\1(?!\w)")
+LITERAL_UNDERSCORE = "\0"
 CODE_FILES = ("*.gd", "*.py", "*.sh", "*.yml", "*.json", "*.cfg", "*.txt", "Makefile", ".githooks/*")
 
 
@@ -58,8 +62,10 @@ def prose_lines(text):
 def slug(heading):
     """GitHub's heading anchor: plain text, lower case, no punctuation, spaces to hyphens."""
     text = re.sub(r"!?\[([^\]]*)\]\([^)]*\)", r"\1", heading)
+    # Underscores inside a code span are text, so they are set aside while emphasis is removed.
+    text = INLINE_CODE.sub(lambda span: span[0].replace("_", LITERAL_UNDERSCORE), text)
     text = re.sub(r"<[^>]+>", "", text.replace("`", "").replace("*", "").replace("~~", ""))
-    text = re.sub(r"(?<!\w)_+|_+(?!\w)", "", text)  # emphasis, not the underscore inside a word
+    text = EMPHASIS.sub(r"\2", text).replace(LITERAL_UNDERSCORE, "_")
     return re.sub(r"[^\w\- ]", "", text.strip().lower()).replace(" ", "-")
 
 
