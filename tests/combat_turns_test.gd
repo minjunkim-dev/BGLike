@@ -521,16 +521,16 @@ func _test_scene() -> void:
 	var old_round: int = turns.round_number
 	_check(hud.unit_label.text == current.get_display_name(), "장면 연결: 현재 유닛 표시")
 	_check(current.is_selected, "장면 연결: 현재 유닛 선택 테두리")
-	var style: StyleBoxFlat = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
-	_check(style.bg_color == CombatTurnHud.DEFAULT_BUTTON_COLOR, "이동할 수 있으면 종료 강조 없음")
+	var style: StyleBoxTexture = hud.end_button.get_theme_stylebox("normal") as StyleBoxTexture
+	_check(style.modulate_color == CombatTurnHud.DEFAULT_BUTTON_COLOR, "이동할 수 있으면 종료 강조 없음")
 	# 전사의 성스러운 장막·전투의 함성과 빈 반달 휩쓸기(#436)는 대상 없이 쓰므로 행동·보조 행동과 함성 횟수도 비운다.
 	current.movement_left = 0
 	current.action_left = 0
 	current.bonus_action_left = 0
 	current.battle_cry_left = 0
 	battle.call("_update_turn_ui")
-	style = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
-	_check(style.bg_color == CombatTurnHud.END_BUTTON_COLOR, "유효한 동작 없으면 버튼 색만 강조")
+	style = hud.end_button.get_theme_stylebox("normal") as StyleBoxTexture
+	_check(style.modulate_color == CombatTurnHud.END_BUTTON_COLOR, "유효한 동작 없으면 버튼 색만 강조")
 	await process_frame
 	_check(turns.current_unit == current, "실행 가능한 동작이 없어도 자동 종료 없음")
 	hud.end_button.pressed.emit()

@@ -23,17 +23,8 @@ var _timer: Timer = Timer.new()
 func _init() -> void:
 	z_index = 10
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color("202b35")
-	style.border_color = Color("61717e")
-	style.set_border_width_all(1)
-	style.content_margin_left = 4
-	style.content_margin_right = 4
-	style.content_margin_top = 3
-	style.content_margin_bottom = 3
-	add_theme_stylebox_override("panel", style)
+	theme_type_variation = &"HudPanel"
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_label.add_theme_font_size_override("normal_font_size", 10)
 	# 수치 가감은 색과 부호로 구분한다(#457). 줄바꿈은 tooltip_text 그대로 쓰므로 자동 줄바꿈은 끈다.
 	_label.bbcode_enabled = true
 	_label.fit_content = true
