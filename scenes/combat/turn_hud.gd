@@ -568,6 +568,8 @@ func _build_portraits(turns: CombatTurns) -> void:
 		_order_tween.kill()
 	for child: Node in order_bar.get_children():
 		child.free()
+	# 커서 밑 초상 버튼을 free하면 mouse_exited가 오지 않는다. 낡은 호버를 풀어 위협 범위가 남지 않게 한다(#556).
+	unit_hovered.emit(null)
 	_portraits.clear()
 	_shown_order = turns.ordered_units.duplicate()
 	for group: Array in turns.get_turn_groups():

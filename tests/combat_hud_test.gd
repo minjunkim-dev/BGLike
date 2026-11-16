@@ -229,7 +229,6 @@ func _test_movement_overlay() -> void:
 	map.free()
 
 
-## #392: 높이가 다른 이웃 칸의 윗면 경계. 실제로 그린 두 배 밀도 텍스처의 가장자리 도트를 읽는다.
 func _test_threat_overlay() -> void:
 	var grid: CombatGrid = CombatGrid.new()
 	grid.map_size = Vector2i(3, 2)
@@ -264,6 +263,7 @@ func _test_threat_overlay() -> void:
 	map.free()
 
 
+## #392: 높이가 다른 이웃 칸의 윗면 경계. 실제로 그린 두 배 밀도 텍스처의 가장자리 도트를 읽는다.
 func _test_height_edges() -> void:
 	var grid: CombatGrid = CombatGrid.new()
 	grid.map_size = Vector2i(4, 4)
@@ -1752,6 +1752,9 @@ func _test_threat_range_input() -> void:
 	_check(_threat_marks() == _expected_threat([units[3]]), "턴 순서 초상 위에 올리면 그 적의 범위만 보임")
 	hud.unit_hovered.emit(null)
 	_check(_threat_marks() == both, "초상에서 떠나면 전체 범위로 돌아감")
+	hud.unit_hovered.emit(units[3])
+	hud.call("_build_portraits", turns)
+	_check(_threat_marks() == both, "초상 버튼을 다시 만들면 낡은 초상 호버는 풀림")
 	hud.unit_hovered.emit(units[0])
 	_check(_threat_marks() == both, "아군 초상을 올려도 위협 표시는 바뀌지 않음")
 	units[3].hit_points = 0
