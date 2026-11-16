@@ -55,7 +55,8 @@ Ubuntu 24.04에서 로컬과 같은 `make godot-install`, `make godot-check`를 
 policy 성공과 `game=true`·smoke 성공 조합만 게임 검사를 통과합니다.
 policy 성공과 `game=false`·smoke skipped 조합만 문서 검사 생략을 허용합니다.
 실패·취소·누락·알 수 없는 scope 또는 결과는 `CI`를 실패 처리합니다.
-기존 두 필수 검사 이름을 유지합니다. 실제 `CI` required check 등록 여부는 GitHub 보호 API로 따로 확인합니다.
+판정 job `ci`는 `CI` 작업의 결과를 받아 성공일 때만 통과합니다. 필수 체크 기대값은 `ci` 하나입니다([저장소 설정](REPOSITORY_SETUP.md)).
+`policy / PR conventions and scope`, `smoke`, `CI`의 이름은 세부 job으로 유지합니다. 실제 required check 등록 여부는 GitHub 보호 API로 따로 확인합니다.
 재사용 작업의 실제 check 이름은 호출 작업 이름을 포함할 수 있습니다. GitHub의 해당 실행에서 이름을 확인한 뒤 보호 규칙에 지정합니다.
 policy는 Python 회귀 검사 뒤 전체 workflow에 actionlint 1.7.12를 실행합니다.
 공식 Linux x86_64 배포 파일의 SHA-256을 검사한 뒤 실행합니다.

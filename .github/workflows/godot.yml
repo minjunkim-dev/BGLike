@@ -87,7 +87,8 @@ jobs:
             "${ENGINE_VERSION:-unknown}" "${CACHE_RESULT:-unknown}" "$cache_hit" \
             "${ARCHIVE_SOURCE:-unknown}" "${INSTALL_RESULT:-unknown}" >> "$GITHUB_STEP_SUMMARY"
 
-  ci:
+  # Old required check, kept until the owner applies the single `ci` check; then fold it into `ci`.
+  legacy-ci:
     name: CI
     needs: [policy, smoke]
     if: always()
@@ -103,6 +104,19 @@ jobs:
           GAME_REQUIRED: ${{ needs.policy.outputs.game }}
           SMOKE_RESULT: ${{ needs.smoke.result }}
         run: python3 scripts/ci_gate.py
+
+  # The one required check (repo-baseline contract): it passes only when every job it needs succeeded.
+  ci:
+    name: ci
+    needs: [legacy-ci]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: every job succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: for r in $RESULTS; do [ "$r" = success ] || { echo "a job ended with $r"; exit 1; }; done
 
   notify:
     needs: [policy, smoke]
