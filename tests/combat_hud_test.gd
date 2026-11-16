@@ -555,8 +555,8 @@ func _test_resources() -> void:
 	units[0].movement_left = 0
 	units[0].action_left = 0
 	battle.call("_update_turn_ui")
-	var style: StyleBoxFlat = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
-	_check(style.bg_color == CombatTurnHud.END_BUTTON_COLOR and turns.current_unit == units[0],
+	var style: StyleBoxTexture = hud.end_button.get_theme_stylebox("normal") as StyleBoxTexture
+	_check(style.modulate_color == CombatTurnHud.END_BUTTON_COLOR and turns.current_unit == units[0],
 		"할 일이 없으면 색만 변경하고 턴 유지")
 	await process_frame
 
@@ -820,7 +820,7 @@ func _test_log_and_status() -> void:
 	_check(hud.message_label.text == "둘째\n셋째\n넷째", "최근 로그는 정확히3줄")
 	# 배경이 불투명해야 아래 지형과 관계없이 명암비가 고정된다.
 	var log_panel: PanelContainer = hud.get_node("CombatLog") as PanelContainer
-	var log_background: Color = (log_panel.get_theme_stylebox("panel") as StyleBoxFlat).bg_color
+	var log_background: Color = (log_panel.get_theme_stylebox("panel") as StyleBoxTexture).modulate_color
 	var log_contrast: float = _contrast_ratio(hud.message_label.get_theme_color("font_color"), log_background)
 	_check(log_background.a == 1.0 and log_contrast >= 4.5,
 		"전투 로그 불투명 배경과 WCAG AA 4.5:1 이상: alpha %.2f, %.2f" % [log_background.a, log_contrast])
@@ -851,13 +851,13 @@ func _test_log_and_status() -> void:
 		and hud.stand_button.text == "일어나기 · 이동력 %d" % stand_cost
 		and not hud.stand_button.get_global_rect().intersects(hud.end_button.get_global_rect()),
 		"넘어진 아군의 턴에는 비용을 적은 일어나기 버튼이 턴 종료 위에 보임")
-	var prone_end_style: StyleBoxFlat = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
-	_check(prone_end_style.bg_color != CombatTurnHud.END_BUTTON_COLOR,
+	var prone_end_style: StyleBoxTexture = hud.end_button.get_theme_stylebox("normal") as StyleBoxTexture
+	_check(prone_end_style.modulate_color != CombatTurnHud.END_BUTTON_COLOR,
 		"넘어진 아군의 이동력이 일어서기 비용 이상이면 턴 종료를 강조하지 않음(#560)")
 	standing.movement_left = stand_cost - 1
 	battle.call("_update_turn_ui")
-	prone_end_style = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
-	_check(prone_end_style.bg_color == CombatTurnHud.END_BUTTON_COLOR,
+	prone_end_style = hud.end_button.get_theme_stylebox("normal") as StyleBoxTexture
+	_check(prone_end_style.modulate_color == CombatTurnHud.END_BUTTON_COLOR,
 		"이동력이 비용보다 적으면 턴 종료를 강조함(#560)")
 	standing.movement_left = stand_cost
 	battle.call("_update_turn_ui")

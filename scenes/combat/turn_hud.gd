@@ -20,8 +20,10 @@ class SpaceBlocker extends Node:
 
 ## 확인 창 모양은 프로젝트 공용 테마에서 가져온다(#262).
 const UI_THEME: Theme = preload("res://scenes/ui_theme.tres")
-const DEFAULT_BUTTON_COLOR: Color = Color("354656")
+const DEFAULT_BUTTON_COLOR: Color = Color("223940")
 const END_BUTTON_COLOR: Color = Color("926725")
+## 포커스 테두리 색(docs/PIXEL_ART.md UI 절).
+const FOCUS_COLOR: Color = Color("ebba84")
 const RESOURCE_COLORS: Array[Color] = [Color("70c76d"), Color("edaa54"), Color("ac90e5")]
 
 var _shown_order: Array[CombatUnit] = []
@@ -76,8 +78,13 @@ func feedback_obstacles() -> Array[Rect2]:
 
 
 func _ready() -> void:
-	# 기본 반투명 배경은 아래 지형에 따라 대비가 바뀐다. 불투명 패널로 WCAG AA를 고정한다.
-	$CombatLog.add_theme_stylebox_override("panel", _panel_style())
+	# 유닛 정보 패널의 HP 바는 맵 위 HP 바와 같은 색이다.
+	var health_fill: StyleBoxFlat = StyleBoxFlat.new()
+	health_fill.bg_color = CombatUnit.HEAL_COLOR
+	var health_back: StyleBoxFlat = StyleBoxFlat.new()
+	health_back.bg_color = CombatUnit.OUTLINE_COLOR
+	health_bar.add_theme_stylebox_override("fill", health_fill)
+	health_bar.add_theme_stylebox_override("background", health_back)
 	# 스킬 설명은 전투 로그와 스킬 패널 위에 띄워 판정 기록을 가리지 않는다.
 	_tooltip.top_of = func(target: Control) -> float:
 		return minf(($CombatLog as Control).get_global_rect().position.y, ($Skills as Control).get_global_rect().position.y) \
@@ -100,19 +107,19 @@ func _ready() -> void:
 	_build_passives()
 	for index: int in range(CombatActionRules.GROUPS.size()):
 		var panel: PanelContainer = PanelContainer.new()
-		panel.add_theme_stylebox_override("panel", _panel_style())
+		panel.theme_type_variation = &"HudPanel"
 		action_bar.add_child(panel)
 		_containers.append(panel)
 		# 컨테이너마다 한 줄이다. 버튼이 줄을 넘치면 같은 컨테이너 안에서 다음 줄로 넘긴다(#438).
 		var row: HBoxContainer = HBoxContainer.new()
-		row.add_theme_constant_override("separation", 4)
+		# Galmuri11 제목이 대체 글꼴보다 넓어, 버튼 다섯 개가 한 줄에 들어가도록 제목과 버튼 사이를 줄였다.
+		row.add_theme_constant_override("separation", 1)
 		panel.add_child(row)
 		var title: Label = Label.new()
 		title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		title.add_theme_font_size_override("font_size", 10)
 		title.add_theme_color_override("font_color", RESOURCE_COLORS[index])
 		# 제목 폭을 맞춰 세 줄의 첫 버튼을 같은 세로선에 둔다.
-		title.custom_minimum_size.x = 58
+		title.custom_minimum_size.x = 65
 		title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		row.add_child(title)
 		_titles.append(title)
@@ -279,7 +286,7 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			for state: String in ["normal", "hover", "pressed", "disabled"]:
 				button.add_theme_stylebox_override(state, _button_style(color, border))
 			# 키보드·컨트롤러 포커스는 배경 위에 흰 테두리만 겹친다.
-			var focus: StyleBoxFlat = _button_style(color, Color.WHITE)
+			var focus: StyleBoxFlat = _button_style(color, FOCUS_COLOR)
 			focus.draw_center = false
 			button.add_theme_stylebox_override("focus", focus)
 			var uses: int = CombatActionRules.uses_left(shown, action)
@@ -465,9 +472,13 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 		for state: String in ["normal", "disabled", "hover", "pressed", "focus"]:
 			button.add_theme_stylebox_override(state, _button_style(color.darkened(0.3), border))
 	var end_color: Color = DEFAULT_BUTTON_COLOR if has_available_action else END_BUTTON_COLOR
-	end_button.add_theme_stylebox_override("normal", _button_style(end_color))
-	end_button.add_theme_stylebox_override("hover", _button_style(end_color.lightened(0.12)))
-	end_button.add_theme_stylebox_override("pressed", _button_style(end_color.darkened(0.12)))
+	# 남은 동작이 없으면 테마 버튼 프레임에 강조 색만 입힌다. 있으면 테마 색 그대로다.
+	for state: String in ["normal", "hover", "pressed"]:
+		var end_style: StyleBoxTexture = UI_THEME.get_stylebox(state, "Button").duplicate() as StyleBoxTexture
+		if not has_available_action:
+			end_style.modulate_color = end_color.lightened(0.12) if state == "hover" \
+				else end_color.darkened(0.12) if state == "pressed" else end_color
+		end_button.add_theme_stylebox_override(state, end_style)
 
 
 ## 상태 줄은 상태와 상태 사이에서만 줄을 바꾼다. 자동 줄바꿈은 한글 단어 중간(`기절 면/역`)도 끊는다(#503).
@@ -574,7 +585,7 @@ func _build_portraits(turns: CombatTurns) -> void:
 		panel.z_index = -1
 		# 이동 중 초상을 덮는 다른 묶음의 빈 배경은 클릭을 받지 않는다.
 		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		panel.add_theme_stylebox_override("panel", _panel_style())
+		panel.theme_type_variation = &"HudPanel"
 		var box: HBoxContainer = HBoxContainer.new()
 		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_theme_constant_override("separation", 3)
@@ -589,7 +600,6 @@ func _build_portraits(turns: CombatTurns) -> void:
 				unit.get_art_id(), "right" if unit.is_ally else "left"]) as Texture2D
 			button.material = preload("res://scenes/combat/art/pixel_art.tres")
 			button.add_theme_constant_override("icon_max_width", 32)
-			button.add_theme_font_size_override("font_size", 10)
 			button.add_theme_color_override("font_disabled_color", Color("b5bdc4"))
 			button.pressed.connect(func() -> void: unit_selected.emit(unit))
 			box.add_child(button)
@@ -597,7 +607,6 @@ func _build_portraits(turns: CombatTurns) -> void:
 			pending.name = "PendingTurn"
 			pending.text = "⌛"
 			pending.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			pending.add_theme_font_size_override("font_size", 12)
 			button.add_child(pending)
 			pending.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 			pending.offset_left = -15
@@ -625,15 +634,6 @@ func _animate_order_rotation(positions: Dictionary[CombatUnit, Vector2], revisio
 		button.position += positions[unit] - button.global_position
 		_order_tween.tween_property(button, "position", destination, 0.25).set_trans(
 			Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-
-
-func _panel_style() -> StyleBoxFlat:
-	var style: StyleBoxFlat = _button_style(Color("202b35"))
-	style.content_margin_left = 4
-	style.content_margin_right = 4
-	style.content_margin_top = 3
-	style.content_margin_bottom = 3
-	return style
 
 
 func _button_style(color: Color, border: Color = Color("61717e")) -> StyleBoxFlat:
