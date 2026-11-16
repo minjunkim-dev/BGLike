@@ -80,6 +80,11 @@ var body_offset_y: float = 0.0:
 	set(value):
 		body_offset_y = value
 		queue_redraw()
+## 맞았을 때 그림만 잠깐 미는 거리(#559). position·칸은 바꾸지 않는다.
+var recoil_offset: Vector2 = Vector2.ZERO:
+	set(value):
+		recoil_offset = value
+		queue_redraw()
 var initiative_roll: int = 0
 var movement_left: int = MOVEMENT_PER_TURN
 var action_capacity: int = 1
@@ -631,6 +636,17 @@ func _sync_sprite() -> void:
 		_silhouette.texture = _sprite.sprite_frames.get_frame_texture(_sprite.animation, _sprite.frame)
 
 
+## 히트스톱(#559): 그림 애니메이션을 멈추거나 다시 재생한다.
+func set_hit_pause(paused: bool) -> void:
+	if _sprite != null:
+		_sprite.speed_scale = 0.0 if paused else 1.0
+
+
+## 지금 그려진 프레임. 잔상이 복제한다.
+func current_frame_texture() -> Texture2D:
+	return _sprite.sprite_frames.get_frame_texture(_sprite.animation, _sprite.frame)
+
+
 func play_attack() -> void:
 	_attacking = true
 	_sprite.stop()
@@ -658,7 +674,7 @@ func _draw() -> void:
 		Color("f4ead1") if is_previewed else (ALLY_COLOR if is_ally else ENEMY_COLOR))
 	(_silhouette.material as ShaderMaterial).set_shader_parameter("outline_color", edge)
 	(_silhouette.material as ShaderMaterial).set_shader_parameter("fill_alpha", 0.22 if is_occluded else 0.0)
-	_silhouette.position = Vector2(0, floor_offset_y + body_offset_y)
+	_silhouette.position = Vector2(0, floor_offset_y + body_offset_y) + recoil_offset
 	_sprite.position = _silhouette.position
 	_sprite.modulate.a = 0.5 if stealthed else 1.0
 	draw_set_transform(Vector2(0, floor_offset_y))
