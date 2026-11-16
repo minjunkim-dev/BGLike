@@ -642,7 +642,6 @@ func _logged(f: Fixture, text: String) -> bool:
 	return f.logs.any(func(message: String) -> bool: return text in message)
 
 
-## 효시(궁수 문서): 띠 안의 적만 의지 내성(DC 11). 실패하면 산만함 2턴, 피해 없음, 행동과 전투마다 1회를 쓴다.
 ## 도움말(#600): 폭죽 화살·효시·일반 DC 문구는 고정 숫자 대신 계산 기준을 적고, 레벨 0·장비 없음의 값은 실제 DC와 같다.
 func _test_help_dc_basis() -> void:
 	var help: Control = (load("res://scenes/help.tscn") as PackedScene).instantiate() as Control
@@ -661,6 +660,7 @@ func _test_help_dc_basis() -> void:
 	help.free()
 
 
+## 효시(궁수 문서): 띠 안의 적만 의지 내성(DC 11). 실패하면 산만함 2턴, 피해 없음, 행동과 전투마다 1회를 쓴다.
 func _test_whistle() -> void:
 	var f: Fixture = _fixture()
 	var archer: CombatUnit = f.units[0]
