@@ -1243,9 +1243,25 @@ func _test_slot_width() -> void:
 	_check(CombatTurnHud.slot_width(100.0, 0) == 52, "버튼이 없으면 원래 폭")
 
 
+# 어떤 아군도 한 줄에 SLOT_ROW_MAX개를 넘는 스킬을 갖지 않고, 그 개수는 최소 폭으로 줄에 들어간다(#554).
+# 스킬이 늘어 이 검사가 실패하면 패널 배치를 다시 정한다.
+func _test_slot_row_max() -> void:
+	var room: int = CombatTurnHud.SLOT_MIN * CombatTurnHud.SLOT_ROW_MAX + CombatTurnHud.SLOT_GAP * (CombatTurnHud.SLOT_ROW_MAX - 1)
+	for index: int in range(CombatActionRules.GROUPS.size()):
+		_check(room <= hud.call("_slot_room", index), "줄 %d: 최소 폭 %d칸이 줄에 들어감 (%d / %.0f)" % [
+			index, CombatTurnHud.SLOT_ROW_MAX, room, hud.call("_slot_room", index)])
+		for who: CombatUnit in [units[0], units[1]]:
+			# 물약류는 가진 종류만 보이므로, 모든 종류를 가졌을 때가 가장 긴 줄이다.
+			var count: int = CombatActionRules.GROUPS[index].filter(
+				func(action: String) -> bool: return CombatActionRules.belongs_to(who, action)).size()
+			_check(count <= CombatTurnHud.SLOT_ROW_MAX, "%s 줄 %d: 스킬 %d개, 한 줄 최대 %d개" % [
+				who.get_display_name(), index, count, CombatTurnHud.SLOT_ROW_MAX])
+
+
 # 스킬 패널은 어떤 아군을 보이든 아군 턴·적 턴 모두 같은 자리에 있고, 넘치는 줄은 한 줄에서 칸 폭만 줄인다(#554).
 func _test_skill_panel_fixed() -> void:
 	_test_slot_width()
+	_test_slot_row_max()
 	_reset_units()
 	var skills: Control = hud.get_node("Skills") as Control
 	var archer: CombatUnit = units[1]

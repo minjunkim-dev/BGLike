@@ -32,6 +32,8 @@ const SLOT_FULL: int = 52
 const SLOT_MIN: int = 28
 const SLOT_GAP: int = 3
 const SLOT_HEIGHT: int = 34
+## 한 줄에 들어가는 최대 칸 수. 넘으면 SLOT_MIN에서 더 줄지 않아 패널이 넓어지므로 배치를 다시 정한다(#554).
+const SLOT_ROW_MAX: int = 8
 ## 스킬 줄 왼쪽의 패시브 열 폭(버튼 22)과 간격.
 const PASSIVE_COLUMN: int = 25
 const TITLE_GAP: int = 1
