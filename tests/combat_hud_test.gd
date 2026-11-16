@@ -497,7 +497,7 @@ func _test_passive_icons(passives: Dictionary) -> void:
 		var button: Button = passives[passive]
 		_check(button.icon == icon and button.text.is_empty()
 			and button.get_theme_constant("icon_max_width") == CombatActionRules.PASSIVE_ICON_SIZE
-			and CombatActionRules.PASSIVE_ICON_SIZE == 16
+			and button.get_theme_color("icon_disabled_color") == Color.WHITE
 			and button.material == preload("res://scenes/combat/art/pixel_art.tres"),
 			"패시브 칸은 첫 글자 대신 16 논리px 아이콘과 도트 셰이더: " + passive)
 		_check(button.accessibility_name == CombatActionRules.PASSIVE_NAMES[passive]

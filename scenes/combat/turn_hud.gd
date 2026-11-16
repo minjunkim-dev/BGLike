@@ -211,6 +211,8 @@ func _build_passives() -> void:
 			button.material = preload("res://scenes/combat/art/pixel_art.tres")
 			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			button.add_theme_constant_override("icon_max_width", CombatActionRules.PASSIVE_ICON_SIZE)
+			# 조건 미충족(무빙샷)도 어둡게 하지 않는다. 기본 비활성 아이콘 색은 반투명이다.
+			button.add_theme_color_override("icon_disabled_color", Color.WHITE)
 		button.focus_mode = Control.FOCUS_NONE
 		button.accessibility_name = CombatActionRules.PASSIVE_NAMES[passive]
 		button.tooltip_text = CombatActionRules.PASSIVE_NAMES[passive] + "\n" + CombatActionRules.PASSIVE_EFFECTS[passive]
