@@ -8,7 +8,7 @@ const UNIT_IDS: Array[String] = ["warrior", "archer"]
 ## 맵을 2배로 키운다. 지형·유닛 원본이 0.5배라 텍셀이 논리 px와 1:1이 된다(docs/PIXEL_ART.md UI 절).
 const MAP_SCALE: float = 2.0
 ## 배경을 어둡게 한다. 값은 원본 화면을 보고 정했다.
-const DIM: Color = Color(0.45, 0.45, 0.55)
+const DIM: Color = Color(0.38, 0.38, 0.48)
 
 var stage: CombatStage
 var map: CombatMap
