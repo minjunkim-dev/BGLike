@@ -49,6 +49,8 @@ var _exits: Array[Button] = []
 ## 고른 칸: "reward"·"bag"·"weapon"·"armor"와 보상·가방·캐릭터 번호.
 var _selected_kind: String = ""
 var _selected_index: int = -1
+## 고른 물약 칸 번호("potion"일 때만 뜻이 있다).
+var _selected_slot: int = -1
 ## 칸과 버튼의 설명. 호버와 키보드·컨트롤러 포커스에 스킬 바와 같은 모양·시점으로 띄운다(#274).
 var _tooltip: HoverTooltip = HoverTooltip.new()
 var _drag_targets: Array[Control] = []
@@ -354,37 +356,29 @@ func _render_card(index: int) -> void:
 	area.add_child(potions)
 	potions.name = "Potions%d" % index
 	potions.mouse_filter = Control.MOUSE_FILTER_STOP
+	# 물약 줄은 놓는 곳이다. 끌기는 채운 물약 칸에서만 시작한다.
 	_drag_slot(potions, "potion", index)
-	# 16 논리px 물약 칸은 같은 0.5배 규칙의 32px 원본을 쓴다(#362).
-	var potion_icon: Texture2D = load(CombatLoot.ICON_PATH % "potion_pip") as Texture2D
+	# 입력 20 논리px 칸에 16 논리px 그림. 같은 0.5배 규칙의 32px 원본을 쓴다(#362).
 	for slot: int in range(int(loot.data["potion_limit"])):
-		var pip: TextureRect = TextureRect.new()
-		pip.texture = potion_icon
-		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		pip.material = preload("res://scenes/combat/art/pixel_art.tres")
-		pip.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		pip.custom_minimum_size = Vector2(16, 16)
-		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		if slot >= unit.potions.size():
-			pip.modulate = Color(1, 1, 1, 0.18)
-		potions.add_child(pip)
+		var id: String = unit.potions[slot] if slot < unit.potions.size() else ""
+		var cell: Button = _cell(potions, {}, "", "PotionSlot%d_%d" % [index, slot], LINE_COLOR)
+		cell.custom_minimum_size = Vector2(20, 20)
+		cell.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		cell.add_theme_constant_override("icon_max_width", 16)
+		if id.is_empty():
+			cell.tooltip_text = tr("빈 물약 칸")
+		else:
+			cell.icon = load(loot.pip_icon_path(id)) as Texture2D
+			cell.tooltip_text = CombatLoot.describe(loot.potion_definition(id))
+		_drag_slot(cell, "potion", index, slot)
+		cell.pressed.connect(func() -> void: _select("potion", index, slot))
 	_label(potions, tr("물약 %d/%d") % [unit.potions.size(), int(loot.data["potion_limit"])], DIM_COLOR, false).mouse_filter = Control.MOUSE_FILTER_IGNORE
-	potions.tooltip_text = ", ".join(unit.potions.map(func(id: String) -> String: return tr(str(loot.potion_definition(id).get("name", id)))))
-	for target: int in range(party.size()):
-		if target == index or not maintaining:
-			continue
-		var button: Button = _button(potions, tr("%s 1개 → %s") % [_next_potion_name(unit), _short_name(party[target])],
-			"Transfer%dTo%d" % [index, target])
-		button.tooltip_text = (tr("넘길 물약이 없습니다.") if unit.potions.is_empty()
-			else tr("받는 캐릭터의 물약이 가득 찼습니다.")
-			if party[target].potions.size() >= int(loot.data["potion_limit"]) else "")
-		button.disabled = not button.tooltip_text.is_empty()
-		button.pressed.connect(func() -> void: _transfer(index, target))
 
 
-func _select(kind: String, index: int) -> void:
+func _select(kind: String, index: int, slot: int = -1) -> void:
 	_selected_kind = kind
 	_selected_index = index
+	_selected_slot = slot
 	_render_detail()
 
 
@@ -402,6 +396,7 @@ func _render_detail() -> void:
 	var owner_unit: CombatUnit = null if _selected_kind in ["reward", "bag"] else party[_selected_index]
 	var item: Dictionary = (rewards[_selected_index] if _selected_kind == "reward"
 		else loot.bag[_selected_index] if _selected_kind == "bag"
+		else _slot_potion(owner_unit, _selected_slot) if _selected_kind == "potion"
 		else owner_unit.weapon if _selected_kind == "weapon" else owner_unit.armor)
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
@@ -418,14 +413,15 @@ func _render_detail() -> void:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.add_theme_constant_override("separation", 0)
 	row.add_child(info)
-	_label(info, _equipment_text(item, tr("무기 없음") if _selected_kind == "weapon" else tr("방어구 없음")))
+	_label(info, _equipment_text(item, tr("빈 물약 칸") if _selected_kind == "potion"
+		else tr("무기 없음") if _selected_kind == "weapon" else tr("방어구 없음")))
 	var discard: Button
 	var actions: HBoxContainer = HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 6)
 	match _selected_kind:
 		"reward", "bag":
 			var from_bag: bool = _selected_kind == "bag"
-			_label(info, ((tr("공용 가방 · 물약은 한 개씩 전달합니다.") if item.kind == "potion" else tr("공용 가방 · 교체하면 기존 장비는 이 칸으로 옵니다.")) if from_bag
+			_label(info, ((tr("공용 가방 · 물약은 한 개씩 받습니다.") if item.kind == "potion" else tr("공용 가방 · 교체하면 기존 장비는 이 칸으로 옵니다.")) if from_bag
 				else tr("받지 않은 보상 · 교체한 장비는 가방에 보관합니다.")) if maintaining
 				else tr("정비하기를 누른 뒤 캐릭터에게 나눠 줍니다."), DIM_COLOR)
 			if maintaining:
@@ -438,6 +434,16 @@ func _render_detail() -> void:
 					discard.tooltip_text = tr("가방에서 1개를 영구 제거합니다. 장비 교체·해제가 아닙니다.")
 					var index: int = _selected_index
 					discard.pressed.connect(func() -> void: _discard(index))
+		"potion":
+			if item.is_empty():
+				_label(info, tr("보상·가방의 물약을 받으면 채워집니다."), DIM_COLOR)
+			else:
+				_label(info, (tr("%s의 물약 칸 · 넘기면 받는 캐릭터의 다음 빈 칸에 들어갑니다.") if maintaining
+					else tr("%s의 물약 칸 · 정비에서 넘길 수 있습니다.")) % _short_name(owner_unit), DIM_COLOR)
+				if maintaining:
+					for target: int in range(party.size()):
+						if target != _selected_index:
+							_transfer_button(actions, _selected_index, _selected_slot, target)
 		"weapon":
 			_label(info, tr("%s의 무기 · 무기는 해제할 수 없습니다.") % _short_name(owner_unit), DIM_COLOR)
 		"armor":
@@ -478,6 +484,22 @@ func _link_detail_focus(buttons: Array[Button]) -> void:
 		button.focus_neighbor_bottom = button.get_path_to(continue_button)
 
 
+## 고른 물약 칸을 다른 캐릭터에게 넘기는 버튼과 받는 쪽 물약 칸 수.
+func _transfer_button(parent: Node, source: int, slot: int, target: int) -> void:
+	var button: Button = _button(parent, tr("%s에게 넘기기") % _short_name(party[target]),
+		"TransferSlot%d_%dTo%d" % [source, slot, target])
+	button.tooltip_text = (tr("받는 캐릭터의 물약이 가득 찼습니다.")
+		if party[target].potions.size() >= int(loot.data["potion_limit"]) else "")
+	button.disabled = not button.tooltip_text.is_empty()
+	button.pressed.connect(func() -> void: _transfer(source, target, slot))
+	_label(parent, tr("물약 %d/%d") % [party[target].potions.size(), int(loot.data["potion_limit"])], DIM_COLOR, false)
+
+
+## 이 캐릭터의 `slot`번 물약 칸의 물약류 항목. 빈 칸이면 빈 Dictionary다.
+func _slot_potion(unit: CombatUnit, slot: int) -> Dictionary:
+	return loot.potion_definition(unit.potions[slot]) if slot >= 0 and slot < unit.potions.size() else {}
+
+
 ## 상세 패널의 장착·물약 받기 버튼과 지금 장비 비교.
 func _receive_button(parent: Node, item: Dictionary, index: int, ally: int, from_bag: bool) -> void:
 	var unit: CombatUnit = party[ally]
@@ -506,7 +528,7 @@ func _receive_button(parent: Node, item: Dictionary, index: int, ally: int, from
 
 func _receive_label(unit: CombatUnit, item: Dictionary) -> String:
 	if item.kind == "potion":
-		return tr("%s: %s 1개 전달") % [_short_name(unit), tr(str(item["name"]))]
+		return tr("%s: %s 받기") % [_short_name(unit), tr(str(item["name"]))]
 	var current: Dictionary = unit.weapon if item.kind == "weapon" else unit.armor
 	return (tr("%s: 장착") if current.is_empty() else tr("%s: 교체")) % _short_name(unit)
 
@@ -530,7 +552,7 @@ func _process(_delta: float) -> void:
 	if kind == "empty_bag":
 		hint_label.text = tr("가방으로 해제") if data.kind == "armor" else tr("가방에 보관")
 	elif data.kind == "potion":
-		hint_label.text = tr("%s: %s 1개 전달") % [_short_name(party[index]), _next_potion_name(party[data.index])]
+		hint_label.text = tr("%s에게 %s 넘기기") % [_short_name(party[index]), tr(str(data.item.get("name", "")))]
 	else:
 		hint_label.text = _receive_label(party[index], data.item)
 		if data.item.kind != "potion":
@@ -560,28 +582,27 @@ func _unequip_armor(ally: int) -> void:
 		continue_button.grab_focus()
 
 
-func _transfer(source: int, target: int) -> void:
-	if visible and maintaining and not discard_dialog.visible and loot.transfer_potion(party[source], party[target]):
+func _transfer(source: int, target: int, slot: int = -1) -> void:
+	if visible and maintaining and not discard_dialog.visible and loot.transfer_potion(party[source], party[target], slot):
 		_render()
 		continue_button.grab_focus()
 
 
-func _drag_slot(control: Control, kind: String, index: int) -> void:
+func _drag_slot(control: Control, kind: String, index: int, slot: int = -1) -> void:
 	control.set_meta("drop_kind", kind)
 	control.set_meta("drop_index", index)
 	_drag_targets.append(control)
 	control.set_drag_forwarding(
-		func(_point: Vector2) -> Variant: return _drag_item(control, kind, index),
+		func(_point: Vector2) -> Variant: return _drag_item(control, kind, index, slot),
 		func(_point: Vector2, data: Variant) -> bool: return _can_drop_item(data, kind, index),
 		func(_point: Vector2, data: Variant) -> void: _drop_item(data, kind, index))
 
 
-func _drag_item(control: Control, kind: String, index: int) -> Variant:
+func _drag_item(control: Control, kind: String, index: int, slot: int = -1) -> Variant:
 	if not visible or not maintaining or discard_dialog.visible:
 		return null
 	var item: Dictionary = (rewards[index] if kind == "reward" else loot.bag[index] if kind == "bag"
-		else party[index].armor if kind == "armor" else loot.potion_definition(party[index].potions.back()) if kind == "potion"
-		and not party[index].potions.is_empty() else {})
+		else party[index].armor if kind == "armor" else _slot_potion(party[index], slot) if kind == "potion" else {})
 	if item.is_empty():
 		return null
 	var preview: TextureRect = TextureRect.new()
@@ -591,7 +612,7 @@ func _drag_item(control: Control, kind: String, index: int) -> Variant:
 	preview.material = preload("res://scenes/combat/art/pixel_art.tres")
 	control.set_drag_preview(preview)
 	# 시작 때는 원본을 옮기지 않는다. 취소·잘못된 목적지는 아무것도 바꾸지 않는다.
-	return {"owner": get_instance_id(), "kind": kind, "index": index, "item": item.duplicate(true)}
+	return {"owner": get_instance_id(), "kind": kind, "index": index, "slot": slot, "item": item.duplicate(true)}
 
 
 func _can_drop_item(data: Variant, kind: String, index: int) -> bool:
@@ -616,8 +637,10 @@ func _can_drop_item(data: Variant, kind: String, index: int) -> bool:
 	if source == "armor":
 		return kind == "empty_bag" and data.get("item") == party[at].armor \
 			and loot.armor_unequip_blocker(party[at]).is_empty()
+	# 끌기 시작 때의 칸이 그대로 그 물약일 때만 넘긴다.
 	return (source == "potion" and kind in ["potion", "ally"] and index >= 0 and index < party.size()
-		and at != index and not party[at].potions.is_empty() and party[index].potions.size() < int(loot.data["potion_limit"]))
+		and data.get("slot") is int and data.item == _slot_potion(party[at], data.slot) and not data.item.is_empty()
+		and at != index and party[index].potions.size() < int(loot.data["potion_limit"]))
 
 
 func _drop_item(data: Variant, kind: String, index: int) -> void:
@@ -633,7 +656,7 @@ func _drop_item(data: Variant, kind: String, index: int) -> void:
 				_receive(data.index, index)
 		"bag": _receive_bag(data.index, index)
 		"armor": _unequip_armor(data.index)
-		"potion": _transfer(data.index, index)
+		"potion": _transfer(data.index, index, data.slot)
 
 
 func _notification(what: int) -> void:
@@ -660,11 +683,6 @@ func _short_name(unit: CombatUnit) -> String:
 
 func _equipment_text(item: Dictionary, empty: String) -> String:
 	return empty if item.is_empty() else CombatLoot.describe(item)
-
-
-## 이 캐릭터가 넘길 물약(마지막 칸)의 이름.
-func _next_potion_name(unit: CombatUnit) -> String:
-	return tr(str(loot.potion_definition(unit.potions.back()).get("name", ""))) if not unit.potions.is_empty() else tr("물약")
 
 
 func _icon(item: Dictionary, unit_id: String) -> Texture2D:

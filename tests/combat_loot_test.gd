@@ -157,6 +157,16 @@ func _test_potion_slots() -> void:
 	b.potions.assign(["oil_bottle", "oil_bottle", "oil_bottle"])
 	_check(not loot.transfer_potion(a, b) and a.potions.size() == 3 and b.potions.size() == 3, "가득 찬 대상에게 넘기면 양쪽을 보존한다")
 	_check(not loot.transfer_potion(a, a) and not loot.transfer_potion(CombatUnit.new(), a), "자기에게나 빈 칸은 넘기지 않는다")
+	# #577: 고른 칸을 넘기면 그 칸만 빠지고 남은 칸 순서를 유지한다.
+	a.potions.assign(["healing_potion", "oil_bottle", "healing_potion"])
+	b.potions.assign(["healing_potion"])
+	_check(loot.transfer_potion(a, b, 1) and a.potions == ["healing_potion", "healing_potion"]
+		and b.potions == ["healing_potion", "oil_bottle"], "고른 가운데 칸만 넘기고 남은 순서를 유지한다")
+	_check(not loot.transfer_potion(a, b, 2) and not loot.transfer_potion(a, b, -2) and a.potions.size() == 2
+		and b.potions.size() == 2, "범위 밖 칸은 거부하고 양쪽을 보존한다")
+	b.potions.assign(["oil_bottle", "oil_bottle", "oil_bottle"])
+	_check(not loot.transfer_potion(a, b, 0) and a.potions.size() == 2, "칸을 골라도 가득 찬 대상은 거부한다")
+	_check(not loot.transfer_potion(a, a, 0), "자기에게는 칸을 골라도 넘기지 않는다")
 	# 압축 목록: 회복 물약의 마지막 칸만 빠지고 순서가 유지된다.
 	a.potions.assign(["healing_potion", "oil_bottle", "healing_potion"])
 	_check(a.take_potion("healing_potion") and a.potions == ["healing_potion", "oil_bottle"], "같은 종류의 마지막 칸을 뺀다")
@@ -432,6 +442,14 @@ func _test_icons(loot: CombatLoot) -> void:
 		var archer_path: String = CombatLoot.icon_path(item, "archer")
 		_check(archer_path.get_file() == ("bow.png" if item["kind"] == "weapon" else expected[item["id"]] + ".png")
 			and load(archer_path) is Texture2D, "궁수 무기는 활, 나머지는 공용 아이콘: " + str(item["id"]))
+	# #577: 물약 칸의 작은 아이콘은 종류마다 32px 원본이다.
+	var pips: Dictionary = {"healing_potion": "potion_pip.png", "oil_bottle": "oil_bottle_pip.png"}
+	for id: String in pips:
+		var pip_texture: Texture2D = load(loot.pip_icon_path(id)) as Texture2D
+		_check(pip_texture != null and pip_texture.get_size() == Vector2(32, 32) and loot.pip_icon_path(id).get_file() == pips[id],
+			"#577 물약 칸 작은 아이콘: " + id)
+	_check(loot.pip_icon_path("trial_weapon").is_empty() and loot.pip_icon_path("없는 물약").is_empty(),
+		"물약류가 아니거나 모르는 id는 작은 아이콘 경로가 비었다")
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 224
 	var rolled: Array[Dictionary] = loot.roll_rewards(4, dice, 1)
@@ -611,14 +629,22 @@ func _test_oil_bottle_scene() -> void:
 	_check(cell != null and cell.icon != null and cell.icon.resource_path.get_file() == "oil_bottle.png", "보상 칸에 기름병 아이콘")
 	await _click(await _pick(preparation, "Item0", "Ally1"))
 	_check(party[1].potions == ["healing_potion", "healing_potion", "oil_bottle"], "보상 기름병을 회복 물약 2개와 같은 3칸에 받는다")
-	var potions: Control = preparation.find_child("Potions1", true, false) as Control
-	_check(potions.tooltip_text == "회복 물약, 회복 물약, 기름병", "물약 줄 툴팁이 칸마다 종류를 보인다: " + potions.tooltip_text)
+	var slot_icons: Array[String] = []
+	for slot: int in range(3):
+		var slot_button: Button = preparation.find_child("PotionSlot1_%d" % slot, true, false) as Button
+		_check(slot_button.size == Vector2(20, 20) and slot_button.icon.get_size() == Vector2(32, 32)
+			and slot_button.get_theme_constant("icon_max_width") == 16, "#362 물약 칸 입력 20×20, 그림은 0.5배인 32px 원본")
+		slot_icons.append(slot_button.icon.resource_path.get_file() + "|" + slot_button.tooltip_text)
+	_check(slot_icons == ["potion_pip.png|회복 물약", "potion_pip.png|회복 물약", "oil_bottle_pip.png|기름병"],
+		"물약 칸마다 종류 아이콘과 설명을 보인다: " + str(slot_icons))
 	var bag_button: Button = await _pick(preparation, "BagItem0", "Ally1")
 	_check(bag_button != null and bag_button.disabled and "기름병" in bag_button.text, "가방의 기름병도 한도 3칸에서 잠기고 종류 이름을 보인다")
-	var transfer: Button = preparation.find_child("Transfer1To0", true, false) as Button
-	_check("기름병" in transfer.text, "넘기기 버튼은 넘길 마지막 칸의 종류를 보인다: " + transfer.text)
+	_check(preparation.find_child("Transfer1To0", true, false) == null, "카드의 물약 1개 → 버튼은 없다")
+	var transfer: Button = await _pick(preparation, "PotionSlot1_2", "TransferSlot1_2To0")
+	_check(transfer != null and preparation.detail.find_children("*", "Label", true, false).any(func(label: Node) -> bool: return "기름병" in (label as Label).text) and "전사에게 넘기기" in transfer.text,
+		"고른 칸의 상세에 종류와 넘기기 버튼: " + (transfer.text if transfer else "-"))
 	await _click(transfer)
-	_check(party[1].potions == ["healing_potion", "healing_potion"] and party[0].potions == ["oil_bottle"], "넘기기는 마지막 칸의 기름병을 옮긴다")
+	_check(party[1].potions == ["healing_potion", "healing_potion"] and party[0].potions == ["oil_bottle"], "넘기기는 고른 칸의 기름병을 옮긴다")
 	await _click(await _pick(preparation, "BagItem0", "Ally1"))
 	_check(party[1].potions == ["healing_potion", "healing_potion", "oil_bottle"] and loot.bag.size() == 1, "가방의 기름병을 받는다")
 	main.queue_free()
@@ -662,9 +688,9 @@ func _test_armor_unequip_scene() -> void:
 		"Enter로 무기 칸을 고르면 해제 버튼 없이 수치만 표시")
 	var detail_icon: TextureRect = preparation.detail.find_child("DetailIcon", true, false) as TextureRect
 	_check(weapon_cell.size == Vector2(36, 36), "#362 장비 칸 입력 36×36 유지")
-	var pip: TextureRect = (preparation.find_child("Potions0", true, false) as Node).get_child(0) as TextureRect
-	_check(pip.size == Vector2(16, 16) and pip.texture.get_size() == Vector2(32, 32),
-		"#362 물약 칸16은 0.5배인 32px 원본")
+	var pip: Button = preparation.find_child("PotionSlot0_0", true, false) as Button
+	_check(pip.size == Vector2(20, 20) and pip.get_theme_constant("icon_max_width") == 16 and pip.icon == null,
+		"#577 물약 칸 입력 20×20, 그림 16(빈 칸은 그림 없음)")
 	_check(weapon_cell.get_theme_constant("icon_max_width") == 24 and detail_icon != null
 		and detail_icon.size == Vector2(24, 24), "#362 장비 칸과 선택 상세의 그림 24 논리px")
 	await _action("ui_right")
@@ -1045,7 +1071,7 @@ func _test_reward_flow() -> void:
 		_check(party[1].potions.size() == 2 and actual_rewards.size() == 1, "물약 분배와 보상 목록에서 제거")
 		actual_rewards.append({"id": "healing_potion", "kind": "potion", "name": "검사 물약", "stats": {}})
 		# 다음 정비 조작에서 화면을 갱신한 뒤 한도 수령을 검사한다.
-		var transfer: Button = preparation.find_child("Transfer1To0", true, false) as Button
+		var transfer: Button = await _pick(preparation, "PotionSlot1_1", "TransferSlot1_1To0")
 		await _click(transfer)
 		_check(party[1].potions.size() == 1 and party[0].potions.size() == 1, "정비 양도 버튼은 물약1개 이동")
 		_check(preparation.continue_button.has_focus(), "양도 뒤 키보드 포커스 유지")
@@ -1054,10 +1080,10 @@ func _test_reward_flow() -> void:
 		await _click(await _pick(preparation, "Item1", "Ally1"))
 		await _click(await _pick(preparation, "Item1", "Ally1"))
 		_check((await _pick(preparation, "Item1", "Ally1")).disabled
-			and (preparation.find_child("Transfer0To1", true, false) as Button).disabled,
+			and (await _pick(preparation, "PotionSlot0_0", "TransferSlot0_0To1")).disabled,
 			"물약3개 캐릭터는 수령·양도 도착 버튼 잠금")
-		await _click(preparation.find_child("Transfer1To0", true, false) as Button)
-		await _click(preparation.find_child("Transfer1To0", true, false) as Button)
+		await _click(await _pick(preparation, "PotionSlot1_2", "TransferSlot1_2To0"))
+		await _click(await _pick(preparation, "PotionSlot1_1", "TransferSlot1_1To0"))
 		_check(party[1].potions.size() == 1 and party[0].potions.size() == 3, "양도 도착 한도3까지")
 		await _click(preparation.continue_button)
 		preparation.discard_dialog.confirmed.emit()
@@ -1221,14 +1247,18 @@ func _check_preparation_focus_tooltips(preparation: CombatPreparation) -> void:
 		await _action("ui_up")
 		await _tap(dpad_right)
 		await _check_focus_tooltip(preparation, "Ally1", screen, size, "ui_up", true)
-		# 넘기기: 전사 카드의 무기 칸에서 ↓로 양도 버튼에 간다.
-		(preparation.find_child("Weapon0", true, false) as Control).grab_focus()
-		await _action("ui_down")
-		await _check_focus_tooltip(preparation, "Transfer0To1", screen, size, "ui_down", true)
+		# 넘기기: 전사가 물약 한 칸을 가지면 그 칸을 고르고 ↑로 궁수에게 넘기기(가득 차 꺼짐)에 간다.
+		preparation.party[0].potions.assign(["healing_potion"])
+		preparation._render()
+		(preparation.find_child("PotionSlot0_0", true, false) as Control).grab_focus()
+		await _action("ui_accept")
+		preparation.continue_button.grab_focus()
+		await _action("ui_up")
+		await _check_focus_tooltip(preparation, "TransferSlot0_0To1", screen, size, "ui_up", true)
 	# 마우스 호버는 같은 이유를 같은 설명 패널로 띄운다. 확인 창이 열리거나 포인터가 떠나면 숨긴다.
 	root.size = Vector2i(1280, 720)
 	await process_frame
-	var transfer: Button = preparation.find_child("Transfer0To1", true, false) as Button
+	var transfer: Button = preparation.find_child("TransferSlot0_0To1", true, false) as Button
 	await _move_mouse(transfer.get_global_rect().get_center())
 	await create_timer(0.8).timeout
 	_check(_tooltip_rect(preparation, transfer.tooltip_text).has_area(), "꺼진 넘기기 버튼의 호버 설명")
@@ -1242,6 +1272,7 @@ func _check_preparation_focus_tooltips(preparation: CombatPreparation) -> void:
 	await _move_mouse(Vector2(1, 1))
 	await create_timer(0.8).timeout
 	_check(not _tooltip_rect(preparation, transfer.tooltip_text).has_area(), "포인터가 떠나면 호버 설명 숨김")
+	preparation.party[0].potions.clear()
 	root.size = original
 	await process_frame
 

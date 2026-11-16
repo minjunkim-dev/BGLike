@@ -177,6 +177,8 @@ def outlined(draw, size=SIZE):
     return image
 
 
+# Potion-class items also get a 32px canvas for the 16 logical px slots on the preparation cards (#577).
+PIPS = {"potion": potion, "oil_bottle": oil_bottle}
 ICONS = {"sword": sword, "bow": bow, "armor": armor, "potion": potion, "oil_bottle": oil_bottle}
 
 # draw_skill_icons.py imports the palette, sword, potion and outlined from this file.
@@ -191,11 +193,12 @@ if __name__ == "__main__":
         assert bounds and min(bounds[:2]) >= 2 and max(bounds[2:]) <= SIZE - 2, (name, bounds)
         image.save(args.destination / f"{name}.png")
         print(json.dumps({"icon": name, "canvas": [SIZE, SIZE], "content": bounds}))
-    pip = outlined(potion, PIP_SIZE)
-    # The tiny counter has no extra margin; only the 2px outline itself must stay on the canvas.
-    fill = [(x, y) for y in range(PIP_SIZE) for x in range(PIP_SIZE)
-            if pip.getpixel((x, y))[3] and pip.getpixel((x, y))[:3] != OUTLINE]
-    bounds = (min(x for x, _ in fill), min(y for _, y in fill), max(x for x, _ in fill) + 1, max(y for _, y in fill) + 1)
-    assert bounds and min(bounds[:2]) >= 2 and max(bounds[2:]) <= PIP_SIZE - 2, ("potion_pip", bounds)
-    pip.save(args.destination / "potion_pip.png")
-    print(json.dumps({"icon": "potion_pip", "canvas": [PIP_SIZE, PIP_SIZE], "content": bounds}))
+    for name, draw in PIPS.items():
+        pip = outlined(draw, PIP_SIZE)
+        # The tiny counter has no extra margin; only the 2px outline itself must stay on the canvas.
+        fill = [(x, y) for y in range(PIP_SIZE) for x in range(PIP_SIZE)
+                if pip.getpixel((x, y))[3] and pip.getpixel((x, y))[:3] != OUTLINE]
+        bounds = (min(x for x, _ in fill), min(y for _, y in fill), max(x for x, _ in fill) + 1, max(y for _, y in fill) + 1)
+        assert bounds and min(bounds[:2]) >= 2 and max(bounds[2:]) <= PIP_SIZE - 2, (f"{name}_pip", bounds)
+        pip.save(args.destination / f"{name}_pip.png")
+        print(json.dumps({"icon": f"{name}_pip", "canvas": [PIP_SIZE, PIP_SIZE], "content": bounds}))
