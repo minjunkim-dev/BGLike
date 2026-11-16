@@ -31,6 +31,11 @@ class ScopeTests(unittest.TestCase):
             with self.subTest(event=event):
                 self.assertTrue(game_required(event))
 
+    def test_merge_group_diff_uses_queue_base(self):
+        with patch("ci_scope.subprocess.check_output", return_value="README.md\n") as run:
+            self.assertFalse(game_required({"merge_group": {"base_sha": "c" * 40}}))
+        self.assertEqual(run.call_args.args[0][-2:], ["c" * 40, "HEAD"])
+
     def test_missing_git_history_selects_game(self):
         with patch("ci_scope.subprocess.check_output", side_effect=subprocess.CalledProcessError(1, "git")):
             self.assertTrue(game_required({"before": "a" * 40}))

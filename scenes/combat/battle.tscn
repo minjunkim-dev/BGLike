@@ -40,6 +40,7 @@ stages = Array[ExtResource("6_stage_script")]([ExtResource("11_stage1"), ExtReso
 stream = ExtResource("7_hit")
 volume_db = -12.0
 max_polyphony = 4
+bus = &"SFX"
 
 [node name="Map" type="TileMapLayer" parent="."]
 y_sort_enabled = true

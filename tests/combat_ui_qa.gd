@@ -96,7 +96,7 @@ func _passive_slot(warrior: CombatUnit, archer: CombatUnit) -> void:
 			leftmost = minf(leftmost, button.get_global_rect().position.x)
 	_check(leftmost < INF and phalanx.get_global_rect().end.x <= leftmost and brawn.get_global_rect().end.x <= leftmost,
 		"패시브 칸이 모든 스킬 버튼의 왼쪽: 패시브 끝 %.1f ≤ 스킬 시작 %.1f" % [phalanx.get_global_rect().end.x, leftmost])
-	_check(phalanx.text.is_empty() == false and phalanx.get_child_count() == 1 and brawn.get_child_count() == 1,
+	_check(phalanx.icon != null and phalanx.text.is_empty() and phalanx.get_child_count() == 1 and brawn.get_child_count() == 1,
 		"패시브 버튼에는 비용 기호·횟수 배지 없이 점 하나만 있음")
 	_check(actions.grid.phalanx_bonus(warrior) > 0 and (dots["phalanx"] as Label).visible,
 		"인접 아군 있음: 팔랑크스 강조 점 켜짐")

@@ -64,6 +64,20 @@ HP·상태·피해 팝업은 그 유닛의 실제 그림 높이를 기준으로 
 
 ![1280×720 실제 HUD의 스킬 버튼: 위 #225, 아래 #384](assets/skill_icons_384_hud_1280x720.png)
 
+## 패시브 아이콘
+
+`개발 결정`([#517](https://github.com/minjunkim-dev/BGLike/issues/517)): 전투 HUD 패시브 칸은 이름 첫 글자 대신 32×32 RGBA 원본을 0.5배로 쓴 16 논리px 아이콘을 보인다. 칸이 22×34라 스킬 아이콘(24)은 들어가지 않는다. 칸 크기와 위치는 그대로 두고 좌우 여백만 4에서 3으로 줄여 내용 폭을 16으로 만든다. 같은 0.5배 규칙이라 배율 2·4에서 텍셀이 1·2 화면 px이고 배율 3은 #264 셰이더가 처리한다([표시 크기](#표시-크기-362)의 정비 물약 칸과 같다). 런타임 파일은 `scenes/combat/art/icons/passives/<패시브 id>.png`이고 `CombatActionRules.passive_icon_of(id)`로 찾는다. 파일이 없으면 null이라 칸은 이름 첫 글자로 돌아간다. 꺼짐·조건 미충족도 어둡게 하지 않는다.
+
+`scenes/combat/art/sources/icons/draw_passive_icons.py`가 [아이템 아이콘](#아이템-아이콘)과 같은 방식으로 픽셀을 찍는다(팔레트·2px 윤곽·왼쪽 위 광원, 안티앨리어싱·축소·생성 모델 없음, Pillow 필요). 같은 명령은 같은 파일을 만든다. 아이콘별 설명과 명령은 `passive_icon_generation.json`에 기록한다. 기획자가 나중에 바꿀 수 있다.
+
+| 패시브 | 효과 | 그림 |
+|---|---|---|
+| 팔랑크스 | 인접 아군이 있으면 전사와 그 아군의 AC +1 | 겹친 방패 둘(앞 남색, 뒤 청록, 강철 테) |
+| 괴력의 사내 | 기회 공격이 명중하면 대상의 이동력을 0으로 | 황동 소맷부리 아래 쥔 가죽 장갑 주먹과 흰 충격선 셋 |
+| 무빙샷 | 행동 원거리 공격 뒤 1칸 도약 | 오른쪽으로 나는 화살(청록 깃, 강철 촉)과 그 아래 흰 도약 호 |
+
+방패 둘(성스러운 장막은 방패 하나), 쥔 주먹(밀치기는 편 손바닥), 화살과 호(점프는 장화)로 스킬 아이콘과 구분한다. 1280×720(배율 2)과 1920×1080(배율 3)의 실제 HUD 캡처는 [passive_icons_hud.png](assets/passive_icons_hud.png)에 있다.
+
 ## 아이템 아이콘
 
 `개발 결정`([#224](https://github.com/minjunkim-dev/BGLike/issues/224)): 임시 아이템 아이콘은48×48 RGBA 원본을 0.5배로 쓴다. 표시 크기는 [표시 크기](#표시-크기-362)를 따른다. 유닛 프레임과 같은 팔레트·어두운2px(논리1px) 윤곽·왼쪽 위 광원을 쓴다. 도형은 64px 설계 격자에 두고 48px 캔버스의 픽셀 중심에서 찍는다. 그림은 가운데44×44 안에 둔다. 기획자가 나중에 바꿀 수 있다.
@@ -101,9 +115,13 @@ python3 scenes/combat/art/sources/effects/draw_hit_effects.py scenes/combat/art/
 
 2026-11-16 실제 3-3 전투에서 명중 섬광(고철로봇 3000)과 빗나감 잔상(궁수)이 겹친 순간을 Linux Godot 4.7.2 Forward+(llvmpipe) 화면 밖 실행으로 저장했다. 화면 일부가 아니라 원본 Viewport다. [1280×720](assets/hit_effects_1280x720.png), [1920×1080](assets/hit_effects_1920x1080.png). 섬광 모양과 시간이 보기 좋은지는 사람이 판단한다.
 
+## 주사위
+
+`개발 결정`([#519](https://github.com/minjunkim-dev/BGLike/issues/519)): 판정 주사위 그림은 48×48 RGBA 원본을 0.5배로 쓴다(24 논리px). 2px 어두운 윤곽과 왼쪽 위 광원을 쓰고 그림 안에는 숫자를 넣지 않는다. 면 수(d4~d20)×다섯 상태 그림과 액체 마스크를 `scenes/combat/art/dice/`에 둔다. `python3 scenes/combat/art/sources/dice/draw_dice.py scenes/combat/art/dice`가 같은 파일을 만들고, 규격은 `sources/dice/dice_generation.json`에 있다. 상태·게이지·숫자 배치의 결정은 [주사위 굴림 연출](DICE_PRESENTATION.md#도트-디자인-519)에 있다.
+
 ## 표시 크기 (#362)
 
-`개발 결정`([#362](https://github.com/minjunkim-dev/BGLike/issues/362), 2026-10-27 사용자 위임): 스킬·아이템 그림은48×48 원본을 0.5배로 써서24 논리px로 표시한다. 전투 HUD 스킬 버튼, 정비의 장비·보상·가방 칸, 선택 상세, 드래그 미리보기가 `CombatActionRules.ICON_SIZE` 하나를 쓴다. 입력 영역은 줄이지 않는다. 스킬 버튼은52×34, 정비 칸은36×36이다. 턴 순서 초상(32)과 정비 카드 초상(64)은 이 범위 밖이다. 정비 카드의 작은 물약 칸(그림 16)은 크기를 그대로 두고, 같은 0.5배 규칙으로 물약류마다 32px 원본 `<icon>_pip.png`(`potion_pip.png`, `oil_bottle_pip.png`)를 함께 찍는다. 칸의 입력 영역은 20×20이다([#577](https://github.com/minjunkim-dev/BGLike/issues/577)). 기획자가 나중에 바꿀 수 있다.
+`개발 결정`([#362](https://github.com/minjunkim-dev/BGLike/issues/362), 2026-10-27 사용자 위임): 스킬·아이템 그림은48×48 원본을 0.5배로 써서24 논리px로 표시한다. 전투 HUD 스킬 버튼, 정비의 장비·보상·가방 칸, 선택 상세, 드래그 미리보기가 `CombatActionRules.ICON_SIZE` 하나를 쓴다. 입력 영역은 줄이지 않는다. 스킬 버튼은52×34, 정비 칸은36×36이다. 턴 순서 초상(32)과 정비 카드 초상(64)은 이 범위 밖이다. 전투 HUD 패시브 칸(22×34)도 같은 16 논리px·32px 원본이다([패시브 아이콘](#패시브-아이콘)). 정비 카드의 작은 물약 칸(그림 16)은 크기를 그대로 두고, 같은 0.5배 규칙으로 물약류마다 32px 원본 `<icon>_pip.png`(`potion_pip.png`, `oil_bottle_pip.png`)를 함께 찍는다. 칸의 입력 영역은 20×20이다([#577](https://github.com/minjunkim-dev/BGLike/issues/577)). 기획자가 나중에 바꿀 수 있다.
 
 원본을 48로 줄여 기존 0.5배 규칙과 [해상도 ADR](adr/0002-resolution.md#결정) 결정3을 지킨다. 두 생성기는 64px 설계 격자의 도형을 48px 캔버스에서 다시 찍는다. 64px 그림을 줄이지 않는다.
 
@@ -138,7 +156,7 @@ python3 scenes/combat/art/sources/effects/draw_hit_effects.py scenes/combat/art/
 - 9-slice 프레임: 16×16 RGBA 3종(`scenes/ui/art/frames/panel.png`, `accent_panel.png`, `button.png`). 바깥 1px 외곽선, 안쪽 1px 면, 왼쪽 위 1px 밝은 모서리, 모서리 2×2 깎기, 여백 4px. 원본은 회색조이고 색은 `StyleBoxTexture.modulate_color`로 정한다. 같은 명령은 같은 파일을 만든다(`scenes/ui/art/sources/draw_ui_frames.py`, 설명은 `ui_frame_generation.json`).
 - 1배 예외: `StyleBoxTexture`에는 0.5배 축척이 없어 프레임은 텍셀과 논리 px가 1:1이다. 배율 2·3에서 정수로 찍혀 셰이더가 필요 없다. 유닛·지형의 0.5배 규칙(#264)과 다른 예외다.
 - HUD 패널 변형: 공용 테마에 `HudPanel`(`panel.png`, 면 #21223D, 여백 4/3)과 `HudAccentFrame`(`accent_panel.png`, #CC8E4D, 면을 칠하지 않는 선택 표시)이 있다. 전투 HUD(로그·스킬 묶음·순서 묶음·유닛 정보·결과)·호버 설명·정비 패널이 쓴다. 체크박스는 UI 팔레트 색이다. 전투 HUD는 `scenes/ui_theme.tres`를 직접 지정하고, `CanvasLayer` 아래의 정비 화면도 `theme`을 직접 준다.
-- `StyleBoxFlat`로 남긴 것: 초상·스킬·패시브 칸·횟수 배지(테두리 색이 차례·선택·켜짐을 뜻한다), 정비 아이템 칸·빈 가방 칸·드래그 강조(보상·선택·놓을 수 있음), 5px 높이의 HP 바, 포커스 테두리. 9-slice 한 장은 면과 테두리를 따로 칠하지 못한다. 스킬·패시브 칸의 모양은 #517 몫이라 칸 안 기호 크기(10·12·8·6)도 그때까지 둔다. 정비 제목 16과 결과 글자 20도 14 예외와 같이 남긴다.
+- `StyleBoxFlat`로 남긴 것: 초상·스킬·패시브 칸·횟수 배지(테두리 색이 차례·선택·켜짐을 뜻한다), 정비 아이템 칸·빈 가방 칸·드래그 강조(보상·선택·놓을 수 있음), 5px 높이의 HP 바, 포커스 테두리. 9-slice 한 장은 면과 테두리를 따로 칠하지 못한다. 스킬·패시브 칸의 모양은 #517 몫이라 칸 안 기호 크기(10·12·8·6)도 그때까지 둔다. 패시브 칸은 그림이 있으면 글자 대신 [아이콘](#패시브-아이콘)을 쓰고, 12는 그림이 없을 때의 첫 글자다. 정비 제목 16과 결과 글자 20도 14 예외와 같이 남긴다.
 - 버튼 상태: 기본·호버·눌림·비활성은 같은 `button.png`를 쓰고 색만 바꾼다. 눌림은 면만 어둡게 하고 내용물을 밀지 않는다. 선택은 강조 프레임으로 나타내고 버튼 테두리에 색을 더하지 않는다. 포커스는 빈 중앙의 테두리(`StyleBoxFlat`)다.
 
 ## 검증과 현재 상태

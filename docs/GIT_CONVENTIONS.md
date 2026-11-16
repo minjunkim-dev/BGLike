@@ -9,7 +9,7 @@
 - 오래 사는 브랜치는 `main` 하나입니다. `main`은 항상 Godot에서 열리고 메인 장면이 실행되는 상태를 유지합니다.
 - 모든 작업은 최신 `main`에서 만든 짧은 브랜치에서 합니다. 목표는 1~2일 안에 병합하는 것입니다. 길어지면 Issue 범위를 나눕니다.
 - 병합은 squash merge만 씁니다. `main`에는 PR 하나당 커밋 하나가 남습니다. 병합한 브랜치는 GitHub가 자동으로 삭제합니다.
-- 브랜치가 오래되면 `main`을 병합하거나 rebase합니다. 다른 사람이 함께 쓰는 브랜치는 강제 push하지 않습니다.
+- 브랜치가 `main`보다 뒤처져도 `main`을 합치지 않습니다. 머지 큐가 `main`과 합친 결과를 검사합니다. 충돌이 날 때만 `main`을 병합하거나 rebase하고, head가 바뀌었으므로 다시 리뷰합니다. 다른 사람이 함께 쓰는 브랜치는 강제 push하지 않습니다.
 
 `develop`, `release/*`, `hotfix/*`를 두는 Git Flow는 쓰지 않습니다. 두 사람이 한 `main`에 자주 병합하는 구조에서는 브랜치 동기화 비용만 늘어납니다. 출시 플랫폼과 버전 체계를 정하면 `v0.1.0` 같은 태그로 출시 시점을 표시하는 방식을 별도 Issue에서 논의합니다.
 
@@ -106,6 +106,6 @@ squash merge를 하면 `main`에는 PR 제목이 커밋 제목으로 남습니�
 | PR 제목, 브랜치 이름 | Godot workflow가 [재사용 PR lint](../.github/workflows/pr-lint.yml)를 호출. PR을 열거나 제목을 고칠 때마다 실행 | CI 실패. 제목이나 브랜치 이름을 고치면 다시 검사 |
 | 커밋 제목 | `.githooks/commit-msg`. `git config core.hooksPath .githooks`를 한 번 실행해 켬. 같은 폴더의 LFS hook도 함께 켜짐 | 커밋 거부. 급하면 `git commit --no-verify` |
 | push 대상 브랜치 | `.githooks/pre-push`와 CI가 공유 `scripts/check_branch_name.py`를 호출. 실제 목적지 ref를 검사하고 Git LFS에 원래 입력·인자를 전달 | 잘못된 브랜치 push 거부. 기본 브랜치·태그·삭제는 로컬 이름 검사에서 제외 |
-| 병합 방식 | 저장소 설정: squash merge만 허용, 병합 후 브랜치 자동 삭제. 병합은 사람이 함 | 다른 방식은 선택할 수 없음 |
+| 병합 방식 | 저장소 설정: squash merge만 허용, 머지 큐로 병합, 병합 후 브랜치 자동 삭제. 큐에 넣는 조건은 [AGENTS.md](../AGENTS.md#하지-않는-것) | 다른 방식은 선택할 수 없음 |
 
 `claude/…`, `codex/…`, `dependabot/…`, `office/…` 브랜치는 이름 검사를 건너뜁니다. `cursor/…`는 허용하지 않습니다. main 보호의 현재 적용 상태와 필수 검사는 [협업 규칙](WORKFLOW.md#현재-github-제약)을 참조합니다.

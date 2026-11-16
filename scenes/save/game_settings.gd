@@ -6,6 +6,22 @@ const SECTION: String = "settings"
 ## 마스터 음량(%)의 처음 값과 한 단계. 0은 음소거다 (#285).
 const VOLUME_DEFAULT: int = 80
 const VOLUME_STEP: int = 10
+## 오디오 버스 (default_bus_layout.tres): BGM·SFX는 Master로, UI는 SFX로 보낸다 (#558).
+const BUS_MASTER: StringName = &"Master"
+const BUS_BGM: StringName = &"BGM"
+const BUS_SFX: StringName = &"SFX"
+const BUS_UI: StringName = &"UI"
+## 음량을 따로 저장하는 버스의 설정 키. 배경음·효과음은 마스터가 이미 낮추므로 처음에는 100%다.
+const VOLUME_KEYS: Dictionary = {
+	BUS_MASTER: "master_volume",
+	BUS_BGM: "bgm_volume",
+	BUS_SFX: "sfx_volume",
+}
+const VOLUME_DEFAULTS: Dictionary = {
+	BUS_MASTER: VOLUME_DEFAULT,
+	BUS_BGM: 100,
+	BUS_SFX: 100,
+}
 
 ## 테스트는 다른 경로로 바꾼다.
 static var path: String = "user://settings.cfg"
@@ -28,9 +44,10 @@ static func write(key: String, value: Variant) -> Error:
 	return GameSave.write_atomic(path, config.encode_to_text().to_utf8_buffer())
 
 
-## 저장한 마스터 음량(%). 손으로 고친 파일도 0–100의 한 단계 값으로 맞춘다.
-static func volume() -> int:
-	return snappedi(clampi(read("master_volume", VOLUME_DEFAULT), 0, 100), VOLUME_STEP)
+## 저장한 버스 음량(%)(처음은 마스터). 손으로 고친 파일도 0–100의 한 단계 값으로 맞춘다.
+static func volume(bus: StringName = BUS_MASTER) -> int:
+	var fallback: int = VOLUME_DEFAULTS[bus]
+	return snappedi(clampi(read(VOLUME_KEYS[bus], fallback), 0, 100), VOLUME_STEP)
 
 
 static func fullscreen() -> bool:
@@ -42,15 +59,16 @@ static func fill_screen() -> bool:
 	return read("fill_screen", false)
 
 
-## 저장한 값을 Master 버스와 창에 적용한다. 게임을 시작할 때(타이틀) 부른다.
+## 저장한 값을 음량 버스와 창에 적용한다. 게임을 시작할 때(타이틀) 부른다.
 static func apply(window: Window) -> void:
-	apply_volume(volume())
+	for bus: StringName in VOLUME_KEYS:
+		apply_volume(volume(bus), bus)
 	apply_window_mode(fullscreen())
 	apply_screen_fit(window, fill_screen())
 
 
-static func apply_volume(percent: int) -> void:
-	AudioServer.set_bus_volume_linear(AudioServer.get_bus_index("Master"), percent / 100.0)
+static func apply_volume(percent: int, bus: StringName = BUS_MASTER) -> void:
+	AudioServer.set_bus_volume_linear(AudioServer.get_bus_index(bus), percent / 100.0)
 
 
 static func apply_window_mode(full_screen: bool) -> void:

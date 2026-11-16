@@ -62,13 +62,15 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 
 ## 병합 실행
 
-병합은 사람만 한다. 에이전트는 PR을 병합하지 않고 자동 병합을 예약하지 않는다. 저장소 `Allow auto-merge`는 Off다. `.claude/settings.json`의 거부 규칙이 `gh pr merge`와 `main` push를 막는다. 이것은 습관이지 보안 경계가 아니다.
+병합은 머지 큐로 한다. 큐는 `main`과 합친 결과에서 필수 CI를 다시 돌리고 squash로 병합한다. 그래서 PR 브랜치에 `main`을 합치지 않는다. 큐에 들어간 PR의 브랜치에는 push할 수 없다. 큐의 CI가 실패하면 PR이 큐에서 빠진다. 고친 뒤에는 다시 리뷰한다.
+
+에이전트는 [AGENTS.md](../../AGENTS.md#하지-않는-것)의 병합 줄을 모두 만족할 때만 큐에 넣는다. 자동 병합은 쓰지 않는다. 저장소 `Allow auto-merge`는 Off다. `.claude/settings.json`의 거부 규칙이 `gh pr merge`와 `main` push를 막고, 큐에 넣는 `gh api`는 확인을 받는다. 이것은 습관이지 보안 경계가 아니다.
 
 병합하는 사람은 병합 직전에 head·base와 필수 검사 결과를 다시 확인한다. 되돌리기 어려움이거나 [민감한 파일](../../REVIEW.md#민감한-파일)을 건드리면 diff를 직접 읽고 그 head에서 병합한다.
 CodeQL 경고 수정 PR은 workflow 성공이 아니라 code scanning API로 판정한다.
 `refs/pull/<PR>/merge`의 Actions·Python 분석은 최종 base와 최종 head를 부모로 둔 merge 커밋에서 끝나야 한다. 각 분석의 `error`·`warning` 필드는 비어 있어야 한다. 그 ref의 열린 경고는 0건이어야 한다.
 code scanning API는 분석이 없는 ref에도 열린 경고 0건을 반환한다. 경고 수만 보고 판정하지 않는다.
-`gh pr merge <PR> --repo <OWNER/REPO> --squash --match-head-commit <FINAL_HEAD_SHA>`로 병합한다. `--admin`으로 보호를 우회하지 않는다.
+`gh api graphql -f query='mutation($id:ID!,$sha:GitObjectID!){enqueuePullRequest(input:{pullRequestId:$id,expectedHeadOid:$sha}){mergeQueueEntry{position}}}' -f id="$(gh pr view <PR> --repo <OWNER/REPO> --json id --jq .id)" -f sha=<FINAL_HEAD_SHA>`로 리뷰한 head를 큐에 넣는다. PR head가 그 SHA가 아니면 GitHub가 거부한다. 사람은 웹의 「Merge when ready」 버튼을 써도 된다. `gh pr merge`와 `--admin` 같은 큐 우회는 쓰지 않는다. 충돌 때문에 PR 브랜치에 `main`을 합쳐야 하면 head가 바뀌므로 다시 리뷰한다.
 
 ## 변경 영역별 자료 선택
 

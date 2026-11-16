@@ -27,6 +27,17 @@ const END_BUTTON_COLOR: Color = Color("926725")
 ## 포커스 테두리 색(docs/PIXEL_ART.md UI 절).
 const FOCUS_COLOR: Color = Color("ebba84")
 const RESOURCE_COLORS: Array[Color] = [Color("70c76d"), Color("edaa54"), Color("ac90e5")]
+## 스킬 칸 폭. 한 줄이 넘치면 SLOT_MIN까지 줄인다. 아이콘(24)과 좌우 여백 2씩이 들어가는 최소다(#554).
+const SLOT_FULL: int = 52
+const SLOT_MIN: int = 28
+const SLOT_GAP: int = 3
+const SLOT_HEIGHT: int = 34
+## 한 줄에 들어가는 최대 칸 수. 넘으면 SLOT_MIN에서 더 줄지 않아 패널이 넓어지므로 배치를 다시 정한다(#554).
+const SLOT_ROW_MAX: int = 8
+## 스킬 줄 왼쪽의 패시브 열 폭(버튼 22)과 간격.
+const PASSIVE_COLUMN: int = 25
+const TITLE_GAP: int = 1
+const NARROW_MARGIN: int = 2
 
 var _shown_order: Array[CombatUnit] = []
 var _portraits: Dictionary[CombatUnit, Button] = {}
@@ -71,6 +82,13 @@ var grid: CombatGrid
 @onready var restart_button: Button = $Result/Panel/Contents/Restart
 
 
+## 한 줄에 count개 버튼이 들어가도록 줄이는 칸 폭. 들어가면 SLOT_FULL이고 아무리 좁아도 SLOT_MIN이다(#554).
+static func slot_width(available: float, count: int) -> int:
+	if count <= 0:
+		return SLOT_FULL
+	return clampi(floori((available - SLOT_GAP * (count - 1)) / count), SLOT_MIN, SLOT_FULL)
+
+
 func feedback_obstacles() -> Array[Rect2]:
 	var result: Array[Rect2] = []
 	for panel: Control in [$Round, $Progress, $OrderScroll, $UnitDetails, $Skills, $CombatLog, $EndTurn, stand_button]:
@@ -112,10 +130,10 @@ func _ready() -> void:
 		panel.theme_type_variation = &"HudPanel"
 		action_bar.add_child(panel)
 		_containers.append(panel)
-		# 컨테이너마다 한 줄이다. 버튼이 줄을 넘치면 같은 컨테이너 안에서 다음 줄로 넘긴다(#438).
+		# 컨테이너마다 한 줄이다. 버튼이 줄을 넘치면 줄바꿈하지 않고 칸 폭을 줄인다(#554, 옛 줄바꿈은 #438).
 		var row: HBoxContainer = HBoxContainer.new()
 		# Galmuri11 제목이 대체 글꼴보다 넓어, 버튼 다섯 개가 한 줄에 들어가도록 제목과 버튼 사이를 줄였다.
-		row.add_theme_constant_override("separation", 1)
+		row.add_theme_constant_override("separation", TITLE_GAP)
 		panel.add_child(row)
 		var title: Label = Label.new()
 		title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -125,24 +143,23 @@ func _ready() -> void:
 		title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		row.add_child(title)
 		_titles.append(title)
-		var buttons: HFlowContainer = HFlowContainer.new()
-		buttons.add_theme_constant_override("h_separation", 3)
-		buttons.add_theme_constant_override("v_separation", 3)
+		var buttons: HBoxContainer = HBoxContainer.new()
+		buttons.add_theme_constant_override("separation", SLOT_GAP)
 		buttons.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		# 버튼이 없는 줄(궁수의 반응 칸)도 다른 줄과 같은 높이를 둔다.
-		buttons.custom_minimum_size.y = 34
+		buttons.custom_minimum_size.y = SLOT_HEIGHT
 		row.add_child(buttons)
 		for action: String in CombatActionRules.GROUPS[index]:
 			var button: Button = HoverTooltip.HoverButton.new()
 			# 아이콘 오른쪽에 비용 마크 자리를 남긴다. 높이는 그림을 줄이기 전(#362)의 입력 영역이다.
-			button.custom_minimum_size = Vector2(52, 34)
+			button.custom_minimum_size = Vector2(SLOT_FULL, SLOT_HEIGHT)
 			button.icon = CombatActionRules.icon_of(action)
 			button.material = preload("res://scenes/combat/art/pixel_art.tres")
 			button.add_theme_constant_override("icon_max_width", CombatActionRules.ICON_SIZE)
 			# 곱셈 색은 채도를 빼지 못해 반투명으로 어둡게 눌러 회색 배경에 묻는다.
 			button.add_theme_color_override("icon_disabled_color", Color("8a939b", 0.55))
 			button.accessibility_name = CombatActionRules.NAMES[action]
-			# 반사신경·은신은 아이콘이 생기기 전까지 패시브 칸처럼 이름 첫 글자를 보인다.
+			# 반사신경·은신은 아이콘이 생기기 전까지 이름 첫 글자를 보인다.
 			if button.icon == null and action in ["reflex", "stealth"]:
 				button.text = CombatActionRules.NAMES[action].left(1)
 			# 반응은 표시용이다. 자기 턴의 입력에는 연결하지 않는다.
@@ -202,9 +219,17 @@ func _build_passives() -> void:
 	for passive: String in CombatActionRules.PASSIVES:
 		var button: Button = HoverTooltip.HoverButton.new()
 		button.custom_minimum_size = Vector2(22, 34)
-		# 아이콘이 생기기 전에는 이름 첫 글자를 보인다.
-		button.text = CombatActionRules.PASSIVE_NAMES[passive].left(1)
-		button.add_theme_font_size_override("font_size", 12)
+		# 아이콘이 없으면 이름 첫 글자를 보인다.
+		button.icon = CombatActionRules.passive_icon_of(passive)
+		if button.icon == null:
+			button.text = CombatActionRules.PASSIVE_NAMES[passive].left(1)
+			button.add_theme_font_size_override("font_size", 12)
+		else:
+			button.material = preload("res://scenes/combat/art/pixel_art.tres")
+			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			button.add_theme_constant_override("icon_max_width", CombatActionRules.PASSIVE_ICON_SIZE)
+			# 조건 미충족(무빙샷)도 어둡게 하지 않는다. 기본 비활성 아이콘 색은 반투명이다.
+			button.add_theme_color_override("icon_disabled_color", Color.WHITE)
 		button.focus_mode = Control.FOCUS_NONE
 		button.accessibility_name = CombatActionRules.PASSIVE_NAMES[passive]
 		button.tooltip_text = CombatActionRules.PASSIVE_NAMES[passive] + "\n" + CombatActionRules.PASSIVE_EFFECTS[passive]
@@ -237,6 +262,9 @@ func _refresh_passives(shown: CombatUnit) -> void:
 			or passive == "moving_shot" and shown.moving_shot_ready)
 		button.disabled = passive == "moving_shot" and not on
 		var style: StyleBoxFlat = _button_style(Color("3b4f63") if on else Color("293541"), Color("f4ead1") if on else Color("61717e"))
+		# 칸 폭 22 안에 16 논리px 아이콘이 들어가도록 좌우 여백을 3으로 줄인다(#517).
+		style.content_margin_left = 3
+		style.content_margin_right = 3
 		if on:
 			style.set_border_width_all(2)
 		for state: String in ["normal", "hover", "pressed", "disabled"]:
@@ -244,6 +272,14 @@ func _refresh_passives(shown: CombatUnit) -> void:
 		# 꺼짐·조건 미충족은 어둡게 하지 않는다. 회색은 사용 불가의 뜻이라 글자색은 켜짐과 같다.
 		button.add_theme_color_override("font_color", Color.WHITE)
 		_passive_dots[passive].visible = on
+
+
+## index번째 스킬 줄의 버튼들이 쓸 수 있는 폭. 넘친 내용이 키운 크기를 읽지 않고 장면이 정한 패널 폭에서 센다.
+func _slot_room(index: int) -> float:
+	var skills: Control = $Skills
+	var inner: float = skills.offset_right - skills.offset_left - skills.get_theme_stylebox("panel").get_minimum_size().x
+	var row: float = _containers[index].get_theme_stylebox("panel").get_minimum_size().x
+	return inner - PASSIVE_COLUMN - row - _titles[index].get_combined_minimum_size().x - TITLE_GAP
 
 
 func refresh_actions(actions: CombatActions, selected: String, last_ally: CombatUnit) -> void:
@@ -272,11 +308,18 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 		_titles[index].text = "%s %s" % [names[index],
 			symbols[index].repeat(remaining) + empty_symbols[index].repeat(capacities[index] - remaining)]
 		_titles[index].modulate = Color.WHITE if ally_turn else Color("888888")
+		var visible_count: int = 0
+		for action: String in CombatActionRules.GROUPS[index]:
+			# 물약류는 가진 종류만 보인다. 없는 종류는 꺼진 버튼이 아니라 숨긴다(#576).
+			_actions[action].visible = (CombatActionRules.belongs_to(shown, action)
+				and not (action in CombatActionRules.POTION_ITEM and CombatActionRules.uses_left(shown, action) == 0))
+			visible_count += int(_actions[action].visible)
+		# 줄은 늘 한 줄이다. 넘치면 칸 폭을 줄이고 아이콘 크기는 그대로 둔다(#554).
+		var width: int = slot_width(_slot_room(index), visible_count)
+		var narrowed: bool = width < SLOT_FULL
 		for action: String in CombatActionRules.GROUPS[index]:
 			var button: Button = _actions[action]
-			# 물약류는 가진 종류만 보인다. 없는 종류는 꺼진 버튼이 아니라 숨긴다(#576).
-			button.visible = (CombatActionRules.belongs_to(shown, action)
-				and not (action in CombatActionRules.POTION_ITEM and CombatActionRules.uses_left(shown, action) == 0))
+			button.custom_minimum_size.x = width
 			if button.visible and _containers[index].visible:
 				_action_slots.append(button)
 			# 복합 비용은 함께 소비하는 턴 자원 기호를 잇는다. 이동력은 기호가 없다.
@@ -287,10 +330,12 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			button.disabled = (not ally_turn or locked) if index == 2 else not active
 			var color: Color = Color("293541") if not button.disabled else Color("242a30")
 			var border: Color = Color("f4cf69") if selected == action and active else Color("61717e")
+			# 줄인 칸은 좌우 여백도 줄여 아이콘 24가 칸 폭 28에 들어간다.
+			var margin: int = NARROW_MARGIN if narrowed else 4
 			for state: String in ["normal", "hover", "pressed", "disabled"]:
-				button.add_theme_stylebox_override(state, _button_style(color, border))
+				button.add_theme_stylebox_override(state, _button_style(color, border, margin))
 			# 키보드·컨트롤러 포커스는 배경 위에 흰 테두리만 겹친다.
-			var focus: StyleBoxFlat = _button_style(color, FOCUS_COLOR)
+			var focus: StyleBoxFlat = _button_style(color, FOCUS_COLOR, margin)
 			focus.draw_center = false
 			button.add_theme_stylebox_override("focus", focus)
 			var uses: int = CombatActionRules.uses_left(shown, action)
@@ -300,6 +345,8 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			_costs[action].reset_size()
 			_badges[action].modulate = Color.WHITE if ally_turn else Color("888888")
 			_costs[action].modulate = Color.WHITE if not button.disabled else Color("666666")
+			# 줄인 칸에서는 줄 제목에 이미 있는 하나뿐인 비용 기호를 숨긴다. 복합 비용은 그대로다.
+			_costs[action].visible = not (narrowed and _costs[action].text.length() == 1)
 	# 좌우 방향키·D-pad는 스킬 바 안에서만 옮긴다. 스틱을 누르고 있어도 끝에서 멈춘다.
 	for index: int in range(_action_slots.size()):
 		var button: Button = _action_slots[index]
@@ -644,11 +691,11 @@ func _animate_order_rotation(positions: Dictionary[CombatUnit, Vector2], revisio
 			Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
-func _button_style(color: Color, border: Color = Color("61717e")) -> StyleBoxFlat:
+func _button_style(color: Color, border: Color = Color("61717e"), margin: int = 4) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = color
 	style.border_color = border
 	style.set_border_width_all(1)
-	style.content_margin_left = 4
-	style.content_margin_right = 4
+	style.content_margin_left = margin
+	style.content_margin_right = margin
 	return style

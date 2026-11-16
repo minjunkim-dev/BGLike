@@ -241,6 +241,7 @@ func _make_player(player_name: String, stream: AudioStream) -> AudioStreamPlayer
 	player.name = player_name
 	player.stream = stream
 	player.volume_db = SOUND_VOLUME_DB
+	player.bus = GameSettings.BUS_SFX
 	player.max_polyphony = SOUND_POLYPHONY
 	add_child(player)
 	return player
