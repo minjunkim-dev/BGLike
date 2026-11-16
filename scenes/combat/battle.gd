@@ -4,7 +4,7 @@ extends Node2D
 const MOVE_STEP_TIME: float = 0.09
 const ARROW_FLIGHT_TIME: float = 0.16
 ## 칸을 조준하는 동작. 한 번 눌러 칸(과 범위)을 보고, 같은 칸을 다시 누르면 실행한다.
-const AIM_ACTIONS: Array[String] = ["oil_throw", "trick_arrow", "firework_arrow"]
+const AIM_ACTIONS: Array[String] = ["oil_throw", "oil_bottle", "trick_arrow", "firework_arrow"]
 ## 인접한 칸을 눌러 방향(정면)을 고르는 동작. 휩쓸기는 정면 반달, 효시는 세 줄 띠다.
 const FACING_ACTIONS: Array[String] = ["sweep", "whistle"]
 const ENEMY_PAUSE_TIME: float = 0.35
@@ -692,7 +692,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return a.get_index() > b.get_index()
 	)
 	var prop: CombatGrid.Prop = map.prop_at_point(map.to_local(world_position))
-	if selection.selected_action == "oil_throw":
+	if selection.selected_action in CombatActionRules.OIL_ACTIONS:
 		get_viewport().set_input_as_handled()
 		_select_aim_cell(cell)
 		return
@@ -769,8 +769,8 @@ func _select_aim_cell(cell: Vector2i) -> void:
 	if selection.select_cell(cell, actions.can_aim(actor, action, cell)):
 		selection.begin_execution()
 		match action:
-			"oil_throw":
-				actions.throw_oil(actor, cell)
+			"oil_throw", "oil_bottle":
+				actions.throw_oil(actor, cell, action)
 			"trick_arrow":
 				await actions.trick_arrow(actor, cell)
 			"firework_arrow":
@@ -1103,6 +1103,7 @@ func _update_turn_ui() -> void:
 	if selection.selected_action != "jump" and not selection.preview_path.is_empty():
 		var notes: Array[String] = []
 		for note: String in [actions.water_note(selection.preview_cell),
+				actions.slip_note(turns.current_unit, selection.preview_path) if selection.selected_action != "moving_shot" else "",
 				actions.pickup_note(turns.current_unit, selection.preview_path)]:
 			if not note.is_empty():
 				notes.append(note)
@@ -1149,18 +1150,19 @@ func _update_turn_ui() -> void:
 				whistle_chances.append(CombatActionRules.save_chance_text(turns.current_unit, target, "whistle"))
 			whistle_note = tr("효시 · 행동1 · 전투마다 1 · 의지 내성 성공률\n%s\n같은 칸을 다시 좌클릭하면 실행합니다.") % " · ".join(whistle_chances)
 		hud.show_target_note(whistle_note)
-	elif (selection.selected_action == "oil_throw" and turns.current_unit != null and turns.current_unit.is_ally
+	elif (selection.selected_action in CombatActionRules.OIL_ACTIONS and turns.current_unit != null and turns.current_unit.is_ally
 			and not actions.busy):
-		hud.show_target_note(tr("기름병 던지기 · 보조 행동1 · 기름을 깔 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 던집니다.")
-			if not actions.can_aim(turns.current_unit, "oil_throw", selection.preview_cell)
-			else tr("기름병 던지기 · 보조 행동1 · 십자 5칸 기름 3턴\n같은 칸을 다시 좌클릭하면 던집니다."))
+		var oil_name: String = CombatActionRules.NAMES[selection.selected_action]
+		hud.show_target_note(tr("%s · 보조 행동1 · 기름을 깔 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 던집니다.") % oil_name
+			if not actions.can_aim(turns.current_unit, selection.selected_action, selection.preview_cell)
+			else tr("%s · 보조 행동1 · 십자 5칸 기름 3턴\n같은 칸을 다시 좌클릭하면 던집니다.") % oil_name)
 	elif (selection.selected_action in ["trick_arrow", "firework_arrow"] and turns.current_unit != null
 			and turns.current_unit.is_ally and not actions.busy):
 		hud.show_target_note(_arrow_note(turns.current_unit, selection.selected_action, selection.preview_cell))
 	var hovered: Dictionary = actions.floor_loot.item_at(_hover_cell)
 	if (not hovered.is_empty() and selection.preview_target == null and selection.preview_prop == null
 			and selection.preview_path.is_empty()
-			and selection.selected_action not in ["jump", "sweep", "whistle", "oil_throw", "moving_shot", "trick_arrow", "firework_arrow"]):
+			and selection.selected_action not in ["jump", "sweep", "whistle", "oil_throw", "oil_bottle", "moving_shot", "trick_arrow", "firework_arrow"]):
 		hud.show_move_mode(false)
 		hud.show_target_note(tr("바닥 아이템 · %s") % CombatLoot.describe(hovered))
 	if actions.is_over():
