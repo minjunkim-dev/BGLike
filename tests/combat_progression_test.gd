@@ -3,6 +3,8 @@ extends SceneTree
 
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
 const LargeMapBattle = preload("res://tests/large_map_battle.gd")
+## 북고남저 검사를 켠 맵 이름(#515). 맵을 14×14로 다시 배치한 티켓이 자기 맵을 더한다.
+const NORTH_HIGH_STAGES: Array[String] = []
 
 var checks: int = 0
 var failures: int = 0
@@ -20,6 +22,7 @@ func _check(condition: bool, message: String) -> void:
 
 
 func _run() -> void:
+	_test_north_high_rule()
 	_test_act_progress()
 	_test_terrain_layouts()
 	_test_large_map_layout()
@@ -58,7 +61,53 @@ func _run() -> void:
 	quit(0 if failures == 0 else 1)
 
 
+func _north_high_stage(size: Vector2i, heights: Dictionary[Vector2i, int],
+		pits: Array[Vector2i] = []) -> CombatStage:
+	var stage: CombatStage = CombatStage.new()
+	stage.map_size = size
+	stage.heights = heights
+	stage.pits = pits
+	return stage
+
+
+func _test_north_high_rule() -> void:
+	var taller: Array[Vector2i] = _north_high_violations(_north_high_stage(Vector2i(4, 4), {Vector2i(2, 2): 1}))
+	_check(taller == [Vector2i(2, 2)], "앞 칸이 바로 뒤 칸 (x-1, y-1)보다 높으면 그 앞 칸이 위반")
+	var equal: Array[Vector2i] = _north_high_violations(
+		_north_high_stage(Vector2i(4, 4), {Vector2i(0, 0): 1, Vector2i(1, 1): 1, Vector2i(2, 2): 1, Vector2i(3, 3): 0}))
+	_check(equal.is_empty(), "앞 칸과 바로 뒤 칸의 높이가 같거나 뒤 칸이 높으면 위반 아님")
+	var sideways: Array[Vector2i] = _north_high_violations(_north_high_stage(Vector2i(4, 4),
+		{Vector2i(0, 1): 1, Vector2i(1, 0): 1}))
+	_check(sideways.is_empty(), "옆 뒤 칸과 앞 칸 방향의 높이는 이 규칙의 위반이 아님")
+	_check(_north_high_violations(_north_high_stage(Vector2i(4, 4), {Vector2i(0, 2): 1, Vector2i(2, 0): 1})).is_empty(),
+		"x=0 또는 y=0 가장자리 칸은 뒤 칸이 없어 검사하지 않음")
+	var pit: Array[Vector2i] = [Vector2i(1, 1)]
+	_check(_north_high_violations(_north_high_stage(Vector2i(4, 4), {Vector2i(2, 2): 1}, pit)).is_empty(),
+		"뒤 칸이 구덩이인 쌍은 검사하지 않음")
+	var front_pit: Array[Vector2i] = [Vector2i(2, 2)]
+	_check(_north_high_violations(_north_high_stage(Vector2i(4, 4), {Vector2i(2, 2): 1}, front_pit)).is_empty(),
+		"앞 칸이 구덩이인 쌍은 검사하지 않음")
+	var large: Array[Vector2i] = _north_high_violations(_north_high_stage(Vector2i(14, 14), {Vector2i(13, 13): 2}))
+	_check(large == [Vector2i(13, 13)], "10×10 밖의 14×14 칸도 검사")
+
+
+## 바닥인 칸 (x, y)가 바닥인 (x-1, y-1)보다 높은 칸을 돌려준다.
+func _north_high_violations(stage: CombatStage) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	for y: int in range(1, stage.map_size.y):
+		for x: int in range(1, stage.map_size.x):
+			var cell: Vector2i = Vector2i(x, y)
+			var behind: Vector2i = cell - Vector2i.ONE
+			if stage.pits.has(cell) or stage.pits.has(behind):
+				continue
+			if stage.heights.get(cell, 0) > stage.heights.get(behind, 0):
+				result.append(cell)
+	return result
+
+
 func _test_terrain_layouts() -> void:
+	for name: String in NORTH_HIGH_STAGES:
+		_check(name in ["1-1", "1-2", "1-3", "2-1", "2-2", "2-3", "3-1", "3-2", "3-3"], "북고남저 검사 목록의 맵 이름 " + name)
 	var sample: CombatStage = CombatStage.new()
 	if sample.has_method("get_blocked_cells"):
 		sample.blocked_cells = [Vector2i(1, 1), Vector2i(9, 9)]
@@ -71,6 +120,11 @@ func _test_terrain_layouts() -> void:
 		for number: int in range(1, 4):
 			var stage: CombatStage = load("res://scenes/combat/stages/act%d_stage%d.tres" % [act, number]) as CombatStage
 			var label: String = "%d-%d" % [act, number]
+			var violations: Array[Vector2i] = _north_high_violations(stage)
+			if NORTH_HIGH_STAGES.has(label):
+				_check(violations.is_empty(), label + " 북고남저: 바로 뒤 칸보다 높은 칸 " + str(violations))
+			else:
+				print("북고남저 검사 꺼짐 %s: 위반 %d칸" % [label, violations.size()])
 			_check(stage.heights.values().any(func(height: int) -> bool: return height >= 2),
 				label + " 실제 높이2 이상 고지대")
 			var paths: Variant = stage.get("path_cells")

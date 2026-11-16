@@ -8,14 +8,16 @@ signal changed
 
 ## 확인 창 모양은 프로젝트 공용 테마에서 가져온다(#262).
 const UI_THEME: Theme = preload("res://scenes/ui_theme.tres")
-const TEXT_COLOR: Color = Color("d8dee4")
-const DIM_COLOR: Color = Color("8d9aa6")
+const TEXT_COLOR: Color = Color("f5ebdb")
+const DIM_COLOR: Color = Color("c5b29f")
+## 포커스 테두리 색(docs/PIXEL_ART.md UI 절).
+const FOCUS_COLOR: Color = Color("ebba84")
 const GOLD_COLOR: Color = Color("d6ad4f")
 const SELECT_COLOR: Color = Color("4fa3d6")
-const LINE_COLOR: Color = Color("2a3642")
+const LINE_COLOR: Color = Color("464254")
 const DOWN_COLOR: Color = Color("e0675f")
-const PANEL_COLOR: Color = Color("121a22")
-const CELL_COLOR: Color = Color("0d141b")
+const PANEL_COLOR: Color = Color("21223d")
+const CELL_COLOR: Color = Color("18292d")
 const UNIT_FRAME: String = "res://scenes/combat/art/units/%s/idle/right/000.png"
 
 var loot: CombatLoot
@@ -55,6 +57,8 @@ var _drag_targets: Array[Control] = []
 
 
 func _ready() -> void:
+	# 이 노드는 CanvasLayer 아래라 테마를 상속받지 못한다. 정비 화면 전체가 공용 테마를 쓴다.
+	theme = UI_THEME
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	color = Color(0.04, 0.06, 0.08, 1.0)
 	var margin: MarginContainer = MarginContainer.new()
@@ -111,7 +115,6 @@ func _ready() -> void:
 	continue_button = Button.new()
 	continue_button.name = "Continue"
 	continue_button.custom_minimum_size = Vector2(132, 26)
-	_style_button(continue_button, SELECT_COLOR)
 	continue_button.pressed.connect(_continue)
 	bottom.add_child(continue_button)
 	# 화면이 낮으면 상세의 예약 여백부터 줄이고, 실제 내용의 최소 높이는 보존한다.
@@ -137,7 +140,6 @@ func _ready() -> void:
 	skip_confirmation = CheckBox.new()
 	skip_confirmation.name = "SkipConfirmation"
 	skip_confirmation.text = tr("더 이상 이 메시지를 띄우지 않음")
-	skip_confirmation.add_theme_font_size_override("font_size", 12)
 	confirmation_content.add_child(skip_confirmation)
 	add_child(discard_dialog)
 	_tooltip.hidden_when = func() -> bool: return discard_dialog.visible or get_viewport().gui_is_dragging()
@@ -385,7 +387,7 @@ func _render_detail() -> void:
 		detail.remove_child(child)
 		child.queue_free()
 	detail_panel.add_theme_stylebox_override("panel",
-		_style(SELECT_COLOR if not _selected_kind.is_empty() else LINE_COLOR, 6))
+		_themed_panel_style("HudAccentFrame" if not _selected_kind.is_empty() else "HudPanel", 6))
 	if _selected_kind.is_empty():
 		_label(detail, tr("칸을 클릭하면 여기에 아이템과 동작이 나옵니다. 방향키로 칸을 옮기고 Enter로 고릅니다.")
 			if maintaining else tr("칸을 클릭하면 아이템 수치를 봅니다."), DIM_COLOR)
@@ -707,7 +709,7 @@ func _cell(parent: Node, item: Dictionary, unit_id: String, node_name: String, b
 			_style(border.lightened(0.25) if state == "hover" else border, 0, 1, CELL_COLOR))
 	for state: String in ["pressed", "hover_pressed"]:
 		cell.add_theme_stylebox_override(state, _style(SELECT_COLOR, 0, 2, CELL_COLOR))
-	var focus: StyleBoxFlat = _style(TEXT_COLOR, 0)
+	var focus: StyleBoxFlat = _style(FOCUS_COLOR, 0)
 	focus.draw_center = false
 	cell.add_theme_stylebox_override("focus", focus)
 	parent.add_child(cell)
@@ -723,11 +725,18 @@ func _grid(parent: Node, columns: int) -> GridContainer:
 	return grid
 
 
-func _panel(parent: Node, border: Color, padding: int = 6) -> PanelContainer:
+func _panel(parent: Node, _border: Color, padding: int = 6) -> PanelContainer:
 	var panel: PanelContainer = PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _style(border, padding))
+	panel.add_theme_stylebox_override("panel", _themed_panel_style("HudPanel", padding))
 	parent.add_child(panel)
 	return panel
+
+
+## 공용 테마의 패널 프레임(`HudPanel`·`HudAccentFrame`)에 이 칸의 안쪽 여백만 바꾼 것.
+func _themed_panel_style(variation: String, padding: int) -> StyleBoxTexture:
+	var style: StyleBoxTexture = UI_THEME.get_stylebox("panel", variation).duplicate() as StyleBoxTexture
+	style.set_content_margin_all(padding)
+	return style
 
 
 func _style(border: Color, padding: int, width: int = 1, background: Color = PANEL_COLOR) -> StyleBoxFlat:
@@ -747,7 +756,6 @@ func _label(parent: Node, text: String, font_color: Color = TEXT_COLOR, wrap: bo
 	if wrap:
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.add_theme_font_size_override("font_size", 12)
 	label.add_theme_color_override("font_color", font_color)
 	parent.add_child(label)
 	return label
@@ -758,8 +766,6 @@ func _button(parent: Node, text: String, node_name: String) -> Button:
 	_tooltip.attach(button)
 	button.name = node_name
 	button.text = text
-	button.add_theme_font_size_override("font_size", 12)
-	_style_button(button, Color("3a4856"))
 	parent.add_child(button)
 	return button
 
@@ -768,15 +774,15 @@ func _button(parent: Node, text: String, node_name: String) -> Button:
 func _style_button(button: Button, border: Color) -> void:
 	for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
 		var style: StyleBoxFlat = _style(border.lightened(0.3) if state.begins_with("hover") else border, 0, 1,
-			Color("1b2631") if state != "disabled" else Color("131a21"))
+			Color("223940") if state != "disabled" else Color("18292d"))
 		style.content_margin_left = 6
 		style.content_margin_right = 6
 		style.content_margin_top = 1
 		style.content_margin_bottom = 1
 		if state == "focus":
 			style.draw_center = false
-			style.border_color = TEXT_COLOR
+			style.border_color = FOCUS_COLOR
 		elif state == "disabled":
-			style.border_color = Color("26303a")
+			style.border_color = Color("464254")
 		button.add_theme_stylebox_override(state, style)
-	button.add_theme_color_override("font_disabled_color", Color("5d6873"))
+	button.add_theme_color_override("font_disabled_color", Color("85736c"))
