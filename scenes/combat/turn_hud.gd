@@ -3,6 +3,8 @@ extends Control
 ## 전투 화면. 비용 기호와 막당 횟수를 서로 다른 위치에 표시한다.
 
 signal unit_selected(unit: CombatUnit)
+## 턴 순서 초상에 마우스가 올라가면 그 유닛, 떠나면 null(#556).
+signal unit_hovered(unit: CombatUnit)
 signal end_turn_requested
 signal action_selected(action: String)
 signal reaction_selected(use_reaction: bool)
@@ -592,6 +594,8 @@ func _build_portraits(turns: CombatTurns) -> void:
 			button.add_theme_font_size_override("font_size", 10)
 			button.add_theme_color_override("font_disabled_color", Color("b5bdc4"))
 			button.pressed.connect(func() -> void: unit_selected.emit(unit))
+			button.mouse_entered.connect(func() -> void: unit_hovered.emit(unit))
+			button.mouse_exited.connect(func() -> void: unit_hovered.emit(null))
 			box.add_child(button)
 			var pending: Label = Label.new()
 			pending.name = "PendingTurn"

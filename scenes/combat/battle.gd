@@ -88,6 +88,7 @@ func _ready() -> void:
 	staging.add_child(start_button)
 
 	hud.unit_selected.connect(_on_unit_selected)
+	hud.unit_hovered.connect(_on_unit_hovered)
 	hud.end_turn_requested.connect(_end_turn)
 	hud.action_selected.connect(_on_action_selected)
 	hud.reaction_selected.connect(actions.resolve_reaction)
@@ -578,9 +579,73 @@ func _hover_floor_loot(screen_position: Vector2) -> void:
 		_update_turn_ui()
 
 
+## 적 위협 범위(#556). T로 켜고 끄며 기본은 꺼짐이다. 저장하지 않는다.
+var threat_visible: bool = false
+## 마우스가 올라간 적(몸통 또는 턴 순서 초상). 있으면 그 적의 범위만 보인다.
+var _threat_unit: CombatUnit
+var _body_hover_unit: CombatUnit
+var _portrait_hover_unit: CombatUnit
+
+
+func _on_unit_hovered(unit: CombatUnit) -> void:
+	_portrait_hover_unit = unit
+	_sync_threat_hover()
+
+
+func _hover_enemy_body(screen_position: Vector2) -> void:
+	var world_position: Vector2 = get_canvas_transform().affine_inverse() * screen_position
+	var candidates: Array[CombatUnit] = []
+	for unit: CombatUnit in units:
+		if unit.visible and unit.hit_points > 0 and unit.contains_body_point(unit.to_local(world_position)):
+			candidates.append(unit)
+	candidates.sort_custom(func(a: CombatUnit, b: CombatUnit) -> bool:
+		if a.position.y != b.position.y:
+			return a.position.y > b.position.y
+		return a.get_index() > b.get_index())
+	var found: CombatUnit = candidates[0] if not candidates.is_empty() else actions.grid.unit_at(
+		map.surface_to_map(map.to_local(world_position)))
+	_body_hover_unit = found
+	_sync_threat_hover()
+
+
+func _sync_threat_hover() -> void:
+	var picked: CombatUnit = _portrait_hover_unit if _portrait_hover_unit != null else _body_hover_unit
+	if picked != null and (picked.is_ally or picked.hit_points <= 0 or picked not in units):
+		picked = null
+	if picked == _threat_unit:
+		return
+	_threat_unit = picked
+	_refresh_threat()
+
+
+func _refresh_threat() -> void:
+	var cells: Array[Vector2i] = []
+	if not preparation.visible and not actions.is_over():
+		var shown: Array[CombatUnit] = []
+		if _threat_unit != null and _threat_unit.hit_points > 0 and _threat_unit in units:
+			shown.append(_threat_unit)
+		elif threat_visible:
+			for unit: CombatUnit in units:
+				if not unit.is_ally and unit.visible and unit.hit_points > 0 and not unit.stealthed:
+					shown.append(unit)
+		for enemy: CombatUnit in shown:
+			for cell: Vector2i in actions.threat_cells(enemy):
+				if cell not in cells:
+					cells.append(cell)
+	map.show_threat(cells)
+
+
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and not preparation.visible:
 		_hover_floor_loot(event.position)
+		_hover_enemy_body(event.position)
+	if (event is InputEventKey and event.physical_keycode == KEY_T and not preparation.visible
+			and not event.is_command_or_control_pressed()):
+		get_viewport().set_input_as_handled()
+		if event.pressed and not event.echo:
+			threat_visible = not threat_visible
+			_refresh_threat()
+		return
 	# 반응·정비 확인 창이 떠 있으면 그 창이 Esc·Start를 먼저 받는다. Esc는 지금처럼 반응을 넘긴다.
 	if event.is_action_pressed("pause"):
 		get_viewport().set_input_as_handled()
@@ -1015,6 +1080,7 @@ func _update_turn_ui() -> void:
 	map.show_trees(actions.grid.trees)
 	map.show_floor_loot(actions.floor_loot.drops)
 	map.show_props(actions.get_props(), selection.preview_prop)
+	_refresh_threat()
 	map.reveal_units(units)
 	# 가림 판정은 방금 그린 사물 위치를 사용한다.
 	for unit: CombatUnit in units:
