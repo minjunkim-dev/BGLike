@@ -1103,6 +1103,7 @@ func _update_turn_ui() -> void:
 	if selection.selected_action != "jump" and not selection.preview_path.is_empty():
 		var notes: Array[String] = []
 		for note: String in [actions.water_note(selection.preview_cell),
+				actions.slip_note(turns.current_unit, selection.preview_path) if selection.selected_action != "moving_shot" else "",
 				actions.pickup_note(turns.current_unit, selection.preview_path)]:
 			if not note.is_empty():
 				notes.append(note)
