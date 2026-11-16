@@ -106,9 +106,11 @@ jobs:
         run: python3 scripts/ci_gate.py
 
   # The one required check (repo-baseline contract): it passes only when every job it needs succeeded.
+  # policy is needed directly so its failure blocks even if ci_gate.py breaks; smoke is not,
+  # because it is skipped on docs-only changes and legacy-ci already judges it.
   ci:
     name: ci
-    needs: [legacy-ci]
+    needs: [policy, legacy-ci]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 2
