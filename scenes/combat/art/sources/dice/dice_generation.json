@@ -1,0 +1,47 @@
+{
+  "issue": "https://github.com/minjunkim-dev/BGLike/issues/519",
+  "generator": {
+    "tool": "draw_dice.py",
+    "mode": "pixels placed by code from the briefs below; no generative image model and no input image",
+    "date": "2026-11-16",
+    "command": "python3 scenes/combat/art/sources/dice/draw_dice.py scenes/combat/art/dice",
+    "sheet_command": "python3 scenes/combat/art/sources/dice/draw_dice.py --sheet docs/assets/dice_states.png"
+  },
+  "spec": {
+    "canvas": [48, 48],
+    "display_scale": 0.5,
+    "logical_size": [24, 24],
+    "body_max": [36, 36],
+    "outline": "2 source px (1 logical px) of #120d16, like the unit frames",
+    "band": "2 source px of the state color inside the outline",
+    "liquid_mask": "d{N}_liquid.png: white pixels of the glass inside the band; the runtime cuts it by height and multiplies the success or failure color",
+    "numbers": "none in the pictures; the runtime draws them beside the die (docs/DICE_PRESENTATION.md)",
+    "light": "upper left",
+    "filter": "nearest; no anti-aliasing",
+    "palette": {
+      "outline": "#120d16",
+      "glass": "#202b35 (CombatDiceRollView.DIE_FILL)",
+      "neutral": "#f4ead1 (NEUTRAL_COLOR)",
+      "success": "#70c76d (CombatUnit.HEAL_COLOR)",
+      "failure": "#df6256 (CombatUnit.ENEMY_COLOR)",
+      "absolute": "#f4cf69 (ABSOLUTE_COLOR)",
+      "absolute_failure_body": "#4a2a5c with glass #1a1024 and a #b8923e crack"
+    }
+  },
+  "states": [
+    {"id": "rolling", "brief": "Original pixel-art die body, transparent background: neutral cream band, dark glass, no liquid, a ring of small spin-trail pixels around the body."},
+    {"id": "success", "brief": "Same body with a success-green band and dark glass. The liquid is added at runtime."},
+    {"id": "failure", "brief": "Same body with a failure-red band and dark glass. The liquid is added at runtime."},
+    {"id": "absolute_success", "brief": "Same body with a gold band, warm dark glass and short light rays above. The runtime fills it with success liquid."},
+    {"id": "absolute_failure", "brief": "Same body with a dark purple band, very dark glass, a gold crack line and a few shard pixels below. The runtime leaves a single row of failure liquid."}
+  ],
+  "shapes": {
+    "4": "triangle",
+    "6": "square with a top face line",
+    "8": "rhombus",
+    "10": "kite",
+    "12": "pentagon",
+    "20": "hexagon with a center triangle line"
+  },
+  "references": "Direction only: the #516 comment (issuecomment-6797626606) reference image summary and the way Baldur's Gate 3 shows a check die. No image or asset of either was an input or copied."
+}

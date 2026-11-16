@@ -78,6 +78,10 @@ HP·상태·피해 팝업은 그 유닛의 실제 그림 높이를 기준으로 
 
 2026-10-21 실제 1-1 전투 위에 아이콘을 놓고 원본 Viewport를 저장했다. [1280×720](assets/item_icons_capture_1280x720.png)에서는 네 아이콘이 윤곽과 색으로 구분된다. [640×360](assets/item_icons_capture_640x360.png)에서도 구분되지만 활시위와 1px 하이라이트 일부가 사라진다. 캡처의 글자 행은 검수용 배치다. 제품 화면 배치가 아니다.
 
+## 주사위
+
+`개발 결정`([#519](https://github.com/minjunkim-dev/BGLike/issues/519)): 판정 주사위 그림은 48×48 RGBA 원본을 0.5배로 쓴다(24 논리px). 2px 어두운 윤곽과 왼쪽 위 광원을 쓰고 그림 안에는 숫자를 넣지 않는다. 면 수(d4~d20)×다섯 상태 그림과 액체 마스크를 `scenes/combat/art/dice/`에 둔다. `python3 scenes/combat/art/sources/dice/draw_dice.py scenes/combat/art/dice`가 같은 파일을 만들고, 규격은 `sources/dice/dice_generation.json`에 있다. 상태·게이지·숫자 배치의 결정은 [주사위 굴림 연출](DICE_PRESENTATION.md#도트-디자인-519)에 있다.
+
 ## 표시 크기 (#362)
 
 `개발 결정`([#362](https://github.com/minjunkim-dev/BGLike/issues/362), 2026-10-27 사용자 위임): 스킬·아이템 그림은48×48 원본을 0.5배로 써서24 논리px로 표시한다. 전투 HUD 스킬 버튼, 정비의 장비·보상·가방 칸, 선택 상세, 드래그 미리보기가 `CombatActionRules.ICON_SIZE` 하나를 쓴다. 입력 영역은 줄이지 않는다. 스킬 버튼은52×34, 정비 칸은36×36이다. 턴 순서 초상(32)과 정비 카드 초상(64)은 이 범위 밖이다. 정비 카드의 작은 물약 칸(그림 16)은 크기를 그대로 두고, 같은 0.5배 규칙으로 물약류마다 32px 원본 `<icon>_pip.png`(`potion_pip.png`, `oil_bottle_pip.png`)를 함께 찍는다. 칸의 입력 영역은 20×20이다([#577](https://github.com/minjunkim-dev/BGLike/issues/577)). 기획자가 나중에 바꿀 수 있다.
