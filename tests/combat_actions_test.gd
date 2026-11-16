@@ -1028,6 +1028,7 @@ func _run() -> void:
 	_test_crate_boundaries()
 	await _test_crate_ai_path()
 	_test_crate_callback_reset()
+	_test_threat_cells()
 	await _test_crate_stage()
 	await _test_crate_scene_input()
 	_test_novice_stats()
@@ -1160,6 +1161,54 @@ func _run() -> void:
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat actions: %d checks, %d failures" % [_checks, _failures])
 	quit(0 if _failures == 0 else 1)
+
+
+func _test_threat_cells() -> void:
+	var f: Fixture = _fixture()
+	var enemy: CombatUnit = f.units[2]
+	enemy.cell = Vector2i(0, 0)
+	f.units[0].cell = Vector2i(9, 9)
+	f.units[1].cell = Vector2i(9, 8)
+	f.units[3].cell = Vector2i(8, 9)
+	var cells: Array[Vector2i] = f.actions.threat_cells(enemy)
+	_check(Vector2i(7, 0) in cells and Vector2i(0, 0) in cells and Vector2i(8, 0) not in cells,
+		"이동력6·사거리1 적의 위협은 거리 7까지 포함하고 8은 제외")
+	var unique: Dictionary[Vector2i, bool] = {}
+	for cell: Vector2i in cells:
+		unique[cell] = true
+	_check(unique.size() == cells.size(), "위협 칸은 중복이 없다")
+	enemy.movement_left = 0
+	_check(Vector2i(7, 0) in f.actions.threat_cells(enemy), "남은 이동력이 0이어도 전체 이동력으로 계산")
+	enemy.movement_left = enemy.get_movement()
+	var archer: CombatUnit = f.units[3]
+	archer.cell = Vector2i(0, 0)
+	enemy.cell = Vector2i(8, 9)
+	archer.is_ally = false
+	archer.kind = CombatUnit.Kind.ARCHER
+	_check(Vector2i(9, 0) in f.actions.threat_cells(archer) and Vector2i(0, 9) in f.actions.threat_cells(archer),
+		"적 궁수는 이동 6 + 사거리 6으로 먼 칸까지 위협")
+	var before_cell: Vector2i = archer.cell
+	var before_move: int = archer.movement_left
+	f.actions.threat_cells(archer)
+	_check(archer.cell == before_cell and archer.movement_left == before_move, "위협 계산은 유닛의 칸·자원을 바꾸지 않는다")
+	enemy.cell = Vector2i(0, 0)
+	archer.cell = Vector2i(8, 9)
+	f.actions.grid.heights[Vector2i(1, 0)] = 2
+	f.actions.grid.heights[Vector2i(0, 1)] = 2
+	var walled: Array[Vector2i] = f.actions.threat_cells(enemy)
+	_check(walled.is_empty(), "높이 차 2로 걸을 수도 칠 수도 없으면 위협이 없다")
+	f.actions.grid.heights.erase(Vector2i(1, 0))
+	f.units[1].cell = Vector2i(1, 0)
+	_check(f.actions.threat_cells(enemy) == [Vector2i(1, 0)],
+		"다른 유닛 칸은 지나가지 못하지만 바로 옆이면 칠 수 있다")
+	f.actions.grid.heights.clear()
+	_check(f.actions.threat_cells(f.units[0]).is_empty(), "아군은 위협 범위가 없다")
+	enemy.stealthed = true
+	_check(f.actions.threat_cells(enemy).is_empty(), "은신 적은 위협 범위가 없다")
+	enemy.stealthed = false
+	enemy.hit_points = 0
+	_check(f.actions.threat_cells(enemy).is_empty(), "쓰러진 적은 위협 범위가 없다")
+	enemy.hit_points = enemy.get_max_hit_points()
 
 
 func _test_scrap_robot_stats() -> void:

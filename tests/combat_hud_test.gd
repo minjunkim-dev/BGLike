@@ -53,6 +53,7 @@ func _run() -> void:
 	_check("이니셔티브" not in hud.message_label.text, "전투 시작 로그에 이니셔티브 계산식 없음")
 	_test_square_map()
 	_test_movement_overlay()
+	_test_threat_overlay()
 	await _test_floor_loot_ui()
 	_test_height_edges()
 	_test_unit_art()
@@ -69,6 +70,7 @@ func _run() -> void:
 	_test_high_ground_guidance()
 	_test_water_guidance()
 	await _test_mouse_controls_and_inspection()
+	await _test_threat_range_input()
 	await _test_group_keyboard()
 	await _test_skill_bar_keys()
 	await _test_joined_group_hud()
@@ -193,11 +195,30 @@ func _test_movement_overlay() -> void:
 		_check(overlay.color.a > 0.0 and overlay.color.a <= 0.16, "이동 면 채움이 바닥 재질을 가리지 않음")
 		_check(overlay.color.b > overlay.color.g if index == 0 else overlay.color.g > overlay.color.b,
 			"기존 파랑 이동·초록 이동 후 공격의 의미 유지")
-		_check(overlay.get_child_count() == 1 and overlay.get_child(0) is Line2D, "약한 면에 칸 윤곽을 함께 표시")
-		if overlay.get_child_count() == 1 and overlay.get_child(0) is Line2D:
+		_check(overlay.get_child_count() == 5 and overlay.get_children().all(func(node: Node) -> bool: return node is Line2D),
+			"약한 면에 칸 윤곽과 네 꼭짓점 표시를 함께 표시")
+		if overlay.get_child_count() == 5:
 			var edge: Line2D = overlay.get_child(0) as Line2D
-			_check(edge.closed and edge.points == overlay.polygon and edge.width <= 1.0,
-				"윤곽은 기존 바닥 마름모를 닫고 측면을 칠하지 않음")
+			_check(edge.closed and edge.points == overlay.polygon and is_equal_approx(edge.width, 1.5),
+				"윤곽은 기존 바닥 마름모를 닫고 이전보다 1px 굵음(0.5→1.5)")
+			var corners: Dictionary[Vector2, bool] = {}
+			var inside: bool = true
+			var middle: Vector2 = (overlay.polygon[0] + overlay.polygon[2]) / 2.0
+			var half: Vector2 = Vector2(absf(overlay.polygon[1].x - overlay.polygon[3].x), absf(overlay.polygon[2].y - overlay.polygon[0].y)) / 2.0
+			for corner_index: int in range(1, 5):
+				var mark: Line2D = overlay.get_child(corner_index) as Line2D
+				corners[mark.points[1]] = true
+				inside = inside and mark.points.size() == 3 and not mark.closed and mark.width >= 1.0
+				for point: Vector2 in mark.points:
+					var offset: Vector2 = (point - middle).abs()
+					inside = inside and offset.x / half.x + offset.y / half.y <= 1.0001
+			var at_vertices: bool = true
+			for vertex: Vector2 in overlay.polygon:
+				at_vertices = at_vertices and corners.has(vertex)
+			_check(inside and corners.size() == 4 and at_vertices,
+				"꼭짓점 표시 4개는 마름모 네 꼭짓점에서 시작하고 바닥 안쪽에만 그려 측면을 칠하지 않음")
+			_check(edge.default_color.a > 0.0 and (overlay.get_child(1) as Line2D).default_color.a >= edge.default_color.a,
+				"꼭짓점 표시는 윤곽보다 옅지 않음")
 		var center: Vector2 = Vector2.ZERO
 		for point: Vector2 in overlay.polygon:
 			center += point / overlay.polygon.size()
@@ -205,6 +226,40 @@ func _test_movement_overlay() -> void:
 			"높이 있는 바닥 위에도 같은 좌표로 표시")
 	map.show_movement([], [], [], Vector2i.ZERO)
 	_check(map._overlays.is_empty(), "이동 표시를 닫으면 면·윤곽·경로를 함께 제거")
+	map.free()
+
+
+func _test_threat_overlay() -> void:
+	var grid: CombatGrid = CombatGrid.new()
+	grid.map_size = Vector2i(3, 2)
+	var map: CombatMap = CombatMap.new()
+	root.add_child(map)
+	map.build_grid(grid, load("res://scenes/combat/floor_tiles.tres") as TileSet)
+	map.show_threat([Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 1)])
+	_check(map._threat_overlays.size() == 3, "위협 칸 수만큼 표시를 그림")
+	var reddish: bool = true
+	var plain: bool = true
+	for overlay: Polygon2D in map._threat_overlays:
+		reddish = reddish and overlay.color.r > overlay.color.b and overlay.color.r > overlay.color.g and overlay.color.a <= 0.16
+		plain = plain and overlay.get_child_count() == 1 and overlay.get_child(0) is Line2D
+	_check(reddish, "위협 면은 붉은 계열이고 바닥 재질을 가리지 않음")
+	_check(plain, "위협 표시에는 꼭짓점 표시 없이 윤곽만 둠(이동 범위와 모양으로도 구분)")
+	map.show_movement([Vector2i(0, 0)], [], [], Vector2i(2, 1))
+	_check(map._threat_overlays.size() == 3 and map._overlays.size() == 1, "이동 표시를 바꿔도 위협 표시는 그대로")
+	var movement_index: int = map._overlays[0].get_index()
+	_check(map._threat_overlays.all(func(overlay: Node2D) -> bool: return overlay.get_index() < movement_index),
+		"이동 표시가 나중에 와도 위협 표시 위에 그림")
+	map.show_threat([Vector2i(1, 1)])
+	_check(map._threat_overlays.size() == 1 and map._overlays.size() == 1
+		and map._threat_overlays[0].get_index() < map._overlays[0].get_index(),
+		"위협 표시를 다시 그려도 이동 표시 아래에 있음")
+	map.show_movement([], [], [], Vector2i.ZERO)
+	_check(map._threat_overlays.size() == 1, "이동 표시를 지워도 위협 표시는 그대로")
+	map.show_threat([])
+	_check(map._threat_overlays.is_empty(), "빈 목록으로 위협 표시를 지움")
+	map.show_threat([Vector2i(0, 0)])
+	map.build_grid(CombatGrid.new(), load("res://scenes/combat/floor_tiles.tres") as TileSet)
+	_check(map._threat_overlays.is_empty(), "맵을 다시 만들면 위협 표시도 지움")
 	map.free()
 
 
@@ -1678,6 +1733,81 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check(hud.unit_label.text == "아군 궁수" and ((battle.get("selection") as CombatSelection).preview_path as Array).is_empty(),
 		"반응 대기 중 초상·우클릭은 기존 잠금을 유지")
 	actions.busy = false
+	_reset_units()
+
+
+func _threat_marks() -> Dictionary[Vector2, bool]:
+	var marks: Dictionary[Vector2, bool] = {}
+	for overlay: Node2D in battle.map._threat_overlays:
+		marks[overlay.position] = true
+	return marks
+
+
+func _expected_threat(enemies: Array[CombatUnit]) -> Dictionary[Vector2, bool]:
+	var marks: Dictionary[Vector2, bool] = {}
+	for enemy: CombatUnit in enemies:
+		for cell: Vector2i in actions.threat_cells(enemy):
+			marks[battle.map.map_to_local(cell)] = true
+	return marks
+
+
+func _hover_point(point: Vector2) -> void:
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = root.get_final_transform() * point
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
+	await process_frame
+	await process_frame
+
+
+func _test_threat_range_input() -> void:
+	_reset_units()
+	units[0].cell = Vector2i(4, 9)
+	units[1].cell = Vector2i(5, 9)
+	units[2].cell = Vector2i(4, 2)
+	units[3].cell = Vector2i(8, 2)
+	turns.select_unit(units[0])
+	battle.call("_update_turn_ui")
+	await process_frame
+	var enemies: Array[CombatUnit] = [units[2], units[3]]
+	_check(not battle.threat_visible and battle.map._threat_overlays.is_empty(), "위협 범위는 기본으로 꺼져 있음")
+	var action_before: String = (battle.get("selection") as CombatSelection).selected_action
+	var current_before: CombatUnit = turns.current_unit
+	await _key(KEY_T)
+	var both: Dictionary[Vector2, bool] = _expected_threat(enemies)
+	_check(battle.threat_visible and not both.is_empty() and _threat_marks() == both,
+		"T로 켜면 보이는 적 전체의 위협 범위가 겹쳐 보임")
+	_check(turns.current_unit == current_before and (battle.get("selection") as CombatSelection).selected_action == action_before,
+		"T는 선택 동작과 현재 턴을 바꾸지 않음")
+	await _key(KEY_T)
+	_check(not battle.threat_visible and battle.map._threat_overlays.is_empty(), "T를 다시 누르면 꺼짐")
+	await _hover_point(units[2].get_global_transform_with_canvas() * Vector2(0, -10))
+	var only_first: Dictionary[Vector2, bool] = _expected_threat([units[2]])
+	_check(not battle.threat_visible and _threat_marks() == only_first and only_first.size() < both.size(),
+		"꺼진 상태에서도 적 몸통에 마우스를 올리면 그 적의 범위만 보임")
+	await _key(KEY_T)
+	_check(_threat_marks() == only_first, "켠 채로 적에 올리면 그 적의 범위만 보임")
+	await _hover_point(Vector2(-4000, -4000))
+	_check(_threat_marks() == both, "마우스가 적에서 떠나면 전체 범위로 돌아감")
+	hud.unit_hovered.emit(units[3])
+	_check(_threat_marks() == _expected_threat([units[3]]), "턴 순서 초상 위에 올리면 그 적의 범위만 보임")
+	hud.unit_hovered.emit(null)
+	_check(_threat_marks() == both, "초상에서 떠나면 전체 범위로 돌아감")
+	hud.unit_hovered.emit(units[3])
+	hud.call("_build_portraits", turns)
+	_check(_threat_marks() == both, "초상 버튼을 다시 만들면 낡은 초상 호버는 풀림")
+	hud.unit_hovered.emit(units[0])
+	_check(_threat_marks() == both, "아군 초상을 올려도 위협 표시는 바뀌지 않음")
+	units[3].hit_points = 0
+	battle.call("_update_turn_ui")
+	_check(_threat_marks() == _expected_threat([units[2]]), "쓰러진 적의 위협은 사라짐")
+	units[3].hit_points = units[3].get_max_hit_points()
+	battle.preparation.visible = true
+	await _key(KEY_T)
+	_check(battle.threat_visible, "정비 화면에서는 T를 무시")
+	battle.preparation.visible = false
+	await _key(KEY_T)
+	_check(not battle.threat_visible and battle.map._threat_overlays.is_empty(), "정비 화면을 닫고 T로 끔")
 	_reset_units()
 
 
