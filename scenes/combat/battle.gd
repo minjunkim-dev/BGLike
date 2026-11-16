@@ -1164,11 +1164,11 @@ func _update_turn_ui() -> void:
 	hud.get_node("Skills").visible = not waiting_for_start
 	hud.get_node("EndTurn").visible = not waiting_for_start
 	hud.show_move_mode(showing_move)
-	# 걷기 미리보기는 안내를 숨기지만, 도착 칸이 물이면 서기 전에 물 칸 화상 규칙을 보인다(#503).
+	# 걷기·무빙샷 도약 미리보기는 안내를 숨기지만, 도착 칸이 물이면 서기 전에 물 칸 화상 규칙을, 기름 칸이면 미끌거림 안내를 보인다(#503, #600).
 	if selection.selected_action != "jump" and not selection.preview_path.is_empty():
 		var notes: Array[String] = []
 		for note: String in [actions.water_note(selection.preview_cell),
-				actions.slip_note(turns.current_unit, selection.preview_path) if selection.selected_action != "moving_shot" else "",
+				actions.slip_note(turns.current_unit, selection.preview_path),
 				actions.pickup_note(turns.current_unit, selection.preview_path)]:
 			if not note.is_empty():
 				notes.append(note)
@@ -1189,6 +1189,10 @@ func _update_turn_ui() -> void:
 			var water: String = actions.water_note(cell)
 			if not water.is_empty():
 				note += "\n" + water
+			# 점프는 넘어가는 중간 칸에 서지 않으므로 미끌거림은 착지 칸 기준이다(#600).
+			var slip: String = actions.slip_note(actor, [cell])
+			if not slip.is_empty():
+				note += "\n" + slip
 			var pickup: String = actions.pickup_note(actor, [cell])
 			if not pickup.is_empty():
 				note += "\n" + pickup
