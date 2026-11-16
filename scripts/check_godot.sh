@@ -72,6 +72,12 @@ def relay(name, started, process, lines):
             say(name, started, line if line.endswith("\n") else line + "\n")
         except (OSError, UnicodeError):
             pass
+        # A runtime script error skips quit(), so Godot would wait until the CI job times out.
+        if "SCRIPT ERROR" in line or "Failed to load script" in line:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except OSError:  # The group is already gone (macOS reports EPERM for a reaped leader).
+                pass
 spawning = False
 deferred = False
 def cancel(_signal, _frame):

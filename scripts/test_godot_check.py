@@ -170,6 +170,24 @@ esac
                 self.assertLess(time.monotonic(), deadline, "Leftover child outlived the check")
                 time.sleep(0.02)
 
+    def test_runtime_script_error_stops_a_hanging_test(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "godot"
+            # Godot keeps running after a runtime script error because quit() is never reached.
+            binary.write_text(FAKE_GODOT + """
+case "$*" in
+  *combat_save_test*) echo 'SCRIPT ERROR: Invalid access to property or key.' >&2; exec sleep 30 ;;
+esac
+""")
+            binary.chmod(0o755)
+            result = subprocess.run(["bash", "scripts/check_godot.sh", "tests/combat_save_test.gd"], cwd=ROOT,
+                                    env=dict(os.environ, GODOT=str(binary), CALL_LOG=str(root / "calls"),
+                                             BROKEN="no-such-step", ERROR_LINE="", BROKEN_EXIT="0"),
+                                    text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn("Godot script error during: --script tests/combat_save_test.gd", result.stderr)
+
     def test_output_that_does_not_end_fails(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
