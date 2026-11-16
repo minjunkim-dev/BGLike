@@ -81,6 +81,7 @@ func _run() -> void:
 	await _test_distraction_clock()
 	await _test_distraction_logs()
 	_test_firework_uses_and_save()
+	_test_firework_effect_dc()
 	await _test_tree_burn()
 	_test_stage_reset()
 	_test_save_state()
@@ -902,6 +903,21 @@ func _test_arrow_usability() -> void:
 	near.units[2].cell = Vector2i(3, 3)
 	var close: CombatChecks.AttackPreview = near.actions.grid.attack_preview(near.units[0], near.units[1], "trick_arrow")
 	_check(close.valid_target and close.mode == CombatChecks.RollMode.DISADVANTAGE, "인접한 적이 있으면 불리")
+
+
+## 설명 창 효과 줄의 DC는 레벨을 반영한 실제 DC(save_dc)다. 4로 고정하지 않는다.
+func _test_firework_effect_dc() -> void:
+	var archer: CombatUnit = CombatUnit.new()
+	_created.append(archer)
+	archer.kind = CombatUnit.Kind.ARCHER
+	archer.is_ally = true
+	for level: int in [0, 5]:
+		archer.dice_level = level
+		var dc: int = CombatActionRules.save_dc(archer, "firework_arrow")
+		var effect: String = CombatActionRules.effect(archer, "firework_arrow")
+		_check("민첩 내성(DC %d)" % dc in effect, "폭죽 화살 효과 줄이 실제 DC %d를 보임(레벨 %d): %s" % [dc, level, effect])
+	_check(CombatActionRules.save_dc(archer, "firework_arrow") != 4 and "DC 4" not in CombatActionRules.effect(archer, "firework_arrow"),
+		"레벨 5 궁수의 효과 줄에 DC 4가 고정으로 남지 않음: " + CombatActionRules.effect(archer, "firework_arrow"))
 
 
 func _test_firework_uses_and_save() -> void:
