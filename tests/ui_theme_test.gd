@@ -12,6 +12,8 @@ const FRAME_PATHS: Array[String] = ["res://scenes/ui/art/frames/panel.png",
 ## Issue #518이 전후 비교로 적은 두 창. 논리 화면은 둘 다 640×360이다.
 const TEXT_WINDOWS: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(1920, 1080)]
 const LOGICAL_SCREEN: Vector2 = Vector2(640, 360)
+const PALETTE: Array[String] = ["21223d", "cc8e4d", "223940", "365d61", "18292d", "464254",
+	"f5ebdb", "c5b29f", "ebba84", "85736c"]
 ## 여러 worktree가 같은 user://를 쓰므로 실행마다 폴더를 나눈다 (docs/adr/0003).
 var directory: String = "user://tests/ui_theme/%d" % OS.get_process_id()
 
@@ -40,6 +42,7 @@ func _run() -> void:
 	_check_font_import(theme)
 	_check_button_states(theme)
 	_check_panel(theme)
+	_check_hud_variations(theme)
 	_check_notices()
 	await _check_text_layout()
 	_finish()
@@ -115,6 +118,37 @@ func _check_panel(theme: Theme) -> void:
 		_check(ResourceLoader.exists(path), "프레임 파일 있음: %s" % path)
 
 
+## seam A: HUD 패널 변형, 리치 텍스트 본문색, 체크박스 색이 UI 팔레트 안이다.
+func _check_hud_variations(theme: Theme) -> void:
+	var panel: StyleBox = theme.get_stylebox("panel", "HudPanel")
+	_check(panel is StyleBoxTexture, "HudPanel은 StyleBoxTexture")
+	if panel is StyleBoxTexture:
+		var texture: StyleBoxTexture = panel as StyleBoxTexture
+		_check(texture.texture != null and texture.texture.resource_path.ends_with("/panel.png"), "HudPanel은 panel.png")
+		_check(texture.modulate_color.is_equal_approx(Color.html("21223d")), "HudPanel 면 #21223D")
+		_check(texture.texture_margin_left == 4.0 and texture.get_content_margin(SIDE_LEFT) == 4.0
+			and texture.get_content_margin(SIDE_TOP) == 3.0, "HudPanel 여백 4/3")
+	var accent: StyleBox = theme.get_stylebox("panel", "HudAccentFrame")
+	_check(accent is StyleBoxTexture, "HudAccentFrame은 StyleBoxTexture")
+	if accent is StyleBoxTexture:
+		var frame: StyleBoxTexture = accent as StyleBoxTexture
+		_check(frame.texture != null and frame.texture.resource_path.ends_with("/accent_panel.png"),
+			"HudAccentFrame은 accent_panel.png")
+		_check(frame.modulate_color.is_equal_approx(Color.html("cc8e4d")), "HudAccentFrame 색 #CC8E4D")
+		_check(not frame.draw_center, "HudAccentFrame은 면을 칠하지 않음")
+	_check(theme.get_color("default_color", "RichTextLabel").is_equal_approx(Color.html("f5ebdb")),
+		"리치 텍스트 본문 글자 #F5EBDB")
+	var regex: RegEx = RegEx.create_from_string("#[0-9a-fA-F]{6}")
+	for icon_name: String in ["checked", "unchecked"]:
+		var icon: DPITexture = theme.get_icon(icon_name, "CheckBox") as DPITexture
+		_check(icon != null, "체크박스 %s 아이콘" % icon_name)
+		if icon == null:
+			continue
+		for found: RegExMatch in regex.search_all(icon.get_source()):
+			_check(found.get_string().substr(1).to_lower() in PALETTE,
+				"체크박스 %s 색이 팔레트 안: %s" % [icon_name, found.get_string()])
+
+
 ## seam D: 글꼴 파일과 라이선스가 있고, THIRD_PARTY_NOTICES.md에 Galmuri 행과 OFL-1.1 표기가 있다.
 func _check_notices() -> void:
 	_check(FileAccess.file_exists(FONT_PATH), "Galmuri11.ttf가 있음")
@@ -186,6 +220,8 @@ func _check_text_layout() -> void:
 		await process_frame
 		await process_frame
 		_audit_text(hud, size, "전투 HUD")
+	_check_hud_theme(hud)
+	await _check_tooltip_and_result(hud, battle)
 	var loot: CombatLoot = battle.get("loot")
 	var allies: Array[CombatUnit] = []
 	allies.assign(battle.get("party"))
@@ -198,6 +234,11 @@ func _check_text_layout() -> void:
 		await process_frame
 		await process_frame
 		_audit_text(preparation, size, "정비")
+	_check_font_audit(preparation, "정비")
+	preparation.call("_select", "weapon", 0)
+	await process_frame
+	_check(_panel_is(preparation.detail_panel, "HudAccentFrame"), "칸을 고른 상세 패널은 HudAccentFrame")
+	_check_prep_focus(preparation)
 	preparation.hide()
 	for size: Vector2i in TEXT_WINDOWS:
 		root.size = size
@@ -214,6 +255,109 @@ func _check_text_layout() -> void:
 	for file: String in [GameSettings.path, GameSettings.path + ".tmp"]:
 		DirAccess.remove_absolute(file)
 	DirAccess.remove_absolute(directory)
+
+
+func _panel_is(panel: Control, variation: String) -> bool:
+	var expected: StyleBoxTexture = _theme().get_stylebox("panel", variation) as StyleBoxTexture
+	var actual: StyleBoxTexture = panel.get_theme_stylebox("panel") as StyleBoxTexture
+	return expected != null and actual != null and actual.texture == expected.texture \
+		and actual.modulate_color.is_equal_approx(expected.modulate_color) and actual.draw_center == expected.draw_center
+
+
+func _theme() -> Theme:
+	return load(THEME_PATH) as Theme
+
+
+## seam C·D: 패널은 HudPanel, HP 바는 맵과 같은 색, 스킬 버튼 포커스 테두리는 #EBBA84.
+func _check_hud_theme(hud: Control) -> void:
+	_check_font_audit(hud, "전투 HUD")
+	for path: String in ["CombatLog", "UnitDetails/UnitPanel", "Result/Panel"]:
+		_check(_panel_is(hud.get_node(path), "HudPanel"), "HudPanel 배경: %s" % path)
+	for container: PanelContainer in hud.get("_containers"):
+		_check(_panel_is(container, "HudPanel"), "스킬 묶음 패널은 HudPanel")
+	var order_panel: PanelContainer = hud.get_node("OrderScroll/OrderBar").get_child(0) as PanelContainer
+	_check(order_panel != null and _panel_is(order_panel, "HudPanel"), "순서 묶음 패널은 HudPanel")
+	var bar: ProgressBar = hud.get("health_bar")
+	var fill: StyleBoxFlat = bar.get_theme_stylebox("fill") as StyleBoxFlat
+	var back: StyleBoxFlat = bar.get_theme_stylebox("background") as StyleBoxFlat
+	_check(fill != null and fill.bg_color == CombatUnit.HEAL_COLOR, "HP 바 채움은 맵 HP 바 초록")
+	_check(back != null and back.bg_color == CombatUnit.OUTLINE_COLOR, "HP 바 바탕은 맵 HP 바 바탕")
+	var checked: int = 0
+	for button: Button in (hud.get("_actions") as Dictionary).values():
+		var focus: StyleBoxFlat = button.get_theme_stylebox("focus") as StyleBoxFlat
+		if focus == null:
+			continue
+		checked += 1
+		_check(focus.border_color.is_equal_approx(Color.html("ebba84")), "스킬 포커스 테두리 #EBBA84")
+	_check(checked > 0, "포커스 테두리를 확인한 스킬 버튼이 있음")
+	var end_style: StyleBox = (hud.get("end_button") as Button).get_theme_stylebox("normal")
+	_check(end_style is StyleBoxTexture, "턴 종료 버튼은 StyleBoxTexture")
+
+
+## seam B: 보이는 글자 컨트롤은 Galmuri11이고 크기는 11이거나 허용 예외다.
+func _check_font_audit(screen: Control, screen_name: String) -> void:
+	var texts: Array[Control] = []
+	_collect_text(screen, texts)
+	for control: Control in texts:
+		var font: Font = control.get_theme_font("normal_font" if control is RichTextLabel else "font")
+		_check(font != null and font.resource_path == FONT_PATH,
+			"%s: Galmuri11 글꼴: %s (%s)" % [screen_name, _node_path(screen, control), _snippet(control)])
+		var size: int = control.get_theme_font_size("normal_font_size" if control is RichTextLabel else "font_size")
+		var exempt: bool = control.name == "StartBattle" or control.name == "Outcome" \
+			or (screen_name == "정비" and control == (screen as CombatPreparation).title_label) \
+			or screen.has_node("Skills") and screen.get_node("Skills").is_ancestor_of(control)
+		if not exempt:
+			_check(size == 11, "%s: 글자 크기 11: %s (%s) %d" % [
+				screen_name, _node_path(screen, control), _snippet(control), size])
+
+
+func _check_prep_focus(preparation: CombatPreparation) -> void:
+	var cell: Button = preparation.find_child("Weapon0", true, false) as Button
+	_check(cell != null, "정비 무기 칸")
+	if cell != null:
+		var focus: StyleBoxFlat = cell.get_theme_stylebox("focus") as StyleBoxFlat
+		_check(focus != null and focus.border_color.is_equal_approx(Color.html("ebba84")), "정비 칸 포커스 테두리 #EBBA84")
+	_check(preparation.continue_button.get_theme_stylebox("focus") == _theme().get_stylebox("focus", "Button"),
+		"정비 일반 버튼은 테마 포커스")
+
+
+## seam E: 호버 설명과 결과 창에서도 글자가 잘리거나 겹치지 않는다.
+func _check_tooltip_and_result(hud: Control, battle: Node) -> void:
+	var buttons: Array = (hud.get("_actions") as Dictionary).values()
+	var target: Button = null
+	for button: Button in buttons:
+		if button.is_visible_in_tree() and not button.tooltip_text.is_empty():
+			target = button
+			break
+	_check(target != null, "호버 설명을 띄울 스킬 버튼")
+	if target != null:
+		target.grab_focus()
+		await create_timer(0.7).timeout
+		var tooltip: HoverTooltip = hud.get("_tooltip") as HoverTooltip
+		_check(tooltip.visible, "호버 설명이 보임")
+		_check(_panel_is(tooltip, "HudPanel"), "호버 설명 패널은 HudPanel")
+		for size: Vector2i in TEXT_WINDOWS:
+			root.size = size
+			await process_frame
+			await process_frame
+			var texts: Array[Control] = []
+			_collect_text(tooltip, texts)
+			_check(texts.size() == 1, "%s 호버 설명 글자 컨트롤" % size)
+			for control: Control in texts:
+				var reason: String = _clip_reason(control, _drawn_text_rect(control))
+				_check(reason.is_empty(), "%s 호버 설명: 글자가 잘리지 않음 %s" % [size, reason])
+				var font: Font = control.get_theme_font("normal_font")
+				_check(font.resource_path == FONT_PATH and control.get_theme_font_size("normal_font_size") == 11,
+					"호버 설명은 Galmuri11 11")
+		target.release_focus()
+	hud.call("show_result", true)
+	for size: Vector2i in TEXT_WINDOWS:
+		root.size = size
+		await process_frame
+		await process_frame
+		_audit_text(hud.get_node("Result"), size, "결과 창")
+	_check_font_audit(hud.get_node("Result"), "결과 창")
+	hud.call("hide_result")
 
 
 ## 전투 HUD 문구가 시드에 따라 바뀌지 않게 아군 턴으로 맞춘다.

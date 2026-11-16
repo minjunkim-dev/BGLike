@@ -77,7 +77,6 @@ func _ready() -> void:
 	var hint: Label = Label.new()
 	hint.text = tr("전투 준비 · 지형과 적을 확인하고 전투를 시작합니다.")
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hint.add_theme_font_size_override("font_size", 12)
 	staging.add_child(hint)
 	start_button = Button.new()
 	start_button.name = "StartBattle"
