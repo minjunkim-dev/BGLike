@@ -6,7 +6,7 @@ extends RefCounted
 ## 복합 비용 스킬은 첫 자원의 묶음에 둔다(십자 베기는 임시로 행동, 9-3).
 const GROUPS: Array[Array] = [
 	["attack", "sweep", "cross_slash", "battle_cry", "spawn", "pull", "spin", "trick_arrow", "firework_arrow", "whistle"],
-	["holy_veil", "steel_charge", "second_wind", "aegisal", "bow_bash", "disengage", "shove", "jump", "potion", "oil_throw", "stealth"],
+	["holy_veil", "steel_charge", "second_wind", "aegisal", "bow_bash", "disengage", "shove", "jump", "potion", "oil_bottle", "oil_throw", "stealth"],
 	["opportunity", "counter", "reflex"]
 ]
 ## 묶음의 자원과 함께 모두 소비하는 비용. 하나라도 부족하면 쓸 수 없다 (5-3). 점프의 이동력은 칸마다 다르다.
@@ -18,7 +18,7 @@ static var NAMES: Dictionary[String, String] = {
 	"sweep": TranslationServer.tr("휩쓸기"), "cross_slash": TranslationServer.tr("십자 베기"), "steel_charge": TranslationServer.tr("강철 돌진"),
 	"holy_veil": TranslationServer.tr("성스러운 장막"), "battle_cry": TranslationServer.tr("전투의 함성"),
 	"aegisal": TranslationServer.tr("애기살 급조"), "bow_bash": TranslationServer.tr("활 후려치기"), "disengage": TranslationServer.tr("물러서며 쏘기"),
-	"shove": TranslationServer.tr("밀치기"), "potion": TranslationServer.tr("물약"), "opportunity": TranslationServer.tr("기회 공격"),
+	"shove": TranslationServer.tr("밀치기"), "potion": TranslationServer.tr("회복 물약"), "oil_bottle": TranslationServer.tr("기름병"), "opportunity": TranslationServer.tr("기회 공격"),
 	"spawn": TranslationServer.tr("새끼 낳기"), "pull": TranslationServer.tr("만능팔"), "spin": TranslationServer.tr("회전회오리"), "jump": TranslationServer.tr("점프"),
 	"counter": TranslationServer.tr("반격"), "oil_throw": TranslationServer.tr("기름병 던지기"),
 	"trick_arrow": TranslationServer.tr("장난스러운 화살"), "firework_arrow": TranslationServer.tr("폭죽 화살"),
@@ -43,8 +43,9 @@ static var EFFECTS: Dictionary[String, String] = {
 	"opportunity": TranslationServer.tr("적이 내 인접 칸을 벗어나면 기본 공격."),
 	"counter": TranslationServer.tr("나를 노린 인접한 적의 명중굴림이\n빗나가면 반드시 명중하는 반격."),
 	"oil_throw": TranslationServer.tr("목표 칸 십자 5칸에 기름 장판을 깝니다(3턴).\n기름 칸에 서면 솜씨 내성(DC 4)을 하고, 실패하면 넘어집니다.\n아이템을 쓰지 않습니다."),
+	"oil_bottle": TranslationServer.tr("목표 칸 십자 5칸에 기름 장판을 깝니다(3턴).\n기름 칸에 서면 솜씨 내성(DC 4)을 하고, 실패하면 넘어집니다.\n물약 칸의 기름병 1개를 씁니다."),
 	"trick_arrow": TranslationServer.tr("칸을 겨눕니다(아군도 가능). 지능 d6: 1 삐끗, 2~3 물, 4~6 화염.\n속성은 그 칸에 닿습니다. 명중하면 굴림 값만큼 피해.\n화염은 화상 1중첩, 물은 화상을 모두 끕니다."),
-	"firework_arrow": TranslationServer.tr("칸을 겨눕니다(발밑도 가능). 반경 1의 모든 유닛이 민첩 내성(DC 4).\n피해 솜씨 d20 두 번의 합, 성공하면 절반.\n아군과 자신도 맞습니다. 기름은 점화됩니다."),
+	"firework_arrow": TranslationServer.tr("칸을 겨눕니다(발밑도 가능). 반경 1의 모든 유닛이 민첩 내성(DC %d).\n피해 솜씨 d20 두 번의 합, 성공하면 절반.\n아군과 자신도 맞습니다. 기름은 점화됩니다."),
 	"reflex": TranslationServer.tr("명중이 확정된 공격을 회피하고\n상하좌우 1칸으로 이동합니다.\n명중굴림 공격에만 쓰고, 넘어지면 쓸 수 없습니다."),
 	"whistle": TranslationServer.tr("상하좌우 한 방향의 세 줄 띠 안의 적이 의지 내성굴림.\n실패하면 산만함 2턴: 내성굴림·명중굴림 불리.\n피해는 없습니다."),
 	"stealth": TranslationServer.tr("다음 내 턴 시작까지 적이 공격·스킬의\n대상으로 지정할 수 없습니다. 범위 효과와\n장판은 맞습니다. 피해를 주는 공격 동작을\n쓰면 풀립니다.")
@@ -107,10 +108,12 @@ const STEALTH_BREAKERS: Array[String] = ["attack", "trick_arrow", "firework_arro
 ## 화염 속성 동작. 나무 칸을 목표로 고를 수 있고 닿으면 나무가 탄다(환경요소 5장).
 const FIRE_ACTIONS: Array[String] = ["trick_arrow", "firework_arrow"]
 const AIM_RANGES: Dictionary[String, int] = {"fog": 4, "trick_arrow": 4, "firework_arrow": 4}
-const AIM_MIN_RANGES: Dictionary[String, int] = {"oil_throw": 1, "trick_arrow": 1}
-const AIM_RADII: Dictionary[String, int] = {"fog": 1, "oil_throw": 1, "firework_arrow": 1}
+const AIM_MIN_RANGES: Dictionary[String, int] = {"oil_throw": 1, "oil_bottle": 1, "trick_arrow": 1}
+const AIM_RADII: Dictionary[String, int] = {"fog": 1, "oil_throw": 1, "oil_bottle": 1, "firework_arrow": 1}
 ## 사거리가 시전자의 힘 주사위 면 수 ÷ 2인 칸 조준 동작 (궁수 문서, 기름병 던지기).
-const AIM_BY_STRENGTH: Array[String] = ["oil_throw"]
+const AIM_BY_STRENGTH: Array[String] = ["oil_throw", "oil_bottle"]
+## 기름 장판을 까는 동작. 기름병 던지기(스킬)와 기름병 아이템은 칸 규칙이 같다(#576).
+const OIL_ACTIONS: Array[String] = ["oil_throw", "oil_bottle"]
 
 
 ## 칸 조준 동작의 최소 사거리. 정하지 않은 동작은 0이다.
@@ -143,7 +146,7 @@ const USE_COUNTERS: Dictionary[String, StringName] = {
 	"oil_throw": &"oil_throw_left", "firework_arrow": &"firework_arrow_left", "whistle": &"whistle_left", "stealth": &"stealth_left"
 }
 ## 물약 동작이 쓰는 아이템 종류(id). 이 동작의 남은 횟수는 그 종류의 물약 칸 수다(#575).
-const POTION_ITEM: Dictionary[String, String] = {"potion": "healing_potion"}
+const POTION_ITEM: Dictionary[String, String] = {"potion": "healing_potion", "oil_bottle": "oil_bottle"}
 ## 막 시작에 회복하는 횟수. 물약은 보유 개수라서 회복하지 않는다.
 const USES_PER_ACT: Dictionary[String, int] = {
 	"second_wind": 1, "disengage": 2, "firework_arrow": 1
@@ -181,6 +184,7 @@ const SAVE_ABILITIES: Dictionary[String, CombatUnit.Ability] = {
 static var DC_BONUSES: Dictionary[String, int] = {}
 ## 아군 스킬과 공용 동작의 아이콘. 48px 원본(64px 설계 격자)이다.
 const ICON_PATH: String = "res://scenes/combat/art/icons/skills/%s.png"
+const ITEM_ICON_PATH: String = "res://scenes/combat/art/icons/items/%s.png"
 ## #362: 스킬과 정비 아이템 그림의 표시 크기(논리 px). 버튼·칸의 입력 영역은 각 화면이 따로 유지한다.
 const ICON_SIZE: int = 24
 
@@ -283,6 +287,9 @@ static func damage_bonus(actor: CombatUnit, action: String) -> int:
 ## 적 전용 스킬처럼 아이콘이 없으면 null이다.
 static func icon_of(action: String) -> Texture2D:
 	var path: String = ICON_PATH % action
+	if not ResourceLoader.exists(path) and action in POTION_ITEM:
+		# 스킬 아이콘이 없는 물약류는 정비 화면의 아이템 아이콘을 쓴다(#576).
+		path = ITEM_ICON_PATH % action
 	return load(path) as Texture2D if ResourceLoader.exists(path) else null
 
 
@@ -328,7 +335,7 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 		"stealth":
 			lines = [TranslationServer.tr("사거리: 자신"), TranslationServer.tr("효과: 다음 내 턴 시작까지 지정 불가"),
 				TranslationServer.tr("판정: 없음")]
-		"oil_throw":
+		"oil_throw", "oil_bottle":
 			lines = [TranslationServer.tr("사거리: 1~%d칸 곡사") % aim_range(actor, action),
 				TranslationServer.tr("효과: 기름 장판 십자 5칸, 3턴"), TranslationServer.tr("판정: 없음")]
 		"trick_arrow":
@@ -442,4 +449,6 @@ static func effect(actor: CombatUnit, action: String) -> String:
 	# 패시브 칸이 정해지기 전까지 괴력의 사내는 기회 공격 호버로 안내한다 (#434).
 	if action == "opportunity" and belongs_to(actor, "brawn"):
 		return EFFECTS[action] + "\n" + TranslationServer.tr("괴력의 사내: 명중하면 대상의 이동을 멈춥니다.")
+	if action == "firework_arrow":
+		return EFFECTS[action] % save_dc(actor, action)
 	return EFFECTS.get(action, "")

@@ -40,6 +40,7 @@ func _run() -> void:
 	GameSave.autosave = true
 	await _test_format_state()
 	await _test_party_level_state()
+	await _test_oil_bottle_save()
 	await _test_tree_save()
 	for stage_index: int in range(STAGE_COUNT):
 		await _test_stage(stage_index)
@@ -153,6 +154,28 @@ func _test_format_state() -> void:
 	state.units[0].cell = Vector2i(3, 4)
 	_check(restored.call("restore_combat", state) and restored.call("combat_state") == state,
 		"재배치 전 저장의 물체 좌표·상자 HP와 새 초기 상자 칸의 유닛 위치를 그대로 복원")
+	await _free(restored)
+	await _free(battle)
+
+
+## 기름병 아이템을 쓰면 그 칸이 비고 저장에 남는다(#576). 형식은 칸마다 아이템 id 그대로다.
+func _test_oil_bottle_save() -> void:
+	var battle: Node2D = _battle(0)
+	var actions: CombatActions = battle.get("actions")
+	var party: Array[CombatUnit] = battle.get("party")
+	party[0].potions.assign(["healing_potion", "oil_bottle"])
+	var cell: Vector2i = actions.aim_cells(party[0], "oil_bottle").filter(func(target: Vector2i) -> bool:
+		return actions.oil_sites(target).size() == 5)[0]
+	(battle.get("turns") as CombatTurns).current_unit = party[0]
+	party[0].bonus_action_left = 1
+	_check(actions.throw_oil(party[0], cell, "oil_bottle"), "기름병 사용")
+	var state: Dictionary = battle.call("combat_state")
+	_check(state.units[0].potions == ["healing_potion"], "쓴 기름병 칸이 저장에서 빠짐")
+	var restored: Node2D = _battle(-1)
+	var restored_party: Array[CombatUnit] = restored.get("party")
+	var restored_units: Array[CombatUnit] = restored.get("units")
+	restored_party[0].load_state(state.units[0], restored_units)
+	_check(restored_party[0].potions == ["healing_potion"], "유닛 저장을 되돌려도 기름병 칸은 빈 채로 남음")
 	await _free(restored)
 	await _free(battle)
 

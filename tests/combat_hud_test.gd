@@ -53,6 +53,7 @@ func _run() -> void:
 	_check("이니셔티브" not in hud.message_label.text, "전투 시작 로그에 이니셔티브 계산식 없음")
 	_test_square_map()
 	_test_movement_overlay()
+	_test_threat_overlay()
 	await _test_floor_loot_ui()
 	_test_height_edges()
 	_test_unit_art()
@@ -69,6 +70,7 @@ func _run() -> void:
 	_test_high_ground_guidance()
 	_test_water_guidance()
 	await _test_mouse_controls_and_inspection()
+	await _test_threat_range_input()
 	await _test_group_keyboard()
 	await _test_skill_bar_keys()
 	await _test_joined_group_hud()
@@ -193,11 +195,30 @@ func _test_movement_overlay() -> void:
 		_check(overlay.color.a > 0.0 and overlay.color.a <= 0.16, "이동 면 채움이 바닥 재질을 가리지 않음")
 		_check(overlay.color.b > overlay.color.g if index == 0 else overlay.color.g > overlay.color.b,
 			"기존 파랑 이동·초록 이동 후 공격의 의미 유지")
-		_check(overlay.get_child_count() == 1 and overlay.get_child(0) is Line2D, "약한 면에 칸 윤곽을 함께 표시")
-		if overlay.get_child_count() == 1 and overlay.get_child(0) is Line2D:
+		_check(overlay.get_child_count() == 5 and overlay.get_children().all(func(node: Node) -> bool: return node is Line2D),
+			"약한 면에 칸 윤곽과 네 꼭짓점 표시를 함께 표시")
+		if overlay.get_child_count() == 5:
 			var edge: Line2D = overlay.get_child(0) as Line2D
-			_check(edge.closed and edge.points == overlay.polygon and edge.width <= 1.0,
-				"윤곽은 기존 바닥 마름모를 닫고 측면을 칠하지 않음")
+			_check(edge.closed and edge.points == overlay.polygon and is_equal_approx(edge.width, 1.5),
+				"윤곽은 기존 바닥 마름모를 닫고 이전보다 1px 굵음(0.5→1.5)")
+			var corners: Dictionary[Vector2, bool] = {}
+			var inside: bool = true
+			var middle: Vector2 = (overlay.polygon[0] + overlay.polygon[2]) / 2.0
+			var half: Vector2 = Vector2(absf(overlay.polygon[1].x - overlay.polygon[3].x), absf(overlay.polygon[2].y - overlay.polygon[0].y)) / 2.0
+			for corner_index: int in range(1, 5):
+				var mark: Line2D = overlay.get_child(corner_index) as Line2D
+				corners[mark.points[1]] = true
+				inside = inside and mark.points.size() == 3 and not mark.closed and mark.width >= 1.0
+				for point: Vector2 in mark.points:
+					var offset: Vector2 = (point - middle).abs()
+					inside = inside and offset.x / half.x + offset.y / half.y <= 1.0001
+			var at_vertices: bool = true
+			for vertex: Vector2 in overlay.polygon:
+				at_vertices = at_vertices and corners.has(vertex)
+			_check(inside and corners.size() == 4 and at_vertices,
+				"꼭짓점 표시 4개는 마름모 네 꼭짓점에서 시작하고 바닥 안쪽에만 그려 측면을 칠하지 않음")
+			_check(edge.default_color.a > 0.0 and (overlay.get_child(1) as Line2D).default_color.a >= edge.default_color.a,
+				"꼭짓점 표시는 윤곽보다 옅지 않음")
 		var center: Vector2 = Vector2.ZERO
 		for point: Vector2 in overlay.polygon:
 			center += point / overlay.polygon.size()
@@ -205,6 +226,40 @@ func _test_movement_overlay() -> void:
 			"높이 있는 바닥 위에도 같은 좌표로 표시")
 	map.show_movement([], [], [], Vector2i.ZERO)
 	_check(map._overlays.is_empty(), "이동 표시를 닫으면 면·윤곽·경로를 함께 제거")
+	map.free()
+
+
+func _test_threat_overlay() -> void:
+	var grid: CombatGrid = CombatGrid.new()
+	grid.map_size = Vector2i(3, 2)
+	var map: CombatMap = CombatMap.new()
+	root.add_child(map)
+	map.build_grid(grid, load("res://scenes/combat/floor_tiles.tres") as TileSet)
+	map.show_threat([Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 1)])
+	_check(map._threat_overlays.size() == 3, "위협 칸 수만큼 표시를 그림")
+	var reddish: bool = true
+	var plain: bool = true
+	for overlay: Polygon2D in map._threat_overlays:
+		reddish = reddish and overlay.color.r > overlay.color.b and overlay.color.r > overlay.color.g and overlay.color.a <= 0.16
+		plain = plain and overlay.get_child_count() == 1 and overlay.get_child(0) is Line2D
+	_check(reddish, "위협 면은 붉은 계열이고 바닥 재질을 가리지 않음")
+	_check(plain, "위협 표시에는 꼭짓점 표시 없이 윤곽만 둠(이동 범위와 모양으로도 구분)")
+	map.show_movement([Vector2i(0, 0)], [], [], Vector2i(2, 1))
+	_check(map._threat_overlays.size() == 3 and map._overlays.size() == 1, "이동 표시를 바꿔도 위협 표시는 그대로")
+	var movement_index: int = map._overlays[0].get_index()
+	_check(map._threat_overlays.all(func(overlay: Node2D) -> bool: return overlay.get_index() < movement_index),
+		"이동 표시가 나중에 와도 위협 표시 위에 그림")
+	map.show_threat([Vector2i(1, 1)])
+	_check(map._threat_overlays.size() == 1 and map._overlays.size() == 1
+		and map._threat_overlays[0].get_index() < map._overlays[0].get_index(),
+		"위협 표시를 다시 그려도 이동 표시 아래에 있음")
+	map.show_movement([], [], [], Vector2i.ZERO)
+	_check(map._threat_overlays.size() == 1, "이동 표시를 지워도 위협 표시는 그대로")
+	map.show_threat([])
+	_check(map._threat_overlays.is_empty(), "빈 목록으로 위협 표시를 지움")
+	map.show_threat([Vector2i(0, 0)])
+	map.build_grid(CombatGrid.new(), load("res://scenes/combat/floor_tiles.tres") as TileSet)
+	_check(map._threat_overlays.is_empty(), "맵을 다시 만들면 위협 표시도 지움")
 	map.free()
 
 
@@ -494,9 +549,11 @@ func _test_warrior() -> void:
 	_check("자연" not in hud.resource_label.get_parsed_text() and "정신" not in hud.resource_label.get_parsed_text(),
 		"폐지한 능력치는 유닛 정보에서 제거")
 	var warrior_actions: Array[String] = ["attack", "sweep", "cross_slash", "battle_cry", "holy_veil", "steel_charge",
-		"shove", "potion", "opportunity", "counter"]
+		"shove", "opportunity", "counter"]
 	for action: String in warrior_actions:
 		_check((buttons[action] as Button).is_visible_in_tree(), "전사 동작 표시: " + action)
+	_check(not (buttons["potion"] as Button).is_visible_in_tree() and not (buttons["oil_bottle"] as Button).is_visible_in_tree(),
+		"물약 칸이 빈 전사에게 물약류 버튼은 숨김(#576)")
 	for action: String in ["aegisal", "bow_bash", "disengage"]:
 		_check(not (buttons[action] as Button).visible, "궁수·몬스터 동작 숨김: " + action)
 	_check(not buttons.has("mark") and not buttons.has("shock"), "옛 궁수 스킬 버튼 없음(#528)")
@@ -555,8 +612,8 @@ func _test_resources() -> void:
 	units[0].movement_left = 0
 	units[0].action_left = 0
 	battle.call("_update_turn_ui")
-	var style: StyleBoxFlat = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
-	_check(style.bg_color == CombatTurnHud.END_BUTTON_COLOR and turns.current_unit == units[0],
+	var style: StyleBoxTexture = hud.end_button.get_theme_stylebox("normal") as StyleBoxTexture
+	_check(style.modulate_color == CombatTurnHud.END_BUTTON_COLOR and turns.current_unit == units[0],
 		"할 일이 없으면 색만 변경하고 턴 유지")
 	await process_frame
 
@@ -611,7 +668,7 @@ func _test_archer_and_enemy() -> void:
 		"궁수 반응 컨테이너는 반사신경 버튼만 표시")
 	_check((buttons["reflex"] as Button).text == "반" and "반응 1 + 이동력 1" in (buttons["reflex"] as Button).tooltip_text,
 		"반사신경은 아이콘이 없어 이름 첫 글자를 보이고 호버에 비용: " + (buttons["reflex"] as Button).tooltip_text)
-	for action: String in ["attack", "aegisal", "bow_bash", "jump", "potion", "stealth"]:
+	for action: String in ["attack", "aegisal", "bow_bash", "jump", "stealth"]:
 		_check((buttons[action] as Button).visible, "궁수 스킬 표시: " + action)
 	_check((buttons["stealth"] as Button).text == "은" and "전투마다 1회 · 1회 남음" in (buttons["stealth"] as Button).tooltip_text
 		and (buttons["stealth"] as Button).tooltip_text.begins_with("은신\n"),
@@ -709,7 +766,7 @@ func _test_archer_moving_shot_input() -> void:
 	for action: String in buttons:
 		if (buttons[action] as Button).is_visible_in_tree():
 			shown.append(action)
-	_check(shown == ["attack", "trick_arrow", "firework_arrow", "whistle", "aegisal", "bow_bash", "shove", "jump", "potion", "oil_throw", "stealth", "reflex"], "궁수 스킬 패널의 버튼(공용 밀치기 포함): " + str(shown))
+	_check(shown == ["attack", "trick_arrow", "firework_arrow", "whistle", "aegisal", "bow_bash", "shove", "jump", "oil_throw", "stealth", "reflex"], "궁수 스킬 패널의 버튼(공용 밀치기 포함, 물약 칸이 비면 물약류 버튼은 숨김): " + str(shown))
 	# 기름병 던지기: 버튼을 고르고 칸을 한 번 누르면 십자 범위를 보이고, 같은 칸을 다시 누르면 던진다(#500 2a).
 	var oil_cells: Array[Vector2i] = []
 	oil_cells.assign(actions.aim_cells(archer, "oil_throw").filter(func(cell: Vector2i) -> bool:
@@ -728,6 +785,41 @@ func _test_archer_moving_shot_input() -> void:
 			"같은 칸을 다시 누르면 그 칸에 기름을 던짐")
 		actions._grounds.assign(actions._grounds.filter(func(ground: CombatActions.Ground) -> bool: return ground.kind != "oil"))
 		archer.oil_throw_left = 1
+		archer.bonus_action_left = 1
+		battle.call("_update_turn_ui")
+	# 물약류 버튼(#576): 가진 종류만 보이고 개수를 배지로 보이며 기름병 던지기 앞에 놓인다.
+	var potion_button: Button = buttons["potion"]
+	var bottle_button: Button = buttons["oil_bottle"]
+	_check(not potion_button.is_visible_in_tree() and not bottle_button.is_visible_in_tree(), "물약 칸이 비면 두 종류 버튼 모두 숨김")
+	archer.potions.assign(["healing_potion", "oil_bottle", "oil_bottle"])
+	battle.call("_update_turn_ui")
+	var badges: Dictionary = hud.get("_badges")
+	_check(potion_button.is_visible_in_tree() and bottle_button.is_visible_in_tree()
+		and (badges["potion"] as Label).text == "1" and (badges["oil_bottle"] as Label).text == "2",
+		"가진 종류마다 버튼과 남은 개수 배지")
+	_check(potion_button.get_index() < bottle_button.get_index() and bottle_button.get_index() < (buttons["oil_throw"] as Button).get_index(),
+		"버튼 순서는 회복 물약, 기름병, 기름병 던지기")
+	var bottle_icon: Texture2D = bottle_button.icon
+	_check(bottle_icon != null and bottle_icon != (buttons["oil_throw"] as Button).icon and bottle_icon != potion_button.icon,
+		"기름병 버튼은 던지기·회복 물약과 다른 그림")
+	archer.potions.assign(["oil_bottle"])
+	battle.call("_update_turn_ui")
+	_check(not potion_button.is_visible_in_tree() and bottle_button.is_visible_in_tree(), "회복 물약이 없으면 그 버튼만 숨김")
+	var bottle_cells: Array[Vector2i] = []
+	bottle_cells.assign(actions.aim_cells(archer, "oil_bottle").filter(func(cell: Vector2i) -> bool:
+		return cell != archer.cell and actions._oil_site_ok(cell, cell)))
+	_check(not bottle_cells.is_empty(), "기름병 검사 전제: 던질 수 있는 칸이 있음")
+	if not bottle_cells.is_empty():
+		battle.call("_on_action_selected", "oil_bottle")
+		var bottle_selection: CombatSelection = battle.get("selection") as CombatSelection
+		_check(bottle_selection.selected_action == "oil_bottle", "기름병 버튼은 칸 조준 모드로 들어감")
+		battle.call("_select_aim_cell", bottle_cells[0])
+		_check(archer.potions == ["oil_bottle"] and bottle_selection.preview_cell == bottle_cells[0], "첫 클릭은 칸만 고름")
+		battle.call("_select_aim_cell", bottle_cells[0])
+		_check(actions.get_grounds().any(func(ground: CombatActions.Ground) -> bool:
+			return ground.kind == "oil" and ground.cell == bottle_cells[0]) and archer.potions.is_empty() and archer.oil_throw_left == 1
+			and not bottle_button.is_visible_in_tree(), "같은 칸을 다시 누르면 던지고 마지막 기름병이면 버튼이 사라짐")
+		actions._grounds.assign(actions._grounds.filter(func(ground: CombatActions.Ground) -> bool: return ground.kind != "oil"))
 		archer.bonus_action_left = 1
 		battle.call("_update_turn_ui")
 	# 장난스러운 화살·폭죽 화살(#500 2b): 첫 클릭은 칸만 고르고 같은 칸을 다시 누르면 쏜다.
@@ -820,7 +912,7 @@ func _test_log_and_status() -> void:
 	_check(hud.message_label.text == "둘째\n셋째\n넷째", "최근 로그는 정확히3줄")
 	# 배경이 불투명해야 아래 지형과 관계없이 명암비가 고정된다.
 	var log_panel: PanelContainer = hud.get_node("CombatLog") as PanelContainer
-	var log_background: Color = (log_panel.get_theme_stylebox("panel") as StyleBoxFlat).bg_color
+	var log_background: Color = (log_panel.get_theme_stylebox("panel") as StyleBoxTexture).modulate_color
 	var log_contrast: float = _contrast_ratio(hud.message_label.get_theme_color("font_color"), log_background)
 	_check(log_background.a == 1.0 and log_contrast >= 4.5,
 		"전투 로그 불투명 배경과 WCAG AA 4.5:1 이상: alpha %.2f, %.2f" % [log_background.a, log_contrast])
@@ -851,13 +943,13 @@ func _test_log_and_status() -> void:
 		and hud.stand_button.text == "일어나기 · 이동력 %d" % stand_cost
 		and not hud.stand_button.get_global_rect().intersects(hud.end_button.get_global_rect()),
 		"넘어진 아군의 턴에는 비용을 적은 일어나기 버튼이 턴 종료 위에 보임")
-	var prone_end_style: StyleBoxFlat = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
-	_check(prone_end_style.bg_color != CombatTurnHud.END_BUTTON_COLOR,
+	var prone_end_style: StyleBoxTexture = hud.end_button.get_theme_stylebox("normal") as StyleBoxTexture
+	_check(prone_end_style.modulate_color != CombatTurnHud.END_BUTTON_COLOR,
 		"넘어진 아군의 이동력이 일어서기 비용 이상이면 턴 종료를 강조하지 않음(#560)")
 	standing.movement_left = stand_cost - 1
 	battle.call("_update_turn_ui")
-	prone_end_style = hud.end_button.get_theme_stylebox("normal") as StyleBoxFlat
-	_check(prone_end_style.bg_color == CombatTurnHud.END_BUTTON_COLOR,
+	prone_end_style = hud.end_button.get_theme_stylebox("normal") as StyleBoxTexture
+	_check(prone_end_style.modulate_color == CombatTurnHud.END_BUTTON_COLOR,
 		"이동력이 비용보다 적으면 턴 종료를 강조함(#560)")
 	standing.movement_left = stand_cost
 	battle.call("_update_turn_ui")
@@ -1140,42 +1232,108 @@ func _test_layout() -> void:
 	units[2].status_effects.clear()
 	units[2].overloaded = false
 	_reset_units()
-	await _test_skill_row_wrap()
+	await _test_skill_panel_fixed()
 
 
-# 스킬이 늘어 한 줄을 넘치면 그 컨테이너 안에서 다음 줄로 넘기고 패널은 위로 자란다.
-func _test_skill_row_wrap() -> void:
-	turns.select_unit(units[0])
+# 칸 폭 계산(#554). 기대값은 손으로 센 값이다.
+func _test_slot_width() -> void:
+	_check(CombatTurnHud.slot_width(200.0, 3) == 52, "들어가면 원래 폭 52")
+	_check(CombatTurnHud.slot_width(100.0, 3) == 31, "넘치면 간격 3을 빼고 나눈 폭: 31")
+	_check(CombatTurnHud.slot_width(10.0, 5) == 28, "아무리 좁아도 하한 28")
+	_check(CombatTurnHud.slot_width(100.0, 0) == 52, "버튼이 없으면 원래 폭")
+
+
+# 어떤 아군도 한 줄에 SLOT_ROW_MAX개를 넘는 스킬을 갖지 않고, 그 개수는 최소 폭으로 줄에 들어간다(#554).
+# 스킬이 늘어 이 검사가 실패하면 패널 배치를 다시 정한다.
+func _test_slot_row_max() -> void:
+	var room: int = CombatTurnHud.SLOT_MIN * CombatTurnHud.SLOT_ROW_MAX + CombatTurnHud.SLOT_GAP * (CombatTurnHud.SLOT_ROW_MAX - 1)
+	for index: int in range(CombatActionRules.GROUPS.size()):
+		_check(room <= hud.call("_slot_room", index), "줄 %d: 최소 폭 %d칸이 줄에 들어감 (%d / %.0f)" % [
+			index, CombatTurnHud.SLOT_ROW_MAX, room, hud.call("_slot_room", index)])
+		for who: CombatUnit in [units[0], units[1]]:
+			# 물약류는 가진 종류만 보이므로, 모든 종류를 가졌을 때가 가장 긴 줄이다.
+			var count: int = CombatActionRules.GROUPS[index].filter(
+				func(action: String) -> bool: return CombatActionRules.belongs_to(who, action)).size()
+			_check(count <= CombatTurnHud.SLOT_ROW_MAX, "%s 줄 %d: 스킬 %d개, 한 줄 최대 %d개" % [
+				who.get_display_name(), index, count, CombatTurnHud.SLOT_ROW_MAX])
+
+
+# 스킬 패널은 어떤 아군을 보이든 아군 턴·적 턴 모두 같은 자리에 있고, 넘치는 줄은 한 줄에서 칸 폭만 줄인다(#554).
+func _test_skill_panel_fixed() -> void:
+	_test_slot_width()
+	_test_slot_row_max()
+	_reset_units()
+	var skills: Control = hud.get_node("Skills") as Control
+	var archer: CombatUnit = units[1]
+	var warrior: CombatUnit = units[0]
+	# 궁수의 보조 행동 줄을 가장 길게 만든다: 물약과 기름병을 가진다.
+	archer.potions.assign(["healing_potion", "oil_bottle"])
+	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080)]:
+		root.size = size
+		await process_frame
+		await process_frame
+		var rects: Dictionary[String, Rect2] = {}
+		for who: CombatUnit in [warrior, archer]:
+			turns.select_unit(who)
+			battle.call("_update_turn_ui")
+			await process_frame
+			await process_frame
+			rects["%s 아군 턴" % who.get_display_name()] = skills.get_global_rect()
+			# 적 턴: 현재 유닛이 적이고 패널은 마지막 아군의 것을 회색으로 보인다.
+			var ally_turn_unit: CombatUnit = turns.current_unit
+			turns.current_unit = units[2]
+			hud.refresh_actions(actions, "attack", who)
+			await process_frame
+			await process_frame
+			rects["%s 마지막 적 턴" % who.get_display_name()] = skills.get_global_rect()
+			turns.current_unit = ally_turn_unit
+		var reference: Rect2 = rects.values()[0]
+		for label: String in rects:
+			_check(rects[label].position == reference.position and rects[label].size == reference.size,
+				"%s %s: 스킬 패널 자리·크기 고정 %s / %s" % [size, label, rects[label], reference])
+		# 궁수의 보조 행동 줄: 한 줄에 모두 있고 칸 폭만 줄었다.
+		turns.select_unit(archer)
+		battle.call("_update_turn_ui")
+		await process_frame
+		await process_frame
+		var row: PanelContainer = (hud.get("_containers") as Array)[1] as PanelContainer
+		var shown: Array[Button] = []
+		for button: Node in row.get_child(0).get_child(1).get_children():
+			if (button as Button).visible:
+				shown.append(button as Button)
+		_check(shown.size() == 8, "%s: 궁수 보조 행동 줄 버튼 8개 fixture: %d" % [size, shown.size()])
+		var panel: Rect2 = row.get_global_rect()
+		var sizes: Array[Vector2] = []
+		for button: Button in shown:
+			sizes.append(button.size)
+		var fits: bool = true
+		for button: Button in shown:
+			fits = (fits and button.global_position.y == shown[0].global_position.y
+				and button.size.x >= 28.0 and button.size.x < 52.0 and panel.encloses(button.get_global_rect())
+				and button.get_theme_constant("icon_max_width") == CombatActionRules.ICON_SIZE)
+		_check(fits, "%s: 넘친 줄은 한 줄, 칸 폭 28 이상 52 미만, 아이콘 24 유지 %s" % [size, sizes])
+		var costs: Dictionary = hud.get("_costs")
+		var badges: Dictionary = hud.get("_badges")
+		_check(not (costs["bow_bash"] as Label).visible and (badges["oil_throw"] as Label).visible,
+			"%s: 축소한 줄은 하나뿐인 비용 기호를 숨기고 횟수 배지는 보임" % size)
+		var rect: Rect2 = skills.get_global_rect()
+		_check(hud.get_global_rect().encloses(rect)
+			and not rect.intersects((hud.get_node("CombatLog") as Control).get_global_rect())
+			and not rect.intersects(hud.end_button.get_global_rect()),
+			"%s: 한 줄 고정 스킬 패널은 로그·턴 종료와 겹치지 않음" % size)
+		# 가득 차지 않은 줄은 원래 폭이고 비용 기호도 보인다.
+		var attack_row: PanelContainer = (hud.get("_containers") as Array)[0] as PanelContainer
+		var attack_button: Button = (hud.get("_actions") as Dictionary)["attack"] as Button
+		_check(attack_button.size.x == 52.0 and (costs["attack"] as Label).visible,
+			"%s: 넘치지 않는 줄은 원래 폭 52와 비용 기호 %s" % [size, attack_button.size])
+		_check(attack_row.visible, "%s: 행동 줄 보임" % size)
+	archer.potions.clear()
+	root.size = Vector2i(1280, 720)
+	await process_frame
+	_reset_units()
+	turns.select_unit(warrior)
 	battle.call("_update_turn_ui")
 	await process_frame
-	var skills: Control = hud.get_node("Skills") as Control
-	var bottom: float = skills.get_global_rect().end.y
-	var height: float = skills.size.y
-	var row: PanelContainer = (hud.get("_containers") as Array)[1] as PanelContainer
-	var flow: HFlowContainer = row.get_child(0).get_child(1) as HFlowContainer
-	var first: Button = (hud.get("_actions") as Dictionary)["holy_veil"] as Button
-	var extra: Array[Button] = []
-	for index: int in range(3):
-		var button: Button = Button.new()
-		button.custom_minimum_size = first.custom_minimum_size
-		flow.add_child(button)
-		extra.append(button)
-	await process_frame
-	await process_frame
-	var panel: Rect2 = row.get_global_rect()
-	_check(extra.back().get_global_rect().position.y > first.get_global_rect().end.y
-		and extra.all(func(button: Button) -> bool: return panel.encloses(button.get_global_rect())),
-		"넘친 버튼은 같은 컨테이너의 다음 줄로 넘어감")
-	var rect: Rect2 = skills.get_global_rect()
-	_check(rect.end.y == bottom and skills.size.y > height and hud.get_global_rect().encloses(rect)
-		and not rect.intersects((hud.get_node("CombatLog") as Control).get_global_rect())
-		and not rect.intersects(hud.end_button.get_global_rect()),
-		"줄바꿈한 스킬 패널은 아래 끝을 유지한 채 위로 자라고 로그·턴 종료와 겹치지 않음")
-	for button: Button in extra:
-		button.free()
-	await process_frame
-	await process_frame
-	_check(skills.size.y == height, "넘친 버튼이 사라지면 원래 높이로 돌아감")
 
 
 func _test_high_ground_guidance() -> void:
@@ -1238,7 +1396,7 @@ func _test_guidance() -> void:
 	battle.call("_update_turn_ui")
 	await _hover((buttons["potion"] as Button))
 	_check((buttons["potion"] as Button).tooltip_text ==
-		"물약\nHP 2d4+2 회복.\n최대 HP를 넘지 않습니다.\n사거리: 자신\n회복: 2d4+2\n판정: 없음\n지금 사용 불가: HP가 이미 최대",
+		"회복 물약\nHP 2d4+2 회복.\n최대 HP를 넘지 않습니다.\n사거리: 자신\n회복: 2d4+2\n판정: 없음\n지금 사용 불가: HP가 이미 최대",
 		"비활성 물약은 이름·효과·사거리·회복·판정·이유를 표시")
 	units[0].potions.assign([])
 	for action: String in buttons:
@@ -1435,6 +1593,8 @@ func _test_focus_tooltips(buttons: Dictionary) -> void:
 	var timer: Timer = hud.get("_tooltip").get("_timer") as Timer
 	turns.select_unit(units[0])
 	battle.call("_update_turn_ui")
+	units[0].potions.assign(["healing_potion"])
+	battle.call("_update_turn_ui")
 	var hovered: Button = buttons["potion"] as Button
 	await _hover(hovered)
 	hovered.grab_focus()
@@ -1444,6 +1604,8 @@ func _test_focus_tooltips(buttons: Dictionary) -> void:
 	_check(hovered.has_focus() and not hovered.has_focus(true),
 		"클릭 포커스는 숨긴 포커스라 흰 테두리가 선택 금색 테두리를 덮지 않음")
 	hovered.release_focus()
+	units[0].potions.clear()
+	battle.call("_update_turn_ui")
 	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900)]:
 		root.size = size
 		await process_frame
@@ -1637,6 +1799,81 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check(hud.unit_label.text == "아군 궁수" and ((battle.get("selection") as CombatSelection).preview_path as Array).is_empty(),
 		"반응 대기 중 초상·우클릭은 기존 잠금을 유지")
 	actions.busy = false
+	_reset_units()
+
+
+func _threat_marks() -> Dictionary[Vector2, bool]:
+	var marks: Dictionary[Vector2, bool] = {}
+	for overlay: Node2D in battle.map._threat_overlays:
+		marks[overlay.position] = true
+	return marks
+
+
+func _expected_threat(enemies: Array[CombatUnit]) -> Dictionary[Vector2, bool]:
+	var marks: Dictionary[Vector2, bool] = {}
+	for enemy: CombatUnit in enemies:
+		for cell: Vector2i in actions.threat_cells(enemy):
+			marks[battle.map.map_to_local(cell)] = true
+	return marks
+
+
+func _hover_point(point: Vector2) -> void:
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = root.get_final_transform() * point
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
+	await process_frame
+	await process_frame
+
+
+func _test_threat_range_input() -> void:
+	_reset_units()
+	units[0].cell = Vector2i(4, 9)
+	units[1].cell = Vector2i(5, 9)
+	units[2].cell = Vector2i(4, 2)
+	units[3].cell = Vector2i(8, 2)
+	turns.select_unit(units[0])
+	battle.call("_update_turn_ui")
+	await process_frame
+	var enemies: Array[CombatUnit] = [units[2], units[3]]
+	_check(not battle.threat_visible and battle.map._threat_overlays.is_empty(), "위협 범위는 기본으로 꺼져 있음")
+	var action_before: String = (battle.get("selection") as CombatSelection).selected_action
+	var current_before: CombatUnit = turns.current_unit
+	await _key(KEY_T)
+	var both: Dictionary[Vector2, bool] = _expected_threat(enemies)
+	_check(battle.threat_visible and not both.is_empty() and _threat_marks() == both,
+		"T로 켜면 보이는 적 전체의 위협 범위가 겹쳐 보임")
+	_check(turns.current_unit == current_before and (battle.get("selection") as CombatSelection).selected_action == action_before,
+		"T는 선택 동작과 현재 턴을 바꾸지 않음")
+	await _key(KEY_T)
+	_check(not battle.threat_visible and battle.map._threat_overlays.is_empty(), "T를 다시 누르면 꺼짐")
+	await _hover_point(units[2].get_global_transform_with_canvas() * Vector2(0, -10))
+	var only_first: Dictionary[Vector2, bool] = _expected_threat([units[2]])
+	_check(not battle.threat_visible and _threat_marks() == only_first and only_first.size() < both.size(),
+		"꺼진 상태에서도 적 몸통에 마우스를 올리면 그 적의 범위만 보임")
+	await _key(KEY_T)
+	_check(_threat_marks() == only_first, "켠 채로 적에 올리면 그 적의 범위만 보임")
+	await _hover_point(Vector2(-4000, -4000))
+	_check(_threat_marks() == both, "마우스가 적에서 떠나면 전체 범위로 돌아감")
+	hud.unit_hovered.emit(units[3])
+	_check(_threat_marks() == _expected_threat([units[3]]), "턴 순서 초상 위에 올리면 그 적의 범위만 보임")
+	hud.unit_hovered.emit(null)
+	_check(_threat_marks() == both, "초상에서 떠나면 전체 범위로 돌아감")
+	hud.unit_hovered.emit(units[3])
+	hud.call("_build_portraits", turns)
+	_check(_threat_marks() == both, "초상 버튼을 다시 만들면 낡은 초상 호버는 풀림")
+	hud.unit_hovered.emit(units[0])
+	_check(_threat_marks() == both, "아군 초상을 올려도 위협 표시는 바뀌지 않음")
+	units[3].hit_points = 0
+	battle.call("_update_turn_ui")
+	_check(_threat_marks() == _expected_threat([units[2]]), "쓰러진 적의 위협은 사라짐")
+	units[3].hit_points = units[3].get_max_hit_points()
+	battle.preparation.visible = true
+	await _key(KEY_T)
+	_check(battle.threat_visible, "정비 화면에서는 T를 무시")
+	battle.preparation.visible = false
+	await _key(KEY_T)
+	_check(not battle.threat_visible and battle.map._threat_overlays.is_empty(), "정비 화면을 닫고 T로 끔")
 	_reset_units()
 
 
@@ -1863,6 +2100,7 @@ func _test_boundary_incapacitated_portrait_join() -> void:
 
 func _test_skill_bar_keys() -> void:
 	_reset_units()
+	units[0].potions.assign(["healing_potion"])
 	turns.select_unit(units[0])
 	battle.call("_update_turn_ui")
 	root.gui_release_focus()
@@ -1991,6 +2229,7 @@ func _test_skill_bar_keys() -> void:
 	await _key(KEY_RIGHT)
 	_check(root.gui_get_focus_owner() == null and selection.selected_action == "attack",
 		"적 턴에 숫자 키·방향키는 스킬을 고르지 않음")
+	units[0].potions.clear()
 	_reset_units()
 	battle.call("_update_turn_ui")
 

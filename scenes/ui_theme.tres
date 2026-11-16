@@ -1,8 +1,9 @@
-[gd_resource type="Theme" load_steps=15 format=3]
+[gd_resource type="Theme" load_steps=18 format=3]
 
 [ext_resource type="FontFile" path="res://scenes/ui/fonts/Galmuri11.ttf" id="1_font"]
 [ext_resource type="Texture2D" path="res://scenes/ui/art/frames/panel.png" id="2_panel"]
 [ext_resource type="Texture2D" path="res://scenes/ui/art/frames/button.png" id="3_button"]
+[ext_resource type="Texture2D" path="res://scenes/ui/art/frames/accent_panel.png" id="4_accent"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_panel"]
 texture = ExtResource("2_panel")
@@ -15,6 +16,31 @@ content_margin_left = 8.0
 content_margin_top = 8.0
 content_margin_right = 8.0
 content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_hud_panel"]
+texture = ExtResource("2_panel")
+texture_margin_left = 4.0
+texture_margin_top = 4.0
+texture_margin_right = 4.0
+texture_margin_bottom = 4.0
+modulate_color = Color(0.12941177, 0.13333334, 0.23921569, 1)
+content_margin_left = 4.0
+content_margin_top = 3.0
+content_margin_right = 4.0
+content_margin_bottom = 3.0
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_hud_accent"]
+texture = ExtResource("4_accent")
+texture_margin_left = 4.0
+texture_margin_top = 4.0
+texture_margin_right = 4.0
+texture_margin_bottom = 4.0
+draw_center = false
+modulate_color = Color(0.8, 0.5568628, 0.30196078, 1)
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_frame"]
 texture = ExtResource("2_panel")
@@ -119,10 +145,10 @@ corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [sub_resource type="DPITexture" id="DPITexture_unchecked"]
-_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect x=\"2.5\" y=\"2.5\" width=\"11\" height=\"11\" rx=\"2\" fill=\"#0d141b\" stroke=\"#8d9aa6\"/></svg>"
+_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect x=\"2.5\" y=\"2.5\" width=\"11\" height=\"11\" rx=\"2\" fill=\"#18292d\" stroke=\"#c5b29f\"/></svg>"
 
 [sub_resource type="DPITexture" id="DPITexture_checked"]
-_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect x=\"2.5\" y=\"2.5\" width=\"11\" height=\"11\" rx=\"2\" fill=\"#0d141b\" stroke=\"#4fa3d6\"/><path d=\"M5 8.5l2 2 4-5\" fill=\"none\" stroke=\"#d8dee4\" stroke-width=\"1.5\"/></svg>"
+_source = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"><rect x=\"2.5\" y=\"2.5\" width=\"11\" height=\"11\" rx=\"2\" fill=\"#18292d\" stroke=\"#cc8e4d\"/><path d=\"M5 8.5l2 2 4-5\" fill=\"none\" stroke=\"#f5ebdb\" stroke-width=\"1.5\"/></svg>"
 
 [resource]
 default_font = ExtResource("1_font")
@@ -148,7 +174,12 @@ CheckBox/styles/hover = SubResource("StyleBoxEmpty_check")
 CheckBox/styles/hover_pressed = SubResource("StyleBoxEmpty_check")
 CheckBox/styles/normal = SubResource("StyleBoxEmpty_check")
 CheckBox/styles/pressed = SubResource("StyleBoxEmpty_check")
+HudAccentFrame/base_type = &"PanelContainer"
+HudAccentFrame/styles/panel = SubResource("StyleBoxTexture_hud_accent")
+HudPanel/base_type = &"PanelContainer"
+HudPanel/styles/panel = SubResource("StyleBoxTexture_hud_panel")
 Label/colors/font_color = Color(0.9607843, 0.92156863, 0.85882354, 1)
+RichTextLabel/colors/default_color = Color(0.9607843, 0.92156863, 0.85882354, 1)
 Window/colors/title_color = Color(0.92156863, 0.72941179, 0.51764709, 1)
 Window/font_sizes/title_font_size = 14
 Window/styles/embedded_border = SubResource("StyleBoxTexture_frame")

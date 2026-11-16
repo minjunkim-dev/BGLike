@@ -1,15 +1,15 @@
 # CI 구성과 실행 범위
 
-Godot 워크플로는 main push, main 대상 PR과 수동 실행을 검사합니다.
+Godot 워크플로는 main push, main 대상 PR, 머지 큐(`merge_group`)와 수동 실행을 검사합니다.
 문서 변경에도 워크플로 자체는 실행합니다. 워크플로 전체의 paths-ignore로 필수 상태 검사를 대기 상태에 두지 않습니다.
 
 ## 검사 선택
 
 첫 작업은 재사용 PR lint의 `PR conventions and scope`입니다.
-선택기는 PR 기준 SHA 또는 main push의 before SHA에서 가져옵니다. PR이 수정한 선택기로 자신의 엔진 검사를 생략하지 않습니다.
+선택기는 PR 기준 SHA, 머지 큐의 `merge_group.base_sha` 또는 main push의 before SHA에서 가져옵니다. PR이 수정한 선택기로 자신의 엔진 검사를 생략하지 않습니다.
 기준 선택기가 없으면 엔진 검사를 선택합니다. 새 선택기 규칙은 main 반영 뒤 후속 변경부터 사용합니다.
-전체 PR diff와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인하고 Python 회귀 테스트를 실행합니다.
-PR에서는 제목과 브랜치 규칙도 검사합니다.
+전체 PR diff, 머지 큐의 base SHA와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인하고 Python 회귀 테스트를 실행합니다.
+PR에서는 제목과 브랜치 규칙도 검사합니다. 머지 큐 실행은 PR에서 본 제목·브랜치 단계를 건너뜁니다.
 
 로컬 `make repository-check`와 `make check`는 `scripts/check_whitespace.py`로
 `origin/main`과 HEAD의 공통 기준점부터 커밋된 변경, 스테이징, 미스테이징 변경을 각각 검사합니다.
@@ -25,7 +25,7 @@ policy와 `make repository-check`는 전체 scripts 탐색으로 Python 테스�
 - 수동 실행은 항상 Godot 검사를 수행합니다. PR의 edited 이벤트는 별도 PR lint workflow에서 처리합니다.
 - 제목·본문 수정은 실행 중인 Godot workflow를 취소하거나 같은 이름의 smoke 검사를 skipped로 덮어쓰지 않습니다.
 - main push 실행은 후속 문서 push로 취소하지 않습니다. PR 실행만 같은 PR의 후속 실행으로 취소합니다.
-- main과 수동 실행은 실행 ID별 concurrency 그룹을 사용합니다. 대기 중인 기능 검사도 후속 문서 push로 대체하지 않습니다.
+- main, 머지 큐와 수동 실행은 실행 ID별 concurrency 그룹을 사용합니다. 대기 중인 기능 검사도 후속 문서 push로 대체하지 않습니다.
 
 제목 수정만으로 재사용 policy 검사의 과거 실패가 바뀌지는 않습니다.
 제목 수정 후 새 커밋을 push하여 최신 제목의 policy 검사를 실행합니다. 기존 실행의 재실행은 과거 이벤트의 제목을 사용합니다.
@@ -34,7 +34,7 @@ edited 전용 lint 검사는 제목 변경을 빠르게 확인하는 보조 검�
 Godot 작업은 headless import, 메인 장면 시작과 기존 전투·저장 회귀 테스트를 모두 수행합니다.
 import와 메인 장면 검사 뒤 전투·저장 테스트를 두 자리에서 병렬 실행합니다.
 가장 긴 `combat_save_test`를 먼저 시작하고 나머지 테스트는 빈 자리가 생기는 대로 차례로 실행합니다.
-각 테스트의 출력은 줄마다 `[테스트 이름 경과 초]`를 붙여 바로 내보냅니다. 시작과 종료 코드도 같은 형식으로 남깁니다. 두 테스트의 줄이 섞여도 접두어로 구분합니다. 테스트가 끝난 뒤 5초 안에 출력이 끝나지 않으면 실패로 처리합니다. 작업이 시간 제한으로 취소돼도 어느 테스트·단계까지 진행했는지 로그에 남습니다.
+각 테스트의 출력은 줄마다 `[테스트 이름 경과 초]`를 붙여 바로 내보냅니다. 시작과 종료 코드도 같은 형식으로 남깁니다. 두 테스트의 줄이 섞여도 접두어로 구분합니다. 테스트가 끝난 뒤 5초 안에 출력이 끝나지 않으면 실패로 처리합니다. 테스트가 `SCRIPT ERROR`나 `Failed to load script`를 출력하면 끝나기를 기다리지 않고 그 테스트의 프로세스 그룹을 멈추고 실패로 처리합니다. 런타임 스크립트 오류가 나면 테스트가 `quit()`에 닿지 않아 Godot가 끝나지 않기 때문입니다. 멈춘 뒤에 나올 출력은 남지 않습니다. 작업이 시간 제한으로 취소돼도 어느 테스트·단계까지 진행했는지 로그에 남습니다.
 모든 테스트의 성공을 요구합니다.
 
 CI는 검사 전에 `fonts-noto-cjk`를 설치하고 `FONTCONFIG_FILE`로 fontconfig가 Noto CJK 폴더만 찾게 합니다. 프로젝트는 글꼴을 넣지 않아 한글을 운영체제의 대체 글꼴로 그립니다([화면 확인 기준](CAPTURE_VERIFICATION.md)). Ubuntu 러너에는 한글 글꼴이 없습니다. 기본 글꼴 53개를 모두 찾게 두면 전투 장면 하나를 만드는 시간이 여러 배로 늘어, 장면을 수백 번 만드는 `combat_save_test`가 20분 제한에 닿았습니다([#430](https://github.com/minjunkim-dev/BGLike/issues/430)). 한글 글꼴만 더 설치하면 찾을 글꼴이 늘어 빨라지지 않습니다. 시스템 글꼴을 모두 끈 실행에서는 HUD 피해 팝업 위치 검사가 한 번 실패했고 원인은 확인하지 않았습니다. 그래서 Noto CJK 폴더의 글꼴만 찾게 해 화면 밖 확인과 같은 Noto Sans CJK의 실제 한글 글자 폭으로 검사합니다. `fonts-noto-cjk` 버전은 고정하지 않습니다. 패키지가 바뀌어 글자 폭에 기대는 검사 결과가 달라지면 smoke 실패로 드러납니다. 설치 뒤 한국어 Noto Sans CJK가 보이지 않으면 이 단계가 실패합니다.

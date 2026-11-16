@@ -8,6 +8,7 @@ var _animation_marker: Node2D
 var _prop_effects: Array[Node2D] = []
 var grid: CombatGrid
 var _overlays: Array[Node2D] = []
+var _threat_overlays: Array[Node2D] = []
 var _blocked_markers: Array[Node2D] = []
 var _ground_markers: Array[Node2D] = []
 var _prop_markers: Array[Node2D] = []
@@ -19,6 +20,9 @@ const EDGE_FRONT: int = 2
 const EDGE_LIGHT: Color = Color(1.0, 0.95, 0.8, 0.55)
 const EDGE_DARK: Color = Color(0.06, 0.05, 0.04, 0.7)
 const EDGE_CONTACT_ALPHA: float = 0.55
+## 이동 범위 칸 윤곽의 폭(#556, 0.5에서 1px 굵게)과 꼭짓점 꺾쇠가 변을 따라 가는 비율.
+const EDGE_WIDTH: float = 1.5
+const CORNER_LENGTH: float = 0.25
 
 
 func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = null) -> void:
@@ -33,6 +37,7 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = n
 	reveal_units([])
 	clear()
 	show_movement([], [], [], Vector2i.ZERO)
+	show_threat([])
 	show_grounds([])
 	show_floor_loot({})
 	show_props([])
@@ -269,9 +274,21 @@ func show_movement(cells: Array[Vector2i], attack_cells: Array[Vector2i],
 		var edge: Line2D = Line2D.new()
 		edge.points = overlay.polygon
 		edge.closed = true
-		edge.width = 0.5
+		edge.width = EDGE_WIDTH
 		edge.default_color = Color(overlay.color.r, overlay.color.g, overlay.color.b, 0.75)
 		overlay.add_child(edge)
+		# 색에만 기대지 않게 네 꼭짓점에 짧은 꺾쇠를 더한다(#556). 바닥 마름모 안쪽에만 그린다.
+		var corner_color: Color = Color(overlay.color.r, overlay.color.g, overlay.color.b, 0.75).lightened(0.45)
+		corner_color.a = 1.0
+		for index: int in range(4):
+			var vertex: Vector2 = overlay.polygon[index]
+			var mark: Line2D = Line2D.new()
+			mark.points = PackedVector2Array([
+				vertex.lerp(overlay.polygon[(index + 3) % 4], CORNER_LENGTH), vertex,
+				vertex.lerp(overlay.polygon[(index + 1) % 4], CORNER_LENGTH)])
+			mark.width = 1.0
+			mark.default_color = corner_color
+			overlay.add_child(mark)
 		add_child(overlay)
 		_overlays.append(overlay)
 	var previous: Vector2 = map_to_surface(origin)
@@ -292,6 +309,35 @@ func show_movement(cells: Array[Vector2i], attack_cells: Array[Vector2i],
 		marker.draw.connect(func() -> void: marker.draw_circle(center, 3.0, Color("f4cf69"), false))
 		add_child(marker)
 		_overlays.append(marker)
+
+
+## 적의 위협 범위(#556). 이동 범위 아래에 붉은 면과 윤곽만 그린다. 꼭짓점 표시가 없어 모양으로도 이동 범위와 구분된다.
+func show_threat(cells: Array[Vector2i]) -> void:
+	for overlay: Node2D in _threat_overlays:
+		overlay.free()
+	_threat_overlays.clear()
+	var half: Vector2 = Vector2(tile_set.tile_size) / 2.0 if tile_set != null else Vector2.ZERO
+	var first_movement: int = _overlays[0].get_index() if not _overlays.is_empty() else -1
+	for cell: Vector2i in cells:
+		var overlay: Polygon2D = Polygon2D.new()
+		overlay.position = map_to_local(cell)
+		var center: Vector2 = map_to_surface(cell) - overlay.position
+		overlay.polygon = PackedVector2Array([
+			center + Vector2(0, -half.y), center + Vector2(half.x, 0),
+			center + Vector2(0, half.y), center + Vector2(-half.x, 0)
+		])
+		overlay.color = Color(CombatUnit.ENEMY_COLOR.r, CombatUnit.ENEMY_COLOR.g, CombatUnit.ENEMY_COLOR.b, 0.12)
+		var edge: Line2D = Line2D.new()
+		edge.points = overlay.polygon
+		edge.closed = true
+		edge.width = 1.0
+		edge.default_color = Color(overlay.color.r, overlay.color.g, overlay.color.b, 0.75)
+		overlay.add_child(edge)
+		add_child(overlay)
+		if first_movement >= 0:
+			move_child(overlay, first_movement)
+			first_movement += 1
+		_threat_overlays.append(overlay)
 
 
 func show_rock_roll(origin: Vector2i, roll: CombatActions.RockRoll) -> void:

@@ -34,6 +34,9 @@ func _run() -> void:
 	var potion: Dictionary = loot.data.items.filter(func(item: Dictionary) -> bool: return item.kind == "potion")[0].duplicate(true)
 	assert(loot.is_valid_item(weapon) and loot.is_valid_item(potion))
 	var rewards: Array[Dictionary] = [weapon, potion]
+	# #577: 카드의 물약 칸이 종류별 아이콘(회복 물약·기름병)과 빈 칸을 함께 보이게 한다.
+	party[0].potions.assign(["healing_potion", "oil_bottle"])
+	party[1].potions.assign(["oil_bottle"])
 	prep.open_rewards(loot, party, rewards, false, false)
 	assert(prep.visible and not prep.maintaining and prep.rewards.size() == 2)
 	await _capture("reward-overview")

@@ -14,6 +14,8 @@ var observer: CaptureObserver
 var directory: String
 var manual: bool = "--manual" in OS.get_cmdline_user_args()
 var saw_enemy: bool = false
+## 원본 화면 크기. `--window-size=1920x1080`으로 바꾼다(#554). 기본은 1280×720이다.
+var window_size: Vector2i = Vector2i(1280, 720)
 var _finished: bool = false
 
 
@@ -39,7 +41,11 @@ func _run() -> void:
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--capture-dir="):
 			directory = argument.trim_prefix("--capture-dir=")
-	root.size = Vector2i(1280, 720)
+		elif argument.begins_with("--window-size="):
+			var parts: PackedStringArray = argument.trim_prefix("--window-size=").split("x")
+			if parts.size() == 2 and parts[0].is_valid_int() and parts[1].is_valid_int():
+				window_size = Vector2i(int(parts[0]), int(parts[1]))
+	root.size = window_size
 	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	current_scene = main
@@ -170,7 +176,7 @@ func _validate_manifest() -> void:
 		frames += 1
 		_check(events.has(int(entry["event"])), "프레임을 앞서 기록한 이벤트에 연결")
 		var image: Image = Image.load_from_file(directory.path_join(entry["png"]))
-		_check(image != null and not image.is_empty() and image.get_size() == Vector2i(1280, 720),
+		_check(image != null and not image.is_empty() and image.get_size() == window_size,
 			"원본 PNG를 다시 읽고 Viewport 크기 확인")
 		ally_frame = ally_frame or (entry["ally"] and int(entry["round"]) >= 2)
 	_check(enemy_event, "manifest에 실제 적 차례 기록")

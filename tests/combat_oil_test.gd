@@ -80,12 +80,14 @@ func _run() -> void:
 	await _test_leaving_slip()
 	await _test_entering_slip()
 	await _test_forced_entry_slip()
+	_test_slip_note()
 	await _test_turn_start_release()
 	await _test_fallen_limits_and_stand_up()
 	_test_prone_has_available_action()
 	await _test_fallen_agility_save()
 	await _test_oil_clock()
 	await _test_oil_throw()
+	await _test_oil_bottle_item()
 	await _test_fallen_fog()
 	await _test_status_text()
 	await _test_save()
@@ -261,6 +263,27 @@ func _test_entering_slip() -> void:
 	_check(_oil_cells(g).size() == 1, "기름 칸 밖의 다른 기름은 그대로")
 
 
+## 걷기 미리보기 안내: 이번 걷기에서 미끌거림을 굴리게 되면 실제 DC를 한 줄로 보인다.
+func _test_slip_note() -> void:
+	var expected: String = "미끌거림: 솜씨 내성 DC %d" % CombatOil.SLIP_DC
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var path: Array[Vector2i] = [Vector2i(3, 3), Vector2i(3, 2)]
+	_check(f.actions.slip_note(archer, path).is_empty(), "기름이 없으면 안내 없음")
+	_single_oil(f, Vector2i(3, 3), archer)
+	_check(f.actions.slip_note(archer, path) == expected, "경로가 기름 칸에 들어가면 안내: " + f.actions.slip_note(archer, path))
+	_check(f.actions.slip_note(archer, [Vector2i(2, 4), Vector2i(2, 5)]).is_empty(), "경로가 기름을 지나지 않으면 안내 없음")
+	_check(f.actions.slip_note(archer, []).is_empty(), "빈 경로는 안내 없음")
+	archer.oil_slipped = true
+	_check(f.actions.slip_note(archer, path).is_empty(), "이번 턴에 이미 굴렸으면 안내 없음")
+	var g: Fixture = _fixture()
+	var walker: CombatUnit = g.units[0]
+	_single_oil(g, walker.cell, walker)
+	_check(g.actions.slip_note(walker, [Vector2i(3, 3), Vector2i(3, 2)]) == expected, "출발 칸이 기름이면 떠나기 안내")
+	_single_oil(g, Vector2i(3, 3), walker)
+	_check(g.actions.slip_note(walker, [Vector2i(3, 3), Vector2i(3, 2)]) == expected, "기름에서 기름으로 가도 한 줄")
+
+
 ## 강제 이동 착지는 진입 굴림만 한다(떠나기 없음).
 func _test_forced_entry_slip() -> void:
 	var f: Fixture = _fixture()
@@ -414,6 +437,56 @@ func _test_oil_throw() -> void:
 	g.units[0].moving_shot_ready = true
 	_check(g.actions.throw_oil(g.units[0], Vector2i(6, 4)) and not g.units[0].moving_shot_ready,
 		"기름병을 던지면 무빙샷 준비가 사라짐")
+
+
+## 기름병 아이템(#576): 사거리는 사용자의 힘 면 수 ÷ 2, 물약 칸 하나를 쓰고 스킬 횟수는 건드리지 않는다.
+func _test_oil_bottle_item() -> void:
+	var f: Fixture = _fixture()
+	var archer: CombatUnit = f.units[0]
+	var warrior: CombatUnit = f.units[1]
+	_check(CombatActionRules.aim_range(archer, "oil_bottle") == 3 and CombatActionRules.aim_range(warrior, "oil_bottle") == 10,
+		"기름병 아이템 사거리는 힘 주사위 면 수 ÷ 2(궁수 3, 전사 10)")
+	_check(CombatActionRules.belongs_to(archer, "oil_bottle") and CombatActionRules.belongs_to(warrior, "oil_bottle")
+		and not CombatActionRules.belongs_to(f.units[2], "oil_bottle") and not CombatActionRules.belongs_to(f.units[3], "oil_bottle"),
+		"기름병 아이템은 아군 둘 다 쓰고 적은 쓰지 않음")
+	warrior.potions.assign(["oil_bottle", "healing_potion", "oil_bottle"])
+	f.turns.current_unit = warrior
+	_check(CombatActionRules.uses_left(warrior, "oil_bottle") == 2 and CombatActionRules.uses_left(warrior, "potion") == 1
+		and CombatActionRules.uses_left(archer, "oil_bottle") == 0, "남은 수는 그 종류의 칸 수")
+	_check(not f.actions.can_use(archer, "oil_bottle") and not f.actions.throw_oil(archer, Vector2i(6, 4), "oil_bottle")
+		and archer.bonus_action_left == 1 and _grounds_of(f, "oil") == 0, "기름병이 없으면 쓸 수 없고 자원을 쓰지 않음")
+	_check(f.actions.can_aim(warrior, "oil_bottle", Vector2i(9, 6)) and f.actions.can_aim(warrior, "oil_bottle", Vector2i(9, 3))
+		and not f.actions.can_aim(warrior, "oil_bottle", Vector2i(9, 0)), "사거리 10(맨해튼 거리)")
+	_check(f.actions.throw_oil(warrior, Vector2i(8, 6), "oil_bottle") and _grounds_of(f, "oil") == 5 and warrior.bonus_action_left == 0
+		and warrior.potions == ["oil_bottle", "healing_potion"] and warrior.oil_throw_left == 1,
+		"전사가 사거리 6에 던지면 십자 5칸, 보조 행동 1과 기름병 한 칸만 소비")
+	warrior.bonus_action_left = 1
+	_check(not f.actions.throw_oil(warrior, Vector2i(3, 6), "oil_bottle") and warrior.potions == ["oil_bottle", "healing_potion"]
+		and not f.actions.can_aim(warrior, "oil_bottle", Vector2i(3, 6)), "자기 칸은 던질 수 없고 거부하면 아무것도 쓰지 않음")
+	_check(not f.actions.throw_oil(warrior, Vector2i(8, 6), "potion"), "기름병 동작이 아니면 거부")
+	var g: Fixture = _fixture()
+	var shooter: CombatUnit = g.units[0]
+	shooter.potions.assign(["oil_bottle"])
+	_check(g.actions.throw_oil(shooter, Vector2i(6, 4)) and shooter.oil_throw_left == 0 and shooter.potions == ["oil_bottle"],
+		"스킬 던지기는 물약 칸을 쓰지 않음")
+	shooter.bonus_action_left = 1
+	_check(g.actions.can_use(shooter, "oil_bottle") and g.actions.throw_oil(shooter, Vector2i(5, 3), "oil_bottle")
+		and shooter.potions.is_empty() and shooter.oil_throw_left == 0, "스킬을 쓴 뒤에도 아이템은 쓸 수 있고 스킬 횟수는 그대로")
+	var h: Fixture = _fixture()
+	h.units[0].moving_shot_ready = true
+	h.units[0].potions.assign(["oil_bottle"])
+	_check(h.actions.throw_oil(h.units[0], Vector2i(6, 4), "oil_bottle") and not h.units[0].moving_shot_ready
+		and h.units[0].oil_throw_left == 1, "아이템 던지기도 무빙샷 준비를 지우고 스킬 횟수는 그대로")
+	var k: Fixture = _fixture()
+	k.units[0].potions.assign(["oil_bottle"])
+	for cell: Vector2i in [Vector2i(5, 3), Vector2i(4, 3), Vector2i(6, 3), Vector2i(5, 2), Vector2i(5, 4)]:
+		if cell == Vector2i(5, 4):
+			k.actions.grid.blocked_cells.append(cell)
+		else:
+			k.actions.create_prop(cell, "crate")
+	_check(not k.actions.can_aim(k.units[0], "oil_bottle", Vector2i(5, 3))
+		and not k.actions.throw_oil(k.units[0], Vector2i(5, 3), "oil_bottle") and k.units[0].potions == ["oil_bottle"],
+		"깔릴 칸이 없는 목표는 고를 수 없음")
 
 
 ## 넘어진 독안개 거미는 독안개를 시전하지 못한다(넘어짐은 행동 불가).

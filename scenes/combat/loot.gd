@@ -146,12 +146,21 @@ func unequip_armor(unit: CombatUnit) -> bool:
 	return true
 
 
-## 원본의 마지막 칸 물약 하나를 대상의 끝 칸으로 옮긴다(#575 개발 결정: 칸 고르기는 #577).
-func transfer_potion(source: CombatUnit, target: CombatUnit) -> bool:
-	if source == target or source.potions.is_empty() or target.potions.size() >= int(data["potion_limit"]):
+## 원본의 `slot`번 칸 물약 하나를 대상의 끝 칸으로 옮긴다. 남은 칸은 순서를 유지한다(압축 목록).
+## `slot`을 생략(-1)하면 마지막 칸이다. 범위 밖 칸·자기 자신·가득 찬 대상은 거부하고 양쪽을 보존한다.
+func transfer_potion(source: CombatUnit, target: CombatUnit, slot: int = -1) -> bool:
+	if slot == -1:
+		slot = source.potions.size() - 1
+	if source == target or slot < 0 or slot >= source.potions.size() or target.potions.size() >= int(data["potion_limit"]):
 		return false
-	target.potions.append(source.potions.pop_back())
+	target.potions.append(source.potions.pop_at(slot))
 	return true
+
+
+## 물약류 작은 아이콘(정비 카드의 물약 칸) 경로. 모르는 id나 아이콘이 없는 데이터는 빈 문자열이다.
+func pip_icon_path(id: String) -> String:
+	var icon: String = str(potion_definition(id).get("icon", ""))
+	return "" if icon.is_empty() else ICON_PATH % (icon + "_pip")
 
 
 ## 물약류 항목(이름·아이콘 조회). 물약류가 아닌 id나 모르는 id는 빈 Dictionary다.

@@ -4,7 +4,7 @@ extends Node2D
 const MOVE_STEP_TIME: float = 0.09
 const ARROW_FLIGHT_TIME: float = 0.16
 ## 칸을 조준하는 동작. 한 번 눌러 칸(과 범위)을 보고, 같은 칸을 다시 누르면 실행한다.
-const AIM_ACTIONS: Array[String] = ["oil_throw", "trick_arrow", "firework_arrow"]
+const AIM_ACTIONS: Array[String] = ["oil_throw", "oil_bottle", "trick_arrow", "firework_arrow"]
 ## 인접한 칸을 눌러 방향(정면)을 고르는 동작. 휩쓸기는 정면 반달, 효시는 세 줄 띠다.
 const FACING_ACTIONS: Array[String] = ["sweep", "whistle"]
 const ENEMY_PAUSE_TIME: float = 0.35
@@ -77,7 +77,6 @@ func _ready() -> void:
 	var hint: Label = Label.new()
 	hint.text = tr("전투 준비 · 지형과 적을 확인하고 전투를 시작합니다.")
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hint.add_theme_font_size_override("font_size", 12)
 	staging.add_child(hint)
 	start_button = Button.new()
 	start_button.name = "StartBattle"
@@ -88,6 +87,7 @@ func _ready() -> void:
 	staging.add_child(start_button)
 
 	hud.unit_selected.connect(_on_unit_selected)
+	hud.unit_hovered.connect(_on_unit_hovered)
 	hud.end_turn_requested.connect(_end_turn)
 	hud.action_selected.connect(_on_action_selected)
 	hud.reaction_selected.connect(actions.resolve_reaction)
@@ -578,9 +578,73 @@ func _hover_floor_loot(screen_position: Vector2) -> void:
 		_update_turn_ui()
 
 
+## 적 위협 범위(#556). T로 켜고 끄며 기본은 꺼짐이다. 저장하지 않는다.
+var threat_visible: bool = false
+## 마우스가 올라간 적(몸통 또는 턴 순서 초상). 있으면 그 적의 범위만 보인다.
+var _threat_unit: CombatUnit
+var _body_hover_unit: CombatUnit
+var _portrait_hover_unit: CombatUnit
+
+
+func _on_unit_hovered(unit: CombatUnit) -> void:
+	_portrait_hover_unit = unit
+	_sync_threat_hover()
+
+
+func _hover_enemy_body(screen_position: Vector2) -> void:
+	var world_position: Vector2 = get_canvas_transform().affine_inverse() * screen_position
+	var candidates: Array[CombatUnit] = []
+	for unit: CombatUnit in units:
+		if unit.visible and unit.hit_points > 0 and unit.contains_body_point(unit.to_local(world_position)):
+			candidates.append(unit)
+	candidates.sort_custom(func(a: CombatUnit, b: CombatUnit) -> bool:
+		if a.position.y != b.position.y:
+			return a.position.y > b.position.y
+		return a.get_index() > b.get_index())
+	var found: CombatUnit = candidates[0] if not candidates.is_empty() else actions.grid.unit_at(
+		map.surface_to_map(map.to_local(world_position)))
+	_body_hover_unit = found
+	_sync_threat_hover()
+
+
+func _sync_threat_hover() -> void:
+	var picked: CombatUnit = _portrait_hover_unit if _portrait_hover_unit != null else _body_hover_unit
+	if picked != null and (picked.is_ally or picked.hit_points <= 0 or picked not in units):
+		picked = null
+	if picked == _threat_unit:
+		return
+	_threat_unit = picked
+	_refresh_threat()
+
+
+func _refresh_threat() -> void:
+	var cells: Array[Vector2i] = []
+	if not preparation.visible and not actions.is_over():
+		var shown: Array[CombatUnit] = []
+		if _threat_unit != null and _threat_unit.hit_points > 0 and _threat_unit in units:
+			shown.append(_threat_unit)
+		elif threat_visible:
+			for unit: CombatUnit in units:
+				if not unit.is_ally and unit.visible and unit.hit_points > 0 and not unit.stealthed:
+					shown.append(unit)
+		for enemy: CombatUnit in shown:
+			for cell: Vector2i in actions.threat_cells(enemy):
+				if cell not in cells:
+					cells.append(cell)
+	map.show_threat(cells)
+
+
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and not preparation.visible:
 		_hover_floor_loot(event.position)
+		_hover_enemy_body(event.position)
+	if (event is InputEventKey and event.physical_keycode == KEY_T and not preparation.visible
+			and not event.is_command_or_control_pressed()):
+		get_viewport().set_input_as_handled()
+		if event.pressed and not event.echo:
+			threat_visible = not threat_visible
+			_refresh_threat()
+		return
 	# 반응·정비 확인 창이 떠 있으면 그 창이 Esc·Start를 먼저 받는다. Esc는 지금처럼 반응을 넘긴다.
 	if event.is_action_pressed("pause"):
 		get_viewport().set_input_as_handled()
@@ -692,7 +756,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return a.get_index() > b.get_index()
 	)
 	var prop: CombatGrid.Prop = map.prop_at_point(map.to_local(world_position))
-	if selection.selected_action == "oil_throw":
+	if selection.selected_action in CombatActionRules.OIL_ACTIONS:
 		get_viewport().set_input_as_handled()
 		_select_aim_cell(cell)
 		return
@@ -769,8 +833,8 @@ func _select_aim_cell(cell: Vector2i) -> void:
 	if selection.select_cell(cell, actions.can_aim(actor, action, cell)):
 		selection.begin_execution()
 		match action:
-			"oil_throw":
-				actions.throw_oil(actor, cell)
+			"oil_throw", "oil_bottle":
+				actions.throw_oil(actor, cell, action)
 			"trick_arrow":
 				await actions.trick_arrow(actor, cell)
 			"firework_arrow":
@@ -1015,6 +1079,7 @@ func _update_turn_ui() -> void:
 	map.show_trees(actions.grid.trees)
 	map.show_floor_loot(actions.floor_loot.drops)
 	map.show_props(actions.get_props(), selection.preview_prop)
+	_refresh_threat()
 	map.reveal_units(units)
 	# 가림 판정은 방금 그린 사물 위치를 사용한다.
 	for unit: CombatUnit in units:
@@ -1103,6 +1168,7 @@ func _update_turn_ui() -> void:
 	if selection.selected_action != "jump" and not selection.preview_path.is_empty():
 		var notes: Array[String] = []
 		for note: String in [actions.water_note(selection.preview_cell),
+				actions.slip_note(turns.current_unit, selection.preview_path) if selection.selected_action != "moving_shot" else "",
 				actions.pickup_note(turns.current_unit, selection.preview_path)]:
 			if not note.is_empty():
 				notes.append(note)
@@ -1149,18 +1215,19 @@ func _update_turn_ui() -> void:
 				whistle_chances.append(CombatActionRules.save_chance_text(turns.current_unit, target, "whistle"))
 			whistle_note = tr("효시 · 행동1 · 전투마다 1 · 의지 내성 성공률\n%s\n같은 칸을 다시 좌클릭하면 실행합니다.") % " · ".join(whistle_chances)
 		hud.show_target_note(whistle_note)
-	elif (selection.selected_action == "oil_throw" and turns.current_unit != null and turns.current_unit.is_ally
+	elif (selection.selected_action in CombatActionRules.OIL_ACTIONS and turns.current_unit != null and turns.current_unit.is_ally
 			and not actions.busy):
-		hud.show_target_note(tr("기름병 던지기 · 보조 행동1 · 기름을 깔 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 던집니다.")
-			if not actions.can_aim(turns.current_unit, "oil_throw", selection.preview_cell)
-			else tr("기름병 던지기 · 보조 행동1 · 십자 5칸 기름 3턴\n같은 칸을 다시 좌클릭하면 던집니다."))
+		var oil_name: String = CombatActionRules.NAMES[selection.selected_action]
+		hud.show_target_note(tr("%s · 보조 행동1 · 기름을 깔 칸을 좌클릭합니다.\n같은 칸을 다시 좌클릭하면 던집니다.") % oil_name
+			if not actions.can_aim(turns.current_unit, selection.selected_action, selection.preview_cell)
+			else tr("%s · 보조 행동1 · 십자 5칸 기름 3턴\n같은 칸을 다시 좌클릭하면 던집니다.") % oil_name)
 	elif (selection.selected_action in ["trick_arrow", "firework_arrow"] and turns.current_unit != null
 			and turns.current_unit.is_ally and not actions.busy):
 		hud.show_target_note(_arrow_note(turns.current_unit, selection.selected_action, selection.preview_cell))
 	var hovered: Dictionary = actions.floor_loot.item_at(_hover_cell)
 	if (not hovered.is_empty() and selection.preview_target == null and selection.preview_prop == null
 			and selection.preview_path.is_empty()
-			and selection.selected_action not in ["jump", "sweep", "whistle", "oil_throw", "moving_shot", "trick_arrow", "firework_arrow"]):
+			and selection.selected_action not in ["jump", "sweep", "whistle", "oil_throw", "oil_bottle", "moving_shot", "trick_arrow", "firework_arrow"]):
 		hud.show_move_mode(false)
 		hud.show_target_note(tr("바닥 아이템 · %s") % CombatLoot.describe(hovered))
 	if actions.is_over():
