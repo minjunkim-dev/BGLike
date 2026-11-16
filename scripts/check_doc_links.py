@@ -12,7 +12,8 @@ import sys
 from urllib.parse import unquote
 
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
-INLINE_CODE = re.compile(r"(`+)[^`\n]*?\1")
+# A code span closes with a backtick run as long as the one that opened it.
+INLINE_CODE = re.compile(r"(?<!`)(`+)(?!`).*?(?<!`)\1(?!`)")
 LINK_TEXT = r"\[(?:[^\[\]\n]|\[[^\]\n]*\])*\]"
 # Destination: <any text without ">"> or a run without spaces whose parentheses are balanced.
 INLINE_LINK = re.compile(r"!?" + LINK_TEXT + r"\(\s*(?:<([^>\n]+)>|((?:[^()\s]|\([^()\s]*\))+))"
@@ -24,6 +25,7 @@ SCHEME = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|//)")
 # Plain-text references to docs files in code, scripts and workflows. Partial names such as
 # "docs/adr/0003" are not checked: only a full file name can be proven missing.
 CODE_REFERENCE = re.compile(r"docs/[\w./-]*\w\.(?:md|png|svg)")
+URL = re.compile(r"[a-zA-Z][a-zA-Z0-9+.-]*://\S+")
 CODE_FILES = ("*.gd", "*.py", "*.sh", "*.yml", "*.json", "*.cfg", "*.txt", "Makefile", ".githooks/*")
 
 
@@ -57,6 +59,7 @@ def slug(heading):
     """GitHub's heading anchor: plain text, lower case, no punctuation, spaces to hyphens."""
     text = re.sub(r"!?\[([^\]]*)\]\([^)]*\)", r"\1", heading)
     text = re.sub(r"<[^>]+>", "", text.replace("`", "").replace("*", "").replace("~~", ""))
+    text = re.sub(r"(?<!\w)_+|_+(?!\w)", "", text)  # emphasis, not the underscore inside a word
     return re.sub(r"[^\w\- ]", "", text.strip().lower()).replace(" ", "-")
 
 
@@ -68,8 +71,12 @@ def anchors(text):
         if heading:
             base = slug(heading[1])
             count = seen.get(base, 0)
+            anchor = base if count == 0 else f"{base}-{count}"
+            while anchor in found:  # "Foo", "Foo", "Foo-1": the third heading is already taken
+                count += 1
+                anchor = f"{base}-{count}"
             seen[base] = count + 1
-            found.add(base if count == 0 else f"{base}-{count}")
+            found.add(anchor)
     return found
 
 
@@ -91,7 +98,7 @@ def check_markdown(root, name, anchor_cache):
         if SCHEME.match(target):
             continue
         path, _, fragment = target.partition("#")
-        path = unquote(path)
+        path = unquote(path.partition("?")[0])  # "b.md?plain=1" is the file b.md
         if not path:
             resolved = root / name
         elif path.startswith("/"):
@@ -111,9 +118,12 @@ def check_markdown(root, name, anchor_cache):
 def check_code_references(root, name):
     problems = []
     for number, line in enumerate(read(root / name).splitlines(), 1):
-        for reference in CODE_REFERENCE.findall(line):
-            if not (root / reference).exists():
-                problems.append(f"{name}:{number}: docs 경로가 없음: {reference}")
+        urls = [url.span() for url in URL.finditer(line)]
+        for match in CODE_REFERENCE.finditer(line):
+            if any(start <= match.start() < end for start, end in urls):
+                continue  # a docs/ path inside an external URL is not a file of this repository
+            if not (root / match[0]).exists():
+                problems.append(f"{name}:{number}: docs 경로가 없음: {match[0]}")
     return problems
 
 

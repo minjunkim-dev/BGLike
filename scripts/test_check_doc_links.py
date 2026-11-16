@@ -121,6 +121,28 @@ class DocLinkTests(unittest.TestCase):
         # Like GitHub, removing a trailing emoji leaves its space behind as a hyphen.
         self.assertEqual(slug("스킬_횟수 ✅"), "스킬_횟수-")
 
+    def test_code_span_closes_only_with_a_run_of_the_same_length(self):
+        self.write("docs/a.md", "``[no](missing.md) ` `` 그리고 [yes](a.md)\n")
+        self.assertEqual(self.problems(), [])
+
+    def test_emphasis_markers_are_dropped_from_anchors(self):
+        self.write("docs/a.md", "[go](#setup) [keep](#스킬_횟수)\n\n## _Setup_\n\n## 스킬_횟수\n")
+        self.assertEqual(self.problems(), [])
+        self.assertEqual(slug("__init__ 와 *강조*"), "init-와-강조")
+
+    def test_generated_anchor_that_collides_gets_the_next_suffix(self):
+        self.write("docs/a.md", "[third](#foo-1-1)\n\n## Foo\n\n## Foo\n\n## Foo-1\n")
+        self.assertEqual(self.problems(), [])
+
+    def test_query_string_is_not_part_of_the_file_name(self):
+        self.write("docs/a.md", "[source](b.md?plain=1) [gone](c.md?plain=1)\n")
+        self.write("docs/b.md", "# 제목\n")
+        self.assertEqual(self.problems(), ["docs/a.md:1: 링크 대상이 없음: c.md?plain=1"])
+
+    def test_docs_path_inside_an_external_url_is_not_a_local_reference(self):
+        self.write("scripts/tool.py", '"https://example.com/docs/guide.md" docs/gone.md\n')
+        self.assertEqual(self.problems(), ["scripts/tool.py:1: docs 경로가 없음: docs/gone.md"])
+
     def test_repository_doc_links_resolve(self):
         self.assertEqual(check(ROOT), [])
 
