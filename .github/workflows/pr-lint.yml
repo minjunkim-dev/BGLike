@@ -1,6 +1,7 @@
 name: PR lint
 
 # PR 제목과 브랜치 이름이 docs/GIT_CONVENTIONS.md 형식인지 확인합니다.
+# merge_group(godot.yml이 부름)에서는 PR에서 이미 본 제목·브랜치 단계를 건너뛰고 코드 검사만 합니다.
 # PR 제목은 squash merge 후 main의 커밋 제목이 됩니다.
 
 on:
@@ -35,7 +36,7 @@ jobs:
       - name: Select game checks and check whitespace
         id: scope
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
         run: |
           if [ "$GITHUB_EVENT_NAME" != workflow_dispatch ] &&
              [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] &&

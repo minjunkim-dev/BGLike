@@ -20,7 +20,8 @@ def select_game(paths):
 
 
 def base_sha(event):
-    base = event.get("pull_request", {}).get("base", {}).get("sha") or event.get("before")
+    base = (event.get("pull_request", {}).get("base", {}).get("sha")
+            or event.get("merge_group", {}).get("base_sha") or event.get("before"))
     return base if isinstance(base, str) and re.fullmatch(r"[0-9a-f]{40}", base) and set(base) != {"0"} else None
 
 
