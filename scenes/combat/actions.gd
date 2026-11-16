@@ -722,13 +722,15 @@ func create_oil(source: CombatUnit, center: Vector2i) -> bool:
 	return true
 
 
-## 기름병 던지기(궁수, 보조 행동, 전투마다 1). 목표 칸 십자 5칸에 기름을 깐다.
-func throw_oil(caster: CombatUnit, cell: Vector2i) -> bool:
-	if (not _can_act(caster) or not CombatActionRules.has_uses(caster, "oil_throw") or caster.bonus_action_left <= 0
-		or not can_aim(caster, "oil_throw", cell)):
+## 기름병 던지기(궁수 스킬, 보조 행동, 전투마다 1)와 기름병 아이템(물약 칸 1개, #576). 목표 칸 십자 5칸에 기름을 깐다.
+func throw_oil(caster: CombatUnit, cell: Vector2i, action: String = "oil_throw") -> bool:
+	if (action not in CombatActionRules.OIL_ACTIONS or not _can_act(caster) or not CombatActionRules.has_uses(caster, action)
+		or caster.bonus_action_left <= 0 or not can_aim(caster, action, cell)):
 		return false
 	caster.spend_resource(CombatUnit.TurnResource.BONUS_ACTION)
-	CombatActionRules.spend_use(caster, "oil_throw")
+	CombatActionRules.spend_use(caster, action)
+	if action == "oil_bottle":
+		logged.emit(tr("%s 기름병 사용") % caster.get_display_name())
 	# 무빙샷 준비는 다른 동작을 실행하면 사라진다(궁수 문서).
 	caster.moving_shot_ready = false
 	return create_oil(caster, cell)
@@ -1138,7 +1140,7 @@ func aim_cells(actor: CombatUnit, action: String, from_cell: Vector2i = Vector2i
 	var cells: Array[Vector2i] = grid.aim_cells(actor.cell if from_cell == Vector2i(-1, -1) else from_cell,
 		CombatActionRules.aim_range(actor, action), CombatActionRules.aim_min_range(action),
 		action in CombatActionRules.FIRE_ACTIONS)
-	if action == "oil_throw":
+	if action in CombatActionRules.OIL_ACTIONS:
 		# 깔릴 칸이 하나도 없는 목표는 고를 수 없다(자원만 쓰고 효과 없는 던지기를 막는다).
 		cells = cells.filter(func(cell: Vector2i) -> bool: return not oil_sites(cell).is_empty())
 	return cells
@@ -1152,7 +1154,7 @@ func can_aim(actor: CombatUnit, action: String, cell: Vector2i, from_cell: Vecto
 func aim_area(actor: CombatUnit, action: String, cell: Vector2i) -> Array[Vector2i]:
 	if actor == null or action not in CombatActionRules.AIM_RADII:
 		return []
-	if action == "oil_throw":
+	if action in CombatActionRules.OIL_ACTIONS:
 		return oil_sites(cell)
 	return grid.area_cells(cell, CombatActionRules.AIM_RADII[action], false, action in CombatActionRules.FIRE_ACTIONS)
 
@@ -1222,7 +1224,7 @@ func can_use(actor: CombatUnit, action: String) -> bool:
 			return CombatActionRules.belongs_to(actor, action) and actor.bonus_action_left > 0
 		"stealth":
 			return CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0
-		"oil_throw":
+		"oil_throw", "oil_bottle":
 			return CombatActionRules.has_uses(actor, action) and actor.bonus_action_left > 0 and not aim_cells(actor, action).is_empty()
 		"trick_arrow", "firework_arrow":
 			return (CombatActionRules.has_uses(actor, action) and actor.action_left > 0
@@ -1259,7 +1261,7 @@ func unavailable_reason(actor: CombatUnit, action: String) -> String:
 	if not reaction and (actor != turns.current_unit or not actor.is_ally):
 		return tr("아군의 자기 턴에만 사용")
 	if CombatActionRules.uses_left(actor, action) == 0:
-		if action == "potion":
+		if action in CombatActionRules.POTION_ITEM:
 			return tr("보유 물약 없음")
 		return tr("이번 전투의 횟수를 모두 씀") if action in CombatActionRules.USES_PER_COMBAT else tr("이번 막의 횟수를 모두 씀")
 	if ([actor.action_left, actor.bonus_action_left, actor.reaction_left][resource] == 0
