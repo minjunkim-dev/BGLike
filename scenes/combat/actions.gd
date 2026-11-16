@@ -965,6 +965,29 @@ func reachable_cells(actor: CombatUnit) -> Dictionary[Vector2i, int]:
 	return grid.reachable_cells(actor, budget)
 
 
+## 적이 다음 턴에 기본 공격으로 닿을 수 있는 칸(#556). 이동력 전체로 걸어 설 수 있는 칸에서 기본 공격 거리 안의 바닥이다.
+## 남은 이동력·행동 자원·도약·스킬 사거리·엄폐는 보지 않고 AI 행동도 예고하지 않는다.
+func threat_cells(enemy: CombatUnit) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if enemy == null or enemy.is_ally or enemy.hit_points <= 0 or enemy.stealthed:
+		return result
+	var stands: Array[Vector2i] = [enemy.cell]
+	stands.append_array(grid.reachable_cells(enemy, enemy.get_movement()).keys())
+	var attack_range: int = enemy.get_attack_range()
+	var seen: Dictionary[Vector2i, bool] = {}
+	for stand: Vector2i in stands:
+		for x: int in range(-attack_range, attack_range + 1):
+			for y: int in range(-attack_range, attack_range + 1):
+				var cell: Vector2i = stand + Vector2i(x, y)
+				if seen.has(cell) or not grid.is_floor(cell) or not CombatGrid.in_range(stand, cell, attack_range):
+					continue
+				if attack_range == 1 and not grid.are_adjacent(stand, cell):
+					continue
+				seen[cell] = true
+				result.append(cell)
+	return result
+
+
 func can_move(actor: CombatUnit, destination: Vector2i) -> bool:
 	return reachable_cells(actor).has(destination)
 
