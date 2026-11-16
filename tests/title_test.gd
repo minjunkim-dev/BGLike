@@ -57,7 +57,8 @@ func _run() -> void:
 	if OS.is_debug_build():
 		expected.append("테스트 진입 (디버그)")
 	_check(shown == expected, "저장이 없을 때 타이틀 버튼: %s" % [shown])
-	_check((title.menu.get_node("Name") as Label).text == "BGLike", "임시 이름 BGLike")
+	_check_logo(title)
+	_check_backdrop(title)
 	_check(not title.continue_button.visible and not title.has_save(), "저장이 없으면 이어하기를 숨김")
 	_check(not title.settings_button.disabled, "설정 버튼을 누를 수 있음")
 	_check(title.quit_button.pressed.is_connected(quit), "종료 버튼은 SceneTree.quit에 연결")
@@ -147,6 +148,60 @@ func _check_help(title: TitleScreen) -> void:
 	_check(not help.visible and title.help_button.has_focus(), "컨트롤러 A로 뒤로 버튼을 눌러 도움말을 닫음")
 
 
+## 로고(#557): 임시 이름 BGLike의 도트 그림이 이름 글자를 대신한다.
+func _check_logo(title: TitleScreen) -> void:
+	var logo: TextureRect = title.menu.get_node_or_null("Logo") as TextureRect
+	_check(logo != null and title.menu.get_node_or_null("Name") == null, "메뉴 맨 위는 Logo이고 Name 글자는 없음")
+	if logo == null:
+		return
+	_check(logo.get_index() == 0 and logo.texture != null
+		and logo.texture.resource_path == "res://scenes/ui/art/title/logo.png", "Logo는 메뉴의 첫 항목이고 logo.png")
+	_check(logo.accessibility_name == "BGLike", "Logo의 접근성 이름은 임시 이름 BGLike")
+
+
+## 배경(#557): 1막 1스테이지의 실제 맵과 전사·궁수 대기 도트를 어둡게 깐 정지 그림이다.
+func _check_backdrop(title: TitleScreen) -> void:
+	var backdrop: TitleBackdrop = title.get_child(0) as TitleBackdrop
+	_check(backdrop != null and title.menu.get_index() > 0, "배경은 타이틀의 첫 자식이라 메뉴 뒤에 그려짐")
+	if backdrop == null:
+		return
+	var stage: CombatStage = load("res://scenes/combat/stages/act1_stage1.tres") as CombatStage
+	var expected: Array[Vector2i] = []
+	for y: int in range(stage.map_size.y):
+		for x: int in range(stage.map_size.x):
+			if not stage.pits.has(Vector2i(x, y)):
+				expected.append(Vector2i(x, y))
+	var used: Array[Vector2i] = backdrop.map.get_used_cells()
+	used.sort()
+	expected.sort()
+	_check(used == expected, "배경 맵의 칸은 1-1의 바닥 칸과 같음: %d/%d" % [used.size(), expected.size()])
+	var sprites: Array[Sprite2D] = backdrop.unit_sprites
+	_check(sprites.size() == 2 and "/units/warrior/idle/right/000.png" in sprites[0].texture.resource_path
+		and "/units/archer/idle/right/000.png" in sprites[1].texture.resource_path, "전사·궁수의 오른쪽 대기 그림 한 장씩")
+	for index: int in range(mini(sprites.size(), 2)):
+		var surface: Vector2 = backdrop.map.to_global(backdrop.map.map_to_surface(stage.ally_cells[index]))
+		_check(sprites[index].global_position.is_equal_approx(surface),
+			"아군 %d은 1-1 시작 칸 %s" % [index, stage.ally_cells[index]])
+	_check(backdrop.find_children("*", "AnimatedSprite2D", true, false).is_empty() and not backdrop.is_processing(),
+		"배경은 애니메이션도 매 프레임 처리도 없는 정지 그림")
+	_check(backdrop.modulate.r < 1.0 and backdrop.modulate.g < 1.0 and backdrop.modulate.b < 1.0, "배경은 어둡게 깔림")
+
+
+## 맵 바닥 칸 표면의 가운데가 논리 화면 가운데에서 1 논리 px 안에 있다.
+func _check_backdrop_centered(title: TitleScreen, size: Vector2i, screen: Rect2) -> void:
+	var backdrop: TitleBackdrop = title.get_child(0) as TitleBackdrop
+	if backdrop == null:
+		return
+	var low: Vector2 = Vector2(INF, INF)
+	var high: Vector2 = Vector2(-INF, -INF)
+	for cell: Vector2i in backdrop.map.get_used_cells():
+		var point: Vector2 = backdrop.map.to_global(backdrop.map.map_to_surface(cell))
+		low = low.min(point)
+		high = high.max(point)
+	var center: Vector2 = (low + high) / 2.0
+	_check(center.distance_to(screen.get_center()) <= 1.0, "%s: 배경 맵의 가운데가 화면 가운데: %s / %s" % [size, center, screen.get_center()])
+
+
 ## 일시정지 메뉴(#286)가 쓸 진입점: 도움말 장면만 넣고 `open()`을 부르면 게임을 멈춘 동안에도 읽고 닫는다.
 func _check_help_entry() -> void:
 	var help: HelpScreen = (load("res://scenes/help.tscn") as PackedScene).instantiate() as HelpScreen
@@ -184,6 +239,7 @@ func _check_settings(title: TitleScreen) -> void:
 	_check(not settings.fullscreen_box.button_pressed, "처음 창 모드는 창")
 	_check(is_equal_approx(AudioServer.get_bus_volume_linear(0), 0.8), "시작할 때 처음 음량을 Master 버스에 적용")
 	await _check_layout(title)
+	_check_settings_panel(settings)
 	# 왼쪽 방향키 한 번에 10%씩 줄어 0에서 멈춘다. 0이 음소거다.
 	for step: int in range(9):
 		await _tap(_action("ui_left"))
@@ -252,6 +308,23 @@ func _check_settings(title: TitleScreen) -> void:
 	title.new_game_button.grab_focus()
 
 
+## 설정 패널 프레임(#557): 내용이 MenuPanel 안에 있고, 틀을 씌워도 포커스 이웃이 그대로다.
+func _check_settings_panel(settings: SettingsScreen) -> void:
+	var panel: PanelContainer = settings.find_child("Panel", true, false) as PanelContainer
+	_check(panel != null and panel.theme_type_variation == &"MenuPanel", "설정 내용은 MenuPanel 안에 있음")
+	if panel != null:
+		for name: String in ["Heading", "Grid", "Back"]:
+			_check(panel.is_ancestor_of(settings.find_child(name)) and panel.get_global_rect().encloses(
+				(settings.find_child(name) as Control).get_global_rect()), "패널이 %s를 감쌈" % name)
+		_check(settings.get_global_rect().encloses(panel.get_global_rect()), "패널이 화면 안")
+	var order: Array[Control] = [settings.volume_slider, settings.bgm_slider, settings.sfx_slider,
+		settings.fullscreen_box, settings.fill_box, settings.back_button]
+	for index: int in range(1, order.size()):
+		_check(order[index - 1].get_node(order[index - 1].focus_neighbor_bottom) == order[index]
+			and order[index].get_node(order[index].focus_neighbor_top) == order[index - 1],
+			"포커스 이웃: %s ↔ %s" % [order[index - 1].name, order[index].name])
+
+
 ## 새 게임은 설정 파일을 지우지 않는다. 게임을 다시 켠 것처럼 타이틀을 새로 열면 저장한 설정을 적용한다.
 func _check_settings_kept() -> void:
 	_check(GameSettings.volume() == 10 and GameSettings.fullscreen() and GameSettings.fill_screen()
@@ -314,7 +387,8 @@ func _check_continue_with_save() -> void:
 
 ## #512 디버그 테스트 진입: 고른 막·스테이지로 바로 가고, 사용자의 저장을 읽거나 쓰지 않고, 출시 빌드에서는 열리지 않는다.
 func _check_debug_entry() -> void:
-	_check(TitleScreen.debug_entry == OS.is_debug_build(), "테스트 진입은 디버그 빌드에서만 켜짐")
+	_check(TitleScreen.debug_entry == (OS.is_debug_build() and not OS.has_feature("verification_draft")),
+		"테스트 진입은 디버그 빌드에서만, Draft 묶음(verification_draft)에서는 꺼짐")
 	var original: bool = TitleScreen.debug_entry
 	# 출시 빌드: 메뉴를 만들지 않고 직접 불러도 전투를 열지 않는다.
 	TitleScreen.debug_entry = false
@@ -400,6 +474,7 @@ func _check_layout(title: TitleScreen) -> void:
 			areas = [title.settings.find_child("Heading") as Control, title.settings.back_button]
 			areas.append_array(grid.get_children())
 		elif title.menu.visible:
+			_check_backdrop_centered(title, size, screen)
 			for node: Node in title.menu.get_children():
 				if (node as Control).visible:
 					areas.append(node as Control)
