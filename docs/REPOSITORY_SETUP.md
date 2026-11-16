@@ -15,7 +15,7 @@ python3 <repo-baseline>/tools/apply_github_settings.py <BGLike 경로>
 ## 공통 정책
 
 서버 목표값은 기준선 파일을 따른다. 1인 개발의 필수 승인은 0명이다. 리뷰한 head를 머지 큐(`merge-queue` ruleset, SQUASH)에 넣고, 큐가 `main`과 합친 결과에서 필수 CI를 다시 돌려 병합한다. `allow_auto_merge`는 `false`다.
-필수 체크 기대값은 `policy / PR conventions and scope`, `smoke`, `CI`다. 셋 다 App `15368`이고 `strict`는 true다. 이 파일은 기대값이며 branch protection을 쓰지 않는다. 기존 보호·보안·주간 Dependabot을 유지한다. 미래 공개 Release immutability를 켠다.
+필수 체크 기대값은 판정 job `ci` 하나다(App `15368`, `strict` false). 공통값은 repo-baseline 템플릿(`templates/github/repository-settings.json`)이 주고, 이 저장소 파일에는 저장소마다 다른 값(이름·ID·필수 체크·허용 action·CodeQL advanced setup)만 둔다. 이 파일은 기대값이며 branch protection을 쓰지 않는다. 기존 보호·보안·주간 Dependabot을 유지한다. 미래 공개 Release immutability를 켠다.
 
 ## CodeQL
 
