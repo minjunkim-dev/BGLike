@@ -78,6 +78,42 @@ class DocLinkTests(unittest.TestCase):
         self.assertEqual(self.problems(), ["scripts/tool.py:1: docs 경로가 없음: docs/gone.md",
                                            "tests/case.gd:1: docs 경로가 없음: docs/also-gone.png"])
 
+    def test_balanced_parentheses_angle_destinations_and_quoted_titles(self):
+        self.write("docs/dir/a(1).md", "# 제목\n")
+        self.write("docs/dir/space name.md", "# 제목\n")
+        self.write("docs/a.md", "[p](dir/a(1).md) [q](<dir/space name.md>) [r](dir/a(1).md 'title') "
+                                "![alt [nested]](dir/a(1).md) [s](<dir/gone name.md>)\n")
+        self.assertEqual(self.problems(), ["docs/a.md:1: 링크 대상이 없음: dir/gone name.md"])
+
+    def test_html_attributes_are_checked(self):
+        self.write("docs/a.md", '<img src="gone.png"> <a href="https://example.com">x</a> <a href="a.md">ok</a>\n')
+        self.assertEqual(self.problems(), ["docs/a.md:1: 링크 대상이 없음: gone.png"])
+
+    def test_fence_with_info_string_does_not_close_a_block(self):
+        self.write("docs/a.md", "```\n```python\n[hidden](gone.md)\n```\n[shown](gone.md)\n")
+        self.assertEqual(self.problems(), ["docs/a.md:5: 링크 대상이 없음: gone.md"])
+
+    def test_backticks_on_one_line_are_inline_code_not_a_fence(self):
+        self.write("docs/a.md", "```not a fence``` [shown](gone.md)\n")
+        self.assertEqual(self.problems(), ["docs/a.md:1: 링크 대상이 없음: gone.md"])
+
+    def test_file_deleted_but_still_tracked_is_skipped(self):
+        self.write("docs/a.md", "[b](b.md)\n")
+        self.write("docs/b.md", "[c](gone.md)\n")
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        subprocess.run(["git", "add", "-A"], cwd=self.root, check=True)
+        (self.root / "docs/b.md").unlink()
+        self.assertEqual(check(self.root), ["docs/a.md:1: 링크 대상이 없음: b.md"])
+
+    def test_file_that_is_not_utf8_does_not_crash(self):
+        self.write("docs/a.md")
+        (self.root / "docs/a.md").write_bytes(b"\xff\xfe\n[x](gone.md)\n")
+        self.assertEqual(self.problems(), ["docs/a.md:2: 링크 대상이 없음: gone.md"])
+
+    def test_data_files_are_scanned_for_docs_paths(self):
+        self.write("scenes/art/source.json", '{"note": "see docs/PIXEL_ART.md"}\n')
+        self.assertEqual(self.problems(), ["scenes/art/source.json:1: docs 경로가 없음: docs/PIXEL_ART.md"])
+
     def test_slug_follows_github_rules(self):
         self.assertEqual(slug("2-2-2. 2026-10-15 기획 논의 결정"), "2-2-2-2026-10-15-기획-논의-결정")
         self.assertEqual(slug("6. 사각 높이 격자"), "6-사각-높이-격자")

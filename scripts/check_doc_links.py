@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Fail when a Markdown link, image or docs/ path in code points at nothing (docs/README.md)."""
+"""Fail when a Markdown link, image or docs/ path in code points at nothing (docs/README.md).
+
+Known limits: link text that spans several lines, CommonMark escapes, fences inside block quotes or
+deeply nested lists, and plain-text paths that are not links are not understood.
+"""
 
 from pathlib import Path
 import re
@@ -7,35 +11,46 @@ import subprocess
 import sys
 from urllib.parse import unquote
 
-FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 INLINE_CODE = re.compile(r"(`+)[^`\n]*?\1")
-INLINE_LINK = re.compile(r"!?\[[^\]\n]*\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
+LINK_TEXT = r"\[(?:[^\[\]\n]|\[[^\]\n]*\])*\]"
+# Destination: <any text without ">"> or a run without spaces whose parentheses are balanced.
+INLINE_LINK = re.compile(r"!?" + LINK_TEXT + r"\(\s*(?:<([^>\n]+)>|((?:[^()\s]|\([^()\s]*\))+))"
+                         r"(?:\s+(?:\"[^\"]*\"|'[^']*'))?\s*\)")
+HTML_ATTRIBUTE = re.compile(r"""\b(?:href|src)=["']([^"']+)["']""")
 DEFINITION = re.compile(r"^ {0,3}\[[^\]\n]+\]:\s*<?(\S+?)>?(?:\s+\"[^\"]*\")?\s*$")
 HEADING = re.compile(r"^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$")
 SCHEME = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|//)")
 # Plain-text references to docs files in code, scripts and workflows. Partial names such as
 # "docs/adr/0003" are not checked: only a full file name can be proven missing.
 CODE_REFERENCE = re.compile(r"docs/[\w./-]*\w\.(?:md|png|svg)")
-CODE_FILES = ("*.gd", "*.py", "*.sh", "*.yml", "Makefile", ".githooks/*")
+CODE_FILES = ("*.gd", "*.py", "*.sh", "*.yml", "*.json", "*.cfg", "*.txt", "Makefile", ".githooks/*")
 
 
 def tracked(root, *patterns):
+    """Tracked files that are still on disk: a file deleted but not yet staged is skipped."""
     listed = subprocess.run(["git", "ls-files", "-z", "--", *patterns], cwd=root, check=True,
                             capture_output=True, text=True).stdout.split("\0")
-    return [name for name in listed if name]
+    return [name for name in listed if name and (root / name).is_file()]
+
+
+def read(path):
+    return path.read_text(encoding="utf-8", errors="replace")
 
 
 def prose_lines(text):
     """Yield (line number, text) outside fenced code blocks."""
     fence = None
     for number, line in enumerate(text.splitlines(), 1):
-        opening = FENCE.match(line)
-        if fence is None and opening:
-            fence = opening[1][0] * len(opening[1])
-        elif fence is not None and opening and opening[1].startswith(fence):
+        match = FENCE.match(line)
+        if fence is None:
+            # A backtick fence cannot have backticks in its info string: that is inline code.
+            if match and not (match[1][0] == "`" and "`" in match[2]):
+                fence = match[1][0] * len(match[1])
+            else:
+                yield number, line
+        elif match and match[1].startswith(fence) and not match[2].strip():
             fence = None
-        elif fence is None:
-            yield number, line
 
 
 def slug(heading):
@@ -60,7 +75,10 @@ def anchors(text):
 
 def link_targets(text):
     for number, line in prose_lines(text):
-        for match in INLINE_LINK.finditer(INLINE_CODE.sub("X", line)):
+        masked = INLINE_CODE.sub("X", line)
+        for match in INLINE_LINK.finditer(masked):
+            yield number, match[1] or match[2]
+        for match in HTML_ATTRIBUTE.finditer(masked):
             yield number, match[1]
         definition = DEFINITION.match(line)
         if definition:
@@ -68,9 +86,8 @@ def link_targets(text):
 
 
 def check_markdown(root, name, anchor_cache):
-    source = (root / name).read_text(encoding="utf-8")
     problems = []
-    for number, target in link_targets(source):
+    for number, target in link_targets(read(root / name)):
         if SCHEME.match(target):
             continue
         path, _, fragment = target.partition("#")
@@ -85,7 +102,7 @@ def check_markdown(root, name, anchor_cache):
             problems.append(f"{name}:{number}: 링크 대상이 없음: {target}")
         elif fragment and resolved.suffix == ".md" and resolved.is_file():
             if resolved not in anchor_cache:
-                anchor_cache[resolved] = anchors(resolved.read_text(encoding="utf-8"))
+                anchor_cache[resolved] = anchors(read(resolved))
             if unquote(fragment).lower() not in anchor_cache[resolved]:
                 problems.append(f"{name}:{number}: 제목이 없음: {target}")
     return problems
@@ -93,7 +110,7 @@ def check_markdown(root, name, anchor_cache):
 
 def check_code_references(root, name):
     problems = []
-    for number, line in enumerate((root / name).read_text(encoding="utf-8").splitlines(), 1):
+    for number, line in enumerate(read(root / name).splitlines(), 1):
         for reference in CODE_REFERENCE.findall(line):
             if not (root / reference).exists():
                 problems.append(f"{name}:{number}: docs 경로가 없음: {reference}")
@@ -113,7 +130,11 @@ def check(root):
 
 
 def main():
-    problems = check(Path(__file__).resolve().parents[1])
+    try:
+        problems = check(Path(__file__).resolve().parents[1])
+    except (OSError, subprocess.CalledProcessError) as error:
+        print(f"문서 링크 검사를 실행하지 못했습니다: {error}", file=sys.stderr)
+        return 1
     for problem in problems:
         print(problem, file=sys.stderr)
     if problems:
