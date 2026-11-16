@@ -385,6 +385,10 @@ msgstr ""
 msgid "%s 획득"
 msgstr ""
 
+#: scenes/combat/actions.gd:300
+msgid "미끌거림: 솜씨 내성 DC %d"
+msgstr ""
+
 #: scenes/combat/actions.gd:278
 msgid "줍기: %s"
 msgstr ""
@@ -2012,7 +2016,7 @@ msgid "칸을 겨눕니다(아군도 가능). 지능 d6: 1 삐끗, 2~3 물, 4~6 
 msgstr ""
 
 #: scenes/combat/action_rules.gd:121
-msgid "칸을 겨눕니다(발밑도 가능). 반경 1의 모든 유닛이 민첩 내성(DC 4).\n피해 솜씨 d20 두 번의 합, 성공하면 절반.\n아군과 자신도 맞습니다. 기름은 점화됩니다."
+msgid "칸을 겨눕니다(발밑도 가능). 반경 1의 모든 유닛이 민첩 내성(DC %d).\n피해 솜씨 d20 두 번의 합, 성공하면 절반.\n아군과 자신도 맞습니다. 기름은 점화됩니다."
 msgstr ""
 
 #: scenes/combat/action_rules.gd:300

@@ -44,7 +44,7 @@ static var EFFECTS: Dictionary[String, String] = {
 	"counter": TranslationServer.tr("나를 노린 인접한 적의 명중굴림이\n빗나가면 반드시 명중하는 반격."),
 	"oil_throw": TranslationServer.tr("목표 칸 십자 5칸에 기름 장판을 깝니다(3턴).\n기름 칸에 서면 솜씨 내성(DC 4)을 하고, 실패하면 넘어집니다.\n아이템을 쓰지 않습니다."),
 	"trick_arrow": TranslationServer.tr("칸을 겨눕니다(아군도 가능). 지능 d6: 1 삐끗, 2~3 물, 4~6 화염.\n속성은 그 칸에 닿습니다. 명중하면 굴림 값만큼 피해.\n화염은 화상 1중첩, 물은 화상을 모두 끕니다."),
-	"firework_arrow": TranslationServer.tr("칸을 겨눕니다(발밑도 가능). 반경 1의 모든 유닛이 민첩 내성(DC 4).\n피해 솜씨 d20 두 번의 합, 성공하면 절반.\n아군과 자신도 맞습니다. 기름은 점화됩니다."),
+	"firework_arrow": TranslationServer.tr("칸을 겨눕니다(발밑도 가능). 반경 1의 모든 유닛이 민첩 내성(DC %d).\n피해 솜씨 d20 두 번의 합, 성공하면 절반.\n아군과 자신도 맞습니다. 기름은 점화됩니다."),
 	"reflex": TranslationServer.tr("명중이 확정된 공격을 회피하고\n상하좌우 1칸으로 이동합니다.\n명중굴림 공격에만 쓰고, 넘어지면 쓸 수 없습니다."),
 	"whistle": TranslationServer.tr("상하좌우 한 방향의 세 줄 띠 안의 적이 의지 내성굴림.\n실패하면 산만함 2턴: 내성굴림·명중굴림 불리.\n피해는 없습니다."),
 	"stealth": TranslationServer.tr("다음 내 턴 시작까지 적이 공격·스킬의\n대상으로 지정할 수 없습니다. 범위 효과와\n장판은 맞습니다. 피해를 주는 공격 동작을\n쓰면 풀립니다.")
@@ -442,4 +442,6 @@ static func effect(actor: CombatUnit, action: String) -> String:
 	# 패시브 칸이 정해지기 전까지 괴력의 사내는 기회 공격 호버로 안내한다 (#434).
 	if action == "opportunity" and belongs_to(actor, "brawn"):
 		return EFFECTS[action] + "\n" + TranslationServer.tr("괴력의 사내: 명중하면 대상의 이동을 멈춥니다.")
+	if action == "firework_arrow":
+		return EFFECTS[action] % save_dc(actor, action)
 	return EFFECTS.get(action, "")
