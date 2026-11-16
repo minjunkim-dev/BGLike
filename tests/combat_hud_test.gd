@@ -882,12 +882,29 @@ func _test_archer_moving_shot_input() -> void:
 	_check(selection.selected_action == "moving_shot", "무빙샷 패시브 버튼으로 다시 도약 선택")
 	var map: CombatMap = battle.get_node("Map") as CombatMap
 	var leap: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(Vector2i(5, 4))
+	# 도약 미리보기의 미끌거림 안내(#600): 기름 칸에 착지하면 보이고, 기름이 없으면 보이지 않는다.
+	var slip_note: String = "미끌거림: 솜씨 내성 DC %d" % CombatOil.SLIP_DC
+	var dry: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(Vector2i(4, 3))
+	await _click(dry, MOUSE_BUTTON_RIGHT)
+	_check(selection.preview_cell == Vector2i(4, 3) and slip_note not in hud.preview_label.text,
+		"기름이 없는 도약 미리보기에는 미끌거림 안내가 없음: " + hud.preview_label.text)
+	actions._grounds.append(CombatActions.Ground.new(archer, Vector2i(5, 4), "oil"))
 	await _click(leap, MOUSE_BUTTON_RIGHT)
 	_check(archer.cell == Vector2i(4, 4) and selection.preview_cell == Vector2i(5, 4), "첫 우클릭은 착지 칸 미리보기")
+	_check(slip_note in hud.preview_label.text, "기름 칸으로 도약하는 미리보기에 미끌거림 안내: " + hud.preview_label.text)
+	actions._grounds.clear()
 	await _click(leap, MOUSE_BUTTON_RIGHT)
 	_check(archer.cell == Vector2i(5, 4) and archer.movement_left == archer.get_movement() and not archer.moving_shot_ready
 		and selection.selected_action == "attack" and not (dots["moving_shot"] as Label).visible,
 		"같은 칸 두 번째 우클릭으로 이동력 없이 도약하고 선택을 되돌림")
+	# 걷기 미리보기의 미끌거림 안내는 그대로다(#600 회귀).
+	actions._grounds.append(CombatActions.Ground.new(archer, Vector2i(5, 5), "oil"))
+	var walk: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(Vector2i(5, 6))
+	await _click(walk, MOUSE_BUTTON_RIGHT)
+	_check(selection.selected_action == "move" and not selection.preview_path.is_empty() and slip_note in hud.preview_label.text,
+		"걷기 미리보기는 기름 칸 경로에 미끌거림 안내: " + hud.preview_label.text)
+	actions._grounds.clear()
+	selection.clear_preview()
 	# 뒤 검사가 쓰는 처음 배치로 되돌린다.
 	units[0].cell = Vector2i(4, 9)
 	archer.cell = Vector2i(5, 9)
