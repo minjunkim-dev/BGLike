@@ -43,6 +43,7 @@ func _run() -> void:
 	_check_button_states(theme)
 	_check_panel(theme)
 	_check_hud_variations(theme)
+	_check_menu_theme(theme)
 	_check_notices()
 	await _check_text_layout()
 	_finish()
@@ -149,6 +150,35 @@ func _check_hud_variations(theme: Theme) -> void:
 				"체크박스 %s 색이 팔레트 안: %s" % [icon_name, found.get_string()])
 
 
+## seam B (#557): 설정 패널 변형, 도트 슬라이더, 도움말 탭의 테마 값. 색은 UI 팔레트 값이다.
+func _check_menu_theme(theme: Theme) -> void:
+	_check(theme.get_type_variation_base("MenuPanel") == &"PanelContainer", "MenuPanel의 기반은 PanelContainer")
+	var panel: StyleBox = theme.get_stylebox("panel", "MenuPanel")
+	_check(panel is StyleBoxTexture and (panel as StyleBoxTexture).texture.resource_path.ends_with("/panel.png")
+		and (panel as StyleBoxTexture).modulate_color.is_equal_approx(Color.html("21223d")), "MenuPanel은 panel.png, 면 #21223D")
+	_check(not theme.has_stylebox("panel", "PanelContainer"), "기본 PanelContainer 스타일은 바꾸지 않음")
+	var slider_styles: Dictionary = {"slider": "18292d", "grabber_area": "365d61", "grabber_area_highlight": "cc8e4d"}
+	for style_name: String in slider_styles:
+		var style: StyleBox = theme.get_stylebox(style_name, "HSlider")
+		_check(style is StyleBoxTexture and (style as StyleBoxTexture).texture.resource_path.ends_with("/slider_track.png")
+			and (style as StyleBoxTexture).modulate_color.is_equal_approx(Color.html(slider_styles[style_name])),
+			"HSlider %s는 slider_track.png, 색 #%s" % [style_name, slider_styles[style_name]])
+	var grabbers: Dictionary = {"grabber": "slider_grabber.png", "grabber_highlight": "slider_grabber_highlight.png",
+		"grabber_disabled": "slider_grabber.png"}
+	for icon_name: String in grabbers:
+		var icon: Texture2D = theme.get_icon(icon_name, "HSlider")
+		_check(icon != null and icon.resource_path.ends_with("/" + grabbers[icon_name]),
+			"HSlider %s 아이콘은 %s" % [icon_name, grabbers[icon_name]])
+	var tabs: Dictionary = {"tab_unselected": "223940", "tab_hovered": "365d61", "tab_selected": "365d61"}
+	for style_name: String in tabs:
+		var style: StyleBox = theme.get_stylebox(style_name, "TabBar")
+		_check(style is StyleBoxTexture and (style as StyleBoxTexture).texture.resource_path.ends_with("/button.png")
+			and (style as StyleBoxTexture).modulate_color.is_equal_approx(Color.html(tabs[style_name])),
+			"TabBar %s는 button.png, 색 #%s" % [style_name, tabs[style_name]])
+	_check(theme.get_color("font_selected_color", "TabBar").is_equal_approx(Color.html("ebba84")), "고른 탭 글자 #EBBA84")
+	_check(theme.get_color("font_unselected_color", "TabBar").is_equal_approx(Color.html("f5ebdb")), "고르지 않은 탭 글자 #F5EBDB")
+
+
 ## seam D: 글꼴 파일과 라이선스가 있고, THIRD_PARTY_NOTICES.md에 Galmuri 행과 OFL-1.1 표기가 있다.
 func _check_notices() -> void:
 	_check(FileAccess.file_exists(FONT_PATH), "Galmuri11.ttf가 있음")
@@ -195,7 +225,11 @@ func _check_text_layout() -> void:
 		title.show_help(true)
 		await process_frame
 		await process_frame
-		_audit_text(title.help, size, "도움말")
+		for section: int in range(title.help.section_count()):
+			title.help.show_section(section)
+			await process_frame
+			await process_frame
+			_audit_text(title.help, size, "도움말 %d번 탭" % section)
 		title.help.close()
 		title.show_credits(true)
 		await process_frame

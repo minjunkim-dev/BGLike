@@ -389,7 +389,8 @@ func _check_layout(menu: PauseMenu) -> void:
 			areas.append_array(menu.settings.find_child("Grid").get_children())
 		elif menu.help.visible:
 			_check(menu.help.get_global_rect() == screen, "%s: 도움말이 화면 전체" % size)
-			areas = [menu.help.find_child("Heading") as Control, menu.help.scroll, menu.help.back_button]
+			areas = [menu.help.find_child("Heading") as Control, menu.help.tabs, menu.help.scroll, menu.help.back_button]
+			_check(not menu.help.tabs.get_offset_buttons_visible(), "%s: 도움말 탭이 모두 보임" % size)
 		else:
 			for node: Node in menu.menu.get_children():
 				if (node as Control).visible:

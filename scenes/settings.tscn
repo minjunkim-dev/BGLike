@@ -22,32 +22,36 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Layout" type="VBoxContainer" parent="Center"]
+[node name="Panel" type="PanelContainer" parent="Center"]
+layout_mode = 2
+theme_type_variation = &"MenuPanel"
+
+[node name="Layout" type="VBoxContainer" parent="Center/Panel"]
 custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Heading" type="Label" parent="Center/Layout"]
+[node name="Heading" type="Label" parent="Center/Panel/Layout"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "설정"
 horizontal_alignment = 1
 
-[node name="Grid" type="GridContainer" parent="Center/Layout"]
+[node name="Grid" type="GridContainer" parent="Center/Panel/Layout"]
 layout_mode = 2
 theme_override_constants/h_separation = 12
 theme_override_constants/v_separation = 8
 columns = 2
 
-[node name="VolumeName" type="Label" parent="Center/Layout/Grid"]
+[node name="VolumeName" type="Label" parent="Center/Panel/Layout/Grid"]
 layout_mode = 2
 text = "마스터 음량"
 
-[node name="VolumeRow" type="HBoxContainer" parent="Center/Layout/Grid"]
+[node name="VolumeRow" type="HBoxContainer" parent="Center/Panel/Layout/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Volume" type="HSlider" parent="Center/Layout/Grid/VolumeRow"]
+[node name="Volume" type="HSlider" parent="Center/Panel/Layout/Grid/VolumeRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
@@ -58,21 +62,21 @@ focus_neighbor_bottom = NodePath("../../BgmVolumeRow/BgmVolume")
 focus_next = NodePath("../../BgmVolumeRow/BgmVolume")
 focus_previous = NodePath(".")
 
-[node name="VolumeValue" type="Label" parent="Center/Layout/Grid/VolumeRow"]
+[node name="VolumeValue" type="Label" parent="Center/Panel/Layout/Grid/VolumeRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
 horizontal_alignment = 2
 
-[node name="BgmVolumeName" type="Label" parent="Center/Layout/Grid"]
+[node name="BgmVolumeName" type="Label" parent="Center/Panel/Layout/Grid"]
 layout_mode = 2
 text = "배경음 음량"
 
-[node name="BgmVolumeRow" type="HBoxContainer" parent="Center/Layout/Grid"]
+[node name="BgmVolumeRow" type="HBoxContainer" parent="Center/Panel/Layout/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="BgmVolume" type="HSlider" parent="Center/Layout/Grid/BgmVolumeRow"]
+[node name="BgmVolume" type="HSlider" parent="Center/Panel/Layout/Grid/BgmVolumeRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
@@ -83,21 +87,21 @@ focus_neighbor_bottom = NodePath("../../SfxVolumeRow/SfxVolume")
 focus_next = NodePath("../../SfxVolumeRow/SfxVolume")
 focus_previous = NodePath("../../VolumeRow/Volume")
 
-[node name="BgmVolumeValue" type="Label" parent="Center/Layout/Grid/BgmVolumeRow"]
+[node name="BgmVolumeValue" type="Label" parent="Center/Panel/Layout/Grid/BgmVolumeRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
 horizontal_alignment = 2
 
-[node name="SfxVolumeName" type="Label" parent="Center/Layout/Grid"]
+[node name="SfxVolumeName" type="Label" parent="Center/Panel/Layout/Grid"]
 layout_mode = 2
 text = "효과음 음량"
 
-[node name="SfxVolumeRow" type="HBoxContainer" parent="Center/Layout/Grid"]
+[node name="SfxVolumeRow" type="HBoxContainer" parent="Center/Panel/Layout/Grid"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="SfxVolume" type="HSlider" parent="Center/Layout/Grid/SfxVolumeRow"]
+[node name="SfxVolume" type="HSlider" parent="Center/Panel/Layout/Grid/SfxVolumeRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
@@ -108,17 +112,17 @@ focus_neighbor_bottom = NodePath("../../Fullscreen")
 focus_next = NodePath("../../Fullscreen")
 focus_previous = NodePath("../../BgmVolumeRow/BgmVolume")
 
-[node name="SfxVolumeValue" type="Label" parent="Center/Layout/Grid/SfxVolumeRow"]
+[node name="SfxVolumeValue" type="Label" parent="Center/Panel/Layout/Grid/SfxVolumeRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
 horizontal_alignment = 2
 
-[node name="WindowName" type="Label" parent="Center/Layout/Grid"]
+[node name="WindowName" type="Label" parent="Center/Panel/Layout/Grid"]
 layout_mode = 2
 text = "창 모드"
 
-[node name="Fullscreen" type="CheckBox" parent="Center/Layout/Grid"]
+[node name="Fullscreen" type="CheckBox" parent="Center/Panel/Layout/Grid"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_neighbor_left = NodePath(".")
@@ -129,11 +133,11 @@ focus_next = NodePath("../FillScreen")
 focus_previous = NodePath("../SfxVolumeRow/SfxVolume")
 text = "전체 화면"
 
-[node name="FitName" type="Label" parent="Center/Layout/Grid"]
+[node name="FitName" type="Label" parent="Center/Panel/Layout/Grid"]
 layout_mode = 2
 text = "화면 맞춤"
 
-[node name="FillScreen" type="CheckBox" parent="Center/Layout/Grid"]
+[node name="FillScreen" type="CheckBox" parent="Center/Panel/Layout/Grid"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_neighbor_left = NodePath(".")
@@ -144,11 +148,11 @@ focus_next = NodePath("../../Back")
 focus_previous = NodePath("../Fullscreen")
 text = "꽉 채우기"
 
-[node name="Gap" type="Control" parent="Center/Layout"]
+[node name="Gap" type="Control" parent="Center/Panel/Layout"]
 custom_minimum_size = Vector2(0, 6)
 layout_mode = 2
 
-[node name="Back" type="Button" parent="Center/Layout"]
+[node name="Back" type="Button" parent="Center/Panel/Layout"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(80, 20)
 layout_mode = 2

@@ -1,0 +1,46 @@
+{
+  "generator": "scenes/ui/art/sources/draw_menu_art.py",
+  "command": "python3 scenes/ui/art/sources/draw_menu_art.py scenes/ui/art",
+  "method": "코드로 픽셀을 찍는다. 생성 모델·외부 이미지·Pillow를 쓰지 않는다. 표준 라이브러리(zlib, struct, binascii)로 PNG를 쓰므로 같은 명령은 같은 바이트를 낸다.",
+  "note": "텍셀과 논리 px가 1:1이다(docs/PIXEL_ART.md UI 절의 1배 예외). 색 값은 UI 팔레트(UI 절)에서 가져왔다.",
+  "files": {
+    "frames/slider_track.png": "슬라이더 막대. 8×8 회색조 RGBA, 9-slice 여백 2. 바깥 1px 외곽선(0.25), 면(0.75), 안쪽 윗줄 밝은 가장자리(1.0), 모서리 1px 깎기. 색은 StyleBoxTexture.modulate_color가 정한다.",
+    "frames/slider_grabber.png": "슬라이더 손잡이. 8×12 RGBA. 외곽선, 면, 안쪽 윗줄·왼쪽 줄 밝은 가장자리, 모서리 1px 깎기.",
+    "frames/slider_grabber_highlight.png": "포커스·호버 손잡이. 모양은 slider_grabber와 같고 면 색이 강조색이다.",
+    "title/logo.png": "타이틀 도트 로고 `BGLike`. 108×24 RGBA."
+  },
+  "slider": {
+    "track_size": [8, 8],
+    "grabber_size": [8, 12],
+    "track_gray": {"outline": 0.25, "face": 0.75, "bright_edge": 1.0},
+    "grabber_colors": {
+      "outline": "#18292D",
+      "face": "#C5B29F",
+      "bright_edge": "#F5EBDB",
+      "highlight_face": "#EBBA84"
+    }
+  },
+  "logo": {
+    "text": "BGLike",
+    "size": [108, 24],
+    "cell": 3,
+    "glyph_cells": [5, 7],
+    "gap_cells": 1,
+    "origin": [1, 1],
+    "palette": {
+      "face": "#EBBA84",
+      "bright_edge": "#F5EBDB",
+      "outline": "#18292D",
+      "shadow": "#0B1215"
+    },
+    "rules": "글자 칸 하나는 3×3 px다. 면은 칸을 채운다. 면의 윗변 픽셀(위 픽셀이 면이 아님)은 밝은 가장자리색이다. 외곽선은 면을 8방향 1px 넓힌 바깥 줄이다. 그림자는 면과 외곽선 모양을 오른쪽 아래로 1px 옮긴 것 중 아무것도 없는 픽셀이다. 나머지는 투명이다.",
+    "glyphs": {
+      "B": ["XXXX.", "X...X", "X...X", "XXXX.", "X...X", "X...X", "XXXX."],
+      "G": [".XXX.", "X...X", "X....", "X.XXX", "X...X", "X...X", ".XXX."],
+      "L": ["X....", "X....", "X....", "X....", "X....", "X....", "XXXXX"],
+      "i": ["..X..", ".....", ".XX..", "..X..", "..X..", "..X..", ".XXX."],
+      "k": ["X....", "X....", "X..X.", "X.X..", "XX...", "X.X..", "X..X."],
+      "e": [".....", ".....", ".XXX.", "X...X", "XXXXX", "X....", ".XXXX"]
+    }
+  }
+}

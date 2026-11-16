@@ -71,6 +71,7 @@ Git 기여 기록만으로 제3자 자료의 원저작권을 확정하지 않습
 | 파일 | 원본·용도 | 조건과 출처 |
 | --- | --- | --- |
 | `scenes/ui/art/frames/panel.png`, `accent_panel.png`, `button.png` | 프로젝트 자체 제작 9-slice UI 프레임 3종(16×16). `scenes/ui/art/sources/draw_ui_frames.py`가 코드로 픽셀을 찍어 만든 자체 제작물. 색은 `scenes/ui_theme.tres`의 modulate로 정함 | 규격은 `scenes/ui/art/sources/ui_frame_generation.json`에 기록했습니다. 생성 모델·외부 이미지·글꼴을 입력하지 않았습니다. 스크립트를 다시 실행하면 같은 PNG를 만듭니다. 제3자의 원저작권 부재나 독점권을 확정하는 기록은 아닙니다. |
+| `scenes/ui/art/frames/slider_track.png`, `slider_grabber.png`, `slider_grabber_highlight.png`, `scenes/ui/art/title/logo.png`, `scenes/ui/art/sources/draw_menu_art.py`, `scenes/ui/art/sources/menu_art_generation.json` | 2026-11-16 [#557](https://github.com/minjunkim-dev/BGLike/issues/557)의 볼륨 슬라이더 막대·손잡이 3종(8×8, 8×12)과 임시 이름 `BGLike`의 도트 로고(108×24). `draw_menu_art.py`가 코드로 픽셀을 찍어 만든 프로젝트 자체 제작물 | 규격·팔레트·글자 모양은 `scenes/ui/art/sources/menu_art_generation.json`에 기록했습니다. 생성 모델·외부 이미지·글꼴을 입력하지 않았습니다. 스크립트를 다시 실행하면 같은 PNG를 만듭니다. 타이틀 배경은 새 그림 파일 없이 기존 전투 지형·유닛 자산을 런타임에 조합하므로 따로 적지 않습니다. 제3자의 원저작권 부재나 독점권을 확정하는 기록은 아닙니다. |
 
 ## 새 자산과 출시 전 확인
 

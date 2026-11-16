@@ -10,7 +10,9 @@ const SCROLL_STEP: int = 24
 const DEBUG_STAGE_COUNT: int = 9
 
 ## 디버그 테스트 진입을 여는지. 출시(release) 빌드는 false라 메뉴를 만들지 않는다. 검사가 출시 빌드 차단을 확인하려고 바꾼다.
-static var debug_entry: bool = OS.is_debug_build()
+## Draft 묶음은 공식 편집기 실행 파일로 PCK를 열어 `is_debug_build()`가 true다. 그래서 묶음 preset의 기능 태그
+## `verification_draft`로도 끈다 (#557, export_presets.cfg).
+static var debug_entry: bool = OS.is_debug_build() and not OS.has_feature("verification_draft")
 
 @onready var menu: VBoxContainer = %Menu
 @onready var new_game_button: Button = %NewGame
