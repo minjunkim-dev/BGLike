@@ -17,6 +17,8 @@ var _players: Dictionary[StringName, AudioStreamPlayer] = {}
 
 
 func _ready() -> void:
+	# 일시정지 메뉴(get_tree().paused)와 도움말도 이 소리를 내야 한다.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	for cue: StringName in CUES:
 		var player: AudioStreamPlayer = AudioStreamPlayer.new()
 		player.name = String(cue).to_pascal_case()

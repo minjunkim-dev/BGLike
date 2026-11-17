@@ -228,4 +228,6 @@ func _test_ui_sounds() -> void:
 	Input.parse_input_event(cancel)
 	await process_frame
 	_check(uiheard == [&"ui_cancel"], "ui_cancel 입력: %s" % [uiheard])
+	# 일시정지 메뉴가 get_tree().paused를 쓰므로 UiSounds는 멈추지 않아야 한다(상수 확인, 청취는 사람이 한다).
+	_check(ui_sounds.process_mode == Node.PROCESS_MODE_ALWAYS, "UiSounds는 일시정지 중에도 돈다: %s" % [ui_sounds.process_mode])
 	button.queue_free()
