@@ -1253,7 +1253,7 @@ func _test_whistle_save_state() -> void:
 	victim.distracted_source = archer
 	var saved: Array = f.units.map(func(unit: CombatUnit) -> Dictionary: return unit.save_state(f.units))
 	_check(saved.all(func(data: Dictionary) -> bool: return archer.is_valid_state(data, 4, Vector2i(10, 10))), "산만함을 담은 유닛 저장은 유효")
-	_check("whistle_left" not in CombatUnit.SAVED_FIELDS and "distracted_turns" not in CombatUnit.SAVED_FIELDS and GameSave.FORMAT_VERSION == 11,
+	_check("whistle_left" not in CombatUnit.SAVED_FIELDS and "distracted_turns" not in CombatUnit.SAVED_FIELDS and GameSave.FORMAT_VERSION >= 11,
 		"새 필드는 선택 필드이고 저장 형식 버전은 11 그대로(#575가 올린 번호)")
 	var restored: CombatUnit = CombatUnit.new()
 	_created.append(restored)
