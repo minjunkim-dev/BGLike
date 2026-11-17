@@ -1,6 +1,6 @@
 class_name CombatFloorLoot
 extends RefCounted
-## 상자에서 떨어진 아이템과 이번 전투에서 주운 아이템 (docs/ENVIRONMENT_ELEMENTS.md 3장).
+## 상자에서 떨어진 아이템과 이번 전투에서 주운 아이템 (docs/design/combat/environment.md 3장).
 ## 떨어진 아이템은 물체가 아니다. 칸마다 하나이고 이동·공격 판정에 영향을 주지 않는다.
 
 ## 칸 → 아이템.

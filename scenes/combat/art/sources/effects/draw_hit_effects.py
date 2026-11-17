@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draw the 3-frame hit flash as 48x48 RGBA PNGs (docs/PIXEL_ART.md, 타격 이펙트 절).
+"""Draw the 3-frame hit flash as 48x48 RGBA PNGs (docs/design/pixel-art.md, 타격 이펙트 절).
 
 Usage: python3 scenes/combat/art/sources/effects/draw_hit_effects.py <output-directory>
 Writes <output-directory>/hit_flash/000.png .. 002.png.

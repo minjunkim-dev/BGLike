@@ -10,7 +10,7 @@ signal changed
 const UI_THEME: Theme = preload("res://scenes/ui_theme.tres")
 const TEXT_COLOR: Color = Color("f5ebdb")
 const DIM_COLOR: Color = Color("c5b29f")
-## 포커스 테두리 색(docs/PIXEL_ART.md UI 절).
+## 포커스 테두리 색(docs/design/pixel-art.md UI 절).
 const FOCUS_COLOR: Color = Color("ebba84")
 const GOLD_COLOR: Color = Color("d6ad4f")
 const SELECT_COLOR: Color = Color("4fa3d6")

@@ -1,4 +1,4 @@
-"""Seam A: the public CLI of scenes/combat/art/sources/effects/draw_hit_effects.py (docs/PIXEL_ART.md, 타격 이펙트 절)."""
+"""Seam A: the public CLI of scenes/combat/art/sources/effects/draw_hit_effects.py (docs/design/pixel-art.md, 타격 이펙트 절)."""
 
 from pathlib import Path
 import json
