@@ -4,7 +4,7 @@
 
 ## 기준선 검증
 
-`.github/repository-settings.json`은 기대값이다. GitHub 자동 적용 파일이 아니다. 검사기와 적용 도구는 이 저장소에 복사하지 않고 공개 [`minjunkim-dev/repo-baseline`](https://github.com/minjunkim-dev/repo-baseline)의 `tools/`를 쓴다. 관리 설정 조회 권한이 있는 로컬 `gh` 인증으로, repo-baseline을 clone한 곳에서 실행한다.
+`.github/repository-settings.json`은 기대값이다. GitHub 자동 적용 파일이 아니다. 검사기와 적용 도구는 이 저장소에 복사하지 않고 공개 [`minjunkim-labs/repo-baseline`](https://github.com/minjunkim-labs/repo-baseline)의 `tools/`를 쓴다. 관리 설정 조회 권한이 있는 로컬 `gh` 인증으로, repo-baseline을 clone한 곳에서 실행한다.
 
 ```sh
 python3 <repo-baseline>/tools/apply_github_settings.py <BGLike 경로>
@@ -31,7 +31,7 @@ python3 <repo-baseline>/tools/apply_github_settings.py <BGLike 경로>
 
 ## 공통 기준과 관측 기록
 
-2026-11에 repo-baseline 재설계([repo-baseline#71](https://github.com/minjunkim-dev/repo-baseline/issues/71))에 맞춰 해시 복사(`.github/repo-baseline.json`)·`Review status`·`PR policy` workflow와 그 검사기를 지웠다. 리뷰 기준은 [REVIEW.md](../REVIEW.md)다. 기준선의 `observations`는 설명용 관측 기록이며 감사 항목을 제외하지 않는다.
+2026-11에 repo-baseline 재설계([repo-baseline#71](https://github.com/minjunkim-labs/repo-baseline/issues/71))에 맞춰 해시 복사(`.github/repo-baseline.json`)·`Review status`·`PR policy` workflow와 그 검사기를 지웠다. 리뷰 기준은 [REVIEW.md](../REVIEW.md)다. 기준선의 `observations`는 설명용 관측 기록이며 감사 항목을 제외하지 않는다.
 
 ## 과거 Bugbot 확인 기록
 
