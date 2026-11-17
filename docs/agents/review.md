@@ -82,7 +82,7 @@ code scanning API는 분석이 없는 ref에도 열린 경고 0건을 반환한�
 | 게임·입력·화면 | `GLOSSARY.md`, `docs/design/combat/combat-ui.md`, 관련 Issue가 연결한 기획 문서·ADR |
 | 게임 검사 | 현재 티켓의 합격 조건·재현 기록 |
 | GitHub·CI·Draft | `docs/process/ci/ci.md`, `docs/process/ci/draft-release.md`, `docs/process/ci/repository-setup.md`, 엔진 잠금 값 |
-| 작업·검증 | `docs/process/workflow.md`, `docs/GIT_CONVENTIONS.md`, `docs/agents/domain.md` |
+| 작업·검증 | `docs/process/workflow.md`, `docs/process/git-conventions.md`, `docs/agents/domain.md` |
 | 문서·권리 | 변경한 기준 문서, `COPYRIGHT.md`, `THIRD_PARTY_NOTICES.md` |
 
 권한·Secret·workflow·저장소 설정·dependency 정책 변경에는 작성자와 다른 모델의 리뷰를 추가한다. 실행할 수 없으면 그 한계를 기록하고 프로젝트의 위험별 승인 기준을 따른다.
