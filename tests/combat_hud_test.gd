@@ -1217,12 +1217,18 @@ func _test_layout() -> void:
 			var center_area: Rect2 = Rect2(area.get_center() - Vector2(0, 20) - Vector2(64, 32), Vector2(128, 64))
 			if size == Vector2i(1280, 720):
 				_check(center_area == Rect2(256, 128, 128, 64), "640×360의 맵 중앙 영역 C는 (256, 128, 128, 64): %s" % center_area)
-			var center_hud: Array = [hud.get_node("OrderScroll"), hud.get_node("OrderDivider"), details, combat_log, skills, end_turn]
-			center_hud.append(hud.preview_label)
-			if hud.stand_button.is_visible_in_tree():
-				center_hud.append(hud.stand_button)
-			for node: Variant in center_hud:
-				var rect: Rect2 = node if node is Rect2 else (node as Control).get_global_rect()
+			var order_scroll: Rect2 = (hud.get_node("OrderScroll") as Control).get_global_rect()
+			var order_divider: Rect2 = (hud.get_node("OrderDivider") as Control).get_global_rect()
+			# 바는 C 왼쪽 끝(F.x − 64)까지이고 1 논리px 구분선이 그 끝에 붙는다.
+			_check(is_equal_approx(order_divider.end.x, center_area.position.x)
+				and is_equal_approx(order_scroll.end.x, order_divider.position.x),
+				"%s: 턴 순서 바와 구분선은 C 왼쪽 끝에서 끝남 %s %s / %s" % [size, order_scroll, order_divider, center_area])
+			# 일어나기 버튼은 넘어진 아군 차례에만 보이지만 자리는 늘 같다.
+			_check(hud.stand_button.get_global_rect().size.y > 0 and hud.stand_button.get_global_rect().end.x > area.size.x * 0.5,
+				"%s: 숨긴 일어나기 버튼도 오른쪽 아래 자리를 가짐 %s" % [size, hud.stand_button.get_global_rect()])
+			var center_hud: Array[Rect2] = [order_scroll, order_divider, details, combat_log, skills, end_turn,
+				hud.preview_label.get_global_rect(), hud.stand_button.get_global_rect()]
+			for rect: Rect2 in center_hud:
 				_check(not rect.intersects(center_area), "%s %s: HUD가 맵 중앙 영역 C와 겹치지 않음 %s / %s" % [size, kind, rect, center_area])
 			# 아래 HUD는 화면 아래 절반 안에 두어 지도 가운데를 가리지 않는다.
 			for bottom: Rect2 in [skills, combat_log, end_turn]:
