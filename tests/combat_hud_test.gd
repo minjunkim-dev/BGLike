@@ -3531,9 +3531,14 @@ func _test_presentation_move_time() -> void:
 	units[2].cell = Vector2i(8, 8)
 	units[3].cell = Vector2i(9, 9)
 	battle.call("_update_turn_ui")
-	var started: int = Time.get_ticks_usec()
+	# 벽시계 대신 Tween이 실제로 받은 프레임 시간의 합을 잰다. 벽시계는 긴 앞 프레임의 delta가 섞여 CI에서 짧게 나온다.
+	await process_frame
+	var game_time: Array[float] = [0.0]
+	var add_delta: Callable = func() -> void: game_time[0] += root.get_process_delta_time()
+	process_frame.connect(add_delta)
 	await battle.call("_animate_movement", units[0], Vector2i(4, 3))
-	var elapsed: float = (Time.get_ticks_usec() - started) / 1000000.0
+	process_frame.disconnect(add_delta)
+	var elapsed: float = game_time[0]
 	var expected: float = CombatPresentation.duration(battle.MOVE_STEP_TIME)
 	_check(elapsed >= expected * 0.85, "한 칸 이동 시간이 계수로 늘어남: %s초 (기대 %s초 이상)" % [elapsed, expected * 0.85])
 	_check(Engine.time_scale == 1.0, "전체 속도는 Engine.time_scale을 바꾸지 않음")
