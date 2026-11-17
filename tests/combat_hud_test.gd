@@ -1709,13 +1709,18 @@ func _test_tooltip_column(buttons: Dictionary) -> void:
 		_check(tooltip.visible and _has_tooltip(root, portrait.tooltip_text) and _in_left_column(rect, screen)
 			and is_equal_approx(rect.position.y, order_bottom + 4.0),
 			"초상 호버 설명은 왼쪽 열에서 위 끝이 턴 순서 바 아래 끝 +4: %s %s" % [unit.get_display_name(), rect])
+	# moving_shot은 궁수 패시브라 궁수를 고른 뒤 본다. 숨어 있으면 검사를 건너뛰지 않고 실패한다.
+	turns.select_unit(units[1])
+	battle.call("_update_turn_ui")
 	var passive: Button = (hud.get("_passives") as Dictionary)["moving_shot"] as Button
-	if passive.is_visible_in_tree():
-		await _hover(passive)
-		var passive_rect: Rect2 = tooltip.get_global_rect()
-		_check(tooltip.visible and _has_tooltip(root, passive.tooltip_text) and _in_left_column(passive_rect, screen)
-			and is_equal_approx(passive_rect.end.y, (hud.get_node("Skills") as Control).get_global_rect().position.y - 4.0),
-			"패시브 호버 설명도 왼쪽 열에서 아래 끝이 스킬 패널 위 -4: " + str(passive_rect))
+	_check(passive.is_visible_in_tree(), "궁수를 고르면 moving_shot 패시브 칸이 보임")
+	await _hover(passive)
+	var passive_rect: Rect2 = tooltip.get_global_rect()
+	_check(tooltip.visible and _has_tooltip(root, passive.tooltip_text) and _in_left_column(passive_rect, screen)
+		and is_equal_approx(passive_rect.end.y, (hud.get_node("Skills") as Control).get_global_rect().position.y - 4.0),
+		"패시브 호버 설명도 왼쪽 열에서 아래 끝이 스킬 패널 위 -4: " + str(passive_rect))
+	turns.select_unit(units[0])
+	battle.call("_update_turn_ui")
 	# 가장 긴 아군 스킬 설명은 폭 240에서 줄바꿈하고 글은 그대로다. 한 줄 설명은 240보다 좁다.
 	var longest: Button = null
 	var shortest: Button = null
