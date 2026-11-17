@@ -3618,7 +3618,7 @@ func _test_presentation_move_time() -> void:
 		var first: float = expected - 0.002
 		tween.custom_step(first)
 		_check(not finished[0], "한 칸 이동은 계수 적용 시간 %s초 직전까지 끝나지 않는다(기본 %s초)" % [expected, base])
-		# custom_step은 더하는 시간이라 남은 시간만 진행한다. 0.001초는 부동소수 여유다.
+		# custom_step은 더하는 시간이라 남은 시간만 진행한다.
 		tween.custom_step(expected - first + 0.002)
 		_check(finished[0], "한 칸 이동은 계수 적용 시간 %s초 안에 끝난다" % expected)
 	await process_frame
