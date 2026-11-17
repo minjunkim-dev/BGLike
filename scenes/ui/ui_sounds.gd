@@ -28,6 +28,8 @@ func _ready() -> void:
 		add_child(player)
 		_players[cue] = player
 	get_tree().node_added.connect(_on_node_added)
+	# 화면(설정·일시정지)이 _input에서 Esc를 소비해도 취소음이 나야 한다. 창 입력은 노드 전파보다 먼저 온다.
+	get_tree().root.window_input.connect(_on_window_input)
 
 
 func player(cue: StringName) -> AudioStreamPlayer:
@@ -42,7 +44,7 @@ func play(cue: StringName) -> void:
 	played.emit(cue)
 
 
-func _input(event: InputEvent) -> void:
+func _on_window_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		play(&"ui_cancel")
 

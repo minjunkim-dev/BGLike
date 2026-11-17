@@ -228,6 +228,18 @@ func _test_ui_sounds() -> void:
 	Input.parse_input_event(cancel)
 	await process_frame
 	_check(uiheard == [&"ui_cancel"], "ui_cancel 입력: %s" % [uiheard])
+	# 설정 화면처럼 앞선 노드가 _input에서 Esc를 소비해도 취소음이 난다(PR #644 리뷰).
+	uiheard.clear()
+	var consumer_script: GDScript = GDScript.new()
+	consumer_script.source_code = "extends Node\nvar consumed: int = 0\nfunc _input(event: InputEvent) -> void:\n\tif event.is_action_pressed(\"ui_cancel\"):\n\t\tconsumed += 1\n\t\tget_viewport().set_input_as_handled()\n"
+	consumer_script.reload()
+	var consumer: Node = consumer_script.new()
+	root.add_child(consumer)
+	Input.parse_input_event(cancel)
+	await process_frame
+	_check(consumer.get("consumed") == 1 and uiheard == [&"ui_cancel"],
+		"Esc를 소비하는 화면이 있어도 ui_cancel 소리: %s" % [uiheard])
+	consumer.queue_free()
 	# 일시정지 메뉴가 get_tree().paused를 쓰므로 UiSounds는 멈추지 않아야 한다(상수 확인, 청취는 사람이 한다).
 	_check(ui_sounds.process_mode == Node.PROCESS_MODE_ALWAYS, "UiSounds는 일시정지 중에도 돈다: %s" % [ui_sounds.process_mode])
 	button.queue_free()
