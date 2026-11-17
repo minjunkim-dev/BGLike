@@ -184,7 +184,7 @@
 
 ## 6. 개발 결정 후보
 
-아래는 요청 당시의 후보입니다. 선택한 방식과 근거는 [#321](https://github.com/minjunkim-dev/BGLike/issues/321)에 기록했습니다.
+아래는 요청 당시의 후보입니다. 선택한 방식과 근거는 [#321](https://github.com/minjunkim-dev/BGLike/issues/321)과 [#387](https://github.com/minjunkim-dev/BGLike/issues/387)에 기록했습니다.
 
 - 코드 식별자. 제안: `STRENGTH`, `DEXTERITY`, `CRAFT`(솜씨), `INTELLIGENCE`, `WILL`(의지), `NATURE`. "스킬(Skill)"과 겹치는 이름은 피함
 - 능력치 주사위 값 객체의 설계와 `CombatDice`의 확장 방식
