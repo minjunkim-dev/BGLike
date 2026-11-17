@@ -38,6 +38,7 @@ func _ready() -> void:
 		version.major, version.minor, version.patch]
 	(%EngineLicense as Label).text = Engine.get_license_text()
 	_show_continue(has_save())
+	GameMusic.play(get_tree(), GameMusic.CALM)
 	# 설정은 게임 저장과 따로 보관하며 시작할 때 적용한다 (docs/adr/0003).
 	GameSettings.apply(get_window())
 	new_game_button.pressed.connect(_ask_new_game)

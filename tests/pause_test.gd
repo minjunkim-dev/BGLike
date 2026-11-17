@@ -76,6 +76,7 @@ func _check_menu(battle: Node2D, menu: PauseMenu) -> void:
 	hud.end_button.grab_focus()
 	await _tap(_key(KEY_ESCAPE))
 	_check(menu.visible and paused and menu.resume_button.has_focus(), "Esc로 메뉴를 열고 게임을 멈춤, 계속에 포커스")
+	_check(GameMusic.player(self).playing and GameMusic.player(self).can_process(), "일시정지 메뉴가 열려 있어도 배경음은 계속 나옴")
 	_check(_shown(menu) == ["계속", "설정", "도움말", "전투 포기", "타이틀로", "종료"], "전투 중 메뉴 버튼: %s" % [_shown(menu)])
 	_check(not battle.can_process() and menu.can_process() and menu.settings.can_process() and menu.help.can_process(),
 		"메뉴·설정·도움말만 멈춘 동안 동작")
@@ -237,10 +238,12 @@ func _check_give_up(battle: Node2D, menu: PauseMenu) -> void:
 		and hud.restart_button.text == "이 막 다시 시작" and not hud.restart_button.disabled
 		and hud.restart_button.has_focus(), "패배 결과 화면")
 	_check("전투 포기" in hud.message_label.text, "전투 기록에 전투 포기")
+	_check(GameMusic.current(self) == GameMusic.DEFEAT and GameMusic.player(self).playing, "포기한 결과 화면은 패배 곡")
 	_check(_saved_defeat(), "포기를 확정한 순간의 전멸 상태를 저장")
 	await _tap(_action("ui_accept"))
 	await process_frame
 	_check(hud.progress_label.text == "2막 · 1스테이지" and not hud.get_node("Result").visible, "포기한 막의 1스테이지부터")
+	_check(GameMusic.current(self) == GameMusic.BATTLE, "다시 시작하면 전투 곡")
 	for unit: CombatUnit in party:
 		_check(unit.hit_points == unit.get_max_hit_points() and unit.visible and unit.second_wind_left == 1
 			and unit.aegisal_left == 0, "%s: HP·전투 불능·스킬 횟수·애기살 초기화" % unit.get_display_name())
@@ -277,6 +280,7 @@ func _check_to_title(menu: PauseMenu) -> void:
 	await process_frame
 	await process_frame
 	_check(current_scene is TitleScreen and not paused, "타이틀로는 멈춤을 풀고 타이틀 화면으로")
+	_check(GameMusic.current(self) == GameMusic.CALM, "타이틀로 간 뒤 차분한 곡")
 
 
 ## 아군이 두 묶음으로 나뉜 순서([아군][적][아군])에서 포기해도 사이의 적 턴 시작 효과가 들지 않는다.

@@ -441,6 +441,7 @@ func restore_save(sections: Variant) -> bool:
 		preparation.open_rewards(loot, party, progress.rewards, progress.is_final_stage(),
 			progress.is_last_in_act(), screen.maintaining, actions.floor_loot.cells().size())
 		hud.hide_result()
+		_sync_music()
 		# 방금 읽은 저장과 같은 상태다.
 		_save_pending = false
 	return true
@@ -463,6 +464,7 @@ func _restart() -> void:
 		preparation.open_rewards(loot, party, progress.rewards, progress.is_final_stage(),
 			progress.is_last_in_act(), false, actions.floor_loot.cells().size())
 		hud.hide_result()
+		_sync_music()
 		return
 	progress.restart_act()
 	_start_stage(progress.starts_act())
@@ -958,6 +960,16 @@ func _sync_party_level() -> void:
 		unit.dice_level = progress.level
 
 
+## 화면에 맞는 배경음을 고른다(#629). 정비·보상 확인은 차분한 곡, 끝난 전투는 승리·패배 곡, 그 밖은 전투 곡이다.
+func _sync_music() -> void:
+	if preparation.visible:
+		GameMusic.play(get_tree(), GameMusic.CALM)
+	elif actions.is_over():
+		GameMusic.play(get_tree(), GameMusic.VICTORY if actions.is_victory() else GameMusic.DEFEAT)
+	else:
+		GameMusic.play(get_tree(), GameMusic.BATTLE)
+
+
 func _on_turn_changed() -> void:
 	_save_pending = true
 	selection.reset()
@@ -1295,6 +1307,8 @@ func _update_turn_ui() -> void:
 		hud.show_outcome(actions.is_victory())
 		if not preparation.visible:
 			hud.show_result(actions.is_victory(), progress.graduated, _enemy_turn_running or actions.busy)
+	# 이어하기는 장면을 연 뒤에 정비 화면을 다시 열므로, 그 프레임이 끝난 마지막 상태로 곡을 고른다.
+	_sync_music.call_deferred()
 	queue_redraw()
 
 
