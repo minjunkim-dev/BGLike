@@ -44,7 +44,7 @@ SRD 5.1은 CC-BY-4.0과 OGL 1.0a 중 하나를 고를 수 있습니다. BGLike�
 Git 기여 기록만으로 제3자 자료의 원저작권을 확정하지 않습니다.
 외부 원본이나 생성 도구의 별도 조건이 있으면 원래 출처와 조건을 기록하고 우선 적용합니다.
 공개 동의와 자산의 사용·공개 권한 확인은 별도로 기록합니다.
-현재 추적 파일에는 음악 원본이나 구매한 자산 패키지가 없습니다. 글꼴 원본은 아래 [현재 추적된 글꼴](#현재-추적된-글꼴)의 Galmuri11입니다.
+현재 추적 파일에는 구매한 자산 패키지가 없습니다. 음악은 아래 [현재 추적된 배경음](#현재-추적된-배경음)의 CC0 음원 네 곡입니다. 글꼴 원본은 아래 [현재 추적된 글꼴](#현재-추적된-글꼴)의 Galmuri11입니다.
 
 ## 현재 추적된 효과음
 
@@ -56,6 +56,19 @@ Git 기여 기록만으로 제3자 자료의 원저작권을 확정하지 않습
 | `scenes/combat/audio/roll_fail.ogg` | BGLike 자체 합성 임시음. 사인파 두 음(300Hz→200Hz). 주사위 굴림 실패 결과음 | 위와 같음 |
 
 효과음의 CC0는 BGLike 자체 코드에 적용하지 않습니다.
+
+## 현재 추적된 배경음
+
+2026-11-17 [#629](https://github.com/minjunkim-dev/BGLike/issues/629)의 화면별 배경음 네 곡입니다. 모두 CC0 1.0 Universal이고 OpenGameArt 페이지의 License 칸이 `CC0`인 것을 2026-11-17에 확인했습니다. 사용·수정·재배포와 원본 공개를 허용하며 출처 표시는 필수가 아닙니다. 그래도 게임 안 `출처` 화면에 작가와 곡명을 적었습니다. 재생기는 `scenes/audio/game_music.gd`입니다.
+
+| 파일 | 원본·권리자 | 조건과 출처 |
+| --- | --- | --- |
+| `scenes/audio/music/calm.ogg` | Juhani Junkala(SubspaceAudio), JRPG Music Pack #4 [Calm]의 `Calm2 - Childhood Friends.ogg`. 원본 그대로 사용(파일 이름만 바꿈). 타이틀·정비의 반복 곡(102.9초) | CC0 1.0 Universal. [페이지](https://opengameart.org/content/jrpg-pack-4-calm), 원본 sha256 `dc536901748772e4822118887d6f164343b1d9e4fea3a7c197ac2fcb06d6f344`. 2026-11-17 확인 |
+| `scenes/audio/music/battle.ogg` | Juhani Junkala(SubspaceAudio), JRPG Music Pack #5 [Action]의 `Action1 - Encounter With The Witches.ogg`. 원본 그대로 사용(파일 이름만 바꿈). 전투의 반복 곡(113.5초) | CC0 1.0 Universal. [페이지](https://opengameart.org/content/jrpg-pack-5-action), 원본 sha256 `f957434432f49f5cc0a4d81351304d7daa646af5bcbeaccc29d47224cd40fb8f`. 2026-11-17 확인 |
+| `scenes/audio/music/victory.ogg` | celestialghost8, "Victory"(2A03 승리 팡파르)의 `Victory.wav`. WAV 원본(모노)을 스테레오 OGG로 바꿨습니다(`ffmpeg -ac 2 -c:a vorbis -q:a 6`). 승리 결과 화면에서 한 번 울리는 곡(4.9초) | CC0 1.0 Universal. [페이지](https://opengameart.org/content/victory), 원본 WAV sha256 `a045e252f9dd7a6d4781daa1aa9e0cc7357ea73700f53e3d99d0d4654f32c804`. WAV 원본은 저장소에 넣지 않습니다. 2026-11-17 확인 |
+| `scenes/audio/music/defeat.ogg` | Kosmo The Cat, "Game over short jingle"의 `Game over jingle.ogg`. 원본 그대로 사용(파일 이름만 바꿈). 패배 결과 화면에서 한 번 울리는 곡(7.7초) | CC0 1.0 Universal. [페이지](https://opengameart.org/content/game-over-short-jingle), 원본 sha256 `7b5a71fd270c407bcfc8e558a2594b36f0172894c474359826acb1bc38330762`. 2026-11-17 확인 |
+
+배경음의 CC0는 BGLike 자체 코드에 적용하지 않습니다.
 
 ## 현재 추적된 글꼴
 

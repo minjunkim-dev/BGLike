@@ -1800,6 +1800,14 @@ msgstr "효과음"
 msgid "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
 msgstr "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
 
+#: scenes/main.tscn
+msgid "배경음"
+msgstr "배경음"
+
+#: scenes/main.tscn
+msgid "타이틀·정비: Childhood Friends, Juhani Junkala (CC0 1.0 Universal)\n전투: Encounter With The Witches, Juhani Junkala (CC0 1.0 Universal)\n승리: Victory, celestialghost8 (CC0 1.0 Universal)\n패배: Game over short jingle, Kosmo The Cat (CC0 1.0 Universal)"
+msgstr "타이틀·정비: Childhood Friends, Juhani Junkala (CC0 1.0 Universal)\n전투: Encounter With The Witches, Juhani Junkala (CC0 1.0 Universal)\n승리: Victory, celestialghost8 (CC0 1.0 Universal)\n패배: Game over short jingle, Kosmo The Cat (CC0 1.0 Universal)"
+
 #: scenes/pause_menu.gd:35
 msgid "전투를 포기하면 패배로 처리되고, 이 막을 처음부터 다시 합니다."
 msgstr "전투를 포기하면 패배로 처리되고, 이 막을 처음부터 다시 합니다."

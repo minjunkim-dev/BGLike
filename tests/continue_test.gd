@@ -45,9 +45,11 @@ func _run() -> void:
 func _test_new_game_and_continue() -> void:
 	var title: TitleScreen = await _open_title()
 	_check(not title.continue_button.visible and not title.notice.visible, "저장이 없으면 이어하기와 안내를 숨김")
+	_check(GameMusic.current(self) == GameMusic.CALM, "타이틀은 차분한 곡")
 	title.new_game_button.pressed.emit()
 	_check(not title.overwrite.visible, "저장이 없으면 확인 없이 새 게임")
 	var battle: Node2D = await _new_battle()
+	_check(GameMusic.current(self) == GameMusic.BATTLE and GameMusic.player(self).playing, "새 게임의 지도 준비·전투는 전투 곡")
 	var saves: Array[int] = [0]
 	battle.connect("autosaved", func() -> void: saves[0] += 1)
 	await process_frame
@@ -107,12 +109,15 @@ func _test_preparation_screens() -> void:
 			actions.incapacitate(unit)
 	actions.changed.emit()
 	await process_frame
+	_check(GameMusic.current(self) == GameMusic.VICTORY, "이긴 결과 화면은 승리 곡")
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	hud.restart_button.pressed.emit()
 	await process_frame
 	var preparation: CombatPreparation = battle.get("preparation")
 	_check(preparation.visible and GameSave.read().sections.get("preparation") == {"maintaining": false},
 		"보상 확인 화면을 저장")
+	_check(GameMusic.current(self) == GameMusic.CALM, "보상 확인 화면은 차분한 곡")
+	var calm_playback: AudioStreamPlayback = GameMusic.player(self).get_stream_playback()
 	var state: Dictionary = battle.call("combat_state")
 	var rewards: Array[Dictionary] = preparation.rewards.duplicate(true)
 	battle = await _continue(await _open_title())
@@ -121,10 +126,13 @@ func _test_preparation_screens() -> void:
 	_check(preparation.visible and not preparation.maintaining and preparation.rewards == rewards
 		and battle.call("combat_state") == state and loot.bag.size() == 2
 		and (battle.get("party") as Array)[0].potions.size() == 2, "보상 확인 화면에서 같은 가방·물약·보상으로 이어함")
+	_check(GameMusic.current(self) == GameMusic.CALM and GameMusic.player(self).get_stream_playback() == calm_playback,
+		"타이틀을 거쳐 정비 화면으로 이어해도 차분한 곡이 끊기지 않음")
 	preparation.continue_button.pressed.emit()
 	await process_frame
 	_check(preparation.maintaining and GameSave.read().sections.get("preparation") == {"maintaining": true},
 		"정비 화면을 저장")
+	_check(GameMusic.current(self) == GameMusic.CALM, "정비 화면은 차분한 곡")
 	state = battle.call("combat_state")
 	battle = await _continue(await _open_title())
 	preparation = battle.get("preparation")
@@ -227,6 +235,8 @@ func _test_graduation() -> void:
 		preparation.discard_dialog.confirmed.emit()
 	_check(progress.graduated and hud.result_label.text == "3막 졸업" and not GameSave.has_save()
 		and not FileAccess.file_exists(GameSave.path + ".tmp"), "졸업 화면이 뜨는 순간 저장을 지움")
+	await process_frame
+	_check(GameMusic.current(self) == GameMusic.VICTORY, "졸업 화면은 승리 곡")
 	var buttons: Array = hud.get_node("Result").find_children("*", "Button", true, false).filter(
 		func(button: Button) -> bool: return button.is_visible_in_tree()).map(
 		func(button: Button) -> String: return button.text)
@@ -250,6 +260,7 @@ func _test_graduation() -> void:
 	await process_frame
 	_check(current_scene is TitleScreen and not (current_scene as TitleScreen).continue_button.visible
 		and not (current_scene as TitleScreen).notice.visible, "타이틀로 가면 이어할 저장이 없음")
+	_check(GameMusic.current(self) == GameMusic.CALM, "졸업 뒤 타이틀은 차분한 곡")
 
 
 ## 게임을 다시 켠 것처럼 지금 장면을 닫고 타이틀을 새로 연다.
