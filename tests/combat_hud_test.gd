@@ -102,7 +102,7 @@ func _run() -> void:
 	await _test_rock_presentation()
 	await _test_results_and_restart()
 	await _test_tree_burn_ui()
-	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	(battle.get("sounds") as CombatSounds).stop_all()
 	await create_timer(0.08).timeout
 	current_scene.queue_free()
 	await process_frame
@@ -1017,7 +1017,7 @@ func _test_log_and_status() -> void:
 	units[1].aegisal_left = 0
 	battle.call("_update_turn_ui")
 	# 실제 동작의 판정 로그와 숫자 팝업 연결. 마지막 적이 아닌 대상에 확정 명중.
-	var hit_sound: AudioStreamPlayer = battle.get_node("HitSound") as AudioStreamPlayer
+	var hit_sound: AudioStreamPlayer = (battle.get("sounds") as CombatSounds).player(&"hit_flesh")
 	var hit_stream: AudioStreamOggVorbis = hit_sound.stream as AudioStreamOggVorbis
 	_check(hit_stream != null and hit_stream.get_length() > 0.0
 		and hit_stream.get_length() < 0.5 and not hit_stream.loop,
@@ -1028,8 +1028,8 @@ func _test_log_and_status() -> void:
 	hit_sound.stop()
 	# 짧은 타격음이 다음 프레임 전에 끝날 수 있어 피해 신호 시점의 재생을 관찰한다.
 	var hit_played: Array[bool] = []
-	var record_hit: Callable = func() -> void: hit_played.append(hit_sound.playing)
-	actions.hit_landed.connect(record_hit)
+	var record_hit: Callable = func(_target: Object) -> void: hit_played.append(hit_sound.playing)
+	actions.damaged.connect(record_hit)
 	units[2].is_stunned = false
 	units[2].reaction_left = 0
 	units[2].hit_points = 12
@@ -1056,7 +1056,7 @@ func _test_log_and_status() -> void:
 	actions.dice = ScriptedDice.new([17, 19, 3], advantage_sides)
 	await actions.attack(units[1], units[2])
 	_check(hit_played == [true], "실제 피해 신호가 장면의 타격음 재생으로 연결됨")
-	actions.hit_landed.disconnect(record_hit)
+	actions.damaged.disconnect(record_hit)
 	_check(_has_two_dice_log("유리"),
 		"유리 판정은 로그에 주사위 두 값을 모두 표시")
 	_check(not _has_feedback(units[1], "공격 %d" % actions.last_attack.total),
@@ -1066,8 +1066,10 @@ func _test_log_and_status() -> void:
 
 
 func _test_hit_sound_mix() -> void:
-	var sound: AudioStreamPlayer = battle.get_node("HitSound") as AudioStreamPlayer
+	var sound: AudioStreamPlayer = (battle.get("sounds") as CombatSounds).player(&"hit_flesh")
 	sound.stop()
+	# 반복 재생 중인 환경음이 믹서 출력을 채우지 않게 끈다. 타격음만 잰다.
+	(battle.get("sounds") as CombatSounds).stop_ambient()
 	var capture: AudioEffectCapture = AudioEffectCapture.new()
 	capture.buffer_length = 2.0
 	var effect_index: int = AudioServer.get_bus_effect_count(0)
@@ -1075,7 +1077,7 @@ func _test_hit_sound_mix() -> void:
 	await create_timer(0.08).timeout
 	capture.clear_buffer()
 	for index: int in range(6):
-		actions.hit_landed.emit()
+		actions.damaged.emit(units[2])
 	await create_timer(sound.stream.get_length() + 0.2).timeout
 	var samples: PackedVector2Array = capture.get_buffer(capture.get_frames_available())
 	var peak: float = 0.0
@@ -1581,6 +1583,8 @@ func _test_guidance() -> void:
 				and not tooltip.get_global_rect().intersects((hud.get_node("CombatLog") as Control).get_global_rect())
 				and tooltip.z_index > (hud.get_node("Skills") as Control).z_index,
 				"호버 전체 설명은 화면 안에서 스킬 패널·전투 로그를 가리지 않음: " + action)
+			_check(_in_left_column(tooltip.get_global_rect(), hud.get_global_rect().size),
+				"마우스 호버 설명도 왼쪽 열(최대 폭 240)이고 중앙 영역과 겹치지 않음: %s %s" % [action, tooltip.get_global_rect()])
 			_check(button.tooltip_text.begins_with(CombatActionRules.NAMES[action] + "\n"),
 				"호버에 동작 이름 유지: " + action)
 			var removed_hints: Array[String] = ["비용", "막당 ", "횟수 제한", "\n보유 물약", "오른쪽 기호",
@@ -1606,6 +1610,7 @@ func _test_guidance() -> void:
 		and "판정: 대상의 힘 내성 대 DC 4, 성공하면 버팀" in (buttons["shove"] as Button).tooltip_text,
 		"궁수 활 후려치기 호버에 힘 d6과 밀침, 기본 공격 사거리 1~4, 밀치기 호버에 대상의 힘 내성과 DC 표시")
 	await _test_focus_tooltips(buttons)
+	await _test_tooltip_column(buttons)
 	# 비활성 버튼은 비용 소진·횟수 소진·효과 없음의 이유를 호버에 유지한다.
 	turns.select_unit(units[0])
 	units[0].action_left = 0
@@ -1667,7 +1672,8 @@ func _test_focus_tooltips(buttons: Dictionary) -> void:
 	hovered.release_focus()
 	units[0].potions.clear()
 	battle.call("_update_turn_ui")
-	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900)]:
+	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(1440, 900), Vector2i(2560, 1600),
+			Vector2i(2560, 1080), Vector2i(1366, 768)]:
 		root.size = size
 		await process_frame
 		await process_frame
@@ -1688,6 +1694,9 @@ func _test_focus_tooltips(buttons: Dictionary) -> void:
 					and not rect.intersects((hud.get_node("Skills") as Control).get_global_rect())
 					and not rect.intersects((hud.get_node("CombatLog") as Control).get_global_rect()),
 					"%s 포커스 호버는 화면·HUD 안, 스킬 패널·전투 로그를 가리지 않음: %s" % [size, action])
+				_check(_in_left_column(rect, screen.size) and is_equal_approx(rect.end.y,
+					(hud.get_node("Skills") as Control).get_global_rect().position.y - 4.0),
+					"%s 포커스 호버는 중앙 영역과 겹치지 않는 왼쪽 열, 아래 끝은 스킬 패널 위 -4: %s %s" % [size, action, rect])
 				button.release_focus()
 				_check(not tooltip.visible, "포커스를 잃으면 설명 숨김: " + action)
 	root.size = Vector2i(1280, 720)
@@ -1702,6 +1711,66 @@ func _hover(control: Control) -> void:
 	motion.global_position = motion.position
 	Input.parse_input_event(motion)
 	await create_timer(0.8).timeout
+
+
+# 초상·패시브 호버도 왼쪽 열에 뜨고, 긴 설명은 폭 240에서 줄바꿈하며 글을 바꾸지 않고, 짧은 설명은 240으로 늘어나지 않는다(#619).
+func _test_tooltip_column(buttons: Dictionary) -> void:
+	var tooltip: PanelContainer = hud.get("_tooltip") as PanelContainer
+	var screen: Vector2 = hud.get_global_rect().size
+	turns.select_unit(units[0])
+	battle.call("_update_turn_ui")
+	var order_bottom: float = (hud.get_node("OrderScroll") as Control).get_global_rect().end.y
+	var portraits: Dictionary = hud.get("_portraits")
+	for unit: CombatUnit in [units[0], units[2]]:
+		var portrait: Button = portraits[unit] as Button
+		await _hover(portrait)
+		var rect: Rect2 = tooltip.get_global_rect()
+		_check(tooltip.visible and _has_tooltip(root, portrait.tooltip_text) and _in_left_column(rect, screen)
+			and is_equal_approx(rect.position.y, order_bottom + 4.0),
+			"초상 호버 설명은 왼쪽 열에서 위 끝이 턴 순서 바 아래 끝 +4: %s %s" % [unit.get_display_name(), rect])
+	# moving_shot은 궁수 패시브라 궁수를 고른 뒤 본다. 숨어 있으면 검사를 건너뛰지 않고 실패한다.
+	turns.select_unit(units[1])
+	battle.call("_update_turn_ui")
+	var passive: Button = (hud.get("_passives") as Dictionary)["moving_shot"] as Button
+	_check(passive.is_visible_in_tree(), "궁수를 고르면 moving_shot 패시브 칸이 보임")
+	await _hover(passive)
+	var passive_rect: Rect2 = tooltip.get_global_rect()
+	_check(tooltip.visible and _has_tooltip(root, passive.tooltip_text) and _in_left_column(passive_rect, screen)
+		and is_equal_approx(passive_rect.end.y, (hud.get_node("Skills") as Control).get_global_rect().position.y - 4.0),
+		"패시브 호버 설명도 왼쪽 열에서 아래 끝이 스킬 패널 위 -4: " + str(passive_rect))
+	turns.select_unit(units[0])
+	battle.call("_update_turn_ui")
+	# 가장 긴 아군 스킬 설명은 폭 240에서 줄바꿈하고 글은 그대로다. 한 줄 설명은 240보다 좁다.
+	var longest: Button = null
+	var shortest: Button = null
+	for action: String in CombatActionRules.NAMES:
+		var button: Button = buttons[action] as Button
+		if not button.is_visible_in_tree():
+			continue
+		if longest == null or button.tooltip_text.length() > longest.tooltip_text.length():
+			longest = button
+		if shortest == null or button.tooltip_text.length() < shortest.tooltip_text.length():
+			shortest = button
+	await _hover(longest)
+	var long_rect: Rect2 = tooltip.get_global_rect()
+	_check(tooltip.visible and _has_tooltip(root, longest.tooltip_text) and long_rect.size.x <= 240.0 and long_rect.size.x > 200.0,
+		"긴 설명은 폭 240 안에서 줄바꿈하고 글은 그대로: " + str(long_rect))
+	await _hover(shortest)
+	var short_rect: Rect2 = tooltip.get_global_rect()
+	_check(tooltip.visible and _has_tooltip(root, shortest.tooltip_text) and short_rect.size.x < long_rect.size.x,
+		"짧은 설명은 긴 설명보다 좁음: %s / %s" % [short_rect, long_rect])
+	await _hover(hud.end_button)
+
+
+# 맵 중앙 영역 C(#555): 맵 기준점 F(화면 가운데에서 위로 20)를 가운데로 한 128×64.
+func _center_area(screen: Vector2) -> Rect2:
+	return Rect2(Vector2(screen.x / 2.0 - 64.0, screen.y / 2.0 - 20.0 - 32.0), Vector2(128, 64))
+
+
+# 호버 설명이 왼쪽 열(x 8, 폭 240 이하)에 있고 중앙 영역과 겹치지 않는지.
+func _in_left_column(rect: Rect2, screen: Vector2) -> bool:
+	return is_equal_approx(rect.position.x, 8.0) and rect.size.x <= 240.0 \
+		and not rect.intersects(_center_area(screen))
 
 
 func _has_tooltip(node: Node, text: String) -> bool:
@@ -2848,7 +2917,7 @@ func _test_overload_and_water_guidance() -> void:
 	await _click(dry_point, MOUSE_BUTTON_RIGHT)
 	_check(selection.preview_cell == dry and hud.preview_label.text.begins_with("점프 · ")
 		and "물 칸" not in hud.preview_label.text, "물이 아닌 칸 점프 안내는 그대로: " + hud.preview_label.text)
-	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	(battle.get("sounds") as CombatSounds).stop_all()
 	await create_timer(0.08).timeout
 	main.queue_free()
 	await process_frame
@@ -2996,7 +3065,7 @@ func _test_spawned_portrait_input() -> void:
 	_check(resources == [units[0].movement_left, units[0].action_left, units[0].bonus_action_left,
 		units[0].reaction_left, units[1].movement_left, units[1].action_left,
 		units[1].bonus_action_left, units[1].reaction_left], "소환 후 스크롤·적 조회는 두 아군 턴 자원 보존")
-	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	(battle.get("sounds") as CombatSounds).stop_all()
 	await create_timer(0.08).timeout
 	main.queue_free()
 	await process_frame

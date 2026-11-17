@@ -1087,7 +1087,7 @@ func _test_scene_spin() -> void:
 		and actions.pending_reactor == null and not battle.has_node("Arrow"), "AI 실행 후 행동 소비·입력 잠금 해제")
 	_check((actions.dice as ScriptedDice).unused().is_empty(), "실제 장면에서도 준비 난수를 정확히 소비")
 	actions.logged.disconnect(observe)
-	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	(battle.get("sounds") as CombatSounds).stop_all()
 	await create_timer(0.15).timeout
 	battle.queue_free()
 	await process_frame

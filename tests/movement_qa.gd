@@ -153,7 +153,7 @@ func _run() -> void:
 	quit(0 if failures == 0 else 1)
 
 func _free_fixture() -> void:
-	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	(battle.get("sounds") as CombatSounds).stop_all()
 	var deadline: int = Time.get_ticks_msec() + 150
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
