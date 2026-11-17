@@ -530,35 +530,3 @@
 | 속성(피해 유형) 시스템 | 원소 속성 화염·물은 정함(2026-11-09, [동작 유형 기획서](skill-types.md)의 ⑦ 축). 물리/마법, 저항·취약·면역은 보류 | 기획 논의 |
 | 능력치 모양 배분 원칙 | 전사·궁수 외 직업 기획 때 | 직업 기획 |
 | 장비 데이터 필드의 의미 (4-6) | `attack_bonus`는 공격 가산, `defense_bonus`는 방어 가산. 구현은 [#321](https://github.com/minjunkim-dev/BGLike/issues/321)에서 이 의미로 옮김 | 기획자 확인 |
-
-## 구현의 개발 결정 (#321)
-
-> 개정 전(공격자 대 방어자 주사위 대결) 구현의 기록입니다. 개정 규칙의 구현은 후속 Issue에서 새로 결정합니다.
-
-- 식별자는 `CombatUnit.Ability`의 `STRENGTH`, `DEXTERITY`, `CRAFT`, `INTELLIGENCE`, `WILL`, `NATURE`였다. [#386](https://github.com/minjunkim-dev/BGLike/issues/386#issuecomment-6498750300)에서 `AGILITY`, `FINESSE`, `HEALTH`로 바꿨다. 균등한 1~n만 필요하므로 기존 CombatDice의 면 수 인자를 재사용하며 별도 주사위 값 객체는 만들지 않는다.
-- UI는 현재 모양을 `힘 d20`처럼 표시한다. 기존 무기는 직업의 대검·활 강화 장비이므로 현재 공격 유형은 직업의 무기 유형에 따른다. 대상까지의 실제 거리로 바꾸지 않는다. 새 무기 유형을 추가하면 그 무기의 지정값으로 확장한다.
-- 유리/불리는 공격자만 두 번, 이니셔티브는 원본 민첩 굴림으로 정하며 동점은 최대 면 값·아군·배치 순서다.
-- 기존 입력·연출 fixture의 임의 순서는 공개 저장 복원 API로 고정한다. 실제 이니셔티브 검사는 유효한 능력치 면 수의 원본 굴림으로 따로 검사한다. ScriptedDice의 면 수·범위·남은 값 검사는 유지한다.
-- 저장 형식2(#321 당시. 지금 형식은 10, `scenes/save/game_save.gd`)는 장비 `defense_bonus`와 독 상태·장판의 고정 강도를 보존한다. 형식1은 안내 후 그대로 둔다(ADR 0003). 추가 생성 새끼는 굴림 없이 삽입되므로 이니셔티브 원본0을 보존한다.
-- 광역 대상의 유리 조건은 #326 결정에 따라 [#341](https://github.com/minjunkim-dev/BGLike/issues/341)에서 지원했다. 기존 대상별 판정을 재사용해 전원 유리일 때만 공통 유리, 혼합은 일반으로 합성한다. 공격자 공통 불리와 기존 상쇄는 유지하며, 대상 순서와 무관하게 공통 공격을 한 번만 굴린다. 현재 자연 콘텐츠에는 아군 기절 공급원이 없으므로 통제 fixture와 실제 장면의 직접 AI 호출로 확인한다.
-
-## 개정 구현의 개발 결정 (#377)
-
-> 개정 규칙을 구현하며 정한 개발 결정입니다. 근거와 택하지 않은 대안은 각 티켓 코멘트에 있습니다. 기획자가 바꿀 수 있습니다.
-
-- 능력치 식별자는 `CombatUnit.Ability`의 `STRENGTH, AGILITY, FINESSE, INTELLIGENCE, WILL, HEALTH`이고 화면 순서와 같다([#386](https://github.com/minjunkim-dev/BGLike/issues/386#issuecomment-6498750300)).
-- 주사위 값은 별도 객체 없이 면 수와 굴린 면 번호(1~n)로 둔다. `CombatChecks.face_value`가 숫자 값(절대성공면은 최댓값)을, `face_kind`가 면 종류를 낸다. 미리보기 확률은 실제 굴림과 같은 함수로 면을 열거한다. 주사위 레벨은 #387 구현 때 넣지 않았다([#387](https://github.com/minjunkim-dev/BGLike/issues/387#issuecomment-6501894148)). 2026-11-08 [#322 답](https://github.com/minjunkim-dev/BGLike/issues/322#issuecomment-6714895396)에 따라 막 최초 클리어 레벨업이 구현 범위가 됐다.
-- 피해 능력치는 `CombatActionRules.DAMAGE_ABILITIES`로 지정하고, 지정이 없으면 명중 능력치, 내성굴림 동작은 시전 능력치다([#388](https://github.com/minjunkim-dev/BGLike/issues/388)).
-- 내성굴림 동작은 `CombatActionRules`의 `CAST_ABILITIES`(DC의 시전 능력치)·`SAVE_ABILITIES`(대상의 내성 능력치)·`DC_BONUSES`로 정의한다. DC는 시전 때 한 번 정하고, 잔류 효과는 부여한 중첩이 DC를 보존한다. 공격 굴림이 없는 회전회오리에는 흘려내기를 묻지 않는다([#389](https://github.com/minjunkim-dev/BGLike/issues/389#issuecomment-6537221180)).
-- 밀치기·만능팔은 같은 표에 힘으로 더하고 대상 하나의 내성굴림으로 판정한다([#391](https://github.com/minjunkim-dev/BGLike/issues/391)). 기절한 대상과 아군의 무판정 밀치기는 `CombatActionRules.shove_saves` 한 곳에서 정해 실행과 미리보기(`밀칠 확률`)가 같은 규칙을 쓴다. 8장대로 만능팔에는 기절 대상의 자동 실패가 없다. 마지막 대결 경로(`opposed_attack`, 방어자 굴림 칸)는 지웠다.
-- 저장 형식은 #386에서 3으로 한 번 올렸고 #387~#391은 3을 유지한다. 건강·절대면은 저장하지 않고 유닛 종류와 면 수에서 다시 만든다([ADR 0003](../../adr/0003-save-files.md)).
-
-## 파티 레벨업의 개발 결정 ([#477](https://github.com/minjunkim-dev/BGLike/issues/477))
-
-> 파티 주사위 레벨을 구현하며 정한 개발 결정입니다. 기획자가 바꿀 수 있습니다.
-
-- 레벨은 파티 하나의 값이고 막의 마지막 스테이지 승리를 기록할 때 `max(레벨, 막 번호)`로 오릅니다. 같은 승리를 다시 기록하거나 막을 다시 시작하거나 이미 깬 막을 다시 깨도 오르지 않습니다. 레벨은 승리 직후 올라, 보상 확인·정비 화면에 이미 반영됩니다.
-- 레벨은 `CombatUnit.get_ability_modifier()`에 장비 능력치 가감과 함께 더합니다. 기획의 `max(1, 눈 + 레벨 + 가감)`과 표준값 `max(1, 표준값 + 레벨 + 가감)`이 레벨과 가감을 같은 자리에 더하기 때문입니다. 절대면 판정은 눈 기준이라 레벨과 무관합니다. 몬스터의 레벨은 늘 0입니다.
-- **최대 HP가 늘 때 현재 HP**: 잃은 HP를 그대로 두고 늘어난 최대 HP만큼 현재 HP도 올립니다(현재 HP = 새 최대 HP − 잃은 HP). 쓰러진 유닛(HP 0)은 0 그대로입니다. 다음 막의 첫 스테이지는 기존대로 전원 회복합니다.
-- **화면 표기**: 기본 주사위 옆에 `힘 d20 +1`처럼 레벨을 붙입니다. 장비 가감이 있으면 `힘 d20+2 +1`로 가감 뒤에 붙입니다. 레벨 0이면 지금과 같습니다.
-- 저장은 전투 칸에 `level`을 더하고 형식을 8로 올립니다([ADR 0003](../../adr/0003-save-files.md)). 복원은 깬 막 수를 넘는 레벨을 거부하고, 저장한 HP를 다시 늘리지 않습니다.
