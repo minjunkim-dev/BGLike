@@ -7,19 +7,19 @@
 [node name="Spiderling1" parent="." instance=ExtResource("1_unit")]
 kind = 2
 is_ally = false
-start_cell = Vector2i(7, 2)
+start_cell = Vector2i(10, 3)
 
 [node name="Spiderling2" parent="." instance=ExtResource("1_unit")]
 kind = 2
 is_ally = false
-start_cell = Vector2i(8, 4)
+start_cell = Vector2i(11, 5)
 
 [node name="Spiderling3" parent="." instance=ExtResource("1_unit")]
 kind = 2
 is_ally = false
-start_cell = Vector2i(7, 6)
+start_cell = Vector2i(10, 8)
 
 [node name="Spiderling4" parent="." instance=ExtResource("1_unit")]
 kind = 2
 is_ally = false
-start_cell = Vector2i(8, 8)
+start_cell = Vector2i(11, 11)

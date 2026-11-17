@@ -74,7 +74,7 @@ func _run() -> void:
 		ScriptedDice.arrange_turns(battle.get("turns"), units, party)
 		battle.call("_update_turn_ui")
 		assert(units.size() >= 3 and party.size() == 2 and battle.get("waiting_for_start"))
-		assert(actions.grid.props.size() == 2 and party[0].cell == Vector2i(1, 4))
+		assert(actions.grid.props.size() == 2 and party[0].cell == Vector2i(2, 8))
 		assert(party[0].movement_left == 6 and party[0].action_left == 1)
 		if kind == "prep":
 			var loot: CombatLoot = battle.get("loot")

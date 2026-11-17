@@ -1226,8 +1226,11 @@ func _test_default_scene() -> void:
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	var ally_starts: Array[Vector2i] = (battle.get("stages") as Array[CombatStage])[0].ally_cells
 	for unit: CombatUnit in units:
-		_check(unit.cell == unit.start_cell and unit.hit_points == unit.get_max_hit_points(),
+		# 아군의 시작 칸은 스테이지 자원의 ally_cells가 정한다(1-1은 14×14 재배치).
+		var start: Vector2i = ally_starts[units.find(unit)] if unit.is_ally else unit.start_cell
+		_check(unit.cell == start and unit.hit_points == unit.get_max_hit_points(),
 			"기본 배치와 최대 HP에서 전투 시작")
 	var dice: CombatDice = CombatDice.new()
 	dice.seed = 33

@@ -55,12 +55,14 @@ func _run() -> void:
 			"crate": str(actions.grid.props[0].cell), "rock": str(actions.grid.props[1].cell)}
 		records.append(row)
 		await _capture(label + "-initial")
-		var destination: Vector2i = Vector2i(2, 4)
+		var start: Vector2i = actor.cell
+		# 1-1은 14×14 재배치(#612)로 시작 칸이 다르다. 시작 칸 오른쪽 한 칸으로 이동을 시험한다.
+		var destination: Vector2i = start + Vector2i.RIGHT
 		if not ck(actions.reachable_cells(actor).has(destination), "입력 전 실제 이동 가능 칸 확인"):
 			break
 		await _click(map.get_global_transform_with_canvas() * map.map_to_surface(destination), MOUSE_BUTTON_RIGHT)
 		if not ck(selection.selected_action == "move" and not selection.preview_path.is_empty()
-			and actor.cell == Vector2i(1, 4) and actor.movement_left == 6, "우클릭은 이동 범위·경로 미리보기만 표시"):
+			and actor.cell == start and actor.movement_left == 6, "우클릭은 이동 범위·경로 미리보기만 표시"):
 			break
 		await _capture(label + "-movement")
 		if index <= 1:
