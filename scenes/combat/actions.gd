@@ -12,6 +12,15 @@ signal logged(message: String)
 signal feedback(unit: CombatUnit, text: String)
 signal healed(unit: CombatUnit, amount: int)
 signal hit_landed
+## 공격이 닿은 쪽(유닛, 나무 상자, 바위)의 소리용 신호(#628). 유닛·상자는 피해를 받을 때 hit_landed와 함께 낸다.
+## 바위는 피해가 없지만 사물 공격에는 명중굴림이 없어 늘 닿으므로, 굴러가기 전에 때린 소리용으로 한 번 낸다.
+signal damaged(target: Object)
+## 명중굴림이 절대성공이었다(#628, 치명타 소리용).
+signal critical_hit(target: CombatUnit)
+## 전투 불능이 되었다(#628).
+signal downed(unit: CombatUnit)
+## 자기 대상 동작을 썼다(#628, 방어막·함성 소리용).
+signal self_used(actor: CombatUnit, action: String)
 ## 공격이 대상에 닿았거나(hit) 빗나갔다. 표시용이다. 나무 상자는 target이 null이고 cell이 상자 칸이다.
 signal struck(attacker: CombatUnit, target: CombatUnit, cell: Vector2i, hit: bool)
 signal reaction_requested(kind: String, prompt: String)
@@ -239,6 +248,7 @@ func attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
 	var aegisal: bool = _spend_aegisal(actor, "attack")
 	if prop.kind == "rock":
 		last_damage = 0
+		damaged.emit(prop)
 		_roll_rock(actor, prop)
 		_arm_moving_shot(actor)
 		busy = false
@@ -269,6 +279,7 @@ func attack_prop(actor: CombatUnit, prop: CombatGrid.Prop) -> bool:
 		tr(" · 파괴") if prop.hit_points == 0 else ""]
 	var revision: int = _revision
 	hit_landed.emit()
+	damaged.emit(prop)
 	struck.emit(actor, null, prop.cell, true)
 	logged.emit(message)
 	# 명중 callback이 전투를 다시 시작했으면 지난 전투의 상자는 아이템을 떨어뜨리지 않는다.
@@ -869,6 +880,7 @@ func is_victory() -> bool:
 func incapacitate(target: CombatUnit) -> void:
 	var revision: int = _revision
 	target.hit_points = 0
+	downed.emit(target)
 	target.status_effects.clear()
 	target.clear_unit_effects()
 	target.stealthed = false
@@ -1648,6 +1660,7 @@ func use_self(actor: CombatUnit, action: String) -> bool:
 			logged.emit(tr("%s 물러서며 쏘기: 이번 턴 이동은 기회 공격 제외") % actor.get_display_name())
 		"potion":
 			_heal(actor, dice.roll(4) + dice.roll(4) + 2, tr("물약"))
+	self_used.emit(actor, action)
 	changed.emit()
 	return true
 
@@ -2014,6 +2027,8 @@ func _roll_hit(actor: CombatUnit, target: CombatUnit, action: String) -> bool:
 	logged.emit(tr("%s 공격(%s): %s d%d %s %+d = %d / AC %d · %s") % [
 		actor.get_display_name(), CombatActionRules.roll_mode_text(last_attack.mode, preview.factors), CombatUnit.ability_name(attack_ability), attack_sides,
 		str(last_attack.rolls), last_attack.added(), last_attack.total, armor_class, outcome])
+	if last_attack.face == CombatChecks.Face.ABSOLUTE_SUCCESS:
+		critical_hit.emit(target)
 	if not last_attack.success:
 		struck.emit(actor, target, target.cell, false)
 		feedback.emit(target, tr("빗나감"))
@@ -2300,6 +2315,7 @@ func _damage(target: CombatUnit, amount: int, pierce: bool = false) -> void:
 	target.hit_points = maxi(0, target.hit_points - amount)
 	if target.hit_points < before or absorbed > 0:
 		hit_landed.emit()
+		damaged.emit(target)
 	if not _same_combat(target, revision):
 		return
 	if target.hit_points == 0:

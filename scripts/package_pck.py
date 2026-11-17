@@ -61,7 +61,7 @@ func _initialize() -> void:
     if hash.finish().hex_encode() != "%s":
         quit(1)
         return
-    if ResourceLoader.load("res://scenes/main.tscn") == null or ResourceLoader.load("res://scenes/combat/audio/hit.ogg") == null:
+    if ResourceLoader.load("res://scenes/main.tscn") == null or ResourceLoader.load("res://scenes/combat/audio/hit_wood.ogg") == null:
         quit(1)
         return
     print("PCK_CONTENT_VERIFIED")

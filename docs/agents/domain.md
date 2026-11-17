@@ -4,7 +4,7 @@
 
 ## Before exploring, read these
 
-1. [AGENTS.md](../../AGENTS.md), [협업 규칙](../process/workflow.md), [브랜치와 커밋 규칙](../GIT_CONVENTIONS.md)을 읽습니다.
+1. [AGENTS.md](../../AGENTS.md), [협업 규칙](../process/workflow.md), [브랜치와 커밋 규칙](../process/git-conventions.md)을 읽습니다.
 2. 루트의 [GLOSSARY.md](../../GLOSSARY.md)를 읽고 관련 용어를 확인합니다.
 3. 작업할 Issue의 목표, 완료 조건과 코멘트의 결정 기록을 읽습니다. Issue가 연결한 기획 문서도 직접 엽니다.
 4. `docs/adr/`에 관련 결정 기록이 있으면 읽습니다.

@@ -72,7 +72,7 @@
 
 - **PR 제목이 곧 `main`의 커밋 제목**이 됩니다. 같은 형식으로 씁니다. 예: `feat(combat): add initiative turn order`
 - 본문은 한국어로 써도 됩니다. 무엇을 왜 바꿨는지 적고, 끝에 `Refs #12` 또는 마지막 PR이면 `Closes #12`를 적습니다.
-- 자세한 규칙과 예시는 [브랜치와 커밋 규칙](docs/GIT_CONVENTIONS.md)에 있습니다.
+- 자세한 규칙과 예시는 [브랜치와 커밋 규칙](docs/process/git-conventions.md)에 있습니다.
 
 ## 8. 문서
 
@@ -82,7 +82,7 @@
 | 이 문서 | 참여 방법 요약 |
 | [AGENTS.md](AGENTS.md) | 구현·리뷰 문서 길잡이와 승인 경계 |
 | [docs/process/workflow.md](docs/process/workflow.md) | Issue 운영, 검토와 병합, 에이전트 사용법 |
-| [docs/GIT_CONVENTIONS.md](docs/GIT_CONVENTIONS.md) | 브랜치 이름, 커밋 메시지 |
+| [docs/process/git-conventions.md](docs/process/git-conventions.md) | 브랜치 이름, 커밋 메시지 |
 | [코딩 규칙](docs/process/coding-standards.md), [독립 리뷰 절차](docs/agents/review.md) | Standards·Spec·Security 리뷰, 검사 근거와 사용자 요청 회고 |
 | [Draft Release 절차](docs/process/ci/draft-release.md) | 미공개 Draft CD와 최종 head 승인 |
 | `docs/` 기획 문서 | 전투 기획서, 개발 요청서 |

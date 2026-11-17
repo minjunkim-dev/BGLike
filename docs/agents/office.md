@@ -27,7 +27,7 @@ python3 ../pipeline/engine.py new <과제> --repo <BGLike 경로> --base origin/
 
 ## 알아둘 것
 
-- 브랜치 이름 검사는 `office/…`를 면제합니다([브랜치·커밋 규칙](../GIT_CONVENTIONS.md)). 사람이 PR을 열 때 이름을 바꿀 필요는 없습니다.
+- 브랜치 이름 검사는 `office/…`를 면제합니다([브랜치·커밋 규칙](../process/git-conventions.md)). 사람이 PR을 열 때 이름을 바꿀 필요는 없습니다.
 - `.claude/settings.json`은 office가 `--setting-sources project`로 읽지 않습니다. 이 저장소의 거부 규칙은 office 작업자에게 적용되지 않고, office 단계표의 거부 목록이 대신합니다.
 - 작업자는 검사를 `engine.py test <과제>`로만 돌립니다. 검사 명령은 `task.json`의 `test`에 이미 들어 있습니다.
 - 이 저장소의 훅(`core.hooksPath=.githooks`)이 작업자의 `commit` 때 도는지는 확인하지 않았습니다. push는 작업자가 아니라 엔진이 합니다.
