@@ -120,7 +120,15 @@
 3. 삭제 예정 문서와 이미지 삭제. 삭제 전에 인용 위치를 `grep`으로 점검하고 링크를 정리한다.
    - 3a: `ROADMAP`을 뺀 문서 7개와 이미지 10개 삭제(완료). `THIRD_PARTY_NOTICES.md`의 캡처 행도 지웠다.
    - 3b: `ROADMAP` 삭제(완료). #558·#559가 병합돼 두 `개발 결정`은 각 Issue에 있고, 게임 비전 보류는 #200 「Out of scope」에 있다.
-4. 문서 이동과 하위폴더 `README.md` 작성. 개발 PR이 `docs/`를 고치기 전에 끝낸다. 경로를 바꿔야 하는 곳은 `AGENTS.md`, `REVIEW.md`, `CONTRIBUTING.md`, `GLOSSARY.md`, 루트 `README.md`, `agents/domain.md`, `agents/review.md`, `THIRD_PARTY_NOTICES.md`, 코드의 경로 문자열(스크립트·테스트 주석)이다. 코드가 `docs/` 아래 파일을 읽지는 않는다. 링크 검사가 보지 못하는 곳(`scripts/test_*.py`의 경로, 링크가 아닌 평문 경로)은 `grep`으로 따로 확인한다.
+4. 문서 이동과 하위폴더 `README.md` 작성. 두 PR로 나눈다. 이동은 전부 `docs/` 아래에서 일어나므로 `scripts/ci_scope.py`의 `docs/` 접두 판정은 바꾸지 않는다.
+   - 시작 조건: 3b 병합, 이동 대상 문서·이미지를 고치는 열린 PR 없음(착수 직전에 브랜치별 `git diff --name-only`로 확인), #500·#477 구현 PR의 착수 시점을 개발자와 확인(미정 표).
+   - **4a: 문서·이미지 이동과 참조 수정.** 문서는 3장 표의 "이동 후 경로"대로 `git mv`하고, 이미지는 소유 문서 폴더로 옮긴다(소유 문서가 둘이면 미정 표). 하위폴더마다 `README.md`에 "이 폴더가 답하는 질문"을 한 줄 적는다(`design/`, `design/combat/`, `design/growth/`, `design/stages/`, `process/`, `process/ci/`, `planning/`).
+     - 문서 링크와 `docs/` 접두 경로는 링크 검사가 잡는다. 루트 `AGENTS.md`·`REVIEW.md`·`CONTRIBUTING.md`·`GLOSSARY.md`·`README.md`, `agents/domain.md`·`agents/review.md`, `THIRD_PARTY_NOTICES.md`, 코드·데이터 주석의 `docs/…` 경로(`scenes/`의 `.gd`·`.py`·`.json`, `scripts/test_draw_*.py`, `tests/ui_theme_test.gd`)를 함께 고친다. `REVIEW.md`의 "건너뛸 것" 경로도 고친다.
+     - **코드가 `docs/` 파일을 실제로 읽는 곳**: `scripts/test_draw_dice.py`가 `docs/assets/dice_states.png`를 읽고, `scenes/combat/art/sources/dice/dice_generation.json`의 `sheet_command`와 `THIRD_PARTY_NOTICES.md`가 같은 경로를 적는다. 이 이미지를 옮길 때 셋을 같이 고친다.
+     - **링크 검사가 못 보는 곳**은 이동 뒤에 `grep`으로 찾는다. `docs/` 없이 문서 이름만 적은 평문이다(예: `ABILITY_SYSTEM.md`, `SKILL_TYPES.md`, `PIXEL_ART.md`를 가리키는 `scenes/combat/`의 `.gd` 주석, `tests/*.gd`, `scripts/test_godot_install.py`). 착수 때 파일 목록을 다시 만든다.
+     - 검증: `make repository-check`, `git diff -M`로 이름 변경이 유사도 100%에 가까운지 확인, 위 `grep` 결과 0건.
+   - **4b: `GIT_CONVENTIONS` 이동.** `process/git-conventions.md`로 옮기고 `.github/workflows/pr-lint.yml`(3행 주석, 78행 안내)과 `.githooks/commit-msg`(2행, 16행)의 안내 문구를 고친다. 워크플로·훅 수정이라 `REVIEW.md`의 민감한 파일에 해당하므로 사람 승인과 보안 리뷰를 더한다.
+   - 열린 개발 브랜치는 이동 PR이 병합된 뒤 `main`을 병합한다. 문서·이미지의 이름 변경은 git이 따라간다. 옛 경로로 쓴 링크나 새로 추가한 파일은 작성자가 고치고, 링크 검사가 실패로 알려 준다.
 5. `WORKFLOW.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`의 마커·개발 결정 문장 수정, 구현 상태 표기 위치 결정, `DICE_GROWTH` 축소, `characters/`·`monsters/` 표 동기화.
 
 ## 미정
@@ -128,4 +136,6 @@
 | 항목 | 임시 규칙 | 결정 |
 |---|---|---|
 | 여러 문서가 함께 쓰는 이미지(`pixel_art_1080p_*`)의 위치 | 이동하지 않고 현재 위치에 둔다 | 4단계 전에 정한다 |
+| 이미지를 소유 문서와 같은 폴더에 둔다는 규칙 5의 폴더 모양 | 이동하지 않는다. 이동할 때는 소유 문서 폴더의 하위 `images/`를 권한다 | 4a 전에 정한다 |
+| 4a 착수 시점 | 3b 병합과 이동 대상을 고치는 열린 PR 없음을 확인한 뒤 | 개발자에게 #500·#477 구현 PR의 시점을 확인한 뒤 정한다 |
 | 구현 상태 표기("구현 전", "1단계 구현")를 두는 곳 | 지금처럼 기획서 본문에 둔다 | 5단계에서 정한다 |
