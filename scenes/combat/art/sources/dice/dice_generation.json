@@ -5,7 +5,7 @@
     "mode": "pixels placed by code from the briefs below; no generative image model and no input image",
     "date": "2026-11-16",
     "command": "python3 scenes/combat/art/sources/dice/draw_dice.py scenes/combat/art/dice",
-    "sheet_command": "python3 scenes/combat/art/sources/dice/draw_dice.py --sheet docs/assets/dice_states.png"
+    "sheet_command": "python3 scenes/combat/art/sources/dice/draw_dice.py --sheet docs/design/combat/images/dice_states.png"
   },
   "spec": {
     "canvas": [48, 48],
@@ -15,7 +15,7 @@
     "outline": "2 source px (1 logical px) of #120d16, like the unit frames",
     "band": "2 source px of the state color inside the outline",
     "liquid_mask": "d{N}_liquid.png: white pixels of the glass inside the band; the runtime cuts it by height and multiplies the success or failure color",
-    "numbers": "none in the pictures; the runtime draws them beside the die (docs/DICE_PRESENTATION.md)",
+    "numbers": "none in the pictures; the runtime draws them beside the die (docs/design/combat/dice-presentation.md)",
     "light": "upper left",
     "filter": "nearest; no anti-aliasing",
     "palette": {

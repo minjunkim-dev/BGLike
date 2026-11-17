@@ -230,7 +230,7 @@ func _test_hit_rolls() -> void:
 			"고른 굴림이 절대면이면 절대면 효과 적용")
 
 
-## 능력치 가감(#456): 굴림값 = max(1, 눈 + 가감)에 가산을 더한다. 절대면은 눈 기준이다 (ITEM_FORM 3장).
+## 능력치 가감(#456): 굴림값 = max(1, 눈 + 가감)에 가산을 더한다. 절대면은 눈 기준이다 (item-form.md 3장).
 func _test_ability_modifier_math() -> void:
 	var normal: CombatChecks.RollMode = CombatChecks.RollMode.NORMAL
 	var result: CombatChecks.RollResult = CombatChecks.hit_roll(20, 1, 8, normal, ScriptedDice.new([5], [20]), 2)

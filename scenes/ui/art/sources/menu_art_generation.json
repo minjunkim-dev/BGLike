@@ -2,7 +2,7 @@
   "generator": "scenes/ui/art/sources/draw_menu_art.py",
   "command": "python3 scenes/ui/art/sources/draw_menu_art.py scenes/ui/art",
   "method": "코드로 픽셀을 찍는다. 생성 모델·외부 이미지·Pillow를 쓰지 않는다. 표준 라이브러리(zlib, struct, binascii)로 PNG를 쓰므로 같은 명령은 같은 바이트를 낸다.",
-  "note": "텍셀과 논리 px가 1:1이다(docs/PIXEL_ART.md UI 절의 1배 예외). 색 값은 UI 팔레트(UI 절)에서 가져왔다.",
+  "note": "텍셀과 논리 px가 1:1이다(docs/design/pixel-art.md UI 절의 1배 예외). 색 값은 UI 팔레트(UI 절)에서 가져왔다.",
   "files": {
     "frames/slider_track.png": "슬라이더 막대. 8×8 회색조 RGBA, 9-slice 여백 2. 바깥 1px 외곽선(0.25), 면(0.75), 안쪽 윗줄 밝은 가장자리(1.0), 모서리 1px 깎기. 색은 StyleBoxTexture.modulate_color가 정한다.",
     "frames/slider_grabber.png": "슬라이더 손잡이. 8×12 RGBA. 외곽선, 면, 안쪽 윗줄·왼쪽 줄 밝은 가장자리, 모서리 1px 깎기.",
