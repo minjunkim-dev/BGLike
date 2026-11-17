@@ -8,7 +8,6 @@
 [ext_resource type="Script" path="res://scenes/combat/turn_order_scroll.gd" id="15_order_scroll"]
 [ext_resource type="Resource" path="res://scenes/combat/stage.tres" id="5_stage"]
 [ext_resource type="Script" path="res://scenes/combat/stage.gd" id="6_stage_script"]
-[ext_resource type="AudioStream" path="res://scenes/combat/audio/hit.ogg" id="7_hit"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act1_stage2.tres" id="8_stage2"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act2_stage2.tres" id="9_stage2"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act3_stage2.tres" id="10_stage2"]
@@ -35,12 +34,6 @@ height = 1
 y_sort_enabled = true
 script = ExtResource("1_battle")
 stages = Array[ExtResource("6_stage_script")]([ExtResource("11_stage1"), ExtResource("8_stage2"), ExtResource("11_stage3"), ExtResource("12_stage1"), ExtResource("9_stage2"), ExtResource("12_stage3"), ExtResource("13_stage1"), ExtResource("10_stage2"), ExtResource("14_stage3")])
-
-[node name="HitSound" type="AudioStreamPlayer" parent="."]
-stream = ExtResource("7_hit")
-volume_db = -12.0
-max_polyphony = 4
-bus = &"SFX"
 
 [node name="Map" type="TileMapLayer" parent="."]
 y_sort_enabled = true
