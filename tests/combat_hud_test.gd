@@ -1213,6 +1213,17 @@ func _test_layout() -> void:
 			_check(not combat_log.intersects(skills) and not combat_log.intersects(details)
 				and not combat_log.intersects(end_turn) and not end_turn.intersects(details),
 				"%s: 전투 로그·턴 종료·스킬·유닛 정보는 서로 겹치지 않음" % size)
+			# #618: 맵 중앙 영역 C(#555)는 F(화면 가운데에서 위로 20)를 가운데로 한 128×64다. 어떤 HUD도 C와 겹치지 않는다.
+			var center_area: Rect2 = Rect2(area.get_center() - Vector2(0, 20) - Vector2(64, 32), Vector2(128, 64))
+			if size == Vector2i(1280, 720):
+				_check(center_area == Rect2(256, 128, 128, 64), "640×360의 맵 중앙 영역 C는 (256, 128, 128, 64): %s" % center_area)
+			var center_hud: Array = [hud.get_node("OrderScroll"), hud.get_node("OrderDivider"), details, combat_log, skills, end_turn]
+			center_hud.append(hud.preview_label)
+			if hud.stand_button.is_visible_in_tree():
+				center_hud.append(hud.stand_button)
+			for node: Variant in center_hud:
+				var rect: Rect2 = node if node is Rect2 else (node as Control).get_global_rect()
+				_check(not rect.intersects(center_area), "%s %s: HUD가 맵 중앙 영역 C와 겹치지 않음 %s / %s" % [size, kind, rect, center_area])
 			# 아래 HUD는 화면 아래 절반 안에 두어 지도 가운데를 가리지 않는다.
 			for bottom: Rect2 in [skills, combat_log, end_turn]:
 				_check(bottom.position.y >= area.size.y * 0.5, "%s %s: 아래 HUD 높이 제한 %s" % [size, kind, bottom])
@@ -2315,6 +2326,8 @@ func _tab(backwards: bool = false) -> void:
 
 
 func _test_order_bar_input() -> void:
+	# #618: 바가 F.x − 65에서 끝나 640 폭에서는 초상 4개가 바를 채운다. 빈 영역이 생기는 넓은 창(논리 폭 1147)에서 검사한다.
+	root.size = Vector2i(3440, 1080)
 	_reset_units()
 	units[0].cell = Vector2i(4, 4)
 	units[1].cell = Vector2i(0, 0)
@@ -2359,6 +2372,8 @@ func _test_order_bar_input() -> void:
 		"제거한 설명 패널 자리는 월드 입력을 가로막지 않음")
 	camera.position = original
 	camera.force_update_scroll()
+	root.size = Vector2i(1280, 720)
+	await process_frame
 
 
 func _test_transparent_order_input() -> void:
@@ -2411,6 +2426,16 @@ func _test_camera() -> void:
 		var home: Vector2 = camera.position
 		var cell_point: Callable = func(cell: Vector2i) -> Vector2:
 			return map.get_global_transform_with_canvas() * map.map_to_local(cell)
+		# #618: 처음 화면과 C 되돌리기는 맵 가운데를 기준점 F(화면 가운데에서 위로 20)에 둔다.
+		var map_center: Callable = func() -> Vector2:
+			var last: Vector2 = Vector2(map.get_used_rect().size - Vector2i.ONE)
+			var origin: Vector2 = map.map_to_local(Vector2i.ZERO)
+			var point: Vector2 = origin + (map.map_to_local(Vector2i.RIGHT) - origin) * last.x / 2.0 \
+				+ (map.map_to_local(Vector2i.DOWN) - origin) * last.y / 2.0
+			return map.get_global_transform_with_canvas() * point
+		var focus: Vector2 = root.get_visible_rect().size / 2.0 - Vector2(0, 20)
+		_check((map_center.call() as Vector2).distance_to(focus) <= 1.0,
+			"처음 화면은 맵 가운데를 기준점 F(화면 가운데에서 위로 20)에 둠: %s / %s" % [map_center.call(), focus])
 		var anchor: Vector2 = cell_point.call(Vector2i(5, 4))
 		var portraits: Dictionary = hud.get("_portraits")
 		await _wheel((portraits[units[0]] as Button).get_global_rect().get_center(), MOUSE_BUTTON_WHEEL_UP)
@@ -2471,6 +2496,8 @@ func _test_camera() -> void:
 			return visible.has_point(cell_point.call(cell))), "맵을 멀리 끌어도 칸이 화면에 남음: %s" % window_size)
 		await _key(KEY_C)
 		_check(camera.zoom == Vector2.ONE and camera.position == home, "C는 1배 가운데로 되돌림: %s" % window_size)
+		_check((map_center.call() as Vector2).distance_to(focus) <= 1.0,
+			"C로 되돌린 맵 가운데는 기준점 F에 옴: %s" % window_size)
 		await _wheel(anchor, MOUSE_BUTTON_WHEEL_DOWN)
 		_check(camera.zoom == Vector2.ONE and camera.position == home, "1배보다 축소하지 않음: %s" % window_size)
 		var gesture: InputEventPanGesture = InputEventPanGesture.new()
@@ -2946,7 +2973,7 @@ func _test_spawned_portrait_input() -> void:
 		await process_frame
 		return
 	# 포인터로 오른쪽 끝까지 이동한 뒤 가려졌던 아군 초상을 선택한다.
-	for step: int in range(16):
+	for step: int in range(40):
 		await _click(Vector2(80, 50), MOUSE_BUTTON_WHEEL_RIGHT)
 	await _click((portraits[units[0]] as Button).get_global_rect().get_center())
 	_check(turns.current_unit == units[0] and hud.unit_label.text == "아군 전사",
@@ -2954,7 +2981,7 @@ func _test_spawned_portrait_input() -> void:
 	_check(resources == [units[0].movement_left, units[0].action_left, units[0].bonus_action_left,
 		units[0].reaction_left, units[1].movement_left, units[1].action_left,
 		units[1].bonus_action_left, units[1].reaction_left], "소환 후 아군 초상 전환은 두 아군 턴 자원 보존")
-	for step: int in range(16):
+	for step: int in range(40):
 		await _click(Vector2(80, 50), MOUSE_BUTTON_WHEEL_LEFT)
 	var enemy: CombatUnit = turns.ordered_units.front()
 	await _click((portraits[enemy] as Button).get_global_rect().get_center())
