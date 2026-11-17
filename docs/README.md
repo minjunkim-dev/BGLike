@@ -58,7 +58,7 @@
 | 문서 | 상태 |
 |---|---|
 | [workflow.md](process/workflow.md) | 현역 |
-| [GIT_CONVENTIONS.md](GIT_CONVENTIONS.md) | 현역 | `process/git-conventions.md` (`pr-lint.yml`과 `commit-msg`의 안내 문구가 이 경로를 가리킨다. 워크플로·훅 수정이므로 사람 승인 후) |
+| [GIT_CONVENTIONS.md](GIT_CONVENTIONS.md) | 현역. 4b에서 `process/git-conventions.md`로 옮긴다(`pr-lint.yml`과 `commit-msg`의 안내 문구가 이 경로를 가리킨다. 워크플로·훅 수정이므로 사람 승인 후) |
 | [coding-standards.md](process/coding-standards.md) | 현역 |
 | [capture-verification.md](process/capture-verification.md) | 현역 |
 | [ci.md](process/ci/ci.md) | 현역 |
