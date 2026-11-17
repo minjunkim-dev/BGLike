@@ -1068,6 +1068,8 @@ func _test_log_and_status() -> void:
 func _test_hit_sound_mix() -> void:
 	var sound: AudioStreamPlayer = (battle.get("sounds") as CombatSounds).player(&"hit_flesh")
 	sound.stop()
+	# 반복 재생 중인 환경음이 믹서 출력을 채우지 않게 끈다. 타격음만 잰다.
+	(battle.get("sounds") as CombatSounds).stop_ambient()
 	var capture: AudioEffectCapture = AudioEffectCapture.new()
 	capture.buffer_length = 2.0
 	var effect_index: int = AudioServer.get_bus_effect_count(0)

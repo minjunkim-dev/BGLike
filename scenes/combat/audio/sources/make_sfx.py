@@ -221,7 +221,7 @@ def ambient(seed, cutoff, lfo, seconds=8.0):
     freqs = np.fft.rfftfreq(n, 1 / RATE)
     spectrum *= 1.0 / (1.0 + (freqs / cutoff) ** 2)
     x = np.fft.irfft(spectrum, n)
-    x *= 0.6 + 0.4 * np.sin(2 * np.pi * lfo * seconds * np.arange(n) / n / seconds * 1.0)
+    x *= 0.6 + 0.4 * np.sin(2 * np.pi * lfo * np.arange(n) / RATE)
     return norm(x, 0.5)
 
 
