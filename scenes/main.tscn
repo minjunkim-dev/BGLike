@@ -188,7 +188,7 @@ text = "효과음"
 
 [node name="Sound" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]
 layout_mode = 2
-text = "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
+text = "타격·전투 불능·발소리·점프·착지: Kenney, Impact Sounds 1.0, RPG Audio (CC0 1.0 Universal). 그 밖의 효과음: BGLike 자체 합성음"
 autowrap_mode = 3
 
 [node name="MusicHeading" type="Label" parent="Credits/Margin/Layout/CreditsScroll/Notices"]

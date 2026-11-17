@@ -1797,8 +1797,8 @@ msgid "효과음"
 msgstr "효과음"
 
 #: scenes/main.tscn
-msgid "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
-msgstr "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
+msgid "타격·전투 불능·발소리·점프·착지: Kenney, Impact Sounds 1.0, RPG Audio (CC0 1.0 Universal). 그 밖의 효과음: BGLike 자체 합성음"
+msgstr "타격·전투 불능·발소리·점프·착지: Kenney, Impact Sounds 1.0, RPG Audio (CC0 1.0 Universal). 그 밖의 효과음: BGLike 자체 합성음"
 
 #: scenes/main.tscn
 msgid "배경음"

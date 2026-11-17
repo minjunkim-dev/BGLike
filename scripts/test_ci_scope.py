@@ -12,7 +12,7 @@ from ci_scope import game_required, main, select_game
 
 class ScopeTests(unittest.TestCase):
     def test_document_and_known_maintenance_changes(self):
-        self.assertFalse(select_game(["README.md", "COPYRIGHT.md", "docs/images/example.png",
+        self.assertFalse(select_game(["README.md", "COPYRIGHT.md", "docs/design/images/example.png",
                                      ".github/workflows/discord-pr.yml", ".github/ISSUE_TEMPLATE/task.md"]))
 
     def test_game_and_unknown_changes(self):
@@ -24,7 +24,7 @@ class ScopeTests(unittest.TestCase):
                 self.assertTrue(select_game([path]))
 
     def test_mixed_document_and_game_changes(self):
-        self.assertTrue(select_game(["docs/COMBAT_DESIGN.md", "scenes/combat/combat.gd"]))
+        self.assertTrue(select_game(["docs/design/combat/combat.md", "scenes/combat/combat.gd"]))
 
     def test_missing_or_invalid_base_selects_game(self):
         for event in [{}, {"before": "0" * 40}, {"before": "invalid"}, {"before": 1}]:

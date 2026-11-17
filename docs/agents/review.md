@@ -10,7 +10,7 @@
 - Issue의 목표·합격 기준·범위·제외 범위와 결정 코멘트.
 - base에서 head까지의 전체 diff, 관련 호출자·테스트·fixture·설정 경로.
 - 실제 검사 명령·결과·로그 경로와 사람이 확인하지 못한 항목.
-- [AGENTS.md](../../AGENTS.md), [REVIEW.md](../../REVIEW.md), [코딩 규칙](../coding-standards.md), [협업 규칙](../WORKFLOW.md), 관련 기획 문서와 ADR의 경로·SHA-256. 없거나 읽지 못한 문서는 누락으로 기록합니다.
+- [AGENTS.md](../../AGENTS.md), [REVIEW.md](../../REVIEW.md), [코딩 규칙](../process/coding-standards.md), [협업 규칙](../process/workflow.md), 관련 기획 문서와 ADR의 경로·SHA-256. 없거나 읽지 못한 문서는 누락으로 기록합니다.
 
 `git diff <base_sha> <head_sha>`로 리뷰 범위를 고정합니다. head, base, 합격 기준이나 문서 내용이 바뀌면 기존 리뷰를 최종 리뷰로 사용하지 않습니다. 변경된 입력과 문서 fingerprint를 갱신합니다.
 
@@ -18,15 +18,15 @@
 
 | 리뷰 | 확인할 내용 |
 | --- | --- |
-| Standards | [REVIEW.md](../../REVIEW.md)와 [코딩 규칙](../coding-standards.md), 기존 interface, 오류·취소·자원 처리, 검사 품질 |
+| Standards | [REVIEW.md](../../REVIEW.md)와 [코딩 규칙](../process/coding-standards.md), 기존 interface, 오류·취소·자원 처리, 검사 품질 |
 | Spec | Issue 합격 기준, 기획 규칙·수치, 관련 ADR, 구현 범위와 누락 |
 | Security | 권한·trust·승인·비밀값·외부 명령·경로·삭제·dependency·workflow 권한의 변경 |
 
-Spec은 Issue가 연결한 기획서·개발 요청서의 규칙과 구현 상태를 함께 확인합니다. PR에 적힌 영향 문서의 갱신 내용 또는 유지 이유를 실제 구현·검수 근거와 대조합니다. 체크박스 완료 처리는 [확인 등급](../CAPTURE_VERIFICATION.md#확인-등급)을 따릅니다.
+Spec은 Issue가 연결한 기획서·개발 요청서의 규칙과 구현 상태를 함께 확인합니다. PR에 적힌 영향 문서의 갱신 내용 또는 유지 이유를 실제 구현·검수 근거와 대조합니다. 체크박스 완료 처리는 [확인 등급](../process/capture-verification.md#확인-등급)을 따릅니다.
 
 Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행합니다. 위험 변경에는 Security도 별도 컨텍스트에서 수행합니다. 다른 모델을 실행하지 않았으면 다른 모델의 리뷰로 보고하지 않습니다. 실행하지 못한 리뷰는 미완료로 기록합니다.
 
-리뷰어는 작성자가 같은 head SHA에서 통과시킨 검사를 다시 실행하지 않습니다. 작성자의 명령·결과·로그를 근거로 재사용합니다. 근거가 없거나 부족하면 그 이유를 기록합니다. 실행 권한이 없는 리뷰어는 그 검사를 미확인으로 기록합니다. 그리고 작성자에게 근거를 요청합니다. [읽기 전용 Claude 리뷰의 사전 승인](../WORKFLOW.md#읽기-전용-claude-리뷰의-사전-승인)에는 검사 실행 권한이 없습니다.
+리뷰어는 작성자가 같은 head SHA에서 통과시킨 검사를 다시 실행하지 않습니다. 작성자의 명령·결과·로그를 근거로 재사용합니다. 근거가 없거나 부족하면 그 이유를 기록합니다. 실행 권한이 없는 리뷰어는 그 검사를 미확인으로 기록합니다. 그리고 작성자에게 근거를 요청합니다. [읽기 전용 Claude 리뷰의 사전 승인](../process/workflow.md#읽기-전용-claude-리뷰의-사전-승인)에는 검사 실행 권한이 없습니다.
 
 실행 권한이 있는 리뷰어가 검사나 변이(mutation) 검사를 직접 실행하면 `git worktree add --detach <path> <head_sha>`로 만든 리뷰어 전용 worktree에서 실행합니다. 작성자나 다른 리뷰어의 worktree에서 실행하지 않습니다. 설치된 Godot은 `GODOT`에 실행 파일 경로를 지정해 재사용합니다. stash·branch·tag는 모든 worktree가 공유하므로 만들지 않습니다. 변이는 `git status`로 확인합니다. 변이는 `git restore`로 되돌립니다. 끝나면 `git worktree remove --force <path>`로 그 worktree를 삭제합니다. 수정·커밋하는 리뷰어는 [지적 처리](#지적-처리와-최종-검증) 1·3단계를 따릅니다.
 
@@ -34,7 +34,7 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 
 이 저장소는 repo-baseline matt-skills 프로필을 씁니다. Standards와 Spec 리뷰를 맡기는 절차는 repo-baseline 클론의 `profiles/matt-skills/README.md` 「리뷰」를 그대로 따릅니다. Security 리뷰는 맡기지 않습니다. 이 저장소에서 다른 점은 기준 문서뿐입니다.
 
-- 프로필의 「코딩 기준」 자리에는 [코딩 규칙](../coding-standards.md)을 넘깁니다. 이 저장소의 REVIEW.md에는 「코딩 기준」 절이 없습니다. REVIEW.md 「실패로 보는 것」·「심각도」도 함께 넘깁니다.
+- 프로필의 「코딩 기준」 자리에는 [코딩 규칙](../process/coding-standards.md)을 넘깁니다. 이 저장소의 REVIEW.md에는 「코딩 기준」 절이 없습니다. REVIEW.md 「실패로 보는 것」·「심각도」도 함께 넘깁니다.
 - Spec 축에는 PR 본문의 `완료 기준:`과 함께 위 표의 Issue 합격 기준도 넘깁니다.
 
 ## 지적 처리와 최종 검증
@@ -43,11 +43,11 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 2. 지적마다 위치, 실패 조건, 영향과 수정 근거를 적습니다. 불확실하거나 범위 밖인 문제는 근거와 함께 보고합니다. 구현 범위를 늘리거나 제품 규칙을 확정하지 않습니다.
 3. 확실한 결함에는 수정 전 실패하는 동작 검사를 재사용하거나 추가합니다. 수정한 범위의 검사와 저장소 필수 검사를 실행합니다.
 4. 모든 수정을 커밋한 뒤 최종 head의 전체 diff를 다시 독립 검토합니다. 같은 SHA에서 이미 통과한 검사는 근거를 재사용합니다. 입력 변경이나 실패가 없으면 반복하지 않습니다.
-5. PR의 Evidence에 실행한 검사를, Review에 리뷰어(컨텍스트·모델)·고친 것·남은 지적을 적습니다. 최종 필수 CI와 합격 기준을 확인한 뒤 [병합 정책](../WORKFLOW.md#브랜치와-병합)에 따라 사람에게 병합을 넘깁니다.
+5. PR의 Evidence에 실행한 검사를, Review에 리뷰어(컨텍스트·모델)·고친 것·남은 지적을 적습니다. 최종 필수 CI와 합격 기준을 확인한 뒤 [병합 정책](../process/workflow.md#브랜치와-병합)에 따라 사람에게 병합을 넘깁니다.
 
 ## CI 실패 처리
 
-필수가 아닌 검사의 실패는 병합을 막지 않는다. 필수 체크 이름은 `.github/repository-settings.json`의 기대값이다. 서버 실제값은 소유자가 [설정 기준선](../REPOSITORY_SETUP.md#기준선-검증)의 읽기 전용 명령으로 확인한다. 에이전트의 `gh api *protection*`은 `.claude/settings.json`이 막는다.
+필수가 아닌 검사의 실패는 병합을 막지 않는다. 필수 체크 이름은 `.github/repository-settings.json`의 기대값이다. 서버 실제값은 소유자가 [설정 기준선](../process/ci/repository-setup.md#기준선-검증)의 읽기 전용 명령으로 확인한다. 에이전트의 `gh api *protection*`은 `.claude/settings.json`이 막는다.
 
 담당 로컬 에이전트는 맡은 PR의 CI가 완료될 때까지 결과를 확인한다.
 
@@ -74,15 +74,15 @@ code scanning API는 분석이 없는 ref에도 열린 경고 0건을 반환한�
 
 ## 변경 영역별 자료 선택
 
-로컬 독립 리뷰 에이전트는 `REVIEW.md`, `docs/coding-standards.md`와 티켓의 확정 완료 조건을 읽는다.
+로컬 독립 리뷰 에이전트는 `REVIEW.md`, `docs/process/coding-standards.md`와 티켓의 확정 완료 조건을 읽는다.
 그다음 변경 영역에 필요한 원문만 선택한다. 아래 표에서 변경 영역에 필요한 자료만 선택한다.
 
 | 변경 영역 | 로컬 리뷰가 선택할 상세 문서 |
 | --- | --- |
-| 게임·입력·화면 | `GLOSSARY.md`, `docs/COMBAT_UIUX.md`, 관련 Issue가 연결한 기획 문서·ADR |
+| 게임·입력·화면 | `GLOSSARY.md`, `docs/design/combat/combat-ui.md`, 관련 Issue가 연결한 기획 문서·ADR |
 | 게임 검사 | 현재 티켓의 합격 조건·재현 기록 |
-| GitHub·CI·Draft | `docs/CI.md`, `docs/DRAFT_RELEASE.md`, `docs/REPOSITORY_SETUP.md`, 엔진 잠금 값 |
-| 작업·검증 | `docs/WORKFLOW.md`, `docs/GIT_CONVENTIONS.md`, `docs/agents/domain.md` |
+| GitHub·CI·Draft | `docs/process/ci/ci.md`, `docs/process/ci/draft-release.md`, `docs/process/ci/repository-setup.md`, 엔진 잠금 값 |
+| 작업·검증 | `docs/process/workflow.md`, `docs/process/git-conventions.md`, `docs/agents/domain.md` |
 | 문서·권리 | 변경한 기준 문서, `COPYRIGHT.md`, `THIRD_PARTY_NOTICES.md` |
 
 권한·Secret·workflow·저장소 설정·dependency 정책 변경에는 작성자와 다른 모델의 리뷰를 추가한다. 실행할 수 없으면 그 한계를 기록하고 프로젝트의 위험별 승인 기준을 따른다.

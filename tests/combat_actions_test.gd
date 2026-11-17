@@ -113,6 +113,56 @@ func _test_struck_signal() -> void:
 	_check(burned.hit_points == 9 and k.strikes.is_empty(), "화상 틱 피해는 struck을 알리지 않는다")
 
 
+# 소리용 신호(#628)가 실제 행동 경로에서 나는지 본다. 신호를 직접 emit하지 않는다.
+func _test_sound_signals() -> void:
+	var f: Fixture = _fixture()
+	var actor: CombatUnit = f.units[0]
+	var target: CombatUnit = f.units[2]
+	var damaged: Array[Object] = []
+	var criticals: Array[CombatUnit] = []
+	var self_used: Array[String] = []
+	f.actions.damaged.connect(damaged.append)
+	f.actions.critical_hit.connect(criticals.append)
+	f.actions.self_used.connect(func(_unit: CombatUnit, action: String) -> void: self_used.append(action))
+	f.actions.dice = _dice_for([1], ScriptedDice.attack_sides(actor))
+	await f.actions.attack(actor, target)
+	_check(damaged.is_empty() and criticals.is_empty(), "빗나간 공격은 damaged·critical_hit을 내지 않음")
+	actor.action_left = 1
+	f.actions.dice = _dice_for([15, 1], ScriptedDice.attack_sides(actor) + ScriptedDice.damage_sides(actor))
+	await f.actions.attack(actor, target)
+	_check(damaged.size() == 1 and damaged[0] == target and criticals.is_empty(), "명중한 공격은 대상의 damaged 한 번, 치명타 아님: %s" % [damaged])
+	damaged.clear()
+	actor.action_left = 1
+	f.actions.dice = _dice_for([20, 1], ScriptedDice.attack_sides(actor) + ScriptedDice.damage_sides(actor))
+	await f.actions.attack(actor, target)
+	_check(damaged.size() == 1 and damaged[0] == target and criticals.size() == 1 and criticals[0] == target, "절대성공 명중은 critical_hit과 damaged: %s %s" % [damaged, criticals])
+	damaged.clear()
+	var h: Fixture = _fixture()
+	var prop_hits: Array[Object] = []
+	h.actions.damaged.connect(prop_hits.append)
+	var crate: CombatGrid.Prop = h.actions.create_prop(Vector2i(4, 5), "crate")
+	h.actions.dice = _dice_for([4], [20])
+	h.actions.attack_prop(h.units[0], crate)
+	_check(prop_hits.size() == 1 and prop_hits[0] == crate, "나무 상자 공격은 상자의 damaged: %s" % [prop_hits])
+	prop_hits.clear()
+	var rock_fixture: Fixture = _fixture()
+	rock_fixture.actions.damaged.connect(prop_hits.append)
+	var rock: CombatGrid.Prop = rock_fixture.actions.create_prop(Vector2i(4, 5), "rock")
+	rock_fixture.actions.dice = _dice_for([], [])
+	rock_fixture.actions.attack_prop(rock_fixture.units[0], rock)
+	# 사물 공격은 명중굴림이 없어 늘 닿는다. 바위는 피해 없이 굴러가지만 때린 소리는 난다.
+	_check(prop_hits.size() == 1 and prop_hits[0] == rock, "바위 공격은 피해 없이도 맞은 소리용 damaged 한 번: %s" % [prop_hits])
+	var s: Fixture = _fixture()
+	s.actions.self_used.connect(func(_unit: CombatUnit, action: String) -> void: self_used.append(action))
+	var warrior: CombatUnit = s.units[0]
+	s.actions.dice = _dice_for([7], [12])
+	s.actions.use_self(warrior, "holy_veil")
+	ScriptedDice.start_turn(warrior)
+	s.actions.dice = _dice_for([5], [8])
+	s.actions.use_self(warrior, "battle_cry")
+	_check(self_used.size() == 2 and self_used[0] == "holy_veil" and self_used[1] == "battle_cry", "자기 대상 동작은 self_used로 알림: %s" % [self_used])
+
+
 func _test_subject_particle() -> void:
 	var expected: Array[Array] = [
 		[CombatEnemyDefinitions.NOVICE_BARBARIAN, "풋내기 야만인이"], [CombatEnemyDefinitions.NOVICE_ARCHER, "풋내기 궁수가"],
@@ -1131,6 +1181,7 @@ func _run() -> void:
 	_test_grid_queries()
 	_test_subject_particle()
 	await _test_struck_signal()
+	await _test_sound_signals()
 	await _test_square_rules()
 	await _test_attacks()
 	await _test_archer_balance()

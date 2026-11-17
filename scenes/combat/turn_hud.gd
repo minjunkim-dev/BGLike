@@ -24,7 +24,7 @@ class SpaceBlocker extends Node:
 const UI_THEME: Theme = preload("res://scenes/ui_theme.tres")
 const DEFAULT_BUTTON_COLOR: Color = Color("223940")
 const END_BUTTON_COLOR: Color = Color("926725")
-## 포커스 테두리 색(docs/PIXEL_ART.md UI 절).
+## 포커스 테두리 색(docs/design/pixel-art.md UI 절).
 const FOCUS_COLOR: Color = Color("ebba84")
 const RESOURCE_COLORS: Array[Color] = [Color("70c76d"), Color("edaa54"), Color("ac90e5")]
 ## 스킬 칸 폭. 한 줄이 넘치면 SLOT_MIN까지 줄인다. 아이콘(24)과 좌우 여백 2씩이 들어가는 최소다(#554).
@@ -37,6 +37,10 @@ const SLOT_ROW_MAX: int = 8
 ## 스킬 줄 왼쪽의 패시브 열 폭(버튼 22)과 간격.
 const PASSIVE_COLUMN: int = 25
 const TITLE_GAP: int = 1
+## 호버 설명의 왼쪽 여백·최대 폭·대상과의 간격. 640×360 기준 고정값이다(#555).
+const TOOLTIP_LEFT: int = 8
+const TOOLTIP_MAX_WIDTH: int = 240
+const TOOLTIP_GAP: int = 4
 const NARROW_MARGIN: int = 2
 
 var _shown_order: Array[CombatUnit] = []
@@ -105,10 +109,14 @@ func _ready() -> void:
 	health_back.bg_color = CombatUnit.OUTLINE_COLOR
 	health_bar.add_theme_stylebox_override("fill", health_fill)
 	health_bar.add_theme_stylebox_override("background", health_back)
-	# 스킬 설명은 전투 로그와 스킬 패널 위에 띄워 판정 기록을 가리지 않는다.
-	_tooltip.top_of = func(target: Control) -> float:
-		return minf(($CombatLog as Control).get_global_rect().position.y, ($Skills as Control).get_global_rect().position.y) \
-			if $Skills.is_ancestor_of(target) else target.get_global_rect().position.y
+	# 호버 설명은 왼쪽 열(x 8, 최대 폭 240)에 둔다. 스킬·패시브는 스킬 패널 위, 초상은 턴 순서 바 아래다(#555, #619).
+	# 전투 로그와 유닛 정보는 오른쪽 열이라 자리만으로 가리지 않는다.
+	_tooltip.max_width = TOOLTIP_MAX_WIDTH
+	_tooltip.place = func(target: Control, tooltip_size: Vector2) -> Vector2:
+		var left: float = get_global_rect().position.x + TOOLTIP_LEFT
+		if order_bar.is_ancestor_of(target):
+			return Vector2(left, ($OrderScroll as Control).get_global_rect().end.y + TOOLTIP_GAP)
+		return Vector2(left, ($Skills as Control).get_global_rect().position.y - TOOLTIP_GAP - tooltip_size.y)
 	_tooltip.hidden_when = func() -> bool: return reaction_dialog.visible or $Result.visible
 	_tooltip.colorize_numbers = true
 	add_child(_tooltip)

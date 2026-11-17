@@ -10,14 +10,19 @@ class HoverButton extends Button:
 
 ## 참이면 설명을 숨긴다. 앞을 가리는 창이 열렸을 때 쓴다.
 var hidden_when: Callable = func() -> bool: return false
-## 설명 아래 끝을 둘 global y. 기본은 대상의 위 끝이다. 위 자리가 모자라면 대상 아래에 둔다.
-var top_of: Callable = func(target: Control) -> float: return target.get_global_rect().position.y
+## 0이면 자동 줄바꿈 없이 tooltip_text의 줄 그대로 그린다(정비 화면). 0보다 크면 설명 패널의 바깥 폭이 이 값을 넘지 않고,
+## 줄바꿈 없이 이 폭에 들어가는 설명은 그 글 폭만큼만 차지한다(#619).
+var max_width: float = 0.0
+## 비어 있으면 설명을 대상 위(모자라면 아래)의 대상 x에 둔다. 있으면 (대상 Control, 설명 크기)를 받아 설명의 global 위치를 돌려준다.
+## 어느 쪽이든 부모 영역 안으로 민다.
+var place: Callable = Callable()
 # 수치 가감 색은 전투 HUD만 켠다(#457). 정비 화면의 설명은 원문 그대로 보인다.
 var colorize_numbers: bool = false
 
 var _owner: Control
 var _label: RichTextLabel = RichTextLabel.new()
 var _timer: Timer = Timer.new()
+var _shown_text: String = ""
 
 
 func _init() -> void:
@@ -25,7 +30,7 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	theme_type_variation = &"HudPanel"
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# 수치 가감은 색과 부호로 구분한다(#457). 줄바꿈은 tooltip_text 그대로 쓰므로 자동 줄바꿈은 끈다.
+	# 수치 가감은 색과 부호로 구분한다(#457). 줄바꿈은 기본으로 tooltip_text 그대로 쓰므로 자동 줄바꿈은 끈다(max_width로 켠다).
 	_label.bbcode_enabled = true
 	_label.fit_content = true
 	_label.scroll_active = false
@@ -69,15 +74,36 @@ func _update() -> void:
 		hide()
 		return
 	# 글자는 BBCode다. 꺼진 경우도 [를 태그가 아닌 글자로 쓴다.
-	_label.text = CombatActionRules.colorize(_owner.tooltip_text) if colorize_numbers \
+	var text: String = CombatActionRules.colorize(_owner.tooltip_text) if colorize_numbers \
 		else _owner.tooltip_text.replace("[", "[lb]")
+	if text != _shown_text:
+		_shown_text = text
+		_label.text = text
+		_fit_width()
 	size = get_combined_minimum_size()
 	var rect: Rect2 = _owner.get_global_rect()
 	var bounds: Rect2 = get_parent_control().get_global_rect().grow(-4)
-	var y: float = top_of.call(_owner) - size.y - 4
-	if y < bounds.position.y:
-		y = rect.end.y + 4
+	var at: Vector2
+	if place.is_valid():
+		at = place.call(_owner, size)
+	else:
+		var y: float = rect.position.y - size.y - 4
+		if y < bounds.position.y:
+			y = rect.end.y + 4
+		at = Vector2(rect.position.x, y)
 	global_position = Vector2(
-		clampf(rect.position.x, bounds.position.x, bounds.end.x - size.x),
-		clampf(y, bounds.position.y, bounds.end.y - size.y))
+		clampf(at.x, bounds.position.x, bounds.end.x - size.x),
+		clampf(at.y, bounds.position.y, bounds.end.y - size.y))
 	show()
+
+
+# max_width가 있으면 줄바꿈 없는 글 폭이 남는 폭을 넘을 때만 그 폭에서 줄바꿈한다. 글이 바뀔 때만 다시 잰다.
+func _fit_width() -> void:
+	_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_label.custom_minimum_size.x = 0.0
+	if max_width <= 0.0:
+		return
+	var available: float = max_width - get_theme_stylebox("panel").get_minimum_size().x
+	if float(_label.get_content_width()) > available:
+		_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_label.custom_minimum_size.x = available

@@ -1,6 +1,6 @@
 extends SceneTree
 ## 공용 테마(scenes/ui_theme.tres)의 글꼴·크기·버튼 상태 색(seam B), 화면 글자의 잘림·겹침(seam C),
-## 글꼴 고지 파일(seam D)을 검사한다 (ui-theme, docs/PIXEL_ART.md UI 절).
+## 글꼴 고지 파일(seam D)을 검사한다 (ui-theme, docs/design/pixel-art.md UI 절).
 
 const THEME_PATH: String = "res://scenes/ui_theme.tres"
 const FONT_PATH: String = "res://scenes/ui/fonts/Galmuri11.ttf"

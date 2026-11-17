@@ -47,6 +47,7 @@ var staging: HBoxContainer
 var start_button: Button
 
 var hit_effects: CombatHitEffects
+var sounds: CombatSounds
 @onready var map: CombatMap = $Map
 @onready var camera: CombatCamera = $Camera
 @onready var hud: CombatTurnHud = $UI/TurnHud
@@ -61,6 +62,9 @@ func _ready() -> void:
 	# 파티 노드를 유지해 같은 막의 HP와 스킬 횟수를 이어 간다.
 	for child: Node in $Units.get_children():
 		party.append(child as CombatUnit)
+	sounds = CombatSounds.new()
+	sounds.name = "Sounds"
+	add_child(sounds)
 	preparation = CombatPreparation.new()
 	preparation.name = "Preparation"
 	$UI.add_child(preparation)
@@ -101,10 +105,24 @@ func _ready() -> void:
 			unit.show_feedback(text, hud.feedback_obstacles()))
 	actions.healed.connect(func(unit: CombatUnit, amount: int) -> void:
 		if not _replaying():
-			unit.show_feedback(str(amount), hud.feedback_obstacles(), CombatUnit.HEAL_COLOR))
-	actions.hit_landed.connect(func() -> void:
+			unit.show_feedback(str(amount), hud.feedback_obstacles(), CombatUnit.HEAL_COLOR)
+			sounds.play(&"heal"))
+	actions.damaged.connect(func(target: Object) -> void:
 		if not _replaying():
-			$HitSound.play())
+			sounds.play_hit(target))
+	actions.critical_hit.connect(func(_target: CombatUnit) -> void:
+		if not _replaying():
+			sounds.play_critical())
+	actions.downed.connect(func(_unit: CombatUnit) -> void:
+		if not _replaying():
+			sounds.play(&"downed"))
+	actions.self_used.connect(func(_actor: CombatUnit, action: String) -> void:
+		if _replaying():
+			return
+		if action == "holy_veil":
+			sounds.play(&"shield")
+		elif action == "battle_cry":
+			sounds.play(&"shout"))
 	hit_effects = CombatHitEffects.new()
 	hit_effects.name = "HitEffects"
 	hit_effects.z_index = 5
@@ -121,6 +139,7 @@ func _ready() -> void:
 	actions.cell_attack_animation = _animate_cell_attack
 	actions.roll_animation = _animate_roll
 	turns.changed.connect(_on_turn_changed)
+	turns.turn_started.connect(_on_turn_started_sound)
 	turns.order_rotated.connect(hud.prepare_order_rotation)
 	_start_stage(true)
 
@@ -130,6 +149,7 @@ func _on_struck(attacker: CombatUnit, target: CombatUnit, cell: Vector2i, hit: b
 	if _replaying():
 		return
 	if not hit:
+		sounds.play(&"miss")
 		hit_effects.play_miss(attacker, target)
 	elif target == null:
 		hit_effects.play_hit(attacker, null, map.map_to_surface(cell) + Vector2(0, -8))
@@ -168,6 +188,8 @@ func _reflex_arrow(cell: Vector2i) -> String:
 
 
 func _exit_tree() -> void:
+	if sounds != null:
+		sounds.stop_ambient()
 	actions.movement_animation = Callable()
 	actions.jump_animation = Callable()
 	actions.attack_animation = Callable()
@@ -178,6 +200,7 @@ func _exit_tree() -> void:
 
 func _start_stage(restore_act: bool) -> void:
 	waiting_for_start = true
+	sounds.stop_ambient()
 	_replay_actions = 0
 	actions.replay_answers.clear()
 	for unit: CombatUnit in party:
@@ -213,6 +236,8 @@ func start_battle() -> void:
 	waiting_for_start = false
 	_save_pending = true
 	get_viewport().gui_release_focus()
+	sounds.start_ambient(actions.grid)
+	_on_turn_started_sound(turns.current_unit)
 	_update_turn_ui()
 
 
@@ -906,8 +931,16 @@ func preview_enemy(target: CombatUnit) -> bool:
 	return true
 
 
+## 진영이 바뀌는 턴 시작 신호음. 전투 준비 중과 이어하기 재실행에서는 내지 않는다.
+func _on_turn_started_sound(unit: CombatUnit) -> void:
+	if not waiting_for_start and not _replaying():
+		sounds.turn_started(unit)
+
+
 func _on_actions_changed() -> void:
 	_save_pending = true
+	if actions.is_over():
+		sounds.stop_ambient()
 	if actions.is_over() and actions.is_victory():
 		var monster_count: int = 0
 		for unit: CombatUnit in units:
@@ -968,6 +1001,7 @@ func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
 		return
 	await _show_enemy_action()
 	unit.face_toward(destination)
+	sounds.play(CombatSounds.step_cue(actions.grid, stages[progress.stage_index], cell))
 	unit.is_moving = true
 	var tween: Tween = create_tween().set_parallel()
 	tween.tween_property(unit, "position", destination, MOVE_STEP_TIME)
@@ -989,6 +1023,7 @@ func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
 	var duration: float = MOVE_STEP_TIME * 2.0
 	var apex: float = -float(map.tile_set.tile_size.y)
 	unit.face_toward(destination)
+	sounds.play(&"jump")
 	unit.is_moving = true
 	var tween: Tween = create_tween().set_parallel()
 	tween.tween_property(unit, "position", destination, duration)
@@ -999,6 +1034,7 @@ func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
 	unit.position = destination
 	unit.body_offset_y = 0.0
 	unit.is_moving = false
+	sounds.play(&"land")
 
 
 func _animate_attack(actor: CombatUnit, target: CombatUnit) -> void:
