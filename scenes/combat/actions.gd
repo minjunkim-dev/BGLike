@@ -12,7 +12,8 @@ signal logged(message: String)
 signal feedback(unit: CombatUnit, text: String)
 signal healed(unit: CombatUnit, amount: int)
 signal hit_landed
-## 피해를 받은 쪽(유닛, 나무 상자, 바위)의 소리용 신호(#628). hit_landed와 같은 시점에 target을 알린다.
+## 공격이 닿은 쪽(유닛, 나무 상자, 바위)의 소리용 신호(#628). 유닛·상자는 피해를 받을 때 hit_landed와 함께 낸다.
+## 바위는 피해가 없지만 사물 공격에는 명중굴림이 없어 늘 닿으므로, 굴러가기 전에 때린 소리용으로 한 번 낸다.
 signal damaged(target: Object)
 ## 명중굴림이 절대성공이었다(#628, 치명타 소리용).
 signal critical_hit(target: CombatUnit)
