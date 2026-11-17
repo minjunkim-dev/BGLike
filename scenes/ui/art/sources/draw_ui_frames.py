@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draw the three 16x16 UI 9-slice frames as grayscale RGBA PNGs (docs/PIXEL_ART.md, UI 절).
+"""Draw the three 16x16 UI 9-slice frames as grayscale RGBA PNGs (docs/design/pixel-art.md, UI 절).
 
 Usage: python3 scenes/ui/art/sources/draw_ui_frames.py <output-directory>
 

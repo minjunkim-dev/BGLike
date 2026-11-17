@@ -234,7 +234,7 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 	return false
 
 
-## 칸 조준으로 고를 수 있는 칸 (SKILL_TYPES 5-2): 맵 안의 바닥이고 벽이 아니다. 높이·점유·상자·바위는 보지 않는다.
+## 칸 조준으로 고를 수 있는 칸 (skill-types.md 5-2): 맵 안의 바닥이고 벽이 아니다. 높이·점유·상자·바위는 보지 않는다.
 func is_aimable(cell: Vector2i, trees_open: bool = false) -> bool:
 	return is_floor(cell) and not _is_wall_for(cell, trees_open)
 

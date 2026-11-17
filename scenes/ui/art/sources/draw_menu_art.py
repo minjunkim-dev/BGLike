@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draw the slider pictures and the title logo (docs/PIXEL_ART.md, UI 절, #557).
+"""Draw the slider pictures and the title logo (docs/design/pixel-art.md, UI 절, #557).
 
 Usage: python3 scenes/ui/art/sources/draw_menu_art.py <output-root>
 
