@@ -29,14 +29,14 @@
 기획 논의 → 기획서·개발 요청서 PR → 개발 Issue → 브랜치 → PR → 리뷰 → squash merge → 기획 검수 → 회고
 ```
 
-사람은 목표·합격 기준을 정합니다. 필수 CI와 합격 기준을 충족하면 사람이 병합합니다. 에이전트는 병합하지 않습니다. 새 Draft 쓰기 권한은 [Draft Release 절차](docs/DRAFT_RELEASE.md)를 따릅니다. 자세한 절차는 [협업 규칙](docs/WORKFLOW.md)에 있습니다.
+사람은 목표·합격 기준을 정합니다. 필수 CI와 합격 기준을 충족하면 사람이 병합합니다. 에이전트는 병합하지 않습니다. 새 Draft 쓰기 권한은 [Draft Release 절차](docs/process/ci/draft-release.md)를 따릅니다. 자세한 절차는 [협업 규칙](docs/process/workflow.md)에 있습니다.
 
 ## 4. Issue
 
 - 코드를 바꾸는 일은 Issue부터 엽니다. 본문에 **목표, 완료 조건, 관련 문서 링크**를 적습니다. 양식이 자동으로 뜹니다. 문서나 설정만 바꾸는 작은 작업은 Issue 없이 PR만 열어도 됩니다.
 - 본문은 처음 합의한 기록이므로 **고치지 않습니다.** 바뀐 것은 코멘트로 쌓습니다. 범위가 크게 바뀌면 새 Issue를 열고 옛 Issue는 링크를 남기고 닫습니다.
 - 열린 Issue 목록이 곧 작업판입니다. 보드, 마일스톤은 쓰지 않습니다.
-- 실제 자동 AI 리뷰만 GitHub workflow·App·리뷰 설정에서 확인하고 이 저장소 범위에서 정리합니다. GitHub Claude workflow는 사용하지 않습니다. 로컬 독립 리뷰와 직접 수정을 유지합니다. 계정 탐색과 다른 저장소 연결 변경은 제외합니다. [협업 규칙](docs/WORKFLOW.md)을 따릅니다.
+- 실제 자동 AI 리뷰만 GitHub workflow·App·리뷰 설정에서 확인하고 이 저장소 범위에서 정리합니다. GitHub Claude workflow는 사용하지 않습니다. 로컬 독립 리뷰와 직접 수정을 유지합니다. 계정 탐색과 다른 저장소 연결 변경은 제외합니다. [협업 규칙](docs/process/workflow.md)을 따릅니다.
 
 ## 5. 코멘트
 
@@ -81,10 +81,10 @@
 | [README](README.md) | 설치와 실행 |
 | 이 문서 | 참여 방법 요약 |
 | [AGENTS.md](AGENTS.md) | 구현·리뷰 문서 길잡이와 승인 경계 |
-| [docs/WORKFLOW.md](docs/WORKFLOW.md) | Issue 운영, 검토와 병합, 에이전트 사용법 |
+| [docs/process/workflow.md](docs/process/workflow.md) | Issue 운영, 검토와 병합, 에이전트 사용법 |
 | [docs/GIT_CONVENTIONS.md](docs/GIT_CONVENTIONS.md) | 브랜치 이름, 커밋 메시지 |
-| [코딩 규칙](docs/coding-standards.md), [독립 리뷰 절차](docs/agents/review.md) | Standards·Spec·Security 리뷰, 검사 근거와 사용자 요청 회고 |
-| [Draft Release 절차](docs/DRAFT_RELEASE.md) | 미공개 Draft CD와 최종 head 승인 |
+| [코딩 규칙](docs/process/coding-standards.md), [독립 리뷰 절차](docs/agents/review.md) | Standards·Spec·Security 리뷰, 검사 근거와 사용자 요청 회고 |
+| [Draft Release 절차](docs/process/ci/draft-release.md) | 미공개 Draft CD와 최종 head 승인 |
 | `docs/` 기획 문서 | 전투 기획서, 개발 요청서 |
 | [GLOSSARY.md](GLOSSARY.md) | 용어집. 코드, 문서, 대화에서 같은 말을 씁니다 |
 
@@ -98,9 +98,9 @@
 - Godot 파일과 폴더는 `snake_case`, 새 GDScript는 타입을 명시합니다. 전역 Autoload와 추상화는 실제로 쓰는 곳이 생길 때 만듭니다.
 - 같은 `.tscn`이나 LFS 바이너리를 두 사람이 동시에 고치지 않습니다. 먼저 담당을 나눕니다.
 - `.godot/` 캐시와 개인 설정은 커밋하지 않습니다. 큰 바이너리는 LFS 규칙(`.gitattributes`)을 따릅니다.
-- PR을 열기 전에 공백과 Python 검사를 수행합니다. 게임 변경에는 Godot import·실행·회귀 테스트를 추가합니다. [CI 범위 규칙](docs/CI.md)을 따릅니다. 플레이가 바뀌면 편집기에서 직접 조작해 보고 PR에 적습니다. CI 통과가 조작감 확인을 대신하지 않습니다.
+- PR을 열기 전에 공백과 Python 검사를 수행합니다. 게임 변경에는 Godot import·실행·회귀 테스트를 추가합니다. [CI 범위 규칙](docs/process/ci/ci.md)을 따릅니다. 플레이가 바뀌면 편집기에서 직접 조작해 보고 PR에 적습니다. CI 통과가 조작감 확인을 대신하지 않습니다.
 - PR 본문에는 변경 내용, 실행한 검증, **확인하지 못한 것**을 구분해 적습니다. 양식이 자동으로 뜹니다.
-- 구현과 다른 컨텍스트에서 [REVIEW.md](REVIEW.md)로 변경분을 검토합니다. 확실한 결함을 수정·커밋한 뒤 CI를 확인합니다. 병합은 [협업 규칙](docs/WORKFLOW.md#브랜치와-병합)대로 머지 큐로 합니다.
+- 구현과 다른 컨텍스트에서 [REVIEW.md](REVIEW.md)로 변경분을 검토합니다. 확실한 결함을 수정·커밋한 뒤 CI를 확인합니다. 병합은 [협업 규칙](docs/process/workflow.md#브랜치와-병합)대로 머지 큐로 합니다.
 
 ## 10. 자동으로 되는 것
 
@@ -115,4 +115,4 @@
 | 로컬 리뷰 / 회고 | 다른 컨텍스트에서 `REVIEW.md` 기준, 민감한 파일이면 Security 추가 / 사용자 요청 시 Matt Pocock retro |
 | Issue·PR 양식 | `.github/` 템플릿 |
 
-동료 승인은 필수가 아닙니다. main 보호의 현재 적용 상태와 필수 검사 조건은 [협업 규칙](docs/WORKFLOW.md#현재-github-제약)을 참조합니다.
+동료 승인은 필수가 아닙니다. main 보호의 현재 적용 상태와 필수 검사 조건은 [협업 규칙](docs/process/workflow.md#현재-github-제약)을 참조합니다.

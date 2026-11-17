@@ -3,7 +3,7 @@
   "command": "python3 scenes/ui/art/sources/draw_ui_frames.py scenes/ui/art/frames",
   "method": "코드로 픽셀을 찍는다. 생성 모델·외부 이미지·Pillow를 쓰지 않는다. 표준 라이브러리(zlib, struct, binascii)로 PNG를 쓰므로 같은 명령은 같은 바이트를 낸다.",
   "size": "16x16 RGBA, 8비트",
-  "margin": "9-slice 여백 4px. 텍셀과 논리 px가 1:1이라 정수 배율(2·3)에서 축척 없이 찍힌다(docs/PIXEL_ART.md UI 절의 1배 예외).",
+  "margin": "9-slice 여백 4px. 텍셀과 논리 px가 1:1이라 정수 배율(2·3)에서 축척 없이 찍힌다(docs/design/pixel-art.md UI 절의 1배 예외).",
   "grayscale": {
     "outline": 0.25,
     "face": 0.75,

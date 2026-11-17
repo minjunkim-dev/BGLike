@@ -2,13 +2,13 @@
 
 작업은 GitHub `minjunkim-labs/BGLike`의 Issues에서 관리합니다. GitHub 작업에는 `gh` CLI를 사용합니다.
 
-아래 명령 예시는 RTK가 설치된 로컬 환경 기준입니다. RTK가 없는 환경에서는 `rtk proxy` 접두어를 제외하고 같은 `gh` 명령을 실행합니다. 저장소 조회의 `rtk git remote -v`도 `rtk`를 제외하면 기본 Git 명령입니다. RTK 설치를 필수로 요구하지 않습니다. GitHub Actions의 실행 권한과 명령 제한은 [협업 규칙](../WORKFLOW.md)을 따릅니다.
+아래 명령 예시는 RTK가 설치된 로컬 환경 기준입니다. RTK가 없는 환경에서는 `rtk proxy` 접두어를 제외하고 같은 `gh` 명령을 실행합니다. 저장소 조회의 `rtk git remote -v`도 `rtk`를 제외하면 기본 Git 명령입니다. RTK 설치를 필수로 요구하지 않습니다. GitHub Actions의 실행 권한과 명령 제한은 [협업 규칙](../process/workflow.md)을 따릅니다.
 
 기획의 규칙과 수치는 `docs/` 문서가 기준입니다. Issue에는 목표, 완료 조건, 문서 링크, 결정과 진행을 기록합니다.
 
 ## Conventions
 
-먼저 [AGENTS.md](../../AGENTS.md), [협업 규칙](../WORKFLOW.md), [브랜치와 커밋 규칙](../GIT_CONVENTIONS.md)을 읽습니다.
+먼저 [AGENTS.md](../../AGENTS.md), [협업 규칙](../process/workflow.md), [브랜치와 커밋 규칙](../GIT_CONVENTIONS.md)을 읽습니다.
 
 - 작업할 Issue의 본문, 라벨과 코멘트를 읽습니다. Issue에 연결된 기획 문서도 직접 엽니다.
 - 새 Issue는 [Issue 양식](../../.github/ISSUE_TEMPLATE/task.md)의 `목표`, `완료 조건`, `범위와 참고` 제목을 사용합니다.
