@@ -94,13 +94,11 @@
 
 ### 3-5. 삭제 예정
 
-삭제 전에 각 문서를 인용하는 위치를 점검한다. 인용된 결정이 현역 기획서나 Issue에 있는지 확인하고, 없으면 옮긴다. 인용은 대체 문서나 Issue로 바꾸거나 문장째 지운다.
+없다. 3a·3b에서 모두 삭제했고 복구는 git 이력에서 한다. 삭제한 문서는 `DESIGN_STATUS`, `ROADMAP`, `M1_VERIFICATION`, `M5_VERIFICATION`, `DEV_REQUEST_M1`, `HEX_GRID_PREVIEW`, `ACT_PROGRESSION`, `UNIT_IMAGE_TEMPLATE`다.
 
-| 문서 | 이유 |
-|---|---|
-| [ROADMAP.md](ROADMAP.md) | 현황은 Issue #200과 일정 문서가 맡는다. 색인은 이 문서가 대체한다. #558·#559 브랜치가 이 문서에 `개발 결정`을 적고 있으므로 두 PR이 병합되고 그 결정이 Issue에 있는지 확인한 뒤 삭제한다(3b). 그때까지 다른 문서가 가리키는 앵커는 그대로 둔다. 미정 항목의 인용은 해당 Issue로 바꾼다(예: [동작 유형 기획서](SKILL_TYPES.md)의 공격 속성 축은 Issue #357). [주사위 연출 기획서](DICE_PRESENTATION.md)의 ROADMAP 인용도 그때 지운다 |
-
-3a에서 삭제한 문서는 git 이력에서 복구한다: `DESIGN_STATUS`, `M1_VERIFICATION`, `M5_VERIFICATION`, `DEV_REQUEST_M1`, `HEX_GRID_PREVIEW`, `ACT_PROGRESSION`, `UNIT_IMAGE_TEMPLATE`(내용은 도트 아트 문서의 「유닛 이미지 납품 규격」에 병합). `M5_VERIFICATION`의 후속 검증 두 절(정상 9전투 연속 진행, 확인 창 포커스 오류)은 Issue에 없고 git 이력에만 남는다. `ACT_PROGRESSION`의 사람이 확인하던 체크리스트는 시작 경로가 바뀌어 낡았으므로 옮기지 않았다.
+- `UNIT_IMAGE_TEMPLATE`의 내용은 도트 아트 문서의 「유닛 이미지 납품 규격」에 병합했다.
+- `ROADMAP`의 현황은 Issue #200과 일정 문서가 맡고, 색인은 이 문서가 대체한다. 미정 항목의 인용은 해당 Issue로 바꿨다(공격 속성 축은 #357, 시야·엄폐는 #358, 전투 템포는 #204).
+- `M5_VERIFICATION`의 후속 검증(정상 9전투 연속 진행, 확인 창 포커스 오류)은 Issue에 없어서 `cb0a505`의 보존본 링크로 연결했다.
 
 ### 3-6. 이미지
 
@@ -121,7 +119,7 @@
 2. 문서 링크 검사 스크립트 추가(`scripts/check_doc_links.py`, `make repository-check`에 포함).
 3. 삭제 예정 문서와 이미지 삭제. 삭제 전에 인용 위치를 `grep`으로 점검하고 링크를 정리한다.
    - 3a: `ROADMAP`을 뺀 문서 7개와 이미지 10개 삭제(완료). `THIRD_PARTY_NOTICES.md`의 캡처 행도 지웠다.
-   - 3b: `ROADMAP` 삭제. #558·#559 병합 뒤에 한다.
+   - 3b: `ROADMAP` 삭제(완료). #558·#559가 병합돼 두 `개발 결정`은 각 Issue에 있고, 게임 비전 보류는 #200 「Out of scope」에 있다.
 4. 문서 이동과 하위폴더 `README.md` 작성. 개발 PR이 `docs/`를 고치기 전에 끝낸다. 경로를 바꿔야 하는 곳은 `AGENTS.md`, `REVIEW.md`, `CONTRIBUTING.md`, `GLOSSARY.md`, 루트 `README.md`, `agents/domain.md`, `agents/review.md`, `THIRD_PARTY_NOTICES.md`, 코드의 경로 문자열(스크립트·테스트 주석)이다. 코드가 `docs/` 아래 파일을 읽지는 않는다. 링크 검사가 보지 못하는 곳(`scripts/test_*.py`의 경로, 링크가 아닌 평문 경로)은 `grep`으로 따로 확인한다.
 5. `WORKFLOW.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`의 마커·개발 결정 문장 수정, 구현 상태 표기 위치 결정, `DICE_GROWTH` 축소, `characters/`·`monsters/` 표 동기화.
 

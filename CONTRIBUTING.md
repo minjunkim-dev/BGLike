@@ -85,7 +85,7 @@
 | [docs/GIT_CONVENTIONS.md](docs/GIT_CONVENTIONS.md) | 브랜치 이름, 커밋 메시지 |
 | [코딩 규칙](docs/coding-standards.md), [독립 리뷰 절차](docs/agents/review.md) | Standards·Spec·Security 리뷰, 검사 근거와 사용자 요청 회고 |
 | [Draft Release 절차](docs/DRAFT_RELEASE.md) | 미공개 Draft CD와 최종 head 승인 |
-| `docs/` 기획 문서 | 로드맵, 전투 기획서, 개발 요청서 |
+| `docs/` 기획 문서 | 전투 기획서, 개발 요청서 |
 | [GLOSSARY.md](GLOSSARY.md) | 용어집. 코드, 문서, 대화에서 같은 말을 씁니다 |
 
 - **문서는 "무엇이 정답인가"(규칙, 수치), Issue는 "지금 무엇을 하는가"(진행, 결정 기록)**입니다.
