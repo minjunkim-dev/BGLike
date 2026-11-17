@@ -4,7 +4,7 @@
 >
 > - 기준일: 2026-10-23 (#321 능력치·주사위 대결 동기화)
 > - **개정 안내 (2026-10-27)**: 능력치(자연 → 건강)와 판정(명중굴림·내성굴림, AC·DC)이 [능력치와 주사위 판정 기획서](../ABILITY_SYSTEM.md)로 개정되었습니다. 개정은 [#377](https://github.com/minjunkim-labs/BGLike/issues/377)에서 구현했고 이 문서의 능력치 항목도 개정에 맞췄습니다. 판정 규칙은 기획서가 기준입니다.
-> - 관련 문서: [캐릭터 디자인 기획서](../characters/README.md) · [기획 로드맵 8장](../ROADMAP.md#8-m5-콘텐츠-기획) · [게임 구조 기획서](../GAME_STRUCTURE.md) · [전투 시스템 기획서](../COMBAT_DESIGN.md)
+> - 관련 문서: [캐릭터 디자인 기획서](../characters/README.md) · [게임 구조 기획서](../GAME_STRUCTURE.md) · [전투 시스템 기획서](../COMBAT_DESIGN.md)
 > - 결정 근거: [Issue #99 세부 결정 기록](https://github.com/minjunkim-labs/BGLike/issues/99#issuecomment-6182272879)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
 
