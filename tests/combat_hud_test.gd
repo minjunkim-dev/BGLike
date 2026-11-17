@@ -87,6 +87,8 @@ func _run() -> void:
 	await _test_camera_during_enemy_turn()
 	await _test_reaction_flow()
 	await _test_reaction_focus()
+	_test_presentation_speed()
+	await _test_presentation_move_time()
 	await _test_action_animations()
 	var previous_fps: int = Engine.max_fps
 	var previous_scale: float = Engine.time_scale
@@ -1215,6 +1217,23 @@ func _test_layout() -> void:
 			_check(not combat_log.intersects(skills) and not combat_log.intersects(details)
 				and not combat_log.intersects(end_turn) and not end_turn.intersects(details),
 				"%s: 전투 로그·턴 종료·스킬·유닛 정보는 서로 겹치지 않음" % size)
+			# #618: 맵 중앙 영역 C(#555)는 F(화면 가운데에서 위로 20)를 가운데로 한 128×64다. 어떤 HUD도 C와 겹치지 않는다.
+			var center_area: Rect2 = Rect2(area.get_center() - Vector2(0, 20) - Vector2(64, 32), Vector2(128, 64))
+			if size == Vector2i(1280, 720):
+				_check(center_area == Rect2(256, 128, 128, 64), "640×360의 맵 중앙 영역 C는 (256, 128, 128, 64): %s" % center_area)
+			var order_scroll: Rect2 = (hud.get_node("OrderScroll") as Control).get_global_rect()
+			var order_divider: Rect2 = (hud.get_node("OrderDivider") as Control).get_global_rect()
+			# 바는 C 왼쪽 끝(F.x − 64)까지이고 1 논리px 구분선이 그 끝에 붙는다.
+			_check(is_equal_approx(order_divider.end.x, center_area.position.x)
+				and is_equal_approx(order_scroll.end.x, order_divider.position.x),
+				"%s: 턴 순서 바와 구분선은 C 왼쪽 끝에서 끝남 %s %s / %s" % [size, order_scroll, order_divider, center_area])
+			# 일어나기 버튼은 넘어진 아군 차례에만 보이지만 자리는 늘 같다.
+			_check(hud.stand_button.get_global_rect().size.y > 0 and hud.stand_button.get_global_rect().end.x > area.size.x * 0.5,
+				"%s: 숨긴 일어나기 버튼도 오른쪽 아래 자리를 가짐 %s" % [size, hud.stand_button.get_global_rect()])
+			var center_hud: Array[Rect2] = [order_scroll, order_divider, details, combat_log, skills, end_turn,
+				hud.preview_label.get_global_rect(), hud.stand_button.get_global_rect()]
+			for rect: Rect2 in center_hud:
+				_check(not rect.intersects(center_area), "%s %s: HUD가 맵 중앙 영역 C와 겹치지 않음 %s / %s" % [size, kind, rect, center_area])
 			# 아래 HUD는 화면 아래 절반 안에 두어 지도 가운데를 가리지 않는다.
 			for bottom: Rect2 in [skills, combat_log, end_turn]:
 				_check(bottom.position.y >= area.size.y * 0.5, "%s %s: 아래 HUD 높이 제한 %s" % [size, kind, bottom])
@@ -2384,6 +2403,8 @@ func _tab(backwards: bool = false) -> void:
 
 
 func _test_order_bar_input() -> void:
+	# #618: 바가 F.x − 65에서 끝나 640 폭에서는 초상 4개가 바를 채운다. 빈 영역이 생기는 넓은 창(논리 폭 1147)에서 검사한다.
+	root.size = Vector2i(3440, 1080)
 	_reset_units()
 	units[0].cell = Vector2i(4, 4)
 	units[1].cell = Vector2i(0, 0)
@@ -2428,6 +2449,8 @@ func _test_order_bar_input() -> void:
 		"제거한 설명 패널 자리는 월드 입력을 가로막지 않음")
 	camera.position = original
 	camera.force_update_scroll()
+	root.size = Vector2i(1280, 720)
+	await process_frame
 
 
 func _test_transparent_order_input() -> void:
@@ -2480,6 +2503,16 @@ func _test_camera() -> void:
 		var home: Vector2 = camera.position
 		var cell_point: Callable = func(cell: Vector2i) -> Vector2:
 			return map.get_global_transform_with_canvas() * map.map_to_local(cell)
+		# #618: 처음 화면과 C 되돌리기는 맵 가운데를 기준점 F(화면 가운데에서 위로 20)에 둔다.
+		var map_center: Callable = func() -> Vector2:
+			var last: Vector2 = Vector2(map.get_used_rect().size - Vector2i.ONE)
+			var origin: Vector2 = map.map_to_local(Vector2i.ZERO)
+			var point: Vector2 = origin + (map.map_to_local(Vector2i.RIGHT) - origin) * last.x / 2.0 \
+				+ (map.map_to_local(Vector2i.DOWN) - origin) * last.y / 2.0
+			return map.get_global_transform_with_canvas() * point
+		var focus: Vector2 = root.get_visible_rect().size / 2.0 - Vector2(0, 20)
+		_check((map_center.call() as Vector2).distance_to(focus) <= 1.0,
+			"처음 화면은 맵 가운데를 기준점 F(화면 가운데에서 위로 20)에 둠: %s / %s" % [map_center.call(), focus])
 		var anchor: Vector2 = cell_point.call(Vector2i(5, 4))
 		var portraits: Dictionary = hud.get("_portraits")
 		await _wheel((portraits[units[0]] as Button).get_global_rect().get_center(), MOUSE_BUTTON_WHEEL_UP)
@@ -2540,6 +2573,8 @@ func _test_camera() -> void:
 			return visible.has_point(cell_point.call(cell))), "맵을 멀리 끌어도 칸이 화면에 남음: %s" % window_size)
 		await _key(KEY_C)
 		_check(camera.zoom == Vector2.ONE and camera.position == home, "C는 1배 가운데로 되돌림: %s" % window_size)
+		_check((map_center.call() as Vector2).distance_to(focus) <= 1.0,
+			"C로 되돌린 맵 가운데는 기준점 F에 옴: %s" % window_size)
 		await _wheel(anchor, MOUSE_BUTTON_WHEEL_DOWN)
 		_check(camera.zoom == Vector2.ONE and camera.position == home, "1배보다 축소하지 않음: %s" % window_size)
 		var gesture: InputEventPanGesture = InputEventPanGesture.new()
@@ -3015,7 +3050,7 @@ func _test_spawned_portrait_input() -> void:
 		await process_frame
 		return
 	# 포인터로 오른쪽 끝까지 이동한 뒤 가려졌던 아군 초상을 선택한다.
-	for step: int in range(16):
+	for step: int in range(40):
 		await _click(Vector2(80, 50), MOUSE_BUTTON_WHEEL_RIGHT)
 	await _click((portraits[units[0]] as Button).get_global_rect().get_center())
 	_check(turns.current_unit == units[0] and hud.unit_label.text == "아군 전사",
@@ -3023,7 +3058,7 @@ func _test_spawned_portrait_input() -> void:
 	_check(resources == [units[0].movement_left, units[0].action_left, units[0].bonus_action_left,
 		units[0].reaction_left, units[1].movement_left, units[1].action_left,
 		units[1].bonus_action_left, units[1].reaction_left], "소환 후 아군 초상 전환은 두 아군 턴 자원 보존")
-	for step: int in range(16):
+	for step: int in range(40):
 		await _click(Vector2(80, 50), MOUSE_BUTTON_WHEEL_LEFT)
 	var enemy: CombatUnit = turns.ordered_units.front()
 	await _click((portraits[enemy] as Button).get_global_rect().get_center())
@@ -3573,3 +3608,52 @@ func _test_reaction_focus() -> void:
 	hud.reaction_selected.disconnect(on_choice)
 	root.focus_entered.disconnect(on_parent_focus)
 	hud.begin_stage(1, 1)
+
+
+## #622: 전체 속도 계수의 환산과 적용 범위.
+func _test_presentation_speed() -> void:
+	var speed: float = CombatPresentation.PRESENTATION_SPEED
+	_check(speed >= 0.5 and speed <= 0.75, "전체 속도 계수는 Issue가 정한 0.5~0.75 안: %s" % speed)
+	_check(is_equal_approx(CombatPresentation.duration(0.09), 0.09 / speed), "시간은 계수로 나눠 늘어남")
+	_check(is_equal_approx(CombatPresentation.fps(24.0), 24.0 * speed), "fps는 계수를 곱해 느려짐")
+	var frames: SpriteFrames = units[0].get_node("Sprite").sprite_frames
+	for direction: String in ["left", "right"]:
+		_check(is_equal_approx(frames.get_animation_speed("move_" + direction), CombatPresentation.fps(24.0)),
+			"move 애니메이션 fps에 계수 적용: " + direction)
+		_check(is_equal_approx(frames.get_animation_speed("attack_" + direction), CombatPresentation.fps(12.0)),
+			"attack 애니메이션 fps에 계수 적용: " + direction)
+		_check(is_equal_approx(frames.get_animation_speed("idle_" + direction), 3.0),
+			"idle 애니메이션 fps는 그대로: " + direction)
+
+
+func _test_presentation_move_time() -> void:
+	_reset_units()
+	units[0].cell = Vector2i(4, 4)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(8, 8)
+	units[3].cell = Vector2i(9, 9)
+	battle.call("_update_turn_ui")
+	# 프레임 시간에 기대지 않고 이동 Tween을 멈춘 뒤 직접 진행시켜 길이를 잰다. 시간 재기는 CI의 긴 프레임에서 흔들린다.
+	var before: Array[Tween] = get_processed_tweens()
+	var finished: Array[bool] = [false]
+	battle.call("_animate_movement", units[0], Vector2i(4, 3))
+	var tween: Tween = null
+	for candidate: Tween in get_processed_tweens():
+		if candidate not in before:
+			tween = candidate
+	var base: float = battle.MOVE_STEP_TIME
+	var expected: float = CombatPresentation.duration(base)
+	_check(tween != null, "한 칸 이동은 Tween으로 움직임")
+	if tween != null:
+		tween.pause()
+		tween.finished.connect(func() -> void: finished[0] = true)
+		# 기대 길이 바로 앞까지 진행하면 아직 움직이고, 조금 더 가면 끝나야 한다.
+		var first: float = expected - 0.002
+		tween.custom_step(first)
+		_check(not finished[0], "한 칸 이동은 계수 적용 시간 %s초 직전까지 끝나지 않는다(기본 %s초)" % [expected, base])
+		# custom_step은 더하는 시간이라 남은 시간만 진행한다.
+		tween.custom_step(expected - first + 0.002)
+		_check(finished[0], "한 칸 이동은 계수 적용 시간 %s초 안에 끝난다" % expected)
+	await process_frame
+	await process_frame
+	_check(Engine.time_scale == 1.0, "전체 속도는 Engine.time_scale을 바꾸지 않음")

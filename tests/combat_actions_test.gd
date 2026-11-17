@@ -929,21 +929,21 @@ func _test_crate_stage() -> void:
 	await process_frame
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var units: Array[CombatUnit] = battle.get("units")
-	var crate: CombatGrid.Prop = actions.grid.prop_at(Vector2i(3, 4))
+	var crate: CombatGrid.Prop = actions.grid.prop_at(Vector2i(4, 9))
 	_check(crate != null and crate.hit_points == 6 and actions.get_props().size() == 2
-		and units.size() == 6, "실제1막1스테이지는 기존6유닛과(3,4)의 상자/(6,6)의 바위로 시작한다")
-	var rock: CombatGrid.Prop = actions.grid.prop_at(Vector2i(6, 6))
-	_check(rock != null and rock.kind == "rock" and actions.grid.water_cells == [Vector2i(5, 1)]
-		and actions.grid.pits == [Vector2i(6, 1)] and actions.grid.height_at(Vector2i(3, 0)) == 1
-		and actions.grid.height_at(Vector2i(4, 0)) == 2 and actions.grid.height_at(Vector2i(5, 0)) == 2,
+		and units.size() == 6, "실제1막1스테이지는 기존6유닛과(4,9)의 상자/(9,8)의 바위로 시작한다")
+	var rock: CombatGrid.Prop = actions.grid.prop_at(Vector2i(9, 8))
+	_check(rock != null and rock.kind == "rock" and actions.grid.water_cells == [Vector2i(7, 2), Vector2i(8, 2)]
+		and actions.grid.pits == [Vector2i(9, 2)] and actions.grid.height_at(Vector2i(0, 1)) == 1
+		and actions.grid.height_at(Vector2i(0, 2)) == 2 and actions.grid.height_at(Vector2i(1, 4)) == 2,
 		"실제 첫 전투에 승인한 바위/물/낭떠러지/높이1·2 대표지형을 배치한다")
 	if crate != null:
 		actions.incapacitate(units[0])
 		actions.incapacitate(units[1])
 		(battle.get("hud") as CombatTurnHud).restart_requested.emit()
-		var restored: CombatGrid.Prop = actions.grid.prop_at(Vector2i(3, 4))
+		var restored: CombatGrid.Prop = actions.grid.prop_at(Vector2i(4, 9))
 		_check(restored != null and restored != crate and restored.hit_points == 6
-			and actions.get_props().size() == 2 and actions.grid.prop_at(Vector2i(6, 6)) != rock,
+			and actions.get_props().size() == 2 and actions.grid.prop_at(Vector2i(9, 8)) != rock,
 			"막 재시작은 상자와 바위의 초기 위치/상자 내구도를 새로 복원한다")
 	scene.free()
 	await process_frame

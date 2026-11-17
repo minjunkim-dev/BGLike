@@ -5,8 +5,8 @@ extends Camera2D
 
 ## 정수 배율만 쓴다. 칸 끝이 화면 픽셀 경계에 남아 지형 원본의 이웃 칸을 읽지 않는다(docs/adr/0002).
 const ZOOMS: Array[float] = [1.0, 2.0]
-## 오른쪽 정보 패널만큼 맵 기준점을 화면 가운데에서 왼쪽 위로 옮긴다. 확대해도 화면에서 같은 거리다.
-const FOCUS_OFFSET: Vector2 = Vector2(100, 12)
+## 맵 기준점 F를 화면 가운데에서 위로 20 논리px에 둔다(#555, #618). 확대해도 화면에서 같은 거리다.
+const FOCUS_OFFSET: Vector2 = Vector2(0, 20)
 ## WASD 이동 속도(논리 화면 px/초).
 const PAN_SPEED: float = 240.0
 ## 트랙패드 두 손가락 이동 1단위의 논리 화면 px.
