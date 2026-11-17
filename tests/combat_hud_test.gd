@@ -87,6 +87,8 @@ func _run() -> void:
 	await _test_camera_during_enemy_turn()
 	await _test_reaction_flow()
 	await _test_reaction_focus()
+	_test_presentation_speed()
+	await _test_presentation_move_time()
 	await _test_action_animations()
 	var previous_fps: int = Engine.max_fps
 	var previous_scale: float = Engine.time_scale
@@ -3504,3 +3506,34 @@ func _test_reaction_focus() -> void:
 	hud.reaction_selected.disconnect(on_choice)
 	root.focus_entered.disconnect(on_parent_focus)
 	hud.begin_stage(1, 1)
+
+
+## #622: 전체 속도 계수의 환산과 적용 범위.
+func _test_presentation_speed() -> void:
+	var speed: float = CombatPresentation.PRESENTATION_SPEED
+	_check(speed >= 0.5 and speed <= 0.75, "전체 속도 계수는 Issue가 정한 0.5~0.75 안: %s" % speed)
+	_check(is_equal_approx(CombatPresentation.duration(0.09), 0.09 / speed), "시간은 계수로 나눠 늘어남")
+	_check(is_equal_approx(CombatPresentation.fps(24.0), 24.0 * speed), "fps는 계수를 곱해 느려짐")
+	var frames: SpriteFrames = units[0].get_node("Sprite").sprite_frames
+	for direction: String in ["left", "right"]:
+		_check(is_equal_approx(frames.get_animation_speed("move_" + direction), CombatPresentation.fps(24.0)),
+			"move 애니메이션 fps에 계수 적용: " + direction)
+		_check(is_equal_approx(frames.get_animation_speed("attack_" + direction), CombatPresentation.fps(12.0)),
+			"attack 애니메이션 fps에 계수 적용: " + direction)
+		_check(is_equal_approx(frames.get_animation_speed("idle_" + direction), 3.0),
+			"idle 애니메이션 fps는 그대로: " + direction)
+
+
+func _test_presentation_move_time() -> void:
+	_reset_units()
+	units[0].cell = Vector2i(4, 4)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(8, 8)
+	units[3].cell = Vector2i(9, 9)
+	battle.call("_update_turn_ui")
+	var started: int = Time.get_ticks_usec()
+	await battle.call("_animate_movement", units[0], Vector2i(4, 3))
+	var elapsed: float = (Time.get_ticks_usec() - started) / 1000000.0
+	var expected: float = CombatPresentation.duration(battle.MOVE_STEP_TIME)
+	_check(elapsed >= expected * 0.85, "한 칸 이동 시간이 계수로 늘어남: %s초 (기대 %s초 이상)" % [elapsed, expected * 0.85])
+	_check(Engine.time_scale == 1.0, "전체 속도는 Engine.time_scale을 바꾸지 않음")

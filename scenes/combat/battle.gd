@@ -8,6 +8,8 @@ const AIM_ACTIONS: Array[String] = ["oil_throw", "oil_bottle", "trick_arrow", "f
 ## 인접한 칸을 눌러 방향(정면)을 고르는 동작. 휩쓸기는 정면 반달, 효시는 세 줄 띠다.
 const FACING_ACTIONS: Array[String] = ["sweep", "whistle"]
 const ENEMY_PAUSE_TIME: float = 0.35
+## 근접 공격 뒤 기다리는 시간(기본값). 전체 속도 계수로 늘어난다.
+const MELEE_ATTACK_TIME: float = 1.0 / 6.0
 ## 적 턴에 Space를 누르고 있는 동안의 시간 배율. 규칙이 아니라 표시 속도다.
 const ENEMY_FAST_SPEED: float = 4.0
 
@@ -511,7 +513,7 @@ func _pause_enemy_action() -> void:
 		return
 	_enemy_acted = false
 	# 연출 타이머는 일시정지 메뉴가 열린 동안 멈춘다.
-	await get_tree().create_timer(ENEMY_PAUSE_TIME, false).timeout
+	await get_tree().create_timer(CombatPresentation.duration(ENEMY_PAUSE_TIME), false).timeout
 
 
 ## 적 턴의 첫 이동·공격 연출 전에 한 번 멈춰 행동할 적을 보여 준다.
@@ -521,7 +523,7 @@ func _show_enemy_action() -> void:
 	_enemy_acted = true
 	if not _enemy_shown:
 		_enemy_shown = true
-		await get_tree().create_timer(ENEMY_PAUSE_TIME, false).timeout
+		await get_tree().create_timer(CombatPresentation.duration(ENEMY_PAUSE_TIME), false).timeout
 
 
 ## 행동이 끝나 연출·반응 확인 창을 기다리지 않는 순간. 확정 전 입력(선택·미리보기)은 상태를 바꾸지 않는다.
@@ -958,10 +960,11 @@ func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
 	unit.face_toward(destination)
 	unit.is_moving = true
 	var tween: Tween = create_tween().set_parallel()
-	tween.tween_property(unit, "position", destination, MOVE_STEP_TIME)
-	tween.tween_property(unit, "floor_offset_y", map.map_to_surface(cell).y - destination.y, MOVE_STEP_TIME)
-	tween.tween_property(unit, "body_offset_y", -3.0, MOVE_STEP_TIME / 2.0)
-	tween.tween_property(unit, "body_offset_y", 0.0, MOVE_STEP_TIME / 2.0).from(-3.0).set_delay(MOVE_STEP_TIME / 2.0)
+	var step_time: float = CombatPresentation.duration(MOVE_STEP_TIME)
+	tween.tween_property(unit, "position", destination, step_time)
+	tween.tween_property(unit, "floor_offset_y", map.map_to_surface(cell).y - destination.y, step_time)
+	tween.tween_property(unit, "body_offset_y", -3.0, step_time / 2.0)
+	tween.tween_property(unit, "body_offset_y", 0.0, step_time / 2.0).from(-3.0).set_delay(step_time / 2.0)
 	await tween.finished
 	unit.position = destination
 	unit.body_offset_y = 0.0
@@ -974,7 +977,7 @@ func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
 		unit.face_toward(destination)
 		return
 	await _show_enemy_action()
-	var duration: float = MOVE_STEP_TIME * 2.0
+	var duration: float = CombatPresentation.duration(MOVE_STEP_TIME * 2.0)
 	var apex: float = -float(map.tile_set.tile_size.y)
 	unit.face_toward(destination)
 	unit.is_moving = true
@@ -1014,7 +1017,7 @@ func _animate_attack_at(actor: CombatUnit, destination: Vector2) -> void:
 	actor.face_toward(destination)
 	actor.play_attack()
 	if actor.kind != CombatUnit.Kind.ARCHER:
-		await get_tree().create_timer(1.0 / 6.0, false).timeout
+		await get_tree().create_timer(CombatPresentation.duration(MELEE_ATTACK_TIME), false).timeout
 		return
 	var arrow: Polygon2D = Polygon2D.new()
 	arrow.name = "Arrow"
@@ -1027,7 +1030,7 @@ func _animate_attack_at(actor: CombatUnit, destination: Vector2) -> void:
 	arrow.rotation = (destination - arrow.position).angle()
 	add_child(arrow)
 	var tween: Tween = create_tween()
-	tween.tween_property(arrow, "position", destination, ARROW_FLIGHT_TIME)
+	tween.tween_property(arrow, "position", destination, CombatPresentation.duration(ARROW_FLIGHT_TIME))
 	await tween.finished
 	arrow.queue_free()
 

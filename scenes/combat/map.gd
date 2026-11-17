@@ -16,6 +16,11 @@ var _loot_markers: Array[Node2D] = []
 var _unit_markers: Array[Node2D] = []
 var _height_edges: Array[Node2D] = []
 static var _edge_textures: Dictionary[String, Texture2D] = {}
+## 바위 굴림·사물 충격 연출의 기본 시간(초). 쓸 때 전체 속도 계수로 늘린다.
+const ROCK_MOVE_TIME: float = 0.14
+const ROCK_TILT_TIME: float = 0.07
+const ROCK_SHAKE_TIME: float = 0.035
+const IMPACT_FADE_TIME: float = 0.3
 const EDGE_FRONT: int = 2
 const EDGE_LIGHT: Color = Color(1.0, 0.95, 0.8, 0.55)
 const EDGE_DARK: Color = Color(0.06, 0.05, 0.04, 0.7)
@@ -170,7 +175,7 @@ func animate_prop(prop: CombatGrid.Prop, roll: CombatActions.RockRoll, can_conti
 		var tween: Tween = create_tween()
 		var origin: float = sprite.position.x
 		for offset: float in [-1.5, 1.5, -1.0, 0.0]:
-			tween.tween_property(sprite, "position:x", origin + offset, 0.035)
+			tween.tween_property(sprite, "position:x", origin + offset, CombatPresentation.duration(ROCK_SHAKE_TIME))
 		await tween.finished
 	else:
 		var pushed: Array[CombatUnit] = []
@@ -179,18 +184,18 @@ func animate_prop(prop: CombatGrid.Prop, roll: CombatActions.RockRoll, can_conti
 				break
 			var destination: Vector2 = map_to_local(step.cell) if step.advance else marker.position
 			var tween: Tween = create_tween().set_parallel(true)
-			tween.tween_property(marker, "position", destination, 0.14)
+			tween.tween_property(marker, "position", destination, CombatPresentation.duration(ROCK_MOVE_TIME))
 			tween.tween_property(sprite, "position:y", map_to_surface(step.cell).y - destination.y + 4.0
-				if step.advance else sprite.position.y, 0.14)
-			tween.tween_property(sprite, "skew", 0.15, 0.07)
+				if step.advance else sprite.position.y, CombatPresentation.duration(ROCK_MOVE_TIME))
+			tween.tween_property(sprite, "skew", 0.15, CombatPresentation.duration(ROCK_TILT_TIME))
 			# 밀리는 유닛은 바위와 같은 트윈으로 옮긴다. 칸·피해 판정은 연출 뒤 attack_prop이 한다.
 			if step.push and is_instance_valid(step.target):
 				var unit: CombatUnit = step.target
 				var landing: Vector2 = map_to_local(step.push_cell)
 				unit.is_moving = true
 				pushed.append(unit)
-				tween.tween_property(unit, "position", landing, 0.14)
-				tween.tween_property(unit, "floor_offset_y", map_to_surface(step.push_cell).y - landing.y, 0.14)
+				tween.tween_property(unit, "position", landing, CombatPresentation.duration(ROCK_MOVE_TIME))
+				tween.tween_property(unit, "floor_offset_y", map_to_surface(step.push_cell).y - landing.y, CombatPresentation.duration(ROCK_MOVE_TIME))
 			await tween.finished
 			if generation != revision or not can_continue.call():
 				break
@@ -231,7 +236,7 @@ func prop_impact(cell: Vector2i, broken: bool) -> void:
 	_prop_effects.append(effect)
 	effect.tree_exiting.connect(func() -> void: _prop_effects.erase(effect))
 	var tween: Tween = effect.create_tween()
-	tween.tween_property(effect, "modulate:a", 0.0, 0.3)
+	tween.tween_property(effect, "modulate:a", 0.0, CombatPresentation.duration(IMPACT_FADE_TIME))
 	tween.tween_callback(effect.queue_free)
 
 
