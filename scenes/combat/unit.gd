@@ -591,7 +591,7 @@ func _ready() -> void:
 		for direction: String in ["left", "right"]:
 			var animation: StringName = state + "_" + direction
 			_sprite.sprite_frames.add_animation(animation)
-			var speed: float = 3.0 if state == "idle" else (24.0 if state == "move" else 12.0)
+			var speed: float = 3.0 if state == "idle" else CombatPresentation.fps(24.0 if state == "move" else 12.0)
 			_sprite.sprite_frames.set_animation_speed(animation, speed)
 			_sprite.sprite_frames.set_animation_loop(animation, state != "attack")
 			for frame: int in range(2):

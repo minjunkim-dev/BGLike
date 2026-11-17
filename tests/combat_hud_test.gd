@@ -87,6 +87,8 @@ func _run() -> void:
 	await _test_camera_during_enemy_turn()
 	await _test_reaction_flow()
 	await _test_reaction_focus()
+	_test_presentation_speed()
+	await _test_presentation_move_time()
 	await _test_action_animations()
 	var previous_fps: int = Engine.max_fps
 	var previous_scale: float = Engine.time_scale
@@ -3606,3 +3608,52 @@ func _test_reaction_focus() -> void:
 	hud.reaction_selected.disconnect(on_choice)
 	root.focus_entered.disconnect(on_parent_focus)
 	hud.begin_stage(1, 1)
+
+
+## #622: 전체 속도 계수의 환산과 적용 범위.
+func _test_presentation_speed() -> void:
+	var speed: float = CombatPresentation.PRESENTATION_SPEED
+	_check(speed >= 0.5 and speed <= 0.75, "전체 속도 계수는 Issue가 정한 0.5~0.75 안: %s" % speed)
+	_check(is_equal_approx(CombatPresentation.duration(0.09), 0.09 / speed), "시간은 계수로 나눠 늘어남")
+	_check(is_equal_approx(CombatPresentation.fps(24.0), 24.0 * speed), "fps는 계수를 곱해 느려짐")
+	var frames: SpriteFrames = units[0].get_node("Sprite").sprite_frames
+	for direction: String in ["left", "right"]:
+		_check(is_equal_approx(frames.get_animation_speed("move_" + direction), CombatPresentation.fps(24.0)),
+			"move 애니메이션 fps에 계수 적용: " + direction)
+		_check(is_equal_approx(frames.get_animation_speed("attack_" + direction), CombatPresentation.fps(12.0)),
+			"attack 애니메이션 fps에 계수 적용: " + direction)
+		_check(is_equal_approx(frames.get_animation_speed("idle_" + direction), 3.0),
+			"idle 애니메이션 fps는 그대로: " + direction)
+
+
+func _test_presentation_move_time() -> void:
+	_reset_units()
+	units[0].cell = Vector2i(4, 4)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(8, 8)
+	units[3].cell = Vector2i(9, 9)
+	battle.call("_update_turn_ui")
+	# 프레임 시간에 기대지 않고 이동 Tween을 멈춘 뒤 직접 진행시켜 길이를 잰다. 시간 재기는 CI의 긴 프레임에서 흔들린다.
+	var before: Array[Tween] = get_processed_tweens()
+	var finished: Array[bool] = [false]
+	battle.call("_animate_movement", units[0], Vector2i(4, 3))
+	var tween: Tween = null
+	for candidate: Tween in get_processed_tweens():
+		if candidate not in before:
+			tween = candidate
+	var base: float = battle.MOVE_STEP_TIME
+	var expected: float = CombatPresentation.duration(base)
+	_check(tween != null, "한 칸 이동은 Tween으로 움직임")
+	if tween != null:
+		tween.pause()
+		tween.finished.connect(func() -> void: finished[0] = true)
+		# 기대 길이 바로 앞까지 진행하면 아직 움직이고, 조금 더 가면 끝나야 한다.
+		var first: float = expected - 0.002
+		tween.custom_step(first)
+		_check(not finished[0], "한 칸 이동은 계수 적용 시간 %s초 직전까지 끝나지 않는다(기본 %s초)" % [expected, base])
+		# custom_step은 더하는 시간이라 남은 시간만 진행한다.
+		tween.custom_step(expected - first + 0.002)
+		_check(finished[0], "한 칸 이동은 계수 적용 시간 %s초 안에 끝난다" % expected)
+	await process_frame
+	await process_frame
+	_check(Engine.time_scale == 1.0, "전체 속도는 Engine.time_scale을 바꾸지 않음")
