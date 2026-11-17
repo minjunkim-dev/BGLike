@@ -62,7 +62,7 @@ Git 기여 기록만으로 제3자 자료의 원저작권을 확정하지 않습
 | `scenes/ui/audio/ui_hover.ogg`, `ui_click.ogg`, `ui_cancel.ogg`, `ui_disabled.ogg` | 같은 #628. BGLike 자체 합성 칩튠풍 음. 버튼 호버·클릭·취소·사용 불가 | 위와 같음 |
 
 효과음의 CC0는 BGLike 자체 코드에 적용하지 않습니다.
-음원 조건: CC0·MIT·CC-BY만 쓰고 비상업(NC)·변경 금지(ND)는 쓰지 않습니다(2026-11-17 소유자 결정, #558). 지금 외부 원본은 Kenney의 CC0 소리(Impact Sounds, RPG Audio)뿐이라 출처 표시 의무가 있는 음원은 없습니다.
+음원 조건: CC0·MIT·CC-BY만 쓰고 비상업(NC)·변경 금지(ND)는 쓰지 않습니다(2026-11-17 소유자 결정, #558). 지금 외부 원본은 Kenney의 CC0 소리(Impact Sounds, RPG Audio)와 아래 [현재 추적된 배경음](#현재-추적된-배경음)의 CC0 네 곡뿐이라 출처 표시 의무가 있는 음원은 없습니다.
 
 ## 현재 추적된 배경음
 
