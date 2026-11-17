@@ -36,7 +36,7 @@ class DraftVerificationTests(unittest.TestCase):
         (source / "SHA256SUMS").write_text(f"{hashlib.sha256(archive.read_bytes()).hexdigest()}  {archive.name}\n")
         self.data = {index: path.read_bytes() for index, path in enumerate(sorted(source.iterdir()), 1)}
         self.api = API()
-        self.api.repo = "minjunkim-dev/BGLike"
+        self.api.repo = "minjunkim-labs/BGLike"
         assets = [{"id": index, "name": path.name, "size": len(self.data[index]), "state": "uploaded",
                    "digest": "sha256:" + hashlib.sha256(self.data[index]).hexdigest()}
                   for index, path in enumerate(sorted(source.iterdir()), 1)]

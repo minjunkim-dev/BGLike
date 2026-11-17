@@ -15,7 +15,7 @@ from package_pck import command
 
 
 class GitHub:
-    repo = "minjunkim-dev/BGLike"
+    repo = "minjunkim-labs/BGLike"
 
     def request(self, method, path):
         if method != "GET":
