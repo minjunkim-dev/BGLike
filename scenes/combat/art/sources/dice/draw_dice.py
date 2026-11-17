@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draw the dice state pictures (docs/DICE_PRESENTATION.md, 도트 디자인 절).
+"""Draw the dice state pictures (docs/design/combat/dice-presentation.md, 도트 디자인 절).
 
 Usage:
     python3 scenes/combat/art/sources/dice/draw_dice.py <output-directory>
@@ -40,7 +40,7 @@ PURPLE_GLASS = (0x1A, 0x10, 0x24)
 CRACK = (0xB8, 0x92, 0x3E)
 SHEET_BACKGROUND = (0x21, 0x22, 0x3D)
 SCALE = 4
-# Example margins for the success and failure cells of the sheet (docs/DICE_PRESENTATION.md).
+# Example margins for the success and failure cells of the sheet (docs/design/combat/dice-presentation.md).
 SHEET_MARGINS = {"success": 2, "failure": -3}
 GAUGE_RANGE = 6
 

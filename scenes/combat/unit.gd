@@ -6,7 +6,7 @@ enum Kind { WARRIOR = 0, ARCHER = 1, SPIDERLING = 2, MOTHER_SPIDER = 3, SCRAP_RO
 enum TurnResource { ACTION, BONUS_ACTION, REACTION }
 enum Ability { STRENGTH, AGILITY, FINESSE, INTELLIGENCE, WILL, HEALTH }
 
-## 능력치 기획서(ABILITY_SYSTEM.md) 6-1의 전사·궁수 주사위 (#386).
+## 능력치 기획서(docs/design/combat/ability.md) 6-1의 전사·궁수 주사위 (#386).
 ## 전사의 의지는 재디자인(#423)에서 d8이다.
 const ALLY_ABILITY_SIDES: Array[Array] = [[20, 8, 6, 4, 8, 12], [6, 12, 20, 6, 4, 8]]
 ## 아이템 `stats`의 능력치 가감 키. 순서는 Ability와 같다.
