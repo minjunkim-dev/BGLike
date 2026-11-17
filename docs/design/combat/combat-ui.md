@@ -297,12 +297,12 @@
 - 적용: 이동 한 칸 0.09초(약 0.129초), 점프(한 칸의 2배), 화살 0.16초(약 0.229초), 근접 공격 대기 1/6초(약 0.238초), 적 행동 전후 멈춤 0.35초(0.5초), 바위 굴림의 이동 0.14초·기울기 0.07초·흔들림 0.035초, 사물 충격 페이드 0.3초, 행동 유닛 강조 0.2초. 스프라이트 move·attack fps도 곱한다(24→16.8, 12→8.4). idle 3fps는 그대로다.
 - 적용하지 않음: 피해 팝업 0.8초([#151](https://github.com/minjunkim-dev/BGLike/issues/151)), 주사위 시간([#488](https://github.com/minjunkim-dev/BGLike/issues/488)·[#514](https://github.com/minjunkim-dev/BGLike/issues/514)·[#519](https://github.com/minjunkim-dev/BGLike/issues/519) 결정), 턴 순서 바 재배열 0.25초와 호버 0.5초(HUD), 카메라 따라가기 0.4초(2절), WASD(4절).
 - 4배속은 그 위에 곱한다. 적 턴 4배속은 지금 원래 속도의 약 2.8배가 된다.
-- 방식: `Engine.time_scale`을 0.7로 낮추지 않는다. 4배속과 WASD 보정이 이미 `Engine.time_scale`을 쓰므로, 그러면 팝업·주사위·호버 시간까지 함께 느려진다([DICE_PRESENTATION](dice-presentation.md)의 "전역 시간을 바꾸지 않는다"와 같은 이유). 시간마다 따로 값을 두는 방식은 조정할 곳이 여러 개라 택하지 않았다.
+- 방식: `Engine.time_scale`을 0.7로 낮추지 않는다. 4배속과 WASD 보정이 이미 `Engine.time_scale`을 쓰므로, 그러면 팝업·주사위·호버 시간까지 함께 느려진다([dice-presentation.md](dice-presentation.md)의 "전역 시간을 바꾸지 않는다"와 같은 이유). 시간마다 따로 값을 두는 방식은 조정할 곳이 여러 개라 택하지 않았다.
 - 플레이로 볼 것: 0.7에서 아군 턴이 답답하지 않은지, 0.5·0.6·0.75와 비교한다. 적 턴은 4배속으로 줄일 수 있다.
 
 ### 하위 티켓 제안
 
-1. 전체 속도 계수: `PRESENTATION_SPEED`와 적용 상수·fps 변경, [COMBAT_DESIGN](combat.md) 9-7·[PIXEL_ART](../pixel-art.md)·#221 단락 수치 갱신, 플레이로 값 확정. 막힘 없음.
+1. 전체 속도 계수: `PRESENTATION_SPEED`와 적용 상수·fps 변경, [combat.md](combat.md) 9-7·[pixel-art.md](../pixel-art.md)·#221 단락 수치 갱신, 플레이로 값 확정. 막힘 없음.
 2. 발밑 칸 표시(1절). 막힘 없음.
 3. 카메라 따라가기(2~4절). [#555](https://github.com/minjunkim-dev/BGLike/issues/555)의 맵 기준점 F·C 구현 뒤에 한다(따라갈 목표가 F다). 1번 뒤에 한다(적 행동 멈춤 0.5초가 카메라 기다림과 맞물린다).
 4. 직접 플레이로 확인하고 상태를 구현됨으로 바꾸고 #516을 닫는다. 1~3번 뒤에 한다.

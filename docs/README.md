@@ -4,7 +4,7 @@
 
 > **정리 중입니다.** 문서·이미지는 모두 옮겼고 `GIT_CONVENTIONS`만 4b에서 옮깁니다. 정리가 끝나면 4장 "정리 계획"을 삭제합니다.
 >
-> 2장 규칙 2의 마커·개발 결정 문장은 아직 적용하지 않습니다. 4장 5단계가 `WORKFLOW.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`를 고치기 전까지는 그 문서들이 우선합니다.
+> 2장 규칙 2의 마커·개발 결정 문장은 아직 적용하지 않습니다. 4장 5단계가 `process/workflow.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`를 고치기 전까지는 그 문서들이 우선합니다.
 
 ## 1. 폴더 헌장
 
@@ -137,7 +137,7 @@
      - 검증: `make repository-check`의 링크 검사를 통과해야 한다. `GIT_CONVENTIONS.md`를 가리키는 링크가 모두 `process/git-conventions.md`로 풀려야 한다.
      - 4a와 4b 사이에는 `docs/GIT_CONVENTIONS.md`가 `docs/` 최상위에 남는다(규칙 4의 일시 예외).
    - 열린 개발 브랜치는 이동 PR이 병합된 뒤 `main`을 병합한다. 문서·이미지의 이름 변경은 git이 따라간다. 옛 경로로 쓴 링크나 새로 추가한 파일은 작성자가 고친다. 링크와 `docs/…` 경로는 링크 검사가 실패로 알려 주지만, 마크다운 본문의 백틱 경로와 문서 이름 평문은 검사가 못 보므로 `main`을 병합한 각 브랜치에서도 위의 `grep`을 돌린다.
-5. `WORKFLOW.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`의 마커·개발 결정 문장 수정, 구현 상태 표기 위치 결정, `DICE_GROWTH` 축소, `characters/`·`monsters/` 표 동기화.
+5. `process/workflow.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`의 마커·개발 결정 문장 수정, 구현 상태 표기 위치 결정, `design/growth/dice-growth.md` 축소, `characters/`·`monsters/` 표 동기화.
 
 ## 미정
 
