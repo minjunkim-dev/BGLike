@@ -2,10 +2,10 @@
 
 > 일반 등급의 지원 몬스터입니다. 독안개 장판을 두 곳 엇갈려 유지하며 아군 캐릭터의 자리를 압박하고, 독안개가 모두 차 있는 턴에는 다가가 약하게 공격합니다.
 >
-> - 기준일: 2026-11-02 ([#305 기획자 답변](https://github.com/minjunkim-dev/BGLike/issues/305#issuecomment-6581920839), [#207](https://github.com/minjunkim-dev/BGLike/issues/207))
+> - 기준일: 2026-11-02 ([#305 기획자 답변](https://github.com/minjunkim-labs/BGLike/issues/305#issuecomment-6581920839), [#207](https://github.com/minjunkim-labs/BGLike/issues/207))
 > - 관련 문서: [몬스터 디자인 기획서](README.md) · [엄마 거미](mother-spider.md) · [새끼 거미](spiderling.md) · [동작 유형 기획서](../SKILL_TYPES.md) · [능력치 기획서](../ABILITY_SYSTEM.md) · [전투 시스템 기획서 6-6](../COMBAT_DESIGN.md#6-6-독안개-장판) · [스테이지 배치](../stages/README.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전, 시험값 포함) · ❓ 정해야 함
-> - **상태: 기획 확정, 독안개 거미 몬스터와 AI 구현됨([#462](https://github.com/minjunkim-dev/BGLike/issues/462)), 3막 스테이지 1 배치 구현됨([#463](https://github.com/minjunkim-dev/BGLike/issues/463)).** 구현은 [칸 조준·곡사·반경(기준점 목표 칸) 도입](../SKILL_TYPES.md#9-정해야-할-것) → 칸 효과 → 독안개 거미와 AI → 3막 스테이지 1 교체 순서로 Issue를 나눕니다. 수치는 모두 시험값이며 확정은 [#205](https://github.com/minjunkim-dev/BGLike/issues/205)에서 합니다.
+> - **상태: 기획 확정, 독안개 거미 몬스터와 AI 구현됨([#462](https://github.com/minjunkim-labs/BGLike/issues/462)), 3막 스테이지 1 배치 구현됨([#463](https://github.com/minjunkim-labs/BGLike/issues/463)).** 구현은 [칸 조준·곡사·반경(기준점 목표 칸) 도입](../SKILL_TYPES.md#9-정해야-할-것) → 칸 효과 → 독안개 거미와 AI → 3막 스테이지 1 교체 순서로 Issue를 나눕니다. 수치는 모두 시험값이며 확정은 [#205](https://github.com/minjunkim-labs/BGLike/issues/205)에서 합니다.
 
 ---
 
@@ -70,7 +70,7 @@
 - 지정할 수 있는 칸: 맵 안의 **막히지 않은 바닥**. 높이와 점유 여부는 무관하고, 상자·바위 같은 환경 오브젝트가 있는 칸도 가능합니다 ([동작 유형 기획서 5-2](../SKILL_TYPES.md#5-2-곡사의-목표-칸-)). 막힌 칸, 낭떠러지, 벽, 맵 밖은 고를 수 없고 영역에서도 제외합니다.
 - 영역: 지정 칸 바닥과 **높이 차이 1 이하**인 칸만 포함합니다 ([전투 기획서 6-4](../COMBAT_DESIGN.md#6-4-범위-스킬의-첫-모양과-높이)). 중간 칸의 높이와 벽은 보지 않습니다.
 - 거리는 장애물을 보지 않는 맨해튼 거리(상하좌우 합)입니다. 걷기 경로 길이가 아닙니다.
-- 지금 코드는 상자·바위 칸에 장판을 만들지 않습니다. 독안개가 물체 칸을 허용하므로 이 차이는 `개발 결정`([#466](https://github.com/minjunkim-dev/BGLike/issues/466))으로 처리합니다: 칸 조준의 영역 계산은 `props_block=false`로 상자·바위 칸을 포함합니다. 기존 반경 영역 계산(회전회오리 등)은 기본값 `true`로 그대로 물체 칸을 뺍니다. 장판을 실제로 놓는 칸 효과 구현은 후속 Issue입니다.
+- 지금 코드는 상자·바위 칸에 장판을 만들지 않습니다. 독안개가 물체 칸을 허용하므로 이 차이는 `개발 결정`([#466](https://github.com/minjunkim-labs/BGLike/issues/466))으로 처리합니다: 칸 조준의 영역 계산은 `props_block=false`로 상자·바위 칸을 포함합니다. 기존 반경 영역 계산(회전회오리 등)은 기본값 `true`로 그대로 물체 칸을 뺍니다. 장판을 실제로 놓는 칸 효과 구현은 후속 Issue입니다.
 
 ### 독안개 장판의 효과와 지속 ✅
 
@@ -137,10 +137,10 @@
 | # | 항목 | 비고 |
 |---|---|---|
 | 1 | 수치 전반: HP, 능력치, DC 보정 | #205. 시험값 DC 8에서 궁수는 저항 12.5% |
-| 2 | 독 면역 속성의 구현 위치 | `개발 결정` ✅ ([#460](https://github.com/minjunkim-dev/BGLike/issues/460)): 몬스터 정의 속성(기절 면역과 같은 방식). 내성굴림 생략, 독 부여 거부, 로그 생략, 경로 비용 0이 모두 이 속성을 봄 |
-| 3 | 겹침 회피 이후에도 최소 겹침으로 시전하는 규칙의 로그·미리보기 | `개발 결정` ✅ ([#460](https://github.com/minjunkim-dev/BGLike/issues/460)): 별도 로그·미리보기 없이 기존 시전 줄(`독안개 시전: x, y · DC n`)과 대상별 내성굴림 로그만 남김. 영역 미리 강조와 지연 연출은 없음 |
+| 2 | 독 면역 속성의 구현 위치 | `개발 결정` ✅ ([#460](https://github.com/minjunkim-labs/BGLike/issues/460)): 몬스터 정의 속성(기절 면역과 같은 방식). 내성굴림 생략, 독 부여 거부, 로그 생략, 경로 비용 0이 모두 이 속성을 봄 |
+| 3 | 겹침 회피 이후에도 최소 겹침으로 시전하는 규칙의 로그·미리보기 | `개발 결정` ✅ ([#460](https://github.com/minjunkim-labs/BGLike/issues/460)): 별도 로그·미리보기 없이 기존 시전 줄(`독안개 시전: x, y · DC n`)과 대상별 내성굴림 로그만 남김. 영역 미리 강조와 지연 연출은 없음 |
 | 4 | 칸 조준·곡사·반경(기준점 목표 칸) 도입 | **선행 Issue로 분리** ✅. 독안개 거미 Issue는 그 뒤에 걸기 |
 | 5 | 이펙트의 구체적인 모양·에셋 | [픽셀 아트 기준](../PIXEL_ART.md)에 맞춰 나중에 |
 | 6 | 불 장판 공급원 | 이후 기획. 풋내기 스테이지의 공급원 공백은 이번 M7에서 허용 ✅. 화상은 고철로봇 과부하 패시브로 정함 ([고철로봇-1000](scrap-robot-1000.md#스킬-)) |
-| 7 | 겹친 칸의 만료 시계와 굴림 횟수 | `개발 결정` ✅ ([#460](https://github.com/minjunkim-dev/BGLike/issues/460), [#461](https://github.com/minjunkim-dev/BGLike/issues/461)): 시전마다 칸 기록을 따로 두고 각자 소멸, 굴림은 칸 단위 한 번. 시전 기록(AI 기억)의 저장 위치는 AI 구현 Issue에서 정함 |
-| 8 | 가장 가까운 아군의 거리 기준과 동률 | `개발 결정` ✅ ([#460](https://github.com/minjunkim-dev/BGLike/issues/460)): 걷기 경로 거리, 동률은 공통 적 AI 규칙([전투 기획서 7장](../COMBAT_DESIGN.md#7-적-ai)) |
+| 7 | 겹친 칸의 만료 시계와 굴림 횟수 | `개발 결정` ✅ ([#460](https://github.com/minjunkim-labs/BGLike/issues/460), [#461](https://github.com/minjunkim-labs/BGLike/issues/461)): 시전마다 칸 기록을 따로 두고 각자 소멸, 굴림은 칸 단위 한 번. 시전 기록(AI 기억)의 저장 위치는 AI 구현 Issue에서 정함 |
+| 8 | 가장 가까운 아군의 거리 기준과 동률 | `개발 결정` ✅ ([#460](https://github.com/minjunkim-labs/BGLike/issues/460)): 걷기 경로 거리, 동률은 공통 적 AI 규칙([전투 기획서 7장](../COMBAT_DESIGN.md#7-적-ai)) |

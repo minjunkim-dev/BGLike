@@ -3,7 +3,7 @@
 박스·바위·벽·나무·집·물·낭떠러지가 이동, 시선, 파괴, 굴리기, 장판에 어떻게 반응하는지 정한 문서입니다.
 
 - 관련 규칙: [게임 구조 기획서 6장](GAME_STRUCTURE.md#6-사각-높이-격자)(높이·점프·강제 이동·환경 오브젝트), [전투 기획서 6장](COMBAT_DESIGN.md#6-상태-이상)(장판·기절·속성), [동작 유형 기획서 5장](SKILL_TYPES.md#5-전달-방식-근접-직사-곡사)(직사·곡사), [맵 기준](TERRAIN_MAPS.md)(배치).
-- 구현 상태: 1~6장은 [#529](https://github.com/minjunkim-dev/BGLike/issues/529)(#534·#542·#571·#573)에서 모두 구현했습니다. 2-2의 직사 시선 차단만 미정·개발 금지입니다([#358](https://github.com/minjunkim-dev/BGLike/issues/358)). 3-6의 기대 개수는 기름병 아이템이 들어간 뒤의 값입니다. [#575](https://github.com/minjunkim-dev/BGLike/issues/575)에서 기름병(비중 1)이 들어가 지금 드랍 풀은 무기 2·방어구 2·회복 물약 3·기름병 1입니다. 그 밖의 규칙은 지금 코드(`scenes/combat/grid.gd`, `stage.gd`, `actions.gd`)와 같습니다.
+- 구현 상태: 1~6장은 [#529](https://github.com/minjunkim-labs/BGLike/issues/529)(#534·#542·#571·#573)에서 모두 구현했습니다. 2-2의 직사 시선 차단만 미정·개발 금지입니다([#358](https://github.com/minjunkim-labs/BGLike/issues/358)). 3-6의 기대 개수는 기름병 아이템이 들어간 뒤의 값입니다. [#575](https://github.com/minjunkim-labs/BGLike/issues/575)에서 기름병(비중 1)이 들어가 지금 드랍 풀은 무기 2·방어구 2·회복 물약 3·기름병 1입니다. 그 밖의 규칙은 지금 코드(`scenes/combat/grid.gd`, `stage.gd`, `actions.gd`)와 같습니다.
 - 표기: 가능 · 불가 · – (해당 없음)
 
 ## 목차
@@ -130,7 +130,7 @@
 
 ### 3-5. 개발 결정 (#529)
 
-[#529](https://github.com/minjunkim-dev/BGLike/issues/529) 2단계를 구현하며 이 문서에 없던 세부를 정했습니다. 기획자가 나중에 바꿀 수 있습니다.
+[#529](https://github.com/minjunkim-labs/BGLike/issues/529) 2단계를 구현하며 이 문서에 없던 세부를 정했습니다. 기획자가 나중에 바꿀 수 있습니다.
 
 | 항목 | 개발 결정 |
 |---|---|
@@ -141,7 +141,7 @@
 | 줍지 않은 아이템 수 | 승리 순간 남은 수. 승리 뒤에도 다음 스테이지가 시작될 때까지 지우지 않아 보상 확인에서 이어해도 같은 수를 알림. 0개면 줄이 없음 |
 | 줍기 미리보기 | 걷기는 경로 전체, 점프는 착지 칸을 표시. 밀치기·끌기·강철 돌진·바위 밀림은 도착하는 쪽이 아군일 때만 기존 착지 안내에 `줍기`를 더함 |
 | 아이템 칸 마우스 오버 | 다른 미리보기가 없을 때 `바닥 아이템 · 종류 · 수치`를 대상 안내 칸에 보임 |
-| 드랍 풀 | 지금 풀은 무기 2·방어구 2·회복 물약 3이다. 아래 3-6의 기름병 비중 1은 기름병이 아이템 데이터에 생길 때 함께 들어감. 이 단계는 풀을 바꾸지 않음. → [#575](https://github.com/minjunkim-dev/BGLike/issues/575)에서 기름병(비중 1)이 들어가 지금 풀은 무기 2·방어구 2·회복 물약 3·기름병 1 |
+| 드랍 풀 | 지금 풀은 무기 2·방어구 2·회복 물약 3이다. 아래 3-6의 기름병 비중 1은 기름병이 아이템 데이터에 생길 때 함께 들어감. 이 단계는 풀을 바꾸지 않음. → [#575](https://github.com/minjunkim-labs/BGLike/issues/575)에서 기름병(비중 1)이 들어가 지금 풀은 무기 2·방어구 2·회복 물약 3·기름병 1 |
 | 저장 | 형식 8 → 9. [ADR 0003](adr/0003-save-files.md) |
 
 ### 3-6. 기대 개수
@@ -193,7 +193,7 @@
 
 - 미리보기는 화염 동작의 목표가 나무 칸이면 `나무가 타서 길이 열림`을 안내합니다. 로그는 `나무가 불탐: x, y`입니다.
 
-**개발 결정** ([#529](https://github.com/minjunkim-dev/BGLike/issues/529), 2026-11-15, 턴제 택티컬 게임의 관행):
+**개발 결정** ([#529](https://github.com/minjunkim-labs/BGLike/issues/529), 2026-11-15, 턴제 택티컬 게임의 관행):
 
 - 장난스러운 화살은 겨눈 뒤 지능 d6 결과가 정해지므로 나무 칸을 고를 수 있고, 결과가 화염일 때만 탑니다. 삐끗·물은 타지 않고 행동은 씁니다.
 - 폭죽 화살은 나무 칸을 중심으로 쏠 수 있고, 목표가 나무가 아니어도 영역 안의 서 있는 나무가 모두 탑니다. 영역은 평소처럼 중심과 높이 차 1 이하인 칸만 넣고, 벽·집·영역 밖 나무는 타지 않습니다.
@@ -243,7 +243,7 @@
 
 | 항목 | 임시 규칙 | 결정 Issue |
 |---|---|---|
-| 직사 시선의 경로 계산과 엄폐 | 2-2의 직사 시선 차단 열. 직사 동작이 없으므로 개발 금지 | [#358](https://github.com/minjunkim-dev/BGLike/issues/358) |
-| 박스·바위 칸의 장판 | 독안개는 영역에 포함, 불·독 장판은 생성 불가(현재 동작). 기름 장판도 그 칸에는 깔리지 않지만 기름병은 그 칸을 목표로 고를 수 있고 나머지 십자 칸에 깔림([#549](https://github.com/minjunkim-dev/BGLike/issues/549)) | [#529](https://github.com/minjunkim-dev/BGLike/issues/529) |
-| "벽"이라는 이름 | 이 문서의 벽은 무너진 벽 장식. 맵 가장자리는 "맵 가장자리"로 부름 | [#529](https://github.com/minjunkim-dev/BGLike/issues/529) |
-| 박스 드랍으로 늘어난 보상량 | 3-5의 값 그대로 | [#205](https://github.com/minjunkim-dev/BGLike/issues/205) |
+| 직사 시선의 경로 계산과 엄폐 | 2-2의 직사 시선 차단 열. 직사 동작이 없으므로 개발 금지 | [#358](https://github.com/minjunkim-labs/BGLike/issues/358) |
+| 박스·바위 칸의 장판 | 독안개는 영역에 포함, 불·독 장판은 생성 불가(현재 동작). 기름 장판도 그 칸에는 깔리지 않지만 기름병은 그 칸을 목표로 고를 수 있고 나머지 십자 칸에 깔림([#549](https://github.com/minjunkim-labs/BGLike/issues/549)) | [#529](https://github.com/minjunkim-labs/BGLike/issues/529) |
+| "벽"이라는 이름 | 이 문서의 벽은 무너진 벽 장식. 맵 가장자리는 "맵 가장자리"로 부름 | [#529](https://github.com/minjunkim-labs/BGLike/issues/529) |
+| 박스 드랍으로 늘어난 보상량 | 3-5의 값 그대로 | [#205](https://github.com/minjunkim-labs/BGLike/issues/205) |

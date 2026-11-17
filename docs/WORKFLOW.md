@@ -72,7 +72,7 @@ Draft CD의 실행 승인은 [Draft Release 절차](DRAFT_RELEASE.md)를 따릅�
 ## 검증과 보고
 
 모든 변경은 `git diff --check`와 `python3 -m unittest discover -s scripts -p 'test_*.py'`를 확인합니다. 워크플로 변경은 `actionlint`도 실행합니다.
-게임 코드·장면·리소스·프로젝트 설정 변경은 Godot headless import, 메인 장면과 기존 전투 회귀 검사를 실행합니다. 명령은 [README](https://github.com/minjunkim-dev/BGLike/blob/main/README.md), 검사 선택과 알 수 없는 변경의 전체 검사 경로는 [CI 구성](CI.md)을 따릅니다.
+게임 코드·장면·리소스·프로젝트 설정 변경은 Godot headless import, 메인 장면과 기존 전투 회귀 검사를 실행합니다. 명령은 [README](https://github.com/minjunkim-labs/BGLike/blob/main/README.md), 검사 선택과 알 수 없는 변경의 전체 검사 경로는 [CI 구성](CI.md)을 따릅니다.
 플레이 변경은 편집기 또는 macOS 창 실행에서 변경한 입력과 화면 흐름을 직접 확인합니다. 에이전트의 화면 확인은 기본으로 [화면 밖 실행](CAPTURE_VERIFICATION.md#화면-밖-실행-기본)을 쓰고 사용자의 macOS 화면 포커스를 가져가지 않습니다. 에이전트가 실제 OS 입력·Retina·Metal을 확인할 때는 `scripts/manual_qa.py --mode macos`와 [기존 사례](CAPTURE_VERIFICATION.md#실행-경로-선택)를 씁니다. 누가 체크박스를 처리하는지는 [확인 등급](CAPTURE_VERIFICATION.md#확인-등급)을 따릅니다. CI 성공으로 조작감이나 화면 가독성을 확인했다고 보고하지 않습니다.
 직접 확인을 시작하기 전에 대상 SHA·로컬 변경, 필수 사례·대표 해상도와 합격 기준을 고정합니다. 필수 사례의 입력·화면 증거가 모이면 종료합니다. 같은 입력에서 통과한 증거는 재사용합니다. 새 요청은 추가 범위로 기록하고 기존 사례를 전부 반복하지 않습니다. 임시 스크립트의 사전 검사와 실패·중단·재개는 [직접 확인 실행 기록](CAPTURE_VERIFICATION.md#직접-확인-실행-기록)을 따릅니다.
 문서·설정 변경은 해당 설정을 읽는 도구 또는 GitHub 흐름을 확인합니다. PR에는 실행한 검증과 미확인 범위를 구분합니다. 게임 동작 변경은 [확인 등급](CAPTURE_VERIFICATION.md#확인-등급)의 사람 판단 항목과 위임받지 않은 직접 조작 항목도 적습니다.
@@ -115,8 +115,8 @@ GitHub Claude workflow와 전용 스크립트는 사용하지 않습니다. 댓�
 
 **Codex의 GitHub 연결 확인**
 
-- 2026-10-14 [이 저장소의 Installed GitHub Apps](https://github.com/minjunkim-dev/BGLike/settings/installations)에는 Cursor, Linear Code, Semgrep Code - minjunkim-dev, semgrep-app이 표시됐습니다. Codex App과 Codex workflow는 없습니다. 이 GitHub App·workflow 경로의 자동 리뷰 정리는 `비해당`입니다. 서비스의 비활성화 설정을 변경했다고 기록하지 않습니다.
-- [PR #71의 Codex 보안 코멘트](https://github.com/minjunkim-dev/BGLike/pull/71#issuecomment-6138953198)는 과거 실행 증거입니다. 현재 연결이나 활성 설정을 증명하지 않습니다.
+- 2026-10-14 [이 저장소의 Installed GitHub Apps](https://github.com/minjunkim-labs/BGLike/settings/installations)에는 Cursor, Linear Code, Semgrep Code - minjunkim-dev, semgrep-app이 표시됐습니다. Codex App과 Codex workflow는 없습니다. 이 GitHub App·workflow 경로의 자동 리뷰 정리는 `비해당`입니다. 서비스의 비활성화 설정을 변경했다고 기록하지 않습니다.
+- [PR #71의 Codex 보안 코멘트](https://github.com/minjunkim-labs/BGLike/pull/71#issuecomment-6138953198)는 과거 실행 증거입니다. 현재 연결이나 활성 설정을 증명하지 않습니다.
 - App 상세 접근 설정은 GitHub sudo 인증이 필요하면 `미확인`으로 기록합니다. 인증·계정 탐색을 늘리지 않습니다. 현재 확인한 연결·실제 자동 리뷰가 있을 때만 이 저장소 설정을 정리합니다.
 - 외부 리뷰 서비스를 새로 연결하지 않습니다. Linear Code와 Semgrep App은 설치 사실만으로 자동 AI 리뷰라고 분류하지 않습니다. 결정적인 검사와 다른 용도는 보존합니다.
 
@@ -124,7 +124,7 @@ GitHub Claude workflow와 전용 스크립트는 사용하지 않습니다. 댓�
 
 ### 읽기 전용 Claude 리뷰의 사전 승인
 
-2026-10-03 GitHub 계정 `minjunkim-dev`(MINJUN KIM)는 "보류하지말고 읽기 전용 리뷰로 보내", "리뷰가 필요하면 해야지"라고 지시했습니다 ([Issue #12의 승인 기록](https://github.com/minjunkim-dev/BGLike/issues/12#issuecomment-5967003737)). 이 절은 `minjunkim-dev`가 맡긴 BGLike 작업의 **로컬 Claude Code 독립 읽기 전용 리뷰**에 대한 승인 기록입니다. 다른 협업자의 승인을 대신하지 않습니다.
+2026-10-03 GitHub 계정 `minjunkim-dev`(MINJUN KIM)는 "보류하지말고 읽기 전용 리뷰로 보내", "리뷰가 필요하면 해야지"라고 지시했습니다 ([Issue #12의 승인 기록](https://github.com/minjunkim-labs/BGLike/issues/12#issuecomment-5967003737)). 이 절은 `minjunkim-dev`가 맡긴 BGLike 작업의 **로컬 Claude Code 독립 읽기 전용 리뷰**에 대한 승인 기록입니다. 다른 협업자의 승인을 대신하지 않습니다.
 
 이 승인은 현재 요청자가 `minjunkim-dev` 본인임을 확인했을 때만 씁니다. 로컬 세션에서 `gh auth status`로 로그인 계정을 확인하는 식입니다. 다른 협업자가 요청했거나 요청자를 확인할 수 없으면 이 승인을 쓰지 않고 요청마다 승인을 받습니다. 다른 협업자도 사전 승인하려면 이 절에 계정과 승인 기록을 따로 추가합니다.
 

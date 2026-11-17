@@ -5,7 +5,7 @@
 > - 기준일: 2026-10-23 (#321 능력치·주사위 대결 동기화)
 > - 관련 문서: [몬스터 디자인 기획서](README.md) · [새끼 거미](spiderling.md) · [전투 시스템 기획서](../COMBAT_DESIGN.md) · [게임 구조 기획서](../GAME_STRUCTURE.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
-> - [Issue #109](https://github.com/minjunkim-dev/BGLike/issues/109)에서 새끼 생성과 2·3막 1스테이지를 구현했습니다. 생성 수의 직접 관측 결과는 [Issue #113 통합 검수](https://github.com/minjunkim-dev/BGLike/issues/113)에서 별도로 기록합니다.
+> - [Issue #109](https://github.com/minjunkim-labs/BGLike/issues/109)에서 새끼 생성과 2·3막 1스테이지를 구현했습니다. 생성 수의 직접 관측 결과는 [Issue #113 통합 검수](https://github.com/minjunkim-labs/BGLike/issues/113)에서 별도로 기록합니다.
 
 ---
 
@@ -21,7 +21,7 @@
 
 ## 수치 ✅
 
-능력치와 가산은 [#321](https://github.com/minjunkim-dev/BGLike/issues/321)에서 적용하는 [시험값](../ABILITY_SYSTEM.md#7-몬스터-시험값)입니다. HP·이동력은 기존 값을 유지합니다. 피해는 [7장의 환산](../ABILITY_SYSTEM.md#7-몬스터-시험값)대로 명중하면 공격 능력치 주사위를 새로 굴린 값 + 기존 피해 보정입니다 ([#388](https://github.com/minjunkim-dev/BGLike/issues/388)).
+능력치와 가산은 [#321](https://github.com/minjunkim-labs/BGLike/issues/321)에서 적용하는 [시험값](../ABILITY_SYSTEM.md#7-몬스터-시험값)입니다. HP·이동력은 기존 값을 유지합니다. 피해는 [7장의 환산](../ABILITY_SYSTEM.md#7-몬스터-시험값)대로 명중하면 공격 능력치 주사위를 새로 굴린 값 + 기존 피해 보정입니다 ([#388](https://github.com/minjunkim-labs/BGLike/issues/388)).
 
 | 능력치 | 힘 | 민첩 | 솜씨 | 지능 | 의지 | 건강 |
 |---|---|---|---|---|---|---|
@@ -35,9 +35,9 @@
 |---|---|---|---|---|---|
 | 근접 | 힘 d8 | +3 | 힘 d8+2 | 1 (인접) | 가능 |
 
-- **독 면역** ✅: 거미 계열이라 독에 면역입니다 ([독안개 거미](fog-spider.md#독-면역-)). 몬스터 정의의 `poison_immune` 속성이며, 독 장판 칸은 이동 경로 비용 0으로 보고 불 장판은 기존대로 피합니다 ([#460](https://github.com/minjunkim-dev/BGLike/issues/460), [#465](https://github.com/minjunkim-dev/BGLike/issues/465)에서 구현).
+- **독 면역** ✅: 거미 계열이라 독에 면역입니다 ([독안개 거미](fog-spider.md#독-면역-)). 몬스터 정의의 `poison_immune` 속성이며, 독 장판 칸은 이동 경로 비용 0으로 보고 불 장판은 기존대로 피합니다 ([#460](https://github.com/minjunkim-labs/BGLike/issues/460), [#465](https://github.com/minjunkim-labs/BGLike/issues/465)에서 구현).
 
-- HP 20의 종전 라운드·생성 수 추정은 [#109](https://github.com/minjunkim-dev/BGLike/issues/109)의 이전 결정 기록입니다. 새 판정의 밸런스는 #205에서 검토합니다.
+- HP 20의 종전 라운드·생성 수 추정은 [#109](https://github.com/minjunkim-labs/BGLike/issues/109)의 이전 결정 기록입니다. 새 판정의 밸런스는 #205에서 검토합니다.
 
 ## 스킬
 

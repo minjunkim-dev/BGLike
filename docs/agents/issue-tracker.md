@@ -1,6 +1,6 @@
 # Issue tracker: GitHub
 
-작업은 GitHub `minjunkim-dev/BGLike`의 Issues에서 관리합니다. GitHub 작업에는 `gh` CLI를 사용합니다.
+작업은 GitHub `minjunkim-labs/BGLike`의 Issues에서 관리합니다. GitHub 작업에는 `gh` CLI를 사용합니다.
 
 아래 명령 예시는 RTK가 설치된 로컬 환경 기준입니다. RTK가 없는 환경에서는 `rtk proxy` 접두어를 제외하고 같은 `gh` 명령을 실행합니다. 저장소 조회의 `rtk git remote -v`도 `rtk`를 제외하면 기본 Git 명령입니다. RTK 설치를 필수로 요구하지 않습니다. GitHub Actions의 실행 권한과 명령 제한은 [협업 규칙](../WORKFLOW.md)을 따릅니다.
 
@@ -17,20 +17,20 @@
 - 최신 `main`에서 짧은 브랜치를 만듭니다. PR은 [PR 양식](../../.github/pull_request_template.md)을 사용합니다. 관련 Issue는 `Refs #번호`, 해당 Issue를 끝내는 마지막 PR은 `Closes #번호`를 씁니다.
 - Issue는 완료 조건과 검수 결과를 확인한 뒤 닫습니다. 다단계 작업은 한 단계가 끝났다는 이유만으로 닫지 않습니다.
 
-저장소는 `rtk git remote -v`로 확인합니다. 명령의 저장소가 모호하면 `--repo minjunkim-dev/BGLike`를 지정합니다.
+저장소는 `rtk git remote -v`로 확인합니다. 명령의 저장소가 모호하면 `--repo minjunkim-labs/BGLike`를 지정합니다.
 
 ## CLI operations
 
 여러 줄의 본문이나 코멘트는 정확한 내용을 파일에 저장하고 `--body-file`로 전달합니다.
 
 ```sh
-rtk proxy gh issue view <번호> --repo minjunkim-dev/BGLike --json number,title,body,labels,comments,state
-rtk proxy gh issue list --repo minjunkim-dev/BGLike --state open --json number,title,body,labels
-rtk proxy gh issue create --repo minjunkim-dev/BGLike --title "<제목>" --body-file <본문 파일>
-rtk proxy gh issue comment <번호> --repo minjunkim-dev/BGLike --body-file <코멘트 파일>
-rtk proxy gh issue edit <번호> --repo minjunkim-dev/BGLike --add-label "<라벨>"
-rtk proxy gh issue edit <번호> --repo minjunkim-dev/BGLike --remove-label "<라벨>"
-rtk proxy gh issue close <번호> --repo minjunkim-dev/BGLike
+rtk proxy gh issue view <번호> --repo minjunkim-labs/BGLike --json number,title,body,labels,comments,state
+rtk proxy gh issue list --repo minjunkim-labs/BGLike --state open --json number,title,body,labels
+rtk proxy gh issue create --repo minjunkim-labs/BGLike --title "<제목>" --body-file <본문 파일>
+rtk proxy gh issue comment <번호> --repo minjunkim-labs/BGLike --body-file <코멘트 파일>
+rtk proxy gh issue edit <번호> --repo minjunkim-labs/BGLike --add-label "<라벨>"
+rtk proxy gh issue edit <번호> --repo minjunkim-labs/BGLike --remove-label "<라벨>"
+rtk proxy gh issue close <번호> --repo minjunkim-labs/BGLike
 ```
 
 ## Pull requests as a triage surface
@@ -45,7 +45,7 @@ rtk proxy gh issue close <번호> --repo minjunkim-dev/BGLike
 
 ## When a skill says "fetch the relevant ticket"
 
-`rtk proxy gh issue view <번호> --repo minjunkim-dev/BGLike --json number,title,body,labels,comments,state`를 실행합니다. 코멘트의 결정 기록과 연결된 기획 문서도 읽습니다.
+`rtk proxy gh issue view <번호> --repo minjunkim-labs/BGLike --json number,title,body,labels,comments,state`를 실행합니다. 코멘트의 결정 기록과 연결된 기획 문서도 읽습니다.
 
 ## 명세·티켓 의존성
 

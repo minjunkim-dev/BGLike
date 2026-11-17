@@ -5,7 +5,7 @@
 > - 기준일: 2026-10-23 (#321 능력치·주사위 대결 동기화)
 > - 관련 문서: [몬스터 디자인 기획서](README.md) · [엄마 거미](mother-spider.md) · [전투 시스템 기획서](../COMBAT_DESIGN.md) · [게임 구조 기획서](../GAME_STRUCTURE.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
-> - 처음 배치한 새끼와 1막 1스테이지는 [Issue #108](https://github.com/minjunkim-dev/BGLike/issues/108)에서 구현했습니다. 엄마 거미의 생성은 [Issue #109](https://github.com/minjunkim-dev/BGLike/issues/109)에서 구현했습니다.
+> - 처음 배치한 새끼와 1막 1스테이지는 [Issue #108](https://github.com/minjunkim-labs/BGLike/issues/108)에서 구현했습니다. 엄마 거미의 생성은 [Issue #109](https://github.com/minjunkim-labs/BGLike/issues/109)에서 구현했습니다.
 
 ---
 
@@ -21,9 +21,9 @@
 
 ## 수치 ✅
 
-능력치와 가산은 [#321](https://github.com/minjunkim-dev/BGLike/issues/321)에서 적용하는 [시험값](../ABILITY_SYSTEM.md#7-몬스터-시험값)입니다. HP·이동력은 기존 값을 유지합니다. 피해는 [7장의 환산](../ABILITY_SYSTEM.md#7-몬스터-시험값)대로 명중하면 공격 능력치 주사위를 새로 굴린 값 + 기존 피해 보정입니다 ([#388](https://github.com/minjunkim-dev/BGLike/issues/388)).
+능력치와 가산은 [#321](https://github.com/minjunkim-labs/BGLike/issues/321)에서 적용하는 [시험값](../ABILITY_SYSTEM.md#7-몬스터-시험값)입니다. HP·이동력은 기존 값을 유지합니다. 피해는 [7장의 환산](../ABILITY_SYSTEM.md#7-몬스터-시험값)대로 명중하면 공격 능력치 주사위를 새로 굴린 값 + 기존 피해 보정입니다 ([#388](https://github.com/minjunkim-labs/BGLike/issues/388)).
 
-HP 1은 기존 기획 결정을 유지합니다. 피해는 고정 1에서 힘 d4+1로 바뀌었습니다. 종전 수치는 [#108](https://github.com/minjunkim-dev/BGLike/issues/108)의 이전 결정 기록으로 구분합니다.
+HP 1은 기존 기획 결정을 유지합니다. 피해는 고정 1에서 힘 d4+1로 바뀌었습니다. 종전 수치는 [#108](https://github.com/minjunkim-labs/BGLike/issues/108)의 이전 결정 기록으로 구분합니다.
 
 | 능력치 | 힘 | 민첩 | 솜씨 | 지능 | 의지 | 건강 |
 |---|---|---|---|---|---|---|
@@ -39,7 +39,7 @@ HP 1은 기존 기획 결정을 유지합니다. 피해는 고정 1에서 힘 d4
 | 근접 | 힘 d4 | +3 | 힘 d4+1 | 1 (인접) | 가능 |
 
 - 피해(힘 d4+1)는 한 마리로는 크지 않고, 서너 마리가 붙으면 쌓입니다.
-- **독 면역** ✅: 거미 계열이라 독에 면역입니다 ([독안개 거미](fog-spider.md#독-면역-)). 몬스터 정의의 `poison_immune` 속성이며, 독 장판 칸은 이동 경로 비용 0으로 보고 불 장판은 기존대로 피합니다 ([#460](https://github.com/minjunkim-dev/BGLike/issues/460), [#465](https://github.com/minjunkim-dev/BGLike/issues/465)에서 구현).
+- **독 면역** ✅: 거미 계열이라 독에 면역입니다 ([독안개 거미](fog-spider.md#독-면역-)). 몬스터 정의의 `poison_immune` 속성이며, 독 장판 칸은 이동 경로 비용 0으로 보고 불 장판은 기존대로 피합니다 ([#460](https://github.com/minjunkim-labs/BGLike/issues/460), [#465](https://github.com/minjunkim-labs/BGLike/issues/465)에서 구현).
 
 ## 스킬
 
@@ -49,7 +49,7 @@ HP 1은 기존 기획 결정을 유지합니다. 피해는 고정 1에서 힘 d4
 
 1. 가장 가까운 아군 캐릭터에게 붙어 기본 공격을 합니다.
 2. 이동은 기회 공격을 신경 쓰지 않습니다(새끼 거미 자신의 이동에 한함).
-3. 새끼 거미도 근접 기본 공격이므로 곁에서 벗어나는 아군에게 기회 공격을 합니다. 근접 기본 공격은 예외 없이 가능하다는 2026-11-02 결정입니다([#407](https://github.com/minjunkim-dev/BGLike/issues/407), [#434](https://github.com/minjunkim-dev/BGLike/issues/434)에서 구현, [#460](https://github.com/minjunkim-dev/BGLike/issues/460) 명세에서 재확인). 새끼 여러 마리에 둘러싸인 아군이 빠져나올 때의 피해는 1막 스테이지 1 난이도와 함께 [#205](https://github.com/minjunkim-dev/BGLike/issues/205)에서 점검합니다.
+3. 새끼 거미도 근접 기본 공격이므로 곁에서 벗어나는 아군에게 기회 공격을 합니다. 근접 기본 공격은 예외 없이 가능하다는 2026-11-02 결정입니다([#407](https://github.com/minjunkim-labs/BGLike/issues/407), [#434](https://github.com/minjunkim-labs/BGLike/issues/434)에서 구현, [#460](https://github.com/minjunkim-labs/BGLike/issues/460) 명세에서 재확인). 새끼 여러 마리에 둘러싸인 아군이 빠져나올 때의 피해는 1막 스테이지 1 난이도와 함께 [#205](https://github.com/minjunkim-labs/BGLike/issues/205)에서 점검합니다.
 
 ## 막별 수치
 

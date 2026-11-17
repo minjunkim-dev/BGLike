@@ -3,9 +3,9 @@
 > 플레이어가 조작하는 캐릭터를 디자인할 때 따르는 순서와 채울 항목을 정한 뼈대 문서입니다. 개별 캐릭터의 능력치와 판정은 [능력치와 주사위 판정 기획서](../ABILITY_SYSTEM.md), 스킬·진행 규칙은 [전투 시스템 기획서](../COMBAT_DESIGN.md)와 [게임 구조 기획서](../GAME_STRUCTURE.md)가 기준입니다.
 >
 > - 기준일: 2026-10-23 (#321 능력치·주사위 대결 동기화)
-> - **개정 안내 (2026-10-27)**: 능력치(자연 → 건강)와 판정(명중굴림·내성굴림, AC·DC)이 [능력치와 주사위 판정 기획서](../ABILITY_SYSTEM.md)로 개정되었습니다. 개정은 [#377](https://github.com/minjunkim-dev/BGLike/issues/377)에서 구현했고 이 문서의 능력치 항목도 개정에 맞췄습니다. 판정 규칙은 기획서가 기준입니다.
+> - **개정 안내 (2026-10-27)**: 능력치(자연 → 건강)와 판정(명중굴림·내성굴림, AC·DC)이 [능력치와 주사위 판정 기획서](../ABILITY_SYSTEM.md)로 개정되었습니다. 개정은 [#377](https://github.com/minjunkim-labs/BGLike/issues/377)에서 구현했고 이 문서의 능력치 항목도 개정에 맞췄습니다. 판정 규칙은 기획서가 기준입니다.
 > - **전사 재디자인 (2026-10-30)**: 전사를 컨셉부터 다시 디자인했습니다([전사](warrior.md)). 8장 목록과 10장 논의를 맞췄습니다. 고유 스킬 개수는 정하지 않고, 직업을 디자인할 때 디자이너가 정합니다.
-> - **궁수 재디자인 (2026-11-09)**: 궁수를 컨셉부터 다시 디자인했습니다([궁수](archer.md)). 발랄하고 당찬 말괄량이 활잡이, 서툰 마법 화살, 중거리에서 근접까지 요리조리 뛰며 쏘는 무빙샷 컨셉이며 스킬 9개를 기획자와 정했습니다. 옛 스킬은 무시했습니다. 새 스킬은 [#500](https://github.com/minjunkim-dev/BGLike/issues/500)에서 구현했습니다. 다른 문서에 옮길 규칙은 [궁수 문서](archer.md#다른-문서로-옮긴-규칙-2026-11-09)에 적었습니다.
+> - **궁수 재디자인 (2026-11-09)**: 궁수를 컨셉부터 다시 디자인했습니다([궁수](archer.md)). 발랄하고 당찬 말괄량이 활잡이, 서툰 마법 화살, 중거리에서 근접까지 요리조리 뛰며 쏘는 무빙샷 컨셉이며 스킬 9개를 기획자와 정했습니다. 옛 스킬은 무시했습니다. 새 스킬은 [#500](https://github.com/minjunkim-labs/BGLike/issues/500)에서 구현했습니다. 다른 문서에 옮길 규칙은 [궁수 문서](archer.md#다른-문서로-옮긴-규칙-2026-11-09)에 적었습니다.
 > - 관련 문서: [몬스터 디자인 기획서](../monsters/README.md) · [기획 로드맵 8장](../ROADMAP.md#8-m5-콘텐츠-기획) · [게임 구조 기획서](../GAME_STRUCTURE.md) · [전투 시스템 기획서](../COMBAT_DESIGN.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
 
@@ -89,7 +89,7 @@
 
 ### 캐릭터 특색의 공통 검수 기준 ✅
 
-[Issue #140 후속 결정](https://github.com/minjunkim-dev/BGLike/issues/140#issuecomment-6298246327)은 기존 디자인 순서를 공통 검수 기준으로 채택했습니다.
+[Issue #140 후속 결정](https://github.com/minjunkim-labs/BGLike/issues/140#issuecomment-6298246327)은 기존 디자인 순서를 공통 검수 기준으로 채택했습니다.
 
 | 확인할 것 | 기준 |
 |---|---|
@@ -161,7 +161,7 @@
 | 딜러 | 적을 빠르게 전투 불능으로 만듦 | 궁수 |
 | 서포터 | 아군을 회복·강화하거나 적을 약화함 | 없음 ❓ |
 
-> 지금 적 AI는 사거리 안에서 HP가 낮은 대상을 노립니다 ([전투 시스템 기획서 7장](../COMBAT_DESIGN.md#7-적-ai)). 그래서 전사가 공격을 끌어 줄 수단이 없습니다. 탱커가 역할을 하려면 도발 같은 스킬이나 AI 조준 규칙이 필요합니다 ❓ ([게임 구조 기획서 5장](../GAME_STRUCTURE.md#5-캐릭터)). 전사는 2026-10-30 재디자인에서 기회 공격이 명중하면 적의 이동을 멈추는 효과(괴력의 사내)를 얻었습니다. [Issue #201](https://github.com/minjunkim-dev/BGLike/issues/201)이 권장한 "인접 아군 우선" 조준 규칙은 [기획자 답](https://github.com/minjunkim-dev/BGLike/issues/210#issuecomment-6330540479)으로 채택하지 않았습니다. 조준은 기획자가 정할 몬스터별 성향에서 다룹니다 ❓.
+> 지금 적 AI는 사거리 안에서 HP가 낮은 대상을 노립니다 ([전투 시스템 기획서 7장](../COMBAT_DESIGN.md#7-적-ai)). 그래서 전사가 공격을 끌어 줄 수단이 없습니다. 탱커가 역할을 하려면 도발 같은 스킬이나 AI 조준 규칙이 필요합니다 ❓ ([게임 구조 기획서 5장](../GAME_STRUCTURE.md#5-캐릭터)). 전사는 2026-10-30 재디자인에서 기회 공격이 명중하면 적의 이동을 멈추는 효과(괴력의 사내)를 얻었습니다. [Issue #201](https://github.com/minjunkim-labs/BGLike/issues/201)이 권장한 "인접 아군 우선" 조준 규칙은 [기획자 답](https://github.com/minjunkim-labs/BGLike/issues/210#issuecomment-6330540479)으로 채택하지 않았습니다. 조준은 기획자가 정할 몬스터별 성향에서 다룹니다 ❓.
 
 ---
 
@@ -182,7 +182,7 @@
 | 플레이 감각 | 이 캐릭터로 플레이어가 하는 판단. 예: "언제 버티고 언제 되받아칠까" |
 | 짝 | 다른 캐릭터와 함께 쓸 때 생기는 연계 |
 | 약한 상대 | 이 캐릭터가 혼자서는 상대하기 어려운 몬스터 |
-| 외형 메모 | 실루엣과 색만. 에셋 출처는 #193에서 정함 ✅: 내장 image_gen의 독자적 생성 이미지 ([#193](https://github.com/minjunkim-dev/BGLike/issues/193), [제작 기준](../PIXEL_ART.md)) |
+| 외형 메모 | 실루엣과 색만. 에셋 출처는 #193에서 정함 ✅: 내장 image_gen의 독자적 생성 이미지 ([#193](https://github.com/minjunkim-labs/BGLike/issues/193), [제작 기준](../PIXEL_ART.md)) |
 
 ---
 
@@ -192,8 +192,8 @@
 
 | 캐릭터 | 역할 | 추상 컨셉 | 상태 |
 |---|---|---|---|
-| [전사](warrior.md) | 탱커 | 든든한 지휘관 ✅ (2026-10-30) | 재디자인 확정 · 구현 ([#423](https://github.com/minjunkim-dev/BGLike/issues/423), [#426](https://github.com/minjunkim-dev/BGLike/issues/426), [#434](https://github.com/minjunkim-dev/BGLike/issues/434)~[#438](https://github.com/minjunkim-dev/BGLike/issues/438), 패시브 칸 [#457](https://github.com/minjunkim-dev/BGLike/issues/457)) |
-| [궁수](archer.md) | 딜러 | 활터 담장 밖 숲에서 몰래 마법을 익힌 말괄량이 활잡이 ✅ (2026-11-09) | 재디자인 확정 · 일부 구현 (9개 중 무빙샷·애기살 급조·활 후려치기·기름병 던지기, [#500](https://github.com/minjunkim-dev/BGLike/issues/500)) |
+| [전사](warrior.md) | 탱커 | 든든한 지휘관 ✅ (2026-10-30) | 재디자인 확정 · 구현 ([#423](https://github.com/minjunkim-labs/BGLike/issues/423), [#426](https://github.com/minjunkim-labs/BGLike/issues/426), [#434](https://github.com/minjunkim-labs/BGLike/issues/434)~[#438](https://github.com/minjunkim-labs/BGLike/issues/438), 패시브 칸 [#457](https://github.com/minjunkim-labs/BGLike/issues/457)) |
+| [궁수](archer.md) | 딜러 | 활터 담장 밖 숲에서 몰래 마법을 익힌 말괄량이 활잡이 ✅ (2026-11-09) | 재디자인 확정 · 일부 구현 (9개 중 무빙샷·애기살 급조·활 후려치기·기름병 던지기, [#500](https://github.com/minjunkim-labs/BGLike/issues/500)) |
 
 전사는 2026-10-30에, 궁수는 2026-11-09에 컨셉부터 다시 디자인했습니다.
 
@@ -216,8 +216,8 @@
 | 주제 | 질문 |
 |---|---|
 | 궁수의 추상 컨셉 | 2026-11-09에 컨셉부터 새로 잡고 스킬 9개를 새로 만들었음(전사와 같은 방식, [궁수](archer.md)). 남은 항목은 궁수 문서의 열린 항목 |
-| 상시 효과 | 컨셉에서 "혼자일 때 강함" 같은 상시 효과가 자주 나옴. 직접 쓰지 않는 패시브 스킬로 다룸. 전사의 팔랑크스(인접 아군이 있으면 AC +1)와 괴력의 사내가 첫 사례이고, 스킬 바 왼쪽 끝의 패시브 열에 보여 주고 적용 중에만 강조함 (`개발 결정` [#407](https://github.com/minjunkim-dev/BGLike/issues/407#issuecomment-6707833180), [#457](https://github.com/minjunkim-dev/BGLike/issues/457)에서 구현) |
-| 탱커 수단 | [Issue #201](https://github.com/minjunkim-dev/BGLike/issues/201)에서 도발 스킬은 만들지 않기로 했음. "인접 아군 우선" 조준 규칙은 [기획자 답](https://github.com/minjunkim-dev/BGLike/issues/210#issuecomment-6330540479)으로 채택하지 않고 몬스터별 성향 기획을 기다림 ❓. 전사는 여기에 더해 기회 공격 명중 시 이동 정지(괴력의 사내)로 적의 길을 막음 |
+| 상시 효과 | 컨셉에서 "혼자일 때 강함" 같은 상시 효과가 자주 나옴. 직접 쓰지 않는 패시브 스킬로 다룸. 전사의 팔랑크스(인접 아군이 있으면 AC +1)와 괴력의 사내가 첫 사례이고, 스킬 바 왼쪽 끝의 패시브 열에 보여 주고 적용 중에만 강조함 (`개발 결정` [#407](https://github.com/minjunkim-labs/BGLike/issues/407#issuecomment-6707833180), [#457](https://github.com/minjunkim-labs/BGLike/issues/457)에서 구현) |
+| 탱커 수단 | [Issue #201](https://github.com/minjunkim-labs/BGLike/issues/201)에서 도발 스킬은 만들지 않기로 했음. "인접 아군 우선" 조준 규칙은 [기획자 답](https://github.com/minjunkim-labs/BGLike/issues/210#issuecomment-6330540479)으로 채택하지 않고 몬스터별 성향 기획을 기다림 ❓. 전사는 여기에 더해 기회 공격 명중 시 이동 정지(괴력의 사내)로 적의 길을 막음 |
 | 서포터 | 서포터 캐릭터를 추가할까, 기존 캐릭터의 스킬로 나눌까. 파티 규모(지금 2명)와 함께 정함 |
 | 상태 이상 | #178의 공통 화상·독 처리는 구현됐습니다. 캐릭터가 이를 부여할 스킬과 새 상태는 별도 기획입니다. |
 | 외형과 이름 | 세계관(M7) 결정 뒤. 에셋 출처는 #193에서 정함 ([제작 기준](../PIXEL_ART.md)) |

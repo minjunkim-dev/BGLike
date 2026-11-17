@@ -39,7 +39,7 @@ Godot 4 싱글 플레이 PC 게임입니다. 여러 사람이 함께 개발합�
 
 ## Agent skills
 
-- Issue tracker: GitHub `minjunkim-dev/BGLike`. `docs/agents/issue-tracker.md`를 읽습니다.
+- Issue tracker: GitHub `minjunkim-labs/BGLike`. `docs/agents/issue-tracker.md`를 읽습니다.
 - Triage labels: `docs/agents/triage-labels.md`에서 다섯 역할과 라벨을 확인합니다.
 - Domain docs: [문서 길잡이](docs/agents/domain.md)를 따릅니다.
 
