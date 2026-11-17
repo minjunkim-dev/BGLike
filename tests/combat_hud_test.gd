@@ -3531,14 +3531,24 @@ func _test_presentation_move_time() -> void:
 	units[2].cell = Vector2i(8, 8)
 	units[3].cell = Vector2i(9, 9)
 	battle.call("_update_turn_ui")
-	# 벽시계 대신 Tween이 실제로 받은 프레임 시간의 합을 잰다. 벽시계는 긴 앞 프레임의 delta가 섞여 CI에서 짧게 나온다.
+	# 프레임 시간에 기대지 않고 이동 Tween을 멈춘 뒤 직접 진행시켜 길이를 잰다. 시간 재기는 CI의 긴 프레임에서 흔들린다.
+	var before: Array[Tween] = get_processed_tweens()
+	var finished: Array[bool] = [false]
+	battle.call("_animate_movement", units[0], Vector2i(4, 3))
+	var tween: Tween = null
+	for candidate: Tween in get_processed_tweens():
+		if candidate not in before:
+			tween = candidate
+	var base: float = battle.MOVE_STEP_TIME
+	var expected: float = CombatPresentation.duration(base)
+	_check(tween != null, "한 칸 이동은 Tween으로 움직임")
+	if tween != null:
+		tween.pause()
+		tween.finished.connect(func() -> void: finished[0] = true)
+		tween.custom_step((base + expected) * 0.5)
+		_check(not finished[0], "한 칸 이동은 기본 %s초보다 길다(계수 적용 %s초)" % [base, expected])
+		tween.custom_step(expected)
+		_check(finished[0], "한 칸 이동은 계수 적용 시간 %s초 안에 끝난다" % expected)
 	await process_frame
-	var game_time: Array[float] = [0.0]
-	var add_delta: Callable = func() -> void: game_time[0] += root.get_process_delta_time()
-	process_frame.connect(add_delta)
-	await battle.call("_animate_movement", units[0], Vector2i(4, 3))
-	process_frame.disconnect(add_delta)
-	var elapsed: float = game_time[0]
-	var expected: float = CombatPresentation.duration(battle.MOVE_STEP_TIME)
-	_check(elapsed >= expected * 0.85, "한 칸 이동 시간이 계수로 늘어남: %s초 (기대 %s초 이상)" % [elapsed, expected * 0.85])
+	await process_frame
 	_check(Engine.time_scale == 1.0, "전체 속도는 Engine.time_scale을 바꾸지 않음")
