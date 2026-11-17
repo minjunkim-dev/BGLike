@@ -1,4 +1,4 @@
-"""Seam: the public CLI of scenes/combat/art/sources/dice/draw_dice.py (docs/DICE_PRESENTATION.md, 도트 디자인 절)."""
+"""Seam: the public CLI of scenes/combat/art/sources/dice/draw_dice.py (docs/design/combat/dice-presentation.md, 도트 디자인 절)."""
 
 from pathlib import Path
 import hashlib
@@ -11,7 +11,7 @@ import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR = ROOT / "scenes/combat/art/sources/dice/draw_dice.py"
-SHEET = ROOT / "docs/assets/dice_states.png"
+SHEET = ROOT / "docs/design/combat/images/dice_states.png"
 SIDES = (4, 6, 8, 10, 12, 20)
 STATES = ("rolling", "success", "failure", "absolute_success", "absolute_failure")
 SUCCESS = (0x70, 0xC7, 0x6D)
@@ -123,7 +123,7 @@ class DrawDiceTest(unittest.TestCase):
             width, height, _ = read_pixels(first)
             self.assertEqual((width, height), (4 * 48 * 5, 4 * 48 * 6))
             self.assertEqual(first.read_bytes(), second.read_bytes())
-            self.assertEqual(first.read_bytes(), SHEET.read_bytes(), "docs/assets/dice_states.png를 다시 만든다")
+            self.assertEqual(first.read_bytes(), SHEET.read_bytes(), "docs/design/combat/images/dice_states.png를 다시 만든다")
 
 
 if __name__ == "__main__":
