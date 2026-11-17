@@ -134,7 +134,7 @@
    - 열린 개발 브랜치는 이동 PR이 병합된 뒤 `main`을 병합한다. 문서·이미지의 이름 변경은 git이 따라간다. 옛 경로로 쓴 링크나 새로 추가한 파일은 작성자가 고친다. 링크와 `docs/…` 경로는 링크 검사가 실패로 알려 주지만, 마크다운 본문의 백틱 경로와 문서 이름 평문은 검사가 못 보므로 `main`을 병합한 각 브랜치에서도 위의 `grep`을 돌린다.
 5. 규칙 문장과 남은 문서 정리.
    - 5a(완료): `process/workflow.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`의 마커·개발 결정 문장을 규칙 2대로 고쳤다. 개발자 확인 없이 병합한다(#505에 답이 없음).
-   - 5b: 기존 문서의 마커와 `개발 결정` 표시를 문서 하나씩 `## 미정` 표와 현재 규칙 문장으로 옮긴다. 마커가 많은 문서(`combat/ability.md`, `characters/archer.md`, `monsters/fog-spider.md`, `game-structure.md`, `combat/skill-types.md`)부터 나눠서 PR을 만든다.
+   - 5b: 기존 문서의 마커와 `개발 결정` 표시를 문서 하나씩 `## 미정` 표와 현재 규칙 문장으로 옮긴다. `개발 결정` 문장의 근거·대안이 연결된 구현 Issue의 `## 개발 결정` 코멘트에 없으면, 문서에서 지우기 전에 그 Issue에 먼저 옮긴다. `docs/adr/`의 `구분: 개발 결정` 표기는 기술 결정 기록이라 옮기지 않는다. 마커가 많은 문서(`combat/ability.md`, `characters/archer.md`, `monsters/fog-spider.md`, `game-structure.md`, `combat/skill-types.md`)부터 나눠서 PR을 만든다.
    - 5c: 구현 상태 표기 위치 결정, `design/growth/dice-growth.md` 축소, `characters/`·`monsters/` 표 동기화.
 
 ## 미정
