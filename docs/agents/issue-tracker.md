@@ -8,7 +8,7 @@
 
 ## Conventions
 
-먼저 [AGENTS.md](../../AGENTS.md), [협업 규칙](../process/workflow.md), [브랜치와 커밋 규칙](../GIT_CONVENTIONS.md)을 읽습니다.
+먼저 [AGENTS.md](../../AGENTS.md), [협업 규칙](../process/workflow.md), [브랜치와 커밋 규칙](../process/git-conventions.md)을 읽습니다.
 
 - 작업할 Issue의 본문, 라벨과 코멘트를 읽습니다. Issue에 연결된 기획 문서도 직접 엽니다.
 - 새 Issue는 [Issue 양식](../../.github/ISSUE_TEMPLATE/task.md)의 `목표`, `완료 조건`, `범위와 참고` 제목을 사용합니다.

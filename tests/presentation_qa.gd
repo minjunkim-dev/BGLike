@@ -74,7 +74,9 @@ func _run() -> void:
 		ScriptedDice.arrange_turns(battle.get("turns"), units, party)
 		battle.call("_update_turn_ui")
 		assert(units.size() >= 3 and party.size() == 2 and battle.get("waiting_for_start"))
-		assert(actions.grid.props.size() == 2 and party[0].cell == Vector2i(1, 4))
+		# 아군 시작 칸은 지금 스테이지의 ally_cells다(1-1은 14×14 재배치, rock 사례는 2-1).
+		var stage: CombatStage = (battle.get("stages") as Array[CombatStage])[(battle.get("progress") as CombatActProgress).stage_index]
+		assert(actions.grid.props.size() == 2 and party[0].cell == stage.ally_cells[0])
 		assert(party[0].movement_left == 6 and party[0].action_left == 1)
 		if kind == "prep":
 			var loot: CombatLoot = battle.get("loot")
@@ -85,8 +87,9 @@ func _run() -> void:
 			assert(loot.bag.size() == 3 and party[0].weapon.is_empty() and party[0].armor.is_empty())
 			loot.bag.append(loot.bag[0].duplicate(true))
 		elif kind == "crate":
-			assert(not actions.grid.path_to(party[0], Vector2i(2, 4)).is_empty())
-			assert(_cell_point(battle.get("map"), Vector2i(2, 4)) != Vector2.INF)
+			assert(actions.grid.props[0].cell == Vector2i(4, 9))
+			assert(not actions.grid.path_to(party[0], Vector2i(3, 9)).is_empty())
+			assert(_cell_point(battle.get("map"), Vector2i(3, 9)) != Vector2.INF)
 			var sides: int = ScriptedDice.damage_sides(party[0])[0]
 			assert(sides + party[0].get_damage_bonus() >= actions.grid.props[0].hit_points)
 			# 상자 공격은 명중 굴림 없이 피해 능력치 주사위 한 번만 소비한다.
@@ -176,7 +179,7 @@ func capture(label: String) -> void:
 			row.units.append({"name": unit.get_display_name(), "cell": str(unit.cell), "hp": unit.hit_points})
 		for prop: CombatGrid.Prop in actions.grid.props:
 			row.props.append({"kind": prop.kind, "cell": str(prop.cell), "hp": prop.hit_points})
-		for cell: Vector2i in [Vector2i(2, 4), Vector2i(5, 4)]:
+		for cell: Vector2i in [Vector2i(3, 9), Vector2i(5, 4)]:
 			var point: Vector2 = _cell_point(map, cell)
 			if point != Vector2.INF: row.cells[str(cell)] = [point.x, point.y]
 		# 물체 몸통은 주변 유닛 픽셀에 가리지 않은 점만 입력 후보로 제공한다.

@@ -4,7 +4,7 @@ extends SceneTree
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
 const LargeMapBattle = preload("res://tests/large_map_battle.gd")
 ## 북고남저 검사를 켠 맵 이름(#515). 맵을 14×14로 다시 배치한 티켓이 자기 맵을 더한다.
-const NORTH_HIGH_STAGES: Array[String] = []
+const NORTH_HIGH_STAGES: Array[String] = ["1-1"]
 
 var checks: int = 0
 var failures: int = 0
@@ -123,6 +123,8 @@ func _test_terrain_layouts() -> void:
 			var violations: Array[Vector2i] = _north_high_violations(stage)
 			if NORTH_HIGH_STAGES.has(label):
 				_check(violations.is_empty(), label + " 북고남저: 바로 뒤 칸보다 높은 칸 " + str(violations))
+				_check(stage.map_size == Vector2i(14, 14), label + " 14×14 맵")
+				_check_behind_props_clear(stage, label)
 			else:
 				print("북고남저 검사 꺼짐 %s: 위반 %d칸" % [label, violations.size()])
 			_check(stage.heights.values().any(func(height: int) -> bool: return height >= 2),
@@ -180,6 +182,21 @@ func _test_terrain_layouts() -> void:
 			layouts[signature] = true
 
 
+## 바위·상자의 (x-1, y-1) 칸에는 스폰, 다른 바위·상자, 장식을 두지 않는다(#515 5번).
+func _check_behind_props_clear(stage: CombatStage, label: String) -> void:
+	var spawns: Array[Vector2i] = stage.ally_cells.duplicate()
+	var enemies: Node = stage.enemies.instantiate()
+	for unit: CombatUnit in enemies.get_children():
+		spawns.append(unit.start_cell)
+	enemies.free()
+	var props: Array[Vector2i] = stage.crate_cells + stage.rock_cells
+	var blocked: Array[Vector2i] = stage.get_blocked_cells()
+	for prop: Vector2i in props:
+		var behind: Vector2i = prop - Vector2i.ONE
+		_check(not spawns.has(behind) and not props.has(behind) and not blocked.has(behind),
+			label + " 바위·상자 뒤 칸 " + str(behind) + "에 스폰·물체·장식 없음")
+
+
 func _check_prop_routes(stage: CombatStage, grid: CombatGrid, actor: CombatUnit,
 		enemies: Node, label: String) -> void:
 	_check(stage.crate_cells.size() == 1 and stage.rock_cells.size() == 1, label + " 기존 상자·바위 각1개 유지")
@@ -223,7 +240,7 @@ func _test_spiderling_placement_and_turns() -> void:
 		main.queue_free()
 		await process_frame
 		return
-	var cells: Array[Vector2i] = [Vector2i(7, 2), Vector2i(8, 4), Vector2i(7, 6), Vector2i(8, 8)]
+	var cells: Array[Vector2i] = [Vector2i(10, 3), Vector2i(11, 5), Vector2i(10, 8), Vector2i(11, 11)]
 	for index: int in range(4):
 		_check(units[index + 2].kind == CombatUnit.Kind.SPIDERLING
 			and units[index + 2].cell == cells[index] and units[index + 2].hit_points == 1,
@@ -386,10 +403,15 @@ func _test_novice_placements() -> void:
 		progress.stage_index = index
 		battle.call("_start_stage", true)
 		battle.call("start_battle")
-		_check(party[0].cell == Vector2i(1, 4) and party[1].cell == Vector2i(0, 5)
+		# 1-1은 14×14 재배치(#612)로 아군 시작 칸이 (2,8)/(1,9)다. 나머지는 아직 (1,4)/(0,5).
+		var allies_start: Array[Vector2i] = [Vector2i(1, 4), Vector2i(0, 5)]
+		if index == 0:
+			allies_start = [Vector2i(2, 8), Vector2i(1, 9)]
+		_check(party[0].cell == allies_start[0] and party[1].cell == allies_start[1]
 			and not party[0].facing_left and not party[1].facing_left,
 			"모든 스테이지에서 아군이 왼쪽 두 칸에서 오른쪽을 보고 시작")
-		_check(battle.get("map_size") == Vector2i(10, 10), "모든 스테이지의 기존 10×10 크기를 사각 맵으로 유지")
+		_check(battle.get("map_size") == (Vector2i(14, 14) if index == 0 else Vector2i(10, 10)),
+			"1-1은 14×14, 나머지 스테이지는 기존 10×10 크기를 사각 맵으로 유지")
 		_check_enemy_values(battle, progress.act_number())
 		if not expected.has(index):
 			continue

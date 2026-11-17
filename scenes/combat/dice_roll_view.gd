@@ -1,7 +1,8 @@
 class_name CombatDiceRollView
 extends Control
-## 굴림 하나를 면 수에 맞는 다면체로 굴려 보인다. 기준값은 굴리기 전부터 보이고,
-## 멈추면 판정 단어·여유 숫자·게이지 위 합계가 나온다. 결과는 CombatChecks가 이미 확정했다.
+## 굴림 하나를 굴리는 유닛 머리 위의 주사위 그림으로 보인다. 기준값 가로선은 굴리기 전부터 보이고,
+## 멈추면 액체 높이·합계 식(17 = 14+3)·판정 단어와 여유가 나온다. 유닛이 화면 밖이면 정해진 자리에 이름과 함께 보인다.
+## 결과는 CombatChecks가 이미 확정했다.
 
 ## 보이던 굴림이 닫혀 다음 차례로 넘어갔다.
 signal _turn_passed
@@ -21,24 +22,33 @@ const ABSOLUTE_HIT_HOLD_TIME: float = 0.9
 ## 차례는 페이드를 기다리지 않고 넘기며, 다음 굴림이 오면 페이드를 끊는다.
 const FADE_TIME: float = 0.3
 const FACE_CHANGES: int = 8
-const DIE_RADIUS: float = 18.0
-## 주사위 중심 높이. 절대면 강조선(가장 큰 윤곽)이 배경 위로 나가지 않게 둔다.
-const DIE_CENTER_Y: float = 28.0
-const HALO_SCALE: float = 1.15
-const HALO_WIDTH: float = 0.08
-const DIE_GAP: float = 48.0
+const PIXEL_ART: Material = preload("res://scenes/combat/art/pixel_art.tres")
+const DICE_DIR: String = "res://scenes/combat/art/dice/"
+## 그림이 있는 면 수. 이 밖의 면 수는 벡터 윤곽으로 같은 칸에 그린다.
+const ART_SIDES: Array[int] = [4, 6, 8, 10, 12, 20]
+const ART_STATES: Array[String] = ["rolling", "success", "failure", "absolute_success", "absolute_failure"]
+## 48 원본 px을 0.5배로 쓴다(24 논리px, docs/design/pixel-art.md 표시 크기). 배율 2·4에서 정수다.
+const TEXTURE_SCALE: float = 0.5
+const DIE_SIZE: float = 24.0
+const DIE_SPACING: float = 4.0
+## 주사위 줄(24) 아래에 판정 단어 줄(12)을 둔 패널. 머리 위에서는 아랫변이 머리 점이다.
+const WORD_ROW_Y: float = 24.0
+const WORD_ROW_HEIGHT: float = 12.0
+const PANEL_SIZE: Vector2 = Vector2(140.0, 36.0)
+## 화면 밖 주사위 자리의 윗변. 턴 순서 막대(y 86) 아래이고 맵 중앙 영역 C(y 128~)와 겹치지 않는다.
+const OFFSCREEN_TOP: float = 90.0
+## 머리 위 점: 상태 글자 자리(get_status_label_y) 윗변에서 2 논리px 위.
+const HEAD_RISE: float = 14.0
+const SIDE_LABEL_GAP: float = 3.0
+const SIDE_LABEL_WIDTH: float = 60.0
+const POINTER_SIZE: float = 5.0
+const OUTLINE_SIZE: int = 2
 const DIE_FILL: Color = Color("202b35")
-## 지형 위에서도 글자가 읽히도록 깔아 두는 배경.
-const BACKDROP_FILL: Color = Color(0.07, 0.1, 0.13, 0.88)
-const BACKDROP_EDGE: Color = Color("61717e")
-const BACKDROP_WIDTH: float = 168.0
 const NEUTRAL_COLOR: Color = Color("f4ead1")
 const SUCCESS_COLOR: Color = CombatUnit.HEAL_COLOR
 const FAILURE_COLOR: Color = CombatUnit.ENEMY_COLOR
 const ABSOLUTE_COLOR: Color = Color("f4cf69")
 const DISCARDED_ALPHA: float = 0.35
-const SELECTED_SCALE: float = 1.15
-const ABSOLUTE_SCALE: float = 1.3
 const SOUND_VOLUME_DB: float = -10.0
 ## 4배속에서는 다음 굴림이 앞 소리가 끝나기 전에 와서, 같은 소리를 겹쳐 재생한다(누적 규칙).
 const SOUND_POLYPHONY: int = 4
@@ -60,43 +70,38 @@ const BIG_MARGIN: int = 5
 ## 성공의 여유가 이 값 이하면 아슬아슬한 성공, 실패의 여유가 이 값 이상(음수)이면 아슬아슬한 실패다.
 const NARROW_SUCCESS_MARGIN: int = 1
 const NARROW_FAILURE_MARGIN: int = -1
-## 게이지가 보이는 여유의 범위. 기준값 양쪽으로 이만큼이고 넘으면 끝에 붙는다.
+## 액체 높이가 보이는 여유의 범위. 기준값 양쪽으로 이만큼이고 넘으면 끝에 붙는다.
 const GAUGE_RANGE: int = 6
-const GAUGE_WIDTH: float = 136.0
-const GAUGE_TRACK_Y: float = 80.0
-const GAUGE_TRACK_HEIGHT: float = 6.0
-const GAUGE_TICK_OVERHANG: float = 3.0
-const GAUGE_ZONE_ALPHA: float = 0.4
-const GAUGE_PILL_HEIGHT: float = 16.0
-const GAUGE_PILL_GAP: float = 5.0
-const GAUGE_PILL_MIN_WIDTH: float = 28.0
-const TARGET_LABEL_Y: float = 90.0
 const WORD_FONT_SIZE: int = 13
 const ABSOLUTE_WORD_FONT_SIZE: int = 16
-const WORD_HEIGHT: float = 24.0
 
 
 class Die extends RefCounted:
 	var shown: int = 1
-	var scale: float = 1.0
 	var alpha: float = 1.0
-	var edge: Color = NEUTRAL_COLOR
-	## 절대성공·절대실패면. 테두리는 성공/실패 색 그대로 두고 바깥 강조선을 더한다.
-	var emphasized: bool = false
+	## 그림 상태: rolling 또는 success·failure·absolute_success·absolute_failure.
+	var state: String = "rolling"
+	## 판정에 쓰인 주사위. 유리·불리에서 버린 쪽은 액체와 기준선을 그리지 않는다.
+	var applied: bool = true
 
+
+static var _textures: Dictionary[String, Texture2D] = {}
+static var _liquid_rows: Dictionary[int, Vector2i] = {}
 
 var _roll: CombatDiceRoll
 var _dice: Array[Die] = []
-var _angle: float = 0.0
 var _elapsed: float = 0.0
 var _last_step: int = -1
 var _tumbling: bool = false
-## 게이지 마커의 여유(굴리는 동안 한쪽 끝에서 결과로 움직인다)와 멈춘 뒤 보이는 합계.
-var _marker_margin: float = 0.0
+var _selected: int = 0
 var _final_margin: float = 0.0
-var _total_shown: bool = false
-## 절대성공·절대실패는 기준값과 상관없으므로 게이지 전체를 결과 색으로 채운다.
-var _gauge_filled: bool = false
+## 멈춘 뒤에만 액체와 합계 식을 보인다.
+var _settled: bool = false
+## 패널 왼쪽 위(화면 논리 좌표)와 화면 밖 자리에 있는지. 굴리는 유닛을 따라 매 프레임 다시 정한다.
+var _origin: Vector2 = Vector2.ZERO
+var _offscreen: bool = false
+var _head: Vector2 = Vector2.INF
+var _summary_text: String = ""
 ## 먼저 온 굴림부터 하나씩 보인다. _tickets는 받은 굴림 수, _serving은 지금 보이는 차례다.
 var _tickets: int = 0
 var _serving: int = 0
@@ -104,6 +109,9 @@ var _serving: int = 0
 var _visual_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _summary: Label
 var _target: Label
+var _total: Label
+var _art: Control
+var _pointer: Control
 var _roll_player: AudioStreamPlayer
 var _success_player: AudioStreamPlayer
 var _failure_player: AudioStreamPlayer
@@ -115,22 +123,17 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
 	set_process(false)
+	hidden.connect(set_process.bind(false))
 	_visual_rng.randomize()
-	_summary = Label.new()
-	_summary.name = "Summary"
-	_summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_summary.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	_summary.custom_minimum_size.y = WORD_HEIGHT
-	_summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	add_child(_summary)
-	_target = Label.new()
-	_target.name = "Target"
-	_target.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_target.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_target.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	_target.position.y = TARGET_LABEL_Y
-	add_child(_target)
+	_art = _make_layer("Art")
+	_art.material = PIXEL_ART
+	_art.draw.connect(_draw_art)
+	_pointer = _make_layer("Pointer")
+	_pointer.draw.connect(_draw_pointer)
+	_target = _make_label("Target", HORIZONTAL_ALIGNMENT_RIGHT)
+	_total = _make_label("Total", HORIZONTAL_ALIGNMENT_LEFT)
+	_summary = _make_label("Summary", HORIZONTAL_ALIGNMENT_CENTER)
+	_summary.size = Vector2(PANEL_SIZE.x, WORD_ROW_HEIGHT)
 	_roll_player = _make_player("RollSound", ROLL_SOUND)
 	_success_player = _make_player("SuccessSound", SUCCESS_SOUND)
 	_failure_player = _make_player("FailureSound", FAILURE_SOUND)
@@ -205,9 +208,77 @@ static func grade_word(value: Grade) -> String:
 			return TranslationServer.tr("절대실패")
 
 
-## 게이지 위 x 위치(중앙이 기준값). 범위를 넘는 여유는 끝에 붙는다.
-static func gauge_offset(gap: float) -> float:
-	return clampf(gap / GAUGE_RANGE, -1.0, 1.0) * GAUGE_WIDTH * 0.5
+## 여유를 액체 표면 행(48 원본 px)으로 옮긴다. top·bottom은 액체 마스크의 첫·마지막 행이다.
+## 여유 -6이면 바닥(bottom + 1), +6이면 꼭대기(top)이고 넘으면 끝에 붙는다. draw_dice.py의 sheet_cell과 같은 식이다.
+static func liquid_surface(top: int, bottom: int, gap: int) -> int:
+	var clamped: int = clampi(gap, -GAUGE_RANGE, GAUGE_RANGE)
+	return bottom + 1 - roundi((bottom + 1 - top) * (clamped + GAUGE_RANGE) / float(2 * GAUGE_RANGE))
+
+
+## 멈춘 뒤 합계 옆에 보이는 식. 보정이 음수여도 0이어도 늘 같은 꼴이다. 절대면은 굴린 눈만 보인다.
+static func total_text(result: CombatChecks.RollResult) -> String:
+	if result.face != CombatChecks.Face.NORMAL:
+		return str(result.selected_roll)
+	var added: int = result.added()
+	return "%d = %d%s%d" % [result.total, result.selected_roll, "-" if added < 0 else "+", absi(added)]
+
+
+## 면 수와 상태의 주사위 그림. 그림이 없으면 null이다.
+static func die_texture(sides: int, state: String) -> Texture2D:
+	if not ART_SIDES.has(sides) or not ART_STATES.has(state):
+		return null
+	return _load_texture("%sd%d_%s.png" % [DICE_DIR, sides, state])
+
+
+## 몸체 안쪽 유리의 흰 실루엣. 런타임이 높이로 자르고 색을 곱한다.
+static func liquid_texture(sides: int) -> Texture2D:
+	if not ART_SIDES.has(sides):
+		return null
+	return _load_texture("%sd%d_liquid.png" % [DICE_DIR, sides])
+
+
+## 액체 마스크의 첫·마지막 행. 그림이 없는 면 수는 가운데 24행을 쓴다.
+static func liquid_rows(sides: int) -> Vector2i:
+	if _liquid_rows.has(sides):
+		return _liquid_rows[sides]
+	var rows: Vector2i = Vector2i(12, 35)
+	var mask: Texture2D = liquid_texture(sides)
+	if mask != null:
+		var image: Image = mask.get_image()
+		rows = Vector2i(image.get_height(), -1)
+		for y: int in range(image.get_height()):
+			for x: int in range(image.get_width()):
+				if image.get_pixel(x, y).a > 0.0:
+					rows = Vector2i(mini(rows.x, y), maxi(rows.y, y))
+					break
+	_liquid_rows[sides] = rows
+	return rows
+
+
+## 패널 왼쪽 위. head는 굴리는 유닛 머리 위 점(화면 논리 좌표)이고 패널 아랫변 가운데가 된다.
+## 패널이 화면을 벗어나면 화면 밖 자리(가운데 위, 턴 순서 막대 아래)다. 모두 정수 논리 px이다.
+static func panel_origin(head: Vector2, panel: Vector2, screen: Rect2) -> Vector2:
+	if is_offscreen(head, panel, screen):
+		return Vector2(roundf(screen.position.x + (screen.size.x - panel.x) * 0.5), OFFSCREEN_TOP)
+	return (head - Vector2(panel.x * 0.5, panel.y)).round()
+
+
+## 화면 안에 있어야 하는 폭. 기준값·합계 글자는 주사위 묶음 양옆으로 패널 밖까지 나가므로 그 폭을 더한다.
+static func footprint(dice_count: int) -> Vector2:
+	var group: float = dice_count * DIE_SIZE + maxi(0, dice_count - 1) * DIE_SPACING
+	return Vector2(maxf(PANEL_SIZE.x, group + 2.0 * (SIDE_LABEL_GAP + SIDE_LABEL_WIDTH)), PANEL_SIZE.y)
+
+
+static func is_offscreen(head: Vector2, panel: Vector2, screen: Rect2) -> bool:
+	if not head.is_finite():
+		return true
+	return not screen.encloses(Rect2((head - Vector2(panel.x * 0.5, panel.y)).round(), panel))
+
+
+static func _load_texture(path: String) -> Texture2D:
+	if not _textures.has(path):
+		_textures[path] = load(path) as Texture2D
+	return _textures[path]
 
 
 ## 면 수에 맞는 다면체의 윤곽. 반지름1 기준이다.
@@ -247,6 +318,26 @@ func _make_player(player_name: String, stream: AudioStream) -> AudioStreamPlayer
 	return player
 
 
+func _make_layer(layer_name: String) -> Control:
+	var layer: Control = Control.new()
+	layer.name = layer_name
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(layer)
+	return layer
+
+
+func _make_label(label_name: String, alignment: HorizontalAlignment) -> Label:
+	var label: Label = Label.new()
+	label.name = label_name
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.horizontal_alignment = alignment
+	label.add_theme_color_override("font_outline_color", CombatUnit.OUTLINE_COLOR)
+	label.add_theme_constant_override("outline_size", OUTLINE_SIZE)
+	add_child(label)
+	return label
+
+
 func _begin(roll: CombatDiceRoll) -> void:
 	if _fade != null:
 		_fade.kill()
@@ -255,62 +346,63 @@ func _begin(roll: CombatDiceRoll) -> void:
 	_dice.clear()
 	for index: int in range(roll.result.rolls.size()):
 		_dice.append(Die.new())
-	_angle = 0.0
+	_selected = maxi(0, roll.result.rolls.find(roll.result.selected_roll))
 	_elapsed = 0.0
 	_last_step = -1
 	_tumbling = true
-	_total_shown = false
-	_gauge_filled = false
+	_settled = false
 	_final_margin = clampf(margin(roll.result, roll.target_value), -GAUGE_RANGE, GAUGE_RANGE)
-	_marker_margin = -GAUGE_RANGE
 	_target.text = "%s %d" % [roll.target_label, roll.target_value]
+	_target.add_theme_color_override("font_color", NEUTRAL_COLOR)
+	_total.text = str(_dice[_selected].shown)
+	_total.add_theme_color_override("font_color", NEUTRAL_COLOR)
+	_summary_text = ""
 	_summary.text = ""
 	visible = true
 	set_process(true)
+	_update_layout()
 	_roll_player.play()
-	queue_redraw()
+	_art.queue_redraw()
 
 
 func _process(delta: float) -> void:
-	if not _tumbling:
+	if _roll == null:
 		return
-	_elapsed += delta
-	var progress: float = clampf(_elapsed / TUMBLE_TIME, 0.0, 1.0)
-	# 처음엔 빠르게 구르고 멈출 때 느려진다.
-	var eased: float = 1.0 - pow(1.0 - progress, 2.0)
-	_angle = eased * TAU * 1.5
-	_marker_margin = lerpf(-GAUGE_RANGE, _final_margin, eased)
-	var step: int = int(progress * FACE_CHANGES)
-	if step != _last_step:
-		_last_step = step
-		for die: Die in _dice:
-			die.shown = _visual_rng.randi_range(1, _roll.sides)
-	queue_redraw()
+	if _tumbling:
+		_elapsed += delta
+		var progress: float = clampf(_elapsed / TUMBLE_TIME, 0.0, 1.0)
+		var step: int = int(progress * FACE_CHANGES)
+		if step != _last_step:
+			_last_step = step
+			for die: Die in _dice:
+				die.shown = _visual_rng.randi_range(1, _roll.sides)
+			_total.text = str(_dice[_selected].shown)
+	_update_layout()
 
 
 func _settle() -> void:
 	_tumbling = false
-	set_process(false)
-	_angle = 0.0
 	var result: CombatChecks.RollResult = _roll.result
-	var selected: int = maxi(0, result.rolls.find(result.selected_roll))
-	for index: int in range(_dice.size()):
-		_dice[index].shown = result.rolls[index]
-		if _dice.size() > 1 and index != selected:
-			_dice[index].alpha = DISCARDED_ALPHA
 	var color: Color = SUCCESS_COLOR if result.success else FAILURE_COLOR
 	var absolute: bool = result.face != CombatChecks.Face.NORMAL
-	_dice[selected].edge = color
-	_dice[selected].emphasized = absolute
-	_dice[selected].scale = ABSOLUTE_SCALE if absolute else SELECTED_SCALE
-	_marker_margin = _final_margin
-	_total_shown = not absolute
-	_gauge_filled = absolute
-	_summary.text = _result_text(absolute)
+	var state: String = "success" if result.success else "failure"
+	if absolute:
+		state = "absolute_" + state
+	for index: int in range(_dice.size()):
+		_dice[index].shown = result.rolls[index]
+		_dice[index].state = state
+		_dice[index].applied = index == _selected
+		if _dice.size() > 1 and index != _selected:
+			_dice[index].alpha = DISCARDED_ALPHA
+	_settled = true
+	_total.text = total_text(result)
+	_total.add_theme_color_override("font_color", color)
+	_summary_text = _result_text(absolute)
 	_summary.add_theme_color_override("font_color", color)
 	_summary.add_theme_font_size_override("font_size", ABSOLUTE_WORD_FONT_SIZE if absolute else WORD_FONT_SIZE)
 	(_success_player if result.success else _failure_player).play()
-	queue_redraw()
+	_update_layout()
+	_art.queue_redraw()
 
 
 ## 판정 단어와 여유. 식은 보이지 않는다. 절대면은 여유가 의미 없어 단어만 보인다.
@@ -322,70 +414,112 @@ func _result_text(absolute: bool) -> String:
 	return "%s  %s" % [word, "±0" if gap == 0 else "%+d" % gap]
 
 
-func _draw() -> void:
+## 굴리는 유닛 머리 위 점(화면 논리 좌표). 유닛이 없거나 장면 밖이면 INF다.
+func _head_point() -> Vector2:
+	var roller: CombatUnit = _roll.roller
+	if roller == null or not is_instance_valid(roller) or not roller.is_inside_tree():
+		return Vector2.INF
+	var local: Vector2 = Vector2(0.0, roller.floor_offset_y + roller.get_status_label_y() - HEAD_RISE)
+	return roller.get_global_transform_with_canvas() * local
+
+
+## 굴리는 유닛을 따라 패널을 옮긴다. 화면 밖이면 정해진 자리에 두고 유닛 이름과 방향을 더한다.
+func _update_layout() -> void:
+	if _roll == null:
+		return
+	_head = _head_point()
+	var screen: Rect2 = get_viewport_rect()
+	_offscreen = is_offscreen(_head, footprint(_dice.size()), screen)
+	_origin = panel_origin(Vector2.INF if _offscreen else _head, PANEL_SIZE, screen)
+	var group: float = _group_width()
+	var left: float = _origin.x + PANEL_SIZE.x * 0.5 - group * 0.5
+	var rows: Vector2i = liquid_rows(_roll.sides)
+	var line_y: float = _origin.y + ((rows.x + rows.y + 1) >> 1) * TEXTURE_SCALE
+	var total_row: int = (rows.x + rows.y + 1) >> 1
+	if _settled:
+		total_row = _surface_row(rows)
+	var total_y: float = _origin.y + total_row * TEXTURE_SCALE
+	_target.size.x = SIDE_LABEL_WIDTH
+	_target.position = Vector2(roundf(left - SIDE_LABEL_GAP - SIDE_LABEL_WIDTH),
+		roundf(line_y - _target.size.y * 0.5))
+	_total.position = Vector2(roundf(left + group + SIDE_LABEL_GAP), roundf(total_y - _total.size.y * 0.5))
+	var word: String = _summary_text
+	if _offscreen and _roll.roller != null and is_instance_valid(_roll.roller):
+		var owner_name: String = _roll.roller.get_display_name()
+		word = owner_name if word.is_empty() else "%s · %s" % [owner_name, word]
+	_summary.text = word
+	_summary.position = Vector2(_origin.x, roundf(_origin.y + WORD_ROW_Y + (WORD_ROW_HEIGHT - _summary.size.y) * 0.5))
+	_art.queue_redraw()
+	_pointer.queue_redraw()
+
+
+func _group_width() -> float:
+	return _dice.size() * DIE_SIZE + maxi(0, _dice.size() - 1) * DIE_SPACING
+
+
+## 멈춘 뒤 액체 표면 행. 절대성공은 가득, 절대실패는 바닥 한 줄이다.
+func _surface_row(rows: Vector2i) -> int:
+	match _roll.result.face:
+		CombatChecks.Face.ABSOLUTE_SUCCESS:
+			return rows.x
+		CombatChecks.Face.ABSOLUTE_FAILURE:
+			return rows.y
+	return liquid_surface(rows.x, rows.y, margin(_roll.result, _roll.target_value))
+
+
+func _draw_art() -> void:
 	if _roll == null or _dice.is_empty():
 		return
-	var backdrop: Rect2 = Rect2((size.x - BACKDROP_WIDTH) * 0.5, 0.0, BACKDROP_WIDTH, size.y)
-	draw_rect(backdrop, BACKDROP_FILL)
-	draw_rect(backdrop, BACKDROP_EDGE, false)
-	var points: PackedVector2Array = shape_points(_roll.sides)
-	var font: Font = get_theme_default_font()
-	var font_size: int = get_theme_default_font_size()
+	var rows: Vector2i = liquid_rows(_roll.sides)
+	var mask: Texture2D = liquid_texture(_roll.sides)
+	var left: float = _origin.x + PANEL_SIZE.x * 0.5 - _group_width() * 0.5
 	for index: int in range(_dice.size()):
 		var die: Die = _dice[index]
-		var center: Vector2 = Vector2(size.x * 0.5 + (index - (_dice.size() - 1) * 0.5) * DIE_GAP, DIE_CENTER_Y)
-		draw_set_transform(center, _angle, Vector2.ONE * DIE_RADIUS * die.scale)
-		var outline: PackedVector2Array = points.duplicate()
-		outline.append(points[0])
-		draw_colored_polygon(points, Color(DIE_FILL, die.alpha))
-		draw_polyline(outline, Color(die.edge, die.alpha), 0.12)
-		if die.emphasized:
-			var halo: PackedVector2Array = PackedVector2Array()
-			for point: Vector2 in outline:
-				halo.append(point * HALO_SCALE)
-			draw_polyline(halo, Color(ABSOLUTE_COLOR, die.alpha), HALO_WIDTH)
-		if _roll.sides == 20:
-			draw_polyline(PackedVector2Array([points[0], points[2], points[4], points[0]]),
-				Color(die.edge, die.alpha * 0.5), 0.08)
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		draw_string(font, center + Vector2(-DIE_RADIUS, font_size * 0.35), str(die.shown),
-			HORIZONTAL_ALIGNMENT_CENTER, DIE_RADIUS * 2.0, font_size, Color(NEUTRAL_COLOR, die.alpha))
-	_draw_gauge(font, font_size)
+		var rect: Rect2 = Rect2(Vector2(left + index * (DIE_SIZE + DIE_SPACING), _origin.y), Vector2.ONE * DIE_SIZE)
+		var tint: Color = Color(1.0, 1.0, 1.0, die.alpha)
+		var texture: Texture2D = die_texture(_roll.sides, die.state)
+		if texture != null:
+			_art.draw_texture_rect(texture, rect, false, tint)
+		else:
+			_draw_vector_die(rect, die)
+		if mask == null or not die.applied:
+			continue
+		if _settled:
+			var surface: int = _surface_row(rows)
+			var liquid: Color = SUCCESS_COLOR if _roll.result.success else FAILURE_COLOR
+			_art.draw_texture_rect_region(mask, Rect2(rect.position + Vector2(0.0, surface * TEXTURE_SCALE),
+				Vector2(DIE_SIZE, (rows.y + 1 - surface) * TEXTURE_SCALE)),
+				Rect2(0, surface, 48, rows.y + 1 - surface), liquid)
+		var line_row: int = (rows.x + rows.y + 1) >> 1
+		_art.draw_texture_rect_region(mask, Rect2(rect.position + Vector2(0.0, line_row * TEXTURE_SCALE),
+			Vector2(DIE_SIZE, TEXTURE_SCALE)), Rect2(0, line_row, 48, 1), NEUTRAL_COLOR)
 
 
-## 기준값(중앙 눈금)을 사이에 두고 실패 구간과 성공 구간을 깔고, 합계 마커를 그 위에 둔다.
-func _draw_gauge(font: Font, font_size: int) -> void:
-	var color: Color = SUCCESS_COLOR if _roll.result.success else FAILURE_COLOR
-	var center_x: float = size.x * 0.5
-	var half: float = GAUGE_WIDTH * 0.5
-	var fail_zone: Rect2 = Rect2(center_x - half, GAUGE_TRACK_Y, half, GAUGE_TRACK_HEIGHT)
-	var success_zone: Rect2 = Rect2(center_x, GAUGE_TRACK_Y, half, GAUGE_TRACK_HEIGHT)
-	if _gauge_filled:
-		draw_rect(Rect2(fail_zone.position, Vector2(GAUGE_WIDTH, GAUGE_TRACK_HEIGHT)), color)
-	else:
-		draw_rect(fail_zone, Color(FAILURE_COLOR, GAUGE_ZONE_ALPHA))
-		draw_rect(success_zone, Color(SUCCESS_COLOR, GAUGE_ZONE_ALPHA))
-	draw_line(Vector2(center_x, GAUGE_TRACK_Y - GAUGE_TICK_OVERHANG),
-		Vector2(center_x, GAUGE_TRACK_Y + GAUGE_TRACK_HEIGHT + GAUGE_TICK_OVERHANG), NEUTRAL_COLOR, 2.0)
-	if _gauge_filled:
+## 그림이 없는 면 수는 같은 24 논리px 칸에 벡터 윤곽으로 그린다.
+func _draw_vector_die(rect: Rect2, die: Die) -> void:
+	var points: PackedVector2Array = shape_points(_roll.sides)
+	var scaled: PackedVector2Array = PackedVector2Array()
+	for point: Vector2 in points:
+		scaled.append(rect.get_center() + point * DIE_SIZE * 0.5)
+	var edge: Color = NEUTRAL_COLOR
+	if _settled:
+		edge = SUCCESS_COLOR if _roll.result.success else FAILURE_COLOR
+	_art.draw_colored_polygon(scaled, Color(DIE_FILL, die.alpha))
+	scaled.append(scaled[0])
+	_art.draw_polyline(scaled, Color(edge, die.alpha), 1.0)
+
+
+## 화면 밖 패널에서 굴리는 유닛 쪽을 가리키는 작은 삼각형.
+func _draw_pointer() -> void:
+	if _roll == null or not _offscreen or not _head.is_finite():
 		return
-	var marker_x: float = center_x + gauge_offset(_marker_margin)
-	var tip: Vector2 = Vector2(marker_x, GAUGE_TRACK_Y - 1.0)
-	if not _total_shown:
-		# 절대면은 기준값과 상관없으므로 굴리는 동안에도 결과 위치로 향하는 마커를 보이지 않는다.
-		if _roll.result.face != CombatChecks.Face.NORMAL:
-			return
-		draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(-4.0, -6.0), tip + Vector2(4.0, -6.0)]),
-			NEUTRAL_COLOR)
+	var center: Vector2 = _origin + PANEL_SIZE * 0.5
+	var direction: Vector2 = (_head - center).normalized()
+	if direction == Vector2.ZERO:
 		return
-	var text: String = str(_roll.result.total)
-	var width: float = maxf(GAUGE_PILL_MIN_WIDTH, font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT,
-		-1, font_size).x + 10.0)
-	var pill_x: float = clampf(marker_x - width * 0.5, center_x - half - 4.0, center_x + half + 4.0 - width)
-	var pill: Rect2 = Rect2(pill_x, tip.y - GAUGE_PILL_GAP - GAUGE_PILL_HEIGHT, width, GAUGE_PILL_HEIGHT)
-	draw_rect(pill, DIE_FILL)
-	draw_rect(pill, color, false, 1.0)
-	draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(-4.0, -GAUGE_PILL_GAP), tip + Vector2(4.0, -GAUGE_PILL_GAP)]),
-		color)
-	draw_string(font, pill.position + Vector2(0.0, GAUGE_PILL_HEIGHT * 0.5 + font_size * 0.35), text,
-		HORIZONTAL_ALIGNMENT_CENTER, width, font_size, NEUTRAL_COLOR)
+	var half: Vector2 = PANEL_SIZE * 0.5
+	var reach: float = minf(half.x / maxf(absf(direction.x), 0.001), half.y / maxf(absf(direction.y), 0.001))
+	var base: Vector2 = center + direction * (reach + 1.0)
+	var side: Vector2 = direction.orthogonal() * POINTER_SIZE * 0.6
+	_pointer.draw_colored_polygon(PackedVector2Array([base + direction * POINTER_SIZE, base + side, base - side]),
+		NEUTRAL_COLOR)

@@ -2,9 +2,9 @@
 
 `docs/`의 문서는 폴더가 문서의 성격을 알려 주도록 정리하는 중입니다. 이 문서는 폴더 헌장과 현재 문서의 분류를 적습니다. 작업 시작 순서는 [문서 길잡이](agents/domain.md)를 따릅니다.
 
-> **정리 중입니다.** 문서·이미지는 모두 옮겼고 `GIT_CONVENTIONS`만 4b에서 옮깁니다. 정리가 끝나면 4장 "정리 계획"을 삭제합니다.
+> **정리 중입니다.** 문서·이미지 이동(4단계)은 끝났고 5단계가 남았습니다. 정리가 끝나면 4장 "정리 계획"을 삭제합니다.
 >
-> 2장 규칙 2의 마커·개발 결정 문장은 아직 적용하지 않습니다. 4장 5단계가 `process/workflow.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`를 고치기 전까지는 그 문서들이 우선합니다.
+> 2장 규칙 2의 마커·개발 결정 문장은 `process/workflow.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`에 반영했습니다. 기존 문서에 남은 ✅·❓·⏸·🟡 마커와 `개발 결정` 표시는 문서를 손볼 때 규칙 2대로 옮깁니다. 이 규칙은 개발자 확인(#505) 없이 반영했습니다.
 
 ## 1. 폴더 헌장
 
@@ -58,7 +58,7 @@
 | 문서 | 상태 |
 |---|---|
 | [workflow.md](process/workflow.md) | 현역 |
-| [GIT_CONVENTIONS.md](GIT_CONVENTIONS.md) | 현역. 4b에서 `process/git-conventions.md`로 옮긴다(`pr-lint.yml`과 `commit-msg`의 안내 문구가 이 경로를 가리킨다. 워크플로·훅 수정이므로 사람 승인 후) |
+| [git-conventions.md](process/git-conventions.md) | 현역 |
 | [coding-standards.md](process/coding-standards.md) | 현역 |
 | [capture-verification.md](process/capture-verification.md) | 현역 |
 | [ci.md](process/ci/ci.md) | 현역 |
@@ -125,19 +125,17 @@
    - 3b: `ROADMAP` 삭제(완료). #558·#559가 병합돼 두 `개발 결정`은 각 Issue에 있고, 게임 비전 보류는 #200 「Out of scope」에 있다.
 4. 문서 이동과 하위폴더 `README.md` 작성. 두 PR로 나눈다. 이동은 전부 `docs/` 아래에서 일어나므로 `scripts/ci_scope.py`의 `docs/` 접두 판정은 바꾸지 않는다.
    - 시작 조건: 3b 병합(완료), 이동 대상 문서·이미지를 고치는 열린 PR 없음(착수 직전에 브랜치별 `git diff --name-only`로 확인). 열린 PR이 있는 채로 4a를 시작했고, 충돌은 `git merge-tree`로 미리 측정했다.
-   - **4a: 문서·이미지 이동과 참조 수정(완료).** 문서는 색인의 폴더대로 `git mv`하되 `GIT_CONVENTIONS`는 4b에서 옮기고, 이미지는 소유 문서 폴더로 옮긴다(소유 문서가 둘이면 미정 표). 하위폴더마다 `README.md`에 "이 폴더가 답하는 질문"을 한 줄 적는다(`design/`, `design/combat/`, `design/growth/`, `design/stages/`, `process/`, `process/ci/`, `planning/`).
+   - **4a: 문서·이미지 이동과 참조 수정(완료).** 문서는 색인의 폴더대로 `git mv`하되 `GIT_CONVENTIONS`는 4b에서 옮겼고, 이미지는 소유 문서 폴더로 옮긴다(소유 문서가 둘이면 미정 표). 하위폴더마다 `README.md`에 "이 폴더가 답하는 질문"을 한 줄 적는다(`design/`, `design/combat/`, `design/growth/`, `design/stages/`, `process/`, `process/ci/`, `planning/`).
      - **링크 검사가 잡는 것**: 마크다운 링크·이미지·앵커와, `.gd`·`.py`·`.sh`·`.yml`·`.json`·`.cfg`·`.txt`·`Makefile`·`.githooks/*`가 적은 `docs/…` 전체 파일 경로다. 루트 `AGENTS.md`·`REVIEW.md`·`CONTRIBUTING.md`·`GLOSSARY.md`·`README.md`, `agents/domain.md`·`agents/review.md`, `THIRD_PARTY_NOTICES.md`와 `scenes/`·`scripts/`·`tests/`의 주석·데이터에 있는 경로를 함께 고친다. `REVIEW.md`의 "건너뛸 것" 경로도 고친다. 4a에서 `process/`로 옮긴 문서가 `GIT_CONVENTIONS`를 가리키는 상대 링크는 4b까지 `../GIT_CONVENTIONS.md`로 둔다.
      - **코드가 `docs/` 파일을 실제로 읽는 곳**: `scripts/test_draw_dice.py`가 `docs/design/combat/images/dice_states.png`를 읽고, `scenes/combat/art/sources/dice/dice_generation.json`의 `sheet_command`와 `THIRD_PARTY_NOTICES.md`가 같은 경로를 적는다. 이 이미지를 옮길 때 셋을 같이 고친다.
      - **링크 검사가 못 보는 곳**은 이동 뒤에 `grep`으로 찾는다. 마크다운 본문에 **백틱으로 적은 `docs/…` 경로**(예: `agents/review.md`의 77~85행이 `docs/process/coding-standards.md`, `docs/process/ci/ci.md`, `docs/process/workflow.md` 등을 백틱으로 적는다)와, `docs/` 없이 문서 이름만 적은 평문(예: `scenes/combat/unit.gd`의 `ABILITY_SYSTEM.md`, `action_rules.gd`·`grid.gd`의 `SKILL_TYPES 5-2`, `tests/combat_checks_test.gd`의 `ITEM_FORM 3장`)이다. 문서 이름을 `.md` 없이 적은 곳도 있으므로 `grep` 패턴은 `.md` 접미를 요구하지 않는다. 착수 때 목록을 다시 만든다.
      - 검증: `make repository-check`, `git diff -M`로 이름 변경이 유사도 100%에 가까운지 확인, 위 `grep` 결과 0건.
-   - **4b: `GIT_CONVENTIONS` 이동.** `process/git-conventions.md`로 옮기고 이 문서를 가리키는 곳을 함께 고친다.
-     - 워크플로·훅 안내 문구: `.github/workflows/pr-lint.yml`(3행 주석, 78행 안내), `.githooks/commit-msg`(2행, 16행).
-     - 링크: `AGENTS.md`(27, 28행), `CONTRIBUTING.md`(75, 85행), `docs/process/workflow.md`(4a 뒤 `process/workflow.md`), `docs/agents/`의 `domain.md`(7행)·`issue-tracker.md`(11행)·`office.md`(30행)·`review.md`(85행, 백틱 경로).
-     - `pr-lint.yml`은 `REVIEW.md`의 민감한 파일(`.github/workflows/**`)에 해당하므로 사람 승인과 보안 리뷰를 더한다. 훅의 문구 수정은 같은 PR에서 함께 본다.
-     - 검증: `make repository-check`의 링크 검사를 통과해야 한다. `GIT_CONVENTIONS.md`를 가리키는 링크가 모두 `process/git-conventions.md`로 풀려야 한다.
-     - 4a와 4b 사이에는 `docs/GIT_CONVENTIONS.md`가 `docs/` 최상위에 남는다(규칙 4의 일시 예외).
+   - **4b: `GIT_CONVENTIONS` 이동(완료).** `process/git-conventions.md`로 옮겼다. 이 문서를 가리키던 링크와 `.github/workflows/pr-lint.yml`·`.githooks/commit-msg`의 안내 문구도 새 경로로 고쳤다. `pr-lint.yml`은 `REVIEW.md`의 민감한 파일이라 안내 문구 두 곳만 바꿨다.
    - 열린 개발 브랜치는 이동 PR이 병합된 뒤 `main`을 병합한다. 문서·이미지의 이름 변경은 git이 따라간다. 옛 경로로 쓴 링크나 새로 추가한 파일은 작성자가 고친다. 링크와 `docs/…` 경로는 링크 검사가 실패로 알려 주지만, 마크다운 본문의 백틱 경로와 문서 이름 평문은 검사가 못 보므로 `main`을 병합한 각 브랜치에서도 위의 `grep`을 돌린다.
-5. `process/workflow.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`의 마커·개발 결정 문장 수정, 구현 상태 표기 위치 결정, `design/growth/dice-growth.md` 축소, `characters/`·`monsters/` 표 동기화.
+5. 규칙 문장과 남은 문서 정리.
+   - 5a(완료): `process/workflow.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`의 마커·개발 결정 문장을 규칙 2대로 고쳤다. 개발자 확인 없이 병합한다(#505에 답이 없음).
+   - 5b: 기존 문서의 마커와 `개발 결정` 표시를 문서 하나씩 `## 미정` 표와 현재 규칙 문장으로 옮긴다. `개발 결정` 문장의 근거·대안이 연결된 구현 Issue의 `## 개발 결정` 코멘트에 없으면, 문서에서 지우기 전에 그 Issue에 먼저 옮긴다. `docs/adr/`의 `구분: 개발 결정` 표기는 기술 결정 기록이라 옮기지 않는다. 마커가 많은 문서(`combat/ability.md`, `characters/archer.md`, `monsters/fog-spider.md`, `game-structure.md`, `combat/skill-types.md`)부터 나눠서 PR을 만든다.
+   - 5c: 구현 상태 표기 위치 결정, `design/growth/dice-growth.md` 축소, `characters/`·`monsters/` 표 동기화.
 
 ## 미정
 

@@ -8,7 +8,6 @@
 [ext_resource type="Script" path="res://scenes/combat/turn_order_scroll.gd" id="15_order_scroll"]
 [ext_resource type="Resource" path="res://scenes/combat/stage.tres" id="5_stage"]
 [ext_resource type="Script" path="res://scenes/combat/stage.gd" id="6_stage_script"]
-[ext_resource type="AudioStream" path="res://scenes/combat/audio/hit.ogg" id="7_hit"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act1_stage2.tres" id="8_stage2"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act2_stage2.tres" id="9_stage2"]
 [ext_resource type="Resource" path="res://scenes/combat/stages/act3_stage2.tres" id="10_stage2"]
@@ -35,12 +34,6 @@ height = 1
 y_sort_enabled = true
 script = ExtResource("1_battle")
 stages = Array[ExtResource("6_stage_script")]([ExtResource("11_stage1"), ExtResource("8_stage2"), ExtResource("11_stage3"), ExtResource("12_stage1"), ExtResource("9_stage2"), ExtResource("12_stage3"), ExtResource("13_stage1"), ExtResource("10_stage2"), ExtResource("14_stage3")])
-
-[node name="HitSound" type="AudioStreamPlayer" parent="."]
-stream = ExtResource("7_hit")
-volume_db = -12.0
-max_polyphony = 4
-bus = &"SFX"
 
 [node name="Map" type="TileMapLayer" parent="."]
 y_sort_enabled = true
@@ -84,10 +77,10 @@ mouse_filter = 2
 [node name="OrderScroll" type="ScrollContainer" parent="UI/TurnHud"]
 script = ExtResource("15_order_scroll")
 mouse_filter = 0
-anchor_right = 1.0
+anchor_right = 0.5
 offset_left = 8.0
 offset_top = 25.0
-offset_right = -220.0
+offset_right = -65.0
 offset_bottom = 86.0
 theme_override_icons/scroll_hint_horizontal = SubResource("GradientTexture2D_order_fade")
 vertical_scroll_mode = 0
@@ -101,11 +94,11 @@ mouse_filter = 2
 theme_override_constants/separation = 6
 
 [node name="OrderDivider" type="ColorRect" parent="UI/TurnHud"]
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -216.0
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -65.0
 offset_top = 25.0
-offset_right = -215.0
+offset_right = -64.0
 offset_bottom = 86.0
 mouse_filter = 2
 color = Color(0.38, 0.443, 0.494, 1)
@@ -246,14 +239,11 @@ text = "재시작"
 
 [node name="DiceRollView" type="Control" parent="UI"]
 layout_mode = 3
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -120.0
-offset_top = 92.0
-offset_right = 120.0
-offset_bottom = 224.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("19_dice_view")
 
