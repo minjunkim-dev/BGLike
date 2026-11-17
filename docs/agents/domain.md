@@ -47,4 +47,4 @@ Issue 제목, 설명, 코드, 테스트, 리뷰에서는 `GLOSSARY.md`의 용어
 
 ## Art and terrain
 
-실제 유닛 자산은 [도트 아트 제작 기준](../PIXEL_ART.md)과 [납품 규격](../UNIT_IMAGE_TEMPLATE.md)을 따릅니다. 실제 지형과9개 맵은 [맵 제작 기준](../TERRAIN_MAPS.md), [논리 좌표 지도](../stages/README.md), `scenes/combat/stages/act*_stage*.tres`를 함께 확인합니다. 완료 여부는 #193/#194/#195의 최종 검증 근거로 확인합니다.
+실제 유닛 자산은 [도트 아트 제작 기준](../PIXEL_ART.md)과 [납품 규격](../PIXEL_ART.md#유닛-이미지-납품-규격)을 따릅니다. 실제 지형과9개 맵은 [맵 제작 기준](../TERRAIN_MAPS.md), [논리 좌표 지도](../stages/README.md), `scenes/combat/stages/act*_stage*.tres`를 함께 확인합니다. 완료 여부는 #193/#194/#195의 최종 검증 근거로 확인합니다.

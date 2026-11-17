@@ -3,7 +3,7 @@
 > M2에서 정한 게임 전체 구조입니다. 전투 밖의 진행, 막 단위 자원, 아이템, 격자 변경을 다룹니다.
 >
 > - 기준일: 2026-10-28 (2026-10-28 육성에 막 최초 클리어 레벨업 반영, [Issue #288](https://github.com/minjunkim-dev/BGLike/issues/288) 저장·전투 밖 화면 반영, [Issue #284](https://github.com/minjunkim-dev/BGLike/issues/284) 새 게임·이어하기·졸업 구현), 2026-10-21 ([Issue #214](https://github.com/minjunkim-dev/BGLike/issues/214) 드랍 기대값과 8장 정리, [Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136) 사각 높이 격자 반영, 2026-10-07 기획 논의, Issue #61 아이템 수치 결정, [Issue #99](https://github.com/minjunkim-dev/BGLike/issues/99) 막별 적 강화 제거 반영)
-> - 관련 문서: [기획 현황](DESIGN_STATUS.md) · [기획 로드맵](ROADMAP.md) · [전투 시스템 기획서](COMBAT_DESIGN.md)
+> - 관련 문서: [기획 로드맵](ROADMAP.md) · [전투 시스템 기획서](COMBAT_DESIGN.md)
 > - **궁수 재디자인 (2026-11-09)**: 궁수 스킬 9개와 기본 사거리 4([궁수 문서](characters/archer.md)), 물약류에 기름병 추가(4장, 7장)를 반영했습니다.
 > - 이 문서와 전투 시스템 기획서가 다르면 이 문서가 기준입니다. 바뀌는 전투 규칙은 [7장](#7-전투-시스템-기획서에서-바뀌는-규칙)에 모았습니다.
 > - 표시: ✅ 정해짐 · ❓ 정해야 함
@@ -260,7 +260,7 @@ flowchart TD
 
 ## 6. 사각 높이 격자
 
-2026-10-18 회의와 [Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136)의 [기획자 답변](https://github.com/minjunkim-dev/BGLike/issues/136#issuecomment-6250732550)으로 2026-10-07의 헥사 타일 결정을 대체합니다. 헥사 시안은 [대체된 기록](HEX_GRID_PREVIEW.md)으로 남깁니다.
+2026-10-18 회의와 [Issue #136](https://github.com/minjunkim-dev/BGLike/issues/136)의 [기획자 답변](https://github.com/minjunkim-dev/BGLike/issues/136#issuecomment-6250732550)으로 2026-10-07의 헥사 타일 결정을 대체합니다. 헥사 시안은 삭제했고 git 이력에 있습니다.
 
 ### 6-1. 타일과 맵
 
@@ -276,7 +276,7 @@ flowchart TD
 
 사각 격자는 이동·거리의 논리 구조입니다. 정면 사각형으로 그려야 한다는 뜻이 아닙니다. 아트·UI 레퍼런스는 소드 오브 콘발라리아이며, 2026-10-20 사용자가 제시한 두 번째 이미지의 마름모 바닥·입체 지형을 화면 방향으로 삼습니다. 레퍼런스의 자산은 복제하지 않습니다.
 
-#170의 교정 시안은 바닥32×16px·높이당8px로 렌더링합니다. 바닥 화면의 가로:세로2:1과 게임의 높이 비율은 구분합니다. 2026-10-21의 [#136 검수 결정](https://github.com/minjunkim-dev/BGLike/issues/136#issuecomment-6304104028)에서 사용자 선택 위임에 따라 이 값을 구현용 V1 규격으로 채택했습니다. #170의 표면·깊이·가림 검수와 #189의 두 해상도 원본에서 높이1/2/3·환경 오브젝트·HUD를 직접 대조했습니다. 이는 별도 기획자의 열람이나 최종 아트 승인을 기록한 것이 아닙니다. [외부 유닛 제작 규격](UNIT_IMAGE_TEMPLATE.md)의64×64 프레임 캔버스는scale0.5로32×32 논리 영역에 표시합니다. 타일 바닥과 구분합니다. #194의 선명도 결정에 따라canvas_items로 실제 창 해상도에서 렌더합니다. 실제 자산·화풍·애니메이션과 새 이미지의 가독성은 자산 통합 때 검수합니다.
+#170의 교정 시안은 바닥32×16px·높이당8px로 렌더링합니다. 바닥 화면의 가로:세로2:1과 게임의 높이 비율은 구분합니다. 2026-10-21의 [#136 검수 결정](https://github.com/minjunkim-dev/BGLike/issues/136#issuecomment-6304104028)에서 사용자 선택 위임에 따라 이 값을 구현용 V1 규격으로 채택했습니다. #170의 표면·깊이·가림 검수와 #189의 두 해상도 원본에서 높이1/2/3·환경 오브젝트·HUD를 직접 대조했습니다. 이는 별도 기획자의 열람이나 최종 아트 승인을 기록한 것이 아닙니다. [유닛 이미지 납품 규격](PIXEL_ART.md#유닛-이미지-납품-규격)의64×64 프레임 캔버스는scale0.5로32×32 논리 영역에 표시합니다. 타일 바닥과 구분합니다. #194의 선명도 결정에 따라canvas_items로 실제 창 해상도에서 렌더합니다. 실제 자산·화풍·애니메이션과 새 이미지의 가독성은 자산 통합 때 검수합니다.
 
 아군 궁수 사거리는 궁수 재디자인으로 4입니다([#528](https://github.com/minjunkim-dev/BGLike/issues/528)에서 구현, [궁수 문서](characters/archer.md#수치)). 풋내기 궁수는 6입니다. 아래는 재디자인 전 6을 유지하기로 한 검수 기록입니다. main `9217667`의 실제 첫 전투에서 원래6스폰·스탯·HP·지형을 유지한 채 백그라운드 native 입력을 확인했습니다. 3칸 접근 후 이동3을 남겼습니다. 거리7 대상은 두 번 눌러도 자원을 쓰지 않았습니다. 거리6 대상은 미리보기 후 공격했고 행동을 썼습니다. 이어1칸 후퇴해 이동2를 남겼습니다. 원본123PNG/26event/9입력과 후속 모델·HUD를 대조했습니다. initiative·공격 주사위·AI 중지는 통제했습니다.
 
@@ -447,7 +447,7 @@ flowchart TD
 
 이미 정한 항목은 표에서 뺐습니다.
 
-- 몬스터 종류: [몬스터 디자인 기획서](monsters/README.md)의7종을 #107~#112에서 구현했습니다. [통합 검수](M5_VERIFICATION.md)는 #113입니다.
+- 몬스터 종류: [몬스터 디자인 기획서](monsters/README.md)의7종을 #107~#112에서 구현했습니다. 통합 검수는 [Issue #113](https://github.com/minjunkim-dev/BGLike/issues/113)입니다.
 - 9개 스테이지 레벨 디자인: [스테이지 배치](stages/README.md)를 실제 전투에 연결했습니다. 맵 지형은 #195의 [맵 기준](TERRAIN_MAPS.md)과 스테이지 자원을 따릅니다.
 - 인벤토리: 파티 공용 가방12칸입니다 (4-3).
 - 저장과 전투 밖 화면: [#209 기획자 답](https://github.com/minjunkim-dev/BGLike/issues/209#issuecomment-6330756631)으로 정했습니다 (2-4, 2-5). 구현은 #280~#287입니다.

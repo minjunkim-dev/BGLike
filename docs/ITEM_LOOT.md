@@ -225,7 +225,7 @@ Godot 확인 수는 turns2366·checks61·actions284·HUD1091·AI67·progression1
 승리 조건과 일부 보상·HP는 테스트 값으로 설정한다.
 기존 진행 검사는9전투 순서와 최종 정비 후 졸업을 검사한다.
 자동 입력과 렌더링은 사람의 직접 플레이·조작감·기획 검수가 아니다.
-M5의 실제 배치·승리 연결과35% 경계 검사는 [M5 통합 검수](M5_VERIFICATION.md)를 따른다. 위 전체 검사 수와 아래 캡처는 과거 기록이다.
+M5의 실제 배치·승리 연결과35% 경계 검사는 [Issue #113 통합 검수](https://github.com/minjunkim-dev/BGLike/issues/113)와 삭제한 M5 검수 문서의 [보존본](https://github.com/minjunkim-dev/BGLike/blob/cb0a505ee8105b29f25365804adb375f234d1ff3/docs/M5_VERIFICATION.md)을 따른다. 위 전체 검사 수와 아래 캡처는 과거 기록이다.
 
 ## 실제 렌더링 화면
 

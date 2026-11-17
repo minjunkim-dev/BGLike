@@ -6,7 +6,7 @@
 > - 관련 문서: [몬스터 디자인 기획서](../monsters/README.md) · [게임 구조 기획서 2장](../GAME_STRUCTURE.md#2-진행-구조) · [기획 로드맵 8장](../ROADMAP.md#8-m5-콘텐츠-기획)
 > - 결정 근거: [Issue #99 세부 결정 기록](https://github.com/minjunkim-dev/BGLike/issues/99#issuecomment-6182272879)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
-> - #107~#112에서 아래9개 배치를 실제 전투에 연결했습니다. 3막 스테이지 1의 (9,2) 엄마 거미는 [#463](https://github.com/minjunkim-dev/BGLike/issues/463)에서 독안개 거미로 교체했습니다. [Issue #113 통합 검수](../M5_VERIFICATION.md)의 직접 플레이 결과는 자동 검사와 구분합니다.
+> - #107~#112에서 아래9개 배치를 실제 전투에 연결했습니다. 3막 스테이지 1의 (9,2) 엄마 거미는 [#463](https://github.com/minjunkim-dev/BGLike/issues/463)에서 독안개 거미로 교체했습니다. [Issue #113 통합 검수](https://github.com/minjunkim-dev/BGLike/issues/113)의 직접 플레이 결과는 자동 검사와 구분합니다. 이후의 정상 9스테이지 연속 진행 기록은 삭제한 M5 검수 문서의 [보존본](https://github.com/minjunkim-dev/BGLike/blob/cb0a505ee8105b29f25365804adb375f234d1ff3/docs/M5_VERIFICATION.md)에 있습니다.
 
 ---
 

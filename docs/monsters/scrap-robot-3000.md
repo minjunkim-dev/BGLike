@@ -5,7 +5,7 @@
 > - 기준일: 2026-10-23 (#321 능력치·주사위 대결 동기화)
 > - 관련 문서: [몬스터 디자인 기획서](README.md) · [고철로봇-1000](scrap-robot-1000.md) · [고철로봇-2000](scrap-robot-2000.md) · [고철로봇-3000](scrap-robot-3000.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
-> - [Issue #112](https://github.com/minjunkim-dev/BGLike/issues/112)에서 회전회오리·과부하 연계와 3막 3스테이지를 구현했습니다. 직접 플레이 상태는 [M5 통합 검수](../M5_VERIFICATION.md)를 따릅니다.
+> - [Issue #112](https://github.com/minjunkim-dev/BGLike/issues/112)에서 회전회오리·과부하 연계와 3막 3스테이지를 구현했습니다. 직접 플레이 상태는 [Issue #113 통합 검수](https://github.com/minjunkim-dev/BGLike/issues/113)를 따릅니다.
 > - 과부하의 화상 방출은 [#464](https://github.com/minjunkim-dev/BGLike/issues/464)에서 구현했습니다. 설계 근거는 [Issue #460](https://github.com/minjunkim-dev/BGLike/issues/460)의 구현 결정을 따릅니다.
 
 ---

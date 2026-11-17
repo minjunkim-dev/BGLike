@@ -2,7 +2,7 @@
 
 - 상태: 채택 (2026-10-22)
 - 구분: 개발 결정. 기획자가 나중에 바꿀 수 있다.
-- 관련: [Issue #217](https://github.com/minjunkim-dev/BGLike/issues/217), [기획 현황 2-2-2](../DESIGN_STATUS.md#2-2-2-2026-10-15-기획-논의-결정)
+- 관련: [Issue #217](https://github.com/minjunkim-dev/BGLike/issues/217)
 
 ## 맥락
 
