@@ -500,6 +500,12 @@ func _check_notices(title: TitleScreen) -> void:
 		_check((notices.get_node(name) as Node).auto_translate_mode == Node.AUTO_TRANSLATE_MODE_DISABLED,
 			"법적 고지문 %s은 번역하지 않음" % name)
 	_check("Kenney" in (notices.get_node("Sound") as Label).text, "효과음 원본 표기")
+	var music: String = (notices.get_node("Music") as Label).text
+	_check(notices.get_node("MusicHeading") != null and notices.get_node("MusicHeading").get_index() == notices.get_node("Sound").get_index() + 1
+		and notices.get_node("Music").get_index() == notices.get_node("MusicHeading").get_index() + 1, "배경음 절은 효과음 절 다음")
+	for author: String in ["Juhani Junkala", "celestialghost8", "Kosmo The Cat"]:
+		_check(author in music, "배경음 작가 표기: %s" % author)
+	_check(music.count("CC0") == 4, "배경음 네 곡 모두 CC0 표기")
 	_check((notices.get_node("Font") as Label).text == FONT_NOTICE, "UI 글꼴 Galmuri11 고지 문구")
 
 
