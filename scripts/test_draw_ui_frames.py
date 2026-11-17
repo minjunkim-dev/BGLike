@@ -1,4 +1,4 @@
-"""Seam A: the public CLI of scenes/ui/art/sources/draw_ui_frames.py (docs/PIXEL_ART.md, UI 절)."""
+"""Seam A: the public CLI of scenes/ui/art/sources/draw_ui_frames.py (docs/design/pixel-art.md, UI 절)."""
 
 from pathlib import Path
 import hashlib

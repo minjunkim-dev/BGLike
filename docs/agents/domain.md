@@ -4,7 +4,7 @@
 
 ## Before exploring, read these
 
-1. [AGENTS.md](../../AGENTS.md), [협업 규칙](../WORKFLOW.md), [브랜치와 커밋 규칙](../GIT_CONVENTIONS.md)을 읽습니다.
+1. [AGENTS.md](../../AGENTS.md), [협업 규칙](../process/workflow.md), [브랜치와 커밋 규칙](../GIT_CONVENTIONS.md)을 읽습니다.
 2. 루트의 [GLOSSARY.md](../../GLOSSARY.md)를 읽고 관련 용어를 확인합니다.
 3. 작업할 Issue의 목표, 완료 조건과 코멘트의 결정 기록을 읽습니다. Issue가 연결한 기획 문서도 직접 엽니다.
 4. `docs/adr/`에 관련 결정 기록이 있으면 읽습니다.
@@ -47,4 +47,4 @@ Issue 제목, 설명, 코드, 테스트, 리뷰에서는 `GLOSSARY.md`의 용어
 
 ## Art and terrain
 
-실제 유닛 자산은 [도트 아트 제작 기준](../PIXEL_ART.md)과 [납품 규격](../PIXEL_ART.md#유닛-이미지-납품-규격)을 따릅니다. 실제 지형과9개 맵은 [맵 제작 기준](../TERRAIN_MAPS.md), [논리 좌표 지도](../stages/README.md), `scenes/combat/stages/act*_stage*.tres`를 함께 확인합니다. 완료 여부는 #193/#194/#195의 최종 검증 근거로 확인합니다.
+실제 유닛 자산은 [도트 아트 제작 기준](../design/pixel-art.md)과 [납품 규격](../design/pixel-art.md#유닛-이미지-납품-규격)을 따릅니다. 실제 지형과9개 맵은 [맵 제작 기준](../design/stages/terrain-maps.md), [논리 좌표 지도](../design/stages/README.md), `scenes/combat/stages/act*_stage*.tres`를 함께 확인합니다. 완료 여부는 #193/#194/#195의 최종 검증 근거로 확인합니다.

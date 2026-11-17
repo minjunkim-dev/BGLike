@@ -27,7 +27,7 @@ const DICE_DIR: String = "res://scenes/combat/art/dice/"
 ## 그림이 있는 면 수. 이 밖의 면 수는 벡터 윤곽으로 같은 칸에 그린다.
 const ART_SIDES: Array[int] = [4, 6, 8, 10, 12, 20]
 const ART_STATES: Array[String] = ["rolling", "success", "failure", "absolute_success", "absolute_failure"]
-## 48 원본 px을 0.5배로 쓴다(24 논리px, docs/PIXEL_ART.md 표시 크기). 배율 2·4에서 정수다.
+## 48 원본 px을 0.5배로 쓴다(24 논리px, docs/design/pixel-art.md 표시 크기). 배율 2·4에서 정수다.
 const TEXTURE_SCALE: float = 0.5
 const DIE_SIZE: float = 24.0
 const DIE_SPACING: float = 4.0
