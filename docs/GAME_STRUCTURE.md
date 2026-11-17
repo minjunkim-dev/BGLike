@@ -270,7 +270,7 @@ flowchart TD
 | 화면 투영 | 논리는 사각4방향 격자이며 화면은 아이소메트릭 마름모. 마름모 윗면과 명암이 다른 두 옆면으로 높이를 표시. 2026-10-20 사용자 화면 교정, [Issue #170](https://github.com/minjunkim-dev/BGLike/issues/170) |
 | 높이 비율 | 높이 1칸은 바닥 한 변의 절반 ✅ |
 | 타일 픽셀 크기 | ✅ 구현용 V1: 바닥32×16px·높이당8px·viewport640×360. 사용자 선택 위임과 실제 렌더 검수로 채택. [#136 검수 결정](https://github.com/minjunkim-dev/BGLike/issues/136#issuecomment-6304104028). 이후 그래픽 정밀도에 따라 바꿀 수 있음 |
-| 맵 크기 | 14열 × 14행([#515](https://github.com/minjunkim-dev/BGLike/issues/515) 명세, [TERRAIN_MAPS.md](TERRAIN_MAPS.md#14x14와-북고남저-배치-515)). 구현 전: 현재 9개 맵은 10×10이며 재배치 티켓이 바꾼다 |
+| 맵 크기 | 14열 × 14행([#515](https://github.com/minjunkim-dev/BGLike/issues/515) 명세, [TERRAIN_MAPS.md](TERRAIN_MAPS.md#14x14와-북고남저-배치-515)). 1-1은 14×14로 재배치했고([#612](https://github.com/minjunkim-dev/BGLike/issues/612)) 나머지 8개 맵은 아직 10×10이며 재배치 티켓이 바꾼다 |
 | 맵 가장자리 | 벽 ✅ ([Issue #137](https://github.com/minjunkim-dev/BGLike/issues/137)) |
 | 기존 9개 스테이지 | 기존 로스터·스폰·수치·보상을 유지. #189 대표 배치를 보존하고 #195에서9개 맵에 높이1~3·계단·실제 도트 지형을 추가. 현재 정본은 [맵 기준](TERRAIN_MAPS.md)과 스테이지 자원. 아래 궁수 검수는 기록한 과거 SHA의 근거 |
 
