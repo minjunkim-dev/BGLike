@@ -97,7 +97,7 @@
 없다. 3a·3b에서 모두 삭제했고 복구는 git 이력에서 한다. 삭제한 문서는 `DESIGN_STATUS`, `ROADMAP`, `M1_VERIFICATION`, `M5_VERIFICATION`, `DEV_REQUEST_M1`, `HEX_GRID_PREVIEW`, `ACT_PROGRESSION`, `UNIT_IMAGE_TEMPLATE`다.
 
 - `UNIT_IMAGE_TEMPLATE`의 내용은 도트 아트 문서의 「유닛 이미지 납품 규격」에 병합했다.
-- `ROADMAP`의 현황은 Issue #200과 일정 문서가 맡고, 색인은 이 문서가 대체한다. 미정 항목의 인용은 해당 Issue로 바꿨다(공격 속성 축은 #357, 시야·엄폐는 #358, 전투 템포는 #204).
+- `ROADMAP`의 현황은 Issue #200과 일정 문서가 맡고, 색인은 이 문서가 대체한다. 인용은 해당 Issue로 바꿨다(공격 속성 축은 #357, 시야·엄폐는 #358, 전투 템포 논의는 닫힌 #204).
 - `M5_VERIFICATION`의 후속 검증(정상 9전투 연속 진행, 확인 창 포커스 오류)은 Issue에 없어서 `cb0a505`의 보존본 링크로 연결했다.
 
 ### 3-6. 이미지
