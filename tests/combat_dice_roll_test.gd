@@ -104,6 +104,12 @@ func _test_panel_placement() -> void:
 		and CombatDiceRollView.is_offscreen(Vector2(700, 200), panel, screen)
 		and CombatDiceRollView.is_offscreen(Vector2.INF, panel, screen),
 		"패널이 화면을 벗어나면 화면 밖이다")
+	# 합계 글자는 패널 오른쪽 밖까지 나간다. 오른쪽 가장자리 근처 유닛은 글자가 잘리지 않게 화면 밖 자리로 간다(PR #646 리뷰).
+	_check(not CombatDiceRollView.is_offscreen(Vector2(569, 200), panel, screen)
+		and CombatDiceRollView.is_offscreen(Vector2(569, 200), CombatDiceRollView.footprint(1), screen)
+		and CombatDiceRollView.footprint(1).x == 150.0 and CombatDiceRollView.footprint(2).x == 178.0
+		and not CombatDiceRollView.is_offscreen(Vector2(320, 200), CombatDiceRollView.footprint(2), screen),
+		"화면 밖 판정은 기준값·합계 글자 폭까지 본다")
 	_check(screen.encloses(spot) and spot.position == spot.position.round()
 		and absf(spot.get_center().x - 320.0) <= 0.5
 		and spot.position.y >= 86.0 and not spot.intersects(Rect2(256, 128, 128, 64)),

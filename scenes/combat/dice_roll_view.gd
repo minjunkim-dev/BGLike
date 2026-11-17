@@ -263,6 +263,12 @@ static func panel_origin(head: Vector2, panel: Vector2, screen: Rect2) -> Vector
 	return (head - Vector2(panel.x * 0.5, panel.y)).round()
 
 
+## 화면 안에 있어야 하는 폭. 기준값·합계 글자는 주사위 묶음 양옆으로 패널 밖까지 나가므로 그 폭을 더한다.
+static func footprint(dice_count: int) -> Vector2:
+	var group: float = dice_count * DIE_SIZE + maxi(0, dice_count - 1) * DIE_SPACING
+	return Vector2(maxf(PANEL_SIZE.x, group + 2.0 * (SIDE_LABEL_GAP + SIDE_LABEL_WIDTH)), PANEL_SIZE.y)
+
+
 static func is_offscreen(head: Vector2, panel: Vector2, screen: Rect2) -> bool:
 	if not head.is_finite():
 		return true
@@ -423,8 +429,8 @@ func _update_layout() -> void:
 		return
 	_head = _head_point()
 	var screen: Rect2 = get_viewport_rect()
-	_offscreen = is_offscreen(_head, PANEL_SIZE, screen)
-	_origin = panel_origin(_head, PANEL_SIZE, screen)
+	_offscreen = is_offscreen(_head, footprint(_dice.size()), screen)
+	_origin = panel_origin(Vector2.INF if _offscreen else _head, PANEL_SIZE, screen)
 	var group: float = _group_width()
 	var left: float = _origin.x + PANEL_SIZE.x * 0.5 - group * 0.5
 	var rows: Vector2i = liquid_rows(_roll.sides)
