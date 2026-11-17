@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""전투·UI 효과음(#628)을 numpy로 합성해 OGG로 쓴다. 외부 샘플을 쓰지 않는다.
+"""전투·UI 효과음(#628)을 OGG로 쓴다.
+
+타격·전투 불능·발소리(흙·돌)·점프·착지는 Kenney CC0 원본(kenney/ 폴더)을 잘라 다듬어 만든다.
+빗나감·물 발소리·방어막·회복·함성·턴 신호·환경음·UI는 numpy로 합성한다(외부 샘플 없음).
 
 실행: python3 scenes/combat/audio/sources/make_sfx.py  (저장소 루트에서, numpy와 ffmpeg 필요. ffmpeg 내장 vorbis 인코더를 쓴다(스테레오만 지원해 두 채널에 같은 소리를 쓴다))
 난수 씨앗을 고정해 다시 실행하면 같은 소리를 만든다. cue별 변수는 sfx_generation.json에 적는다.
 hit_wood.ogg는 Kenney의 원본(THIRD_PARTY_NOTICES.md)이라 여기서 만들지 않는다.
+원본과 출처는 THIRD_PARTY_NOTICES.md와 sfx_generation.json의 external에 있다.
 """
 import subprocess
 import tempfile
@@ -16,6 +20,18 @@ RATE = 44100
 ROOT = Path(__file__).resolve().parents[4]
 COMBAT = ROOT / "scenes/combat/audio"
 UI = ROOT / "scenes/ui/audio"
+KENNEY = Path(__file__).resolve().parent / "kenney"
+
+
+def kenney(name, seconds, peak=0.8, gain=1.0):
+    """Kenney 원본을 모노 44.1kHz로 읽어 seconds까지 자르고 끝을 줄여 정규화한다."""
+    raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(KENNEY / f"{name}.ogg"), "-ac", "1", "-ar", str(RATE),
+                          "-f", "s16le", "-"], check=True, capture_output=True).stdout
+    x = np.frombuffer(raw, dtype=np.int16).astype(float) / 32768.0
+    x = x[:int(RATE * seconds)] * gain
+    tail = min(len(x) // 3, int(RATE * 0.04))
+    x[-tail:] *= np.linspace(1, 0, tail)
+    return norm(x, peak)
 
 
 def t(seconds):
@@ -98,35 +114,21 @@ def pad(x, size):
 
 
 def hit_flesh():
-    n = 0.16
-    body = lowpass(noise(n, 1), 900) * env(int(RATE * n), 0.001, 0.035)
-    thump = sweep(140, 55, n, sine) * env(int(RATE * n), 0.001, 0.05)
-    return norm(fade(body * 1.2 + thump))
+    return kenney("impactPunch_medium_000", 0.3)
 
 
 def hit_metal():
-    n = 0.4
-    x = np.zeros(int(RATE * n))
-    for f, g in [(820, 1.0), (1337, 0.7), (2110, 0.5), (3050, 0.3)]:
-        x += g * sine(f, n) * env(len(x), 0.0005, 0.07)
-    x += highpass(noise(n, 2), 2500) * env(len(x), 0.0005, 0.02) * 0.8
-    return norm(fade(x))
+    return kenney("impactMetal_medium_000", 0.27)
 
 
 def hit_stone():
-    n = 0.3
-    x = lowpass(noise(n, 3), 1800) * env(int(RATE * n), 0.0005, 0.03)
-    x += sweep(220, 90, n, sine) * env(len(x), 0.0005, 0.06) * 0.8
-    x += highpass(noise(n, 4), 3000) * env(len(x), 0.0005, 0.008) * 0.6
-    return norm(fade(x))
+    return kenney("impactMining_000", 0.45)
 
 
 def critical():
-    a = hit_flesh()
-    b = hit_metal()
-    x = pad(a, int(RATE * 0.5)) + 0.8 * np.roll(pad(b, int(RATE * 0.5)), int(RATE * 0.03))
-    x += sweep(60, 30, 0.5, sine) * env(len(x), 0.001, 0.12) * 0.6
-    return norm(fade(x))
+    n = int(RATE * 0.6)
+    x = pad(kenney("impactPunch_heavy_000", 0.6), n) + 0.7 * np.roll(pad(kenney("impactMetal_heavy_000", 0.17), n), int(RATE * 0.03))
+    return norm(x)
 
 
 def miss():
@@ -138,10 +140,7 @@ def miss():
 
 
 def downed():
-    n = 0.9
-    x = sweep(180, 40, n, sine) * env(int(RATE * n), 0.002, 0.25)
-    x += lowpass(noise(n, 6), 600) * env(len(x), 0.002, 0.12) * 0.7
-    return norm(fade(x, 20))
+    return kenney("impactSoft_heavy_000", 0.5)
 
 
 def shield():
@@ -175,12 +174,11 @@ def step(seed, cutoff, length=0.12, decay=0.025):
 
 
 def step_dirt():
-    return step(10, 700)
+    return kenney("footstep00", 0.2, 0.7)
 
 
 def step_stone():
-    x = step(11, 2200, 0.1, 0.015)
-    return norm(fade(x + 0.5 * highpass(noise(0.1, 12), 3000) * env(len(x), 0.0005, 0.006)), 0.7)
+    return kenney("footstep_concrete_000", 0.11, 0.7)
 
 
 def step_water():
@@ -195,15 +193,11 @@ def step_water():
 
 
 def jump():
-    return norm(fade(sweep(220, 520, 0.14, sine) * env(int(RATE * 0.14), 0.005, 0.08)
-                     + lowpass(noise(0.14, 14), 1200) * 0.2 * env(int(RATE * 0.14), 0.005, 0.08)), 0.6)
+    return kenney("cloth1", 0.3, 0.6)
 
 
 def land():
-    n = 0.18
-    x = sweep(130, 60, n, sine) * env(int(RATE * n), 0.001, 0.05)
-    x += lowpass(noise(n, 15), 700) * env(int(RATE * n), 0.001, 0.03)
-    return norm(fade(x), 0.75)
+    return kenney("impactSoft_medium_000", 0.12, 0.75)
 
 
 def turn_ally():
