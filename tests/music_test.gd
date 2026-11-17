@@ -17,7 +17,7 @@ func _check(condition: bool, message: String) -> void:
 
 
 func _run() -> void:
-	_check_first_play()
+	await _check_first_play()
 	_check_track_table()
 	_check_same_track_continues()
 	_check_switching()
@@ -29,6 +29,8 @@ func _check_first_play() -> void:
 	GameMusic.play(self, GameMusic.CALM)
 	var player: AudioStreamPlayer = GameMusic.player(self)
 	_check(GameMusic.current(self) == GameMusic.CALM, "처음 고른 곡이 현재 곡")
+	# 재생 노드는 다음 프레임에 root에 붙고 그때 재생을 시작한다.
+	await process_frame
 	_check(player.bus == GameSettings.BUS_BGM, "재생기는 BGM 버스로 나감")
 	_check(player.playing, "고른 곡이 재생 중")
 

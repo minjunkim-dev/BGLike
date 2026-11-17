@@ -17,6 +17,9 @@ const TRACKS: Dictionary[StringName, Dictionary] = {
 }
 const NODE_NAME: String = "GameMusic"
 
+## 아직 root에 붙지 않은(다음 프레임에 붙을) 노드. 그 사이 다시 불러도 하나만 만든다.
+static var _pending: GameMusic = null
+
 var _player: AudioStreamPlayer
 var _current: StringName = &""
 
@@ -31,7 +34,11 @@ static func play(tree: SceneTree, track: StringName) -> void:
 	music._player.stop()
 	music._player.stream = entry.stream
 	music._player.volume_db = entry.volume_db
-	music._player.play()
+	if music.is_inside_tree():
+		music._player.play()
+	else:
+		# 처음 만든 노드는 다음 프레임에 붙는다. 붙는 순간 고른 곡이 재생된다.
+		music._player.autoplay = true
 
 
 ## 지금 고른 곡. 아직 없으면 &"".
@@ -47,6 +54,8 @@ static func player(tree: SceneTree) -> AudioStreamPlayer:
 static func _instance(tree: SceneTree) -> GameMusic:
 	var root: Window = tree.root
 	var music: GameMusic = root.get_node_or_null(NODE_NAME) as GameMusic
+	if music == null and is_instance_valid(_pending) and not _pending.is_queued_for_deletion():
+		music = _pending
 	if music == null:
 		music = GameMusic.new()
 		music.name = NODE_NAME
@@ -55,5 +64,7 @@ static func _instance(tree: SceneTree) -> GameMusic:
 		music._player.name = "Player"
 		music._player.bus = GameSettings.BUS_BGM
 		music.add_child(music._player)
-		root.add_child(music)
+		# 장면의 _ready 안(예: 시작할 때의 타이틀)에서는 root가 자식을 붙이는 중이라 바로 붙일 수 없다.
+		root.add_child.call_deferred(music)
+		_pending = music
 	return music
