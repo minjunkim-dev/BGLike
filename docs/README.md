@@ -4,7 +4,7 @@
 
 > **정리 중입니다.** 문서·이미지 이동(4단계)은 끝났고 5단계가 남았습니다. 정리가 끝나면 4장 "정리 계획"을 삭제합니다.
 >
-> 2장 규칙 2의 마커·개발 결정 문장은 아직 적용하지 않습니다. 4장 5단계가 `process/workflow.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`를 고치기 전까지는 그 문서들이 우선합니다.
+> 2장 규칙 2의 마커·개발 결정 문장은 `process/workflow.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`에 반영했습니다. 기존 문서에 남은 ✅·❓·⏸·🟡 마커와 `개발 결정` 표시는 문서를 손볼 때 규칙 2대로 옮깁니다. 이 규칙은 개발자 확인(#505) 없이 반영했습니다.
 
 ## 1. 폴더 헌장
 
@@ -132,7 +132,10 @@
      - 검증: `make repository-check`, `git diff -M`로 이름 변경이 유사도 100%에 가까운지 확인, 위 `grep` 결과 0건.
    - **4b: `GIT_CONVENTIONS` 이동(완료).** `process/git-conventions.md`로 옮겼다. 이 문서를 가리키던 링크와 `.github/workflows/pr-lint.yml`·`.githooks/commit-msg`의 안내 문구도 새 경로로 고쳤다. `pr-lint.yml`은 `REVIEW.md`의 민감한 파일이라 안내 문구 두 곳만 바꿨다.
    - 열린 개발 브랜치는 이동 PR이 병합된 뒤 `main`을 병합한다. 문서·이미지의 이름 변경은 git이 따라간다. 옛 경로로 쓴 링크나 새로 추가한 파일은 작성자가 고친다. 링크와 `docs/…` 경로는 링크 검사가 실패로 알려 주지만, 마크다운 본문의 백틱 경로와 문서 이름 평문은 검사가 못 보므로 `main`을 병합한 각 브랜치에서도 위의 `grep`을 돌린다.
-5. `process/workflow.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`의 마커·개발 결정 문장 수정, 구현 상태 표기 위치 결정, `design/growth/dice-growth.md` 축소, `characters/`·`monsters/` 표 동기화.
+5. 규칙 문장과 남은 문서 정리.
+   - 5a(완료): `process/workflow.md`·`CONTRIBUTING.md`·`agents/domain.md`·`REVIEW.md`의 마커·개발 결정 문장을 규칙 2대로 고쳤다. 개발자 확인 없이 병합한다(#505에 답이 없음).
+   - 5b: 기존 문서의 마커와 `개발 결정` 표시를 문서 하나씩 `## 미정` 표와 현재 규칙 문장으로 옮긴다. 마커가 많은 문서(`combat/ability.md`, `characters/archer.md`, `monsters/fog-spider.md`, `game-structure.md`, `combat/skill-types.md`)부터 나눠서 PR을 만든다.
+   - 5c: 구현 상태 표기 위치 결정, `design/growth/dice-growth.md` 축소, `characters/`·`monsters/` 표 동기화.
 
 ## 미정
 
