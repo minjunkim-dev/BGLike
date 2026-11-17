@@ -144,7 +144,7 @@ func _test_poison_roll_does_not_block_the_turn() -> void:
 		"독 제거는 건강 내성굴림과 독 DC를 기준으로 전달한다")
 
 
-## 회전회오리는 대상마다 내성굴림을 연출이 끝난 뒤 피해로 이어 간다 (#389 이관, DICE_PRESENTATION 내성).
+## 회전회오리는 대상마다 내성굴림을 연출이 끝난 뒤 피해로 이어 간다 (#389 이관, dice-presentation.md 내성).
 func _test_spin_save_is_awaited_before_damage() -> void:
 	var f: Fixture = _fixture()
 	var boss: CombatUnit = f.units[2]

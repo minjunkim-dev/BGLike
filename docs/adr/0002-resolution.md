@@ -6,7 +6,7 @@
 
 ## 맥락
 
-화면 배치의 기준은 640×360 논리 화면이다. `canvas_items`는 2D와 글꼴을 실제 창 해상도에서 그린다. 유닛·지형·사물은 64px, 스킬·아이템 아이콘은 48px 원본([#362](https://github.com/minjunkim-dev/BGLike/issues/362))을 0.5배로 쓴다([도트 아트 기준](../PIXEL_ART.md)). 그래서 그림 1텍셀은 논리 화면의 0.5px이다.
+화면 배치의 기준은 640×360 논리 화면이다. `canvas_items`는 2D와 글꼴을 실제 창 해상도에서 그린다. 유닛·지형·사물은 64px, 스킬·아이템 아이콘은 48px 원본([#362](https://github.com/minjunkim-dev/BGLike/issues/362))을 0.5배로 쓴다([도트 아트 기준](../design/pixel-art.md)). 그래서 그림 1텍셀은 논리 화면의 0.5px이다.
 
 [Godot 4.7 다중 해상도 문서](https://docs.godotengine.org/en/4.7/tutorials/rendering/multiple_resolutions.html)에 따르면 `integer` 배율은 자동 배율을 정수로 내린다. 남는 자리는 검은 테두리가 된다. 2026-10-22 Godot 4.7.2 Forward+ 창의 원본 Viewport에서 다음 값을 측정했다. 640×360 행만 계산값이다.
 
@@ -27,7 +27,7 @@
 2. 최소 창을 1280×720으로 올린다(`display/window/size/min_width`·`min_height`). 640×360 창은 지원하지 않는다. 그 창에서는 그림 1텍셀이 0.5px이라 64px 세부의 절반이 사라진다. 실제 PC 화면은 1280×720 이상이다.
 3. 1920×1080처럼 그림 1텍셀이 정수 화면 픽셀이 아닌 창은 [#264](https://github.com/minjunkim-dev/BGLike/issues/264)에서 처리한다. 픽셀 경계만 `fwidth` 폭으로 보간하는 sharp bilinear 셰이더를 유닛·지형·사물·아이콘에 쓴다. 정수 배율 창의 모양은 지금과 같아야 한다.
 4. 16:10 화면(1440×900, 2560×1600)은 [#265](https://github.com/minjunkim-dev/BGLike/issues/265)에서 확인한다. `expand`로 맵이 위아래로 조금 더 보인다. HUD 배치가 깨지면 고친다.
-5. 직접 확인 해상도는 1280×720, 1920×1080, 2560×1440, 1440×900, 2560×1600(실제 픽셀)이다. 에이전트는 [화면 밖 실행](../CAPTURE_VERIFICATION.md#화면-밖-실행-기본)에서 이 크기의 가상 화면과 창을 연다([#277](https://github.com/minjunkim-dev/BGLike/issues/277)). Retina의 포인트·픽셀 배율(1440×900 포인트 = 2880×1800 픽셀)은 화면 밖에서 재현하지 않는다. 같은 실제 픽셀 크기의 창으로 대신하고, Retina 창은 사람의 macOS 확인으로 남긴다. 레이아웃 자동 검사는 이 목록의 1280×720, 1920×1080, 1440×900, 2560×1600과 넓은 비율 창(2560×1080), 비정수 배율 창(1366×768)을 쓴다. 2560×1440은 1280×720과 논리 화면이 같다.
+5. 직접 확인 해상도는 1280×720, 1920×1080, 2560×1440, 1440×900, 2560×1600(실제 픽셀)이다. 에이전트는 [화면 밖 실행](../process/capture-verification.md#화면-밖-실행-기본)에서 이 크기의 가상 화면과 창을 연다([#277](https://github.com/minjunkim-dev/BGLike/issues/277)). Retina의 포인트·픽셀 배율(1440×900 포인트 = 2880×1800 픽셀)은 화면 밖에서 재현하지 않는다. 같은 실제 픽셀 크기의 창으로 대신하고, Retina 창은 사람의 macOS 확인으로 남긴다. 레이아웃 자동 검사는 이 목록의 1280×720, 1920×1080, 1440×900, 2560×1600과 넓은 비율 창(2560×1080), 비정수 배율 창(1366×768)을 쓴다. 2560×1440은 1280×720과 논리 화면이 같다.
 
 ## 1080p 도트 표시 (#264)
 
@@ -50,8 +50,8 @@
 
 | 1920×1080 4배 확대 | 변경 전 (Nearest) | 변경 후 |
 | --- | --- | --- |
-| 1-1 궁수(선택 윤곽)·전사 | ![](../assets/pixel_art_1080p_before.png) | ![](../assets/pixel_art_1080p_after.png) |
-| 2-1 바위 뒤 새끼 거미 윤곽(#256) | ![](../assets/pixel_art_outline_1080p_before.png) | ![](../assets/pixel_art_outline_1080p_after.png) |
+| 1-1 궁수(선택 윤곽)·전사 | ![](../design/images/pixel_art_1080p_before.png) | ![](../design/images/pixel_art_1080p_after.png) |
+| 2-1 바위 뒤 새끼 거미 윤곽(#256) | ![](images/pixel_art_outline_1080p_before.png) | ![](images/pixel_art_outline_1080p_after.png) |
 
 윤곽의 두께(1텍셀과 1화면 픽셀 중 큰 쪽)와 팀색은 그대로다. 윤곽 안쪽 경계도 그림과 같은 샘플을 써서 틈이 생기지 않는다.
 
@@ -74,14 +74,14 @@
 
 | 1440×900 원본 Viewport (1280×800) | |
 | --- | --- |
-| 전투 HUD | ![](../assets/hud_1440x900.png) |
-| 정비 화면 | ![](../assets/preparation_1440x900.png) |
+| 전투 HUD | ![](images/hud_1440x900.png) |
+| 정비 화면 | ![](images/preparation_1440x900.png) |
 
 자동 검사: `tests/combat_hud_test.gd`의 레이아웃 검사에 2560×1600을 더했다(1440×900은 #263에서 넣었다). 스킬 포커스 설명과 소환 초상 검사에 1440×900을 더했다. `tests/combat_loot_test.gd`의 `_check_preparation_layout`이 1280×720, 1440×900, 2560×1600에서 정비 화면이 논리 화면을 채우는지, 다섯 영역이 화면 안에 있고 서로 겹치지 않는지 검사한다. 칸을 고르기 전과 고른 뒤(상세 패널에 동작 버튼이 있는 상태)를 모두 검사한다.
 
 ## 맵 카메라 (#393)
 
-2026-10-29 [#393](https://github.com/minjunkim-dev/BGLike/issues/393)에서 전투 맵의 이동과 확대를 더했다. 조작은 [전투 UI 문서](../COMBAT_UIUX.md#맵-카메라-393)에 있다. `개발 결정`이다.
+2026-10-29 [#393](https://github.com/minjunkim-dev/BGLike/issues/393)에서 전투 맵의 이동과 확대를 더했다. 조작은 [전투 UI 문서](../design/combat/combat-ui.md#맵-카메라-393)에 있다. `개발 결정`이다.
 
 - 확대는 1배와 2배의 정수 배율뿐이다. 그림 1텍셀은 창 배율 × 확대 × 0.5px다. 1280×720과 1440×900은 1px·2px, 1920×1080은 1.5px·3px, 2560×1440은 2px·4px다. 1배보다 줄이지 않는다. 결정 2와 같은 이유다(1280×720에서 0.5px).
 - 화면 원점(카메라 변환의 이동값)은 언제나 정수 논리 px로 반올림한다. 창 배율이 정수라 실제 화면에서도 정수 px다. 반올림 전 위치는 따로 들고 있어 느린 드래그도 잃지 않는다. 맵은 1 논리 px 단위로 움직인다(1280×720에서 2px).
@@ -92,10 +92,10 @@
 
 | 원본 Viewport | |
 | --- | --- |
-| 1280×720 2배, 공격 미리보기·피해 팝업 | ![](../assets/camera_zoom2_1280x720.png) |
-| 1920×1080 2배, 같은 장면 | ![](../assets/camera_zoom2_1920x1080.png) |
-| 1920×1080 2배 풀 칸 경계 4배 확대 | ![](../assets/camera_seams_1920x1080_4x.png) |
-| 1440×900 큰 맵, 오른쪽 아래 끝까지 끈 1배 | ![](../assets/camera_clamp_1440x900.png) |
+| 1280×720 2배, 공격 미리보기·피해 팝업 | ![](images/camera_zoom2_1280x720.png) |
+| 1920×1080 2배, 같은 장면 | ![](images/camera_zoom2_1920x1080.png) |
+| 1920×1080 2배 풀 칸 경계 4배 확대 | ![](images/camera_seams_1920x1080_4x.png) |
+| 1440×900 큰 맵, 오른쪽 아래 끝까지 끈 1배 | ![](images/camera_clamp_1440x900.png) |
 
 ## 설정의 화면 맞춤 (2026-11-03)
 

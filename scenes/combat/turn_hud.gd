@@ -24,7 +24,7 @@ class SpaceBlocker extends Node:
 const UI_THEME: Theme = preload("res://scenes/ui_theme.tres")
 const DEFAULT_BUTTON_COLOR: Color = Color("223940")
 const END_BUTTON_COLOR: Color = Color("926725")
-## 포커스 테두리 색(docs/PIXEL_ART.md UI 절).
+## 포커스 테두리 색(docs/design/pixel-art.md UI 절).
 const FOCUS_COLOR: Color = Color("ebba84")
 const RESOURCE_COLORS: Array[Color] = [Color("70c76d"), Color("edaa54"), Color("ac90e5")]
 ## 스킬 칸 폭. 한 줄이 넘치면 SLOT_MIN까지 줄인다. 아이콘(24)과 좌우 여백 2씩이 들어가는 최소다(#554).

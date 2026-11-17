@@ -104,7 +104,7 @@ static func colorize(text: String) -> String:
 const SELF_TARGET: Array[String] = ["holy_veil", "battle_cry", "second_wind", "aegisal", "disengage", "potion", "stealth"]
 ## 쓰면 은신이 풀리는 피해를 주는 공격 동작 (궁수 문서 「은신」). 이동·기름병 던지기·효시·애기살 급조는 풀지 않는다.
 const STEALTH_BREAKERS: Array[String] = ["attack", "trick_arrow", "firework_arrow", "bow_bash"]
-## 칸 조준 동작의 사거리와 반경 (SKILL_TYPES 5-2). 최소 사거리는 기본 0, 기름병 던지기는 1(궁수 문서). 곡사·기준점(목표 칸)은 기본값이라 필드가 없다.
+## 칸 조준 동작의 사거리와 반경 (skill-types.md 5-2). 최소 사거리는 기본 0, 기름병 던지기는 1(궁수 문서). 곡사·기준점(목표 칸)은 기본값이라 필드가 없다.
 ## 화염 속성 동작. 나무 칸을 목표로 고를 수 있고 닿으면 나무가 탄다(환경요소 5장).
 const FIRE_ACTIONS: Array[String] = ["trick_arrow", "firework_arrow"]
 const AIM_RANGES: Dictionary[String, int] = {"fog": 4, "trick_arrow": 4, "firework_arrow": 4}
