@@ -62,7 +62,7 @@ class PackageIntegrationTests(unittest.TestCase):
         self.source_sha = "a" * 40
         self.engine_hash = "b" * 64
         self.engine = "4.7.2.stable.official.test"
-        self.lfs_files = "c" * 64 + " * scenes/combat/audio/hit.ogg"
+        self.lfs_files = "c" * 64 + " * scenes/combat/audio/hit_wood.ogg"
         self.pck = b"packed game"
         self.verification = "PCK_CONTENT_VERIFIED"
         self.files = {"COPYRIGHT.md": b"copyright", "THIRD_PARTY_NOTICES.md": b"notices",

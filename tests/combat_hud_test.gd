@@ -102,7 +102,7 @@ func _run() -> void:
 	await _test_rock_presentation()
 	await _test_results_and_restart()
 	await _test_tree_burn_ui()
-	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	(battle.get("sounds") as CombatSounds).stop_all()
 	await create_timer(0.08).timeout
 	current_scene.queue_free()
 	await process_frame
@@ -1017,7 +1017,7 @@ func _test_log_and_status() -> void:
 	units[1].aegisal_left = 0
 	battle.call("_update_turn_ui")
 	# 실제 동작의 판정 로그와 숫자 팝업 연결. 마지막 적이 아닌 대상에 확정 명중.
-	var hit_sound: AudioStreamPlayer = battle.get_node("HitSound") as AudioStreamPlayer
+	var hit_sound: AudioStreamPlayer = (battle.get("sounds") as CombatSounds).player(&"hit_flesh")
 	var hit_stream: AudioStreamOggVorbis = hit_sound.stream as AudioStreamOggVorbis
 	_check(hit_stream != null and hit_stream.get_length() > 0.0
 		and hit_stream.get_length() < 0.5 and not hit_stream.loop,
@@ -1028,8 +1028,8 @@ func _test_log_and_status() -> void:
 	hit_sound.stop()
 	# 짧은 타격음이 다음 프레임 전에 끝날 수 있어 피해 신호 시점의 재생을 관찰한다.
 	var hit_played: Array[bool] = []
-	var record_hit: Callable = func() -> void: hit_played.append(hit_sound.playing)
-	actions.hit_landed.connect(record_hit)
+	var record_hit: Callable = func(_target: Object) -> void: hit_played.append(hit_sound.playing)
+	actions.damaged.connect(record_hit)
 	units[2].is_stunned = false
 	units[2].reaction_left = 0
 	units[2].hit_points = 12
@@ -1056,7 +1056,7 @@ func _test_log_and_status() -> void:
 	actions.dice = ScriptedDice.new([17, 19, 3], advantage_sides)
 	await actions.attack(units[1], units[2])
 	_check(hit_played == [true], "실제 피해 신호가 장면의 타격음 재생으로 연결됨")
-	actions.hit_landed.disconnect(record_hit)
+	actions.damaged.disconnect(record_hit)
 	_check(_has_two_dice_log("유리"),
 		"유리 판정은 로그에 주사위 두 값을 모두 표시")
 	_check(not _has_feedback(units[1], "공격 %d" % actions.last_attack.total),
@@ -1066,7 +1066,7 @@ func _test_log_and_status() -> void:
 
 
 func _test_hit_sound_mix() -> void:
-	var sound: AudioStreamPlayer = battle.get_node("HitSound") as AudioStreamPlayer
+	var sound: AudioStreamPlayer = (battle.get("sounds") as CombatSounds).player(&"hit_flesh")
 	sound.stop()
 	var capture: AudioEffectCapture = AudioEffectCapture.new()
 	capture.buffer_length = 2.0
@@ -1075,7 +1075,7 @@ func _test_hit_sound_mix() -> void:
 	await create_timer(0.08).timeout
 	capture.clear_buffer()
 	for index: int in range(6):
-		actions.hit_landed.emit()
+		actions.damaged.emit(units[2])
 	await create_timer(sound.stream.get_length() + 0.2).timeout
 	var samples: PackedVector2Array = capture.get_buffer(capture.get_frames_available())
 	var peak: float = 0.0
@@ -2815,7 +2815,7 @@ func _test_overload_and_water_guidance() -> void:
 	await _click(dry_point, MOUSE_BUTTON_RIGHT)
 	_check(selection.preview_cell == dry and hud.preview_label.text.begins_with("점프 · ")
 		and "물 칸" not in hud.preview_label.text, "물이 아닌 칸 점프 안내는 그대로: " + hud.preview_label.text)
-	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	(battle.get("sounds") as CombatSounds).stop_all()
 	await create_timer(0.08).timeout
 	main.queue_free()
 	await process_frame
@@ -2963,7 +2963,7 @@ func _test_spawned_portrait_input() -> void:
 	_check(resources == [units[0].movement_left, units[0].action_left, units[0].bonus_action_left,
 		units[0].reaction_left, units[1].movement_left, units[1].action_left,
 		units[1].bonus_action_left, units[1].reaction_left], "소환 후 스크롤·적 조회는 두 아군 턴 자원 보존")
-	(battle.get_node("HitSound") as AudioStreamPlayer).stop()
+	(battle.get("sounds") as CombatSounds).stop_all()
 	await create_timer(0.08).timeout
 	main.queue_free()
 	await process_frame

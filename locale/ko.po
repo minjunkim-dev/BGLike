@@ -1797,8 +1797,8 @@ msgid "효과음"
 msgstr "효과음"
 
 #: scenes/main.tscn
-msgid "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
-msgstr "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
+msgid "나무 상자 타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal). 그 밖의 효과음: BGLike 자체 합성음"
+msgstr "나무 상자 타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal). 그 밖의 효과음: BGLike 자체 합성음"
 
 #: scenes/pause_menu.gd:35
 msgid "전투를 포기하면 패배로 처리되고, 이 막을 처음부터 다시 합니다."

@@ -1,0 +1,34 @@
+{
+  "issue": "https://github.com/minjunkim-dev/BGLike/issues/628",
+  "generator": "make_sfx.py",
+  "seed": "cue마다 고정",
+  "encoder": "ffmpeg 내장 vorbis(스테레오, 96kbps)",
+  "license": "BGLike 자체 합성. 외부 샘플 없음",
+  "external": {
+    "hit_wood": "Kenney Impact Sounds 1.0 impactWood_heavy_000.ogg, CC0, 원본 그대로 (kenney_license.txt)"
+  },
+  "cues": {
+    "hit_flesh": "잡음을 900Hz 저역 통과 + 140→55Hz 사인 스윕, 0.16초, 감쇠 0.035초",
+    "hit_metal": "사인 820·1337·2110·3050Hz 비조화 배음 + 2.5kHz 고역 잡음, 0.4초, 감쇠 0.07초",
+    "hit_stone": "1.8kHz 저역 잡음 + 220→90Hz 스윕 + 3kHz 고역 잡음 클릭, 0.3초",
+    "critical": "hit_flesh와 hit_metal(0.03초 늦춤)을 겹치고 60→30Hz 저음, 0.5초",
+    "miss": "600Hz~3.5kHz 대역 잡음에 사인 제곱 포락선, 0.28초",
+    "downed": "180→40Hz 스윕 + 600Hz 저역 잡음, 0.9초",
+    "shield": "사인 523·784·1046Hz + 400→1600Hz 스윕, 0.7초",
+    "heal": "사인 660·880·1320Hz 세 음 아르페지오, 0.3초",
+    "shout": "사각파 196·294·392Hz(듀티 0.3) 저역 통과 + 120→60Hz 북 세 번, 0.9초",
+    "step_dirt": "700Hz 저역 잡음, 0.12초",
+    "step_stone": "2.2kHz 저역 잡음 + 3kHz 고역 잡음 클릭, 0.1초",
+    "step_water": "사인 스윕 세 번(700·1100·520Hz, 1.8배 상승) + 저역 잡음, 0.22초",
+    "jump": "220→520Hz 사인 스윕 + 약한 저역 잡음, 0.14초",
+    "land": "130→60Hz 스윕 + 700Hz 저역 잡음, 0.18초",
+    "turn_ally": "사각파 523Hz → 784Hz, 0.25초",
+    "turn_enemy": "사각파 262Hz → 196Hz, 0.3초",
+    "ambient_water": "1.2kHz 저역 순환 잡음 + 900Hz 대역 잡음 거품, 8초 반복",
+    "ambient_wind": "500Hz 저역 순환 잡음에 느린 진폭 변화, 8초 반복",
+    "ui_hover": "사각파 1320Hz, 0.03초",
+    "ui_click": "사각파 880→1175Hz, 0.085초",
+    "ui_cancel": "사각파 660→440Hz, 0.11초",
+    "ui_disabled": "사각파 110Hz(듀티 0.25) 900Hz 저역 통과, 0.1초"
+  }
+}

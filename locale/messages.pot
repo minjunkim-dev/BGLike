@@ -1815,7 +1815,7 @@ msgid "효과음"
 msgstr ""
 
 #: scenes/main.tscn
-msgid "타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal)"
+msgid "나무 상자 타격음: Kenney, Impact Sounds 1.0 (CC0 1.0 Universal). 그 밖의 효과음: BGLike 자체 합성음"
 msgstr ""
 
 #: scenes/pause_menu.gd:35
