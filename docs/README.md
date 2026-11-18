@@ -1,8 +1,6 @@
 # docs 길잡이
 
-`docs/`의 문서는 폴더가 문서의 성격을 알려 주도록 정리하는 중입니다. 이 문서는 폴더 헌장과 현재 문서의 분류를 적습니다. 작업 시작 순서는 [문서 길잡이](agents/domain.md)를 따릅니다.
-
-> 정리는 끝났습니다. 변경 이력은 git과 Issue에 있습니다.
+`docs/`의 문서는 폴더가 문서의 성격을 알려 주도록 정리합니다. 이 문서는 폴더 헌장과 현재 문서의 분류를 적습니다. 작업 시작 순서는 [문서 길잡이](agents/domain.md)를 따릅니다.
 
 ## 1. 폴더 헌장
 
@@ -90,15 +88,7 @@
 | [schedule-2026-q4.md](planning/schedule-2026-q4.md) | 현역 | 2026-12-24 이후 |
 | [dev-request-ability.md](planning/dev-request-ability.md) | 현역 | 구현이 끝났을 때 |
 
-### 3-5. 삭제 예정
-
-없다. 3a·3b에서 모두 삭제했고 복구는 git 이력에서 한다. 삭제한 문서는 `DESIGN_STATUS`, `ROADMAP`, `M1_VERIFICATION`, `M5_VERIFICATION`, `DEV_REQUEST_M1`, `HEX_GRID_PREVIEW`, `ACT_PROGRESSION`, `UNIT_IMAGE_TEMPLATE`다.
-
-- `UNIT_IMAGE_TEMPLATE`의 내용은 도트 아트 문서의 「유닛 이미지 납품 규격」에 병합했다.
-- `ROADMAP`의 현황은 Issue #200과 일정 문서가 맡고, 색인은 이 문서가 대체한다. 인용은 해당 Issue로 바꿨다(공격 속성 축은 #357, 시야·엄폐는 #358, 전투 템포 논의는 닫힌 #204).
-- `M5_VERIFICATION`의 후속 검증(정상 9전투 연속 진행, 확인 창 포커스 오류)은 Issue에 없어서 `cb0a505`의 보존본 링크로 연결했다.
-
-### 3-6. 이미지
+### 3-5. 이미지
 
 이미지는 소유 문서가 있는 폴더의 하위 `images/`에 둔다.
 
