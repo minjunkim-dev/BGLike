@@ -4,7 +4,7 @@ extends SceneTree
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
 const LargeMapBattle = preload("res://tests/large_map_battle.gd")
 ## 북고남저 검사를 켠 맵 이름(#515). 맵을 14×14로 다시 배치한 티켓이 자기 맵을 더한다.
-const NORTH_HIGH_STAGES: Array[String] = ["1-1", "1-2", "1-3"]
+const NORTH_HIGH_STAGES: Array[String] = ["1-1", "1-2", "1-3", "2-1", "2-2", "2-3"]
 
 var checks: int = 0
 var failures: int = 0
@@ -302,7 +302,7 @@ func _check_enemy_values(battle: Node2D, act: int) -> void:
 
 func _test_mother_stages() -> void:
 	var placements: Dictionary = {
-		3: [Vector2i(6, 1), Vector2i(7, 3), Vector2i(7, 6), Vector2i(6, 8), Vector2i(9, 4)],
+		3: [Vector2i(12, 3), Vector2i(9, 5), Vector2i(10, 8), Vector2i(9, 11), Vector2i(11, 1)],
 		6: [Vector2i(7, 2), Vector2i(7, 4), Vector2i(7, 7), Vector2i(9, 2), Vector2i(9, 7)]
 	}
 	for stage: int in [3, 6]:
@@ -392,7 +392,7 @@ func _test_novice_placements() -> void:
 	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
 	var expected: Dictionary = {
 		1: [[CombatUnit.Kind.WARRIOR, Vector2i(10, 2)]],
-		4: [[CombatUnit.Kind.WARRIOR, Vector2i(6, 3)], [CombatUnit.Kind.ARCHER, Vector2i(8, 6)]],
+		4: [[CombatUnit.Kind.WARRIOR, Vector2i(9, 3)], [CombatUnit.Kind.ARCHER, Vector2i(10, 6)]],
 		7: [[CombatUnit.Kind.WARRIOR, Vector2i(6, 2)], [CombatUnit.Kind.WARRIOR, Vector2i(6, 7)],
 			[CombatUnit.Kind.ARCHER, Vector2i(9, 4)]]
 	}
@@ -403,12 +403,12 @@ func _test_novice_placements() -> void:
 		progress.stage_index = index
 		battle.call("_start_stage", true)
 		battle.call("start_battle")
-		# 14×14로 재배치한 맵(#612, #613)은 자기 아군 시작 칸이 있다. 나머지는 아직 (1,4)/(0,5).
+		# 14×14로 재배치한 맵(#612, #613, #614)은 자기 아군 시작 칸이 있다. 나머지는 아직 (1,4)/(0,5).
 		var label: String = "%d-%d" % [progress.act_number(), progress.stage_in_act()]
 		var allies_start: Array[Vector2i] = [Vector2i(1, 4), Vector2i(0, 5)]
 		if index == 0:
 			allies_start = [Vector2i(2, 8), Vector2i(1, 9)]
-		elif index == 1 or index == 2:
+		elif index >= 1 and index <= 5:
 			allies_start = [Vector2i(2, 7), Vector2i(1, 8)]
 		_check(party[0].cell == allies_start[0] and party[1].cell == allies_start[1]
 			and not party[0].facing_left and not party[1].facing_left,
@@ -584,7 +584,7 @@ func _test_scrap_robot_2000_stage() -> void:
 	battle.call("start_battle")
 	var units: Array[CombatUnit] = battle.get("units")
 	_check(units.size() == 3 and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_2000
-		and units[2].cell == Vector2i(8, 4) and units[2].hit_points == 45,
+		and units[2].cell == Vector2i(12, 3) and units[2].hit_points == 45,
 		"2막 3스테이지에 HP45 고철로봇-2000 한 마리 배치")
 	if units.size() != 3 or units[2].kind != CombatUnit.Kind.SCRAP_ROBOT_2000:
 		main.queue_free()
