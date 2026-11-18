@@ -23,7 +23,7 @@ leader 세션이 office 체크아웃의 `leader/` 폴더에서 한 번에 하나
 python3 ../pipeline/engine.py new <과제> --repo <BGLike 경로> --base origin/main
 ```
 
-엔진은 `--test`를 받지 않습니다. 엔진이 base의 [AGENTS.md](../../AGENTS.md) 「명령」에서 setup·check·test 칸을 읽습니다. 그래서 과제의 검사 명령은 `make repository-check && make godot-check`이고, `repo/`에서 setup(`make godot-install`)을 한 번 돌립니다. 2026-11-15 2차 과제 다섯 개(#569~#573)를 이 방식으로 등록했고, 검사 단계는 모두 exit 0이었습니다. 번역 글자열 검사(`check_translation_strings.py`)는 `make repository-check`의 `scripts/test_*.py` 안에서 돕니다([#526](https://github.com/minjunkim-dev/BGLike/pull/526)에서 이 검사가 빠져 CI에서야 실패를 봤습니다).
+엔진은 `--test`를 받지 않습니다. 엔진이 base의 [AGENTS.md](../../AGENTS.md) 「명령」에서 setup·check·test 칸을 읽습니다. 그래서 과제의 검사 명령은 `make repository-check && make godot-check`이고, `repo/`에서 setup(`make godot-install`)을 한 번 돌립니다. 2026-11-15 2차 과제 다섯 개(#569~#573)를 이 방식으로 등록했고, 검사 단계는 모두 exit 0이었습니다. 번역 글자열 검사(`check_translation_strings.py`)는 `make repository-check`의 `scripts/test_*.py` 안에서 돕니다([#526](https://github.com/minjunkim-labs/BGLike/pull/526)에서 이 검사가 빠져 CI에서야 실패를 봤습니다).
 
 ## 알아둘 것
 

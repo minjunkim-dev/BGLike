@@ -38,7 +38,7 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 
 ### 실행 경로 선택
 
-1. 새 실행 환경을 준비하기 전에 [기존 사례](#사례별-전제조건)와 관련 PR의 최종 검수 기록을 찾는다. 실제 Mac 입력의 선례는 [#351의 PR #352](https://github.com/minjunkim-dev/BGLike/pull/352), 가방·보상 반복 사례와 하단 경계는 [#366의 PR #368](https://github.com/minjunkim-dev/BGLike/pull/368)·[#367의 PR #369](https://github.com/minjunkim-dev/BGLike/pull/369)다. 사용한 스크립트·실행 방법·입력 경로·포커스 승인 범위와 증거의 한계를 확인한다. 실제 입력을 받는 관찰 사례는 `presentation_qa.gd --transitions`(`--case=prep|crate|rock|resume`, 정비 화면은 `prep`)와 `--manual`을 읽는 `combat_capture_test.gd`·`combat_feedback_test.gd`다. 맞는 사례가 있으면 그 사례로 `manual_qa.py`를 실행하고, 도우미가 만드는 것 외에 프로젝트 사본이나 별도 실행 환경을 만들지 않는다. 맞는 사례가 없을 때 반복할 확인이면 기존 사례를 확장하거나 [사례별 전제조건](#사례별-전제조건)대로 `tests/`에 추가하고, 한 번만 할 확인은 아래 [실행 기록](#직접-확인-실행-기록)의 임시 사례 형식을 쓴다.
+1. 새 실행 환경을 준비하기 전에 [기존 사례](#사례별-전제조건)와 관련 PR의 최종 검수 기록을 찾는다. 실제 Mac 입력의 선례는 [#351의 PR #352](https://github.com/minjunkim-labs/BGLike/pull/352), 가방·보상 반복 사례와 하단 경계는 [#366의 PR #368](https://github.com/minjunkim-labs/BGLike/pull/368)·[#367의 PR #369](https://github.com/minjunkim-labs/BGLike/pull/369)다. 사용한 스크립트·실행 방법·입력 경로·포커스 승인 범위와 증거의 한계를 확인한다. 실제 입력을 받는 관찰 사례는 `presentation_qa.gd --transitions`(`--case=prep|crate|rock|resume`, 정비 화면은 `prep`)와 `--manual`을 읽는 `combat_capture_test.gd`·`combat_feedback_test.gd`다. 맞는 사례가 있으면 그 사례로 `manual_qa.py`를 실행하고, 도우미가 만드는 것 외에 프로젝트 사본이나 별도 실행 환경을 만들지 않는다. 맞는 사례가 없을 때 반복할 확인이면 기존 사례를 확장하거나 [사례별 전제조건](#사례별-전제조건)대로 `tests/`에 추가하고, 한 번만 할 확인은 아래 [실행 기록](#직접-확인-실행-기록)의 임시 사례 형식을 쓴다.
 2. 이번에 필요한 증거를 고른다. 문구·배치는 화면 밖 사례를 재사용한다. 실제 macOS 입력·Retina·Metal이 목표이면 호스트 Mac의 기존 실행기를 사용하고, 자동 입력을 대신 실행하지 않는 관찰용 사례를 고른다. 호스트 하드웨어 검증은 호스트 경로를 유지한다.
 3. 현재 대화의 포커스 승인 범위를 확인한다. 승인이 없으면 기본 보호를 유지한다. Godot의 자체 활성화로 중단되면 해당 실패와 미검증 범위를 기록한다. 승인된 사례는 아래 `foreground_approval`에 날짜·사용자 발언·대상 사례를 적는다. 과거 실행의 승인을 새 사례로 옮기지 않는다.
 
@@ -67,9 +67,9 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 
 도우미는 `open -g -n -W`로 Forward+ 인스턴스를 연다. `--manual`을 넘긴다. 직접 확인 모드는 이니셔티브만 고정한다. 실제 전투 주사위와 반응 UI를 유지한다. 기본은 해당 Godot 인스턴스에 연결한 비활성 창 입력이다. 포커스 사용을 승인받은 사례도 같은 실행·사전 검사·입력·종료 경로를 재사용한다.
 
-`open -g`로 띄워도 Godot 창이 스스로 맨 앞에 올 수 있다. 2026-10-22 [#264](https://github.com/minjunkim-dev/BGLike/issues/264) 작업([PR #268](https://github.com/minjunkim-dev/BGLike/pull/268))에서 일어났다. 조건은 공식 Godot 4.7.2 Forward+의 macOS `open -g` 창과, 2-1 장면의 윤곽을 원본 Viewport로 저장하는 임시 스크립트다. 윤곽 캡처 두 번에서 Godot가 약 0.3초 맨 앞 앱이 됐다. 감시 스크립트가 `lsappinfo front`로 감지했다. 그 스크립트는 pid를 잘못 읽어 즉시 종료하지 못했다. 두 인스턴스는 캡처 뒤 스스로 끝났다.
+`open -g`로 띄워도 Godot 창이 스스로 맨 앞에 올 수 있다. 2026-10-22 [#264](https://github.com/minjunkim-labs/BGLike/issues/264) 작업([PR #268](https://github.com/minjunkim-labs/BGLike/pull/268))에서 일어났다. 조건은 공식 Godot 4.7.2 Forward+의 macOS `open -g` 창과, 2-1 장면의 윤곽을 원본 Viewport로 저장하는 임시 스크립트다. 윤곽 캡처 두 번에서 Godot가 약 0.3초 맨 앞 앱이 됐다. 감시 스크립트가 `lsappinfo front`로 감지했다. 그 스크립트는 pid를 잘못 읽어 즉시 종료하지 못했다. 두 인스턴스는 캡처 뒤 스스로 끝났다.
 
-같은 날 같은 실행 방법의 [PR #266](https://github.com/minjunkim-dev/BGLike/pull/266) 측정은 `lsappinfo front`를 0.05초 간격으로 읽었고, Godot가 맨 앞에 오지 않았다. 간헐적이며 원인은 특정하지 못했다. 이후 PR #267, #269~#271, #273, #275의 화면 확인은 화면 밖 실행으로 대신했다. 사용자 포커스를 가져가므로 이 문서를 고칠 때 다시 재현하지 않았다.
+같은 날 같은 실행 방법의 [PR #266](https://github.com/minjunkim-labs/BGLike/pull/266) 측정은 `lsappinfo front`를 0.05초 간격으로 읽었고, Godot가 맨 앞에 오지 않았다. 간헐적이며 원인은 특정하지 못했다. 이후 PR #267, #269~#271, #273, #275의 화면 확인은 화면 밖 실행으로 대신했다. 사용자 포커스를 가져가므로 이 문서를 고칠 때 다시 재현하지 않았다.
 
 보호 장치: 게임을 연 뒤 0.1초마다 `lsappinfo front`의 pid를 읽는다. 그 pid가 이 시도의 Godot(실행 파일과 로그 경로로 식별)이면 즉시 그 인스턴스를 종료하고 사례를 `failed`로 기록한다. 시도 기록의 `foreground`와 `reason`에 감지를, `cleanup_error`에 종료 실패(`Owned Godot instance did not stop`)를 남긴다. 감지 전에 포커스는 이미 넘어갔을 수 있다. 이 장치는 피해 시간을 줄일 뿐 막지 못한다. 그래서 기본은 화면 밖 실행이다.
 
@@ -164,7 +164,7 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 
 입력이나 AI 진행 전에 사례의 유닛 구성·초상 수·턴 자원을 검사한다. 조건이 맞지 않으면 사례를 종료한다. 성공 이벤트나 `READY`를 출력하지 않는다. 임시 스크립트도 같은 기준을 따른다. 공통 fixture 검사기는 만들지 않는다.
 
-통제 주사위 fixture는 실제 유닛의 `get_ability_sides()`·공격/방어 가산값·피해 능력치 주사위(`ScriptedDice.damage_sides()`)를 먼저 읽는다. 공격 능력치 → 방어 능력치 → 명중일 때 피해처럼 제품의 소비 순서를 적고 `ScriptedDice`의 값과 면수를 함께 준비한다. 유리/불리·반응·추가 피해·보상 확률도 순서에 포함한다. 의도한 명중·빗나감이 성립하는지 입력 전에 검사하고, 끝에는 기존 `ScriptedDice.finish()`로 면수 불일치·미소비·부족 난수를 확인한다. 통제하려는 분기의 부족한 난수를 `then_seeded()`로 숨기지 않는다. [#339](https://github.com/minjunkim-dev/BGLike/issues/339)의 개발 결정이며, 이동 기회 공격 사례가 이 작성 방식의 예다.
+통제 주사위 fixture는 실제 유닛의 `get_ability_sides()`·공격/방어 가산값·피해 능력치 주사위(`ScriptedDice.damage_sides()`)를 먼저 읽는다. 공격 능력치 → 방어 능력치 → 명중일 때 피해처럼 제품의 소비 순서를 적고 `ScriptedDice`의 값과 면수를 함께 준비한다. 유리/불리·반응·추가 피해·보상 확률도 순서에 포함한다. 의도한 명중·빗나감이 성립하는지 입력 전에 검사하고, 끝에는 기존 `ScriptedDice.finish()`로 면수 불일치·미소비·부족 난수를 확인한다. 통제하려는 분기의 부족한 난수를 `then_seeded()`로 숨기지 않는다. [#339](https://github.com/minjunkim-labs/BGLike/issues/339)의 개발 결정이며, 이동 기회 공격 사례가 이 작성 방식의 예다.
 
 반복할 사례는 `tests/`의 추적 파일로 유지하고 기존 `manual_qa.py` 또는 아래 `qa_movement.py`로 실행한다. 실행별 SHA·입력 fingerprint·로그·실패 시도는 기존 도우미의 기록을 재사용한다. 구현 PR의 문서 누락 확인은 [PR 양식](../../.github/pull_request_template.md)의 영향 문서 항목과 [Spec 리뷰](../agents/review.md#별도-컨텍스트)에서 기획서·개발 요청서의 구현 상태와 갱신 내용 또는 유지 이유를 대조한다. 별도 검사기나 완료 기준을 중복해 만들지 않는다.
 
@@ -207,7 +207,7 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 
 ## PCK 이동 후조건의 재현
 
-`tests/movement_qa.gd`와 `scripts/qa_movement.py`는 [#336](https://github.com/minjunkim-dev/BGLike/issues/336)의 검수 전용 하네스다. 정상 이동, 기회 공격 빗나감, 기회 공격으로 전투 불능, 이동 중 전투 종료, 확인 클릭 누락의 5개 통제 사례를 한 번 실행한다. 마지막 사례는 이동 검사기가 실패를 검출해야 통과한다. 초기화만 확인하고 성공하는 별도 fixture precheck는 없다. 기존 `ScriptedDice.finish()`가 면수·미소비·부족 난수를 확인한다.
+`tests/movement_qa.gd`와 `scripts/qa_movement.py`는 [#336](https://github.com/minjunkim-labs/BGLike/issues/336)의 검수 전용 하네스다. 정상 이동, 기회 공격 빗나감, 기회 공격으로 전투 불능, 이동 중 전투 종료, 확인 클릭 누락의 5개 통제 사례를 한 번 실행한다. 마지막 사례는 이동 검사기가 실패를 검출해야 통과한다. 초기화만 확인하고 성공하는 별도 fixture precheck는 없다. 기존 `ScriptedDice.finish()`가 면수·미소비·부족 난수를 확인한다.
 
 먼저 [Draft 검증](ci/draft-release.md)의 `verify_draft.py`로 대상 artifact를 확인한다. 그 출력의 `assets/`와 전체 source SHA를 전달한다. 하네스는 기존 `verify_bundle()`로 bundle을 다시 확인하고 `manual_qa.load_plan()`으로 하네스 checkout·입력의 fingerprint를 기록한다. artifact source와 하네스 HEAD는 별도 식별자다.
 
@@ -242,6 +242,6 @@ python3 ~/.agents/tools/agent_workflow.py check -- \
 
 `make check`는 매 프레임 팝업끼리의 겹침, 화면 밖 이탈과 HUD 침범을 검사한다. 두 회전 공격의 횟수·피해, 차례 복귀와 팝업 제거도 검사한다.
 
-같은 검사는 [#260](https://github.com/minjunkim-dev/BGLike/issues/260)의 밀집 배치도 재현한다. 3-1에서 궁수를 여섯 유닛이 둘러싸게 놓고 새끼 거미의 명중굴림 공격을 같은 대상에게 두 번 실행한다. 배치는 위쪽 HUD와 떨어져 있어 위로 쌓을 공간이 있다. 연속 `2` 피해 팝업(피해 1 + 피해 보정 1)이 대상의 기준 자리에서 40 논리px 안인지 확인한다. 같은 대상의 다음 팝업이 이전 팝업 위에 놓이는지도 확인한다. 이 사례는 적 AI를 멈추고 통제한 공격 두 번만 실행한다.
+같은 검사는 [#260](https://github.com/minjunkim-labs/BGLike/issues/260)의 밀집 배치도 재현한다. 3-1에서 궁수를 여섯 유닛이 둘러싸게 놓고 새끼 거미의 명중굴림 공격을 같은 대상에게 두 번 실행한다. 배치는 위쪽 HUD와 떨어져 있어 위로 쌓을 공간이 있다. 연속 `2` 피해 팝업(피해 1 + 피해 보정 1)이 대상의 기준 자리에서 40 논리px 안인지 확인한다. 같은 대상의 다음 팝업이 이전 팝업 위에 놓이는지도 확인한다. 이 사례는 적 AI를 멈추고 통제한 공격 두 번만 실행한다.
 
 직접 확인에는 위 계획의 `script`를 `res://tests/combat_feedback_test.gd`로 바꾼다. macOS 창 실행의 `success_marker`는 `[FEEDBACK_CHECK] PASS`, 화면 밖 실행은 `, 0 failures;`로 지정한다. 새 세션 폴더를 사용한다. macOS 창 실행이면 아군 두 명의 `턴 종료`를 누른다. 명중·빗나감이 포함된 두 회전 공격을 확인한다. 원본 PNG에서 팝업 배치와 사라지는 과정을 확인한다.
