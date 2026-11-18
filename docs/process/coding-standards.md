@@ -24,7 +24,7 @@
 - 상수 재단언, 소스 문자열 순서와 성공만 반환하는 mock은 동작 검증의 근거가 아닙니다. 정적 검사는 정적 제약에 사용합니다.
 - 단순 문서·설정 변경에 구현을 복제하는 테스트를 추가하지 않습니다. 설정을 읽는 도구와 실제 흐름을 확인합니다.
 - 반복된 실제 결함은 재현 테스트, 자동 검사 또는 이 규칙에 반영합니다. 가상 문제를 위한 검사와 자동화를 만들지 않습니다.
-- 필수 명령은 [README](https://github.com/minjunkim-dev/BGLike/blob/main/README.md)와 [CI 구성](ci/ci.md)을 따릅니다. 자동 검사, 직접 조작, 사람 판단 항목을 [확인 등급](capture-verification.md#확인-등급)대로 구분합니다.
+- 필수 명령은 [README](https://github.com/minjunkim-labs/BGLike/blob/main/README.md)와 [CI 구성](ci/ci.md)을 따릅니다. 자동 검사, 직접 조작, 사람 판단 항목을 [확인 등급](capture-verification.md#확인-등급)대로 구분합니다.
 
 ## 리뷰 기준
 

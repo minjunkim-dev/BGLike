@@ -104,7 +104,7 @@ tracked 변경이나 untracked 파일이 있으면 패키지를 만들지 않습
 Git LFS를 가져오고 `git lfs fsck`와 미해결 pointer 검사를 수행합니다.
 기존 고정 Godot 4.7.2 설치 스크립트가 엔진 archive SHA-256을 확인합니다.
 `Verification PCK` preset은 `--export-pack`에 필요한 exporter를 고릅니다.
-`Verification PCK` preset은 기능 태그 `verification_draft`를 가집니다. 묶음은 공식 Godot 편집기 실행 파일로 열어 `OS.is_debug_build()`가 true이므로, 이 태그가 타이틀의 디버그 테스트 진입 메뉴(`TitleScreen.debug_entry`)를 끕니다([#557](https://github.com/minjunkim-dev/BGLike/issues/557)).
+`Verification PCK` preset은 기능 태그 `verification_draft`를 가집니다. 묶음은 공식 Godot 편집기 실행 파일로 열어 `OS.is_debug_build()`가 true이므로, 이 태그가 타이틀의 디버그 테스트 진입 메뉴(`TitleScreen.debug_entry`)를 끕니다([#557](https://github.com/minjunkim-labs/BGLike/issues/557)).
 `Linux` preset은 제품의 Linux 지원 선언이 아닙니다.
 엔진 바이너리와 export template은 패키지에 포함하지 않습니다.
 

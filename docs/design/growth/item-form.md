@@ -3,7 +3,7 @@
 > 아이템 하나를 기획할 때 반드시 정할 항목과 선택 항목, 수치 가감의 종류와 적용 규칙을 정리한 문서입니다. 데이터 파일(`item_data.json`)의 필드 정의가 아닙니다.
 >
 > - 기준일: 2026-11-05 (기획 논의로 확정)
-> - 상태: ✅ 기획 확정. 능력치 가감 6종과 최대 이동은 [#456](https://github.com/minjunkim-dev/BGLike/issues/456)에서 구현했습니다. 지원 필드는 [아이템 안내](items-loot.md#한-파일에서-바꾸는-아이템-데이터)를 봅니다.
+> - 상태: ✅ 기획 확정. 능력치 가감 6종과 최대 이동은 [#456](https://github.com/minjunkim-labs/BGLike/issues/456)에서 구현했습니다. 지원 필드는 [아이템 안내](items-loot.md#한-파일에서-바꾸는-아이템-데이터)를 봅니다.
 > - 용어는 [GLOSSARY.md](../../../GLOSSARY.md)와 [능력치 기획서](../combat/ability.md)를 따릅니다.
 > - 표시: ✅ 정해짐 · ❓ 정해야 함 · ⏸ 보류
 
@@ -36,7 +36,7 @@
 | 아이콘 방향 | 외형 콘셉트, 직업별 변형 |
 | 밸런스 메모 | 기대 효과와 위험 요소 |
 
-게임 내 설명은 수치에서 자동으로 만들고, 플레이버만 직접 씁니다 ✅ `개발 결정`([Issue #456](https://github.com/minjunkim-dev/BGLike/issues/456)).
+게임 내 설명은 수치에서 자동으로 만들고, 플레이버만 직접 씁니다 ✅ `개발 결정`([Issue #456](https://github.com/minjunkim-labs/BGLike/issues/456)).
 
 ## 3. 수치 가감
 
@@ -73,7 +73,7 @@ DC         = max(1, max(1, 시전 능력치 표준값 + 그 능력치 가감) + 
 피해 = ⌈힘 굴림값 ÷ 2⌉ + 기타 가산치
 ```
 
-레벨은 굴림값 안에 한 번만 들어갑니다([#407 답 4](https://github.com/minjunkim-dev/BGLike/issues/407#issuecomment-6568715948)의 `⌈(힘 d20 눈 + 레벨) ÷ 2⌉`). 능력치 가감도 굴림값에 들어 있어 ÷2 안으로 들어갑니다. 힘 가감 +2는 ÷2를 받아 대상당 약 +1이고, 기타 가산치 +2는 ÷2 밖이라 대상당 +2입니다. 스킬마다 기타 가산치의 배수가 다르므로(십자 베기 2배, 강철 돌진 0배) "한 줄 역할"과 "시너지·충돌"에 적용 범위를 적습니다([전사 문서](../characters/warrior.md)).
+레벨은 굴림값 안에 한 번만 들어갑니다([#407 답 4](https://github.com/minjunkim-labs/BGLike/issues/407#issuecomment-6568715948)의 `⌈(힘 d20 눈 + 레벨) ÷ 2⌉`). 능력치 가감도 굴림값에 들어 있어 ÷2 안으로 들어갑니다. 힘 가감 +2는 ÷2를 받아 대상당 약 +1이고, 기타 가산치 +2는 ÷2 밖이라 대상당 +2입니다. 스킬마다 기타 가산치의 배수가 다르므로(십자 베기 2배, 강철 돌진 0배) "한 줄 역할"과 "시너지·충돌"에 적용 범위를 적습니다([전사 문서](../characters/warrior.md)).
 
 ### 하한
 
@@ -87,7 +87,7 @@ DC         = max(1, max(1, 시전 능력치 표준값 + 그 능력치 가감) + 
 | 최대 HP | 1 |
 | 최대 이동 | 1칸 |
 
-최대 이동 0칸(이동 불가)이 필요한 아이템은 이 하한과 충돌하므로 따로 기획합니다. 지금은 허용하지 않습니다 ✅ `개발 결정`([Issue #456](https://github.com/minjunkim-dev/BGLike/issues/456)).
+최대 이동 0칸(이동 불가)이 필요한 아이템은 이 하한과 충돌하므로 따로 기획합니다. 지금은 허용하지 않습니다 ✅ `개발 결정`([Issue #456](https://github.com/minjunkim-labs/BGLike/issues/456)).
 
 ### 절대면과 유리/불리 ✅
 
@@ -114,9 +114,9 @@ AC는 방어 가산 +3과 민첩 가감 −1이 합쳐져 +2입니다. 이니셔
 
 | 항목 | 상태 |
 |---|---|
-| 게임 내 설명의 형식(직접 작성 또는 자동 생성) | ✅ `개발 결정`: 수치에서 자동 생성([Issue #456](https://github.com/minjunkim-dev/BGLike/issues/456)) |
-| 능력치 가감과 가산의 막별 수치 범위 | ❓ [Issue #205](https://github.com/minjunkim-dev/BGLike/issues/205)에서 다룹니다 |
-| 최대 이동 0칸을 허용하는 아이템 | ✅ `개발 결정`: 허용하지 않음, 최소 1칸([Issue #456](https://github.com/minjunkim-dev/BGLike/issues/456)) |
+| 게임 내 설명의 형식(직접 작성 또는 자동 생성) | ✅ `개발 결정`: 수치에서 자동 생성([Issue #456](https://github.com/minjunkim-labs/BGLike/issues/456)) |
+| 능력치 가감과 가산의 막별 수치 범위 | ❓ [Issue #205](https://github.com/minjunkim-labs/BGLike/issues/205)에서 다룹니다 |
+| 최대 이동 0칸을 허용하는 아이템 | ✅ `개발 결정`: 허용하지 않음, 최소 1칸([Issue #456](https://github.com/minjunkim-labs/BGLike/issues/456)) |
 | 등급·희소성, 직업 제한 | ⏸ 보류 |
-| 전투 UI의 능력치 가감 표시 | ✅ `개발 결정`: 가산 표기를 확장해 `힘 d20+2`로 보입니다. 유닛 패널·호버에 적용했고 확인 창은 가감이 없어 그대로입니다([Issue #456](https://github.com/minjunkim-dev/BGLike/issues/456)) |
-| 구현 요청과 개발 | ✅ 전투 코드가 능력치 가감 6종(`strength_modifier` 등)과 `max_movement`를 읽습니다([Issue #456](https://github.com/minjunkim-dev/BGLike/issues/456)). `item_data.json`의 시험 아이템은 가산 4종만 쓰며, 가감을 쓰는 아이템과 수치 범위는 [Issue #205](https://github.com/minjunkim-dev/BGLike/issues/205)에서 정합니다 |
+| 전투 UI의 능력치 가감 표시 | ✅ `개발 결정`: 가산 표기를 확장해 `힘 d20+2`로 보입니다. 유닛 패널·호버에 적용했고 확인 창은 가감이 없어 그대로입니다([Issue #456](https://github.com/minjunkim-labs/BGLike/issues/456)) |
+| 구현 요청과 개발 | ✅ 전투 코드가 능력치 가감 6종(`strength_modifier` 등)과 `max_movement`를 읽습니다([Issue #456](https://github.com/minjunkim-labs/BGLike/issues/456)). `item_data.json`의 시험 아이템은 가산 4종만 쓰며, 가감을 쓰는 아이템과 수치 범위는 [Issue #205](https://github.com/minjunkim-labs/BGLike/issues/205)에서 정합니다 |
