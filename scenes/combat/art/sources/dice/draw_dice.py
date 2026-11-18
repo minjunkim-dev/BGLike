@@ -5,7 +5,8 @@ Usage:
     python3 scenes/combat/art/sources/dice/draw_dice.py <output-directory>
     python3 scenes/combat/art/sources/dice/draw_dice.py --sheet <png-path>
 
-The first form writes d{4,6,8,10,12,20}_{rolling,success,failure,absolute_success,absolute_failure}.png
+The first form writes d{4,6,8,10,12,20}_{rolling,success,failure,absolute_success,absolute_failure}.png,
+d{N}_rolling_{1,2,3}.png (spin frames)
 and d{N}_liquid.png (a white mask of the inside of the body) as 48x48 RGBA PNGs. The second form writes
 a 4x comparison sheet (rows: sides, columns: states) with an example liquid level and threshold line.
 No numbers are drawn. Standard library only (zlib, struct, binascii), so the same command writes the
@@ -27,6 +28,9 @@ CENTER = 24.0
 RADIUS = 17.9  # pixel centers stay inside 6..41, the central 36x36
 SIDES = (4, 6, 8, 10, 12, 20)
 STATES = ("rolling", "success", "failure", "absolute_success", "absolute_failure")
+# Extra spin frames of "rolling" (frame 0 is d{N}_rolling.png): the trail turns 11.25 degrees per frame,
+# so four frames close the 45 degree symmetry of the eight trail marks, and the highlight moves around the band.
+ROLLING_FRAMES = 4
 
 OUTLINE = (0x12, 0x0D, 0x16)
 GLASS = (0x20, 0x2B, 0x35)
@@ -114,12 +118,12 @@ def put(canvas, pixels, color):
             canvas[(x, y)] = color
 
 
-def effect_pixels(state, body):
+def effect_pixels(state, body, frame=0):
     """Pixels outside the body that tell the state: spin trail, light rays, shards."""
     found = set()
     if state == "rolling":
         for i in range(8):
-            angle = math.radians(i * 45 + 20)
+            angle = math.radians(i * 45 + 20 + frame * 11.25)
             x, y = round(CENTER + 21 * math.cos(angle)), round(CENTER + 21 * math.sin(angle))
             found.update({(x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1)})
     elif state == "absolute_success":
@@ -133,8 +137,14 @@ def effect_pixels(state, body):
     return {p for p in found if 0 <= p[0] < SIZE and 0 <= p[1] < SIZE and p not in body}
 
 
-def draw_body(sides, state):
-    """Return a canvas dict {(x, y): (r, g, b)} for one body picture."""
+def highlight_side(x, y, frame):
+    """True for band pixels on the lit side: upper left, upper right, lower right, lower left by spin frame."""
+    dx, dy = x - 24, y - 24
+    return (dx + dy < -2, dx - dy > 2, dx + dy > 2, dy - dx > 2)[frame]
+
+
+def draw_body(sides, state, frame=0):
+    """Return a canvas dict {(x, y): (r, g, b)} for one body picture (frame > 0 only for "rolling")."""
     body = body_mask(sides)
     band_outer = erode(body, 2)
     glass = erode(body, 4)
@@ -147,7 +157,7 @@ def draw_body(sides, state):
     # Two source px of dark outline on the outside, then a two px colored band, then the glass.
     for p in band_outer:
         x, y = p
-        canvas[p] = lighter(edge) if (x + y < 46 and p not in glass and p not in erode(body, 3)) else edge
+        canvas[p] = lighter(edge) if (highlight_side(x, y, frame) and p not in glass and p not in erode(body, 3)) else edge
     put(canvas, glass, fill)
     facets = detail_lines(sides, glass)
     put(canvas, facets, lighter(fill) if state != "rolling" else edge)
@@ -155,7 +165,7 @@ def draw_body(sides, state):
         crack = line((24, 8), (21, 17)) + line((21, 17), (26, 25)) + line((26, 25), (22, 34))
         put(canvas, [p for p in crack if p in band_outer], CRACK)
     shade = NEUTRAL if state == "rolling" else edge
-    put(canvas, effect_pixels(state, body), shade if state != "absolute_failure" else PURPLE)
+    put(canvas, effect_pixels(state, body, frame), shade if state != "absolute_failure" else PURPLE)
     return canvas
 
 
@@ -232,6 +242,10 @@ def main(argv):
         for state in STATES:
             path = output / f"d{sides}_{state}.png"
             path.write_bytes(canvas_png(draw_body(sides, state)))
+            print(path)
+        for frame in range(1, ROLLING_FRAMES):
+            path = output / f"d{sides}_rolling_{frame}.png"
+            path.write_bytes(canvas_png(draw_body(sides, "rolling", frame)))
             print(path)
         path = output / f"d{sides}_liquid.png"
         path.write_bytes(canvas_png({p: (255, 255, 255) for p in liquid_mask(sides)}))
