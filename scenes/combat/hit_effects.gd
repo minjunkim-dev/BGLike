@@ -15,9 +15,19 @@ const FLASH_FRAMES: Array[String] = [
 	"res://scenes/combat/art/effects/hit_flash/001.png",
 	"res://scenes/combat/art/effects/hit_flash/002.png",
 ]
+## 스킬 효과(#634): 폴더별 프레임 수. 그림은 draw_skill_effects.py가 찍는다.
+const SKILL_FRAME_COUNTS: Dictionary = {"shield": 4, "heal": 4, "buff": 4, "sweep_front": 3, "sweep_back": 3}
+const SKILL_FRAME_PATH: String = "res://scenes/combat/art/effects/%s/%03d.png"
+## 효과 그림 안에서 유닛 발 기준점과 캔버스 중심(그림 px). 유닛 프레임과 같은 기준이다.
+const UNIT_EFFECT_ANCHOR: Vector2 = Vector2(32, 56)
+const UNIT_EFFECT_CENTER: Vector2 = Vector2(32, 32)
+const SWEEP_CENTER: Vector2 = Vector2(64, 32)
+const SWEEP_FRONT_ANCHOR: Vector2 = Vector2(64, 26)
+const SWEEP_BACK_ANCHOR: Vector2 = Vector2(64, 37)
 const PIXEL_ART: Material = preload("res://scenes/combat/art/pixel_art.tres")
 
 var _flash_frames: SpriteFrames
+var _skill_frames: Dictionary = {}
 
 
 ## at 자리에 섬광을 한 번 재생한다. target이 유닛이면 히트스톱과 밀림도 한다(상자는 null).
@@ -48,6 +58,61 @@ func play_miss(attacker: CombatUnit, target: CombatUnit) -> void:
 	var tween: Tween = ghost.create_tween()
 	tween.tween_property(ghost, "modulate:a", 0.0, AFTERIMAGE_TIME)
 	tween.tween_callback(ghost.queue_free)
+
+
+## 성스러운 장막의 방어막. 표시만 하고 기다리지 않는다.
+func play_shield(unit: CombatUnit) -> void:
+	_play_on_unit("shield", unit)
+
+
+## 숨 고르기·물약의 회복.
+func play_heal(unit: CombatUnit) -> void:
+	_play_on_unit("heal", unit)
+
+
+## 전투의 함성을 받은 아군 하나.
+func play_buff(unit: CombatUnit) -> void:
+	_play_on_unit("buff", unit)
+
+
+## 휩쓸기 궤적. direction은 시전자에서 고른 정면 칸으로 가는 화면 방향이다. 아래쪽이면 앞, 위쪽이면 뒤 그림이고 왼쪽이면 뒤집는다.
+func play_sweep(actor: CombatUnit, direction: Vector2) -> void:
+	var front: bool = direction.y >= 0.0
+	var anchor: Vector2 = SWEEP_FRONT_ANCHOR if front else SWEEP_BACK_ANCHOR
+	_spawn("sweep_front" if front else "sweep_back", _unit_anchor(actor) + (SWEEP_CENTER - anchor) * 0.5, direction.x < 0.0)
+
+
+func _play_on_unit(folder: String, unit: CombatUnit) -> void:
+	_spawn(folder, _unit_anchor(unit) + (UNIT_EFFECT_CENTER - UNIT_EFFECT_ANCHOR) * 0.5, false)
+
+
+func _unit_anchor(unit: CombatUnit) -> Vector2:
+	return unit.position + Vector2(0, unit.floor_offset_y + unit.body_offset_y)
+
+
+func _spawn(folder: String, at: Vector2, flip: bool) -> void:
+	var sprite: AnimatedSprite2D = AnimatedSprite2D.new()
+	sprite.sprite_frames = _skill_effect_frames(folder)
+	sprite.material = PIXEL_ART
+	sprite.scale = Vector2.ONE * 0.5
+	sprite.position = at
+	sprite.flip_h = flip
+	add_child(sprite)
+	sprite.animation_finished.connect(sprite.queue_free)
+	sprite.play(&"play")
+
+
+func _skill_effect_frames(folder: String) -> SpriteFrames:
+	if not _skill_frames.has(folder):
+		var frames: SpriteFrames = SpriteFrames.new()
+		frames.remove_animation("default")
+		frames.add_animation(&"play")
+		frames.set_animation_speed(&"play", FLASH_FPS)
+		frames.set_animation_loop(&"play", false)
+		for index: int in range(SKILL_FRAME_COUNTS[folder]):
+			frames.add_frame(&"play", load(SKILL_FRAME_PATH % [folder, index]) as Texture2D)
+		_skill_frames[folder] = frames
+	return _skill_frames[folder]
 
 
 func _frames() -> SpriteFrames:
