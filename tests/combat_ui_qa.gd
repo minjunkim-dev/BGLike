@@ -33,11 +33,16 @@ func _run() -> void:
 		failures += 1
 		push_error("combat ui qa watchdog expired")
 		quit(1))
+	var size: Vector2i = Vector2i(1280, 720)
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--capture-dir="):
 			output = argument.trim_prefix("--capture-dir=")
 			DirAccess.make_dir_recursive_absolute(output)
-	root.size = Vector2i(1280, 720)
+		# 해상도 사례: --size=1920x1080 (#517)
+		if argument.begins_with("--size="):
+			var parts: PackedStringArray = argument.trim_prefix("--size=").split("x")
+			size = Vector2i(int(parts[0]), int(parts[1]))
+	root.size = size
 	GameSave.autosave = false
 	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
 	root.add_child(main)
