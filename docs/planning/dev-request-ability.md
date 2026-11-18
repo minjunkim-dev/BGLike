@@ -4,7 +4,7 @@
 >
 > - 규칙 기준일: 2026-10-28 개정 · 구현 상태 갱신일: 2026-10-31
 > - 규칙 기준: [능력치와 주사위 판정 기획서](../design/combat/ability.md)
-> - 상태: **개정 규칙(0장)은 [#377](https://github.com/minjunkim-labs/BGLike/issues/377)의 하위 티켓으로 구현했습니다.** #377은 2026-11-14에 닫혔습니다. 능력치 개편([#386](https://github.com/minjunkim-labs/BGLike/issues/386), [PR #401](https://github.com/minjunkim-labs/BGLike/pull/401)), 명중굴림(#387), 피해(#388), 내성굴림(#389), 밀치기·만능팔 이관과 대결 판정 삭제(#391)를 구현했고, 충격 화살 이관([#390](https://github.com/minjunkim-labs/BGLike/issues/390))도 마쳤습니다. 흘려내기는 이관하지 않고 폐지했습니다([#423](https://github.com/minjunkim-labs/BGLike/issues/423)). 구현의 개발 결정은 각 구현 Issue([#386](https://github.com/minjunkim-labs/BGLike/issues/386), [#387](https://github.com/minjunkim-labs/BGLike/issues/387), [#388](https://github.com/minjunkim-labs/BGLike/issues/388), [#389](https://github.com/minjunkim-labs/BGLike/issues/389), [#391](https://github.com/minjunkim-labs/BGLike/issues/391))의 `개발 결정` 코멘트에 있습니다. 개정 전 요청(공격자 대 방어자 주사위 대결)은 [Issue #321](https://github.com/minjunkim-labs/BGLike/issues/321)의 구현 [PR #327](https://github.com/minjunkim-labs/BGLike/pull/327)을 `7d39beaa882cd92f053aa8cb828b0187aeacc92a`로 병합했고 alpha.3에 반영했습니다. 1~8장은 그 개정 전 요청의 기록이며, 충돌하면 0장과 능력치 기획서가 우선합니다.
+> - 상태: **개정 규칙(0장)은 [#377](https://github.com/minjunkim-labs/BGLike/issues/377)의 하위 티켓으로 구현했습니다.** #377은 2026-11-14에 닫혔습니다. 능력치 개편([#386](https://github.com/minjunkim-labs/BGLike/issues/386), [PR #401](https://github.com/minjunkim-labs/BGLike/pull/401)), 명중굴림(#387), 피해(#388), 내성굴림(#389), 밀치기·만능팔 이관과 대결 판정 삭제(#391)를 구현했고, 충격 화살 이관([#390](https://github.com/minjunkim-labs/BGLike/issues/390))도 마쳤습니다. 흘려내기는 이관하지 않고 폐지했습니다([#423](https://github.com/minjunkim-labs/BGLike/issues/423)). 구현에서 정한 것은 각 구현 Issue([#386](https://github.com/minjunkim-labs/BGLike/issues/386), [#387](https://github.com/minjunkim-labs/BGLike/issues/387), [#388](https://github.com/minjunkim-labs/BGLike/issues/388), [#389](https://github.com/minjunkim-labs/BGLike/issues/389), [#391](https://github.com/minjunkim-labs/BGLike/issues/391))의 결정 코멘트에 있습니다. 개정 전 요청(공격자 대 방어자 주사위 대결)은 [Issue #321](https://github.com/minjunkim-labs/BGLike/issues/321)의 구현 [PR #327](https://github.com/minjunkim-labs/BGLike/pull/327)을 `7d39beaa882cd92f053aa8cb828b0187aeacc92a`로 병합했고 alpha.3에 반영했습니다. 1~8장은 그 개정 전 요청의 기록이며, 충돌하면 0장과 능력치 기획서가 우선합니다.
 > - 실행 검수(개정 전 요청): [#307 사용자 위임 에이전트 검수](https://github.com/minjunkim-labs/BGLike/issues/307#issuecomment-6378380493)와 [이동 후조건 추가 검수](https://github.com/minjunkim-labs/BGLike/issues/307#issuecomment-6378544532)를 완료했습니다. 개정 규칙의 사람 직접 기획 검수는 0-5장입니다.
 > - 후속 구현(개정 전): 혼합된 광역 유리 조건은 [#326](https://github.com/minjunkim-labs/BGLike/issues/326)에서 확정하고 [#341](https://github.com/minjunkim-labs/BGLike/issues/341)에서 지원했으나, 개정에서 대상별 내성굴림으로 바뀌어 [#389](https://github.com/minjunkim-labs/BGLike/issues/389)에서 정리했습니다.
 > - 남은 기획: 성장 방식은 정했고(막 최초 클리어마다 파티 공통 주사위 레벨 +1) 몬스터 비강화와의 밸런스 점검, 절대성공면 획득·절대성공의 추가 이점(치명타)은 [#322](https://github.com/minjunkim-labs/BGLike/issues/322)에서 정합니다. 스킬별 내성 능력치, 무기별 능력치 배정, 회복의 건강 연동은 후속 기획입니다. 막 최초 클리어 레벨업은 구현 범위입니다([#322 답](https://github.com/minjunkim-labs/BGLike/issues/322#issuecomment-6714895396), 2026-11-08). 절대성공면 획득과 치명타는 구현하지 않습니다.
@@ -58,7 +58,7 @@
 | 속성(피해 유형) 시스템, 새 직업·새 스킬 | 후속 기획 |
 | 몬스터·장비의 밸런스 조정 | [#205](https://github.com/minjunkim-labs/BGLike/issues/205) |
 
-### 0-4. 개발 결정 후보
+### 0-4. 개발 담당이 정하는 것
 
 - 능력치 식별자 이름은 개발 담당이 정합니다. 기획에서 알리는 것은 **민첩은 Agility이며 Dexterity가 아니라는 뜻**뿐입니다.
 - 표준값과 절대면을 가진 주사위 값의 표현, 면 열거 확률 계산의 확장 방식
@@ -129,8 +129,8 @@
 | 조건 | 내용 | 대기하는 범위 |
 |---|---|---|
 | 일정 | 2026-10-23 [PR #327](https://github.com/minjunkim-labs/BGLike/pull/327) 병합으로 확정 범위의 구현을 마쳤고 [#307](https://github.com/minjunkim-labs/BGLike/issues/307)의 alpha.3에 반영함 | 없음 (완료된 구현의 착수 시기를 다시 정하지 않음) |
-| 임시 규칙 | 충격 화살(민첩 하나만 비교), 흘려내기(스킬 방어 가산 +3), 독 제거(독 장판 고정 강도 4)를 확정함 ✅ ([기획서 8장](../design/combat/ability.md#8-현재-동작에-적용하는-임시-규칙)) | 없음 |
-| 치명타 임시 비활성 | 치명타·자동 실패가 사라지는 것을 확정함 ✅ | 없음 |
+| 임시 규칙 | 충격 화살(민첩 하나만 비교), 흘려내기(스킬 방어 가산 +3), 독 제거(독 장판 고정 강도 4)를 확정함([기획서 8장](../design/combat/ability.md#8-현재-동작에-적용하는-임시-규칙)) | 없음 |
+| 치명타 임시 비활성 | 치명타·자동 실패가 사라지는 것을 확정함 | 없음 |
 
 ---
 
@@ -182,7 +182,7 @@
 
 ---
 
-## 6. 개발 결정 후보
+## 6. 개발 담당이 정하는 것
 
 아래는 요청 당시의 후보입니다. 선택한 방식과 근거는 [#321](https://github.com/minjunkim-labs/BGLike/issues/321)과 [#387](https://github.com/minjunkim-labs/BGLike/issues/387)에 기록했습니다.
 
