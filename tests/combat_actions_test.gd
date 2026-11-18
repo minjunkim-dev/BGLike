@@ -1195,6 +1195,7 @@ func _run() -> void:
 	await _test_stun_landing_incapacitation()
 	await _test_finished_stun_removal()
 	_test_burn_turn_start()
+	_test_status_signals()
 	_test_burn_caster_duration()
 	_test_burn_stack_limit()
 	_test_poison_tick()
@@ -2957,6 +2958,80 @@ func _test_stun_reapplication() -> void:
 	f.turns.end_turn()
 	_check(not target.is_stunned and f.turns.current_unit == latest,
 		"최신 시전자의 다음 실제 턴 시작에 갱신된 기절 해제")
+
+
+## 상태 이상 표시 신호(#635): 상태가 걸릴 때 status_applied, 화상·독 틱에서 status_ticked, 기름 점화에서 oil_ignited.
+func _test_status_signals() -> void:
+	var f: Fixture = _fixture()
+	var applied: Array = []
+	var ticked: Array = []
+	var ignited: Array = []
+	f.actions.status_applied.connect(func(target: CombatUnit, kind: String) -> void: applied.append([target, kind]))
+	f.actions.status_ticked.connect(func(unit: CombatUnit, kind: String, amount: int) -> void: ticked.append([unit, kind, amount]))
+	f.actions.oil_ignited.connect(func(cells: Array[Vector2i]) -> void: ignited.append(cells))
+	var source: CombatUnit = f.units[1]
+	var target: CombatUnit = f.units[2]
+	_check(f.actions.apply_status(source, target, "stun") and applied == [[target, "stun"]], "기절 부여는 status_applied(stun) 한 번")
+	applied.clear()
+	_check(f.actions.apply_status(source, target, "burn") and applied == [[target, "burn"]], "화상 부여는 status_applied(burn) 한 번")
+	applied.clear()
+	_check(f.actions.apply_status(source, target, "poison") and applied == [[target, "poison"]], "독 부여는 status_applied(poison) 한 번")
+	applied.clear()
+	var boss: CombatUnit = f.units[3]
+	boss.kind = CombatUnit.Kind.SCRAP_ROBOT_3000
+	_check(boss.is_boss() and not f.actions.apply_status(source, boss, "stun") and applied.is_empty(), "보스 기절 거부에서는 신호가 없다")
+	var dry: CombatUnit = f.units[0]
+	f.actions.apply_status(source, dry, "burn")
+	f.actions.apply_status(source, dry, "burn")
+	f.actions.apply_status(source, dry, "burn")
+	applied.clear()
+	_check(not f.actions.apply_status(source, dry, "burn") and applied.is_empty(), "3중첩 초과 거부에서는 신호가 없다")
+	# 틱: 대상 실제 턴 시작에 화상 d4(3)와 독(건강 d4의 3은 실패) 고정 1.
+	f.actions.dice = _dice_for([3, 3], [4, 4])
+	var hits_before: int = f.hits.size()
+	f.turns.end_turn()
+	f.turns.end_turn()
+	var burn_ticks: Array = ticked.filter(func(entry: Array) -> bool: return entry[0] == target and entry[1] == "burn")
+	var poison_ticks: Array = ticked.filter(func(entry: Array) -> bool: return entry[0] == target and entry[1] == "poison")
+	_check(burn_ticks == [[target, "burn", 3]] and poison_ticks == [[target, "poison", 1]],
+		"턴 시작 틱은 대상·종류·피해량으로 알린다: %s" % [ticked])
+	_check(f.hits.size() - hits_before >= 2, "틱의 hit_landed는 그대로 나온다")
+	# 독 내성 성공으로 지워진 독은 틱이 없다.
+	var g: Fixture = _fixture()
+	var g_ticks: Array = []
+	g.actions.status_ticked.connect(func(unit: CombatUnit, kind: String, amount: int) -> void: g_ticks.append([unit, kind, amount]))
+	g.actions.apply_status(g.units[1], g.units[2], "poison")
+	g.actions.dice = _dice_for([4], [4])
+	g.turns.end_turn()
+	g.turns.end_turn()
+	_check(g.units[2].get_status_count("poison") == 0 and g_ticks.is_empty(), "독 내성에 성공하면 틱 신호가 없다")
+	# 독안개 내성 실패로 걸린 독도 알린다.
+	var fog: Fixture = _fixture()
+	var fog_applied: Array = []
+	fog.actions.status_applied.connect(func(unit: CombatUnit, kind: String) -> void: fog_applied.append([unit, kind]))
+	var walker: CombatUnit = fog.units[0]
+	fog.actions._grounds.append(CombatActions.Ground.new(fog.units[3], walker.cell, "fog", 6))
+	fog.actions.dice = _dice_for([1], [walker.get_ability_sides(CombatUnit.Ability.HEALTH)])
+	fog.actions._apply_fog(walker, true)
+	_check(walker.get_status_count("poison") == 1 and fog_applied == [[walker, "poison"]], "독안개 내성 실패는 status_applied(poison) 한 번")
+	# 넘어짐: 기름 칸에서 솜씨 내성 실패.
+	var h: Fixture = _fixture()
+	var h_applied: Array = []
+	h.actions.status_applied.connect(func(unit: CombatUnit, kind: String) -> void: h_applied.append([unit, kind]))
+	var slipper: CombatUnit = h.units[0]
+	_check(h.actions.create_oil(h.units[1], slipper.cell), "기름 장판을 깐다")
+	h.actions.dice = _dice_for([1], [slipper.get_ability_sides(CombatUnit.Ability.FINESSE)])
+	h.actions._apply_grounds(slipper, true)
+	_check(slipper.fallen and h_applied == [[slipper, "fallen"]], "미끌거림 실패는 status_applied(fallen) 한 번: %s" % [h_applied])
+	# 점화: 이어진 기름 칸 목록으로 한 번. 기름이 없으면 없다.
+	var i: Fixture = _fixture()
+	var i_ignited: Array = []
+	i.actions.oil_ignited.connect(func(cells: Array[Vector2i]) -> void: i_ignited.append(cells))
+	_check(not i.actions.ignite(Vector2i(4, 4), i.units[1]) and i_ignited.is_empty(), "기름이 없는 칸의 점화는 신호가 없다")
+	i.actions.create_oil(i.units[1], Vector2i(7, 7))
+	var laid: Array[Vector2i] = i.actions.oil_sites(Vector2i(7, 7))
+	_check(i.actions.ignite(laid[0], i.units[1]) and i_ignited.size() == 1 and i_ignited[0].size() == laid.size()
+		and laid.all(func(cell: Vector2i) -> bool: return cell in i_ignited[0]), "점화는 이어진 기름 칸 전체로 oil_ignited 한 번")
 
 
 func _test_burn_turn_start() -> void:
