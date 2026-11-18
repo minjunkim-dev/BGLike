@@ -4,7 +4,7 @@
 >
 > - 기준일: 2026-11-02 ([#305 기획자 답변](https://github.com/minjunkim-labs/BGLike/issues/305#issuecomment-6581920839), [#207](https://github.com/minjunkim-labs/BGLike/issues/207))
 > - 관련 문서: [몬스터 디자인 기획서](README.md) · [엄마 거미](mother-spider.md) · [새끼 거미](spiderling.md) · [동작 유형 기획서](../combat/skill-types.md) · [능력치 기획서](../combat/ability.md) · [전투 시스템 기획서 6-6](../combat/combat.md#6-6-독안개-장판) · [스테이지 배치](../stages/README.md)
-> - **상태: 기획 확정, 독안개 거미 몬스터와 AI 구현됨([#462](https://github.com/minjunkim-labs/BGLike/issues/462)), 3막 스테이지 1 배치 구현됨([#463](https://github.com/minjunkim-labs/BGLike/issues/463)).** 구현은 [칸 조준·곡사·반경(기준점 목표 칸) 도입](../combat/skill-types.md#9-정해야-할-것) → 칸 효과 → 독안개 거미와 AI → 3막 스테이지 1 교체 순서로 Issue를 나눕니다. 수치는 모두 시험값이며 확정은 [#205](https://github.com/minjunkim-labs/BGLike/issues/205)에서 합니다.
+> - **상태: 기획 확정, 독안개 거미 몬스터와 AI 구현됨([#462](https://github.com/minjunkim-labs/BGLike/issues/462)), 3막 스테이지 1 배치 구현됨([#463](https://github.com/minjunkim-labs/BGLike/issues/463)).** 구현은 [칸 조준·곡사·반경(기준점 목표 칸) 도입](../combat/skill-types.md#5-2-곡사의-목표-칸) → 칸 효과 → 독안개 거미와 AI → 3막 스테이지 1 교체 순서로 Issue를 나눕니다. 수치는 모두 시험값이며 확정은 [#205](https://github.com/minjunkim-labs/BGLike/issues/205)에서 합니다.
 
 ---
 
@@ -66,7 +66,7 @@
 
 ### 지정 칸과 영역
 
-- 지정할 수 있는 칸: 맵 안의 **막히지 않은 바닥**. 높이와 점유 여부는 무관하고, 상자·바위 같은 환경 오브젝트가 있는 칸도 가능합니다 ([동작 유형 기획서 5-2](../combat/skill-types.md#5-2-곡사의-목표-칸-)). 막힌 칸, 낭떠러지, 벽, 맵 밖은 고를 수 없고 영역에서도 제외합니다.
+- 지정할 수 있는 칸: 맵 안의 **막히지 않은 바닥**. 높이와 점유 여부는 무관하고, 상자·바위 같은 환경 오브젝트가 있는 칸도 가능합니다 ([동작 유형 기획서 5-2](../combat/skill-types.md#5-2-곡사의-목표-칸)). 막힌 칸, 낭떠러지, 벽, 맵 밖은 고를 수 없고 영역에서도 제외합니다.
 - 영역: 지정 칸 바닥과 **높이 차이 1 이하**인 칸만 포함합니다 ([전투 기획서 6-4](../combat/combat.md#6-4-범위-스킬의-첫-모양과-높이)). 중간 칸의 높이와 벽은 보지 않습니다.
 - 거리는 장애물을 보지 않는 맨해튼 거리(상하좌우 합)입니다. 걷기 경로 길이가 아닙니다.
 - 칸 조준의 영역 계산은 상자·바위 칸도 포함합니다. 기존 반경 영역 계산(회전회오리 등)은 그대로 물체 칸을 뺍니다.
