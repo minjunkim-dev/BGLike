@@ -538,6 +538,12 @@ func _test_overlapping_rolls(actions: CombatActions, view: CombatDiceRollView, a
 			"%s는 겹쳐 재생해 앞 소리를 끊지 않는다" % player_name)
 		_check((view.get_node(player_name) as AudioStreamPlayer).bus == GameSettings.BUS_SFX,
 			"%s는 SFX 버스로 나간다" % player_name)
+	var limits: Dictionary = {"RollSound": CombatDiceRollView.TUMBLE_TIME, "SuccessSound": CombatDiceRollView.HOLD_TIME,
+		"FailureSound": CombatDiceRollView.HOLD_TIME}
+	for player_name: String in limits:
+		var length: float = (view.get_node(player_name) as AudioStreamPlayer).stream.get_length()
+		_check(length > 0.0 and length <= float(limits[player_name]),
+			"%s는 비어 있지 않고 표시 시간(%.2f초) 안에 끝난다: %.3f초" % [player_name, limits[player_name], length])
 	actions.roll_animation.call(CombatDiceRoll.save(ally, 4, _result([4], 4, 4, true), 0, tr("DC"), 3))
 	actions.roll_animation.call(CombatDiceRoll.save(ally, 4, _result([1], 1, 1, false), 0, tr("DC"), 3))
 	play.call(CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12))
