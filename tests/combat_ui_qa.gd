@@ -126,9 +126,14 @@ func _skill_slots(warrior: CombatUnit) -> void:
 	var buttons: Dictionary = hud.get("_actions")
 	var costs: Dictionary = hud.get("_costs")
 	var badges: Dictionary = hud.get("_badges")
+	# 공격 계열이 쓸 수 있도록 적을 전사 옆에 둔다.
+	var boss: CombatUnit = units[2]
+	var boss_cell: Vector2i = boss.cell
 	warrior.cell = Vector2i(3, 5)
+	boss.cell = Vector2i(3, 6)
 	hud.refresh_actions(actions, "attack", warrior)
 	await create_timer(0.2).timeout
+	_check(not (buttons["attack"] as Button).disabled, "적이 인접하면 공격 칸을 쓸 수 있음")
 	var cross_cost: Control = costs["cross_slash"]
 	_check(cross_cost.get_child_count() == 2 and (buttons["cross_slash"] as Button).get_global_rect().encloses(cross_cost.get_global_rect()),
 		"십자 베기: 비용 기호 ●▲가 따로 서고 칸 안에 있음")
@@ -147,6 +152,7 @@ func _skill_slots(warrior: CombatUnit) -> void:
 		"보조 행동을 쓴 뒤에도 공격 칸은 청록 면")
 	await _capture("skill-slots-spent-%dx%d" % [root.size.x, root.size.y])
 	warrior.bonus_action_left = capacity
+	boss.cell = boss_cell
 	hud.refresh_actions(actions, "attack", warrior)
 
 
