@@ -13,7 +13,7 @@ office는 선택입니다. 사람이 이 대화에서 office나 leader로 돌리
 3. 보냈으면 사람에게 "leader에 넘겼습니다. 진행은 `hc attach office-leader`에서 볼 수 있습니다"라고 알리고 멈춥니다.
 4. 1단계가 안 되거나 `hc send`가 0이 아닌 코드로 끝나면, 사람에게 "이 작업은 repo-office leader 세션에 주세요"라고 알리고 멈춥니다. leader를 `office-leader`로 띄우는 명령은 [repo-office README](https://github.com/minjunkim-labs/repo-office#처음-한-번) 「처음 한 번」 5에 있습니다.
 
-leader는 이 메시지를 새 과제로만 받고, Issue 완료 조건을 방향으로 삼아 묻지 않고 등록합니다. 완료 조건이 없거나 어긋날 때, 요청이 여러 가지로 읽힐 때, 사람만 아는 답이 필요할 때만 묻습니다. 넘기는 규칙의 원본은 [repo-office 연결 5단계](https://github.com/minjunkim-labs/repo-office/blob/main/docs/connect.md#5-원하면-코드-작업을-office로-보내게-한다)입니다.
+leader는 이 메시지를 새 과제로만 받고, Issue 완료 조건을 방향으로 삼아 묻지 않고 등록합니다. 등록 전에는 완료 조건이 없거나 어긋날 때, 요청이 여러 가지로 읽힐 때, 사람만 아는 답이 필요할 때만 묻습니다. 등록한 뒤에 묻는 것(엔진이 승인하지 못한 설계, 사람의 판단이 필요한 막힘)은 [AGENTS.md](../../AGENTS.md) 길잡이에 있습니다. 넘기는 규칙의 원본은 [repo-office 연결 5단계](https://github.com/minjunkim-labs/repo-office/blob/main/docs/connect.md#5-원하면-코드-작업을-office로-보내게-한다)입니다.
 
 ## 과제 등록
 
