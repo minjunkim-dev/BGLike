@@ -179,7 +179,7 @@ Issue #61의 수치 범위는 유지한다. #321에서 `attack_bonus`는 공격 
 | 몬스터당 추가 확률 | 0.35(35%) |
 | 물약 보유 한도 | 캐릭터당 **3칸, 회복 물약과 기름병이 공유**. 기획 확정값 |
 | 공용 가방 한도 | 12칸. 사용자 선택 위임으로 채택한 초기 권장값 |
-| 등급 | 보류. 막별 수치 상승을 사용 |
+| 등급 | 없음. 막별 수치 상승을 사용 |
 
 지원 수치는 `attack_bonus`·`damage_bonus`·`defense_bonus`·`max_hit_points`와, 능력치 가감 `strength_modifier`·`agility_modifier`·`finesse_modifier`·`intelligence_modifier`·`will_modifier`·`health_modifier`, `max_movement`다. 가감과 `max_movement`는 범위에 음수를 쓸 수 있다.
 `max_hit_points`는 방어구 전용이다. 무기에 넣으면 디버그 실행의 데이터 검증에서 거부한다.
@@ -196,7 +196,7 @@ Issue #61의 수치 범위는 유지한다. #321에서 `attack_bonus`는 공격 
 6. 메인 장면을 다시 실행한다. 변경한 값은 새 실행에서 읽는다.
 
 모든 캐릭터가 두 장비 칸을 사용한다.
-직업 제한과 등급은 보류한다.
+직업 제한과 등급은 두지 않는다([아이템 기획 폼의 미정](item-form.md#미정)).
 플랫폼 내보내기는 이번 범위 밖이다.
 플랫폼 내보내기 구현 시 비리소스 파일인 `item_data.json`을 내보내기 포함 필터에 넣어야 한다.
 
