@@ -3,7 +3,7 @@
 자체 코드의 권리 방침은 [COPYRIGHT](COPYRIGHT.md)에 있습니다.
 외부 구성 요소에는 해당 권리자의 라이선스가 적용됩니다. 이 문서가 그 조건을 변경하지 않습니다.
 
-확인 기준: 2026-11-17의 추적 파일과 Git 기여 기록(효과음 표는 2026-11-17 #628). 출시 패키지의 전체 고지를 완료했다는 뜻은 아닙니다.
+확인 기준: 2026-11-17의 추적 파일과 Git 기여 기록(효과음 표는 2026-11-18 #627). 출시 패키지의 전체 고지를 완료했다는 뜻은 아닙니다.
 
 ## 엔진과 개발 도구
 
@@ -51,9 +51,7 @@ Git 기여 기록만으로 제3자 자료의 원저작권을 확정하지 않습
 | 파일 | 원본·권리자 | 조건과 출처 |
 | --- | --- | --- |
 | `scenes/combat/audio/hit_wood.ogg` | Kenney, Impact Sounds 1.0의 `Audio/impactWood_heavy_000.ogg`. 원본 그대로 사용(옛 이름 `hit.ogg`). 나무 상자 피해 소리 | CC0 1.0 Universal. 사용·수정·재배포와 원본 공개를 허용합니다. 출처 표시는 필수가 아닙니다. [자산 페이지](https://kenney.nl/assets/impact-sounds), [CC0](https://creativecommons.org/publicdomain/zero/1.0/), [패키지의 원래 고지](scenes/combat/audio/kenney_license.txt). 2026-10-09 확인 |
-| `scenes/combat/audio/dice_roll.ogg` | BGLike 자체 합성 임시음. 짧은 잡음 클릭과 사인파를 Python·numpy로 합성했고 외부 샘플을 쓰지 않았습니다. 아군 주사위 굴림 시작음 | 외부 조건 없음. [COPYRIGHT](COPYRIGHT.md)의 자체 콘텐츠 조건을 따릅니다. 자산 선정 전까지 쓰는 임시음이며 교체할 수 있습니다. 2026-10-31 |
-| `scenes/combat/audio/roll_success.ogg` | BGLike 자체 합성 임시음. 사인파 두 음(660Hz→990Hz). 주사위 굴림 성공 결과음 | 위와 같음 |
-| `scenes/combat/audio/roll_fail.ogg` | BGLike 자체 합성 임시음. 사인파 두 음(300Hz→200Hz). 주사위 굴림 실패 결과음 | 위와 같음 |
+| `scenes/combat/audio/dice_roll.ogg`, `scenes/combat/audio/roll_success.ogg`, `scenes/combat/audio/roll_fail.ogg` | 2026-11-18 [#627](https://github.com/minjunkim-dev/BGLike/issues/627). BGLike 자체 합성 칩튠풍 음. 굴림 시작(사각파 틱 8개), 성공 결과음(상승 아르페지오), 실패 결과음(하강 스윕). 잡음·사각파를 Python·numpy로 합성했고 외부 샘플을 쓰지 않았습니다 | 외부 조건 없음. [COPYRIGHT](COPYRIGHT.md)의 자체 콘텐츠 조건을 따릅니다. 만드는 법과 변수는 `scenes/combat/audio/sources/make_sfx.py`와 `sfx_generation.json`에 있고 다시 실행하면 같은 소리를 만듭니다 |
 | `scenes/combat/audio/hit_flesh.ogg`, `hit_metal.ogg`, `hit_stone.ogg`, `critical.ogg`, `downed.ogg` | 2026-11-17 [#628](https://github.com/minjunkim-dev/BGLike/issues/628). Kenney, Impact Sounds 1.0의 `impactPunch_medium_000`(살), `impactMetal_medium_000`(금속 로봇), `impactMining_000`(바위), `impactPunch_heavy_000`+`impactMetal_heavy_000`을 겹친 치명타(꺼 둠), `impactSoft_heavy_000`(전투 불능)을 모노로 바꾸고 길이를 잘라 끝을 줄이고 정규화했습니다. 원본은 `scenes/combat/audio/sources/kenney/`, 가공은 `make_sfx.py` | CC0 1.0 Universal. 사용·수정·재배포와 원본 공개를 허용합니다. 출처 표시는 필수가 아닙니다. [Impact Sounds](https://kenney.nl/assets/impact-sounds), [RPG Audio](https://kenney.nl/assets/rpg-audio), [CC0](https://creativecommons.org/publicdomain/zero/1.0/), [Kenney 패키지의 원래 고지](scenes/combat/audio/kenney_license.txt)(두 패키지 모두 같은 CC0 고지). 2026-11-17 확인(zip sha256 Impact Sounds `029d734a…`, RPG Audio `6dbeaf85…`) |
 | `scenes/combat/audio/miss.ogg`, `shield.ogg`, `heal.ogg`, `shout.ogg`, `step_water.ogg` | 같은 #628. BGLike 자체 합성음. 빗나감 휘두름, 성스러운 장막, 회복, 전투의 함성, 물 칸 발소리. 잡음·사인파·감쇠 곡선을 Python·numpy로 합성했고 외부 샘플을 쓰지 않았습니다 | 외부 조건 없음. [COPYRIGHT](COPYRIGHT.md)의 자체 콘텐츠 조건을 따릅니다. 만드는 법과 변수는 `scenes/combat/audio/sources/make_sfx.py`와 `sfx_generation.json`에 있고 다시 실행하면 같은 소리를 만듭니다 |
 | `scenes/combat/audio/step_dirt.ogg`, `step_stone.ogg`, `jump.ogg`, `land.ogg` | 같은 #628. Kenney, RPG Audio의 `footstep00`(흙)·`cloth1`(점프)과 Impact Sounds 1.0의 `footstep_concrete_000`(돌)·`impactSoft_medium_000`(착지)을 위와 같이 가공했습니다 | 위 Kenney 행과 같음 |
