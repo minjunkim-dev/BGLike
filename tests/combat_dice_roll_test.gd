@@ -611,7 +611,7 @@ func _test_animation(view: CombatDiceRollView, ally: CombatUnit, play: Callable,
 	var all_in_range: bool = true
 	for lift: int in lifts:
 		all_in_range = all_in_range and lift >= 0 and lift <= CombatDiceRollView.LIFT_MAX
-	_check(all_in_range and lifts.keys().max() >= 1 and not view.visible and view.get("_lift") == CombatDiceRollView.LIFT_MAX,
+	_check(all_in_range and lifts.keys().max() == CombatDiceRollView.LIFT_MAX and not view.visible and view.get("_lift") == CombatDiceRollView.LIFT_MAX,
 		"사라지는 동안 0~2 논리px 정수로 떠오르고 숨긴다: " + str(lifts.keys()))
 	play.call(CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12))
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout

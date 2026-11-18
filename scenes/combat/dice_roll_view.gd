@@ -43,7 +43,7 @@ const SHARD_FALL: float = 4.0
 const SHARD_COLOR: Color = Color("7a4a94")
 ## 사라지는 동안 위로 떠오르는 거리(논리px)와 한 칸 시간. 페이드(FADE_TIME)와 같은 Tween 안에서 돈다.
 const LIFT_MAX: int = 2
-const LIFT_STEP_TIME: float = 0.15
+const LIFT_STEP_TIME: float = 0.1
 const PIXEL_ART: Material = preload("res://scenes/combat/art/pixel_art.tres")
 const DICE_DIR: String = "res://scenes/combat/art/dice/"
 ## 그림이 있는 면 수. 이 밖의 면 수는 벡터 윤곽으로 같은 칸에 그린다.
