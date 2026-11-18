@@ -63,8 +63,14 @@ def colors(rows):
     return {pixel[:3] for row in rows for pixel in row if pixel[3] > 0}
 
 
+ROLLING_FRAMES = ("rolling", "rolling_1", "rolling_2", "rolling_3")
+ART = ROOT / "scenes/combat/art/dice"
+
+
 def names():
-    return [f"d{sides}_{state}.png" for sides in SIDES for state in STATES] + [f"d{sides}_liquid.png" for sides in SIDES]
+    return ([f"d{sides}_{state}.png" for sides in SIDES for state in STATES]
+            + [f"d{sides}_rolling_{frame}.png" for sides in SIDES for frame in (1, 2, 3)]
+            + [f"d{sides}_liquid.png" for sides in SIDES])
 
 
 class DrawDiceTest(unittest.TestCase):
@@ -77,11 +83,11 @@ class DrawDiceTest(unittest.TestCase):
                 digest_second = hashlib.sha256((Path(second) / name).read_bytes()).hexdigest()
                 self.assertEqual(digest_first, digest_second, name)
 
-    def test_writes_36_files_of_48_by_48_rgba(self):
+    def test_writes_54_files_of_48_by_48_rgba(self):
         with tempfile.TemporaryDirectory() as output:
             run_generator(output)
             self.assertEqual(sorted(path.name for path in Path(output).iterdir()), sorted(names()))
-            self.assertEqual(len(names()), 36)
+            self.assertEqual(len(names()), 54)
             for name in names():
                 width, height, _ = read_pixels(Path(output) / name)
                 self.assertEqual((width, height), (48, 48), name)
@@ -113,6 +119,24 @@ class DrawDiceTest(unittest.TestCase):
                 digests = {hashlib.sha256((Path(output) / f"d{sides}_{state}.png").read_bytes()).hexdigest()
                            for state in STATES}
                 self.assertEqual(len(digests), 5, sides)
+
+    def test_rolling_frames_differ_and_frame_zero_and_other_states_keep_their_bytes(self):
+        with tempfile.TemporaryDirectory() as output:
+            run_generator(output)
+            for sides in SIDES:
+                digests = set()
+                for frame in ROLLING_FRAMES:
+                    path = Path(output) / f"d{sides}_{frame}.png"
+                    digests.add(hashlib.sha256(path.read_bytes()).hexdigest())
+                    _, _, rows = read_pixels(path)
+                    _, _, body = read_pixels(Path(output) / f"d{sides}_liquid.png")
+                    trail = opaque(rows) - opaque(read_pixels(Path(output) / f"d{sides}_success.png")[2])
+                    self.assertTrue(trail, f"{sides} {frame}: 몸체 밖 잔상 픽셀")
+                self.assertEqual(len(digests), 4, sides)
+            for name in names():
+                if "rolling_" in name:
+                    continue
+                self.assertEqual((Path(output) / name).read_bytes(), (ART / name).read_bytes(), name)
 
     def test_sheet_is_6_rows_by_5_columns_and_matches_the_repository_copy(self):
         with tempfile.TemporaryDirectory() as output:

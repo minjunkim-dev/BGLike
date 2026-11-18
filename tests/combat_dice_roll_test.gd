@@ -37,6 +37,10 @@ func _run() -> void:
 	_test_liquid_surface()
 	_test_total_text()
 	_test_textures()
+	_test_rolling_frames()
+	_test_die_offset()
+	_test_rising_surface()
+	_test_effect_pixels()
 	_test_panel_placement()
 	await _test_hit_roll_is_awaited_before_the_log()
 	_test_poison_roll_does_not_block_the_turn()
@@ -143,6 +147,85 @@ func _dice_for(expected: Array[int], sides: Array) -> ScriptedDice:
 	var typed: Array[int] = []
 	typed.assign(sides)
 	return ScriptedDice.new(expected, typed)
+
+
+## 굴림 프레임: 눈 바꾸기 단계(8단계)와 함께 0→1→2→3→0으로 넘어간다. 멈춘 상태 그림은 프레임과 상관없다.
+func _test_rolling_frames() -> void:
+	var cases: Array = [[0.0, 0], [0.06, 1], [0.12, 2], [0.17, 3], [0.23, 0], [0.29, 1], [0.45, 0], [9.0, 0]]
+	for entry: Array in cases:
+		_check(CombatDiceRollView.rolling_frame(entry[0]) == entry[1],
+			"굴림 %.2f초의 프레임은 %d: %d" % [entry[0], entry[1], CombatDiceRollView.rolling_frame(entry[0])])
+	for sides: int in [4, 6, 8, 10, 12, 20]:
+		var seen: Dictionary[PackedByteArray, bool] = {}
+		for frame: int in range(4):
+			var texture: Texture2D = CombatDiceRollView.die_texture(sides, "rolling", frame)
+			_check(texture != null and texture.get_size() == Vector2(48, 48), "d%d 굴림 프레임 %d은 48×48이다" % [sides, frame])
+			if texture != null:
+				seen[texture.get_image().get_data()] = true
+		_check(seen.size() == 4, "d%d 굴림 프레임 4장은 서로 다르다" % sides)
+		_check(CombatDiceRollView.die_texture(sides, "success", 2) == CombatDiceRollView.die_texture(sides, "success"),
+			"멈춘 상태 그림은 프레임과 상관없다")
+	_check(CombatDiceRollView.die_texture(7, "rolling", 1) == null, "그림이 없는 면 수는 굴림 프레임도 null이다")
+
+
+func _test_die_offset() -> void:
+	var success: CombatChecks.RollResult = _result([9], 9, 12, true)
+	var failure: CombatChecks.RollResult = _result([3], 3, 6, false)
+	var absolute_success: CombatChecks.RollResult = _result([20], 20, 23, true, CombatChecks.Face.ABSOLUTE_SUCCESS)
+	var absolute_failure: CombatChecks.RollResult = _result([1], 1, 4, false, CombatChecks.Face.ABSOLUTE_FAILURE)
+	_check(CombatDiceRollView.die_offset(success, true, 1, 0.0) == Vector2i(0, -1)
+		and CombatDiceRollView.die_offset(success, true, 2, 0.0) == Vector2i.ZERO
+		and CombatDiceRollView.die_offset(success, true, 7, 0.0) == Vector2i(0, -1),
+		"굴리는 동안 홀수 단계에 1 논리px 위로 튄다")
+	var shake: Array = [[0.015, Vector2i(1, 0)], [0.045, Vector2i(-1, 0)], [0.075, Vector2i(1, 0)], [0.105, Vector2i.ZERO]]
+	for entry: Array in shake:
+		_check(CombatDiceRollView.die_offset(failure, false, 8, entry[0]) == entry[1], "실패 흔들림 %.3f초" % entry[0])
+	_check(CombatDiceRollView.die_offset(absolute_failure, false, 8, 0.03) == Vector2i(0, 1)
+		and CombatDiceRollView.die_offset(absolute_failure, false, 8, 0.07) == Vector2i.ZERO,
+		"절대실패는 1 논리px 내려앉았다 돌아온다")
+	_check(CombatDiceRollView.die_offset(success, false, 8, 0.03) == Vector2i.ZERO
+		and CombatDiceRollView.die_offset(absolute_success, false, 8, 0.03) == Vector2i.ZERO,
+		"성공·절대성공은 흔들리지 않는다")
+	for result: CombatChecks.RollResult in [success, failure, absolute_success, absolute_failure]:
+		_check(CombatDiceRollView.die_offset(result, false, 8, CombatDiceRollView.EFFECT_TIME + 0.01) == Vector2i.ZERO,
+			"효과 시간이 지나면 모두 0이다")
+
+
+func _test_rising_surface() -> void:
+	_check(CombatDiceRollView.rising_surface(12, 35, 3, 0.0) == 36
+		and CombatDiceRollView.rising_surface(12, 35, 3, CombatDiceRollView.RISE_TIME) == 3
+		and CombatDiceRollView.rising_surface(12, 35, 3, 5.0) == 3,
+		"액체는 바닥 아래(bottom + 1)에서 시작해 차오름 시간 뒤 결과 표면에 닿는다")
+	var previous: int = 99
+	var monotone: bool = true
+	for step: int in range(13):
+		var row: int = CombatDiceRollView.rising_surface(12, 35, 20, CombatDiceRollView.RISE_TIME * step / 12.0)
+		monotone = monotone and row <= previous and row >= 20 and row <= 36
+		previous = row
+	_check(monotone, "차오르는 표면 행은 줄어들기만 하고 바닥과 결과 사이에 있다")
+	_check(CombatDiceRollView.rising_surface(12, 35, 36, 0.03) == 36, "결과 표면이 바닥이면 차오르지 않는다")
+
+
+func _test_effect_pixels() -> void:
+	var normal: PackedVector2Array = CombatDiceRollView.effect_pixels(CombatChecks.Face.NORMAL, 0.05)
+	_check(normal.is_empty(), "일반 면은 불티·파편이 없다")
+	var sparks_start: PackedVector2Array = CombatDiceRollView.effect_pixels(CombatChecks.Face.ABSOLUTE_SUCCESS, 0.0)
+	var sparks_late: PackedVector2Array = CombatDiceRollView.effect_pixels(CombatChecks.Face.ABSOLUTE_SUCCESS, 0.2)
+	_check(sparks_start.size() == 5 and sparks_late.size() == 5, "절대성공은 불티 5개다")
+	var integers: bool = true
+	for point: Vector2 in sparks_late:
+		integers = integers and point == point.round()
+	_check(integers, "불티 좌표는 정수 논리 px다")
+	_check(sparks_start.size() == 5 and sparks_late.size() == 5 and sparks_late[2].length() > sparks_start[2].length(),
+		"불티는 시간이 지날수록 바깥으로 나간다")
+	_check(sparks_start[2].y < 0.0, "가운데 불티는 주사위 위쪽으로 나간다")
+	var shards_start: PackedVector2Array = CombatDiceRollView.effect_pixels(CombatChecks.Face.ABSOLUTE_FAILURE, 0.0)
+	var shards_late: PackedVector2Array = CombatDiceRollView.effect_pixels(CombatChecks.Face.ABSOLUTE_FAILURE, 0.2)
+	_check(shards_start.size() == 3 and shards_late.size() == 3 and shards_late[0].y - shards_start[0].y >= 2.0,
+		"절대실패는 파편 3개가 아래로 떨어진다")
+	for face: CombatChecks.Face in [CombatChecks.Face.ABSOLUTE_SUCCESS, CombatChecks.Face.ABSOLUTE_FAILURE]:
+		_check(CombatDiceRollView.effect_pixels(face, CombatDiceRollView.EFFECT_TIME + 0.01).is_empty(),
+			"효과 시간이 지나면 불티·파편이 사라진다")
 
 
 func _result(rolls: Array[int], selected: int, total: int, success: bool,
@@ -454,6 +537,7 @@ func _test_scene() -> void:
 
 	_test_grades()
 	await _test_overhead(battle, view, ally, play)
+	await _test_animation(view, ally, play, finished)
 	await _test_overlapping_rolls(actions, view, ally, play, finished)
 
 	_check(actions.dice.state == dice_state, "화면 연출은 게임의 주사위 순서와 저장 상태를 바꾸지 않는다")
@@ -495,6 +579,62 @@ func _test_overhead(battle: Node2D, view: CombatDiceRollView, ally: CombatUnit, 
 	_check(view.get("_offscreen") == false and not summary.text.begins_with(ally.get_display_name() + " · ")
 		and view.get("_origin") != spot, "카메라나 유닛이 돌아와 화면 안이 되면 다시 머리 위로 간다")
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
+
+
+## 굴림·결과·사라짐 애니메이션(#626): 프레임이 넘어가고, 효과가 결과 표시 안에 끝나며, 떠오름은 정수이고,
+## 4배속에서 같은 굴림이 약 1/4 시간에 끝난다.
+func _test_animation(view: CombatDiceRollView, ally: CombatUnit, play: Callable, finished: Array[bool]) -> void:
+	var screen: Rect2 = view.get_viewport_rect()
+	var frames: Dictionary[int, bool] = {}
+	play.call(CombatDiceRoll.hit(ally, 20, _result([3], 3, 6, false), 3, 12))
+	var started: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - started < int(CombatDiceRollView.TUMBLE_TIME * 1000.0) - 30:
+		frames[view.get("_frame") as int] = true
+		await process_frame
+	_check(frames.size() > 1, "굴리는 동안 굴림 프레임이 넘어간다: " + str(frames.keys()))
+	# 굴림이 멈추고 효과가 끝난 뒤, 결과 표시 시간이 끝나기 전.
+	await create_timer(0.38).timeout
+	var head: Vector2 = view.get("_head")
+	_check(view.get("_settled_elapsed") as float >= CombatDiceRollView.EFFECT_TIME
+		and view.get("_origin") == CombatDiceRollView.panel_origin(head, CombatDiceRollView.PANEL_SIZE, screen)
+		and view.get("_lift") == 0 and view.modulate.a == 1.0,
+		"효과가 끝나도 패널은 머리 위 자리에 있고 떠오르지 않는다")
+	var lifts: Dictionary[int, bool] = {}
+	for _frame: int in range(240):
+		if finished[0]:
+			break
+		await process_frame
+	started = Time.get_ticks_msec()
+	while view.visible and Time.get_ticks_msec() - started < 600:
+		lifts[view.get("_lift") as int] = true
+		await process_frame
+	var all_in_range: bool = true
+	for lift: int in lifts:
+		all_in_range = all_in_range and lift >= 0 and lift <= CombatDiceRollView.LIFT_MAX
+	_check(all_in_range and lifts.keys().max() >= 1 and not view.visible and view.get("_lift") == CombatDiceRollView.LIFT_MAX,
+		"사라지는 동안 0~2 논리px 정수로 떠오르고 숨긴다: " + str(lifts.keys()))
+	play.call(CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12))
+	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
+	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
+	# 페이드 중에 새 굴림이 오면 떠오름도 0으로 돌아온다.
+	play.call(CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12))
+	await process_frame
+	_check(view.get("_lift") == 0 and view.modulate.a == 1.0, "페이드를 끊는 새 굴림은 떠오름도 0으로 돌린다")
+	await create_timer(CombatDiceRollView.TUMBLE_TIME + CombatDiceRollView.HOLD_TIME + CombatDiceRollView.FADE_TIME + 0.2).timeout
+	# 4배속: 같은 굴림이 게임 시간으로 같은 길이이므로 실제 시간은 약 1/4이다.
+	Engine.time_scale = 4.0
+	var fast_frames: Dictionary[int, bool] = {}
+	finished[0] = false
+	play.call(CombatDiceRoll.hit(ally, 20, _result([9], 9, 12, true), 3, 12))
+	started = Time.get_ticks_msec()
+	while not finished[0] and Time.get_ticks_msec() - started < 3000:
+		fast_frames[view.get("_frame") as int] = true
+		await process_frame
+	var real_ms: int = Time.get_ticks_msec() - started
+	Engine.time_scale = 1.0
+	_check(finished[0] and real_ms < 500 and fast_frames.size() > 1,
+		"4배속에서 한 굴림이 약 1/4 시간에 끝나고 프레임도 넘어간다: %d ms, 프레임 %s" % [real_ms, str(fast_frames.keys())])
+	await create_timer(CombatDiceRollView.FADE_TIME + 0.1).timeout
 
 
 ## 판정 단어의 등급은 규칙의 성공/실패 방향을 바꾸지 않고 여유로만 세분한다.
