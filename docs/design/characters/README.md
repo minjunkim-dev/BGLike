@@ -97,7 +97,7 @@
 | 플레이어의 판단 | 각 고유 스킬이 플레이어에게 요구하는 판단을 적습니다. |
 | 스킬 묶음 | 컨셉의 장점과 화면에서 알아볼 단점을 함께 드러냅니다. |
 
-전사의 추상 컨셉과 키워드는 2026-10-30에 확정했습니다([전사](warrior.md)). 궁수는 2026-11-09에 컨셉·키워드·스킬 9개를 기획자와 정했습니다([궁수](archer.md)). 궁수의 현재 구현 3개 스킬은 옛 프로토타입이고 이 재디자인이 구현으로 바꿉니다. 고유 스킬 개수는 고정하지 않고 직업마다 디자이너가 정합니다. 전사의 현재 구현은 옛 프로토타입 스킬 3개이며 #407이 새 스킬로 바꿉니다.
+전사의 추상 컨셉과 키워드는 2026-10-30에 확정했습니다([전사](warrior.md)). 궁수는 2026-11-09에 컨셉·키워드·스킬 9개를 기획자와 정했습니다([궁수](archer.md)). 고유 스킬 개수는 고정하지 않고 직업마다 디자이너가 정합니다.
 
 ### 스킬로 옮길 때의 질문
 
@@ -194,7 +194,7 @@
 | 캐릭터 | 역할 | 추상 컨셉 | 상태 |
 |---|---|---|---|
 | [전사](warrior.md) | 탱커 | 든든한 지휘관 (2026-10-30) | 재디자인 확정 · 구현 ([#423](https://github.com/minjunkim-labs/BGLike/issues/423), [#426](https://github.com/minjunkim-labs/BGLike/issues/426), [#434](https://github.com/minjunkim-labs/BGLike/issues/434)~[#438](https://github.com/minjunkim-labs/BGLike/issues/438), 패시브 칸 [#457](https://github.com/minjunkim-labs/BGLike/issues/457)) |
-| [궁수](archer.md) | 딜러 | 활터 담장 밖 숲에서 몰래 마법을 익힌 말괄량이 활잡이 (2026-11-09) | 재디자인 확정 · 일부 구현 (9개 중 무빙샷·애기살 급조·활 후려치기·기름병 던지기, [#500](https://github.com/minjunkim-labs/BGLike/issues/500)) |
+| [궁수](archer.md) | 딜러 | 활터 담장 밖 숲에서 몰래 마법을 익힌 말괄량이 활잡이 (2026-11-09) | 재디자인 확정 · 구현 (스킬 9개와 기름병, [#528](https://github.com/minjunkim-labs/BGLike/issues/528), [#500](https://github.com/minjunkim-labs/BGLike/issues/500), [#575](https://github.com/minjunkim-labs/BGLike/issues/575)~[#577](https://github.com/minjunkim-labs/BGLike/issues/577)) |
 
 전사는 2026-10-30에, 궁수는 2026-11-09에 컨셉부터 다시 디자인했습니다.
 
