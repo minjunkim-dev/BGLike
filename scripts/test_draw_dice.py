@@ -120,7 +120,7 @@ class DrawDiceTest(unittest.TestCase):
                            for state in STATES}
                 self.assertEqual(len(digests), 5, sides)
 
-    def test_rolling_frames_differ_and_frame_zero_and_other_states_keep_their_bytes(self):
+    def test_rolling_frames_differ_and_all_outputs_match_the_repository(self):
         with tempfile.TemporaryDirectory() as output:
             run_generator(output)
             for sides in SIDES:
@@ -134,8 +134,6 @@ class DrawDiceTest(unittest.TestCase):
                     self.assertTrue(trail, f"{sides} {frame}: 몸체 밖 잔상 픽셀")
                 self.assertEqual(len(digests), 4, sides)
             for name in names():
-                if "rolling_" in name:
-                    continue
                 self.assertEqual((Path(output) / name).read_bytes(), (ART / name).read_bytes(), name)
 
     def test_sheet_is_6_rows_by_5_columns_and_matches_the_repository_copy(self):
