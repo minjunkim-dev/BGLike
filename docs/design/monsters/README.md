@@ -3,9 +3,9 @@
 > 몬스터를 디자인할 때 채울 항목과 등급을 정한 뼈대 문서입니다. 능력치 주사위·공격 가산·방어 가산은 [능력치와 주사위 판정 기획서 7장](../combat/ability.md#7-몬스터-시험값)의 시험값을 따릅니다. HP·피해·행동과 컨셉은 몬스터별 문서(6장), 공통 규칙은 전투 시스템·게임 구조 기획서가 기준입니다.
 >
 > - 기준일: 2026-10-23 (#321 능력치·주사위 대결 동기화)
-> - **개정 안내 (2026-10-27)**: 능력치(자연 → 건강)와 판정(명중굴림·내성굴림, AC·DC)이 [능력치와 주사위 판정 기획서](../combat/ability.md)로 개정되었습니다. 개정은 [#377](https://github.com/minjunkim-dev/BGLike/issues/377)에서 구현했고 이 문서의 능력치 항목도 개정에 맞췄습니다. 판정 규칙은 기획서가 기준입니다.
+> - **개정 안내 (2026-10-27)**: 능력치(자연 → 건강)와 판정(명중굴림·내성굴림, AC·DC)이 [능력치와 주사위 판정 기획서](../combat/ability.md)로 개정되었습니다. 개정은 [#377](https://github.com/minjunkim-labs/BGLike/issues/377)에서 구현했고 이 문서의 능력치 항목도 개정에 맞췄습니다. 판정 규칙은 기획서가 기준입니다.
 > - 관련 문서: [캐릭터 디자인 기획서](../characters/README.md) · [게임 구조 기획서](../game-structure.md) · [전투 시스템 기획서](../combat/combat.md)
-> - 결정 근거: [Issue #99 세부 결정 기록](https://github.com/minjunkim-dev/BGLike/issues/99#issuecomment-6182272879)
+> - 결정 근거: [Issue #99 세부 결정 기록](https://github.com/minjunkim-labs/BGLike/issues/99#issuecomment-6182272879)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
 
 ---
@@ -97,7 +97,7 @@
 | AI | 우선 대상, 이동 방식, 스킬 쓰는 조건 |
 | 등장 막 | 1 / 2 / 3. 수치는 막과 관계없이 같음 (2장) |
 | 드랍 | 기본은 몬스터당 추가 드랍 35% ([게임 구조 기획서 4-5](../game-structure.md#4-5-드랍-확률-)) |
-| 외형 메모 | 실루엣과 색만. 에셋 출처는 #193에서 정함 ✅: 내장 image_gen의 독자적 생성 이미지 ([#193](https://github.com/minjunkim-dev/BGLike/issues/193), [제작 기준](../pixel-art.md)) |
+| 외형 메모 | 실루엣과 색만. 에셋 출처는 #193에서 정함 ✅: 내장 image_gen의 독자적 생성 이미지 ([#193](https://github.com/minjunkim-labs/BGLike/issues/193), [제작 기준](../pixel-art.md)) |
 
 ---
 
@@ -111,17 +111,17 @@
 | [풋내기 궁수](novice-archer.md) | 일반 / 원거리 | 2, 3 | 시험 적 궁수 | ✅ 구현 #107 |
 | [새끼 거미](spiderling.md) | 일반 / 근접 | 1, 2, 3 | 없음 | ✅ 구현 #108·#109 |
 | [엄마 거미](mother-spider.md) | 일반 / 지원 | 2, 3 | 없음 | ✅ 구현 #109 |
-| [독안개 거미](fog-spider.md) | 일반 / 지원 | 3 | 없음 | ✅ 기획 확정, 구현됨 ([#305](https://github.com/minjunkim-dev/BGLike/issues/305)) |
+| [독안개 거미](fog-spider.md) | 일반 / 지원 | 3 | 없음 | ✅ 기획 확정, 구현됨 ([#305](https://github.com/minjunkim-labs/BGLike/issues/305)) |
 | [고철로봇-1000](scrap-robot-1000.md) | 보스 / 근접 | 1 | 없음 | ✅ 구현 #110 |
 | [고철로봇-2000](scrap-robot-2000.md) | 보스 / 근접 | 2 | 없음 | ✅ 구현 #111 |
 | [고철로봇-3000](scrap-robot-3000.md) | 보스 / 근접 | 3 | 없음 | ✅ 구현 #112 |
 
-구현된 적 8종은 아군 수치와 분리한 고정 수치를 사용합니다. 풋내기 야만인과 풋내기 궁수는 2026-10-13 논의에서 시험 적 전사·궁수를 아군과 떼어 약한 개체로 다시 디자인한 것입니다. 구현과 직접 플레이의 확인 상태는 [Issue #113 통합 검수](https://github.com/minjunkim-dev/BGLike/issues/113)를 따릅니다.
+구현된 적 8종은 아군 수치와 분리한 고정 수치를 사용합니다. 풋내기 야만인과 풋내기 궁수는 2026-10-13 논의에서 시험 적 전사·궁수를 아군과 떼어 약한 개체로 다시 디자인한 것입니다. 구현과 직접 플레이의 확인 상태는 [Issue #113 통합 검수](https://github.com/minjunkim-labs/BGLike/issues/113)를 따릅니다.
 
 모든 몬스터에 공통인 규칙입니다.
 
 - 기본 규칙은 [전투 시스템 기획서](../combat/combat.md), AI의 공통 규칙은 그 [7장](../combat/combat.md#7-적-ai)을 따릅니다.
-- 몬스터의 수치는 막과 관계없이 같습니다 (2장). [게임 구조 기획서 2-3](../game-structure.md#2-3-막별-적-강화-)의 막별 적 강화는 [Issue #99](https://github.com/minjunkim-dev/BGLike/issues/99)에서 제거를 결정했고 #107에서 코드에 반영했습니다.
+- 몬스터의 수치는 막과 관계없이 같습니다 (2장). [게임 구조 기획서 2-3](../game-structure.md#2-3-막별-적-강화-)의 막별 적 강화는 [Issue #99](https://github.com/minjunkim-labs/BGLike/issues/99)에서 제거를 결정했고 #107에서 코드에 반영했습니다.
 - 적은 장비를 끼지 않습니다. 물약은 없고(0개), 밀치기는 AI가 쓰지 않습니다.
 - 스킬 횟수는 막당이지만, 적은 스테이지마다 새로 나오므로 스테이지마다 다시 채워집니다.
 
