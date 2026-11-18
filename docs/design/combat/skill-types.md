@@ -222,7 +222,7 @@
 
 ### 5-4. 도입 시기
 
-직사의 차단 규칙은 [#358](https://github.com/minjunkim-labs/BGLike/issues/358)에서 시야·엄폐를 정한 뒤, 공격 타입 단계에서 도입합니다. 그때까지 시야·엄폐는 없고 [게임 구조 6-2](../game-structure.md#6-2-거리와-인접-)를 따릅니다.
+직사의 차단 규칙은 [#358](https://github.com/minjunkim-labs/BGLike/issues/358)에서 시야·엄폐를 정한 뒤, 공격 타입 단계에서 도입합니다. 그때까지 시야·엄폐는 없고 [게임 구조 6-2](../game-structure.md#6-2-거리와-인접)를 따릅니다.
 
 ---
 
