@@ -22,6 +22,28 @@ const ABSOLUTE_HIT_HOLD_TIME: float = 0.9
 ## 차례는 페이드를 기다리지 않고 넘기며, 다음 굴림이 오면 페이드를 끊는다.
 const FADE_TIME: float = 0.3
 const FACE_CHANGES: int = 8
+## 굴림 그림 프레임 수(rolling, rolling_1~3). 눈 바꾸기 단계와 같이 넘긴다(#626).
+const ROLLING_FRAMES: int = 4
+## 결과 효과 전체 시간. HOLD_TIME보다 짧아 표시 시간·차례·페이드 시점을 바꾸지 않는다. 임시값이며 플레이 후 정한다(#626).
+const EFFECT_TIME: float = 0.25
+## 액체가 바닥에서 결과 표면까지 차오르는 시간.
+const RISE_TIME: float = 0.12
+## 실패 흔들림 한 칸의 시간. +1, -1, +1, 0 논리px로 RISE_TIME 동안 이어진다.
+const SHAKE_STEP_TIME: float = 0.03
+## 절대실패 내려앉음 시간.
+const SINK_TIME: float = 0.06
+const SHAKE_PATTERN: Array[int] = [1, -1, 1, 0]
+## 절대성공 불티가 나가는 반지름(논리px)과 방향(도, 위쪽 다섯 방향).
+const SPARK_RADIUS_FROM: float = 14.0
+const SPARK_RADIUS_TO: float = 20.0
+const SPARK_DEGREES: Array[int] = [-150, -120, -90, -60, -30]
+## 절대실패 파편의 출발점(주사위 가운데 기준 논리px)과 떨어지는 거리.
+const SHARD_START: Array[Vector2i] = [Vector2i(-5, 10), Vector2i(0, 10), Vector2i(5, 10)]
+const SHARD_FALL: float = 4.0
+const SHARD_COLOR: Color = Color("7a4a94")
+## 사라지는 동안 위로 떠오르는 거리(논리px)와 한 칸 시간. 페이드(FADE_TIME)와 같은 Tween 안에서 돈다.
+const LIFT_MAX: int = 2
+const LIFT_STEP_TIME: float = 0.1
 const PIXEL_ART: Material = preload("res://scenes/combat/art/pixel_art.tres")
 const DICE_DIR: String = "res://scenes/combat/art/dice/"
 ## 그림이 있는 면 수. 이 밖의 면 수는 벡터 윤곽으로 같은 칸에 그린다.
@@ -92,6 +114,10 @@ var _roll: CombatDiceRoll
 var _dice: Array[Die] = []
 var _elapsed: float = 0.0
 var _last_step: int = -1
+## 지금 굴림 프레임(0~3)과 멈춘 뒤 지난 시간, 사라지는 동안 떠오른 논리px. 화면에만 있다.
+var _frame: int = 0
+var _settled_elapsed: float = 0.0
+var _lift: int = 0
 var _tumbling: bool = false
 var _selected: int = 0
 var _final_margin: float = 0.0
@@ -151,8 +177,10 @@ func play(roll: CombatDiceRoll) -> void:
 	_settle()
 	await get_tree().create_timer(hold_time(roll), false).timeout
 	_fade = create_tween()
+	_fade.set_parallel(true)
 	_fade.tween_property(self, "modulate:a", 0.0, FADE_TIME)
-	_fade.tween_callback(hide)
+	_fade.tween_method(_set_lift, 0.0, FADE_TIME, FADE_TIME)
+	_fade.chain().tween_callback(hide)
 	_serving += 1
 	_turn_passed.emit()
 
@@ -167,6 +195,55 @@ static func hold_time(roll: CombatDiceRoll) -> float:
 ## 합계와 기준값의 차이. 양수면 기준을 넘긴 만큼이다.
 static func margin(result: CombatChecks.RollResult, target_value: int) -> int:
 	return result.total - target_value
+
+
+## 굴린 지 elapsed초일 때의 굴림 프레임. 눈 바꾸기 단계(FACE_CHANGES)와 같이 넘어간다.
+static func rolling_frame(elapsed: float) -> int:
+	return rolling_step(elapsed) % ROLLING_FRAMES
+
+
+## 굴린 지 elapsed초일 때의 눈 바꾸기 단계(0~FACE_CHANGES).
+static func rolling_step(elapsed: float) -> int:
+	return int(clampf(elapsed / TUMBLE_TIME, 0.0, 1.0) * FACE_CHANGES)
+
+
+## 주사위 칸의 움직임(논리px). 굴리는 동안은 홀수 단계에 위로 튀고,
+## 멈춘 뒤에는 실패가 가로로 흔들리고 절대실패가 한 번 내려앉으며 EFFECT_TIME 뒤에는 0이다.
+static func die_offset(result: CombatChecks.RollResult, tumbling: bool, step: int, settled_elapsed: float) -> Vector2i:
+	if tumbling:
+		return Vector2i(0, -1 if step % 2 == 1 else 0)
+	if settled_elapsed < 0.0 or settled_elapsed >= EFFECT_TIME:
+		return Vector2i.ZERO
+	if result.face == CombatChecks.Face.ABSOLUTE_FAILURE:
+		return Vector2i(0, 1 if settled_elapsed < SINK_TIME else 0)
+	if result.face == CombatChecks.Face.ABSOLUTE_SUCCESS or result.success:
+		return Vector2i.ZERO
+	var index: int = int(settled_elapsed / SHAKE_STEP_TIME)
+	return Vector2i(SHAKE_PATTERN[index] if index < SHAKE_PATTERN.size() else 0, 0)
+
+
+## 차오르는 액체 표면 행(48 원본 px). 바닥 아래(bottom + 1)에서 시작해 RISE_TIME 동안 target 행에 닿는다.
+static func rising_surface(_top: int, bottom: int, target: int, settled_elapsed: float) -> int:
+	if settled_elapsed >= RISE_TIME:
+		return target
+	return bottom + 1 - roundi((bottom + 1 - target) * clampf(settled_elapsed, 0.0, RISE_TIME) / RISE_TIME)
+
+
+## 절대면의 불티(절대성공)·파편(절대실패) 위치. 주사위 가운데 기준 정수 논리px이고 EFFECT_TIME 뒤에는 비어 있다.
+static func effect_pixels(face: CombatChecks.Face, settled_elapsed: float) -> PackedVector2Array:
+	var points: PackedVector2Array = PackedVector2Array()
+	if settled_elapsed < 0.0 or settled_elapsed >= EFFECT_TIME:
+		return points
+	var progress: float = settled_elapsed / EFFECT_TIME
+	match face:
+		CombatChecks.Face.ABSOLUTE_SUCCESS:
+			var radius: float = lerpf(SPARK_RADIUS_FROM, SPARK_RADIUS_TO, progress)
+			for degrees: int in SPARK_DEGREES:
+				points.append((Vector2.from_angle(deg_to_rad(degrees)) * radius).round())
+		CombatChecks.Face.ABSOLUTE_FAILURE:
+			for start: Vector2i in SHARD_START:
+				points.append(Vector2(start.x, start.y + roundf(SHARD_FALL * progress)))
+	return points
 
 
 ## 판정 단어의 등급. 절대면은 기준값과 상관없고, 나머지는 규칙의 성공/실패를 따라 여유로 세분한다.
@@ -224,9 +301,13 @@ static func total_text(result: CombatChecks.RollResult) -> String:
 
 
 ## 면 수와 상태의 주사위 그림. 그림이 없으면 null이다.
-static func die_texture(sides: int, state: String) -> Texture2D:
+static func die_texture(sides: int, state: String, frame: int = 0) -> Texture2D:
 	if not ART_SIDES.has(sides) or not ART_STATES.has(state):
 		return null
+	if state == "rolling" and frame > 0:
+		if frame >= ROLLING_FRAMES:
+			return null
+		return _load_texture("%sd%d_rolling_%d.png" % [DICE_DIR, sides, frame])
 	return _load_texture("%sd%d_%s.png" % [DICE_DIR, sides, state])
 
 
@@ -349,6 +430,9 @@ func _begin(roll: CombatDiceRoll) -> void:
 	_selected = maxi(0, roll.result.rolls.find(roll.result.selected_roll))
 	_elapsed = 0.0
 	_last_step = -1
+	_frame = 0
+	_settled_elapsed = 0.0
+	_lift = 0
 	_tumbling = true
 	_settled = false
 	_final_margin = clampf(margin(roll.result, roll.target_value), -GAUGE_RANGE, GAUGE_RANGE)
@@ -370,18 +454,26 @@ func _process(delta: float) -> void:
 		return
 	if _tumbling:
 		_elapsed += delta
-		var progress: float = clampf(_elapsed / TUMBLE_TIME, 0.0, 1.0)
-		var step: int = int(progress * FACE_CHANGES)
+		var step: int = rolling_step(_elapsed)
 		if step != _last_step:
 			_last_step = step
+			_frame = rolling_frame(_elapsed)
 			for die: Die in _dice:
 				die.shown = _visual_rng.randi_range(1, _roll.sides)
 			_total.text = str(_dice[_selected].shown)
+	else:
+		_settled_elapsed += delta
 	_update_layout()
+
+
+## 사라지는 동안 위로 떠오른 논리px. 정수 단계로만 움직여 텍셀이 정수 화면 px에 놓인다.
+func _set_lift(elapsed: float) -> void:
+	_lift = mini(LIFT_MAX, int(elapsed / LIFT_STEP_TIME))
 
 
 func _settle() -> void:
 	_tumbling = false
+	_settled_elapsed = 0.0
 	var result: CombatChecks.RollResult = _roll.result
 	var color: Color = SUCCESS_COLOR if result.success else FAILURE_COLOR
 	var absolute: bool = result.face != CombatChecks.Face.NORMAL
@@ -432,13 +524,14 @@ func _update_layout() -> void:
 	_offscreen = is_offscreen(_head, footprint(_dice.size()), screen)
 	_origin = panel_origin(Vector2.INF if _offscreen else _head, PANEL_SIZE, screen)
 	var group: float = _group_width()
-	var left: float = _origin.x + PANEL_SIZE.x * 0.5 - group * 0.5
+	var base: Vector2 = _origin - Vector2(0.0, _lift)
+	var left: float = base.x + PANEL_SIZE.x * 0.5 - group * 0.5
 	var rows: Vector2i = liquid_rows(_roll.sides)
-	var line_y: float = _origin.y + ((rows.x + rows.y + 1) >> 1) * TEXTURE_SCALE
+	var line_y: float = base.y + ((rows.x + rows.y + 1) >> 1) * TEXTURE_SCALE
 	var total_row: int = (rows.x + rows.y + 1) >> 1
 	if _settled:
 		total_row = _surface_row(rows)
-	var total_y: float = _origin.y + total_row * TEXTURE_SCALE
+	var total_y: float = base.y + total_row * TEXTURE_SCALE
 	_target.size.x = SIDE_LABEL_WIDTH
 	_target.position = Vector2(roundf(left - SIDE_LABEL_GAP - SIDE_LABEL_WIDTH),
 		roundf(line_y - _target.size.y * 0.5))
@@ -448,7 +541,7 @@ func _update_layout() -> void:
 		var owner_name: String = _roll.roller.get_display_name()
 		word = owner_name if word.is_empty() else "%s · %s" % [owner_name, word]
 	_summary.text = word
-	_summary.position = Vector2(_origin.x, roundf(_origin.y + WORD_ROW_Y + (WORD_ROW_HEIGHT - _summary.size.y) * 0.5))
+	_summary.position = Vector2(base.x, roundf(base.y + WORD_ROW_Y + (WORD_ROW_HEIGHT - _summary.size.y) * 0.5))
 	_art.queue_redraw()
 	_pointer.queue_redraw()
 
@@ -472,12 +565,16 @@ func _draw_art() -> void:
 		return
 	var rows: Vector2i = liquid_rows(_roll.sides)
 	var mask: Texture2D = liquid_texture(_roll.sides)
-	var left: float = _origin.x + PANEL_SIZE.x * 0.5 - _group_width() * 0.5
+	var base: Vector2 = _origin - Vector2(0.0, _lift)
+	var left: float = base.x + PANEL_SIZE.x * 0.5 - _group_width() * 0.5
+	var offset: Vector2 = Vector2(die_offset(_roll.result, _tumbling, _last_step, _settled_elapsed))
 	for index: int in range(_dice.size()):
 		var die: Die = _dice[index]
-		var rect: Rect2 = Rect2(Vector2(left + index * (DIE_SIZE + DIE_SPACING), _origin.y), Vector2.ONE * DIE_SIZE)
+		var slot: Rect2 = Rect2(Vector2(left + index * (DIE_SIZE + DIE_SPACING), base.y), Vector2.ONE * DIE_SIZE)
+		# 굴리는 동안은 모든 주사위가 튀고, 멈춘 뒤 흔들림·내려앉음은 적용한 주사위만 받는다.
+		var rect: Rect2 = Rect2(slot.position + (offset if _tumbling or die.applied else Vector2.ZERO), slot.size)
 		var tint: Color = Color(1.0, 1.0, 1.0, die.alpha)
-		var texture: Texture2D = die_texture(_roll.sides, die.state)
+		var texture: Texture2D = die_texture(_roll.sides, die.state, _frame)
 		if texture != null:
 			_art.draw_texture_rect(texture, rect, false, tint)
 		else:
@@ -485,14 +582,29 @@ func _draw_art() -> void:
 		if mask == null or not die.applied:
 			continue
 		if _settled:
-			var surface: int = _surface_row(rows)
+			var target: int = _surface_row(rows)
+			var surface: int = target
+			if _roll.result.face != CombatChecks.Face.ABSOLUTE_FAILURE:
+				surface = rising_surface(rows.x, rows.y, target, _settled_elapsed)
 			var liquid: Color = SUCCESS_COLOR if _roll.result.success else FAILURE_COLOR
 			_art.draw_texture_rect_region(mask, Rect2(rect.position + Vector2(0.0, surface * TEXTURE_SCALE),
 				Vector2(DIE_SIZE, (rows.y + 1 - surface) * TEXTURE_SCALE)),
 				Rect2(0, surface, 48, rows.y + 1 - surface), liquid)
+			_draw_effect(rect)
+		# 기준값 가로선은 굴리는 동안 튀지 않고, 멈춘 뒤에는 주사위와 함께 움직인다.
+		var line_rect: Rect2 = slot if _tumbling else rect
 		var line_row: int = (rows.x + rows.y + 1) >> 1
-		_art.draw_texture_rect_region(mask, Rect2(rect.position + Vector2(0.0, line_row * TEXTURE_SCALE),
+		_art.draw_texture_rect_region(mask, Rect2(line_rect.position + Vector2(0.0, line_row * TEXTURE_SCALE),
 			Vector2(DIE_SIZE, TEXTURE_SCALE)), Rect2(0, line_row, 48, 1), NEUTRAL_COLOR)
+
+
+## 절대면의 불티(금색)·파편(보라)을 주사위 둘레에 1 논리px로 찍고 효과가 끝나갈수록 흐리게 한다.
+func _draw_effect(rect: Rect2) -> void:
+	var face: CombatChecks.Face = _roll.result.face
+	var color: Color = ABSOLUTE_COLOR if face == CombatChecks.Face.ABSOLUTE_SUCCESS else SHARD_COLOR
+	color.a = 1.0 - _settled_elapsed / EFFECT_TIME
+	for point: Vector2 in effect_pixels(face, _settled_elapsed):
+		_art.draw_rect(Rect2(rect.get_center() + point, Vector2.ONE), color)
 
 
 ## 그림이 없는 면 수는 같은 24 논리px 칸에 벡터 윤곽으로 그린다.

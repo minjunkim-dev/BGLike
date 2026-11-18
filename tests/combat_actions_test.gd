@@ -4667,7 +4667,7 @@ func _test_blocked_scene_input() -> void:
 	battle.call("_start_stage", true)
 	battle.call("start_battle")
 	_check(actions.grid.blocked_cells == battle.stages[1].get_blocked_cells() and not actions.grid.is_blocked(blocked)
-		and map.get_used_cells().size() == 100, "다음 스테이지는 막힌 칸 fixture를 이어받지 않음")
+		and map.get_used_cells().size() == 196, "다음 스테이지는 막힌 칸 fixture를 이어받지 않음")
 	_check(not map.has_node("BlockedCell"), "다음 스테이지에서 막힌 칸 표시 정리")
 	battle.queue_free()
 	await process_frame
@@ -4730,8 +4730,8 @@ func _test_pit_scene_input() -> void:
 	(battle.get("progress") as CombatActProgress).stage_index = 1
 	battle.call("_start_stage", true)
 	battle.call("start_battle")
-	_check(actions.grid.pits.is_empty() and map.get_used_cells().size() == 100,
-		"다음 실제 스테이지는 낭떠러지 fixture를 이어받지 않고 평면100칸 복귀")
+	_check(actions.grid.pits.is_empty() and map.get_used_cells().size() == 196,
+		"다음 실제 스테이지는 낭떠러지 fixture를 이어받지 않고 평면이 아니어도 바닥196칸(14×14) 복귀")
 	battle.queue_free()
 	await process_frame
 
