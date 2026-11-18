@@ -1,6 +1,6 @@
 # GitHub 저장소 설정
 
-대상은 `minjunkim-dev/BGLike` / ID `1397933288` / public / `main`이다. GitHub 품질 운영은 1인 개발 기준이다. 제품 협업·권리 기록은 유지한다.
+대상은 `minjunkim-labs/BGLike` / ID `1397933288` / public / `main`이다. GitHub 품질 운영은 1인 개발 기준이다. 제품 협업·권리 기록은 유지한다.
 
 ## 기준선 검증
 
