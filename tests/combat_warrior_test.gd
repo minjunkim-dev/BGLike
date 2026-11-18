@@ -64,6 +64,7 @@ func _run() -> void:
 	await _test_steel_charge()
 	_test_sweep_shape()
 	await _test_sweep()
+	await _test_sweep_signal()
 	_test_holy_veil()
 	await _test_battle_cry()
 	_test_battle_cry_clock_slot()
@@ -259,6 +260,29 @@ func _test_sweep_shape() -> void:
 		"높이 차 2 이상·낭떠러지·막힌 칸·나무 상자는 빼고, 막힌 정면 너머의 칸도 시야 없이 셈")
 	_check(grid.sweep_cells(Vector2i(0, 0), Vector2i(0, 1)) == [Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)], "맵 밖 칸은 뺌")
 	_check(grid.sweep_cells(Vector2i(0, 4), Vector2i(-1, 4)).is_empty(), "맵 밖 칸은 정면이 될 수 없음")
+
+
+## 휩쓸기 효과 신호(#634): 고른 정면으로 한 번, 첫 타격보다 먼저. 쓸 수 없으면 보내지 않는다.
+func _test_sweep_signal() -> void:
+	var f: Fixture = _fixture()
+	var warrior: CombatUnit = f.units[0]
+	f.units[3].cell = Vector2i(4, 3)
+	f.units[1].cell = Vector2i(5, 5)
+	var events: Array = []
+	f.actions.swept.connect(func(actor: CombatUnit, facing: Vector2i) -> void: events.append(["swept", actor, facing]))
+	f.actions.struck.connect(func(_attacker: CombatUnit, _target: CombatUnit, _cell: Vector2i, _hit: bool) -> void: events.append(["struck"]))
+	f.actions.dice = _dice([15, 7, 15, 10], [20, 20, 20, 20])
+	_check(await f.actions.sweep(warrior, Vector2i(5, 4)), "신호 시험용 휩쓸기 실행")
+	var swept_count: int = events.filter(func(event: Array) -> bool: return event[0] == "swept").size()
+	_check(swept_count == 1 and events[0] == ["swept", warrior, Vector2i(5, 4)],
+		"swept가 고른 정면으로 한 번, 첫 struck보다 먼저 나온다")
+	_check(events.size() >= 2 and events[1][0] == "struck", "swept 뒤에 대상 타격이 이어진다")
+	var blocked: Fixture = _fixture()
+	var blocked_events: Array = []
+	blocked.actions.swept.connect(func(_actor: CombatUnit, _facing: Vector2i) -> void: blocked_events.append(1))
+	blocked.units[0].action_left = 0
+	_check(not await blocked.actions.sweep(blocked.units[0], Vector2i(5, 4)) and blocked_events.is_empty(),
+		"휩쓸 수 없으면 swept를 보내지 않는다")
 
 
 func _test_sweep() -> void:

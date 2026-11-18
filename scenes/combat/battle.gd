@@ -108,7 +108,8 @@ func _ready() -> void:
 	actions.healed.connect(func(unit: CombatUnit, amount: int) -> void:
 		if not _replaying():
 			unit.show_feedback(str(amount), hud.feedback_obstacles(), CombatUnit.HEAL_COLOR)
-			sounds.play(&"heal"))
+			sounds.play(&"heal")
+			hit_effects.play_heal(unit))
 	actions.damaged.connect(func(target: Object) -> void:
 		if not _replaying():
 			sounds.play_hit(target))
@@ -118,13 +119,20 @@ func _ready() -> void:
 	actions.downed.connect(func(_unit: CombatUnit) -> void:
 		if not _replaying():
 			sounds.play(&"downed"))
-	actions.self_used.connect(func(_actor: CombatUnit, action: String) -> void:
+	actions.self_used.connect(func(actor: CombatUnit, action: String) -> void:
 		if _replaying():
 			return
 		if action == "holy_veil":
 			sounds.play(&"shield")
+			hit_effects.play_shield(actor)
 		elif action == "battle_cry":
-			sounds.play(&"shout"))
+			sounds.play(&"shout")
+			for unit: CombatUnit in units:
+				if unit.hit_points > 0 and unit.battle_cry_source == actor:
+					hit_effects.play_buff(unit))
+	actions.swept.connect(func(actor: CombatUnit, facing: Vector2i) -> void:
+		if not _replaying():
+			hit_effects.play_sweep(actor, map.map_to_local(facing) - map.map_to_local(actor.cell)))
 	hit_effects = CombatHitEffects.new()
 	hit_effects.name = "HitEffects"
 	hit_effects.z_index = 5

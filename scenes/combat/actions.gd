@@ -23,6 +23,8 @@ signal downed(unit: CombatUnit)
 signal self_used(actor: CombatUnit, action: String)
 ## 공격이 대상에 닿았거나(hit) 빗나갔다. 표시용이다. 나무 상자는 target이 null이고 cell이 상자 칸이다.
 signal struck(attacker: CombatUnit, target: CombatUnit, cell: Vector2i, hit: bool)
+## 휩쓸기를 시작한 순간(#634). 표시용이며 첫 대상 공격보다 먼저 한 번 나온다.
+signal swept(actor: CombatUnit, facing: Vector2i)
 signal reaction_requested(kind: String, prompt: String)
 signal reaction_decided(use_reaction: bool)
 
@@ -1732,6 +1734,7 @@ func sweep(actor: CombatUnit, facing: Vector2i) -> bool:
 	busy = true
 	actor.spend_resource(CombatUnit.TurnResource.ACTION)
 	logged.emit(tr_n("%s 휩쓸기: 대상 %d명", "%s 휩쓸기: 대상 %d명", targets.size()) % [actor.get_display_name(), targets.size()])
+	swept.emit(actor, facing)
 	changed.emit()
 	for target: CombatUnit in targets:
 		if actor.hit_points <= 0 or is_over():
