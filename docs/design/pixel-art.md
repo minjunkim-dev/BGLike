@@ -219,7 +219,7 @@ python3 scenes/combat/art/sources/effects/draw_skill_effects.py scenes/combat/ar
 
 ## 상태 이상 효과 (#635)
 
-[#635](https://github.com/minjunkim-labs/BGLike/issues/635), 2026-11-18: 상태 이상 효과도 pixelfx(MIT)와 직접 찍기를 비교해 **직접 찍기**로 만들었다. [스킬 효과](#스킬-효과-634)와 같은 이유다. 불꽃·거품·별을 12fps·64px 캔버스·알파 0/255·게임 팔레트로 줄이면 pixelfx의 장점(30fps, 반투명, 별도 빛 층)이 대부분 사라지고, Node 의존과 출처 화면 수정이 따라온다. 직접 찍으면 표준 라이브러리 Python 하나로 같은 바이트를 다시 만들 수 있고 외부 권리 조건이 없다. 외부 자산을 쓰지 않으므로 `THIRD_PARTY_NOTICES.md`, Credits, 번역 파일은 바꾸지 않았다. 나중에 다시 비교할 수 있다.
+[#635](https://github.com/minjunkim-labs/BGLike/issues/635), 2026-11-18: 상태 이상 효과(불꽃·거품·별)는 [스킬 효과](#스킬-효과-634)와 같이 직접 찍어 만든다. 12fps·64px 캔버스·알파 0/255·게임 팔레트를 쓰고, 표준 라이브러리 Python 하나로 같은 바이트를 다시 만든다. 외부 자산을 쓰지 않으므로 `THIRD_PARTY_NOTICES.md`, Credits, 번역 파일은 바꾸지 않았다.
 
 모든 효과는 `pixel_art.tres`로 0.5배, 12fps로 한 번 재생한다. 시간이 게임 시간이라 4배속에서 1/4로 줄고, 이어하기 재실행(`_replaying()`)에서는 만들지 않는다. 전투 진행은 기다리지 않는다. 표시용 신호 셋을 `CombatActions`에 더했다. 판정은 바꾸지 않는다.
 
