@@ -1020,10 +1020,14 @@ func _test_log_and_status() -> void:
 	battle.call("_update_turn_ui")
 	# 실제 동작의 판정 로그와 숫자 팝업 연결. 마지막 적이 아닌 대상에 확정 명중.
 	var hit_sound: AudioStreamPlayer = (battle.get("sounds") as CombatSounds).player(&"hit_flesh")
-	var hit_stream: AudioStreamOggVorbis = hit_sound.stream as AudioStreamOggVorbis
-	_check(hit_stream != null and hit_stream.get_length() > 0.0
-		and hit_stream.get_length() < 0.5 and not hit_stream.loop,
-		"타격음은0.5초 미만의 반복 없는 OGG")
+	var hit_randomizer: AudioStreamRandomizer = hit_sound.stream as AudioStreamRandomizer
+	_check(hit_randomizer != null, "타격음은 갈래 스트림")
+	var hit_variants_ok: bool = hit_randomizer != null
+	for index: int in range(hit_randomizer.streams_count if hit_randomizer != null else 0):
+		var variant: AudioStreamOggVorbis = hit_randomizer.get_stream(index) as AudioStreamOggVorbis
+		hit_variants_ok = hit_variants_ok and variant != null and variant.get_length() > 0.0 \
+			and variant.get_length() < 0.5 and not variant.loop
+	_check(hit_variants_ok, "타격음 갈래는 모두 0.5초 미만의 반복 없는 OGG")
 	_check(not hit_sound.autoplay and hit_sound.volume_db == -12.0
 		and hit_sound.max_polyphony == 4, "타격음 자동 재생 없음·음량-12dB·동시4개 제한")
 	_check(hit_sound.bus == GameSettings.BUS_SFX, "타격음은 SFX 버스로 나감")
@@ -1080,7 +1084,7 @@ func _test_hit_sound_mix() -> void:
 	capture.clear_buffer()
 	for index: int in range(6):
 		actions.damaged.emit(units[2])
-	await create_timer(sound.stream.get_length() + 0.2).timeout
+	await create_timer(SoundVariants.longest(sound.stream) * (sound.stream as AudioStreamRandomizer).random_pitch + 0.2).timeout
 	var samples: PackedVector2Array = capture.get_buffer(capture.get_frames_available())
 	var peak: float = 0.0
 	for sample: Vector2 in samples:

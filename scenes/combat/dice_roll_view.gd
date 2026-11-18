@@ -8,7 +8,9 @@ extends Control
 signal _turn_passed
 
 const UI_THEME: Theme = preload("res://scenes/ui_theme.tres")
-const ROLL_SOUND: AudioStream = preload("res://scenes/combat/audio/dice_roll.ogg")
+## 굴림 소리는 갈래 3개와 높낮이 1/1.06~1.06배(#630). 결과음 둘은 성공·실패를 음정으로 알리므로 그대로다.
+const ROLL_SOUND_VARIANTS: int = 3
+const ROLL_SOUND_PITCH: float = 1.06
 const SUCCESS_SOUND: AudioStream = preload("res://scenes/combat/audio/roll_success.ogg")
 const FAILURE_SOUND: AudioStream = preload("res://scenes/combat/audio/roll_fail.ogg")
 
@@ -134,7 +136,8 @@ func _ready() -> void:
 	_total = _make_label("Total", HORIZONTAL_ALIGNMENT_LEFT)
 	_summary = _make_label("Summary", HORIZONTAL_ALIGNMENT_CENTER)
 	_summary.size = Vector2(PANEL_SIZE.x, WORD_ROW_HEIGHT)
-	_roll_player = _make_player("RollSound", ROLL_SOUND)
+	_roll_player = _make_player("RollSound", SoundVariants.build(
+		SoundVariants.variant_paths("res://scenes/combat/audio/", "dice_roll", ROLL_SOUND_VARIANTS), ROLL_SOUND_PITCH))
 	_success_player = _make_player("SuccessSound", SUCCESS_SOUND)
 	_failure_player = _make_player("FailureSound", FAILURE_SOUND)
 
