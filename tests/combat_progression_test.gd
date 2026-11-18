@@ -4,7 +4,7 @@ extends SceneTree
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
 const LargeMapBattle = preload("res://tests/large_map_battle.gd")
 ## 북고남저 검사를 켠 맵 이름(#515). 맵을 14×14로 다시 배치한 티켓이 자기 맵을 더한다.
-const NORTH_HIGH_STAGES: Array[String] = ["1-1"]
+const NORTH_HIGH_STAGES: Array[String] = ["1-1", "1-2", "1-3"]
 
 var checks: int = 0
 var failures: int = 0
@@ -391,7 +391,7 @@ func _test_novice_placements() -> void:
 	battle.call("start_battle")
 	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
 	var expected: Dictionary = {
-		1: [[CombatUnit.Kind.WARRIOR, Vector2i(7, 4)]],
+		1: [[CombatUnit.Kind.WARRIOR, Vector2i(10, 2)]],
 		4: [[CombatUnit.Kind.WARRIOR, Vector2i(6, 3)], [CombatUnit.Kind.ARCHER, Vector2i(8, 6)]],
 		7: [[CombatUnit.Kind.WARRIOR, Vector2i(6, 2)], [CombatUnit.Kind.WARRIOR, Vector2i(6, 7)],
 			[CombatUnit.Kind.ARCHER, Vector2i(9, 4)]]
@@ -403,15 +403,15 @@ func _test_novice_placements() -> void:
 		progress.stage_index = index
 		battle.call("_start_stage", true)
 		battle.call("start_battle")
-		# 1-1은 14×14 재배치(#612)로 아군 시작 칸이 (2,8)/(1,9)다. 나머지는 아직 (1,4)/(0,5).
-		var allies_start: Array[Vector2i] = [Vector2i(1, 4), Vector2i(0, 5)]
-		if index == 0:
-			allies_start = [Vector2i(2, 8), Vector2i(1, 9)]
+		# 아군 시작 칸은 스테이지 자원의 ally_cells가 정한다. 14×14로 재배치한 맵(#612, #613)만 자기 칸을 명시한다.
+		var stage: CombatStage = (battle.get("stages") as Array[CombatStage])[index]
+		var label: String = "%d-%d" % [index / 3 + 1, index % 3 + 1]
+		var allies_start: Array[Vector2i] = stage.ally_cells
 		_check(party[0].cell == allies_start[0] and party[1].cell == allies_start[1]
 			and not party[0].facing_left and not party[1].facing_left,
 			"모든 스테이지에서 아군이 왼쪽 두 칸에서 오른쪽을 보고 시작")
-		_check(battle.get("map_size") == (Vector2i(14, 14) if index == 0 else Vector2i(10, 10)),
-			"1-1은 14×14, 나머지 스테이지는 기존 10×10 크기를 사각 맵으로 유지")
+		_check(battle.get("map_size") == (Vector2i(14, 14) if NORTH_HIGH_STAGES.has(label) else Vector2i(10, 10)),
+			"재배치한 맵(NORTH_HIGH_STAGES)은 14×14, 나머지 스테이지는 기존 10×10 크기를 사각 맵으로 유지")
 		_check_enemy_values(battle, progress.act_number())
 		if not expected.has(index):
 			continue
@@ -547,7 +547,7 @@ func _test_scrap_robot_stage() -> void:
 	battle.call("start_battle")
 	var units: Array[CombatUnit] = battle.get("units")
 	_check(units.size() == 3 and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_1000
-		and units[2].cell == Vector2i(8, 4), "1막 3스테이지에 고철로봇-1000 한 마리 배치")
+		and units[2].cell == Vector2i(9, 4), "1막 3스테이지에 고철로봇-1000 한 마리 배치")
 	var boss: CombatUnit = units[2]
 	boss.hit_points = 2
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -807,7 +807,7 @@ func _test_stage_transition(battle: Node2D) -> void:
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var stages: Array[CombatStage] = battle.get("stages")
 	var second: CombatStage = stages[1].duplicate() as CombatStage
-	second.map_size = Vector2i(8, 9)
+	second.map_size = Vector2i(14, 13)
 	second.ally_cells = [Vector2i(1, 8), Vector2i(2, 8)]
 	stages[1] = second
 	_win(battle)
@@ -820,8 +820,8 @@ func _test_stage_transition(battle: Node2D) -> void:
 	await process_frame
 	_check((hud.get_node("Progress") as Label).text == "1막 · 2스테이지", "승리 뒤1-2 진행")
 	_check(loot.bag[0] == stored, "같은 막 다음 전투는 공용 가방 보존")
-	_check((battle.get_node("Map") as TileMapLayer).get_used_cells().size() == 72
-		and (battle.get("actions") as CombatActions).grid.map_size == Vector2i(8, 9)
+	_check((battle.get_node("Map") as TileMapLayer).get_used_cells().size() == 182
+		and (battle.get("actions") as CombatActions).grid.map_size == Vector2i(14, 13)
 		and warrior.cell == Vector2i(1, 8), "다음 스테이지 맵과 배치 데이터를 실제 전투에 적용")
 	_check(warrior.hit_points == 5 and warrior.second_wind_left == 0, "같은 막의 HP와 막당 스킬 횟수 유지")
 	_check(warrior.cross_slash_left == 1 and warrior.steel_charge_left == 1 and warrior.battle_cry_left == 1,
@@ -875,7 +875,7 @@ func _test_act_and_defeat(battle: Node2D) -> void:
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	await _next(battle)
 	_check(hud.progress_label.text == "1막 · 3스테이지", "1-2에서1-3 진행")
-	_check((battle.get_node("Map") as TileMapLayer).get_used_cells().size() == 100,
+	_check((battle.get_node("Map") as TileMapLayer).get_used_cells().size() == 196,
 		"다음 스테이지 데이터가 이전 맵 크기를 덮어씀")
 	var level_party: Array[CombatUnit] = battle.get("party")
 	_check(battle.progress.level == 0 and level_party[0].dice_level == 0 and level_party[0].get_max_hit_points() == 11,
