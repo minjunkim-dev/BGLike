@@ -59,6 +59,7 @@ func _run() -> void:
 		"전제조건: 3-3의 전사·궁수·보스")
 	ScriptedDice.arrange_turns(battle.get("turns") as CombatTurns, units, [warrior, archer, units[2]])
 	await _passive_slot(warrior, archer)
+	await _skill_slots(warrior)
 	await _shield_bar(warrior)
 	await _number_colors(warrior, archer)
 	var problems: Array[String] = ScriptedDice.finish()
@@ -117,6 +118,35 @@ func _passive_slot(warrior: CombatUnit, archer: CombatUnit) -> void:
 	hud.refresh_actions(actions, "attack", archer)
 	_check(turns.current_unit == archer and not phalanx.visible and not brawn.visible, "궁수 차례: 패시브 칸 숨음")
 	ScriptedDice.arrange_turns(turns, units, [warrior, archer, units[2]])
+	hud.refresh_actions(actions, "attack", warrior)
+
+
+## #517: 스킬 칸의 비용 기호는 오른쪽 아래, 횟수 배지는 오른쪽 위에 서고, 쓸 수 없는 칸은 어두운 면과 불투명 아이콘이다.
+func _skill_slots(warrior: CombatUnit) -> void:
+	var buttons: Dictionary = hud.get("_actions")
+	var costs: Dictionary = hud.get("_costs")
+	var badges: Dictionary = hud.get("_badges")
+	warrior.cell = Vector2i(3, 5)
+	hud.refresh_actions(actions, "attack", warrior)
+	await create_timer(0.2).timeout
+	var cross_cost: Control = costs["cross_slash"]
+	_check(cross_cost.get_child_count() == 2 and (buttons["cross_slash"] as Button).get_global_rect().encloses(cross_cost.get_global_rect()),
+		"십자 베기: 비용 기호 ●▲가 따로 서고 칸 안에 있음")
+	var badge: Label = badges["battle_cry"]
+	_check(badge.visible and badge.get_global_rect().end.y + 4 <= (costs["battle_cry"] as Control).get_global_rect().position.y,
+		"전투의 함성: 횟수 배지와 비용 기호가 4 논리px 이상 떨어짐")
+	await _capture("skill-slots-ready-%dx%d" % [root.size.x, root.size.y])
+	var capacity: int = warrior.bonus_action_capacity
+	warrior.bonus_action_left = 0
+	hud.refresh_actions(actions, "attack", warrior)
+	await create_timer(0.2).timeout
+	var spent: Button = buttons["steel_charge"]
+	_check(spent.disabled and (spent.get_theme_stylebox("normal") as StyleBoxFlat).bg_color == Color("242a30")
+		and spent.get_theme_color("icon_disabled_color").a == 1.0, "보조 행동을 쓴 뒤: 강철 돌진은 어두운 면과 불투명 아이콘")
+	_check(not (buttons["attack"] as Button).disabled and (buttons["attack"] as Button).get_theme_stylebox("normal").bg_color == Color("365d61"),
+		"보조 행동을 쓴 뒤에도 공격 칸은 청록 면")
+	await _capture("skill-slots-spent-%dx%d" % [root.size.x, root.size.y])
+	warrior.bonus_action_left = capacity
 	hud.refresh_actions(actions, "attack", warrior)
 
 
