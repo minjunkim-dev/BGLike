@@ -37,7 +37,7 @@
   "variants": {
     "issue": "https://github.com/minjunkim-labs/BGLike/issues/630",
     "note": "#630. 자주 나는 13개 cue는 원본(1번)에 갈래 _2·_3을 더한다. 원본 파일은 바꾸지 않았다. 재생 때 AudioStreamRandomizer가 갈래를 반복 없이 고르고 높낮이를 1/p~p배로 흔든다(실제 소리·잡음 합성 p=1.08, 칩튠 p=1.06).",
-    "kenney_cues": "hit_flesh·hit_metal·hit_stone·hit_wood·step_dirt·step_stone·jump·land. 같은 원본에서 결정적으로 만들었다(원본 zip을 받지 못해 sources/kenney의 _000 원본을 썼다). 2번은 시작을 8ms 늦추고 2.5kHz 저역 통과, 3번은 시작을 16ms 늦추고 1.03배로 다시 샘플링. hit_wood는 hit_wood.ogg(원본 그대로)를 원본으로 읽어 같은 길이와 피크를 쓴다. 외부 원본이 늘지 않아 출처는 위 Kenney 행과 같다",
+    "kenney_cues": "hit_flesh·hit_metal·hit_stone·hit_wood·step_dirt·step_stone·jump·land. 같은 원본에서 결정적으로 만들었다(원본 zip을 받지 못해 sources/kenney의 _000 원본을 썼다). 2번은 앞 8ms를 잘라 내고 2.5kHz 저역 통과, 3번은 앞 16ms를 잘라 내고 1.03배로 다시 샘플링. hit_wood는 hit_wood.ogg(원본 그대로)를 원본으로 읽어 그 피크를 정규화 목표로 쓴다. 길이 상한은 두지 않지만 앞을 잘라 내므로 갈래는 원본보다 짧다(3번은 다시 샘플링해 더 짧다). 외부 원본이 늘지 않아 출처는 위 Kenney 행과 같다",
     "synth_cues": {
       "miss": "잡음 씨앗 6, 7(원본 5)",
       "step_water": "스윕 시작 주파수 순서 (1100,520,700)·(520,700,1100)(원본 700,1100,520), 잡음 씨앗 14, 15(원본 13)",

@@ -5,7 +5,7 @@
 빗나감·물 발소리·방어막·회복·함성·턴 신호·환경음·UI는 numpy로 합성한다(외부 샘플 없음).
 주사위 소리(#627: dice_roll·roll_success·roll_fail)도 칩튠풍으로 합성한다.
 자주 나는 13개 cue(#630)는 원본(1번)에 갈래 `<cue>_2.ogg`, `<cue>_3.ogg`를 더한다. 원본 1번 소리는 그대로다.
-Kenney cue의 갈래는 같은 원본에서 결정적으로 만든다: 2번은 시작을 8ms 늦추고 2.5kHz 저역 통과, 3번은 시작을 16ms 늦추고 1.03배로 다시 샘플링한다.
+Kenney cue의 갈래는 같은 원본에서 결정적으로 만든다: 2번은 앞 8ms를 잘라 내고 2.5kHz 저역 통과, 3번은 앞 16ms를 잘라 내고 1.03배로 다시 샘플링한다.
 합성 cue의 갈래는 씨앗·음 순서·듀티만 바꾼다(각 함수 참고).
 
 실행: python3 scenes/combat/audio/sources/make_sfx.py  (저장소 루트에서, numpy와 ffmpeg 필요. ffmpeg 내장 vorbis 인코더를 쓴다(스테레오만 지원해 두 채널에 같은 소리를 쓴다))
@@ -27,13 +27,13 @@ UI = ROOT / "scenes/ui/audio"
 KENNEY = Path(__file__).resolve().parent / "kenney"
 
 
-VARIANT_DELAY = {2: 0.008, 3: 0.016}
+VARIANT_TRIM = {2: 0.008, 3: 0.016}
 
 
 def kenney(name, seconds, peak=0.8, gain=1.0, variant=1, source=None):
     """Kenney 원본을 모노 44.1kHz로 읽어 seconds까지 자르고 끝을 줄여 정규화한다.
 
-    variant 2·3(#630)은 같은 원본에서 만든 갈래다. 2번은 시작을 8ms 늦추고 2.5kHz 저역 통과, 3번은 시작을 16ms 늦추고 1.03배로 다시 샘플링한다.
+    variant 2·3(#630)은 같은 원본에서 만든 갈래다. 2번은 앞 8ms를 잘라 내고 2.5kHz 저역 통과, 3번은 앞 16ms를 잘라 내고 1.03배로 다시 샘플링한다.
     source는 sources/kenney/ 밖의 원본 파일 경로이고, seconds가 None이면 끝까지 쓴다.
     """
     path = source if source is not None else KENNEY / f"{name}.ogg"
@@ -41,7 +41,7 @@ def kenney(name, seconds, peak=0.8, gain=1.0, variant=1, source=None):
                           "-f", "s16le", "-"], check=True, capture_output=True).stdout
     x = np.frombuffer(raw, dtype=np.int16).astype(float) / 32768.0
     if variant > 1:
-        x = x[int(RATE * VARIANT_DELAY[variant]):]
+        x = x[int(RATE * VARIANT_TRIM[variant]):]
         if variant == 2:
             x = lowpass(x, 2500)
         else:
