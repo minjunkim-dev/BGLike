@@ -403,10 +403,13 @@ func _test_novice_placements() -> void:
 		progress.stage_index = index
 		battle.call("_start_stage", true)
 		battle.call("start_battle")
-		# 아군 시작 칸은 스테이지 자원의 ally_cells가 정한다. 14×14로 재배치한 맵(#612, #613)만 자기 칸을 명시한다.
-		var stage: CombatStage = (battle.get("stages") as Array[CombatStage])[index]
-		var label: String = "%d-%d" % [index / 3 + 1, index % 3 + 1]
-		var allies_start: Array[Vector2i] = stage.ally_cells
+		# 14×14로 재배치한 맵(#612, #613)은 자기 아군 시작 칸이 있다. 나머지는 아직 (1,4)/(0,5).
+		var label: String = "%d-%d" % [progress.act_number(), progress.stage_in_act()]
+		var allies_start: Array[Vector2i] = [Vector2i(1, 4), Vector2i(0, 5)]
+		if index == 0:
+			allies_start = [Vector2i(2, 8), Vector2i(1, 9)]
+		elif index == 1 or index == 2:
+			allies_start = [Vector2i(2, 7), Vector2i(1, 8)]
 		_check(party[0].cell == allies_start[0] and party[1].cell == allies_start[1]
 			and not party[0].facing_left and not party[1].facing_left,
 			"모든 스테이지에서 아군이 왼쪽 두 칸에서 오른쪽을 보고 시작")
