@@ -4,6 +4,10 @@ extends Node
 ## 키보드 포커스 이동에는 소리를 내지 않는다(화면을 열며 grab_focus가 소리를 내지 않게).
 
 const AUDIO_DIR: String = "res://scenes/ui/audio/"
+## 호버·클릭은 칩튠 음이라 갈래 3개와 높낮이 1/1.06~1.06배(#630). 취소·사용 불가는 뜻을 전하는 신호음이라 그대로다.
+const VARIANTS: int = 3
+const PITCH: float = 1.06
+const VARIANT_CUES: Array[StringName] = [&"ui_hover", &"ui_click"]
 const CUES: Dictionary = {
 	&"ui_hover": -14.0,
 	&"ui_click": -10.0,
@@ -22,7 +26,10 @@ func _ready() -> void:
 	for cue: StringName in CUES:
 		var player: AudioStreamPlayer = AudioStreamPlayer.new()
 		player.name = String(cue).to_pascal_case()
-		player.stream = load(AUDIO_DIR + String(cue) + ".ogg") as AudioStream
+		if cue in VARIANT_CUES:
+			player.stream = SoundVariants.build(SoundVariants.variant_paths(AUDIO_DIR, String(cue), VARIANTS), PITCH)
+		else:
+			player.stream = load(AUDIO_DIR + String(cue) + ".ogg") as AudioStream
 		player.volume_db = float(CUES[cue])
 		player.bus = GameSettings.BUS_UI
 		add_child(player)

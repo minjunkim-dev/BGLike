@@ -8,23 +8,27 @@ const HIT_VOLUME_DB: float = -12.0
 const DEFAULT_VOLUME_DB: float = -9.0
 const AMBIENT_VOLUME_DB: float = -20.0
 const MAX_POLYPHONY: int = 4
-## cue → 파일과 음량. 처음 음량은 임시이며 사람이 듣고 조정한다.
+## 갈래 3개(#630). 높낮이 폭은 배율 1/p~p. 실제 소리와 잡음 합성은 ±7~8%, 칩튠 음은 ±6%.
+const VARIANTS: int = 3
+const PITCH: float = 1.08
+## cue → 파일과 음량. "variants"가 있으면 `<파일>_2.ogg`… 갈래를 더해 반복 없이 고르고 "pitch"만큼 높낮이를 흔든다.
+## 처음 음량은 임시이며 사람이 듣고 조정한다.
 const CUES: Dictionary = {
-	&"hit_flesh": {"file": "hit_flesh.ogg", "db": HIT_VOLUME_DB},
-	&"hit_metal": {"file": "hit_metal.ogg", "db": HIT_VOLUME_DB},
-	&"hit_wood": {"file": "hit_wood.ogg", "db": HIT_VOLUME_DB},
-	&"hit_stone": {"file": "hit_stone.ogg", "db": HIT_VOLUME_DB},
+	&"hit_flesh": {"file": "hit_flesh.ogg", "db": HIT_VOLUME_DB, "variants": VARIANTS, "pitch": PITCH},
+	&"hit_metal": {"file": "hit_metal.ogg", "db": HIT_VOLUME_DB, "variants": VARIANTS, "pitch": PITCH},
+	&"hit_wood": {"file": "hit_wood.ogg", "db": HIT_VOLUME_DB, "variants": VARIANTS, "pitch": PITCH},
+	&"hit_stone": {"file": "hit_stone.ogg", "db": HIT_VOLUME_DB, "variants": VARIANTS, "pitch": PITCH},
 	&"critical": {"file": "critical.ogg", "db": HIT_VOLUME_DB},
-	&"miss": {"file": "miss.ogg", "db": DEFAULT_VOLUME_DB},
+	&"miss": {"file": "miss.ogg", "db": DEFAULT_VOLUME_DB, "variants": VARIANTS, "pitch": PITCH},
 	&"downed": {"file": "downed.ogg", "db": DEFAULT_VOLUME_DB},
 	&"shield": {"file": "shield.ogg", "db": DEFAULT_VOLUME_DB},
 	&"heal": {"file": "heal.ogg", "db": DEFAULT_VOLUME_DB},
 	&"shout": {"file": "shout.ogg", "db": DEFAULT_VOLUME_DB},
-	&"step_dirt": {"file": "step_dirt.ogg", "db": -14.0},
-	&"step_stone": {"file": "step_stone.ogg", "db": -14.0},
-	&"step_water": {"file": "step_water.ogg", "db": -14.0},
-	&"jump": {"file": "jump.ogg", "db": DEFAULT_VOLUME_DB},
-	&"land": {"file": "land.ogg", "db": DEFAULT_VOLUME_DB},
+	&"step_dirt": {"file": "step_dirt.ogg", "db": -14.0, "variants": VARIANTS, "pitch": PITCH},
+	&"step_stone": {"file": "step_stone.ogg", "db": -14.0, "variants": VARIANTS, "pitch": PITCH},
+	&"step_water": {"file": "step_water.ogg", "db": -14.0, "variants": VARIANTS, "pitch": PITCH},
+	&"jump": {"file": "jump.ogg", "db": DEFAULT_VOLUME_DB, "variants": VARIANTS, "pitch": PITCH},
+	&"land": {"file": "land.ogg", "db": DEFAULT_VOLUME_DB, "variants": VARIANTS, "pitch": PITCH},
 	&"turn_ally": {"file": "turn_ally.ogg", "db": DEFAULT_VOLUME_DB},
 	&"turn_enemy": {"file": "turn_enemy.ogg", "db": DEFAULT_VOLUME_DB},
 	&"ambient_water": {"file": "ambient_water.ogg", "db": AMBIENT_VOLUME_DB, "loop": true},
@@ -51,11 +55,17 @@ func _ready() -> void:
 		var info: Dictionary = CUES[cue]
 		var player: AudioStreamPlayer = AudioStreamPlayer.new()
 		player.name = String(cue).to_pascal_case()
-		var stream: AudioStreamOggVorbis = load(AUDIO_DIR + String(info["file"])) as AudioStreamOggVorbis
-		if info.get("loop", false):
-			stream = stream.duplicate() as AudioStreamOggVorbis
-			stream.loop = true
-		player.stream = stream
+		var file: String = String(info["file"])
+		var variants: int = int(info.get("variants", 1))
+		if variants > 1:
+			player.stream = SoundVariants.build(
+				SoundVariants.variant_paths(AUDIO_DIR, file.get_basename(), variants), float(info["pitch"]))
+		else:
+			var stream: AudioStreamOggVorbis = load(AUDIO_DIR + file) as AudioStreamOggVorbis
+			if info.get("loop", false):
+				stream = stream.duplicate() as AudioStreamOggVorbis
+				stream.loop = true
+			player.stream = stream
 		player.volume_db = float(info["db"])
 		player.max_polyphony = MAX_POLYPHONY
 		player.bus = GameSettings.BUS_SFX

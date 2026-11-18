@@ -678,10 +678,17 @@ func _test_overlapping_rolls(actions: CombatActions, view: CombatDiceRollView, a
 			"%s는 겹쳐 재생해 앞 소리를 끊지 않는다" % player_name)
 		_check((view.get_node(player_name) as AudioStreamPlayer).bus == GameSettings.BUS_SFX,
 			"%s는 SFX 버스로 나간다" % player_name)
+	var roll_stream: AudioStreamRandomizer = (view.get_node("RollSound") as AudioStreamPlayer).stream as AudioStreamRandomizer
+	_check(roll_stream != null and roll_stream.streams_count == 3 and is_equal_approx(roll_stream.random_pitch, 1.06)
+		and roll_stream.playback_mode == AudioStreamRandomizer.PLAYBACK_RANDOM_NO_REPEATS,
+		"굴림 소리는 갈래 3개·높낮이 1.06·반복 없이 고름")
+	for player_name: String in ["SuccessSound", "FailureSound"]:
+		_check((view.get_node(player_name) as AudioStreamPlayer).stream is AudioStreamOggVorbis,
+			"%s는 신호음이라 OGG 그대로" % player_name)
 	var limits: Dictionary = {"RollSound": CombatDiceRollView.TUMBLE_TIME, "SuccessSound": CombatDiceRollView.HOLD_TIME,
 		"FailureSound": CombatDiceRollView.HOLD_TIME}
 	for player_name: String in limits:
-		var length: float = (view.get_node(player_name) as AudioStreamPlayer).stream.get_length()
+		var length: float = SoundVariants.longest((view.get_node(player_name) as AudioStreamPlayer).stream)
 		_check(length > 0.0 and length <= float(limits[player_name]),
 			"%s는 비어 있지 않고 표시 시간(%.2f초) 안에 끝난다: %.3f초" % [player_name, limits[player_name], length])
 	actions.roll_animation.call(CombatDiceRoll.save(ally, 4, _result([4], 4, 4, true), 0, tr("DC"), 3))

@@ -136,7 +136,7 @@
 
 - 음량은 0–100%이고 한 단계는 10%다. 처음 값은 80%다. 첫 실행부터 최대 음량으로 놀라지 않게 조금 낮췄다. 방향키·D-pad 좌우 한 번이 한 단계다. 0은 Master 버스를 끄는 음소거이며 값 자리에 `음소거`를 보인다.
 - 음량은 Master 버스의 선형 크기(`AudioServer.set_bus_volume_linear`)다. 50%는 약 -6dB다.
-- 배경음·효과음 음량([#558](https://github.com/minjunkim-labs/BGLike/issues/558))은 BGM·SFX 버스의 선형 크기이고 마스터와 같이 0–100%, 10% 단계, 0은 `음소거`다. 처음 값은 100%다. 마스터 80%가 이미 첫 실행 음량을 낮추기 때문이다. 버스는 `default_bus_layout.tres`에서 BGM·SFX가 Master로, UI가 SFX로 간다. 지금 소리(피격음, 주사위 소리 셋)는 SFX다. 배경음은 BGM 버스로 나가 배경음 음량이 그대로 조절한다([#629](https://github.com/minjunkim-labs/BGLike/issues/629), 아래 「배경음」).
+- 배경음·효과음 음량([#558](https://github.com/minjunkim-labs/BGLike/issues/558))은 BGM·SFX 버스의 선형 크기이고 마스터와 같이 0–100%, 10% 단계, 0은 `음소거`다. 처음 값은 100%다. 마스터 80%가 이미 첫 실행 음량을 낮추기 때문이다. 버스는 `default_bus_layout.tres`에서 BGM·SFX가 Master로, UI가 SFX로 간다. 지금 소리(피격음, 주사위 소리 셋)는 SFX다. 배경음은 BGM 버스로 나가 배경음 음량이 그대로 조절한다([#629](https://github.com/minjunkim-labs/BGLike/issues/629), 아래 「배경음」). 자주 나는 효과음(타격 넷·빗나감·발소리 셋·점프·착지·주사위 굴림·UI 호버와 클릭)은 같은 소리의 갈래 3개 중 하나를 연속 반복 없이 고르고 높낮이를 ±5~10% 무작위로 낸다(실제 소리·잡음 합성은 약 −7%~+8%, 칩튠 음은 약 ±6%, [#630](https://github.com/minjunkim-labs/BGLike/issues/630)). 턴·결과음·치명타·전투 불능·회복·방어막·함성·취소·사용 불가 같은 신호음은 뜻을 전하므로 바꾸지 않는다.
 - 처음 창 모드는 창이다. 전체 화면은 `DisplayServer.WINDOW_MODE_FULLSCREEN`(경계 없는 전체 화면)이다. 창으로 돌아갈 때 최대화한 창은 건드리지 않는다.
 - 값을 바꾸는 즉시 설정 파일(`user://settings.cfg`, [ADR 0003](../../adr/0003-save-files.md))에 쓰고 적용한다. `저장`·`취소` 버튼은 없다. 파일을 쓰지 못하면 경고를 남기고 바꾼 값은 그대로 적용한다. 그 값은 다음 실행에 남지 않는다. 게임을 시작할 때 타이틀 화면이 저장한 값을 적용한다. 새 게임과 졸업은 게임 저장만 지운다.
 - 모양([#557](https://github.com/minjunkim-labs/BGLike/issues/557)): 내용 전체를 공용 테마의 `MenuPanel` 프레임(`panel.png`, 면 #21223D)이 감싸고, 볼륨 슬라이더 셋의 막대·손잡이는 도트 그림이다([도트 아트 기준](../pixel-art.md#ui)). 노드 이름·포커스 이웃·음량 동작은 그대로다.

@@ -3,6 +3,12 @@ extends SceneTree
 ## headless는 Dummy 오디오라 들리는 것은 확인하지 못한다. 무엇이 났는지는 played 신호로 본다.
 
 const MAX_SHORT_SECONDS: float = 1.2
+## 갈래를 두는 전투 cue(#630). 실제 소리를 가공한 것과 잡음 합성은 1.08, 칩튠 음은 1.06.
+const VARIANT_CUES: Array[StringName] = [
+	&"hit_flesh", &"hit_metal", &"hit_wood", &"hit_stone", &"miss",
+	&"step_dirt", &"step_stone", &"step_water", &"jump", &"land",
+]
+const VARIANT_UI_CUES: Array[StringName] = [&"ui_hover", &"ui_click"]
 
 var checks: int = 0
 var failures: int = 0
@@ -48,10 +54,12 @@ func _run() -> void:
 	turns = battle.get("turns") as CombatTurns
 	units = battle.get("units")
 	sounds.played.connect(func(cue: StringName) -> void: heard.append(cue))
+	_test_sound_variants()
 	_test_cue_table()
 	_test_material_cues()
 	_test_ground_cues()
 	await _test_battle_events()
+	_test_ui_cue_table()
 	await _test_ui_sounds()
 	sounds.stop_all()
 	await create_timer(0.3).timeout
@@ -66,17 +74,50 @@ func _expect(label: String, cues: Array[StringName]) -> void:
 	heard.clear()
 
 
-## seam 1: 모든 cue의 파일, 길이, 반복, 버스.
+## seam 1: 갈래 스트림을 만드는 SoundVariants.
+func _test_sound_variants() -> void:
+	var dir: String = "res://scenes/combat/audio/"
+	_check(SoundVariants.variant_paths(dir, "hit_flesh", 3) == PackedStringArray([
+		dir + "hit_flesh.ogg", dir + "hit_flesh_2.ogg", dir + "hit_flesh_3.ogg"]), "갈래 경로 이름 규칙")
+	_check(SoundVariants.variant_paths(dir, "heal", 1) == PackedStringArray([dir + "heal.ogg"]), "갈래 하나면 원본 경로만")
+	var single: AudioStream = SoundVariants.build(PackedStringArray([dir + "heal.ogg"]), 1.08)
+	_check(single is AudioStreamOggVorbis, "갈래가 하나면 OGG 그대로")
+	var multi: AudioStream = SoundVariants.build(SoundVariants.variant_paths(dir, "hit_flesh", 3), 1.08)
+	var randomizer: AudioStreamRandomizer = multi as AudioStreamRandomizer
+	_check(randomizer != null, "갈래가 둘 이상이면 AudioStreamRandomizer")
+	if randomizer != null:
+		_check(randomizer.streams_count == 3, "갈래 수 3: %d" % randomizer.streams_count)
+		_check(randomizer.playback_mode == AudioStreamRandomizer.PLAYBACK_RANDOM_NO_REPEATS, "같은 갈래를 연달아 고르지 않음")
+		_check(is_equal_approx(randomizer.random_pitch, 1.08), "높낮이 폭 1.08")
+		_check(is_zero_approx(randomizer.random_volume_offset_db), "음량 오프셋 0")
+		var longest: float = SoundVariants.longest(multi)
+		_check(longest > 0.0, "longest는 0보다 큼: %f" % longest)
+		var expected: float = 0.0
+		for index: int in range(randomizer.streams_count):
+			expected = maxf(expected, randomizer.get_stream(index).get_length())
+		_check(is_equal_approx(longest, expected), "longest는 갈래 중 가장 긴 길이")
+	_check(is_equal_approx(SoundVariants.longest(single), single.get_length()), "OGG의 longest는 그 길이")
+
+
+## seam 2: 모든 cue의 파일, 길이, 반복, 버스, 갈래.
 func _test_cue_table() -> void:
 	for cue: StringName in CombatSounds.CUES:
 		var player: AudioStreamPlayer = sounds.player(cue)
 		_check(player != null, "cue 플레이어 있음: %s" % cue)
 		if player == null:
 			continue
+		var varied: bool = cue in VARIANT_CUES
+		_check(varied == (int(CombatSounds.CUES[cue].get("variants", 1)) > 1), "갈래 cue 목록: %s" % cue)
 		var stream: AudioStreamOggVorbis = player.stream as AudioStreamOggVorbis
-		_check(stream != null and stream.get_length() > 0.0, "OGG로 열림: %s" % cue)
+		if varied:
+			_check(stream == null and player.stream is AudioStreamRandomizer, "갈래 cue는 Randomizer: %s" % cue)
+			_test_variant_stream(cue, player.stream as AudioStreamRandomizer, 1.08)
 		_check(player.bus == GameSettings.BUS_SFX, "SFX 버스: %s" % cue)
 		_check(not player.autoplay, "자동 재생 없음: %s" % cue)
+		if varied:
+			_check(SoundVariants.longest(player.stream) < MAX_SHORT_SECONDS, "짧음: %s" % cue)
+			continue
+		_check(stream != null and stream.get_length() > 0.0, "OGG로 열림: %s" % cue)
 		if String(cue).begins_with("ambient_"):
 			_check(stream.loop and stream.get_length() >= 4.0, "환경음은 4초 이상 반복: %s" % cue)
 		elif stream != null:
@@ -87,14 +128,40 @@ func _test_cue_table() -> void:
 	_check(AudioServer.get_bus_index(GameSettings.BUS_SFX) >= 0, "SFX 버스가 있음")
 	_check(AudioServer.get_bus_send(AudioServer.get_bus_index(GameSettings.BUS_UI)) == GameSettings.BUS_SFX,
 		"UI 버스는 SFX로 나감")
+
+
+## seam 3: UI cue(호버·클릭만 갈래, 칩튠이라 1.06).
+func _test_ui_cue_table() -> void:
 	for cue: StringName in ui_sounds.CUES:
 		var player: AudioStreamPlayer = ui_sounds.player(cue)
+		var varied: bool = cue in VARIANT_UI_CUES
 		_check(player != null and player.bus == GameSettings.BUS_UI and not player.autoplay
-			and (player.stream as AudioStreamOggVorbis).get_length() < MAX_SHORT_SECONDS,
-			"UI cue는 UI 버스의 짧은 OGG: %s" % cue)
+			and SoundVariants.longest(player.stream) < MAX_SHORT_SECONDS,
+			"UI cue는 UI 버스의 짧은 소리: %s" % cue)
+		if varied:
+			_check(player.stream is AudioStreamRandomizer, "UI 갈래 cue는 Randomizer: %s" % cue)
+			_test_variant_stream(cue, player.stream as AudioStreamRandomizer, 1.06)
+		else:
+			_check(player.stream is AudioStreamOggVorbis, "UI 신호음은 OGG 그대로: %s" % cue)
 
 
-## seam 2: 재질 분류.
+## 갈래 스트림 하나: 갈래 2~4개, 모두 반복 없는 OGG, 높낮이 폭 pitch(±5~10% 안), 첫 갈래는 원본 파일.
+func _test_variant_stream(cue: StringName, randomizer: AudioStreamRandomizer, pitch: float) -> void:
+	if randomizer == null:
+		return
+	_check(randomizer.streams_count >= 2 and randomizer.streams_count <= 4, "갈래 2~4개: %s" % cue)
+	_check(is_equal_approx(randomizer.random_pitch, pitch), "높낮이 폭 %.2f: %s" % [pitch, cue])
+	_check(randomizer.random_pitch >= 1.0526 and randomizer.random_pitch <= 1.10, "높낮이 ±5~10%%: %s" % cue)
+	_check(randomizer.playback_mode == AudioStreamRandomizer.PLAYBACK_RANDOM_NO_REPEATS, "반복 없이 고름: %s" % cue)
+	for index: int in range(randomizer.streams_count):
+		var variant: AudioStreamOggVorbis = randomizer.get_stream(index) as AudioStreamOggVorbis
+		_check(variant != null and variant.get_length() > 0.0 and not variant.loop, "갈래 %d는 반복 없는 OGG: %s" % [index, cue])
+	var first: AudioStreamOggVorbis = randomizer.get_stream(0) as AudioStreamOggVorbis
+	var file: String = "%s.ogg" % cue
+	_check(first != null and first.resource_path.get_file() == file, "첫 갈래는 원본 %s" % file)
+
+
+## 재질 분류.
 func _test_material_cues() -> void:
 	_check(CombatSounds.hit_cue(units[2]) == &"hit_flesh", "야만인은 살")
 	var robot: CombatUnit = (load("res://scenes/combat/unit.tscn") as PackedScene).instantiate() as CombatUnit
@@ -109,7 +176,7 @@ func _test_material_cues() -> void:
 	_check(CombatSounds.hit_cue(CombatGrid.Prop.new(Vector2i.ZERO, "rock")) == &"hit_stone", "바위는 돌")
 
 
-## seam 3: 지형 판정.
+## 지형 판정.
 func _test_ground_cues() -> void:
 	var grid: CombatGrid = CombatGrid.new()
 	var stage: CombatStage = CombatStage.new()
@@ -124,7 +191,7 @@ func _test_ground_cues() -> void:
 	_check(CombatSounds.ambient_cue(grid) == &"ambient_wind", "물 칸이 없으면 바람 환경음")
 
 
-## seam 4: 실제 전투 장면의 사건 연결.
+## seam 4(기존): 실제 전투 장면의 사건 연결.
 func _test_battle_events() -> void:
 	_check(not sounds.is_ambient_playing(), "전투를 시작하기 전에는 환경음이 없음")
 	battle.call("start_battle")
@@ -198,7 +265,7 @@ func _test_battle_events() -> void:
 	_check(actions.is_over() and not sounds.is_ambient_playing(), "전투가 끝나면 환경음이 멈춤")
 
 
-## seam 5: UI 소리.
+## UI 소리 연결.
 func _test_ui_sounds() -> void:
 	var uiheard: Array[StringName] = []
 	ui_sounds.played.connect(func(cue: StringName) -> void: uiheard.append(cue))
