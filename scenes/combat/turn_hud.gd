@@ -27,6 +27,12 @@ const END_BUTTON_COLOR: Color = Color("926725")
 ## 포커스 테두리 색(docs/design/pixel-art.md UI 절).
 const FOCUS_COLOR: Color = Color("ebba84")
 const RESOURCE_COLORS: Array[Color] = [Color("70c76d"), Color("edaa54"), Color("ac90e5")]
+## 행동·보조 행동·반응의 칸 안 비용 기호(RESOURCE_COLORS와 같은 순서).
+const COST_SYMBOLS: Array[String] = ["●", "▲", "◆"]
+const COST_OUTLINE_COLOR: Color = Color("120d16")
+## 스킬 칸 면. 쓸 수 있으면 공용 테마의 버튼 호버색, 쓸 수 없으면 어두운 회색이다(#517).
+const SLOT_FACE_ACTIVE: Color = Color("365d61")
+const SLOT_FACE_IDLE: Color = Color("242a30")
 ## 스킬 칸 폭. 한 줄이 넘치면 SLOT_MIN까지 줄인다. 아이콘(24)과 좌우 여백 2씩이 들어가는 최소다(#554).
 const SLOT_FULL: int = 52
 const SLOT_MIN: int = 28
@@ -52,7 +58,7 @@ var _actions: Dictionary[String, Button] = {}
 # 지금 보이는 스킬 버튼. 숫자 키와 방향키가 왼쪽부터 이 순서를 쓴다.
 var _action_slots: Array[Button] = []
 var _badges: Dictionary[String, Label] = {}
-var _costs: Dictionary[String, Label] = {}
+var _costs: Dictionary[String, HBoxContainer] = {}
 var _containers: Array[PanelContainer] = []
 # 스킬 컨테이너 맨 왼쪽의 패시브 칸(#457). 켜짐·적용 중에만 강조한다.
 var _passives: Dictionary[String, Button] = {}
@@ -166,8 +172,8 @@ func _ready() -> void:
 			button.icon = CombatActionRules.icon_of(action)
 			button.material = preload("res://scenes/combat/art/pixel_art.tres")
 			button.add_theme_constant_override("icon_max_width", CombatActionRules.ICON_SIZE)
-			# 곱셈 색은 채도를 빼지 못해 반투명으로 어둡게 눌러 회색 배경에 묻는다.
-			button.add_theme_color_override("icon_disabled_color", Color("8a939b", 0.55))
+			# 곱셈 색은 채도를 빼지 못해 어둡게 눌러 회색 배경에 묻는다. 반투명으로 하면 윤곽이 배경에 묻혀 불투명으로 둔다(#517).
+			button.add_theme_color_override("icon_disabled_color", Color("8a939b"))
 			button.accessibility_name = CombatActionRules.NAMES[action]
 			# 반사신경·은신은 아이콘이 생기기 전까지 이름 첫 글자를 보인다.
 			if button.icon == null and action in ["reflex", "stealth"]:
@@ -179,13 +185,27 @@ func _ready() -> void:
 			_tooltip.attach(button)
 			_actions[action] = button
 			button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			var cost: Label = Label.new()
-			cost.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-			cost.position = Vector2(-13, 5)
-			cost.add_theme_font_size_override("font_size", 10)
-			cost.add_theme_color_override("font_color", RESOURCE_COLORS[index])
+			# 비용 기호는 칸 오른쪽 아래에 기호마다 제 자원 색의 글자로 선다. 오른쪽 위는 횟수 배지 자리다(#517).
+			var cost: HBoxContainer = HBoxContainer.new()
+			cost.add_theme_constant_override("separation", 1)
 			cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			cost.reset_size()
+			cost.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+			cost.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+			cost.grow_vertical = Control.GROW_DIRECTION_BEGIN
+			cost.offset_left = -3
+			cost.offset_right = -3
+			cost.offset_top = -2
+			cost.offset_bottom = -2
+			for mark: int in CombatActionRules.cost_marks(action):
+				var symbol: Label = Label.new()
+				symbol.text = COST_SYMBOLS[mark]
+				symbol.add_theme_font_size_override("font_size", 10)
+				symbol.add_theme_color_override("font_color", RESOURCE_COLORS[mark])
+				# 청록 면에서 보라 ◆의 명암비가 낮아 어두운 외곽선으로 가장자리를 세운다.
+				symbol.add_theme_color_override("font_outline_color", COST_OUTLINE_COLOR)
+				symbol.add_theme_constant_override("outline_size", 2)
+				symbol.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				cost.add_child(symbol)
 			button.add_child(cost)
 			_costs[action] = cost
 			var badge: Label = Label.new()
@@ -332,14 +352,12 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			button.custom_minimum_size.x = width
 			if button.visible and _containers[index].visible:
 				_action_slots.append(button)
-			# 복합 비용은 함께 소비하는 턴 자원 기호를 잇는다. 이동력은 기호가 없다.
-			_costs[action].text = symbols[index] + ("▲" if CombatActionRules.EXTRA_COSTS.get(action) == "bonus_action" else "")
 			button.tooltip_text = CombatActionRules.NAMES[action] + "\n" + action_details(actions, shown, action)
 			button.set_meta(&"tooltip_bbcode", action_tooltip(actions, shown, action))
 			var active: bool = ally_turn and not locked and actions.can_use(actor, action)
 			# 반응은 횟수나 자원을 다 써도 자기 턴에는 켜진 표시로 남는다.
 			button.disabled = (not ally_turn or locked) if index == 2 else not active
-			var color: Color = Color("293541") if not button.disabled else Color("242a30")
+			var color: Color = SLOT_FACE_ACTIVE if not button.disabled else SLOT_FACE_IDLE
 			var border: Color = Color("f4cf69") if selected == action and active else Color("61717e")
 			# 줄인 칸은 좌우 여백도 줄여 아이콘 24가 칸 폭 28에 들어간다.
 			var margin: int = NARROW_MARGIN if narrowed else 4
@@ -357,7 +375,7 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			_badges[action].modulate = Color.WHITE if ally_turn else Color("888888")
 			_costs[action].modulate = Color.WHITE if not button.disabled else Color("666666")
 			# 줄인 칸에서는 줄 제목에 이미 있는 하나뿐인 비용 기호를 숨긴다. 복합 비용은 그대로다.
-			_costs[action].visible = not (narrowed and _costs[action].text.length() == 1)
+			_costs[action].visible = not (narrowed and _costs[action].get_child_count() == 1)
 	# 좌우 방향키·D-pad는 스킬 바 안에서만 옮긴다. 스틱을 누르고 있어도 끝에서 멈춘다.
 	for index: int in range(_action_slots.size()):
 		var button: Button = _action_slots[index]
