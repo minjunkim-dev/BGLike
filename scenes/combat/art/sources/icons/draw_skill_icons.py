@@ -351,8 +351,8 @@ def whistle(x, y):
     dx, dy = px - cx, py - cy
     radius = math.hypot(dx, dy)
     if radius > 0 and (dx + dy) / math.sqrt(2) / radius >= math.cos(math.radians(38)):
-        for ring in (10, 15):
-            if abs(radius - ring) <= 1.6:
+        for ring in (10, 15.5):
+            if abs(radius - ring) <= 1.8:
                 return WHITE
     return None
 
