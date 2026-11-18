@@ -39,7 +39,7 @@ HP 1은 기존 기획 결정을 유지합니다. 피해는 고정 1에서 힘 d4
 | 근접 | 힘 d4 | +3 | 힘 d4+1 | 1 (인접) | 가능 |
 
 - 피해(힘 d4+1)는 한 마리로는 크지 않고, 서너 마리가 붙으면 쌓입니다.
-- **독 면역** ✅: 거미 계열이라 독에 면역입니다 ([독안개 거미](fog-spider.md#독-면역-)). 몬스터 정의의 `poison_immune` 속성이며, 독 장판 칸은 이동 경로 비용 0으로 보고 불 장판은 기존대로 피합니다 ([#460](https://github.com/minjunkim-labs/BGLike/issues/460), [#465](https://github.com/minjunkim-labs/BGLike/issues/465)에서 구현).
+- **독 면역** ✅: 거미 계열이라 독에 면역입니다 ([독안개 거미](fog-spider.md#독-면역)). 몬스터 정의의 `poison_immune` 속성이며, 독 장판 칸은 이동 경로 비용 0으로 보고 불 장판은 기존대로 피합니다 ([#460](https://github.com/minjunkim-labs/BGLike/issues/460), [#465](https://github.com/minjunkim-labs/BGLike/issues/465)에서 구현).
 
 ## 스킬
 
