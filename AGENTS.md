@@ -32,7 +32,7 @@ Godot 4 싱글 플레이 PC 게임입니다. 여러 사람이 함께 개발합�
 - repo-office 파이프라인은 선택입니다. 이 저장소는 여러 사람이 쓰고, office는 그것을 띄운 사람의 컴퓨터에만 있습니다.
   - 사람이 이 대화에서 office나 leader로 돌리라고 할 때만 떠 있는 leader 세션에 과제를 넘기고 멈춥니다. 그 말이 넘겨도 된다는 허락입니다. 따로 묻지 않습니다. 넘기는 법은 [office 절차](docs/agents/office.md#과제-넘기기)에 있습니다.
   - 그 밖의 작업은 [협업 규칙](docs/process/workflow.md)과 [개발 절차](docs/agents/development.md)대로 합니다. office로 넘길지 먼저 묻지 않습니다.
-  - leader 세션은 사람이 repo-office 체크아웃에서 hc 터미널 `office-leader`로 하나만 띄웁니다. leader는 Issue 완료 조건을 방향으로 삼아 묻지 않고 등록합니다. 사람에게 묻는 것은 완료 조건이 없거나 어긋나거나 요청이 여러 가지로 읽힐 때, 사람만 아는 답(기획자 확인, 직접 플레이로 정할 값), 사람의 판단이 필요한 막힘, 엔진이 승인하지 못한 설계(되돌리기 어려움 등)의 승인뿐입니다. 되돌리기 쉬움 PR은 office 엔진이 리뷰와 CI 뒤 조건을 모두 확인하면 머지 큐에 넣습니다. 그 밖의 PR은 사람이 diff를 읽고 병합합니다.
+  - leader 세션은 사람이 repo-office 체크아웃에서 hc 터미널 `office-leader`로 하나만 띄웁니다. leader는 Issue 완료 조건을 방향으로 삼아 묻지 않고 등록합니다. 사람에게 묻는 경우(완료 조건이 없거나 어긋날 때, 사람만 아는 답, 엔진이 승인하지 못한 설계, 사람의 판단이 필요한 막힘 등)는 [leader 규칙](https://github.com/minjunkim-labs/repo-office/blob/main/leader/AGENTS.md)이 정합니다. 되돌리기 쉬움 PR은 office 엔진이 리뷰와 CI 뒤 조건을 모두 확인하면 머지 큐에 넣습니다. 그 밖의 PR은 사람이 diff를 읽고 병합합니다.
   - office 과제의 브랜치는 `office/<과제>`이고, 위 브랜치 이름 규칙을 따르지 않습니다.
   - office 작업자는 이 규칙을 따르지 않습니다. 작업 폴더가 repo-office 체크아웃의 `jobs/<과제>/`이고 브랜치가 `office/<과제>`면 office 작업자입니다. office 작업자는 단계 지시서대로 일하고 leader에 넘기지 않습니다.
 - GitHub 설정: [설정 기준선](docs/process/ci/repository-setup.md). 권리·외부 자산: [COPYRIGHT](COPYRIGHT.md)와 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
