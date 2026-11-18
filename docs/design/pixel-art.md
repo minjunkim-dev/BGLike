@@ -175,7 +175,7 @@ Godot 리소스 경로는 앞에 `res://`를 붙인다.
 
 `개발 결정`(2026-11-15 프로젝트 소유자 위임, [#559](https://github.com/minjunkim-labs/BGLike/issues/559)): 이펙트는 1 타격 섬광·빗나감 잔상, 2 스킬별 효과, 3 상태 이상, 4 전투 불능 순서로 만든다. 이번에는 1순위만 구현한다. 타격감은 히트스톱만 쓰고 화면 흔들림은 넣지 않는다(#306 결정 유지). 1순위 섬광은 스크립트로 직접 찍었다. 대안은 화면 흔들림을 절대성공에만 넣는 것이다. 기획자가 나중에 바꿀 수 있다.
 
-`개발 결정`(2026-11-17 프로젝트 소유자 결정, [PR #639](https://github.com/minjunkim-labs/BGLike/pull/639)): 외부 에셋(pixelfx 같은 이펙트 모음, 도트 이미지, 사운드)은 이 게임의 장르(2D 도트 SRPG)와 방향에 맞으면 쓸 수 있다. 억지로 쓰지 않는다. 쓸 때는 라이선스가 상업 배포를 허락하는지 확인하고 [외부 자산 기록](../../THIRD_PARTY_NOTICES.md)에 출처와 조건을 남긴다. 이 결정은 외부 무료 에셋을 들이지 않던 [#193](https://github.com/minjunkim-labs/BGLike/issues/193)의 출처 규칙을 대체한다. 2~4순위 이펙트는 이 규칙으로 외부 에셋과 직접 제작을 비교해 고른다.
+`개발 결정`(2026-11-17 프로젝트 소유자 결정, [PR #639](https://github.com/minjunkim-labs/BGLike/pull/639)): 외부 에셋(pixelfx 같은 이펙트 모음, 도트 이미지, 사운드)은 이 게임의 장르(2D 도트 SRPG)와 방향에 맞으면 쓸 수 있다. 억지로 쓰지 않는다. 쓸 때는 라이선스가 상업 배포를 허락하는지 확인하고 [외부 자산 기록](../../THIRD_PARTY_NOTICES.md)에 출처와 조건을 남긴다. 이 결정은 외부 무료 에셋을 들이지 않던 [#193](https://github.com/minjunkim-labs/BGLike/issues/193)의 출처 규칙을 대체한다. 2~4순위 이펙트는 이 규칙으로 외부 에셋과 직접 제작을 비교해 고른다(2순위 결론은 [스킬 효과](#스킬-효과-634)).
 
 `개발 결정`(#559): 구현 세부는 아래와 같다.
 
@@ -195,6 +195,27 @@ python3 scenes/combat/art/sources/effects/draw_hit_effects.py scenes/combat/art/
 ```
 
 2026-11-16 실제 3-3 전투에서 명중 섬광(고철로봇 3000)과 빗나감 잔상(궁수)이 겹친 순간을 Linux Godot 4.7.2 Forward+(llvmpipe) 화면 밖 실행으로 저장했다. 화면 일부가 아니라 원본 Viewport다. [1280×720](images/hit_effects_1280x720.png), [1920×1080](images/hit_effects_1920x1080.png). 섬광 모양과 시간이 보기 좋은지는 사람이 판단한다.
+
+## 스킬 효과 (#634)
+
+`개발 결정`(2026-11-18, [#634](https://github.com/minjunkim-labs/BGLike/issues/634)): 스킬 효과는 pixelfx(MIT)와 직접 찍기를 비교해 **직접 찍기**로 만들었다. pixelfx는 30fps·88×84 같은 큰 캔버스에 반투명과 별도 빛 층을 쓰고 Node로 시트를 뽑는다. 이 게임의 12fps·유닛과 같은 64px 캔버스·알파 0/255·게임 팔레트로 줄이면 원래 장점이 대부분 사라지고, Node 의존과 출처 화면 수정이 따라온다. 직접 찍으면 표준 라이브러리 Python 하나로 같은 바이트를 다시 만들 수 있고 외부 권리 조건이 없다. 외부 자산을 쓰지 않으므로 Credits와 번역 파일은 바꾸지 않았다. 대안인 pixelfx 효과 가공은 택하지 않았다. 나중에 다시 비교할 수 있다.
+
+모든 효과는 `pixel_art.tres`로 0.5배, 12fps로 한 번 재생한다. 시간이 게임 시간이라 4배속에서 1/4로 줄고, 이어하기 재실행(`_replaying()`)에서는 만들지 않는다. 전투 진행은 기다리지 않는다.
+
+| 효과 | 언제 | 캔버스·프레임 | 놓는 곳 |
+|---|---|---|---|
+| 방어막 `shield` | 성스러운 장막 | 64×64, 4 | 시전자. 유닛 프레임과 같은 기준(발 기준점 (32, 56)) |
+| 회복 `heal` | 숨 고르기·물약(`healed`) | 64×64, 4 | 회복한 유닛, 위와 같음 |
+| 버프 `buff` | 전투의 함성 | 64×64, 4 | `battle_cry_source`가 시전자인 살아 있는 유닛마다 |
+| 궤적 `sweep_front`·`sweep_back` | 휩쓸기 시작(`CombatActions.swept`) | 128×64, 3 | 시전자 발 기준. 정면 칸이 화면 아래면 앞, 위면 뒤 그림이고 왼쪽이면 좌우를 뒤집는다. 회전하지 않는다(최근접 샘플링에서 깨진다) |
+
+팔레트는 타격 섬광(윤곽·흰색·놋)과 `draw_item_icons.py`(RED·STEEL), `CombatUnit.HEAL_COLOR`(초록)에서 가져왔다. 규격은 `skill_effect_generation.json`에 기록한다.
+
+```sh
+python3 scenes/combat/art/sources/effects/draw_skill_effects.py scenes/combat/art/effects
+```
+
+모양·길이·색이 보기 좋은지, 실제 플레이에서 겹침이 거슬리지 않는지는 사람이 판단한다. 이 작업에서는 원본 화면 캡처를 만들지 못했다.
 
 ## 주사위
 

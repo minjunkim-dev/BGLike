@@ -1,0 +1,252 @@
+{
+  "issue": "https://github.com/minjunkim-dev/BGLike/issues/634",
+  "generator": {
+    "tool": "draw_skill_effects.py",
+    "mode": "pixels placed by code; no generative model, no input image, no external effect pack. pixelfx (MIT) was compared and not used (docs/design/pixel-art.md, 스킬 효과 절)",
+    "date": "2026-11-18",
+    "command": "python3 scenes/combat/art/sources/effects/draw_skill_effects.py scenes/combat/art/effects"
+  },
+  "spec": {
+    "display_scale": 0.5,
+    "fps": 12,
+    "loop": false,
+    "margin": 2,
+    "alpha": "0 or 255 only",
+    "filter": "nearest; no resampling after drawing",
+    "palette_source": "draw_hit_effects.py (outline, white, brass), draw_item_icons.py (RED, STEEL), CombatUnit.HEAL_COLOR (green)"
+  },
+  "effects": {
+    "shield": {
+      "canvas": [
+        64,
+        64
+      ],
+      "frames": [
+        {
+          "file": "shield/000.png",
+          "brief": "Lower half of a thin brass dome rim rising from the ground."
+        },
+        {
+          "file": "shield/001.png",
+          "brief": "Full light-brass dome rim with a white highlight arc at the upper left."
+        },
+        {
+          "file": "shield/002.png",
+          "brief": "Brightest frame: thick white rim and a sparse brass film dotted inside."
+        },
+        {
+          "file": "shield/003.png",
+          "brief": "The rim breaks into drifting dashes with white sparkles."
+        }
+      ],
+      "palette": [
+        [
+          18,
+          13,
+          22
+        ],
+        [
+          204,
+          142,
+          77
+        ],
+        [
+          235,
+          186,
+          132
+        ],
+        [
+          245,
+          235,
+          219
+        ]
+      ],
+      "placement": "Centered on the caster, same anchor as a unit frame."
+    },
+    "heal": {
+      "canvas": [
+        64,
+        64
+      ],
+      "frames": [
+        {
+          "file": "heal/000.png",
+          "brief": "Small green ground ring at the feet and crosses low on the body."
+        },
+        {
+          "file": "heal/001.png",
+          "brief": "Wider ring, crosses and sparkles rise."
+        },
+        {
+          "file": "heal/002.png",
+          "brief": "Widest ring, crosses above the head."
+        },
+        {
+          "file": "heal/003.png",
+          "brief": "Dark thin ring and two crosses left, fading out."
+        }
+      ],
+      "palette": [
+        [
+          18,
+          13,
+          22
+        ],
+        [
+          60,
+          128,
+          72
+        ],
+        [
+          112,
+          199,
+          109
+        ],
+        [
+          176,
+          230,
+          150
+        ],
+        [
+          245,
+          235,
+          219
+        ]
+      ],
+      "placement": "Centered on the healed unit, same anchor as a unit frame."
+    },
+    "buff": {
+      "canvas": [
+        64,
+        64
+      ],
+      "frames": [
+        {
+          "file": "buff/000.png",
+          "brief": "One red chevron over the head."
+        },
+        {
+          "file": "buff/001.png",
+          "brief": "Two chevrons, the first climbing, colors swapped."
+        },
+        {
+          "file": "buff/002.png",
+          "brief": "Both chevrons higher, blinking."
+        },
+        {
+          "file": "buff/003.png",
+          "brief": "Chevrons at the top with a white flash on one."
+        }
+      ],
+      "palette": [
+        [
+          18,
+          13,
+          22
+        ],
+        [
+          174,
+          76,
+          46
+        ],
+        [
+          200,
+          110,
+          66
+        ],
+        [
+          245,
+          235,
+          219
+        ]
+      ],
+      "placement": "Centered on each ally the battle cry reaches, same anchor as a unit frame."
+    },
+    "sweep_front": {
+      "canvas": [
+        128,
+        64
+      ],
+      "frames": [
+        {
+          "file": "sweep_front/000.png",
+          "brief": "The first 40% of a crescent below the caster, white edge."
+        },
+        {
+          "file": "sweep_front/001.png",
+          "brief": "The whole crescent, white edge and steel body."
+        },
+        {
+          "file": "sweep_front/002.png",
+          "brief": "The trailing part, dithered and dim."
+        }
+      ],
+      "palette": [
+        [
+          18,
+          13,
+          22
+        ],
+        [
+          197,
+          178,
+          159
+        ],
+        [
+          133,
+          115,
+          108
+        ],
+        [
+          245,
+          235,
+          219
+        ]
+      ],
+      "placement": "Centered on the caster's feet; used when the facing cell is below the caster on screen. flip_h for left."
+    },
+    "sweep_back": {
+      "canvas": [
+        128,
+        64
+      ],
+      "frames": [
+        {
+          "file": "sweep_back/000.png",
+          "brief": "Vertical mirror of sweep_front/000.png."
+        },
+        {
+          "file": "sweep_back/001.png",
+          "brief": "Vertical mirror of sweep_front/001.png."
+        },
+        {
+          "file": "sweep_back/002.png",
+          "brief": "Vertical mirror of sweep_front/002.png."
+        }
+      ],
+      "palette": [
+        [
+          18,
+          13,
+          22
+        ],
+        [
+          197,
+          178,
+          159
+        ],
+        [
+          133,
+          115,
+          108
+        ],
+        [
+          245,
+          235,
+          219
+        ]
+      ],
+      "placement": "Used when the facing cell is above the caster on screen. flip_h for left."
+    }
+  }
+}

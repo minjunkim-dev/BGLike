@@ -3,6 +3,7 @@
 
 타격·전투 불능·발소리(흙·돌)·점프·착지는 Kenney CC0 원본(kenney/ 폴더)을 잘라 다듬어 만든다.
 빗나감·물 발소리·방어막·회복·함성·턴 신호·환경음·UI는 numpy로 합성한다(외부 샘플 없음).
+주사위 소리(#627: dice_roll·roll_success·roll_fail)도 칩튠풍으로 합성한다.
 
 실행: python3 scenes/combat/audio/sources/make_sfx.py  (저장소 루트에서, numpy와 ffmpeg 필요. ffmpeg 내장 vorbis 인코더를 쓴다(스테레오만 지원해 두 채널에 같은 소리를 쓴다))
 난수 씨앗을 고정해 다시 실행하면 같은 소리를 만든다. cue별 변수는 sfx_generation.json에 적는다.
@@ -208,6 +209,31 @@ def turn_enemy():
     return norm(fade(chirp_notes([(262, 0.1), (196, 0.2)])), 0.5)
 
 
+def dice_roll():
+    """면이 8번 바뀌는 굴림(0.45초)에 맞춘 사각파 틱 8개. 음높이는 씨앗 고정 난수로 고른다."""
+    rng = np.random.default_rng(627)
+    pitches = [587, 659, 740, 880, 988]
+    x = np.zeros(int(RATE * 0.43))
+    for k in range(8):
+        s = int(RATE * 0.05 * k)
+        tick = square(pitches[rng.integers(len(pitches))], 0.03, 0.25) * env(int(RATE * 0.03), 0.001, 0.02)
+        click = highpass(noise(0.005, 700 + k), 2000) * env(int(RATE * 0.005), 0.0005, 0.002)
+        tick[:len(click)] += 0.3 * click
+        x[s:s + len(tick)] += tick
+    return norm(fade(x), 0.45)
+
+
+def roll_success():
+    x = np.concatenate([chirp_notes([(784, 0.05), (988, 0.05), (1175, 0.05)]), chirp_notes([(1568, 0.15)])])
+    return norm(fade(x), 0.5)
+
+
+def roll_fail():
+    x = np.concatenate([chirp_notes([(392, 0.07), (330, 0.07)], lambda f, d: square(f, d, 0.25)),
+                        lowpass(sweep(247, 185, 0.18), 1200) * env(int(RATE * 0.18), 0.002, 0.14)])
+    return norm(fade(x), 0.5)
+
+
 def ambient(seed, cutoff, lfo, seconds=8.0):
     """처음과 끝을 이어 붙여 반복해도 끊기지 않게 한다(순환 잡음 + 정수 주기 LFO)."""
     n = int(RATE * seconds)
@@ -253,6 +279,7 @@ COMBAT_CUES = {
     "miss": miss, "downed": downed, "shield": shield, "heal": heal, "shout": shout,
     "step_dirt": step_dirt, "step_stone": step_stone, "step_water": step_water,
     "jump": jump, "land": land, "turn_ally": turn_ally, "turn_enemy": turn_enemy,
+    "dice_roll": dice_roll, "roll_success": roll_success, "roll_fail": roll_fail,
 }
 LOOP_CUES = {"ambient_water": ambient_water, "ambient_wind": lambda: ambient(23, 500, 0.125)}
 UI_CUES = {"ui_hover": ui_hover, "ui_click": ui_click, "ui_cancel": ui_cancel, "ui_disabled": ui_disabled}

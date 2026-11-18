@@ -88,6 +88,13 @@ class DrawHitEffectsTest(unittest.TestCase):
                         self.assertTrue(2 <= x < 46 and 2 <= y < 46, (name, x, y))
                         self.assertIn((red, green, blue), palette, (name, x, y))
 
+    def test_committed_flash_pngs_equal_the_script_output(self):
+        committed = ROOT / "scenes/combat/art/effects/hit_flash"
+        with tempfile.TemporaryDirectory() as output:
+            run_generator(Path(output))
+            for name in FRAMES:
+                self.assertEqual((committed / name).read_bytes(), (Path(output) / "hit_flash" / name).read_bytes(), name)
+
 
 if __name__ == "__main__":
     unittest.main()
