@@ -459,6 +459,20 @@ func _test_cost_slot_and_face() -> void:
 		and ((buttons["attack"] as Button).get_theme_stylebox("normal") as StyleBoxFlat).bg_color == active_face
 		and ((buttons["potion"] as Button).get_theme_stylebox("normal") as StyleBoxFlat).bg_color == idle_face,
 		"아군 턴: 쓸 수 있는 칸은 청록 면, 쓸 수 없는 칸은 어두운 면")
+	# 숨은 물약 칸만 보면 보이는 비활성 칸의 면을 놓친다. 보조 행동을 다 쓴 상태로 보이는 칸을 본다.
+	var bonus_left: int = units[0].bonus_action_left
+	units[0].bonus_action_left = 0
+	hud.refresh_actions(actions, "attack", units[0])
+	var visible_disabled: int = 0
+	for action: String in buttons:
+		var slot_button: Button = buttons[action]
+		if slot_button.visible and slot_button.disabled:
+			visible_disabled += 1
+			_check((slot_button.get_theme_stylebox("normal") as StyleBoxFlat).bg_color == idle_face,
+				"아군 턴: 보이는 비활성 칸은 어두운 면: " + action)
+	_check(visible_disabled > 0, "보조 행동을 다 쓰면 보이는 비활성 칸이 있다")
+	units[0].bonus_action_left = bonus_left
+	hud.refresh_actions(actions, "attack", units[0])
 	for action: String in buttons:
 		_check((buttons[action] as Button).get_theme_color("icon_disabled_color").a == 1.0,
 			"비활성 아이콘 색은 불투명: " + action)

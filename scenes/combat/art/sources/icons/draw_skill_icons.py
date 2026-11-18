@@ -74,7 +74,7 @@ def second_wind(x, y):
     px, py = x + 0.5, y + 0.5
     # Two breath curls at the upper left.
     for oy, color, length in ((14, WHITE, 18), (23, STEEL[3], 12)):
-        if abs(py - oy) <= 1.6 and 3 <= px <= 3 + length:
+        if abs(py - oy) <= 2.4 and 3 <= px <= 3 + length:
             return color
         cx, cy = 3 + length, oy - 5
         distance = math.hypot(px - cx, py - cy)
@@ -125,7 +125,7 @@ def steel_charge(x, y):
     if blade is not None:
         return blade
     for line_y, start, length in ((13, 4, 18), (47, 2, 14), (55, 8, 18)):
-        if abs(py - line_y) <= 2.0 and start <= px <= start + length:
+        if abs(py - line_y) <= 2.4 and start <= px <= start + length:
             return WHITE
     return None
 
@@ -351,8 +351,8 @@ def whistle(x, y):
     dx, dy = px - cx, py - cy
     radius = math.hypot(dx, dy)
     if radius > 0 and (dx + dy) / math.sqrt(2) / radius >= math.cos(math.radians(38)):
-        for ring in (10, 15.5):
-            if abs(radius - ring) <= 1.8:
+        for ring in (10, 16):
+            if abs(radius - ring) <= 2.0:
                 return WHITE
     return None
 
