@@ -118,7 +118,9 @@ func _ready() -> void:
 			return Vector2(left, ($OrderScroll as Control).get_global_rect().end.y + TOOLTIP_GAP)
 		return Vector2(left, ($Skills as Control).get_global_rect().position.y - TOOLTIP_GAP - tooltip_size.y)
 	_tooltip.hidden_when = func() -> bool: return reaction_dialog.visible or $Result.visible
-	_tooltip.colorize_numbers = true
+	_tooltip.format = func(target: Control) -> String:
+		return target.get_meta(&"tooltip_bbcode") as String if target.has_meta(&"tooltip_bbcode") \
+			else HoverTooltip.headed(target.tooltip_text)
 	add_child(_tooltip)
 	end_button.pressed.connect(func() -> void: end_turn_requested.emit())
 	stand_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -333,6 +335,7 @@ func refresh_actions(actions: CombatActions, selected: String, last_ally: Combat
 			# 복합 비용은 함께 소비하는 턴 자원 기호를 잇는다. 이동력은 기호가 없다.
 			_costs[action].text = symbols[index] + ("▲" if CombatActionRules.EXTRA_COSTS.get(action) == "bonus_action" else "")
 			button.tooltip_text = CombatActionRules.NAMES[action] + "\n" + action_details(actions, shown, action)
+			button.set_meta(&"tooltip_bbcode", action_tooltip(actions, shown, action))
 			var active: bool = ally_turn and not locked and actions.can_use(actor, action)
 			# 반응은 횟수나 자원을 다 써도 자기 턴에는 켜진 표시로 남는다.
 			button.disabled = (not ally_turn or locked) if index == 2 else not active
@@ -375,17 +378,35 @@ func focus_action_slot(slot: int, press: bool) -> void:
 		button.pressed.emit()
 
 
+## 호버 설명의 이름 뒤 세 부분. 효과, 쓸 수 없을 때만 그 이유, 사거리~횟수 세부 순서다(#620).
+func _detail_parts(actions: CombatActions, actor: CombatUnit, action: String) -> Array[String]:
+	var reason: String = actions.unavailable_reason(actor, action)
+	return [CombatActionRules.effect(actor, action),
+		"" if reason.is_empty() else tr("지금 사용 불가: %s") % reason,
+		CombatActionRules.details(actor, action, actions.units)]
+
+
 func action_details(actions: CombatActions, actor: CombatUnit, action: String) -> String:
 	if actor == null:
 		return ""
-	var effect: String = CombatActionRules.effect(actor, action)
-	var details: String = CombatActionRules.details(actor, action, actions.units)
-	if not details.is_empty():
-		effect += "\n" + details
-	var reason: String = actions.unavailable_reason(actor, action)
-	if not reason.is_empty():
-		return effect + "\n" + tr("지금 사용 불가: %s") % reason
-	return effect
+	var lines: Array[String] = []
+	for part: String in _detail_parts(actions, actor, action):
+		if not part.is_empty():
+			lines.append(part)
+	return "\n".join(lines)
+
+
+## action_details에 이름을 붙이고 줄 역할별로 칠한 BBCode. 태그를 뺀 글은 이름 + action_details와 같다.
+func action_tooltip(actions: CombatActions, actor: CombatUnit, action: String) -> String:
+	if actor == null:
+		return ""
+	var parts: Array[String] = _detail_parts(actions, actor, action)
+	var colors: Array[Color] = [HoverTooltip.BODY_COLOR, CombatActionRules.BAD_COLOR, HoverTooltip.DETAIL_COLOR]
+	var lines: Array[String] = [HoverTooltip.paint(CombatActionRules.NAMES[action], HoverTooltip.TITLE_COLOR)]
+	for index: int in range(parts.size()):
+		if not parts[index].is_empty():
+			lines.append(HoverTooltip.paint(parts[index], colors[index]))
+	return "\n".join(lines)
 
 
 func add_log(message: String) -> void:
