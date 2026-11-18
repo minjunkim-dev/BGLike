@@ -1461,8 +1461,12 @@ func _test_guidance() -> void:
 	battle.call("_update_turn_ui")
 	await _hover((buttons["potion"] as Button))
 	_check((buttons["potion"] as Button).tooltip_text ==
-		"회복 물약\nHP 2d4+2 회복.\n최대 HP를 넘지 않습니다.\n사거리: 자신\n회복: 2d4+2\n판정: 없음\n지금 사용 불가: HP가 이미 최대",
+		"회복 물약\nHP 2d4+2 회복.\n최대 HP를 넘지 않습니다.\n지금 사용 불가: HP가 이미 최대\n사거리: 자신\n회복: 2d4+2\n판정: 없음",
 		"비활성 물약은 이름·효과·사거리·회복·판정·이유를 표시")
+	_test_hover_order_and_colors(buttons)
+	var potion_label: RichTextLabel = (hud.get("_tooltip") as Control).get("_label") as RichTextLabel
+	_check(potion_label.text == hud.action_tooltip(actions, units[0], "potion"),
+		"실제 호버 설명이 HUD가 만든 줄 역할별 색 글을 그린다: " + potion_label.text)
 	units[0].potions.assign([])
 	for action: String in buttons:
 		var icon_button: Button = buttons[action] as Button
@@ -1705,6 +1709,33 @@ func _test_focus_tooltips(buttons: Dictionary) -> void:
 	await process_frame
 
 
+# 호버 줄 순서와 줄 역할별 색(#620). 쓸 수 없을 때의 이유는 효과 바로 뒤이고 세부(사거리~횟수)는 그 뒤다.
+func _test_hover_order_and_colors(buttons: Dictionary) -> void:
+	var unusable: String = hud.action_details(actions, units[0], "potion")
+	_check(unusable.contains("최대 HP를 넘지 않습니다.\n지금 사용 불가: HP가 이미 최대\n사거리: 자신")
+		and unusable.find("지금 사용 불가") < unusable.find("사거리:"),
+		"쓸 수 없는 스킬은 사용 불가 이유가 효과 바로 다음 줄: " + unusable)
+	var tagged: String = hud.action_tooltip(actions, units[0], "potion")
+	_check(tagged.contains("[color=#ebba84]회복 물약[/color]")
+		and tagged.contains("[color=#f5ebdb]HP 2d4[color=#70c76d]+2[/color] 회복.\n최대 HP를 넘지 않습니다.[/color]")
+		and tagged.contains("[color=#ff8a80]지금 사용 불가: HP가 이미 최대[/color]")
+		and tagged.contains("[color=#c5b29f]사거리: 자신\n회복: 2d4[color=#70c76d]+2[/color]\n판정: 없음[/color]"),
+		"이름·효과·사용 불가 이유·세부는 역할별 색: " + tagged)
+	var probe: RichTextLabel = RichTextLabel.new()
+	probe.bbcode_enabled = true
+	probe.text = tagged
+	_check(probe.get_parsed_text() == CombatActionRules.NAMES["potion"] + "\n" + unusable,
+		"태그를 뺀 글은 이름 + 평문 설명과 같다: " + probe.get_parsed_text())
+	probe.free()
+	units[0].weapon = {"stats": {"attack_bonus": 1, "damage_bonus": 2}}
+	_check(hud.action_tooltip(actions, units[0], "attack").contains("d20[color=#70c76d]+2[/color]"),
+		"세부 색 안에서도 수치 가감 색(#457)은 남는다")
+	units[0].weapon = {}
+	var headed: String = HoverTooltip.headed("이름[줄]\n본문 하나\n본문 [둘]")
+	_check(headed == "[color=#ebba84]이름[lb]줄][/color]\n[color=#f5ebdb]본문 하나\n본문 [lb]둘][/color]",
+		"초상·패시브 설명은 첫 줄 강조·나머지 본문 색, [는 이스케이프: " + headed)
+
+
 func _hover(control: Control) -> void:
 	await process_frame
 	await process_frame
@@ -1730,6 +1761,8 @@ func _test_tooltip_column(buttons: Dictionary) -> void:
 		_check(tooltip.visible and _has_tooltip(root, portrait.tooltip_text) and _in_left_column(rect, screen)
 			and is_equal_approx(rect.position.y, order_bottom + 4.0),
 			"초상 호버 설명은 왼쪽 열에서 위 끝이 턴 순서 바 아래 끝 +4: %s %s" % [unit.get_display_name(), rect])
+		_check(((tooltip.get("_label") as RichTextLabel).text) == HoverTooltip.headed(portrait.tooltip_text),
+			"초상 호버는 첫 줄 강조·나머지 본문 색: " + unit.get_display_name())
 	# moving_shot은 궁수 패시브라 궁수를 고른 뒤 본다. 숨어 있으면 검사를 건너뛰지 않고 실패한다.
 	turns.select_unit(units[1])
 	battle.call("_update_turn_ui")
