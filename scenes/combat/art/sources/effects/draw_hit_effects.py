@@ -94,14 +94,14 @@ def png_chunk(kind, data):
     return struct.pack(">I", len(data)) + body + struct.pack(">I", binascii.crc32(body) & 0xFFFFFFFF)
 
 
-def encode_png(canvas):
+def encode_png(canvas, width=SIZE, height=SIZE):
     raw = bytearray()
-    for y in range(SIZE):
+    for y in range(height):
         raw.append(0)  # filter type: none
-        for x in range(SIZE):
+        for x in range(width):
             color = canvas.get((x, y))
             raw.extend((*color, 255) if color else (0, 0, 0, 0))
-    header = struct.pack(">IIBBBBB", SIZE, SIZE, 8, 6, 0, 0, 0)
+    header = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
     return (b"\x89PNG\r\n\x1a\n" + png_chunk(b"IHDR", header)
             + png_chunk(b"IDAT", zlib.compress(bytes(raw), 9)) + png_chunk(b"IEND", b""))
 

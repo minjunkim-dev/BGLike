@@ -109,6 +109,7 @@ func _run() -> void:
 	await _test_stunned_target_feedback()
 	await _test_crowded_feedback()
 	await _test_hit_effects()
+	await _test_skill_effects()
 	monitoring = false
 	if observer != null:
 		_check(observer.last_error == OK and observer.frame_count > 0, "Forward+ 원본 프레임 저장")
@@ -319,6 +320,118 @@ func _test_hit_effects() -> void:
 	temporary.free()
 	await create_timer(0.5).timeout
 	_check(effects.get_child_count() == 0, "이펙트 도중 대상이 해제되어도 정리된다")
+
+
+## 스킬 효과(#634). 신호를 직접 보내 전투 장면의 연결을 본다.
+func _test_skill_effects() -> void:
+	var units: Array[CombatUnit] = battle.get("units")
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var effects: Node = battle.get_node_or_null("HitEffects")
+	_check(effects != null, "스킬 효과 시험: HitEffects 노드가 있다")
+	if effects == null:
+		return
+	var shader: Material = load("res://scenes/combat/art/pixel_art.tres")
+	var caster: CombatUnit = units[0]
+	actions.self_used.emit(caster, "holy_veil")
+	await process_frame
+	var shield: Array[Node] = _sprites(effects)
+	_check(shield.size() == 1 and shield[0].material == shader and absf(shield[0].scale.x - 0.5) < 0.001,
+		"성스러운 장막은 pixel_art 재질의 0.5배 효과 하나를 만든다")
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.0)
+	_check(effects.get_child_count() == 0, "방어막 효과는 한 번 재생하고 사라진다")
+	actions.healed.emit(caster, 3)
+	await process_frame
+	var heal: Array[Node] = _sprites(effects)
+	_check(heal.size() == 1 and heal[0].material == shader and absf(heal[0].scale.x - 0.5) < 0.001,
+		"회복(숨 고르기·물약)은 pixel_art 재질의 0.5배 효과 하나를 만든다")
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.0)
+	var buffed: int = 0
+	for unit: CombatUnit in units:
+		if unit.is_ally and unit.hit_points > 0:
+			unit.battle_cry_source = caster
+			buffed += 1
+	actions.self_used.emit(caster, "battle_cry")
+	await process_frame
+	_check(buffed >= 2 and _sprites(effects).size() == buffed,
+		"전투의 함성은 시전자의 함성을 받은 아군마다 효과를 만든다: %d/%d" % [_sprites(effects).size(), buffed])
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.0)
+	for unit: CombatUnit in units:
+		unit.battle_cry_source = null
+	var map: TileMapLayer = battle.get("map")
+	var neighbors: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	var leftmost: Vector2i = neighbors[0]
+	var rightmost: Vector2i = neighbors[0]
+	for step: Vector2i in neighbors:
+		var screen_x: float = map.map_to_local(caster.cell + step).x
+		if screen_x < map.map_to_local(caster.cell + leftmost).x:
+			leftmost = step
+		if screen_x > map.map_to_local(caster.cell + rightmost).x:
+			rightmost = step
+	actions.swept.emit(caster, caster.cell + leftmost)
+	await process_frame
+	var left_trail: Array[Node] = _sprites(effects)
+	_check(left_trail.size() == 1 and left_trail[0].material == shader and left_trail[0].flip_h,
+		"왼쪽 정면의 휩쓸기 궤적은 pixel_art 재질로 좌우를 뒤집는다")
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.0)
+	actions.swept.emit(caster, caster.cell + rightmost)
+	await process_frame
+	var right_trail: Array[Node] = _sprites(effects)
+	_check(right_trail.size() == 1 and not right_trail[0].flip_h, "오른쪽 정면의 궤적은 뒤집지 않는다")
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.0)
+	var below: Vector2i = neighbors[0]
+	var above: Vector2i = neighbors[0]
+	for step: Vector2i in neighbors:
+		if map.map_to_local(caster.cell + step).y > map.map_to_local(caster.cell + below).y:
+			below = step
+		if map.map_to_local(caster.cell + step).y < map.map_to_local(caster.cell + above).y:
+			above = step
+	actions.swept.emit(caster, caster.cell + below)
+	await process_frame
+	var front: Array[Node] = _sprites(effects)
+	var front_path: String = front[0].sprite_frames.get_frame_texture(&"play", 0).resource_path if front.size() == 1 else ""
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.0)
+	actions.swept.emit(caster, caster.cell + above)
+	await process_frame
+	var back: Array[Node] = _sprites(effects)
+	var back_path: String = back[0].sprite_frames.get_frame_texture(&"play", 0).resource_path if back.size() == 1 else ""
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.0)
+	_check("sweep_front" in front_path and "sweep_back" in back_path, "화면 아래쪽 정면은 앞 궤적, 위쪽 정면은 뒤 궤적: %s / %s" % [front_path, back_path])
+	Engine.time_scale = 4.0
+	var started: int = Time.get_ticks_msec()
+	actions.self_used.emit(caster, "holy_veil")
+	await process_frame
+	while effects.get_child_count() > 0 and Time.get_ticks_msec() - started < 2000:
+		await process_frame
+	var fast_msec: int = Time.get_ticks_msec() - started
+	Engine.time_scale = 1.0
+	_check(fast_msec < 200, "4배속에서는 1배속 방어막 길이(333ms)보다 짧은 실제 시간에 끝난다: %dms" % fast_msec)
+	await create_timer(0.1).timeout
+	var turn_actions: int = battle.get("_turn_actions")
+	battle.set("_turn_actions", 0)
+	battle.set("_replay_actions", 1)
+	actions.self_used.emit(caster, "holy_veil")
+	actions.self_used.emit(caster, "battle_cry")
+	actions.healed.emit(caster, 2)
+	actions.swept.emit(caster, caster.cell + rightmost)
+	await process_frame
+	_check(effects.get_child_count() == 0, "이어하기 재실행 중에는 스킬 효과를 만들지 않는다")
+	battle.set("_replay_actions", 0)
+	battle.set("_turn_actions", turn_actions)
+	var temporary: CombatUnit = CombatUnit.new()
+	battle.get_node("Units").add_child(temporary)
+	actions.healed.emit(temporary, 2)
+	await process_frame
+	temporary.free()
+	await create_timer(0.6).timeout
+	_check(effects.get_child_count() == 0, "효과 도중 유닛이 해제되어도 정리된다")
+
+
+func _sprites(effects: Node) -> Array[Node]:
+	var found: Array[Node] = []
+	for child: Node in effects.get_children():
+		if child is AnimatedSprite2D:
+			found.append(child)
+	return found
 
 
 func _wait_for(predicate: Callable, seconds: float) -> bool:
