@@ -5,11 +5,11 @@
 > - 기준일: 2026-10-23 (#321 능력치·주사위 대결 동기화)
 > - 관련 문서: [몬스터 디자인 기획서](README.md) · [전투 시스템 기획서](../combat/combat.md) · [게임 구조 기획서](../game-structure.md)
 > - 표시: ✅ 정해짐 · 🟡 제안(합의 전) · ❓ 정해야 함
-> - [Issue #107](https://github.com/minjunkim-dev/BGLike/issues/107)에서 구현했습니다. 2막과 3막의 2스테이지에 배치했습니다.
+> - [Issue #107](https://github.com/minjunkim-labs/BGLike/issues/107)에서 구현했습니다. 2막과 3막의 2스테이지에 배치했습니다.
 
 ---
 
-2026-10-13 결정: 이름, 약한 개체, 물러서며 쏘기만 남김 ✅. 당시 d20·AC·내성 DC와 수치 비교는 [#107의 이전 결정 기록](https://github.com/minjunkim-dev/BGLike/issues/107)에 남깁니다. 현재 능력치와 가산은 [능력치 기획서 7장](../combat/ability.md#7-몬스터-시험값)의 시험값입니다.
+2026-10-13 결정: 이름, 약한 개체, 물러서며 쏘기만 남김 ✅. 당시 d20·AC·내성 DC와 수치 비교는 [#107의 이전 결정 기록](https://github.com/minjunkim-labs/BGLike/issues/107)에 남깁니다. 현재 능력치와 가산은 [능력치 기획서 7장](../combat/ability.md#7-몬스터-시험값)의 시험값입니다.
 
 | 항목 | 내용 |
 |---|---|

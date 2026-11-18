@@ -61,14 +61,14 @@
 | 줄이는 순서 | 일정이 밀리면 레벨업 → 엄폐 단순화 → 유니크 수 순서로 줄입니다. | ✅ |
 | 구현 주체 | 다른 개발자가 구현합니다. 일정 구조는 그대로 유지합니다. 개발자의 항목별 구현 소요는 아직 확인하지 않았습니다. | ✅ (소요 확인은 ❓) |
 | 완료 목표 | 12/31에서 12/24로 1주일 앞당깁니다. | ✅ |
-| 레벨업 | 이번 범위에서 제외합니다. 12/24에 끝나고 12/28~12/31이 남으면 그때 다시 넣을지 판단합니다. 현재 +1을 구현하는 [#477](https://github.com/minjunkim-dev/BGLike/issues/477)은 그대로 진행합니다. | ✅ |
+| 레벨업 | 이번 범위에서 제외합니다. 12/24에 끝나고 12/28~12/31이 남으면 그때 다시 넣을지 판단합니다. 현재 +1을 구현하는 [#477](https://github.com/minjunkim-labs/BGLike/issues/477)은 그대로 진행합니다. | ✅ |
 | 파티 구성 | **2인 체제를 유지합니다.** 마법사가 추가되면 3캐릭터 중 2명을 고르는 조합 선택이 가능해집니다. 3인 파티는 예정에 없고 개발하지 않습니다. | ✅ |
 | 캐릭터 선택 시점 | **새 게임을 시작할 때 한 번** 2명을 고릅니다. 이후 막·스테이지 중에는 바꾸지 않습니다. 정비 화면은 지금처럼 캐릭터 2칸을 유지합니다. 저장에는 선택한 캐릭터 2명을 추가합니다. | ✅ |
-| 엄폐 Issue | 새 Issue를 만들지 않고 [#358](https://github.com/minjunkim-dev/BGLike/issues/358)을 엄폐 요청서의 개발 Issue로 씁니다. #200의 "엄폐·곡사: 후속 기획"을 이번 일정으로 앞당긴 것은 2026-11-09에 #200에 변경 전→후 코멘트로 남겼습니다. #358의 "이 Issue로 현재 동작을 바꾸지 않습니다" 문장은 11/20 요청서를 전달할 때 구현 범위로 바뀐다고 다시 코멘트합니다. | ✅ |
-| 유니크 정의 | 아이템 등급 체계는 만들지 않습니다([#200](https://github.com/minjunkim-dev/BGLike/issues/200)의 "아이템 등급 보류" 유지). 유니크는 **특수 효과를 가진 한정 아이템**으로 정의하고, 문서와 화면에서 "등급"이라는 표현을 쓰지 않습니다. | ✅ |
-| #205 답변 | [#205](https://github.com/minjunkim-dev/BGLike/issues/205)의 "현 수치 유지·3-1 증식 구조 우선 검토" 제안을 부분 채택합니다. 3-1 거미 증식 구조와 새끼 수 상한은 제안대로 따로 검토하고, 그 외 몬스터의 수치는 11/23~11/24에 상향합니다. | ✅ |
-| #357 범위 | [#357](https://github.com/minjunkim-dev/BGLike/issues/357)은 마법사 설계 전(12/8)에 **물리/마법 2종**만 정합니다. 저항·취약·면역과 "마법 피해 경감 폐지 후보"는 후속으로 미룹니다. | ✅ |
-| 우선순위 | 개발자가 맡은 작업([#477](https://github.com/minjunkim-dev/BGLike/issues/477) 등. 2026-11-15 기준 #477은 main 코드·PR·원격 브랜치가 없습니다. [#407](https://github.com/minjunkim-dev/BGLike/issues/407)은 2026-11-11에 닫힘. 독안개 거미 교체 [#462](https://github.com/minjunkim-dev/BGLike/issues/462)·[#463](https://github.com/minjunkim-dev/BGLike/issues/463)은 2026-11-09 기준 main에 반영됨)을 먼저 끝내고, 새 요청서는 그 뒤에 착수합니다. 요청서 전달은 일정대로 합니다. 개발자의 현재 작업 종료일은 아직 확인하지 않았습니다. | ✅ (종료일은 ❓) |
+| 엄폐 Issue | 새 Issue를 만들지 않고 [#358](https://github.com/minjunkim-labs/BGLike/issues/358)을 엄폐 요청서의 개발 Issue로 씁니다. #200의 "엄폐·곡사: 후속 기획"을 이번 일정으로 앞당긴 것은 2026-11-09에 #200에 변경 전→후 코멘트로 남겼습니다. #358의 "이 Issue로 현재 동작을 바꾸지 않습니다" 문장은 11/20 요청서를 전달할 때 구현 범위로 바뀐다고 다시 코멘트합니다. | ✅ |
+| 유니크 정의 | 아이템 등급 체계는 만들지 않습니다([#200](https://github.com/minjunkim-labs/BGLike/issues/200)의 "아이템 등급 보류" 유지). 유니크는 **특수 효과를 가진 한정 아이템**으로 정의하고, 문서와 화면에서 "등급"이라는 표현을 쓰지 않습니다. | ✅ |
+| #205 답변 | [#205](https://github.com/minjunkim-labs/BGLike/issues/205)의 "현 수치 유지·3-1 증식 구조 우선 검토" 제안을 부분 채택합니다. 3-1 거미 증식 구조와 새끼 수 상한은 제안대로 따로 검토하고, 그 외 몬스터의 수치는 11/23~11/24에 상향합니다. | ✅ |
+| #357 범위 | [#357](https://github.com/minjunkim-labs/BGLike/issues/357)은 마법사 설계 전(12/8)에 **물리/마법 2종**만 정합니다. 저항·취약·면역과 "마법 피해 경감 폐지 후보"는 후속으로 미룹니다. | ✅ |
+| 우선순위 | 개발자가 맡은 작업([#477](https://github.com/minjunkim-labs/BGLike/issues/477) 등. 2026-11-15 기준 #477은 main 코드·PR·원격 브랜치가 없습니다. [#407](https://github.com/minjunkim-labs/BGLike/issues/407)은 2026-11-11에 닫힘. 독안개 거미 교체 [#462](https://github.com/minjunkim-labs/BGLike/issues/462)·[#463](https://github.com/minjunkim-labs/BGLike/issues/463)은 2026-11-09 기준 main에 반영됨)을 먼저 끝내고, 새 요청서는 그 뒤에 착수합니다. 요청서 전달은 일정대로 합니다. 개발자의 현재 작업 종료일은 아직 확인하지 않았습니다. | ✅ (종료일은 ❓) |
 
 기존 문서의 충돌 문장은 해당 기획을 쓰는 날 함께 갱신합니다. "같은 몬스터는 모든 막에서 같은 수치"([몬스터 디자인 기획서](../design/monsters/README.md) 2장)는 충돌이 아니라 유지하는 원칙이며, 수치 수정만 반영합니다. 고유 스킬 "3개 이하"는 일정상 목표이고 규칙이 아니므로, [캐릭터 디자인 기획서](../design/characters/README.md)의 "직업마다 디자이너가 정합니다"(2026-10-30)와 충돌하지 않습니다.
 
@@ -132,7 +132,7 @@
 
 | 날짜 | 작업 |
 |---|---|
-| 12/10 목 | 캐릭터 조합 선택 구조 점검(새 게임 시작 시 선택 화면, 선택 캐릭터 저장, 장비·물약 초기 분배, [새 게임 흐름 #284](https://github.com/minjunkim-dev/BGLike/issues/284) 연결)과 마법사 역할 정의 |
+| 12/10 목 | 캐릭터 조합 선택 구조 점검(새 게임 시작 시 선택 화면, 선택 캐릭터 저장, 장비·물약 초기 분배, [새 게임 흐름 #284](https://github.com/minjunkim-labs/BGLike/issues/284) 연결)과 마법사 역할 정의 |
 | 12/11 금 | 마법사의 추상 컨셉과 키워드를 정합니다. **요청서 전달: 캐릭터 조합 선택 구조** |
 | 12/14 월 | 스킬셋 초안을 씁니다(키워드마다 전투에서 어떻게 드러날지, 고유 스킬은 일정상 3개 이하를 목표로 하며 규칙은 아닙니다. 곡사로 엄폐를 넘는 스킬 포함). **요청서 전달: 마법사 도트 이미지**(컨셉·키워드 기준 외형) |
 | 12/15 화 | 스킬 세부, 상태이상 연계, 장단점을 정하고 역할을 확인합니다(전사·궁수와의 역할 중복 점검). |
@@ -182,8 +182,8 @@
 
 | 날짜 | 요청서 | 개발자 선행 가능 여부 |
 |---|---|---|
-| 11/13 | 환경 ([#529](https://github.com/minjunkim-dev/BGLike/issues/529)) | 11/26 검수 |
-| 11/20 | 엄폐 ([#358](https://github.com/minjunkim-dev/BGLike/issues/358)에 연결) | 11/27 1차 검수 |
+| 11/13 | 환경 ([#529](https://github.com/minjunkim-labs/BGLike/issues/529)) | 11/26 검수 |
+| 11/20 | 엄폐 ([#358](https://github.com/minjunkim-labs/BGLike/issues/358)에 연결) | 11/27 1차 검수 |
 | 11/24 | 몬스터 수치 | 수치 변경뿐이라 빠르게 반영 가능 |
 | 12/1 | 아이템 공통 효과 구조 | 아이템 개별 효과 구현의 선행 조건 |
 | 12/3 | 아이템 1~3번 | – |
@@ -197,15 +197,15 @@
 
 ## 8. 기존 Issue와의 연결
 
-2026-11-09 기준 열린 Issue 27개와 [#200 M7까지 남은 작업 지도](https://github.com/minjunkim-dev/BGLike/issues/200)를 확인한 결과입니다.
+2026-11-09 기준 열린 Issue 27개와 [#200 M7까지 남은 작업 지도](https://github.com/minjunkim-labs/BGLike/issues/200)를 확인한 결과입니다.
 
 | 일정 항목 | 기존 Issue | 처리 |
 |---|---|---|
-| 엄폐 | #200 "Out of scope"의 "엄폐·곡사: 후속 기획", [#358](https://github.com/minjunkim-dev/BGLike/issues/358), [#353](https://github.com/minjunkim-dev/BGLike/issues/353)(직사 범위 동작의 차단 처리) | #358에 연결. #200에 범위 변경 코멘트 |
-| 유니크 아이템 | #200 "Out of scope"의 "아이템 등급 보류", [#456](https://github.com/minjunkim-dev/BGLike/issues/456)(아이템 능력치 가감) | 등급 없이 특수 효과 아이템으로 정의 |
-| 몬스터 수치 | [#205](https://github.com/minjunkim-dev/BGLike/issues/205) 제안(확인 시점에는 기획자 답 대기, 같은 날 부분 채택으로 답변 완료), [#462](https://github.com/minjunkim-dev/BGLike/issues/462)·[#463](https://github.com/minjunkim-dev/BGLike/issues/463) 독안개 거미(2026-11-09 기준 main에 반영됨) | #205에 부분 채택 답변. 진단에 독안개 거미 포함 |
-| 마법사 | #200 "직업 컨셉과 스킬 수 확장"(기획자 작업 중), [#357](https://github.com/minjunkim-dev/BGLike/issues/357), [#407](https://github.com/minjunkim-dev/BGLike/issues/407) 전사 재디자인 구현 | 12/8에 #357의 물리/마법 2종 결정 |
-| 레벨업 | [#477](https://github.com/minjunkim-dev/BGLike/issues/477), [#322](https://github.com/minjunkim-dev/BGLike/issues/322)(절대면·치명타) | 충돌 없음. 확장만 제외. 절대면은 레벨업 성장에 속하므로 레벨업 확장과 함께 이번 범위에서 제외합니다. 치명타는 전역 규칙을 만들지 않고 스킬마다 필요할 때 정합니다(마법사 스킬, 유니크 아이템 설계 때 개별 결정). #322는 일정의 선행 조건이 아닙니다 |
+| 엄폐 | #200 "Out of scope"의 "엄폐·곡사: 후속 기획", [#358](https://github.com/minjunkim-labs/BGLike/issues/358), [#353](https://github.com/minjunkim-labs/BGLike/issues/353)(직사 범위 동작의 차단 처리) | #358에 연결. #200에 범위 변경 코멘트 |
+| 유니크 아이템 | #200 "Out of scope"의 "아이템 등급 보류", [#456](https://github.com/minjunkim-labs/BGLike/issues/456)(아이템 능력치 가감) | 등급 없이 특수 효과 아이템으로 정의 |
+| 몬스터 수치 | [#205](https://github.com/minjunkim-labs/BGLike/issues/205) 제안(확인 시점에는 기획자 답 대기, 같은 날 부분 채택으로 답변 완료), [#462](https://github.com/minjunkim-labs/BGLike/issues/462)·[#463](https://github.com/minjunkim-labs/BGLike/issues/463) 독안개 거미(2026-11-09 기준 main에 반영됨) | #205에 부분 채택 답변. 진단에 독안개 거미 포함 |
+| 마법사 | #200 "직업 컨셉과 스킬 수 확장"(기획자 작업 중), [#357](https://github.com/minjunkim-labs/BGLike/issues/357), [#407](https://github.com/minjunkim-labs/BGLike/issues/407) 전사 재디자인 구현 | 12/8에 #357의 물리/마법 2종 결정 |
+| 레벨업 | [#477](https://github.com/minjunkim-labs/BGLike/issues/477), [#322](https://github.com/minjunkim-labs/BGLike/issues/322)(절대면·치명타) | 충돌 없음. 확장만 제외. 절대면은 레벨업 성장에 속하므로 레벨업 확장과 함께 이번 범위에서 제외합니다. 치명타는 전역 규칙을 만들지 않고 스킬마다 필요할 때 정합니다(마법사 스킬, 유니크 아이템 설계 때 개별 결정). #322는 일정의 선행 조건이 아닙니다 |
 | 개발자 작업 | #477(2026-11-15 기준 main 코드·PR 없음)·#470(사람 직접 확인 대기)(#407은 2026-11-11에 닫힘), M7 잔여 #306·#207(#208은 2026-11-10에 닫힘). 독안개 거미 #462·#463은 main에 반영됨 | 진행 중인 작업을 먼저 끝내고 새 요청서는 그 뒤에 착수 |
 
 2026-11-09에 #200, #205, #322, #357, #358에 코멘트를 올렸습니다. 코멘트의 일정 문서 링크는 이 문서를 `main`에 병합한 뒤 `main` 링크로 바꿉니다.
