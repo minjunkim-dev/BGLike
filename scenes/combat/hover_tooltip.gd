@@ -3,6 +3,11 @@ extends PanelContainer
 ## 마우스 호버와 키보드·컨트롤러 포커스에 대상의 tooltip_text를 0.5초 뒤 띄운다(#226, #248, #274).
 ## 스킬 바와 정비 화면이 같은 모양·시점을 쓴다. 화면을 채우는 부모 Control 안에 두고, 설명은 부모 밖으로 나가지 않는다.
 
+## 줄 역할별 글자 색(#620). 값은 도트 아트 기준 UI 팔레트다.
+const TITLE_COLOR: Color = Color("ebba84")
+const BODY_COLOR: Color = Color("f5ebdb")
+const DETAIL_COLOR: Color = Color("c5b29f")
+
 ## 기본 툴팁 창 대신 이 설명을 쓰는 버튼.
 class HoverButton extends Button:
 	func _get_tooltip(_at_position: Vector2) -> String:
@@ -16,8 +21,9 @@ var max_width: float = 0.0
 ## 비어 있으면 설명을 대상 위(모자라면 아래)의 대상 x에 둔다. 있으면 (대상 Control, 설명 크기)를 받아 설명의 global 위치를 돌려준다.
 ## 어느 쪽이든 부모 영역 안으로 민다.
 var place: Callable = Callable()
-# 수치 가감 색은 전투 HUD만 켠다(#457). 정비 화면의 설명은 원문 그대로 보인다.
-var colorize_numbers: bool = false
+## 대상 Control을 받아 그 설명의 BBCode 글을 돌려준다. 전투 HUD만 쓴다(줄 역할별 색 #620, 수치 가감 색 #457).
+## 비어 있으면 tooltip_text를 원문 그대로 보인다(정비 화면).
+var format: Callable = Callable()
 
 var _owner: Control
 var _label: RichTextLabel = RichTextLabel.new()
@@ -41,6 +47,23 @@ func _init() -> void:
 	_timer.wait_time = 0.5
 	_timer.timeout.connect(_update)
 	add_child(_timer)
+
+
+## 글을 color로 칠한 BBCode. 수치 가감 색(#457)은 그 안에서 그대로 남는다. 빈 글은 빈 글이다.
+static func paint(text: String, color: Color) -> String:
+	if text.is_empty():
+		return ""
+	return "[color=#%s]%s[/color]" % [color.to_html(false), CombatActionRules.colorize(text)]
+
+
+## 첫 줄은 강조 글자, 나머지 줄은 본문 글자로 칠한 BBCode. 초상·패시브 설명이 쓴다.
+static func headed(text: String) -> String:
+	var lines: PackedStringArray = text.split("\n")
+	var rest: String = "\n".join(lines.slice(1))
+	var result: String = paint(lines[0], TITLE_COLOR)
+	if not rest.is_empty():
+		result += "\n" + paint(rest, BODY_COLOR)
+	return result
 
 
 func attach(control: Control) -> void:
@@ -74,8 +97,7 @@ func _update() -> void:
 		hide()
 		return
 	# 글자는 BBCode다. 꺼진 경우도 [를 태그가 아닌 글자로 쓴다.
-	var text: String = CombatActionRules.colorize(_owner.tooltip_text) if colorize_numbers \
-		else _owner.tooltip_text.replace("[", "[lb]")
+	var text: String = format.call(_owner) if format.is_valid() else _owner.tooltip_text.replace("[", "[lb]")
 	if text != _shown_text:
 		_shown_text = text
 		_label.text = text
