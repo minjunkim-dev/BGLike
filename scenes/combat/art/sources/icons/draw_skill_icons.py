@@ -3,8 +3,8 @@
 Same rules as draw_item_icons.py: 64px design grid on the 48px canvas, the item palette, upper-left light, 2px dark outline,
 no anti-aliasing and no generative model. Attack and potion reuse the item sword and potion.
 
-#517: lines inside a picture (blades, shafts, white effect lines, arcs) are at least 3px wide on the 48px canvas, so every
-icon keeps at least 10% of the canvas as coloured pixels inside its outline. Cross slash is a large X and the opportunity
+#517: lines inside a picture (blades, shafts, white effect lines, arcs) are drawn thick enough that every icon keeps at
+least 10% of the canvas as coloured pixels inside its outline. Cross slash is a large X and the opportunity
 attack is a large eye, so neither reads as the item sword.
 """
 import argparse
