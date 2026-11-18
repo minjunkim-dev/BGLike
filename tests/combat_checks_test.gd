@@ -972,6 +972,8 @@ func _test_scene_input() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	# #624: 화면 좌표로 누르는 검사라 카메라가 행동 유닛을 따라 움직이지 않게 한다(따라가기는 combat_hud_test가 본다).
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var units: Array[CombatUnit] = battle.get("units")
@@ -1039,6 +1041,7 @@ func _test_scene_spin() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var actions: CombatActions = battle.get("actions")

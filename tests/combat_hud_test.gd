@@ -86,6 +86,15 @@ func _run() -> void:
 	await _test_camera()
 	await _test_zoomed_occlusion()
 	await _test_camera_during_enemy_turn()
+	await _test_camera_follow_turn()
+	await _test_camera_follow_switch()
+	await _test_camera_follow_hand()
+	await _test_camera_follow_walk()
+	await _test_camera_follow_takeover()
+	await _test_camera_follow_zoomed()
+	await _test_camera_follow_idle()
+	await _test_camera_follow_enemy_turn(false)
+	await _test_camera_follow_enemy_turn(true)
 	await _test_reaction_flow()
 	await _test_reaction_focus()
 	_test_presentation_speed()
@@ -107,6 +116,7 @@ func _run() -> void:
 	await _test_rock_presentation()
 	await _test_results_and_restart()
 	await _test_tree_burn_ui()
+	await _test_camera_follow_restore()
 	(battle.get("sounds") as CombatSounds).stop_all()
 	await create_timer(0.08).timeout
 	current_scene.queue_free()
@@ -1942,6 +1952,10 @@ func _reset_units() -> void:
 		unit.clear_unit_effects()
 		CombatActionRules.restore_combat_uses(unit)
 	ScriptedDice.arrange_turns(turns, units, units)
+	# #624: 카메라가 턴마다 따라가므로 fixture는 카메라를 가운데에 세워 두고 시작한다. 행동 유닛만 따라간 것으로 알린다.
+	var camera: CombatCamera = battle.get_node("Camera") as CombatCamera
+	camera.follow_turn(turns.current_unit)
+	camera.reset()
 
 
 func _test_mouse_controls_and_inspection() -> void:
@@ -2549,6 +2563,8 @@ func _test_order_bar_input() -> void:
 		"빈 영역을 통과시켜도 자식 초상 클릭은 조작 전환만 수행")
 	destination = Vector2i(1, 0)
 	point = Vector2(80, 140)
+	# #624: 초상으로 바뀐 행동 유닛을 카메라가 따라가는 중이라, 손 조작으로 멈춘 뒤 화면 원점을 직접 놓는다.
+	camera.pan(Vector2.ZERO)
 	camera.position = map.map_to_local(destination) + root.get_visible_rect().size / 2.0 - point - camera.offset
 	camera.force_update_scroll()
 	point = map.get_global_transform_with_canvas() * map.map_to_local(destination)
@@ -2836,6 +2852,8 @@ func _test_camera_during_enemy_turn() -> void:
 	# 가속이 걸린 다음 프레임부터 D를 눌러 time_scale이 바뀌는 프레임을 재지 않는다.
 	await process_frame
 	await process_frame
+	# #624: 이 검사는 WASD 속도만 잰다. 적 턴이 시작하며 돈 따라가기는 손 조작(C 키)으로 멈추고 가운데에서 잰다.
+	camera.reset()
 	var start: Vector2 = camera.position
 	var key: InputEventKey = InputEventKey.new()
 	key.physical_keycode = KEY_D
@@ -2926,6 +2944,341 @@ func _drag(point: Vector2, delta: Vector2) -> void:
 
 
 ## #503: 실제 1-3(고철로봇-1000)에서 과부하 조건·효과를 켜지기 전부터 읽는다.
+## 행동 유닛의 칸 윗면 가운데 점이 화면(논리 px)에서 어디인지.
+func _unit_screen_point(unit: CombatUnit) -> Vector2:
+	return unit.get_global_transform_with_canvas() * Vector2(0, unit.floor_offset_y)
+
+
+func _camera_focus_screen() -> Vector2:
+	return root.get_visible_rect().size / 2.0 - Vector2(0, 20)
+
+
+## 전투 시작 전 상태로 돌린 뒤 카메라를 1배 가운데에 두고, 유닛을 놓고, 전투를 시작해 첫 턴의 따라가기를 새로 시작한다.
+func _begin_follow_fixture(cells: Array[Vector2i]) -> CombatCamera:
+	var camera: CombatCamera = battle.get_node("Camera") as CombatCamera
+	_reset_units()
+	battle.set("waiting_for_start", true)
+	battle.call("_update_turn_ui")
+	camera.reset()
+	for index: int in range(cells.size()):
+		units[index].cell = cells[index]
+	# 직접 진행시켜 프레임 시간에 기대지 않는다.
+	camera.set_process(false)
+	return camera
+
+
+func _end_follow_fixture() -> void:
+	var camera: CombatCamera = battle.get_node("Camera") as CombatCamera
+	battle.set("waiting_for_start", false)
+	_reset_units()
+	units[0].cell = Vector2i(4, 4)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(8, 8)
+	units[3].cell = Vector2i(9, 9)
+	battle.call("_update_turn_ui")
+	camera.set_process(true)
+	camera.reset()
+
+
+## #624: 턴이 시작될 때 행동 유닛이 C 밖이면 카메라가 0.4초 동안 F로 옮긴다. C 안이면 움직이지 않는다.
+func _test_camera_follow_turn() -> void:
+	var camera: CombatCamera = _begin_follow_fixture([Vector2i(0, 0), Vector2i(4, 4), Vector2i(8, 8), Vector2i(9, 9)])
+	var home: Vector2 = camera.position
+	var focus: Vector2 = _camera_focus_screen()
+	battle.set("waiting_for_start", false)
+	battle.call("_update_turn_ui")
+	var start: float = _unit_screen_point(units[0]).distance_to(focus)
+	_check(start > 32.0 and camera.is_turning(), "첫 행동 유닛이 C 밖이면 따라가기가 시작됨: %s" % start)
+	camera.advance(0.2)
+	var middle: float = _unit_screen_point(units[0]).distance_to(focus)
+	_check(middle > 1.0 and middle < start * 0.5, "0.2초에는 ease-out이라 절반보다 많이 옴: %s / %s" % [middle, start])
+	camera.advance(0.2)
+	_check(_unit_screen_point(units[0]).distance_to(focus) <= 1.0 and not camera.is_turning(),
+		"0.4초 뒤 행동 유닛 칸이 기준점 F에 옴: %s" % _unit_screen_point(units[0]))
+	_check(camera.zoom == Vector2.ONE and _camera_snapped(camera), "배율은 그대로이고 화면 원점은 정수 논리 px")
+	# 이미 C 안인 유닛으로 넘어가면 움직이지 않는다.
+	var settled: Vector2 = camera.position
+	_check(turns.select_unit(units[1]), "같은 묶음의 다른 아군을 고를 수 있음")
+	camera.reset()
+	camera.advance(0.0)
+	var centered: Vector2 = camera.position
+	battle.call("_update_turn_ui")
+	camera.advance(0.5)
+	_check(units[1].cell == Vector2i(4, 4) and camera.position == centered and not camera.is_turning() and settled != centered,
+		"행동 유닛이 C 안이면 카메라가 움직이지 않음")
+	_end_follow_fixture()
+	await process_frame
+
+
+## 따라가기 검사 fixture를 놓고 전투를 시작해 첫 행동 유닛의 따라가기를 돌린다.
+func _start_follow(camera: CombatCamera) -> void:
+	battle.set("waiting_for_start", false)
+	battle.call("_update_turn_ui")
+
+
+## 이동 연출이 한 칸 도착한 것처럼 유닛을 그 칸에 둔다(Tween 없이 같은 값을 직접 쓴다).
+func _walk_to(unit: CombatUnit, cell: Vector2i, body_offset: float = 0.0) -> void:
+	var map: CombatMap = battle.map
+	unit.is_moving = true
+	unit.cell = cell
+	unit.position = map.map_to_local(cell)
+	unit.floor_offset_y = map.map_to_surface(cell).y - unit.position.y
+	unit.body_offset_y = body_offset
+
+
+func _stop_walking(unit: CombatUnit) -> void:
+	unit.is_moving = false
+	unit.body_offset_y = 0.0
+	battle.call("_update_turn_ui")
+
+
+## #624: 같은 아군 묶음에서 Tab·초상으로 유닛을 바꾸면 턴 이동이 돈다. 손으로 옮긴 화면에서도 돈다.
+func _test_camera_follow_switch() -> void:
+	var camera: CombatCamera = _begin_follow_fixture([Vector2i(4, 4), Vector2i(0, 0), Vector2i(8, 8), Vector2i(9, 9)])
+	var home: Vector2 = camera.position
+	var focus: Vector2 = _camera_focus_screen()
+	_start_follow(camera)
+	camera.advance(0.5)
+	_check(camera.position == home and not camera.is_turning(), "첫 행동 유닛이 C 안이면 카메라가 가만히 있음")
+	hud.unit_selected.emit(units[1])
+	_check(turns.current_unit == units[1] and camera.is_turning(), "초상으로 C 밖 유닛을 고르면 턴 이동이 시작됨")
+	camera.advance(0.4)
+	_check(_unit_screen_point(units[1]).distance_to(focus) <= 1.0, "고른 유닛 칸이 기준점 F에 옴")
+	camera.pan(Vector2(10, 30))
+	_check(_unit_screen_point(units[1]).distance_to(focus) > 5.0, "화면을 손으로 옮김")
+	hud.unit_selected.emit(units[0])
+	_check(turns.current_unit == units[0] and camera.is_turning(), "손으로 옮긴 화면에서도 유닛을 바꾸면 턴 이동이 돎")
+	camera.advance(0.4)
+	_check(_unit_screen_point(units[0]).distance_to(focus) <= 1.0, "다시 고른 유닛 칸이 기준점 F에 옴")
+	_end_follow_fixture()
+	await process_frame
+
+
+## #624: 드래그·휠·C 키는 진행 중인 턴 이동을 멈추고 그 유닛의 턴 동안 따라잡기를 끈다. 다음 유닛에서는 다시 돈다.
+func _test_camera_follow_hand() -> void:
+	var focus: Vector2 = _camera_focus_screen()
+	for kind: String in ["drag", "wheel", "key"]:
+		var camera: CombatCamera = _begin_follow_fixture([Vector2i(0, 0), Vector2i(9, 0), Vector2i(8, 8), Vector2i(9, 9)])
+		_start_follow(camera)
+		camera.advance(0.1)
+		_check(camera.is_turning(), "손 조작 전에는 턴 이동이 진행 중: " + kind)
+		match kind:
+			"drag":
+				await _drag(focus, Vector2(10, 0))
+			"wheel":
+				await _wheel(focus, MOUSE_BUTTON_WHEEL_UP)
+			"key":
+				await _key(KEY_C)
+		_check(not camera.is_turning(), "손 조작이 진행 중인 턴 이동을 멈춤: " + kind)
+		var stopped: Vector2 = camera.position
+		camera.advance(0.5)
+		_check(camera.position == stopped, "손 조작 뒤 가만히 있음(C 밖이어도 끌려가지 않음): " + kind)
+		_walk_to(units[0], Vector2i(0, 3))
+		camera.advance(0.3)
+		_walk_to(units[0], Vector2i(0, 4))
+		camera.advance(0.3)
+		_check(camera.position == stopped, "손 조작 뒤 그 유닛이 걸어도 따라잡지 않음: " + kind)
+		_stop_walking(units[0])
+		hud.unit_selected.emit(units[1])
+		_check(turns.current_unit == units[1] and camera.is_turning(), "다음 유닛에서는 다시 턴 이동이 돎: " + kind)
+		camera.advance(0.4)
+		_check(_unit_screen_point(units[1]).distance_to(focus) <= 1.0 and not camera.is_turning(), "다음 유닛이 F에 옴: " + kind)
+		_end_follow_fixture()
+		await process_frame
+
+
+## #624: 걸어서 C 밖으로 나가면 카메라가 따라잡고, 이동이 끝난 뒤 곧 F에 닿는다. 점프 높이는 목표에 넣지 않는다.
+func _test_camera_follow_walk() -> void:
+	var camera: CombatCamera = _begin_follow_fixture([Vector2i(4, 4), Vector2i(0, 0), Vector2i(8, 0), Vector2i(9, 0)])
+	var focus: Vector2 = _camera_focus_screen()
+	_start_follow(camera)
+	var home: Vector2 = camera.position
+	# 점프 높이처럼 그림만 뜬 채 걷는다. 카메라 목표는 칸 윗면 가운데 점이다.
+	for cell: Vector2i in [Vector2i(5, 5), Vector2i(6, 6)]:
+		_walk_to(units[0], cell, -6.0)
+		camera.advance(0.129)
+		_check(camera.position == home, "C 안을 걷는 동안 카메라가 가만히 있음: %s" % cell)
+	_walk_to(units[0], Vector2i(7, 7), -6.0)
+	camera.advance(0.129)
+	_check(camera.position != home and not camera.is_turning(), "C 밖으로 나가면 카메라가 따라잡기 시작함")
+	_walk_to(units[0], Vector2i(8, 8), -6.0)
+	camera.advance(0.129)
+	_walk_to(units[0], Vector2i(9, 9), -6.0)
+	camera.advance(0.129)
+	_check(_unit_screen_point(units[0]).distance_to(focus) > 1.0, "걸음은 카메라를 기다리지 않아 카메라가 조금 뒤에서 따라옴")
+	units[0].is_moving = false
+	var steps: int = 0
+	while steps < 5 and _unit_screen_point(units[0]).distance_to(focus) > 1.0:
+		camera.advance(0.1)
+		steps += 1
+	_check(_unit_screen_point(units[0]).distance_to(focus) <= 1.0 and steps < 5,
+		"이동이 끝난 뒤 0.5초 안에 칸 윗면 가운데가 F에 닿음(점프 높이는 목표에 넣지 않음): %d" % steps)
+	_check(camera.zoom == Vector2.ONE and _camera_snapped(camera), "따라가는 동안 배율은 그대로이고 화면 원점은 정수 논리 px")
+	camera.advance(0.5)
+	var settled: Vector2 = camera.position
+	camera.advance(0.5)
+	_check(camera.position == settled, "F에 닿으면 멈춤")
+	_stop_walking(units[0])
+	_end_follow_fixture()
+	await process_frame
+
+
+## #624: 턴 이동 도중 행동 유닛이 움직이기 시작하면 턴 이동을 그 자리에서 멈추고 지금 위치에서 유닛을 따라간다.
+func _test_camera_follow_takeover() -> void:
+	var camera: CombatCamera = _begin_follow_fixture([Vector2i(0, 0), Vector2i(4, 4), Vector2i(8, 8), Vector2i(9, 9)])
+	var focus: Vector2 = _camera_focus_screen()
+	_start_follow(camera)
+	camera.advance(0.1)
+	_check(camera.is_turning(), "턴 이동이 진행 중")
+	_walk_to(units[0], Vector2i(0, 1))
+	camera.advance(0.016)
+	_check(not camera.is_turning(), "턴 이동 중 유닛이 움직이기 시작하면 턴 이동이 멈춤")
+	units[0].is_moving = false
+	camera.advance(0.6)
+	# 턴 이동이 처음 목표(옛 칸)로 계속 갔다면 새 칸은 F에서 한 칸 거리만큼 벗어난다.
+	_check(_unit_screen_point(units[0]).distance_to(focus) <= 1.0, "넘겨받은 따라잡기가 유닛이 있는 새 칸에서 끝남")
+	_stop_walking(units[0])
+	_end_follow_fixture()
+	await process_frame
+
+
+## #624: 2배 확대에서도 배율은 그대로이고 유닛이 F에 온다.
+func _test_camera_follow_zoomed() -> void:
+	root.size = Vector2i(1920, 1080)
+	await process_frame
+	var camera: CombatCamera = _begin_follow_fixture([Vector2i(0, 0), Vector2i(4, 4), Vector2i(8, 8), Vector2i(9, 9)])
+	camera.zoom_at(_camera_focus_screen(), 1)
+	_check(camera.zoom == Vector2(2, 2), "검사 fixture: 2배 확대")
+	_start_follow(camera)
+	_check(camera.is_turning(), "2배에서도 C 밖 유닛이면 턴 이동이 시작됨")
+	camera.advance(0.4)
+	_check(camera.zoom == Vector2(2, 2) and _unit_screen_point(units[0]).distance_to(_camera_focus_screen()) <= 1.0
+		and _camera_snapped(camera), "2배 확대 그대로 유닛이 기준점 F에 옴")
+	_end_follow_fixture()
+	root.size = Vector2i(1280, 720)
+	await process_frame
+
+
+## #624: 전투 시작 전, 전투가 끝난 뒤, 행동 유닛이 전투 불능일 때는 따라가지 않고 진행 중인 따라가기도 멈춘다.
+func _test_camera_follow_idle() -> void:
+	var camera: CombatCamera = _begin_follow_fixture([Vector2i(0, 0), Vector2i(4, 4), Vector2i(8, 8), Vector2i(9, 9)])
+	var home: Vector2 = camera.position
+	battle.call("_update_turn_ui")
+	camera.advance(0.5)
+	_check(camera.position == home and not camera.is_turning(), "전투 시작 전에는 C 밖 유닛이 있어도 따라가지 않음")
+	_start_follow(camera)
+	camera.advance(0.1)
+	_check(camera.is_turning(), "전투가 시작되면 첫 행동 유닛으로 턴 이동이 돎")
+	units[0].hit_points = 0
+	battle.call("_update_turn_ui")
+	var stopped: Vector2 = camera.position
+	_check(not camera.is_turning(), "행동 유닛이 전투 불능이 되면 따라가기가 멈춤")
+	camera.advance(0.5)
+	_check(camera.position == stopped, "전투 불능 유닛은 따라가지 않음")
+	_reset_units()
+	battle.call("_update_turn_ui")
+	_check(camera.is_turning() or camera.position != stopped, "다시 살아난 행동 유닛으로 따라가기가 새로 돎")
+	camera.advance(0.1)
+	units[2].hit_points = 0
+	units[3].hit_points = 0
+	_check(actions.is_over(), "적이 모두 쓰러지면 전투가 끝남")
+	# 결과 화면 같은 다른 갱신을 건드리지 않게 따라가기 갱신만 부른다.
+	battle.call("_refresh_camera_follow")
+	var over: Vector2 = camera.position
+	_check(not camera.is_turning(), "전투가 끝나면 따라가기가 멈춤")
+	camera.advance(0.5)
+	_check(camera.position == over, "전투가 끝나면 따라가지 않음")
+	_end_follow_fixture()
+	await process_frame
+
+
+## #624: 실제 적 턴. 적의 첫 이동 전에 카메라가 F에 닿아 있다(4배속도 같다). 적 턴은 끝까지 진행한다.
+func _test_camera_follow_enemy_turn(fast: bool) -> void:
+	var camera: CombatCamera = battle.get_node("Camera") as CombatCamera
+	var saved_dice: CombatDice = actions.dice
+	var saved_cells: Array = units.map(func(unit: CombatUnit) -> Vector2i: return unit.cell)
+	actions.dice = CombatDice.new()
+	actions.dice.seed = 624
+	_reset_units()
+	# 적이 닿지 못하는 거리라 공격·반응 확인 창 없이 이동만 한다. 첫 적은 C 밖이다.
+	units[0].cell = Vector2i(0, 0)
+	units[1].cell = Vector2i(1, 0)
+	units[2].cell = Vector2i(9, 9)
+	units[3].cell = Vector2i(8, 9)
+	battle.call("_update_turn_ui")
+	camera.reset()
+	var space: InputEventKey = InputEventKey.new()
+	space.keycode = KEY_SPACE
+	space.physical_keycode = KEY_SPACE
+	space.pressed = true
+	if fast:
+		Input.parse_input_event(space)
+	turns.end_turn()
+	turns.end_turn()
+	battle.set_process(true)
+	var focus: Vector2 = _camera_focus_screen()
+	var gap: float = INF
+	var last_gap: float = INF
+	var began: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - began < 10000 and gap == INF:
+		await process_frame
+		if turns.current_unit != units[2]:
+			continue
+		if units[2].is_moving:
+			# 움직임을 처음 본 프레임은 한 걸음이 더해져 있어, 그 직전 프레임에서 잰다.
+			gap = last_gap
+		else:
+			last_gap = _unit_screen_point(units[2]).distance_to(focus)
+	_check(gap <= 1.5, "적이 첫 이동을 시작할 때 카메라가 이미 F에 닿아 있음(%s): %s" % ["4배속" if fast else "보통", gap])
+	if fast:
+		_check(Engine.time_scale > 1.0, "4배속 검사 fixture: 가속 중")
+	began = Time.get_ticks_msec()
+	while (battle.get("_enemy_turn_running") or not turns.current_unit.is_ally) and Time.get_ticks_msec() - began < 15000:
+		await process_frame
+	_check(turns.current_unit.is_ally and not battle.get("_enemy_turn_running") and units[2].cell != Vector2i(9, 9),
+		"카메라를 따라 움직여도 적 턴은 끝까지 진행해 아군 차례로 돌아옴")
+	if fast:
+		space = space.duplicate() as InputEventKey
+		space.pressed = false
+		Input.parse_input_event(space)
+		await process_frame
+	battle.set_process(false)
+	Engine.time_scale = 1.0
+	actions.dice = saved_dice
+	for index: int in range(units.size()):
+		units[index].cell = saved_cells[index]
+	camera.reset()
+	_reset_units()
+	battle.call("_update_turn_ui")
+	await process_frame
+
+
+## #624: 이어하기로 연 전투는 1배 가운데에서 출발해 행동 유닛으로 턴 이동이 돈다.
+func _test_camera_follow_restore() -> void:
+	var camera: CombatCamera = battle.get_node("Camera") as CombatCamera
+	_reset_units()
+	battle.set("waiting_for_start", false)
+	units[0].cell = Vector2i(0, 0)
+	units[1].cell = Vector2i(1, 0)
+	battle.call("_update_turn_ui")
+	var state: Dictionary = battle.call("combat_state")
+	_check(battle.call("restore_combat", state), "저장한 전투 상태를 다시 읽음")
+	battle = current_scene.get_node("Battle") as Node2D
+	units = battle.get("units")
+	turns = battle.get("turns") as CombatTurns
+	actions = battle.get("actions") as CombatActions
+	hud = battle.get_node("UI/TurnHud") as CombatTurnHud
+	camera = battle.get_node("Camera") as CombatCamera
+	camera.set_process(false)
+	var focus: Vector2 = _camera_focus_screen()
+	_check(camera.is_turning() and _unit_screen_point(turns.current_unit).distance_to(focus) > 32.0,
+		"이어하기로 연 전투는 1배 가운데에서 출발해 행동 유닛으로 턴 이동을 시작함")
+	camera.advance(0.4)
+	_check(_unit_screen_point(turns.current_unit).distance_to(focus) <= 1.0, "이어하기 뒤 행동 유닛이 기준점 F에 옴")
+	camera.set_process(true)
+	await process_frame
+
+
 func _test_overload_and_water_guidance() -> void:
 	root.size = Vector2i(1280, 720)
 	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
@@ -3006,6 +3359,8 @@ func _test_overload_and_water_guidance() -> void:
 	robot.cell = Vector2i(8, 1)
 	battle.call("_update_turn_ui")
 	await process_frame
+	# #624: 이 검사는 화면 좌표로 칸을 누른다. 따라가기를 손 조작(C 키)으로 멈추고 가운데에 세운다.
+	(battle.get_node("Camera") as CombatCamera).reset()
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
 	var water: Vector2i = Vector2i(3, 10)
 	var dry: Vector2i = Vector2i(2, 8)

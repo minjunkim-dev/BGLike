@@ -669,6 +669,8 @@ func _test_rock_scene_input() -> void:
 	root.add_child(scene)
 	battle.set_process(false)
 	battle.call("start_battle")
+	# #624: 화면 좌표로 누르는 검사라 카메라가 행동 유닛을 따라 움직이지 않게 한다(따라가기는 combat_hud_test가 본다).
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -926,6 +928,7 @@ func _test_crate_stage() -> void:
 	root.add_child(scene)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var units: Array[CombatUnit] = battle.get("units")
@@ -958,6 +961,7 @@ func _test_crate_scene_input() -> void:
 	root.add_child(scene)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var actions: CombatActions = battle.get("actions") as CombatActions
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -3935,6 +3939,7 @@ func _test_own_turn_enemy_opportunity() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -4000,6 +4005,7 @@ func _test_scene_input() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var actions: CombatActions = battle.get("actions") as CombatActions
@@ -4051,6 +4057,7 @@ func _test_scene_input() -> void:
 	root.add_child(overlap)
 	overlap.set_process(false)
 	overlap.call("start_battle")
+	(overlap.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var overlap_units: Array[CombatUnit] = overlap.get("units")
 	var overlap_turns: CombatTurns = overlap.get("turns") as CombatTurns
@@ -4087,6 +4094,7 @@ func _test_scene_ally_shove() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -4129,6 +4137,7 @@ func _test_isometric_unit_occlusion() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -4188,6 +4197,7 @@ func _test_terrain_hidden_unit_outline() -> void:
 		root.add_child(battle)
 		battle.set_process(false)
 		battle.call("start_battle")
+		(battle.get_node("Camera") as CombatCamera).set_process(false)
 		await process_frame
 		var units: Array[CombatUnit] = battle.get("units")
 		var map: CombatMap = battle.get_node("Map") as CombatMap
@@ -4358,6 +4368,7 @@ func _test_jump_scene_input() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var actions: CombatActions = battle.get("actions") as CombatActions
@@ -4413,6 +4424,7 @@ func _test_jump_slip_note() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var actions: CombatActions = battle.get("actions") as CombatActions
@@ -4458,6 +4470,7 @@ func _test_jump_scene_animation() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var actor: CombatUnit = units[0]
@@ -4521,6 +4534,7 @@ func _test_height_scene_input() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -4556,6 +4570,7 @@ func _test_height_scene_input() -> void:
 	(battle.get("progress") as CombatActProgress).stage_index = 1
 	battle.call("_start_stage", true)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	_check(actions.grid.heights == battle.stages[1].heights
 		and units[0].position == map.map_to_local(units[0].cell),
 		"다음 실제 스테이지의 높이로 교체하고 fixture 높이를 이어받지 않음")
@@ -4572,6 +4587,7 @@ func _test_blocked_scene_input() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -4591,6 +4607,7 @@ func _test_blocked_scene_input() -> void:
 	(battle.get("progress") as CombatActProgress).stage_index = 1
 	battle.call("_start_stage", true)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	_check(actions.grid.blocked_cells == battle.stages[1].get_blocked_cells() and not actions.grid.is_blocked(blocked)
 		and map.get_used_cells().size() == 196, "다음 스테이지는 막힌 칸 fixture를 이어받지 않음")
 	_check(not map.has_node("BlockedCell"), "다음 스테이지에서 막힌 칸 표시 정리")
@@ -4607,6 +4624,7 @@ func _test_scene_fall_feedback() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -4637,6 +4655,7 @@ func _test_pit_scene_input() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -4655,6 +4674,7 @@ func _test_pit_scene_input() -> void:
 	(battle.get("progress") as CombatActProgress).stage_index = 1
 	battle.call("_start_stage", true)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	_check(actions.grid.pits.is_empty() and map.get_used_cells().size() == 196,
 		"다음 실제 스테이지는 낭떠러지 fixture를 이어받지 않고 평면이 아니어도 바닥196칸(14×14) 복귀")
 	battle.queue_free()
@@ -4670,6 +4690,7 @@ func _test_pit_scene_victory() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
@@ -4708,6 +4729,7 @@ func _test_scene_bow_bash() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
