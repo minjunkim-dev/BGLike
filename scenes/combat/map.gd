@@ -392,6 +392,9 @@ func show_threat(cells: Array[Vector2i]) -> void:
 			move_child(overlay, first_movement)
 			first_movement += 1
 		_threat_overlays.append(overlay)
+	# 이동 면이 없으면 위협 면이 맨 뒤에 붙으므로 발밑 칸을 다시 위로 올린다.
+	if _turn_tile != null:
+		move_child(_turn_tile, -1)
 
 
 func show_rock_roll(origin: Vector2i, roll: CombatActions.RockRoll) -> void:

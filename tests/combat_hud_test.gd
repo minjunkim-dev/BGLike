@@ -292,6 +292,11 @@ func _test_turn_tile_map() -> void:
 	_check(not tile.visible, "(-1, -1)이면 숨김")
 	map.show_turn_tile(Vector2i(0, 0), false)
 	_check(tile.visible, "다시 부르면 보임")
+	map.show_movement([], [], [], Vector2i.ZERO)
+	map.show_threat([Vector2i(0, 0)])
+	_check(map._overlays.is_empty() and tile.get_index() == map.get_child_count() - 1,
+		"이동 면 없이 위협 면을 그려도 발밑 칸이 맵 자식의 맨 뒤")
+	map.show_threat([])
 	map.build_grid(grid, load("res://scenes/combat/floor_tiles.tres") as TileSet)
 	_check(not map._turn_tile.visible, "격자를 다시 만들면 숨겨짐")
 	map.show_turn_tile(Vector2i(0, 1), false)
