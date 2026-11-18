@@ -85,9 +85,10 @@ func play_sweep(actor: CombatUnit, direction: Vector2) -> void:
 
 
 ## 기절·화상·독·넘어짐이 걸렸거나 화상·독 틱이 났을 때. kind는 효과 폴더 이름과 같다.
-func play_status(unit: CombatUnit, kind: String) -> void:
+## at은 대상이 지금 선 칸의 표면이다. 밀려난 직후에는 unit.position이 아직 떠난 칸에 있어서 칸으로 놓는다.
+func play_status(at: Vector2, kind: String) -> void:
 	if STATUS_FRAME_COUNTS.has(kind) and kind != "ignite":
-		_play_on_unit(kind, unit)
+		_spawn(kind, at + (UNIT_EFFECT_CENTER - UNIT_EFFECT_ANCHOR) * 0.5, false)
 
 
 ## 기름이 탄 칸 하나의 불기둥. at은 칸 표면이다.

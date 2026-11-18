@@ -135,10 +135,10 @@ func _ready() -> void:
 			hit_effects.play_sweep(actor, map.map_to_local(facing) - map.map_to_local(actor.cell)))
 	actions.status_applied.connect(func(target: CombatUnit, kind: String) -> void:
 		if not _replaying():
-			hit_effects.play_status(target, kind))
+			hit_effects.play_status(map.map_to_surface(target.cell), kind))
 	actions.status_ticked.connect(func(unit: CombatUnit, kind: String, _amount: int) -> void:
 		if not _replaying():
-			hit_effects.play_status(unit, kind))
+			hit_effects.play_status(map.map_to_surface(unit.cell), kind))
 	actions.oil_ignited.connect(func(cells: Array[Vector2i]) -> void:
 		if not _replaying():
 			for cell: Vector2i in cells:

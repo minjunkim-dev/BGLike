@@ -323,7 +323,6 @@ func _test_hit_effects() -> void:
 	_check(effects.get_child_count() == 0, "이펙트 도중 대상이 해제되어도 정리된다")
 
 
-## 스킬 효과(#634). 신호를 직접 보내 전투 장면의 연결을 본다.
 ## 상태 이상 효과(#635): 신호마다 맞는 폴더의 효과가 한 번 재생되고, 4배속에서 줄며, 이어하기 재실행에서는 없다.
 func _test_status_effects() -> void:
 	var units: Array[CombatUnit] = battle.get("units")
@@ -362,6 +361,16 @@ func _test_status_effects() -> void:
 	_check(fires.size() > 0 and fires[0].position.distance_to(map.map_to_surface(cells[0])) < 20.0,
 		"점화 효과는 칸 표면 근처에 놓인다")
 	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.0)
+	# 밀려나 기름에 미끄러진 순간처럼 칸만 바뀌고 그림 위치는 아직 떠난 칸이다.
+	var departure: Vector2i = unit.cell
+	unit.cell = departure + Vector2i(1, 0)
+	actions.status_applied.emit(unit, "fallen")
+	await process_frame
+	var dust: Array[Node] = _sprites(effects)
+	_check(dust.size() == 1 and dust[0].position.distance_to(map.map_to_surface(unit.cell)) < dust[0].position.distance_to(map.map_to_surface(departure)),
+		"상태 효과는 떠난 칸이 아니라 대상이 지금 선 칸에 놓인다")
+	unit.cell = departure
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.0)
 	Engine.time_scale = 4.0
 	var started: int = Time.get_ticks_msec()
 	actions.status_applied.emit(unit, "stun")
@@ -384,6 +393,7 @@ func _test_status_effects() -> void:
 	battle.set("_turn_actions", turn_actions)
 
 
+## 스킬 효과(#634). 신호를 직접 보내 전투 장면의 연결을 본다.
 func _test_skill_effects() -> void:
 	var units: Array[CombatUnit] = battle.get("units")
 	var actions: CombatActions = battle.get("actions") as CombatActions

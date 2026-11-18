@@ -92,7 +92,7 @@ class DrawStatusEffectsTest(unittest.TestCase):
         start = gd.index("const STATUS_FRAME_COUNTS")
         line = gd[start:gd.index("\n", start)]
         for folder, (count, _) in EFFECTS.items():
-            self.assertIn('"%s": %d' % (folder, count), line, folder)
+            self.assertRegex(line, r'"%s": %d\b' % (folder, count), folder)
 
     def test_committed_pngs_equal_the_script_output(self):
         with tempfile.TemporaryDirectory() as output:
