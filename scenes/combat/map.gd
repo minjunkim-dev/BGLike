@@ -15,12 +15,19 @@ var _prop_markers: Array[Node2D] = []
 var _loot_markers: Array[Node2D] = []
 var _unit_markers: Array[Node2D] = []
 var _height_edges: Array[Node2D] = []
+## 행동 유닛 발밑 칸 표시(#623). 하나를 계속 쓰고 숨기기만 해, 나타남 Tween이 갱신마다 끊기지 않게 한다.
+var _turn_tile: Polygon2D
+var _turn_tile_tween: Tween
 static var _edge_textures: Dictionary[String, Texture2D] = {}
 ## 바위 굴림·사물 충격 연출의 기본 시간(초). 쓸 때 전체 속도 계수로 늘린다.
 const ROCK_MOVE_TIME: float = 0.14
 const ROCK_TILT_TIME: float = 0.07
 const ROCK_SHAKE_TIME: float = 0.035
 const IMPACT_FADE_TIME: float = 0.3
+## 발밑 칸 표시의 색·채움 알파와 나타남의 기본 시간(초). 시간은 쓸 때 전체 속도 계수로 늘린다(#516 1절).
+const TURN_TILE_COLOR: Color = Color("f4cf69")
+const TURN_TILE_FILL_ALPHA: float = 0.25
+const TURN_TILE_FADE_TIME: float = 0.2
 const EDGE_FRONT: int = 2
 const EDGE_LIGHT: Color = Color(1.0, 0.95, 0.8, 0.55)
 const EDGE_DARK: Color = Color(0.06, 0.05, 0.04, 0.7)
@@ -40,6 +47,7 @@ func build_grid(combat_grid: CombatGrid, floors: TileSet, stage: CombatStage = n
 		effect.free()
 	grid = combat_grid
 	reveal_units([])
+	show_turn_tile(Vector2i(-1, -1), false)
 	clear()
 	show_movement([], [], [], Vector2i.ZERO)
 	show_threat([])
@@ -314,6 +322,47 @@ func show_movement(cells: Array[Vector2i], attack_cells: Array[Vector2i],
 		marker.draw.connect(func() -> void: marker.draw_circle(center, 3.0, Color("f4cf69"), false))
 		add_child(marker)
 		_overlays.append(marker)
+
+
+## 행동 유닛이 선 칸의 윗면 마름모에 금색 테두리와 옅은 채움을 그린다(#516 1절).
+## `appear`가 참이면 알파 0에서 나타나고, 거짓이면 진행 중인 나타남을 건드리지 않고 칸만 옮긴다. (-1, -1)이면 숨긴다.
+func show_turn_tile(cell: Vector2i, appear: bool) -> void:
+	if cell == Vector2i(-1, -1) or tile_set == null:
+		if _turn_tile != null:
+			if _turn_tile_tween != null and _turn_tile_tween.is_valid():
+				_turn_tile_tween.kill()
+			_turn_tile.modulate.a = 1.0
+			_turn_tile.visible = false
+		return
+	var half: Vector2 = Vector2(tile_set.tile_size) / 2.0
+	if _turn_tile == null:
+		_turn_tile = Polygon2D.new()
+		_turn_tile.color = Color(TURN_TILE_COLOR, TURN_TILE_FILL_ALPHA)
+		var edge: Line2D = Line2D.new()
+		edge.closed = true
+		edge.width = 1.0
+		edge.default_color = TURN_TILE_COLOR
+		_turn_tile.add_child(edge)
+		add_child(_turn_tile)
+	_turn_tile.position = map_to_local(cell)
+	var center: Vector2 = map_to_surface(cell) - _turn_tile.position
+	_turn_tile.polygon = PackedVector2Array([
+		center + Vector2(0, -half.y), center + Vector2(half.x, 0),
+		center + Vector2(0, half.y), center + Vector2(-half.x, 0)
+	])
+	(_turn_tile.get_child(0) as Line2D).points = _turn_tile.polygon
+	# 같은 칸의 위협·이동 면·장판·바닥 아이템 위, 유닛 아래에 둔다.
+	move_child(_turn_tile, -1)
+	var was_visible: bool = _turn_tile.visible
+	_turn_tile.visible = true
+	if appear:
+		if _turn_tile_tween != null and _turn_tile_tween.is_valid():
+			_turn_tile_tween.kill()
+		_turn_tile.modulate.a = 0.0
+		_turn_tile_tween = create_tween()
+		_turn_tile_tween.tween_property(_turn_tile, "modulate:a", 1.0, CombatPresentation.duration(TURN_TILE_FADE_TIME))
+	elif not was_visible:
+		_turn_tile.modulate.a = 1.0
 
 
 ## 적의 위협 범위(#556). 이동 범위 아래에 붉은 면과 윤곽만 그린다. 꼭짓점 표시가 없어 모양으로도 이동 범위와 구분된다.
