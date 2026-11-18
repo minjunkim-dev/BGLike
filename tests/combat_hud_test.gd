@@ -53,6 +53,7 @@ func _run() -> void:
 	_check("이니셔티브" not in hud.message_label.text, "전투 시작 로그에 이니셔티브 계산식 없음")
 	_test_square_map()
 	_test_movement_overlay()
+	await _test_turn_tile_map()
 	_test_threat_overlay()
 	await _test_floor_loot_ui()
 	_test_height_edges()
@@ -89,6 +90,8 @@ func _run() -> void:
 	await _test_reaction_focus()
 	_test_presentation_speed()
 	await _test_presentation_move_time()
+	await _test_turn_tile_battle()
+	await _test_turn_tile_steps()
 	await _test_action_animations()
 	var previous_fps: int = Engine.max_fps
 	var previous_scale: float = Engine.time_scale
@@ -229,6 +232,81 @@ func _test_movement_overlay() -> void:
 	map.show_movement([], [], [], Vector2i.ZERO)
 	_check(map._overlays.is_empty(), "이동 표시를 닫으면 면·윤곽·경로를 함께 제거")
 	map.free()
+
+
+## #623: 행동 유닛 발밑 칸 표시(#516 1절). 맵 함수 단독 검사.
+func _test_turn_tile_map() -> void:
+	var grid: CombatGrid = CombatGrid.new()
+	grid.map_size = Vector2i(3, 2)
+	grid.heights[Vector2i(1, 0)] = 1
+	var map: CombatMap = CombatMap.new()
+	root.add_child(map)
+	map.build_grid(grid, load("res://scenes/combat/floor_tiles.tres") as TileSet)
+	_check(is_equal_approx(CombatMap.TURN_TILE_FADE_TIME, 0.2), "발밑 칸 나타남의 기본 시간은 0.2초")
+	map.show_movement([Vector2i(1, 0)], [], [], Vector2i.ZERO)
+	map.show_turn_tile(Vector2i(1, 0), true)
+	var tile: Polygon2D = map._turn_tile
+	_check(tile != null and tile.visible, "발밑 칸 표시가 그려짐")
+	if tile == null:
+		map.free()
+		return
+	var center: Vector2 = Vector2.ZERO
+	for point: Vector2 in tile.polygon:
+		center += point / tile.polygon.size()
+	_check(tile.polygon.size() == 4 and (tile.position + center).is_equal_approx(map.map_to_surface(Vector2i(1, 0))),
+		"높이 있는 바닥에서도 칸 윗면 가운데에 마름모를 그림")
+	_check(tile.color.is_equal_approx(Color(Color("f4cf69"), 0.25)), "채움은 금색 #f4cf69 알파 0.25")
+	var border: Line2D = tile.get_child(0) as Line2D
+	_check(tile.get_child_count() == 1 and border != null and border.closed and border.points == tile.polygon
+		and is_equal_approx(border.width, 1.0) and border.default_color.is_equal_approx(Color("f4cf69")),
+		"테두리는 닫힌 금색 1px 선 하나이고 꺾쇠는 없음")
+	_check(tile.z_index <= 0, "유닛 가림 마커보다 아래")
+	_check(tile.get_index() == map.get_child_count() - 1, "같은 칸의 이동 범위 면보다 위(맵 자식의 맨 뒤)")
+	_check(is_zero_approx(tile.modulate.a), "나타남은 알파 0에서 시작")
+	var tween: Tween = map._turn_tile_tween
+	_check(tween != null and tween.is_valid(), "나타남은 Tween으로 진행")
+	if tween != null:
+		tween.pause()
+		var expected: float = CombatPresentation.duration(CombatMap.TURN_TILE_FADE_TIME)
+		tween.custom_step(expected - 0.002)
+		_check(tile.modulate.a > 0.0 and tile.modulate.a < 1.0, "나타남이 끝나기 직전에는 알파가 1 미만")
+		tween.custom_step(0.004)
+		_check(is_equal_approx(tile.modulate.a, 1.0), "계수 적용 시간 %s초 뒤 알파 1" % expected)
+		# 위치만 옮기는 갱신은 나타남을 다시 돌리지 않는다.
+		map.show_turn_tile(Vector2i(2, 1), false)
+		_check(is_equal_approx(tile.modulate.a, 1.0), "위치만 옮기면 알파를 건드리지 않음")
+	var moved: Vector2 = Vector2.ZERO
+	for point: Vector2 in tile.polygon:
+		moved += point / tile.polygon.size()
+	_check((tile.position + moved).is_equal_approx(map.map_to_surface(Vector2i(2, 1))), "칸을 옮기면 새 칸 윗면으로 이동")
+	# 나타남 도중의 위치 갱신은 진행 중인 알파를 그대로 둔다.
+	map.show_turn_tile(Vector2i(0, 0), true)
+	var running: Tween = map._turn_tile_tween
+	running.pause()
+	running.custom_step(0.05)
+	var halfway: float = tile.modulate.a
+	map.show_turn_tile(Vector2i(1, 1), false)
+	_check(is_equal_approx(tile.modulate.a, halfway) and map._turn_tile_tween == running and running.is_valid(),
+		"나타남 도중에 위치만 옮겨도 알파와 Tween을 건드리지 않음")
+	map.show_turn_tile(Vector2i(-1, -1), false)
+	_check(not tile.visible, "(-1, -1)이면 숨김")
+	map.show_turn_tile(Vector2i(0, 0), false)
+	_check(tile.visible, "다시 부르면 보임")
+	map.show_movement([], [], [], Vector2i.ZERO)
+	map.show_threat([Vector2i(0, 0)])
+	_check(map._overlays.is_empty() and tile.get_index() == map.get_child_count() - 1,
+		"이동 면 없이 위협 면을 그려도 발밑 칸이 맵 자식의 맨 뒤")
+	map.show_threat([])
+	map.build_grid(grid, load("res://scenes/combat/floor_tiles.tres") as TileSet)
+	_check(not map._turn_tile.visible, "격자를 다시 만들면 숨겨짐")
+	map.show_turn_tile(Vector2i(0, 1), false)
+	var rebuilt: Vector2 = Vector2.ZERO
+	for point: Vector2 in map._turn_tile.polygon:
+		rebuilt += point / map._turn_tile.polygon.size()
+	_check(map._turn_tile.visible and (map._turn_tile.position + rebuilt).is_equal_approx(map.map_to_surface(Vector2i(0, 1))),
+		"격자를 다시 만든 뒤에도 새 격자에 맞게 그려짐")
+	map.free()
+	await process_frame
 
 
 func _test_threat_overlay() -> void:
@@ -2926,30 +3004,30 @@ func _test_overload_and_water_guidance() -> void:
 		"켜진 뒤 로봇 초상 호버는 켜짐 표시")
 	robot.hit_points = robot.get_max_hit_points()
 	robot.overloaded = false
-	# 물 칸 규칙은 그 칸에 서기 전, 걷기·점프의 첫 우클릭 미리보기에서 읽는다. 1-3의 물은 (2,8)·(3,8)이다.
-	units[0].cell = Vector2i(3, 6)
-	units[1].cell = Vector2i(1, 6)
+	# 물 칸 규칙은 그 칸에 서기 전, 걷기·점프의 첫 우클릭 미리보기에서 읽는다. 1-3의 물은 (3,10)·(4,10)이다.
+	units[0].cell = Vector2i(3, 8)
+	units[1].cell = Vector2i(1, 8)
 	robot.cell = Vector2i(8, 1)
 	battle.call("_update_turn_ui")
 	await process_frame
 	var map: TileMapLayer = battle.get_node("Map") as TileMapLayer
-	var water: Vector2i = Vector2i(3, 8)
-	var dry: Vector2i = Vector2i(2, 6)
+	var water: Vector2i = Vector2i(3, 10)
+	var dry: Vector2i = Vector2i(2, 8)
 	var water_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(water)
 	var dry_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(dry)
 	var selection: CombatSelection = battle.get("selection") as CombatSelection
 	var note: String = "물 칸: 화상 해제 · 새 화상 걸리지 않음\n물: 명중굴림 불리"
 	_check(water in actions.grid.water_cells and dry not in actions.grid.water_cells, "#503 전제조건: 1-3 물 칸 배치")
 	await _click(water_point, MOUSE_BUTTON_RIGHT)
-	_check(selection.preview_cell == water and units[0].cell == Vector2i(3, 6)
+	_check(selection.preview_cell == water and units[0].cell == Vector2i(3, 8)
 		and hud.preview_label.visible and hud.preview_label.text == note,
 		"물 칸 걷기 첫 우클릭은 이동하지 않고 물 칸 화상 규칙을 보임: " + hud.preview_label.text)
 	await _click(dry_point, MOUSE_BUTTON_RIGHT)
-	_check(selection.preview_cell == dry and units[0].cell == Vector2i(3, 6) and not hud.preview_label.visible,
+	_check(selection.preview_cell == dry and units[0].cell == Vector2i(3, 8) and not hud.preview_label.visible,
 		"물이 아닌 칸 걷기 미리보기는 지금처럼 안내를 숨김")
 	hud.action_selected.emit("jump")
 	await _click(water_point, MOUSE_BUTTON_RIGHT)
-	_check(selection.preview_cell == water and units[0].cell == Vector2i(3, 6) and hud.preview_label.visible
+	_check(selection.preview_cell == water and units[0].cell == Vector2i(3, 8) and hud.preview_label.visible
 		and hud.preview_label.text.begins_with("점프 · 이동 2 · 보조 행동1\n")
 		and hud.preview_label.text.ends_with("\n" + note),
 		"물 칸 점프 첫 우클릭은 기존 점프 안내 끝에 물 칸 화상 규칙: " + hud.preview_label.text)
@@ -3661,6 +3739,132 @@ func _test_presentation_speed() -> void:
 			"attack 애니메이션 fps에 계수 적용: " + direction)
 		_check(is_equal_approx(frames.get_animation_speed("idle_" + direction), 3.0),
 			"idle 애니메이션 fps는 그대로: " + direction)
+
+
+func _turn_tile_center(map: CombatMap) -> Vector2:
+	var center: Vector2 = Vector2.ZERO
+	for point: Vector2 in map._turn_tile.polygon:
+		center += point / map._turn_tile.polygon.size()
+	return map._turn_tile.position + center
+
+
+func _turn_tile_on(unit: CombatUnit) -> bool:
+	var map: CombatMap = battle.map
+	return (map._turn_tile != null and map._turn_tile.visible
+		and _turn_tile_center(map).is_equal_approx(map.map_to_surface(unit.cell)))
+
+
+## #623: 전투 장면에서 발밑 칸 표시가 행동 유닛을 따라간다.
+func _test_turn_tile_battle() -> void:
+	var map: CombatMap = battle.map
+	_reset_units()
+	units[0].cell = Vector2i(4, 9)
+	units[1].cell = Vector2i(5, 9)
+	units[2].cell = Vector2i(4, 2)
+	units[3].cell = Vector2i(8, 2)
+	battle.call("_update_turn_ui")
+	_check(turns.current_unit == units[0] and _turn_tile_on(units[0]), "아군 행동 유닛의 칸에 발밑 표시")
+	_check(units[0].is_selected and not units[1].is_selected, "금색 몸 윤곽은 행동 유닛에만 켜져 있음")
+	# 같은 아군 턴 묶음 안의 유닛 전환(Tab·초상)은 나타남을 다시 돌린다.
+	_check(turns.select_unit(units[1]), "같은 묶음의 다른 아군을 고를 수 있음")
+	battle.call("_update_turn_ui")
+	_check(_turn_tile_on(units[1]) and is_zero_approx(map._turn_tile.modulate.a), "유닛 전환 때 새 칸에서 알파 0으로 나타남을 다시 시작")
+	# 같은 유닛으로 다시 갱신하면 나타남을 다시 돌리지 않는다.
+	var running: Tween = map._turn_tile_tween
+	running.pause()
+	running.custom_step(0.05)
+	var halfway: float = map._turn_tile.modulate.a
+	units[1].cell = Vector2i(6, 9)
+	battle.call("_update_turn_ui")
+	_check(_turn_tile_on(units[1]) and map._turn_tile_tween == running and is_equal_approx(map._turn_tile.modulate.a, halfway) and halfway > 0.0,
+		"같은 유닛의 갱신은 칸만 옮기고 나타남을 다시 돌리지 않음")
+	# 턴이 적으로 넘어오면 적도 같다.
+	ScriptedDice.arrange_turns(turns, units, [units[2], units[3], units[0], units[1]])
+	battle.call("_update_turn_ui")
+	_check(turns.current_unit == units[2] and _turn_tile_on(units[2]) and is_zero_approx(map._turn_tile.modulate.a),
+		"적 행동 유닛의 칸에도 같은 표시가 새로 나타남")
+	_check(units[2].is_selected and not units[0].is_selected, "금색 몸 윤곽은 적 행동 유닛에도 지금처럼 켜짐")
+	# 행동 유닛이 전투 불능이면 숨긴다.
+	units[2].hit_points = 0
+	battle.call("_update_turn_ui")
+	_check(not map._turn_tile.visible, "행동 유닛이 전투 불능이면 숨김")
+	_reset_units()
+	battle.call("_update_turn_ui")
+	_check(_turn_tile_on(units[0]), "다시 살아난 행동 유닛의 칸에 표시")
+	# 전투 시작 전 지도 준비 중에는 아무의 턴도 아니라 그리지 않는다.
+	battle.set("waiting_for_start", true)
+	battle.call("_update_turn_ui")
+	_check(not map._turn_tile.visible, "전투 시작 전에는 숨김")
+	battle.set("waiting_for_start", false)
+	battle.call("_update_turn_ui")
+	_check(_turn_tile_on(units[0]) and is_zero_approx(map._turn_tile.modulate.a), "전투가 시작되면 첫 행동 유닛에서 나타남")
+	# 전투가 끝나면 숨긴다.
+	units[2].hit_points = 0
+	units[3].hit_points = 0
+	_check(actions.is_over(), "적이 모두 쓰러지면 전투가 끝남")
+	# 결과 화면 같은 다른 갱신을 건드리지 않게 표시 갱신만 부른다.
+	battle.call("_refresh_turn_tile")
+	_check(not map._turn_tile.visible, "전투가 끝나면 숨김")
+	_reset_units()
+	units[0].cell = Vector2i(4, 4)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(8, 8)
+	units[3].cell = Vector2i(9, 9)
+	battle.call("_update_turn_ui")
+	await process_frame
+
+
+## #623: 이동·점프 연출이 칸마다 도착한 칸으로 표시를 옮긴다.
+func _test_turn_tile_steps() -> void:
+	var map: CombatMap = battle.map
+	_reset_units()
+	units[0].cell = Vector2i(4, 4)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(8, 8)
+	units[3].cell = Vector2i(9, 9)
+	battle.call("_update_turn_ui")
+	for jump: bool in [false, true]:
+		var destination: Vector2i = Vector2i(4, 3) if not jump else Vector2i(4, 2)
+		var mover: CombatUnit = units[0]
+		var before: Array[Tween] = get_processed_tweens()
+		battle.call("_animate_jump" if jump else "_animate_movement", mover, destination)
+		var tween: Tween = null
+		for candidate: Tween in get_processed_tweens():
+			if candidate not in before:
+				tween = candidate
+		_check(tween != null, "이동 연출 Tween이 생김: " + ("점프" if jump else "걸음"))
+		if tween == null:
+			continue
+		var fade: Tween = map._turn_tile_tween
+		tween.pause()
+		tween.custom_step(0.01)
+		_check(_turn_tile_on(mover) and map._turn_tile.visible and _turn_tile_center(map).is_equal_approx(map.map_to_surface(mover.cell)),
+			"도착하기 전에는 출발 칸에 있음")
+		tween.custom_step(1.0)
+		await process_frame
+		_check(_turn_tile_center(map).is_equal_approx(map.map_to_surface(destination)), "도착하면 도착한 칸으로 옮겨 감")
+		_check(map._turn_tile_tween == fade, "칸을 옮겨도 나타남을 다시 돌리지 않음")
+		mover.cell = destination
+		battle.call("_update_turn_ui")
+		_check(_turn_tile_on(mover), "행동이 끝난 갱신도 같은 칸")
+	# 행동 유닛이 아닌 유닛의 이동은 표시를 옮기지 않는다.
+	var other: CombatUnit = units[1]
+	var stay: Vector2 = _turn_tile_center(map)
+	var before_other: Array[Tween] = get_processed_tweens()
+	battle.call("_animate_movement", other, Vector2i(0, 1))
+	for candidate: Tween in get_processed_tweens():
+		if candidate not in before_other:
+			candidate.pause()
+			candidate.custom_step(1.0)
+	await process_frame
+	_check(_turn_tile_center(map).is_equal_approx(stay), "행동 유닛이 아닌 유닛의 이동은 표시를 옮기지 않음")
+	_reset_units()
+	units[0].cell = Vector2i(4, 4)
+	units[1].cell = Vector2i(0, 0)
+	units[2].cell = Vector2i(8, 8)
+	units[3].cell = Vector2i(9, 9)
+	battle.call("_update_turn_ui")
+	await process_frame
 
 
 func _test_presentation_move_time() -> void:

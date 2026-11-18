@@ -45,6 +45,8 @@ var _replay_actions: int = 0
 ## #345: 지도를 보고 명시적으로 전투를 시작한다. 적 선공도 이때까지 기다린다.
 ## #395: 지도 준비에서는 정비를 열지 않는다. 정비는 승리 뒤 보상 확인 다음에만 연다.
 var waiting_for_start: bool = true
+## 발밑 칸 표시가 지금 따라가는 유닛(#623). 숨김이면 null이다. 바뀔 때만 나타남을 다시 돌린다.
+var _turn_tile_unit: CombatUnit
 var staging: HBoxContainer
 var start_button: Button
 
@@ -1023,6 +1025,7 @@ func _animate_movement(unit: CombatUnit, cell: Vector2i) -> void:
 	unit.position = destination
 	unit.body_offset_y = 0.0
 	unit.is_moving = false
+	_follow_turn_tile(unit, cell)
 
 
 func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
@@ -1045,6 +1048,7 @@ func _animate_jump(unit: CombatUnit, cell: Vector2i) -> void:
 	unit.position = destination
 	unit.body_offset_y = 0.0
 	unit.is_moving = false
+	_follow_turn_tile(unit, cell)
 	sounds.play(&"land")
 
 
@@ -1089,6 +1093,23 @@ func _animate_attack_at(actor: CombatUnit, destination: Vector2) -> void:
 	tween.tween_property(arrow, "position", destination, CombatPresentation.duration(ARROW_FLIGHT_TIME))
 	await tween.finished
 	arrow.queue_free()
+
+
+## 행동 유닛이 선 칸에 발밑 표시를 둔다(#516 1절). 전투 시작 전·전투 끝·전투 불능이면 숨긴다.
+func _refresh_turn_tile() -> void:
+	var unit: CombatUnit = turns.current_unit
+	if unit == null or unit.hit_points <= 0 or waiting_for_start or actions.is_over():
+		_turn_tile_unit = null
+		map.show_turn_tile(Vector2i(-1, -1), false)
+		return
+	map.show_turn_tile(unit.cell, unit != _turn_tile_unit)
+	_turn_tile_unit = unit
+
+
+## 이동·점프 한 칸이 도착하면 행동 유닛의 표시를 도착한 칸으로 옮긴다. 나타남은 다시 돌리지 않는다.
+func _follow_turn_tile(unit: CombatUnit, cell: Vector2i) -> void:
+	if unit == _turn_tile_unit:
+		map.show_turn_tile(cell, false)
 
 
 func _update_turn_ui() -> void:
@@ -1157,6 +1178,7 @@ func _update_turn_ui() -> void:
 	map.show_floor_loot(actions.floor_loot.drops)
 	map.show_props(actions.get_props(), selection.preview_prop)
 	_refresh_threat()
+	_refresh_turn_tile()
 	map.reveal_units(units)
 	# 가림 판정은 방금 그린 사물 위치를 사용한다.
 	for unit: CombatUnit in units:

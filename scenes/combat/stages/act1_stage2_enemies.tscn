@@ -6,4 +6,4 @@
 
 [node name="NoviceBarbarian" parent="." instance=ExtResource("1_unit")]
 is_ally = false
-start_cell = Vector2i(7, 4)
+start_cell = Vector2i(10, 2)
