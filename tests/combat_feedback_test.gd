@@ -375,11 +375,12 @@ func _test_status_effects() -> void:
 	var started: int = Time.get_ticks_msec()
 	actions.status_applied.emit(unit, "stun")
 	await process_frame
+	var fast_spawned: bool = _sprites(effects).size() == 1
 	while effects.get_child_count() > 0 and Time.get_ticks_msec() - started < 2000:
 		await process_frame
 	var fast_msec: int = Time.get_ticks_msec() - started
 	Engine.time_scale = 1.0
-	_check(fast_msec < 200, "4배속에서는 1배속 기절 길이(333ms)보다 짧은 실제 시간에 끝난다: %dms" % fast_msec)
+	_check(fast_spawned and fast_msec < 200, "4배속에서는 1배속 기절 길이(333ms)보다 짧은 실제 시간에 끝난다: %dms" % fast_msec)
 	await create_timer(0.1).timeout
 	var turn_actions: int = battle.get("_turn_actions")
 	battle.set("_turn_actions", 0)
