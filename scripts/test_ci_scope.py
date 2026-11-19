@@ -41,7 +41,9 @@ class ScopeTests(unittest.TestCase):
             self.assertTrue(game_required({"before": "a" * 40}))
 
     def test_full_pull_request_diff_uses_no_renames(self):
-        with patch("ci_scope.subprocess.check_output", return_value="README.md\n") as run:
+        # CI checks out a test merge; say HEAD has no second parent so the event base is used
+        with patch("ci_scope.subprocess.run", return_value=subprocess.CompletedProcess([], 1)), \
+                patch("ci_scope.subprocess.check_output", return_value="README.md\n") as run:
             self.assertFalse(game_required({"pull_request": {"base": {"sha": "b" * 40}}}))
             self.assertEqual(run.call_args.args[0], ["git", "diff", "--no-renames", "--name-only", "b" * 40, "HEAD"])
 
