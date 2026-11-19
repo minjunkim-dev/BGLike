@@ -53,14 +53,27 @@ jobs:
         run: make godot-install
       # With the runner's 53 fonts (none Korean) visible, Godot's fallback font lookup made combat scene
       # setup several times slower (#430). Searching only the Noto CJK folder keeps real Hangul metrics and halves that time.
-      - name: Limit fonts to Noto CJK
+      # The fonts come from the Actions cache; apt runs only on a miss (a slow mirror once took 15 minutes).
+      - name: Restore Noto CJK fonts
+        id: fonts-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/noto
+          key: fonts-noto-cjk-ubuntu-24.04-v1
+      - name: Install Noto CJK fonts
+        if: steps.fonts-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 5
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends fonts-noto-cjk >/dev/null
+          mkdir -p "$RUNNER_TEMP/noto"
+          cp /usr/share/fonts/opentype/noto/* "$RUNNER_TEMP/noto/"
+      - name: Limit fonts to Noto CJK
+        run: |
           cat > "$RUNNER_TEMP/fonts.conf" <<EOF
           <?xml version="1.0"?>
           <fontconfig>
-            <dir>/usr/share/fonts/opentype/noto</dir>
+            <dir>$RUNNER_TEMP/noto</dir>
             <cachedir>$RUNNER_TEMP/fontconfig</cachedir>
           </fontconfig>
           EOF
