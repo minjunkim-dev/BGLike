@@ -30,7 +30,7 @@ CodeQL은 default setup이다(repo-baseline 템플릿 기본값 `configured`). �
 
 ## 공통 기준과 관측 기록
 
-2026-11에 repo-baseline 재설계([repo-baseline#71](https://github.com/minjunkim-labs/repo-baseline/issues/71))에 맞춰 해시 복사(`.github/repo-baseline.json`)·`Review status`·`PR policy` workflow와 그 검사기를 지웠다. 리뷰 기준은 [REVIEW.md](../../../REVIEW.md)다. 기준선의 `observations`는 설명용 관측 기록이며 감사 항목을 제외하지 않는다.
+2026-11에 repo-baseline 재설계([repo-baseline#71](https://github.com/minjunkim-labs/repo-baseline/issues/71))에 맞춰 `Review status`·`PR policy` workflow와 그 검사기를 지웠다. 해시 복사(`.github/repo-baseline.json`)는 repo-baseline 동기화([repo-baseline#165](https://github.com/minjunkim-labs/repo-baseline/pull/165))로 다시 쓴다. 그 manifest가 PR 양식과 `AGENTS.md` ops 블록을 맞추고, 동기화 PR은 `baseline/sync-…` 브랜치로 온다. 리뷰 기준은 [REVIEW.md](../../../REVIEW.md)다. 기준선의 `observations`는 설명용 관측 기록이며 감사 항목을 제외하지 않는다.
 
 ## 과거 Bugbot 확인 기록
 
