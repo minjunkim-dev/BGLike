@@ -548,3 +548,4 @@
 | 마법 피해 경감(저항) | 도입하지 않음. 폐지 후보 | [#357](https://github.com/minjunkim-labs/BGLike/issues/357) |
 | 속성(피해 유형) 시스템 | 원소 속성 화염·물은 정함(2026-11-09, [동작 유형 기획서](skill-types.md)의 ⑦ 축). 물리/마법, 저항·취약·면역은 보류 | [#357](https://github.com/minjunkim-labs/BGLike/issues/357) |
 | 능력치 모양 배분 원칙 | 전사·궁수 외 직업 기획 때 | 직업 기획 |
+| 장비 데이터 필드의 의미 (4-6) | `attack_bonus`는 공격 가산, `defense_bonus`는 방어 가산. 구현은 [#321](https://github.com/minjunkim-labs/BGLike/issues/321)에서 이 의미로 옮김 | 기획자 확인 |
