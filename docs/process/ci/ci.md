@@ -50,9 +50,9 @@ python3 ~/.agents/tools/agent_workflow.py check -- env GODOT=/Applications/Godot
 Ubuntu 24.04에서 로컬과 같은 `make godot-install`, `make godot-check`를 호출합니다.
 엔진 버전·해시는 `scripts/godot.env`를 따릅니다. [공통 환경](environment.md)에 새 환경 설치와 캐시 없는 실행을 기록합니다.
 검사 실패를 통과로 처리하지 않습니다. PR 병합 전에 `PR conventions and scope`와 선택된 `smoke` 결과를 함께 확인합니다.
-`CI` 작업은 `always()`로 두 하위 작업의 결과를 확인합니다.
-policy 성공과 `game=true`·smoke 성공 조합만 게임 검사를 통과합니다.
-policy 성공과 `game=false`·smoke skipped 조합만 문서 검사 생략을 허용합니다.
+`CI` 작업은 `always()`로 policy·scope·smoke의 결과를 확인합니다.
+policy·scope 성공과 `game=true`·smoke 성공 조합만 게임 검사를 통과합니다.
+policy·scope 성공과 `game=false`·smoke skipped 조합만 문서 검사 생략을 허용합니다. scope는 `game`을 먼저 쓰고 공백 검사를 하므로, 공백 검사가 실패해도 `game=false`가 남습니다. 그래서 `CI`는 scope 결과도 성공이어야 통과시킵니다.
 실패·취소·누락·알 수 없는 scope 또는 결과는 `CI`를 실패 처리합니다.
 판정 job `ci`는 `policy`, `scope`와 `CI` 작업의 결과를 받아 모두 성공일 때만 통과합니다. `CI`는 `scope`가 고른 `game` 값으로 smoke 결과를 판정합니다. `smoke`는 문서 변경에서 skipped가 정상이라 `CI`가 판정합니다. 필수 체크 기대값은 `ci` 하나입니다([저장소 설정](repository-setup.md)).
 `policy / PR conventions and scope`, `smoke`, `CI`의 이름은 세부 job으로 유지합니다. 실제 required check 등록 여부는 GitHub 보호 API로 따로 확인합니다.
