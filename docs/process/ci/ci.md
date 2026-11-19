@@ -42,7 +42,7 @@ Godot는 스크립트 파싱 오류에도 0으로 끝납니다. 그래서 각 �
 빠른 로컬 확인은 등록된 회귀 스크립트 한 개를 같은 검사기로 선택합니다.
 
 ```sh
-python3 ~/.agents/tools/agent_workflow.py check -- env GODOT=/Applications/Godot.app/Contents/MacOS/Godot bash scripts/check_godot.sh tests/combat_ai_test.gd
+GODOT=/Applications/Godot.app/Contents/MacOS/Godot bash scripts/check_godot.sh tests/combat_ai_test.gd
 ```
 
 엔진 확인·import·메인 장면 검사는 유지하고 선택한 회귀 검사만 실행합니다. 오류 로그·종료 코드·취소 정리도 전체 검사와 같습니다. 알려지지 않은 경로와 둘 이상의 인자는 Godot 실행 전에 거부합니다. `make check`와 CI는 인자 없이 기존 전체 검사를 실행합니다.
