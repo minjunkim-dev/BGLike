@@ -16,8 +16,7 @@ permissions:
 
 jobs:
   lint:
-    # The server still requires this check by name (docs/process/workflow.md), so it keeps "and scope".
-    name: PR conventions and scope
+    name: PR conventions and lint
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
