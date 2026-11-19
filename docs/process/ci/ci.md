@@ -5,11 +5,10 @@ Godot 워크플로는 main push, main 대상 PR, 머지 큐(`merge_group`)와 �
 
 ## 검사 선택
 
-첫 작업은 재사용 PR lint의 `PR conventions and scope`입니다.
+게임 검사 선택과 공백 검사는 `scope` job(`Select checks`)이 합니다. smoke는 이 job만 기다리고, 재사용 PR lint `policy / PR conventions and scope`(Python 테스트·actionlint·제목·브랜치)와 동시에 돕니다. 예전에는 smoke가 policy 전체(약 50초)를 기다렸습니다. policy의 job 이름은 아직 서버가 이 이름으로 요구해서 바꾸지 않습니다.
 선택기는 PR 기준 SHA, 머지 큐의 `merge_group.base_sha` 또는 main push의 before SHA에서 가져옵니다. PR의 바뀐 파일은 GitHub이 만든 시험 병합 커밋의 첫 부모(지금의 main)와 비교합니다. PR 이벤트의 기준 SHA는 브랜치가 갈라진 지점일 수 있고, 그 뒤 main에 들어온 파일이 PR의 변경으로 잡혀 문서 PR도 smoke를 돌렸기 때문입니다([#681](https://github.com/minjunkim-labs/BGLike/pull/681)). PR이 수정한 선택기로 자신의 엔진 검사를 생략하지 않습니다.
 기준 선택기가 없으면 엔진 검사를 선택합니다. 새 선택기 규칙은 main 반영 뒤 후속 변경부터 사용합니다.
-전체 PR diff, 머지 큐의 base SHA와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인하고 Python 회귀 테스트를 실행합니다.
-PR에서는 제목과 브랜치 규칙도 검사합니다. 머지 큐 실행은 PR에서 본 제목·브랜치 단계를 건너뜁니다.
+`scope`는 전체 PR diff, 머지 큐의 base SHA와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인합니다. policy는 Python 회귀 테스트를 실행하고, PR에서는 제목과 브랜치 규칙도 검사합니다. 머지 큐 실행은 PR에서 본 제목·브랜치 단계를 건너뜁니다.
 
 로컬 `make repository-check`와 `make check`는 `scripts/check_whitespace.py`로
 `origin/main`과 HEAD의 공통 기준점부터 커밋된 변경, 스테이징, 미스테이징 변경을 각각 검사합니다.
@@ -32,8 +31,8 @@ policy와 `make repository-check`는 전체 scripts 탐색으로 Python 테스�
 edited 전용 lint 검사는 제목 변경을 빠르게 확인하는 보조 검사입니다.
 
 Godot 작업은 headless import, 메인 장면 시작과 기존 전투·저장 회귀 테스트를 모두 수행합니다.
-import와 메인 장면 검사 뒤 전투·저장 테스트를 두 자리에서 병렬 실행합니다.
-가장 긴 `combat_save_test`를 먼저 시작하고 나머지 테스트는 빈 자리가 생기는 대로 차례로 실행합니다.
+import와 메인 장면 검사 뒤 전투·저장 테스트를 세 자리에서 병렬 실행합니다.
+가장 긴 `combat_save_test`는 스테이지를 둘로 나눠(`-- 0/2`, `-- 1/2`) 두 프로세스로 먼저 시작하고, 나머지 테스트는 빈 자리가 생기는 대로 차례로 실행합니다. 스테이지마다 시드와 전투를 새로 만들어 나눠 돌려도 검사 내용은 같습니다. `bash scripts/check_godot.sh tests/combat_save_test.gd`로 하나만 고르면 나누지 않고 전부 돌립니다.
 각 테스트의 출력은 줄마다 `[테스트 이름 경과 초]`를 붙여 바로 내보냅니다. 시작과 종료 코드도 같은 형식으로 남깁니다. 두 테스트의 줄이 섞여도 접두어로 구분합니다. 테스트가 끝난 뒤 5초 안에 출력이 끝나지 않으면 실패로 처리합니다. 테스트가 `SCRIPT ERROR`나 `Failed to load script`를 출력하면 끝나기를 기다리지 않고 그 테스트의 프로세스 그룹을 멈추고 실패로 처리합니다. 런타임 스크립트 오류가 나면 테스트가 `quit()`에 닿지 않아 Godot가 끝나지 않기 때문입니다. 멈춘 뒤에 나올 출력은 남지 않습니다. 작업이 시간 제한으로 취소돼도 어느 테스트·단계까지 진행했는지 로그에 남습니다.
 모든 테스트의 성공을 요구합니다.
 
@@ -55,7 +54,7 @@ Ubuntu 24.04에서 로컬과 같은 `make godot-install`, `make godot-check`를 
 policy 성공과 `game=true`·smoke 성공 조합만 게임 검사를 통과합니다.
 policy 성공과 `game=false`·smoke skipped 조합만 문서 검사 생략을 허용합니다.
 실패·취소·누락·알 수 없는 scope 또는 결과는 `CI`를 실패 처리합니다.
-판정 job `ci`는 `policy`와 `CI` 작업의 결과를 받아 둘 다 성공일 때만 통과합니다. `smoke`는 문서 변경에서 skipped가 정상이라 `CI`가 판정합니다. 필수 체크 기대값은 `ci` 하나입니다([저장소 설정](repository-setup.md)).
+판정 job `ci`는 `policy`, `scope`와 `CI` 작업의 결과를 받아 모두 성공일 때만 통과합니다. `CI`는 `scope`가 고른 `game` 값으로 smoke 결과를 판정합니다. `smoke`는 문서 변경에서 skipped가 정상이라 `CI`가 판정합니다. 필수 체크 기대값은 `ci` 하나입니다([저장소 설정](repository-setup.md)).
 `policy / PR conventions and scope`, `smoke`, `CI`의 이름은 세부 job으로 유지합니다. 실제 required check 등록 여부는 GitHub 보호 API로 따로 확인합니다.
 재사용 작업의 실제 check 이름은 호출 작업 이름을 포함할 수 있습니다. GitHub의 해당 실행에서 이름을 확인한 뒤 보호 규칙에 지정합니다.
 policy는 Python 회귀 검사 뒤 전체 workflow에 actionlint 1.7.12를 실행합니다.
