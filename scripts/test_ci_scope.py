@@ -67,6 +67,35 @@ class ScopeTests(unittest.TestCase):
             finally:
                 os.chdir(original)
 
+    def test_pull_request_behind_main_counts_only_its_own_changes(self):
+        original = Path.cwd()
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                os.chdir(directory)
+                def git(*args):
+                    return subprocess.check_output(["git", "-c", "user.name=CI Test",
+                        "-c", "user.email=ci@example.invalid", "-c", "commit.gpgsign=false", *args],
+                        text=True, stderr=subprocess.DEVNULL).strip()
+                git("init", "-b", "main")
+                Path("README.md").write_text("baseline\n")
+                git("add", ".")
+                git("commit", "-m", "baseline")
+                base = git("rev-parse", "HEAD")
+                git("checkout", "-b", "feature")
+                Path("AGENTS.md").write_text("docs only\n")
+                git("add", ".")
+                git("commit", "-m", "docs")
+                git("checkout", "main")
+                Path(".coderabbit.yaml").write_text("language: ko-KR\n")
+                git("add", ".")
+                git("commit", "-m", "main moved on")
+                git("merge", "--no-ff", "feature", "-m", "GitHub test merge")
+                # The event still names the old base, as GitHub did for BGLike#681
+                self.assertFalse(game_required({"pull_request": {"base": {"sha": base}}}))
+                self.assertTrue(game_required({"before": base}))  # a push still counts everything since before
+            finally:
+                os.chdir(original)
+
     def test_fallback_detects_whitespace_in_a_pull_request_merge(self):
         original = Path.cwd()
         with tempfile.TemporaryDirectory() as directory:

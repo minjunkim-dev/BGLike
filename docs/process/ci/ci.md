@@ -6,7 +6,7 @@ Godot 워크플로는 main push, main 대상 PR, 머지 큐(`merge_group`)와 �
 ## 검사 선택
 
 첫 작업은 재사용 PR lint의 `PR conventions and scope`입니다.
-선택기는 PR 기준 SHA, 머지 큐의 `merge_group.base_sha` 또는 main push의 before SHA에서 가져옵니다. PR이 수정한 선택기로 자신의 엔진 검사를 생략하지 않습니다.
+선택기는 PR 기준 SHA, 머지 큐의 `merge_group.base_sha` 또는 main push의 before SHA에서 가져옵니다. PR의 바뀐 파일은 GitHub이 만든 시험 병합 커밋의 첫 부모(지금의 main)와 비교합니다. PR 이벤트의 기준 SHA는 브랜치가 갈라진 지점일 수 있고, 그 뒤 main에 들어온 파일이 PR의 변경으로 잡혀 문서 PR도 smoke를 돌렸기 때문입니다([#681](https://github.com/minjunkim-labs/BGLike/pull/681)). PR이 수정한 선택기로 자신의 엔진 검사를 생략하지 않습니다.
 기준 선택기가 없으면 엔진 검사를 선택합니다. 새 선택기 규칙은 main 반영 뒤 후속 변경부터 사용합니다.
 전체 PR diff, 머지 큐의 base SHA와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인하고 Python 회귀 테스트를 실행합니다.
 PR에서는 제목과 브랜치 규칙도 검사합니다. 머지 큐 실행은 PR에서 본 제목·브랜치 단계를 건너뜁니다.
@@ -37,7 +37,7 @@ import와 메인 장면 검사 뒤 전투·저장 테스트를 두 자리에서 
 각 테스트의 출력은 줄마다 `[테스트 이름 경과 초]`를 붙여 바로 내보냅니다. 시작과 종료 코드도 같은 형식으로 남깁니다. 두 테스트의 줄이 섞여도 접두어로 구분합니다. 테스트가 끝난 뒤 5초 안에 출력이 끝나지 않으면 실패로 처리합니다. 테스트가 `SCRIPT ERROR`나 `Failed to load script`를 출력하면 끝나기를 기다리지 않고 그 테스트의 프로세스 그룹을 멈추고 실패로 처리합니다. 런타임 스크립트 오류가 나면 테스트가 `quit()`에 닿지 않아 Godot가 끝나지 않기 때문입니다. 멈춘 뒤에 나올 출력은 남지 않습니다. 작업이 시간 제한으로 취소돼도 어느 테스트·단계까지 진행했는지 로그에 남습니다.
 모든 테스트의 성공을 요구합니다.
 
-CI는 검사 전에 `fonts-noto-cjk`를 설치하고 `FONTCONFIG_FILE`로 fontconfig가 Noto CJK 폴더만 찾게 합니다. 프로젝트는 글꼴을 넣지 않아 한글을 운영체제의 대체 글꼴로 그립니다([화면 확인 기준](../capture-verification.md)). Ubuntu 러너에는 한글 글꼴이 없습니다. 기본 글꼴 53개를 모두 찾게 두면 전투 장면 하나를 만드는 시간이 여러 배로 늘어, 장면을 수백 번 만드는 `combat_save_test`가 20분 제한에 닿았습니다([#430](https://github.com/minjunkim-labs/BGLike/issues/430)). 한글 글꼴만 더 설치하면 찾을 글꼴이 늘어 빨라지지 않습니다. 시스템 글꼴을 모두 끈 실행에서는 HUD 피해 팝업 위치 검사가 한 번 실패했고 원인은 확인하지 않았습니다. 그래서 Noto CJK 폴더의 글꼴만 찾게 해 화면 밖 확인과 같은 Noto Sans CJK의 실제 한글 글자 폭으로 검사합니다. `fonts-noto-cjk` 버전은 고정하지 않습니다. 패키지가 바뀌어 글자 폭에 기대는 검사 결과가 달라지면 smoke 실패로 드러납니다. 설치 뒤 한국어 Noto Sans CJK가 보이지 않으면 이 단계가 실패합니다.
+CI는 검사 전에 `fonts-noto-cjk`의 글꼴을 Actions 캐시에서 받고(캐시가 없을 때만 apt로 설치합니다) `FONTCONFIG_FILE`로 fontconfig가 Noto CJK 폴더만 찾게 합니다. 프로젝트는 글꼴을 넣지 않아 한글을 운영체제의 대체 글꼴로 그립니다([화면 확인 기준](../capture-verification.md)). Ubuntu 러너에는 한글 글꼴이 없습니다. 기본 글꼴 53개를 모두 찾게 두면 전투 장면 하나를 만드는 시간이 여러 배로 늘어, 장면을 수백 번 만드는 `combat_save_test`가 20분 제한에 닿았습니다([#430](https://github.com/minjunkim-labs/BGLike/issues/430)). 한글 글꼴만 더 설치하면 찾을 글꼴이 늘어 빨라지지 않습니다. 시스템 글꼴을 모두 끈 실행에서는 HUD 피해 팝업 위치 검사가 한 번 실패했고 원인은 확인하지 않았습니다. 그래서 Noto CJK 폴더의 글꼴만 찾게 해 화면 밖 확인과 같은 Noto Sans CJK의 실제 한글 글자 폭으로 검사합니다. apt 미러가 느려 설치에 15분이 걸려 smoke가 20분 제한에 닿은 적이 있어 매번 설치하지 않습니다. 글꼴은 캐시 키(`fonts-noto-cjk-ubuntu-24.04-v1`)가 바뀔 때까지 같은 파일입니다. 새 패키지를 받으려면 키의 `v` 숫자를 올립니다. 그때 글자 폭에 기대는 검사 결과가 달라지면 smoke 실패로 드러납니다. 글꼴을 받은 뒤 한국어 Noto Sans CJK가 보이지 않으면 이 단계가 실패합니다.
 Godot는 스크립트 파싱 오류에도 0으로 끝납니다. 그래서 각 단계의 `SCRIPT ERROR`나 `Failed to load script` 출력도 실패로 처리합니다.
 
 빠른 로컬 확인은 등록된 회귀 스크립트 한 개를 같은 검사기로 선택합니다.
