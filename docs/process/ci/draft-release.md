@@ -14,7 +14,7 @@
 1. 최종 PR의 독립 리뷰와 CI를 확인합니다.
 2. 최종 head의 권한 변경과 Draft 생성에 대한 사람 승인을 받습니다.
 3. 승인된 PR을 `main`에 병합합니다.
-4. 병합 SHA의 `.github/workflows/godot.yml` `push` CI와 필수 `CI` 작업 성공을 확인합니다.
+4. 병합 SHA의 `.github/workflows/godot.yml` `push` CI와 필수 `ci` 작업 성공을 확인합니다.
 5. Actions에서 `Verification Draft`의 `main`을 선택합니다. 버전과 병합 SHA를 입력합니다.
 6. 요청 실행과 연결된 `Verification Draft Build` 실행을 확인합니다. 요청만 성공한 상태를 Draft 완료로 처리하지 않습니다.
 
@@ -34,7 +34,7 @@ main 밖 SHA와 실패한 CI는 source 실행 전에 차단합니다.
 
 ### 대상 확인과 백업
 
-1. 사용자 승인 범위에 해당 버전의 재빌드와 미공개 Draft 갱신이 포함되는지 확인합니다. 버전·source 전체 SHA·산출물을 고정하고 해당 SHA의 `push main` CI와 필수 `CI` 성공을 확인합니다. 승인 범위가 부족하면 준비를 마친 뒤 workflow 실행 전에 승인을 받습니다.
+1. 사용자 승인 범위에 해당 버전의 재빌드와 미공개 Draft 갱신이 포함되는지 확인합니다. 버전·source 전체 SHA·산출물을 고정하고 해당 SHA의 `push main` CI와 필수 `ci` 성공을 확인합니다. 승인 범위가 부족하면 준비를 마친 뒤 workflow 실행 전에 승인을 받습니다.
 2. `gh api repos/<owner>/<repo>/releases --paginate`에서 정확한 버전의 `name` 또는 `tag_name`을 찾고 release ID를 기록합니다. 한 건이어야 하며 `draft: true`, `prerelease: true`를 확인합니다. 공개 Release나 실제 Git tag가 있으면 이 절차로 교체하지 않습니다.
 3. Draft 상세 조회는 `gh api repos/<owner>/<repo>/releases/<id>`를 사용합니다. `releases/tags/<version>`의 404만으로 Draft가 없다고 판단하지 않습니다.
 4. 원본 Release JSON과 asset 전부를 작업 폴더 밖의 새 백업 폴더에 저장합니다. asset 크기·제공된 GitHub digest·`SHA256SUMS`, ZIP metadata의 기존 source SHA·엔진 pin·내부 파일 hash를 확인합니다. 로컬 묶음 검증은 `scripts/draft_release.py`의 `verify_bundle()`을 재사용할 수 있습니다. 이 함수에 전달하는 폴더에는 ZIP과 `SHA256SUMS` 두 파일만 둡니다.

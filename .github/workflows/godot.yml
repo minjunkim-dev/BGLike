@@ -130,39 +130,27 @@ jobs:
             "${ENGINE_VERSION:-unknown}" "${CACHE_RESULT:-unknown}" "$cache_hit" \
             "${ARCHIVE_SOURCE:-unknown}" "${INSTALL_RESULT:-unknown}" >> "$GITHUB_STEP_SUMMARY"
 
-  # Old required check, kept until the owner applies the single `ci` check; then fold it into `ci`.
-  legacy-ci:
-    name: CI
+  # The one required check (repo-baseline contract). policy and scope must succeed before the gate script runs,
+  # so a broken ci_gate.py cannot pass them; the script then judges smoke against the selected scope.
+  ci:
+    name: ci
     needs: [policy, scope, smoke]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 2
+    env:
+      POLICY_RESULT: ${{ needs.policy.result }}
+      SCOPE_RESULT: ${{ needs.scope.result }}
+      GAME_REQUIRED: ${{ needs.scope.outputs.game }}
+      SMOKE_RESULT: ${{ needs.smoke.result }}
     steps:
+      - name: policy and scope succeeded
+        run: '[ "$POLICY_RESULT" = success ] && [ "$SCOPE_RESULT" = success ] || { echo "policy=$POLICY_RESULT scope=$SCOPE_RESULT"; exit 1; }'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Require every selected check
-        env:
-          POLICY_RESULT: ${{ needs.policy.result }}
-          SCOPE_RESULT: ${{ needs.scope.result }}
-          GAME_REQUIRED: ${{ needs.scope.outputs.game }}
-          SMOKE_RESULT: ${{ needs.smoke.result }}
         run: python3 scripts/ci_gate.py
-
-  # The one required check (repo-baseline contract): it passes only when every job it needs succeeded.
-  # policy and scope are needed directly so their failure blocks even if ci_gate.py breaks; smoke is not,
-  # because it is skipped on docs-only changes and legacy-ci already judges it.
-  ci:
-    name: ci
-    needs: [policy, scope, legacy-ci]
-    if: always()
-    runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    steps:
-      - name: every job succeeded
-        env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: for r in $RESULTS; do [ "$r" = success ] || { echo "a job ended with $r"; exit 1; }; done
 
   notify:
     needs: [policy, scope, smoke]
