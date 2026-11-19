@@ -53,19 +53,25 @@ Godot 4 싱글 플레이 PC 게임입니다. 여러 사람이 함께 개발합�
 - 같은 실수가 두 번 나오면 린트·검사로 막고, 그다음 `REVIEW.md` 한 줄, 그다음 이 파일의 길잡이 순서로 고친다.
 - 작업 추적은 GitHub Issue 하나만 쓴다. 내부 트래커(예: Linear)는 쓰지 않는다. 일정·우선순위·기획 판단도 공개 Issue와 `docs/`에 적는다. repo-baseline 코어 `AGENTS.md`의 "우선순위·일정·내부 판단을 공개 이슈·PR·커밋에 적지 않는다" 줄은 이 저장소에 적용하지 않는다.
 
+<!-- repo-baseline:ops -->
 ### ops
 
-- repo-baseline ops 프로필의 도구를 모두 쓴다. 빼는 도구는 이 절에 `뺀 도구: 도구 — 이유` 한 줄로 적는다. 다른 도구를 더하려면 먼저 소유자에게 묻는다.
-- 코드·의존성 보안(GitHub secret scanning, push protection, Dependabot, CodeQL)과 GitGuardian은 켜져 있다. CodeQL은 기본 설정을 먼저 쓰고, 기본 설정으로 분석이 안 될 때만 고급 설정 workflow를 쓴다. 그 이유는 저장소 문서에 적는다. secret scanning, push protection, Dependabot은 조직 기본값으로 켜고, 기존 저장소는 github 프로필 절차로 맞춘다. GitGuardian은 조직에 설치한 GitHub App으로 돈다. 저장소에서 끄지 않는다.
-- 에러 추적은 Sentry, 제품 분석은 PostHog다. SDK는 처음 배포하는 PR에서 붙인다. 이미 배포한 앱이면 이 절을 붙인 뒤 따로 여는 PR에서 붙인다.
+- repo-baseline ops 프로필의 도구를 모두 쓴다. 빼는 도구는 이 블록 끝에 `뺀 도구: 도구 — 이유` 한 줄로 적고 그 도구의 줄을 지운다. 다른 도구를 더하려면 먼저 소유자에게 묻는다.
+- 코드·의존성 보안(GitHub secret scanning, push protection, Dependabot, CodeQL)은 켜져 있다. CodeQL은 기본 설정을 먼저 쓰고, 기본 설정으로 분석이 안 될 때만 고급 설정 workflow를 쓴다. 그 이유는 저장소 문서에 적는다. secret scanning, push protection, Dependabot은 조직 기본값으로 켜고, 기존 저장소는 github 프로필 절차로 맞춘다. 저장소에서 끄지 않는다.
+- GitGuardian은 조직에 설치한 GitHub App으로 돈다. 저장소에서 끄지 않는다.
+- 에러 추적은 Sentry다.
+- 제품 분석은 PostHog다.
+- SDK는 처음 배포하는 PR에서 붙인다. 이미 배포한 앱이면 이 블록을 붙인 뒤 따로 여는 PR에서 붙인다.
 - 배포한 URL은 UptimeRobot에 소유자가 등록한다.
-- 서버를 직접 운영하게 되면 Grafana Cloud, 비밀값이 세 곳을 넘으면 Infisical을 켠다. 켜기 전에 소유자에게 알린다.
-- 비밀값 이름은 `SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `POSTHOG_KEY`, `POSTHOG_HOST`다. `.env.example`에 빈 칸으로 둔다.
-- `SENTRY_AUTH_TOKEN`은 GitHub secrets에만 둔다.
+- 서버를 직접 운영하게 되면 Grafana Cloud를 켠다. 켜기 전에 소유자에게 알린다.
+- 비밀값이 세 곳을 넘으면 Infisical을 켠다. 켜기 전에 소유자에게 알린다.
+- Sentry 비밀값 이름은 `SENTRY_DSN`, `SENTRY_AUTH_TOKEN`이다. `.env.example`에 빈 칸으로 둔다. `SENTRY_AUTH_TOKEN`은 GitHub secrets에만 둔다.
+- PostHog 비밀값 이름은 `POSTHOG_KEY`, `POSTHOG_HOST`다. `.env.example`에 빈 칸으로 둔다.
 - 개인 정보는 분석 이벤트에 넣지 않는다. 세션 녹화를 켜면 입력 필드와 개인 정보를 보여 주는 화면 요소를 가린다.
 - SDK를 처음 붙이거나 보내는 데이터를 넓히는 PR은 되돌리기 어려움이다(POLICY §4 다른 사람 데이터의 노출).
-- DNS, 감시 대상 변경은 소유자가 한다.
+- 감시 대상 변경은 소유자가 한다.
 - 뺀 도구: Cloudflare — 웹 도메인이 없는 데스크톱 게임
+<!-- /repo-baseline:ops -->
 
 ## 하지 않는 것
 

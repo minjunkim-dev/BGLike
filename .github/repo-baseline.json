@@ -1,0 +1,19 @@
+{
+  "files": {
+    ".github/pull_request_template.md": {
+      "source": ".github/pull_request_template.md",
+      "sha256": "2743f77ecf254d76a7f6cf01089eef1aa323cda5595b75a64f770de2eeb0122d"
+    }
+  },
+  "blocks": {
+    "ops": {
+      "target": "AGENTS.md",
+      "exclude": {
+        "Cloudflare": "웹 도메인이 없는 데스크톱 게임"
+      },
+      "sha256": "e0c3d017535e50b8db5dab6c58963c2326ba98e08bfa77fc2c1d5478fbc685b5"
+    }
+  },
+  "source": "minjunkim-labs/repo-baseline",
+  "source_commit": "6a08e44373156926a9212c53f3a1aa01669d39c0"
+}
