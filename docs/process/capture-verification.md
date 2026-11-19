@@ -127,8 +127,7 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 2. 도우미로 다음 미완료 사례 하나를 실행한다. 도우미가 실행 중일 때 파일을 수정하거나 다른 검사를 시작하지 않는다.
 
    ```sh
-   python3 ~/.agents/tools/agent_workflow.py check -- \
-     python3 scripts/manual_qa.py run /tmp/plan.json /tmp/bglike-qa-session-01
+   python3 scripts/manual_qa.py run /tmp/plan.json /tmp/bglike-qa-session-01
    ```
 
    macOS 창 실행은 모든 명령(`run`·`status`·`accept`·`reject`)에 `--mode macos`를 붙인다. 한 세션 폴더는 한 실행 방법만 쓴다. 다른 방법은 새 세션 폴더를 사용한다.
@@ -212,12 +211,11 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 먼저 [Draft 검증](ci/draft-release.md)의 `verify_draft.py`로 대상 artifact를 확인한다. 그 출력의 `assets/`와 전체 source SHA를 전달한다. 하네스는 기존 `verify_bundle()`로 bundle을 다시 확인하고 `manual_qa.load_plan()`으로 하네스 checkout·입력의 fingerprint를 기록한다. artifact source와 하네스 HEAD는 별도 식별자다.
 
 ```sh
-python3 ~/.agents/tools/agent_workflow.py check -- \
-  python3 scripts/qa_movement.py \
-    --bundle /path/to/verified-draft/assets \
-    --version v0.1.0-alpha.3 --source-sha <artifact의 전체 SHA> \
-    --output /path/to/new-movement-evidence \
-    --godot /Applications/Godot.app/Contents/MacOS/Godot
+python3 scripts/qa_movement.py \
+  --bundle /path/to/verified-draft/assets \
+  --version v0.1.0-alpha.3 --source-sha <artifact의 전체 SHA> \
+  --output /path/to/new-movement-evidence \
+  --godot /Applications/Godot.app/Contents/MacOS/Godot
 ```
 
 출력은 checkout 밖의 새 폴더만 받으며 기존 기록을 덮어쓰지 않는다. 복사한 하네스와 PCK를 headless·임시 HOME/XDG에서 실행한다. `inputs.json`, 엔진·문법·실행 로그, `fixtures.json`을 남기고, 다섯 사례와 negative control까지 통과해야 `result.json`을 만든다. 실패 원인과 로그는 보존하고 다른 폴더로 재시도한다. 고정 `/tmp` 경로나 원래 세션의 파일은 필요 없다.

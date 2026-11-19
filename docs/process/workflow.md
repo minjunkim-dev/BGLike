@@ -59,7 +59,7 @@ GitHub 품질 운영은 1인 개발 기준입니다. 필수 승인 인원은 0�
 
 조기 공유가 필요 없는 작업은 로컬 검사를 마친 뒤 일반 PR로 생성합니다. 구현 중 방향 확인이나 조기 피드백이 필요하면 Draft를 씁니다. 생성 전에 [Godot workflow](../../.github/workflows/godot.yml)의 실행 조건을 확인합니다. Draft에서 ready로 바꾸면 같은 head도 새 CI가 시작되어 이전 실행이 취소될 수 있습니다.
 
-로컬 에이전트의 검사·CI 대기 명령은 `~/.agents/skills-docs/agent-workflow.md`를 따릅니다. 실행마다 watcher 하나를 유지하고 비동기 세션을 이어 읽어 진척을 확인합니다. 새 head나 ready 전환으로 실행이 바뀌면 이전 결과와 구분해 최종 대상 실행을 기다립니다.
+로컬 에이전트는 CI를 기다릴 때 실행마다 watcher 하나를 유지하고 비동기 세션을 이어 읽어 진척을 확인합니다. 새 head나 ready 전환으로 실행이 바뀌면 이전 결과와 구분해 최종 대상 실행을 기다립니다.
 
 watcher 오류나 로그와 API 상태의 불일치가 있으면 해당 실행의 상태·로그와 GitHub 공식 장애 상태를 추가로 대조합니다. 정상 대기 중 진척은 watcher에서 받습니다. watcher나 로그의 성공은 [병합 직전 head·base·필수 체크 확인](../agents/review.md#병합-실행)을 대신하지 않습니다.
 
