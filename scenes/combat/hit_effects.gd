@@ -19,8 +19,7 @@ const FLASH_FRAMES: Array[String] = [
 const SKILL_FRAME_COUNTS: Dictionary = {"shield": 4, "heal": 4, "buff": 4, "sweep_front": 3, "sweep_back": 3}
 ## 상태 이상 효과(#635): 폴더별 프레임 수. 그림은 draw_status_effects.py가 찍는다. 재생 규칙은 스킬 효과와 같다.
 const STATUS_FRAME_COUNTS: Dictionary = {"stun": 4, "burn": 4, "poison": 4, "fallen": 3, "ignite": 4}
-## 전투 불능 효과(#636). 그림은 draw_down_effect.py가 찍는다. 유닛 자신의 연출이라 전체 속도 계수(#516)를 곱한다.
-## 폴더별 프레임 수. 이 폴더는 유닛 자신의 연출이라 재생 속도에 전체 속도 계수를 곱한다.
+## 전투 불능 효과(#636): 폴더별 프레임 수. 그림은 draw_down_effect.py가 찍는다. 유닛 자신의 연출이라 전체 속도 계수(#516)를 곱한다.
 const DOWN_FRAME_COUNTS: Dictionary = {"down": 4}
 const DOWN_FADE_TIME: float = 0.35
 const DOWN_SINK: float = 4.0
