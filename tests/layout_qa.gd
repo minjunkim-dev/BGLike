@@ -56,6 +56,14 @@ func _run() -> void:
 	ScriptedDice.arrange_turns(turns, units, party)
 	battle.call("_update_turn_ui")
 	await _settle()
+	# 턴이 시작되면 카메라가 행동 유닛을 F로 옮긴다(#516, 0.4초). 끝난 뒤 처음 화면으로 잰다.
+	var camera: CombatCamera = battle.get("camera") as CombatCamera
+	for frame: int in range(600):
+		if not camera.is_turning():
+			break
+		await process_frame
+	ck(not camera.is_turning(), "카메라 턴 이동이 끝남")
+	await _settle()
 	var portraits: Dictionary = hud.get("_portraits")
 	var buttons: Dictionary = hud.get("_actions")
 	var visible_buttons: Array[Button] = []
@@ -135,6 +143,10 @@ func _measure(map: CombatMap, actor: CombatUnit, portraits: Dictionary, skill_bu
 	measured["hud"] = rects
 	measured["hud_overlapping_C"] = overlaps
 	measured["map_cells"] = corners
+	var actor_point: Vector2 = to_screen * map.map_to_surface(actor.cell)
+	measured["actor"] = {"cell": str(actor.cell), "x": actor_point.x, "y": actor_point.y,
+		"inside_C": center.has_point(actor_point)}
+	measured["camera"] = {"zoom": camera_zoom(), "offset_x": camera_offset().x, "offset_y": camera_offset().y}
 	measured["floor_extent"] = {"min_x": xs.min(), "max_x": xs.max(), "min_y": ys.min(), "max_y": ys.max()}
 	ck(true, "측정 기록")
 	await _capture("initial")
@@ -146,6 +158,12 @@ func _measure(map: CombatMap, actor: CombatUnit, portraits: Dictionary, skill_bu
 	measured["tooltips"] = {}
 	await _hover_capture("skill-hover", "skill", longest, center)
 	await _hover_capture("portrait-hover", "portrait", portraits[actor] as Button, center)
+
+func camera_zoom() -> float:
+	return (battle.get("camera") as CombatCamera).zoom.x
+
+func camera_offset() -> Vector2:
+	return (battle.get("camera") as CombatCamera).offset
 
 func _hover_capture(label: String, key: String, control: Control, center: Rect2) -> void:
 	var tooltip: PanelContainer = hud.get("_tooltip") as PanelContainer
