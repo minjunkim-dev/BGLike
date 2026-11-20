@@ -61,5 +61,6 @@ jobs:
         if: github.event_name == 'merge_group'
         run: python3 scripts/check_pr_title.py queue "$QUEUE_MESSAGE" "$QUEUE_AUTHOR"
       - name: Branch name
-        if: github.event_name == 'pull_request'
+        # An edited event cannot rename the branch; opened and synchronize runs check it.
+        if: github.event_name == 'pull_request' && github.event.action != 'edited'
         run: python3 scripts/check_branch_name.py "$BRANCH"
