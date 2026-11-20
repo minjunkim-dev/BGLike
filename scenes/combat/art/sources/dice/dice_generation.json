@@ -30,6 +30,7 @@
   },
   "states": [
     {"id": "rolling", "brief": "Original pixel-art die body, transparent background: neutral cream band, dark glass, no liquid, a ring of small spin-trail pixels around the body."},
+    {"id": "rolling_1", "brief": "Spin frame 1 of rolling (rolling_1..3 follow rolling as frame 0): same body, the trail marks turned 11.25 degrees further and the band highlight moved to the upper right. rolling_2 puts it lower right and rolling_3 lower left; the four frames close the 45 degree symmetry of the eight trail marks."},
     {"id": "success", "brief": "Same body with a success-green band and dark glass. The liquid is added at runtime."},
     {"id": "failure", "brief": "Same body with a failure-red band and dark glass. The liquid is added at runtime."},
     {"id": "absolute_success", "brief": "Same body with a gold band, warm dark glass and short light rays above. The runtime fills it with success liquid."},

@@ -25,6 +25,12 @@ signal self_used(actor: CombatUnit, action: String)
 signal struck(attacker: CombatUnit, target: CombatUnit, cell: Vector2i, hit: bool)
 ## 휩쓸기를 시작한 순간(#634). 표시용이며 첫 대상 공격보다 먼저 한 번 나온다.
 signal swept(actor: CombatUnit, facing: Vector2i)
+## 상태가 걸렸다(#635, 표시용). kind는 stun·burn·poison·fallen. 거부된 부여에서는 나오지 않는다.
+signal status_applied(target: CombatUnit, kind: String)
+## 턴 시작 화상·독 틱이 피해를 냈다(#635, 표시용). amount는 로그와 같은 굴린 값이다.
+signal status_ticked(unit: CombatUnit, kind: String, amount: int)
+## 기름이 점화되어 이어진 칸이 탔다(#635, 표시용). cells는 탄 기름 칸이다.
+signal oil_ignited(cells: Array[Vector2i])
 signal reaction_requested(kind: String, prompt: String)
 signal reaction_decided(use_reaction: bool)
 
@@ -572,6 +578,8 @@ func _on_turn_started(unit: CombatUnit) -> void:
 		_damage(unit, amount)
 		logged.emit(tr("%s %s: %d · HP %d") % [unit.get_display_name(), name, amount, unit.hit_points])
 		feedback.emit(unit, "%s %d" % [name, amount])
+		if revision == _revision and is_instance_valid(unit):
+			status_ticked.emit(unit, effect.kind, amount)
 	_pending_decrease = null
 	# 틱으로 쓰러졌으면 이번 몫은 쓰러질 때 이미 줄였다.
 	if revision == _revision and not is_over() and unit.hit_points > 0:
@@ -675,6 +683,7 @@ func apply_status(source: CombatUnit, target: CombatUnit, kind: String,
 		if target.get_status_count(kind) >= 3:
 			return false
 		target.status_effects.append(CombatUnit.StatusEffect.new(kind, source, 2 if kind == "burn" else 4, dc))
+	status_applied.emit(target, kind)
 	changed.emit()
 	return true
 
@@ -774,6 +783,7 @@ func _slip_roll(unit: CombatUnit) -> bool:
 	if saved.success:
 		return true
 	unit.fallen = true
+	status_applied.emit(unit, "fallen")
 	logged.emit(tr("%s 넘어짐") % unit.get_display_name())
 	feedback.emit(unit, tr("넘어짐"))
 	changed.emit()
@@ -832,6 +842,7 @@ func ignite(cell: Vector2i, igniter: CombatUnit) -> bool:
 		if ground.kind == "oil" and ground.cell in burned:
 			_grounds.erase(ground)
 	logged.emit(tr("%s 점화: 기름 %d칸") % [igniter.get_display_name(), burned.size()])
+	oil_ignited.emit(burned)
 	for unit: CombatUnit in units.duplicate():
 		if unit.hit_points > 0 and unit.cell in burned and apply_status(igniter, unit, "burn"):
 			apply_status(igniter, unit, "burn")
@@ -2196,6 +2207,7 @@ func _apply_fog(unit: CombatUnit, entering: bool) -> void:
 		return
 	# 독안개로 얻은 독 중첩은 기간이 없고(turns_left 0) 시전자가 쓰러져도 남는다. 제거 DC는 고정 4다.
 	unit.status_effects.append(CombatUnit.StatusEffect.new("poison", fogs[0].source, 0, Ground.POISON_DC))
+	status_applied.emit(unit, "poison")
 	logged.emit(tr("%s 독안개: 독 부여") % unit.get_display_name())
 	feedback.emit(unit, tr("독"))
 	changed.emit()

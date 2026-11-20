@@ -14,13 +14,6 @@
     },
     "allowed_actions": {
       "patterns_allowed": []
-    },
-    "codeql": {
-      "state": "not-configured"
-    },
-    "codeql_workflow": {
-      "path": ".github/workflows/codeql.yml",
-      "state": "active"
     }
   },
   "observations": [

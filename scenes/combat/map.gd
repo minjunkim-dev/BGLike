@@ -19,6 +19,9 @@ var _height_edges: Array[Node2D] = []
 var _turn_tile: Polygon2D
 var _turn_tile_tween: Tween
 static var _edge_textures: Dictionary[String, Texture2D] = {}
+## 높이별 벽 그림(재질·축소 텍스처·높이)과 사물 그림의 첫 불투명 줄. 바닥 그림과 높이만으로 정해져 장면을 만들 때마다 다시 칠하지 않는다.
+static var _height_art: Dictionary[String, Array] = {}
+static var _art_tops: Dictionary[Texture2D, int] = {}
 ## 바위 굴림·사물 충격 연출의 기본 시간(초). 쓸 때 전체 속도 계수로 늘린다.
 const ROCK_MOVE_TIME: float = 0.14
 const ROCK_TILT_TIME: float = 0.07
@@ -549,8 +552,9 @@ func show_props(props: Array[CombatGrid.Prop], preview: CombatGrid.Prop = null) 
 			outline.material = material
 			marker.add_child(outline)
 		if prop.kind == "crate":
-			var top: float = sprite.position.y + (sprite.texture.get_image().get_used_rect().position.y
-				+ sprite.offset.y) * 0.5 - 3.0
+			if not _art_tops.has(sprite.texture):
+				_art_tops[sprite.texture] = sprite.texture.get_image().get_used_rect().position.y
+			var top: float = sprite.position.y + (_art_tops[sprite.texture] + sprite.offset.y) * 0.5 - 3.0
 			marker.draw.connect(func() -> void:
 				marker.draw_line(Vector2(-6, top), Vector2(6, top), Color("382c21"), 2.0)
 				marker.draw_line(Vector2(-6, top), Vector2(-6 + prop.hit_points * 2, top), Color("e7bf6d"), 2.0))
@@ -625,7 +629,26 @@ func _add_height_source(height: int) -> int:
 	var size: Vector2i = tile_set.tile_size * 2
 	var rise: int = height * size.y / 2
 	var foundation: int = 16 if height >= 0 else 0
-	var floor_image: Image = (tile_set.get_source(0) as TileSetAtlasSource).texture.get_image()
+	var floor_texture: Texture2D = (tile_set.get_source(0) as TileSetAtlasSource).texture
+	var key: String = str(floor_texture.resource_path if floor_texture.resource_path else floor_texture.get_instance_id(), size, height)
+	if not _height_art.has(key):
+		_height_art[key] = _height_art_for(floor_texture, size, rise, foundation)
+	var art: Array = _height_art[key]
+	var source: TileSetAtlasSource = TileSetAtlasSource.new()
+	source.use_texture_padding = false
+	source.texture_region_size = Vector2i(size.x, art[2]) / 2
+	source.texture = art[1]
+	for index: int in range(8):
+		source.create_tile(Vector2i(index, 0))
+		source.get_tile_data(Vector2i(index, 0), 0).material = art[0]
+		source.get_tile_data(Vector2i(index, 0), 0).texture_origin = Vector2i(0, roundi((rise - foundation) / 4.0))
+		source.get_tile_data(Vector2i(index, 0), 0).y_sort_origin = -1
+	return tile_set.add_source(source)
+
+
+## 높이 하나의 벽 옆면을 칠한 그림에서 타일 재질과 축소 텍스처를 만든다. [재질, 텍스처, 그림 높이]를 돌려준다.
+static func _height_art_for(floor_texture: Texture2D, size: Vector2i, rise: int, foundation: int) -> Array:
+	var floor_image: Image = floor_texture.get_image()
 	floor_image.convert(Image.FORMAT_RGBA8)
 	var wall: Image = preload("res://scenes/combat/art/terrain/wall.png").get_image()
 	var image: Image = Image.create(size.x * 8, size.y + absi(rise) + foundation, false, Image.FORMAT_RGBA8)
@@ -653,13 +676,4 @@ func _add_height_source(height: int) -> int:
 	detail.set_shader_parameter("detail_texture", ImageTexture.create_from_image(image))
 	var proxy: Image = image.duplicate()
 	proxy.resize(image.get_width() / 2, image.get_height() / 2, Image.INTERPOLATE_NEAREST)
-	var source: TileSetAtlasSource = TileSetAtlasSource.new()
-	source.use_texture_padding = false
-	source.texture_region_size = Vector2i(size.x, image.get_height()) / 2
-	source.texture = ImageTexture.create_from_image(proxy)
-	for index: int in range(8):
-		source.create_tile(Vector2i(index, 0))
-		source.get_tile_data(Vector2i(index, 0), 0).material = detail
-		source.get_tile_data(Vector2i(index, 0), 0).texture_origin = Vector2i(0, roundi((rise - foundation) / 4.0))
-		source.get_tile_data(Vector2i(index, 0), 0).y_sort_origin = -1
-	return tile_set.add_source(source)
+	return [detail, ImageTexture.create_from_image(proxy), image.get_height()]

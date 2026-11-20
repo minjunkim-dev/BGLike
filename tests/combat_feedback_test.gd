@@ -110,6 +110,7 @@ func _run() -> void:
 	await _test_crowded_feedback()
 	await _test_hit_effects()
 	await _test_skill_effects()
+	await _test_status_effects()
 	monitoring = false
 	if observer != null:
 		_check(observer.last_error == OK and observer.frame_count > 0, "Forward+ 원본 프레임 저장")
@@ -320,6 +321,77 @@ func _test_hit_effects() -> void:
 	temporary.free()
 	await create_timer(0.5).timeout
 	_check(effects.get_child_count() == 0, "이펙트 도중 대상이 해제되어도 정리된다")
+
+
+## 상태 이상 효과(#635): 신호마다 맞는 폴더의 효과가 한 번 재생되고, 4배속에서 줄며, 이어하기 재실행에서는 없다.
+func _test_status_effects() -> void:
+	var units: Array[CombatUnit] = battle.get("units")
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var effects: Node = battle.get_node_or_null("HitEffects")
+	_check(effects != null, "상태 효과 시험: HitEffects 노드가 있다")
+	if effects == null:
+		return
+	var shader: Material = load("res://scenes/combat/art/pixel_art.tres")
+	var unit: CombatUnit = units[0]
+	var cases: Array = [
+		["stun", func() -> void: actions.status_applied.emit(unit, "stun")],
+		["burn", func() -> void: actions.status_applied.emit(unit, "burn")],
+		["poison", func() -> void: actions.status_applied.emit(unit, "poison")],
+		["fallen", func() -> void: actions.status_applied.emit(unit, "fallen")],
+		["burn", func() -> void: actions.status_ticked.emit(unit, "burn", 3)],
+		["poison", func() -> void: actions.status_ticked.emit(unit, "poison", 1)],
+	]
+	for entry: Array in cases:
+		(entry[1] as Callable).call()
+		await process_frame
+		var found: Array[Node] = _sprites(effects)
+		var path: String = found[0].sprite_frames.get_frame_texture(&"play", 0).resource_path if found.size() == 1 else ""
+		_check(found.size() == 1 and ("/%s/" % entry[0]) in path and found[0].material == shader and absf(found[0].scale.x - 0.5) < 0.001,
+			"상태 효과 %s는 pixel_art 재질의 0.5배 효과 하나: %s" % [entry[0], path])
+		var finished: bool = await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.0)
+		_check(finished, "상태 효과 %s는 한 번 재생하고 사라진다" % entry[0])
+	var map: TileMapLayer = battle.get("map")
+	var cells: Array[Vector2i] = [unit.cell, unit.cell + Vector2i(1, 0), unit.cell + Vector2i(0, 1)]
+	actions.oil_ignited.emit(cells)
+	await process_frame
+	var fires: Array[Node] = _sprites(effects)
+	var fire_path: String = fires[0].sprite_frames.get_frame_texture(&"play", 0).resource_path if fires.size() > 0 else ""
+	_check(fires.size() == cells.size() and "/ignite/" in fire_path and fires[0].material == shader,
+		"점화는 탄 칸마다 ignite 효과를 만든다: %d/%d" % [fires.size(), cells.size()])
+	_check(fires.size() > 0 and fires[0].position.distance_to(map.map_to_surface(cells[0])) < 20.0,
+		"점화 효과는 칸 표면 근처에 놓인다")
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.0)
+	# 밀려나 기름에 미끄러진 순간처럼 칸만 바뀌고 그림 위치는 아직 떠난 칸이다.
+	var departure: Vector2i = unit.cell
+	unit.cell = departure + Vector2i(1, 0)
+	actions.status_applied.emit(unit, "fallen")
+	await process_frame
+	var dust: Array[Node] = _sprites(effects)
+	_check(dust.size() == 1 and dust[0].position.distance_to(map.map_to_surface(unit.cell)) < dust[0].position.distance_to(map.map_to_surface(departure)),
+		"상태 효과는 떠난 칸이 아니라 대상이 지금 선 칸에 놓인다")
+	unit.cell = departure
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.0)
+	Engine.time_scale = 4.0
+	var started: int = Time.get_ticks_msec()
+	actions.status_applied.emit(unit, "stun")
+	await process_frame
+	var fast_spawned: bool = _sprites(effects).size() == 1
+	while effects.get_child_count() > 0 and Time.get_ticks_msec() - started < 2000:
+		await process_frame
+	var fast_msec: int = Time.get_ticks_msec() - started
+	Engine.time_scale = 1.0
+	_check(fast_spawned and fast_msec < 200, "4배속에서는 1배속 기절 길이(333ms)보다 짧은 실제 시간에 끝난다: %dms" % fast_msec)
+	await create_timer(0.1).timeout
+	var turn_actions: int = battle.get("_turn_actions")
+	battle.set("_turn_actions", 0)
+	battle.set("_replay_actions", 1)
+	actions.status_applied.emit(unit, "burn")
+	actions.status_ticked.emit(unit, "poison", 1)
+	actions.oil_ignited.emit(cells)
+	await process_frame
+	_check(effects.get_child_count() == 0, "이어하기 재실행 중에는 상태 효과를 만들지 않는다")
+	battle.set("_replay_actions", 0)
+	battle.set("_turn_actions", turn_actions)
 
 
 ## 스킬 효과(#634). 신호를 직접 보내 전투 장면의 연결을 본다.

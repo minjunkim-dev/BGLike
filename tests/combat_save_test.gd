@@ -20,9 +20,22 @@ var save_usec: Array[int] = []
 var save_bytes: Array[int] = []
 ## 아군이 반응에 답한 뒤 적 턴 중간에 저장한 스테이지 수.
 var reaction_stages: int = 0
+## CI는 스테이지를 나눠 동시에 돌린다(`-- 0/2`). 스테이지마다 시드와 전투가 따로라 나눠도 결과가 같다.
+var shard: int = 0
+var shard_count: int = 1
 
 
 func _initialize() -> void:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	if not args.is_empty():
+		var parts: PackedStringArray = args[0].split("/")
+		var valid: bool = args.size() == 1 and parts.size() == 2 and parts[0].is_valid_int() and parts[1].is_valid_int()
+		shard = int(parts[0]) if valid else -1
+		shard_count = int(parts[1]) if valid else 0
+		if shard < 0 or shard >= shard_count:
+			push_error("나눌 몫은 '번호/개수' 하나여야 함: %s" % " ".join(args))
+			quit(1)
+			return
 	_run.call_deferred()
 
 
@@ -36,17 +49,22 @@ func _check(condition: bool, message: String) -> void:
 func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(directory)
 	GameSave.path = directory + "/save.bin"
-	await _test_autosave_switch()
+	if shard == 0:
+		await _test_autosave_switch()
 	GameSave.autosave = true
-	await _test_format_state()
-	await _test_party_level_state()
-	await _test_oil_bottle_save()
-	await _test_tree_save()
+	if shard == 0:
+		await _test_format_state()
+		await _test_party_level_state()
+		await _test_oil_bottle_save()
+		await _test_tree_save()
 	for stage_index: int in range(STAGE_COUNT):
-		await _test_stage(stage_index)
+		if stage_index % shard_count == shard:
+			await _test_stage(stage_index)
 	# 흘려내기 제거(#423) 뒤 아군 반응은 기회 공격뿐이라 이 입력 규칙에서는 3-3에서만 생긴다.
-	_check(reaction_stages >= 1, "아군 반응 답을 담은 적 턴 중간 저장을 복원함: %d" % reaction_stages)
-	await _test_rejects_bad_saves()
+	if (STAGE_COUNT - 1) % shard_count == shard:
+		_check(reaction_stages >= 1, "아군 반응 답을 담은 적 턴 중간 저장을 복원함: %d" % reaction_stages)
+	if shard == shard_count - 1:
+		await _test_rejects_bad_saves()
 	GameSave.autosave = false
 	Engine.time_scale = 1.0
 	GameSave.delete()

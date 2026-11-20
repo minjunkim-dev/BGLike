@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# The save test is the longest by far, so it starts first and the rest take whichever slot frees up.
+# The save test is the longest by far, so its two stage halves start first and the rest take whichever slot frees up.
+# An entry may carry Godot user arguments after a space; the save test takes its share as "index/count".
 tests=(
-  tests/combat_save_test.gd
+  "tests/combat_save_test.gd 0/2"
+  "tests/combat_save_test.gd 1/2"
   tests/combat_{hud,ai,turns,checks,actions,progression,loot,capture,feedback,preparation_save,staging,dice_roll,warrior,archer,oil,sound}_test.gd
   tests/{save,title,pause,continue,ui_theme,music}_test.gd
 )
 if [ "$#" -gt 0 ]; then
   registered=false
   for test_script in "${tests[@]}"; do
-    if [ "$#" -eq 1 ] && [ "$1" = "$test_script" ]; then
+    if [ "$#" -eq 1 ] && [ "$1" = "${test_script%% *}" ]; then
       registered=true
       break
     fi
@@ -61,6 +63,9 @@ tests = iter(sys.argv[2:])
 active = []
 status = 0
 lock = threading.Lock()
+def label(test):
+    script, *arguments = test.split(" ")
+    return " ".join([Path(script).stem, *arguments])
 def say(name, started, text):
     with lock:
         print(f"[{name} {time.monotonic() - started:.0f}s] {text}", end="", flush=True)
@@ -92,16 +97,18 @@ signal.signal(signal.SIGINT, cancel)
 try:
     pending = True
     while pending or active:
-        while pending and len(active) < 2:
+        while pending and len(active) < 3:
             test = next(tests, None)
             if test is None:
                 pending = False
                 break
-            name = Path(test).stem
+            script, *arguments = test.split(" ")
+            name = label(test)
             started = time.monotonic()
             lines = []
             spawning = True
-            process = subprocess.Popen([sys.argv[1], "--headless", "--path", ".", "--script", test],
+            process = subprocess.Popen([sys.argv[1], "--headless", "--path", ".", "--script", script,
+                                        *(["--", *arguments] if arguments else [])],
                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                        errors="replace", start_new_session=True)
             reader = threading.Thread(target=relay, args=(name, started, process, lines), daemon=True)
@@ -123,7 +130,7 @@ try:
                 pass
             reader.join(timeout=5)
             output = "".join(lines)
-            say(Path(test).stem, started, f"finished with exit code {result}\n")
+            say(label(test), started, f"finished with exit code {result}\n")
             if reader.is_alive():
                 # Unread output could still hold a script error, so it cannot pass.
                 print(f"Godot output did not end during: --script {test}", file=sys.stderr)

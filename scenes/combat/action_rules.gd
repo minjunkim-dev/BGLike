@@ -199,6 +199,14 @@ static func resource_of(action: String) -> CombatUnit.TurnResource:
 	return CombatUnit.TurnResource.ACTION
 
 
+## 칸에 그릴 비용 기호의 자원 번호(0 행동, 1 보조 행동, 2 반응). 묶음의 자원에 함께 쓰는 보조 행동을 잇고 이동력은 기호가 없다(#517).
+static func cost_marks(action: String) -> Array[int]:
+	var marks: Array[int] = [GROUPS.find_custom(func(group: Array) -> bool: return action in group)]
+	if EXTRA_COSTS.get(action) == "bonus_action":
+		marks.append(1)
+	return marks
+
+
 ## 동작의 명중굴림 능력치. 지정이 없으면 유닛의 공격 능력치다.
 static func hit_ability(actor: CombatUnit, action: String) -> CombatUnit.Ability:
 	return HIT_ABILITIES.get(action, actor.get_attack_ability())

@@ -17,26 +17,29 @@ class CIGateTests(unittest.TestCase):
     def test_only_selected_success_or_intentional_document_skip_pass(self):
         outcomes = ["success", "failure", "cancelled", "skipped", "unknown", "", None]
         scopes = ["true", "false", "unknown", "", None, True, False]
-        accepted = {("success", "true", "success"), ("success", "false", "skipped")}
-        for policy, scope, smoke in itertools.product(outcomes, scopes, outcomes):
-            with self.subTest(policy=policy, scope=scope, smoke=smoke):
-                self.assertEqual(ci_passed(policy, scope, smoke),
-                                 (policy, scope, smoke) in accepted)
+        accepted = {("success", "success", "true", "success"), ("success", "success", "false", "skipped")}
+        for policy, selector, scope, smoke in itertools.product(outcomes, outcomes, scopes, outcomes):
+            with self.subTest(policy=policy, selector=selector, scope=scope, smoke=smoke):
+                self.assertEqual(ci_passed(policy, selector, scope, smoke),
+                                 (policy, selector, scope, smoke) in accepted)
 
     def test_cli_exit_status_handles_success_failure_and_missing_results(self):
         cases = [
-            ({"POLICY_RESULT": "success", "GAME_REQUIRED": "true",
+            ({"POLICY_RESULT": "success", "SCOPE_RESULT": "success", "GAME_REQUIRED": "true",
               "SMOKE_RESULT": "success"}, 0),
-            ({"POLICY_RESULT": "success", "GAME_REQUIRED": "false",
+            ({"POLICY_RESULT": "success", "SCOPE_RESULT": "success", "GAME_REQUIRED": "false",
               "SMOKE_RESULT": "skipped"}, 0),
-            ({"POLICY_RESULT": "success", "GAME_REQUIRED": "true",
+            ({"POLICY_RESULT": "success", "SCOPE_RESULT": "success", "GAME_REQUIRED": "true",
               "SMOKE_RESULT": "cancelled"}, 1),
-            ({"POLICY_RESULT": "failure", "GAME_REQUIRED": "false",
+            ({"POLICY_RESULT": "failure", "SCOPE_RESULT": "success", "GAME_REQUIRED": "false",
+              "SMOKE_RESULT": "skipped"}, 1),
+            # A docs-only PR whose whitespace check failed after scope chose game=false.
+            ({"POLICY_RESULT": "success", "SCOPE_RESULT": "failure", "GAME_REQUIRED": "false",
               "SMOKE_RESULT": "skipped"}, 1),
             ({}, 1),
         ]
         env = {key: value for key, value in os.environ.items()
-               if key not in {"POLICY_RESULT", "GAME_REQUIRED", "SMOKE_RESULT"}}
+               if key not in {"POLICY_RESULT", "SCOPE_RESULT", "GAME_REQUIRED", "SMOKE_RESULT"}}
         for inputs, expected in cases:
             with self.subTest(inputs=inputs):
                 result = subprocess.run([sys.executable, "scripts/ci_gate.py"],

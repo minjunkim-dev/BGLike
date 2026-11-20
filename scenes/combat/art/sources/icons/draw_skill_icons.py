@@ -2,6 +2,10 @@
 
 Same rules as draw_item_icons.py: 64px design grid on the 48px canvas, the item palette, upper-left light, 2px dark outline,
 no anti-aliasing and no generative model. Attack and potion reuse the item sword and potion.
+
+#517: lines inside a picture (blades, shafts, white effect lines, arcs) are drawn thick enough that every icon keeps at
+least 10% of the canvas as coloured pixels inside its outline. Cross slash is a large X and the opportunity
+attack is a large eye, so neither reads as the item sword.
 """
 import argparse
 import json
@@ -33,9 +37,9 @@ def rotated(x, y, cx, cy):
     return (dx - dy) / math.sqrt(2), (dx + dy) / math.sqrt(2)
 
 
-def short_sword(u, v, length):
+def short_sword(u, v, length, half=3.0):
     """Steel blade along +u from a brass guard at u=0, leather grip below. None outside."""
-    if 0 <= u <= length and abs(v) <= min(3.0, (length - u) * 0.7):
+    if 0 <= u <= length and abs(v) <= min(half, (length - u) * 0.7):
         return STEEL[4] if v < -1.6 else STEEL[3] if v < 0.4 else STEEL[2]
     if -3.5 <= u < 0 and abs(v) <= 8:
         return BRASS[2] if u >= -1.5 else BRASS[1] if u >= -2.5 else BRASS[0]
@@ -70,7 +74,7 @@ def second_wind(x, y):
     px, py = x + 0.5, y + 0.5
     # Two breath curls at the upper left.
     for oy, color, length in ((14, WHITE, 18), (23, STEEL[3], 12)):
-        if abs(py - oy) <= 1.6 and 3 <= px <= 3 + length:
+        if abs(py - oy) <= 2.4 and 3 <= px <= 3 + length:
             return color
         cx, cy = 3 + length, oy - 5
         distance = math.hypot(px - cx, py - cy)
@@ -95,11 +99,11 @@ def sweep(x, y):
     px, py = x + 0.5, y + 0.5
     # Short sword pointing up-right at the lower right; a white half-moon trail sweeps from the left over the top.
     u, v = rotated(x, y, 40, 46)
-    blade = short_sword(u + 2, v, 22)
+    blade = short_sword(u + 2, v, 22, 4.0)
     if blade is not None:
         return blade
     ring = math.hypot(px - 30, py - 38)
-    if 21 <= ring <= 24 and py <= 38 and px <= 44:
+    if 20 <= ring <= 25.5 and py <= 38 and px <= 44:
         return WHITE if ring >= 22.5 else STEEL[3]
     return None
 
@@ -107,8 +111,8 @@ def sweep(x, y):
 def cross_slash(x, y):
     # Two short swords crossed in an X; the up-right blade lies on top.
     for mirrored in (x, 63 - x):
-        u, v = rotated(mirrored, y, 32, 30)
-        blade = short_sword(u + 12, v, 30)
+        u, v = rotated(mirrored, y, 32, 28)
+        blade = short_sword(u + 14, v, 34, 4.2)
         if blade is not None:
             return blade
     return None
@@ -117,11 +121,11 @@ def cross_slash(x, y):
 def steel_charge(x, y):
     px, py = x + 0.5, y + 0.5
     # Short sword thrusting to the right with white speed lines trailing on the left.
-    blade = short_sword(px - 26, py - 30, 34)
+    blade = short_sword(px - 26, py - 30, 34, 4.0)
     if blade is not None:
         return blade
-    for line_y, start, length in ((14, 4, 18), (46, 2, 14), (54, 8, 18)):
-        if abs(py - line_y) <= 1.2 and start <= px <= start + length:
+    for line_y, start, length in ((13, 4, 18), (47, 2, 14), (55, 8, 18)):
+        if abs(py - line_y) <= 2.4 and start <= px <= start + length:
             return WHITE
     return None
 
@@ -155,41 +159,35 @@ def battle_cry(x, y):
 
 def opportunity(x, y):
     px, py = x + 0.5, y + 0.5
-    # Watching eye at the upper left.
-    ex, ey = 17, 14
-    if abs(px - ex) <= 14 and abs(py - ey) <= 8 * max(0.0, 1 - ((px - ex) / 14) ** 2) ** 0.5:
+    # Watching eye across the upper half: almond white, teal iris, dark pupil with a glint.
+    ex, ey = 32, 19
+    if abs(px - ex) <= 19 and abs(py - ey) <= 11 * max(0.0, 1 - ((px - ex) / 19) ** 2) ** 0.5:
         iris = math.hypot(px - ex, py - ey)
-        if iris <= 3:
-            return INDIGO[0]
-        if iris <= 6.5:
+        if iris <= 4.5:
+            return WHITE if math.hypot(px - (ex - 2), py - (ey - 2)) <= 1.4 else INDIGO[0]
+        if iris <= 8.5:
             return TEAL[1] if px + py < ex + ey else TEAL[0]
         return WHITE if py < ey else STEEL[3]
-    # Sword with its blade pointing down-left and a white slash arc at the lower right.
-    u, v = rotated(x, y, 46, 30)
-    blade = short_sword(-u, v, 26)
-    if blade is not None:
-        return blade
-    arc = math.hypot(px - 28, py - 28)
-    if 30 <= arc <= 33 and px > 36 and py > 36 and px + py < 100:
-        return WHITE
-    return None
+    # A small sword below the eye, blade pointing down-left: the strike it waits to make.
+    u, v = rotated(x, y, 40, 45)
+    return short_sword(-u, v, 16, 3.4)
 
 
 def counter(x, y):
     px, py = x + 0.5, y + 0.5
     # White return arrow at the top right: in from the left, round the right end and back to the left.
     ring = math.hypot(px - 42, py - 14)
-    if 7 <= ring <= 10 and px >= 42:
-        return WHITE if ring >= 8.5 else STEEL[3]
-    if 4 <= py <= 7 and 24 <= px < 42:
+    if 6.5 <= ring <= 11 and px >= 42:
+        return WHITE if ring >= 8.7 else STEEL[3]
+    if 3 <= py <= 7.5 and 24 <= px < 42:
         return WHITE
-    if 21 <= py <= 24 and 34 <= px < 42:
+    if 20.5 <= py <= 25 and 34 <= px < 42:
         return STEEL[3]
-    if inside(px, py, [(24, 22.5), (35, 15), (35, 29)]):
+    if inside(px, py, [(22, 22.75), (36, 14), (36, 31.5)]):
         return WHITE if py < 22.5 else STEEL[3]
     # Short sword striking back up to the right from the lower left.
     u, v = rotated(x, y, 20, 47)
-    return short_sword(u, v, 15)
+    return short_sword(u, v, 15, 4.0)
 
 
 def aegisal(x, y):
@@ -197,16 +195,16 @@ def aegisal(x, y):
     # Two short arrows (aegisal) flying up-right side by side: wooden shaft, steel head, teal fletching.
     for cx, cy in ((24, 30), (36, 42)):
         u, v = rotated(x, y, cx, cy)
-        if -12 <= u <= 6 and abs(v) <= 1.3:
+        if -12 <= u <= 6 and abs(v) <= 2.8:
             return WOOD[3] if v < 0 else WOOD[1]
-        if 6 < u <= 14 and abs(v) <= (14 - u) * 0.6:
+        if 6 < u <= 15 and abs(v) <= (15 - u) * 1.0:
             return STEEL[4] if v < 0 else STEEL[2]
-        if -16 <= u <= -9 and 1.3 < abs(v) <= 4.5:
+        if -16 <= u <= -9 and 2.8 < abs(v) <= 7:
             return TEAL[1] if v < 0 else TEAL[0]
     # Brass half tube (tongah) that guides the short arrow, along the lower left.
     u, v = rotated(x, y, 22, 46)
-    if -12 <= u <= 10 and 2.5 <= v <= 6 and px > 4:
-        return BRASS[2] if v < 4.2 else BRASS[1]
+    if -12 <= u <= 10 and 3.5 <= v <= 9 and px > 4:
+        return BRASS[2] if v < 6.2 else BRASS[1]
     return None
 
 
@@ -214,15 +212,15 @@ def bow_bash(x, y):
     px, py = x + 0.5, y + 0.5
     # Wooden bow limb swung like a club: an arc in the upper left with a brass grip and a thin string.
     ring = math.hypot(px - 46, py - 46)
-    if 26 <= ring <= 30 and px <= 46 and py <= 46:
-        if math.hypot(px - 26, py - 26) <= 4.5:
+    if 24 <= ring <= 32 and px <= 46 and py <= 46:
+        if math.hypot(px - 26, py - 26) <= 5.5:
             return BRASS[2] if px + py < 52 else BRASS[1]
         return WOOD[3] if ring < 27.5 else WOOD[1]
-    if near_segment(px, py, (46, 17, 17, 46), 0.8):
+    if near_segment(px, py, (46, 17, 17, 46), 1.8):
         return STEEL[3]
     # White impact lines where the limb strikes at the lower right.
-    for segment in ((50, 30, 60, 26), (50, 40, 61, 42), (44, 50, 52, 59)):
-        if near_segment(px, py, segment, 1.5):
+    for segment in ((50, 30, 58, 26.5), (50, 40, 58.5, 42), (44, 50, 51, 57)):
+        if near_segment(px, py, segment, 1.9):
             return WHITE
     return None
 
@@ -300,16 +298,16 @@ def oil_throw(x, y):
 def trick_arrow(x, y):
     # One arrow flying up-right with a two-colour head (red fire half, teal water half) and teal fletching.
     u, v = rotated(x, y, 28, 36)
-    if -16 <= u <= 6 and abs(v) <= 1.5:
+    if -16 <= u <= 6 and abs(v) <= 3.6:
         return WOOD[3] if v < 0 else WOOD[1]
-    if 6 < u <= 18 and abs(v) <= (18 - u) * 0.55:
+    if 6 < u <= 19 and abs(v) <= (19 - u) * 1.25:
         return RED[3] if v < 0 else TEAL[1]
-    if -20 <= u <= -11 and 1.5 < abs(v) <= 5:
+    if -20 <= u <= -11 and 3.6 < abs(v) <= 9:
         return TEAL[1] if v < 0 else TEAL[0]
     # Two small question-mark-like sparks (the unreliable magic) at the lower left.
     px, py = x + 0.5, y + 0.5
     for cx, cy in ((10, 18), (16, 10)):
-        if math.hypot(px - cx, py - cy) <= 2.2:
+        if math.hypot(px - cx, py - cy) <= 4.2:
             return WHITE
     return None
 
@@ -318,11 +316,11 @@ def firework_arrow(x, y):
     px, py = x + 0.5, y + 0.5
     # Arrow rising up-right toward a starburst: the head sits inside a ring of rays.
     u, v = rotated(x, y, 20, 44)
-    if -14 <= u <= 10 and abs(v) <= 1.5:
+    if -14 <= u <= 10 and abs(v) <= 2.2:
         return WOOD[3] if v < 0 else WOOD[1]
-    if 10 < u <= 18 and abs(v) <= (18 - u) * 0.5:
+    if 10 < u <= 18 and abs(v) <= (18 - u) * 0.8:
         return STEEL[4] if v < 0 else STEEL[2]
-    if -18 <= u <= -11 and 1.5 < abs(v) <= 4.5:
+    if -18 <= u <= -11 and 2.2 < abs(v) <= 6:
         return TEAL[1] if v < 0 else TEAL[0]
     # Burst at the upper right: eight rays with a brass core.
     cx, cy = 44, 20
@@ -331,7 +329,7 @@ def firework_arrow(x, y):
     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
         norm = math.hypot(dx, dy)
         segment = (cx + dx / norm * 7, cy + dy / norm * 7, cx + dx / norm * 15, cy + dy / norm * 15)
-        if near_segment(px, py, segment, 1.4):
+        if near_segment(px, py, segment, 2.1):
             return RED[3] if dx * dy else WHITE
     return None
 
@@ -340,21 +338,21 @@ def whistle(x, y):
     px, py = x + 0.5, y + 0.5
     # Whistling arrow (hyoshi) flying up-right: wooden shaft, steel head, a brass hollow bulb behind the head and teal fletching.
     u, v = rotated(x, y, 28, 36)
-    if math.hypot((u - 6) / 6.5, v / 4.5) <= 1:
+    if math.hypot((u - 6) / 7.2, v / 5.2) <= 1:
         return LEATHER[0] if math.hypot(u - 6, v - 2.6) <= 1.3 else (BRASS[2] if v < 0 else BRASS[1])
-    if -16 <= u <= 12 and abs(v) <= 1.5:
+    if -16 <= u <= 12 and abs(v) <= 3.4:
         return WOOD[3] if v < 0 else WOOD[1]
-    if 12 < u <= 20 and abs(v) <= (20 - u) * 0.5:
+    if 12 < u <= 20 and abs(v) <= (20 - u) * 1.2:
         return STEEL[4] if v < 0 else STEEL[2]
-    if -20 <= u <= -11 and 1.5 < abs(v) <= 5:
+    if -20 <= u <= -11 and 3.4 < abs(v) <= 8.5:
         return TEAL[1] if v < 0 else TEAL[0]
     # Two sound arcs leaving the bulb hole toward the lower right.
     cx, cy = 28 + 6 / math.sqrt(2), 36 - 6 / math.sqrt(2)
     dx, dy = px - cx, py - cy
     radius = math.hypot(dx, dy)
     if radius > 0 and (dx + dy) / math.sqrt(2) / radius >= math.cos(math.radians(38)):
-        for ring in (11, 15):
-            if abs(radius - ring) <= 0.9:
+        for ring in (10, 16):
+            if abs(radius - ring) <= 2.0:
                 return WHITE
     return None
 
