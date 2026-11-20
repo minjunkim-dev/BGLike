@@ -96,9 +96,9 @@ func _run() -> void:
 			actions.dice = ScriptedDice.new([sides], [sides]) if not preflight and not transitions else CombatDice.new()
 			print("[FIXTURE] crate current damage d%d +%d; transitions=%s" % [sides, party[0].get_damage_bonus(), transitions])
 		elif kind == "rock":
-			assert(not actions.grid.path_to(party[0], Vector2i(5, 4)).is_empty())
-			assert(_cell_point(battle.get("map"), Vector2i(5, 4)) != Vector2.INF)
-			assert(actions.grid.props[1].cell == Vector2i(6, 4))
+			assert(not actions.grid.path_to(party[0], Vector2i(7, 5)).is_empty())
+			assert(_cell_point(battle.get("map"), Vector2i(7, 5)) != Vector2.INF)
+			assert(actions.grid.props[1].cell == Vector2i(8, 5))
 			actions.dice = ScriptedDice.new([])
 		if transitions:
 			actions.dice = CombatDice.new()
@@ -179,7 +179,7 @@ func capture(label: String) -> void:
 			row.units.append({"name": unit.get_display_name(), "cell": str(unit.cell), "hp": unit.hit_points})
 		for prop: CombatGrid.Prop in actions.grid.props:
 			row.props.append({"kind": prop.kind, "cell": str(prop.cell), "hp": prop.hit_points})
-		for cell: Vector2i in [Vector2i(3, 9), Vector2i(5, 4)]:
+		for cell: Vector2i in [Vector2i(3, 9), Vector2i(7, 5)]:
 			var point: Vector2 = _cell_point(map, cell)
 			if point != Vector2.INF: row.cells[str(cell)] = [point.x, point.y]
 		# 물체 몸통은 주변 유닛 픽셀에 가리지 않은 점만 입력 후보로 제공한다.
