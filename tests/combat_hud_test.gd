@@ -2943,7 +2943,6 @@ func _drag(point: Vector2, delta: Vector2) -> void:
 	await process_frame
 
 
-## #503: 실제 1-3(고철로봇-1000)에서 과부하 조건·효과를 켜지기 전부터 읽는다.
 ## 행동 유닛의 칸 윗면 가운데 점이 화면(논리 px)에서 어디인지.
 func _unit_screen_point(unit: CombatUnit) -> Vector2:
 	return unit.get_global_transform_with_canvas() * Vector2(0, unit.floor_offset_y)
@@ -3279,6 +3278,7 @@ func _test_camera_follow_restore() -> void:
 	await process_frame
 
 
+## #503: 실제 1-3(고철로봇-1000)에서 과부하 조건·효과를 켜지기 전부터 읽는다.
 func _test_overload_and_water_guidance() -> void:
 	root.size = Vector2i(1280, 720)
 	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
