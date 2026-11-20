@@ -147,7 +147,10 @@ func _measure(map: CombatMap, actor: CombatUnit, portraits: Dictionary, skill_bu
 	measured["actor"] = {"cell": str(actor.cell), "x": actor_point.x, "y": actor_point.y,
 		"inside_C": center.has_point(actor_point)}
 	measured["camera"] = {"zoom": camera_zoom(), "offset_x": camera_offset().x, "offset_y": camera_offset().y}
-	measured["floor_extent"] = {"min_x": xs.min(), "max_x": xs.max(), "min_y": ys.min(), "max_y": ys.max()}
+	# 꼭짓점 칸의 중심에 반 칸을 더해 바닥 외곽을 잰다.
+	var half: Vector2 = to_screen.basis_xform(Vector2(map.tile_set.tile_size) / 2.0).abs()
+	measured["floor_extent"] = {"min_x": xs.min() - half.x, "max_x": xs.max() + half.x,
+		"min_y": ys.min() - half.y, "max_y": ys.max() + half.y}
 	ck(true, "측정 기록")
 	await _capture("initial")
 	# 가장 긴 설명의 스킬 버튼과 첫 아군 초상. 마우스를 움직이고 0.5초 지연을 기다린다.
