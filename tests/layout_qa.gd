@@ -29,7 +29,12 @@ func _run() -> void:
 		if arg.begins_with("--capture-dir="):
 			output = arg.trim_prefix("--capture-dir=")
 	preflight = "--fixture-precheck" in OS.get_cmdline_user_args()
-	assert(not output.is_empty())
+	if output.is_empty() and preflight:
+		output = OS.get_user_data_dir().path_join("layout_qa_precheck")
+	if output.is_empty():
+		push_error("--capture-dir이 필요하다")
+		quit(1)
+		return
 	DirAccess.make_dir_recursive_absolute(output)
 	GameSave.autosave = false
 	GameSave.path = output.path_join("unused-save.bin")
