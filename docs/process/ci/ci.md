@@ -8,7 +8,7 @@ Godot 워크플로는 main push, main 대상 PR, 머지 큐(`merge_group`)와 �
 게임 검사 선택과 공백 검사는 `scope` job(`Select checks`)이 합니다. smoke는 이 job만 기다리고, 재사용 PR lint `policy / PR conventions and lint`(Python 테스트·actionlint·제목·브랜치)와 동시에 돕니다. 예전에는 smoke가 policy 전체(약 50초)를 기다렸습니다.
 선택기는 PR 기준 SHA, 머지 큐의 `merge_group.base_sha` 또는 main push의 before SHA에서 가져옵니다. PR의 바뀐 파일은 GitHub이 만든 시험 병합 커밋의 첫 부모(지금의 main)와 비교합니다. PR 이벤트의 기준 SHA는 브랜치가 갈라진 지점일 수 있고, 그 뒤 main에 들어온 파일이 PR의 변경으로 잡혀 문서 PR도 smoke를 돌렸기 때문입니다([#681](https://github.com/minjunkim-labs/BGLike/pull/681)). PR이 수정한 선택기로 자신의 엔진 검사를 생략하지 않습니다.
 기준 선택기가 없으면 엔진 검사를 선택합니다. 새 선택기 규칙은 main 반영 뒤 후속 변경부터 사용합니다.
-`scope`는 전체 PR diff, 머지 큐의 base SHA와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인합니다. policy는 Python 회귀 테스트를 실행하고, PR에서는 제목과 브랜치 규칙도 검사합니다. 머지 큐 실행은 PR에서 본 제목·브랜치 단계를 건너뜁니다.
+`scope`는 전체 PR diff, 머지 큐의 base SHA와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인합니다. policy는 Python 회귀 테스트를 실행하고, PR에서는 제목과 브랜치 규칙도 검사합니다. 머지 큐 실행은 브랜치 단계를 건너뛰고, 제목은 큐 커밋의 첫 줄(`<PR 제목> (#번호)`)에서 번호를 떼고 다시 검사합니다. PR을 연 뒤 제목만 고치면 `ci`가 다시 돌지 않으므로, 형식에 맞지 않는 제목은 머지 큐에서 막힙니다.
 
 로컬 `make repository-check`와 `make check`는 `scripts/check_whitespace.py`로
 `origin/main`과 HEAD의 공통 기준점부터 커밋된 변경, 스테이징, 미스테이징 변경을 각각 검사합니다.
@@ -28,7 +28,7 @@ policy와 `make repository-check`는 전체 scripts 탐색으로 Python 테스�
 
 제목 수정만으로 재사용 policy 검사의 과거 실패가 바뀌지는 않습니다.
 제목 수정 후 새 커밋을 push하여 최신 제목의 policy 검사를 실행합니다. 기존 실행의 재실행은 과거 이벤트의 제목을 사용합니다.
-edited 전용 lint 검사는 제목 변경을 빠르게 확인하는 보조 검사입니다.
+edited 전용 lint 검사는 제목 변경을 빠르게 확인하는 보조 검사입니다. 제목을 바꾼 edited 이벤트는 제목만 검사합니다. 본문만 바꾼 edited 이벤트는 이 검사를 건너뜁니다.
 
 Godot 작업은 headless import, 메인 장면 시작과 기존 전투·저장 회귀 테스트를 모두 수행합니다.
 import와 메인 장면 검사 뒤 전투·저장 테스트를 세 자리에서 병렬 실행합니다.
