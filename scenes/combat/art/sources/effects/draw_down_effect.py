@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from draw_skill_effects import LIGHT, STEEL, STEEL_MID, WHITE, Canvas  # noqa: E402
 from draw_status_effects import bubble  # noqa: E402
 
-# Feet anchor is (32, 56) like every unit effect.
+# Feet anchor is (32, 56) like every unit effect; the ring is drawn 2px above it (FEET_Y).
 FEET_X, FEET_Y = 32, 54
 RING_RADIUS = (5, 11, 17, 22)
 SHARD_RISE = (4, 12, 20, 28)
