@@ -132,12 +132,18 @@ func _test_cue_table() -> void:
 
 ## seam 3: UI cue(호버·클릭만 갈래, 칩튠이라 1.06).
 func _test_ui_cue_table() -> void:
+	# UiSounds.MAX_POLYPHONY는 스크립트 상수라 상수 표로 읽는다(없으면 null이라 검사가 실패한다).
+	var ui_polyphony: Variant = ui_sounds.get_script().get_script_constant_map().get("MAX_POLYPHONY")
+	_check(ui_polyphony is int and ui_polyphony >= 1 and ui_polyphony <= 4,
+		"UI 동시 재생 상한은 1~4: %s" % [ui_polyphony])
 	for cue: StringName in ui_sounds.CUES:
 		var player: AudioStreamPlayer = ui_sounds.player(cue)
 		var varied: bool = cue in VARIANT_UI_CUES
 		_check(player != null and player.bus == GameSettings.BUS_UI and not player.autoplay
 			and SoundVariants.longest(player.stream) < MAX_SHORT_SECONDS,
 			"UI cue는 UI 버스의 짧은 소리: %s" % cue)
+		_check(player != null and player.max_polyphony == ui_polyphony,
+			"UI cue는 같은 소리 동시 재생 상한을 가짐: %s" % cue)
 		if varied:
 			_check(player.stream is AudioStreamRandomizer, "UI 갈래 cue는 Randomizer: %s" % cue)
 			_test_variant_stream(cue, player.stream as AudioStreamRandomizer, 1.06)
