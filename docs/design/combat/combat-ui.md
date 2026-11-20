@@ -308,7 +308,7 @@
 ### 5. 전체 속도
 
 - 계수 `PRESENTATION_SPEED`를 하나 둔다. 처음 값은 **0.7**이다. 유닛 이동·연출 시간은 `기본값 ÷ 0.7`(약 1.43배 길게)이 된다. 플레이로 조정하는 곳은 이 상수 하나(`CombatPresentation.PRESENTATION_SPEED`, `scenes/combat/presentation.gd`)다. Issue가 정한 범위는 0.5~0.75다.
-- 적용: 이동 한 칸 0.09초(약 0.129초), 점프(한 칸의 2배), 화살 0.16초(약 0.229초), 근접 공격 대기 1/6초(약 0.238초), 적 행동 전후 멈춤 0.35초(0.5초), 바위 굴림의 이동 0.14초·기울기 0.07초·흔들림 0.035초, 사물 충격 페이드 0.3초, 행동 유닛 강조 0.2초(발밑 칸 표시의 나타남, `CombatMap.TURN_TILE_FADE_TIME`). 스프라이트 move·attack fps도 곱한다(24→16.8, 12→8.4). idle 3fps는 그대로다.
+- 적용: 이동 한 칸 0.09초(약 0.129초), 점프(한 칸의 2배), 화살 0.16초(약 0.229초), 근접 공격 대기 1/6초(약 0.238초), 적 행동 전후 멈춤 0.35초(0.5초), 바위 굴림의 이동 0.14초·기울기 0.07초·흔들림 0.035초, 사물 충격 페이드 0.3초, 행동 유닛 강조 0.2초(발밑 칸 표시의 나타남, `CombatMap.TURN_TILE_FADE_TIME`). 전투 불능 효과([#636](https://github.com/minjunkim-labs/BGLike/issues/636))의 폭발 fps 12→8.4와 잔상 사라짐 0.35초(0.5초)도 곱한다. 스프라이트 move·attack fps도 곱한다(24→16.8, 12→8.4). idle 3fps는 그대로다.
 - 적용하지 않음: 피해 팝업 0.8초([#151](https://github.com/minjunkim-labs/BGLike/issues/151)), 주사위 시간([#488](https://github.com/minjunkim-labs/BGLike/issues/488)·[#514](https://github.com/minjunkim-labs/BGLike/issues/514)·[#519](https://github.com/minjunkim-labs/BGLike/issues/519) 결정), 턴 순서 바 재배열 0.25초와 호버 0.5초(HUD), 카메라 따라가기 0.4초(2절), WASD(4절).
 - 4배속은 그 위에 곱한다. 적 턴 4배속은 지금 원래 속도의 약 2.8배가 된다.
 - 방식: `Engine.time_scale`을 0.7로 낮추지 않는다. 4배속과 WASD 보정이 이미 `Engine.time_scale`을 쓰므로, 그러면 팝업·주사위·호버 시간까지 함께 느려진다([dice-presentation.md](dice-presentation.md)의 "전역 시간을 바꾸지 않는다"와 같은 이유). 시간마다 따로 값을 두는 방식은 조정할 곳이 여러 개라 택하지 않았다.

@@ -118,9 +118,10 @@ func _ready() -> void:
 	actions.critical_hit.connect(func(_target: CombatUnit) -> void:
 		if not _replaying():
 			sounds.play_critical())
-	actions.downed.connect(func(_unit: CombatUnit) -> void:
+	actions.downed.connect(func(unit: CombatUnit) -> void:
 		if not _replaying():
-			sounds.play(&"downed"))
+			sounds.play(&"downed")
+			hit_effects.play_down(unit))
 	actions.self_used.connect(func(actor: CombatUnit, action: String) -> void:
 		if _replaying():
 			return
