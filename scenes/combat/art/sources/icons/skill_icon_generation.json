@@ -5,6 +5,7 @@
     "mode": "pixels placed by code from the briefs below with the item icon palette and outline; no generative image model and no input image",
     "author": "Claude Code (claude-opus-5-5) for Issue #384, replacing the #225 shape icons",
     "date": "2026-10-27",
+    "revised": "2026-11-18 for Issue #517: thicker lines on 8 icons, new cross_slash and opportunity pictures",
     "command": "python3 scenes/combat/art/sources/icons/draw_skill_icons.py scenes/combat/art/icons/skills"
   },
   "spec": {
@@ -17,17 +18,18 @@
     "palette": "the item icon palette (steel, indigo, leather, brass, wood, teal, rust red) imported from draw_item_icons.py",
     "light": "upper left",
     "background": "transparent; no action/bonus/reaction cost colour border",
-    "filter": "nearest; no resampling after drawing"
+    "filter": "nearest; no resampling after drawing",
+    "line_width": "lines inside a picture (blades, shafts, effect lines, arcs) are at least 3 source px; coloured pixels inside the outline cover at least 10% of the canvas (#517)"
   },
   "icons": [
     {"id": "attack", "name": "공격", "effect": "기본 공격", "brief": "The item sword: steel blade up-right, brass guard, leather grip. Same picture as the weapon slot."},
     {"id": "second_wind", "name": "숨 고르기", "effect": "HP 1d10+1 회복", "brief": "Red heart for HP with two white breath curls at the upper left."},
     {"id": "sweep", "name": "휩쓸기", "effect": "정면 반달 5칸의 적을 시계방향으로 각각 공격", "brief": "Short sword pointing up-right at the lower right with a white half-moon arc sweeping over it from the left.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/426"},
-    {"id": "cross_slash", "name": "십자 베기", "effect": "인접한 적을 기본 공격 2회", "brief": "Two short swords crossed in an X, steel blades up, brass guards and leather grips below.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/423"},
+    {"id": "cross_slash", "name": "십자 베기", "effect": "인접한 적을 기본 공격 2회", "brief": "Two short swords crossed in a large X reaching toward the four corners, thick steel blades up, brass guards and leather grips at the two lower corners.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/423"},
     {"id": "steel_charge", "name": "강철 돌진", "effect": "공격 뒤 1칸 밀치고 전진", "brief": "Short sword thrusting to the right with white speed lines trailing on the left.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/423"},
     {"id": "holy_veil", "name": "성스러운 장막", "effect": "HP보다 먼저 피해를 받는 방어막", "brief": "Heater shield with a steel rim, indigo face and a brass cross.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/423"},
     {"id": "battle_cry", "name": "전투의 함성", "effect": "모든 아군의 명중굴림에 의지 굴림값", "brief": "Red banner on a wooden pole with a brass knob and white shout lines on the right.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/423"},
-    {"id": "opportunity", "name": "기회 공격", "effect": "적이 인접 칸을 벗어나면 기본 공격", "brief": "Watching eye at the upper left; a sword with its blade pointing down-left and a white slash arc at the lower right."},
+    {"id": "opportunity", "name": "기회 공격", "effect": "적이 인접 칸을 벗어나면 기본 공격", "brief": "A large watching eye across the upper half (white almond, teal iris, dark pupil with a white glint) and a small short sword below it with its blade pointing down-left. No slash arc."},
     {"id": "counter", "name": "반격", "effect": "나를 노린 인접한 적의 명중굴림이 빗나가면 반드시 명중하는 반격", "brief": "White return arrow along the top, in from the left, round the right end and back to the left; a short sword striking up-right from the lower left.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/435"},
     {"id": "aegisal", "name": "애기살 급조", "effect": "애기살 남은 발수 +2, 기본 공격 피해 굴림 2번 중 높은 값", "brief": "Two short wooden arrows with steel heads and teal fletching flying up-right side by side over a brass half tube.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/528"},
     {"id": "bow_bash", "name": "활 후려치기", "effect": "인접한 적에게 힘 판정, 명중하면 1칸 밀침", "brief": "Wooden bow limb arc in the upper left with a brass grip and thin string, white impact lines at the lower right.", "issue": "https://github.com/minjunkim-dev/BGLike/issues/528"},

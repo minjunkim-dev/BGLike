@@ -26,6 +26,7 @@ func _check(condition: bool, message: String) -> void:
 func _run() -> void:
 	_test_selection()
 	_test_skill_icons()
+	_test_cost_marks()
 	var scene: PackedScene = load("res://scenes/game.tscn") as PackedScene
 	var main: Node = scene.instantiate()
 	# 전사·궁수 UI 회귀는 기존 풋내기 배치를 fixture로 유지한다.
@@ -59,6 +60,7 @@ func _run() -> void:
 	_test_height_edges()
 	_test_unit_art()
 	_test_warrior()
+	await _test_cost_slot_and_face()
 	_test_passive_slot_and_number_colors()
 	await _test_resources()
 	_test_archer_and_enemy()
@@ -423,6 +425,121 @@ func _edge_bands(map: CombatMap, markers: Dictionary[Vector2i, Node2D], cell: Ve
 	return bands
 
 
+## 비용 기호 묶음에 든 기호 글자를 잇는다.
+func _cost_text(marks: Control) -> String:
+	var text: String = ""
+	for mark: Node in marks.get_children():
+		text += (mark as Label).text
+	return text
+
+
+## 비용 기호는 칸 오른쪽 아래에 기호마다 제 자원 색으로 서고, 횟수 배지와 떨어진다. 쓸 수 있는 칸과 없는 칸은 면이 다르다(#517).
+func _test_cost_slot_and_face() -> void:
+	var buttons: Dictionary = hud.get("_actions")
+	var badges: Dictionary = hud.get("_badges")
+	var costs: Dictionary = hud.get("_costs")
+	await process_frame
+	await process_frame
+	for action: String in ["attack", "cross_slash", "battle_cry", "steel_charge", "holy_veil", "opportunity", "counter"]:
+		var button: Button = buttons[action]
+		var marks: Control = costs[action]
+		var box: Rect2 = marks.get_global_rect()
+		var slot: Rect2 = button.get_global_rect()
+		_check(marks.visible and box.end.x <= slot.end.x and box.end.x >= slot.end.x - 4
+			and box.end.y <= slot.end.y and box.end.y >= slot.end.y - 3,
+			"비용 기호는 칸 오른쪽 아래: %s box=%s slot=%s" % [action, box, slot])
+		_check(box.position.x >= slot.position.x + 4 + CombatActionRules.ICON_SIZE,
+			"비용 기호는 아이콘 영역을 덮지 않음: %s box=%s slot=%s" % [action, box, slot])
+		var expected: Array[int] = CombatActionRules.cost_marks(action)
+		_check(marks.get_child_count() == expected.size(), "비용 기호는 자원마다 하나: " + action)
+		for index: int in range(mini(marks.get_child_count(), expected.size())):
+			_check((marks.get_child(index) as Label).get_theme_color("font_color") == CombatTurnHud.RESOURCE_COLORS[expected[index]],
+				"비용 기호 %d는 제 자원 색: %s" % [index, action])
+		var badge: Label = badges[action]
+		if badge.visible:
+			_check(badge.get_global_rect().end.y + 4 <= box.position.y, "횟수 배지와 비용 기호는 4 논리px 이상 떨어짐: " + action)
+	var cross: Control = costs["cross_slash"]
+	_check(cross.get_child_count() == 2
+		and not (cross.get_child(0) as Control).get_global_rect().intersects((cross.get_child(1) as Control).get_global_rect())
+		and (cross.get_child(0) as Label).get_theme_color("font_color") != (cross.get_child(1) as Label).get_theme_color("font_color"),
+		"십자 베기의 ●▲는 서로 다른 색의 따로 선 기호")
+	var active_face: Color = Color("365d61")
+	var idle_face: Color = Color("242a30")
+	_check((buttons["attack"] as Button).get_theme_stylebox("normal") is StyleBoxFlat
+		and ((buttons["attack"] as Button).get_theme_stylebox("normal") as StyleBoxFlat).bg_color == active_face
+		and ((buttons["potion"] as Button).get_theme_stylebox("normal") as StyleBoxFlat).bg_color == idle_face,
+		"아군 턴: 쓸 수 있는 칸은 청록 면, 쓸 수 없는 칸은 어두운 면")
+	# 숨은 물약 칸만 보면 보이는 비활성 칸의 면을 놓친다. 보조 행동을 다 쓴 상태로 보이는 칸을 본다.
+	var bonus_left: int = units[0].bonus_action_left
+	units[0].bonus_action_left = 0
+	hud.refresh_actions(actions, "attack", units[0])
+	var visible_disabled: int = 0
+	for action: String in buttons:
+		var slot_button: Button = buttons[action]
+		if slot_button.visible and slot_button.disabled:
+			visible_disabled += 1
+			_check((slot_button.get_theme_stylebox("normal") as StyleBoxFlat).bg_color == idle_face,
+				"아군 턴: 보이는 비활성 칸은 어두운 면: " + action)
+	_check(visible_disabled > 0, "보조 행동을 다 쓰면 보이는 비활성 칸이 있다")
+	units[0].bonus_action_left = bonus_left
+	hud.refresh_actions(actions, "attack", units[0])
+	for action: String in buttons:
+		_check((buttons[action] as Button).get_theme_color("icon_disabled_color").a == 1.0,
+			"비활성 아이콘 색은 불투명: " + action)
+	var ally_turn_unit: CombatUnit = turns.current_unit
+	turns.current_unit = units[2]
+	hud.refresh_actions(actions, "attack", units[0])
+	for action: String in buttons:
+		var face: StyleBox = (buttons[action] as Button).get_theme_stylebox("normal")
+		if (buttons[action] as Button).visible:
+			_check(face is StyleBoxFlat and (face as StyleBoxFlat).bg_color == idle_face, "적 턴에는 모든 스킬 칸이 어두운 면: " + action)
+	turns.current_unit = ally_turn_unit
+	hud.refresh_actions(actions, "attack", units[0])
+	await process_frame
+
+
+## 비용 기호 목록은 묶음의 자원에 복합 비용의 보조 행동만 더한다. 이동력은 기호가 없다(#517).
+func _test_cost_marks() -> void:
+	_check(CombatActionRules.cost_marks("attack") == [0] and CombatActionRules.cost_marks("cross_slash") == [0, 1]
+		and CombatActionRules.cost_marks("steel_charge") == [1] and CombatActionRules.cost_marks("opportunity") == [2]
+		and CombatActionRules.cost_marks("reflex") == [2], "비용 기호 목록: 복합 비용은 보조 행동을 더하고 이동력은 기호 없음")
+
+
+## 윤곽 안쪽 칠, 검 계열의 모양, 공격과 장비 검의 같음을 원본 픽셀로 본다(#517).
+func _test_skill_icon_pixels() -> void:
+	var masks: Dictionary[String, Array] = {}
+	for action: String in CombatActionRules.NAMES:
+		var icon: Texture2D = CombatActionRules.icon_of(action)
+		if icon == null:
+			continue
+		var image: Image = icon.get_image()
+		var mask: Array[bool] = []
+		var fill: int = 0
+		for y: int in range(image.get_height()):
+			for x: int in range(image.get_width()):
+				var pixel: Color = image.get_pixel(x, y)
+				mask.append(pixel.a > 0.5)
+				if pixel.a > 0.5 and pixel.to_html(false) != "120d16":
+					fill += 1
+		masks[action] = mask
+		_check(float(fill) / (image.get_width() * image.get_height()) >= 0.10,
+			"스킬 아이콘 윤곽 안쪽 칠이 원본의 10%% 이상: %s %.3f" % [action, float(fill) / (image.get_width() * image.get_height())])
+	var sword_image: Image = (load("res://scenes/combat/art/icons/items/sword.png") as Texture2D).get_image()
+	_check(CombatActionRules.icon_of("attack").get_image().get_data() == sword_image.get_data(), "공격 아이콘은 장비 검과 같은 그림")
+	var swords: Array[String] = ["attack", "cross_slash", "opportunity", "counter"]
+	for first: int in range(swords.size()):
+		for second: int in range(first + 1, swords.size()):
+			var both: int = 0
+			var either: int = 0
+			for index: int in range(masks[swords[first]].size()):
+				var left: bool = masks[swords[first]][index]
+				var right: bool = masks[swords[second]][index]
+				both += int(left and right)
+				either += int(left or right)
+			_check(float(both) / either <= 0.5, "검 계열 실루엣이 갈림(마스크 IoU 0.5 이하): %s·%s %.2f" % [
+				swords[first], swords[second], float(both) / either])
+
+
 func _test_skill_icons() -> void:
 	# 새 아군 동작을 NAMES에 추가하면 아이콘도 함께 요구한다.
 	for action: String in CombatActionRules.NAMES:
@@ -433,6 +550,7 @@ func _test_skill_icons() -> void:
 			_check(icon == null, "반사신경·은신은 아이콘 자산 전까지 이름 첫 글자를 보임(아이콘은 후속): " + action)
 		else:
 			_check(icon != null and icon.get_size() == Vector2(48, 48), "#362 스킬 아이콘 48px 원본: " + action)
+	_test_skill_icon_pixels()
 	var oil_icon: Texture2D = CombatActionRules.icon_of("oil_throw")
 	_check(oil_icon != null and oil_icon.resource_path.ends_with("/skills/oil_throw.png")
 		and oil_icon != CombatActionRules.icon_of("potion"), "기름병 던지기는 물약을 빌리지 않고 전용 아이콘을 쓴다(#560)")
@@ -682,16 +800,16 @@ func _test_warrior() -> void:
 		and (titles[2] as Label).text == "반응 ◆", "컨테이너 제목이 자원 표시")
 	_check(not (badges["attack"] as Label).visible and not (badges["shove"] as Label).visible,
 		"횟수 제한이 없는 동작은 배지 숨김")
-	_check((badges["battle_cry"] as Label).text == "1" and (costs["battle_cry"] as Label).text == "●",
+	_check((badges["battle_cry"] as Label).text == "1" and _cost_text(costs["battle_cry"]) == "●",
 		"비용 기호와 횟수 숫자 분리")
-	_check((costs["cross_slash"] as Label).text == "●▲" and (costs["steel_charge"] as Label).text == "▲"
-		and not (badges["opportunity"] as Label).visible and (costs["opportunity"] as Label).text == "◆",
+	_check(_cost_text(costs["cross_slash"]) == "●▲" and _cost_text(costs["steel_charge"]) == "▲"
+		and not (badges["opportunity"] as Label).visible and _cost_text(costs["opportunity"]) == "◆",
 		"복합 비용은 함께 쓰는 턴 자원 기호를 잇고 이동력은 기호 없음")
 	_check((badges["steel_charge"] as Label).text == "1" and (badges["potion"] as Label).text == "0"
-		and (costs["holy_veil"] as Label).text == "▲" and (costs["potion"] as Label).text == "▲",
+		and _cost_text(costs["holy_veil"]) == "▲" and _cost_text(costs["potion"]) == "▲",
 		"호버에서 제거한 스킬 횟수·물약 개수와 비용은 배지·마크에 유지")
 	var badge: Label = badges["battle_cry"] as Label
-	var cost: Label = costs["battle_cry"] as Label
+	var cost: Control = costs["battle_cry"] as Control
 	_check(badge.size.y <= 15 and not badge.get_global_rect().intersects(cost.get_global_rect()),
 		"횟수 배지는 작고 비용 기호와 겹치지 않음: badge=%s cost=%s min=%s font=%d fontheight=%f" % [
 			badge.get_global_rect(), cost.get_global_rect(), badge.get_combined_minimum_size(),
@@ -1108,10 +1226,14 @@ func _test_log_and_status() -> void:
 	battle.call("_update_turn_ui")
 	# 실제 동작의 판정 로그와 숫자 팝업 연결. 마지막 적이 아닌 대상에 확정 명중.
 	var hit_sound: AudioStreamPlayer = (battle.get("sounds") as CombatSounds).player(&"hit_flesh")
-	var hit_stream: AudioStreamOggVorbis = hit_sound.stream as AudioStreamOggVorbis
-	_check(hit_stream != null and hit_stream.get_length() > 0.0
-		and hit_stream.get_length() < 0.5 and not hit_stream.loop,
-		"타격음은0.5초 미만의 반복 없는 OGG")
+	var hit_randomizer: AudioStreamRandomizer = hit_sound.stream as AudioStreamRandomizer
+	_check(hit_randomizer != null, "타격음은 갈래 스트림")
+	var hit_variants_ok: bool = hit_randomizer != null
+	for index: int in range(hit_randomizer.streams_count if hit_randomizer != null else 0):
+		var variant: AudioStreamOggVorbis = hit_randomizer.get_stream(index) as AudioStreamOggVorbis
+		hit_variants_ok = hit_variants_ok and variant != null and variant.get_length() > 0.0 \
+			and variant.get_length() < 0.5 and not variant.loop
+	_check(hit_variants_ok, "타격음 갈래는 모두 0.5초 미만의 반복 없는 OGG")
 	_check(not hit_sound.autoplay and hit_sound.volume_db == -12.0
 		and hit_sound.max_polyphony == 4, "타격음 자동 재생 없음·음량-12dB·동시4개 제한")
 	_check(hit_sound.bus == GameSettings.BUS_SFX, "타격음은 SFX 버스로 나감")
@@ -1168,7 +1290,7 @@ func _test_hit_sound_mix() -> void:
 	capture.clear_buffer()
 	for index: int in range(6):
 		actions.damaged.emit(units[2])
-	await create_timer(sound.stream.get_length() + 0.2).timeout
+	await create_timer(SoundVariants.longest(sound.stream) * (sound.stream as AudioStreamRandomizer).random_pitch + 0.2).timeout
 	var samples: PackedVector2Array = capture.get_buffer(capture.get_frames_available())
 	var peak: float = 0.0
 	for sample: Vector2 in samples:
@@ -1350,7 +1472,7 @@ func _test_layout() -> void:
 				var badge: Label = badges[action] as Label
 				if badge.is_visible_in_tree():
 					_check(badge.size.y <= 15 and not badge.get_global_rect().intersects(
-						(costs[action] as Label).get_global_rect()), "크기 변경 후 배지 분리: " + action)
+						(costs[action] as Control).get_global_rect()), "크기 변경 후 배지 분리: " + action)
 	# 다른 플랫폼의 글꼴이 줄 높이를 늘려도 정보 아래에 공격 예측을 배치한다.
 	hud.resource_label.add_theme_constant_override("line_spacing", 6)
 	battle.call("preview_enemy", units[2])
@@ -1467,7 +1589,7 @@ func _test_skill_panel_fixed() -> void:
 		_check(fits, "%s: 넘친 줄은 한 줄, 칸 폭 28 이상 52 미만, 아이콘 24 유지 %s" % [size, sizes])
 		var costs: Dictionary = hud.get("_costs")
 		var badges: Dictionary = hud.get("_badges")
-		_check(not (costs["bow_bash"] as Label).visible and (badges["oil_throw"] as Label).visible,
+		_check(not (costs["bow_bash"] as Control).visible and (badges["oil_throw"] as Label).visible,
 			"%s: 축소한 줄은 하나뿐인 비용 기호를 숨기고 횟수 배지는 보임" % size)
 		var rect: Rect2 = skills.get_global_rect()
 		_check(hud.get_global_rect().encloses(rect)
@@ -1477,7 +1599,7 @@ func _test_skill_panel_fixed() -> void:
 		# 가득 차지 않은 줄은 원래 폭이고 비용 기호도 보인다.
 		var attack_row: PanelContainer = (hud.get("_containers") as Array)[0] as PanelContainer
 		var attack_button: Button = (hud.get("_actions") as Dictionary)["attack"] as Button
-		_check(attack_button.size.x == 52.0 and (costs["attack"] as Label).visible,
+		_check(attack_button.size.x == 52.0 and (costs["attack"] as Control).visible,
 			"%s: 넘치지 않는 줄은 원래 폭 52와 비용 기호 %s" % [size, attack_button.size])
 		_check(attack_row.visible, "%s: 행동 줄 보임" % size)
 	archer.potions.clear()

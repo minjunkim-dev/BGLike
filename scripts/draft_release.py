@@ -89,7 +89,7 @@ def eligibility(api, version, sha):
     jobs = api.request("GET", f"actions/runs/{run['id']}/jobs?filter=latest&per_page=100")
     if jobs.get("total_count", 0) > 100:
         raise ValueError("Too many CI jobs")
-    aggregates = [job for job in jobs.get("jobs", []) if job.get("name") == "CI"]
+    aggregates = [job for job in jobs.get("jobs", []) if job.get("name") == "ci"]
     if len(aggregates) != 1 or aggregates[0].get("status") != "completed" or aggregates[0].get("conclusion") != "success":
         raise ValueError("Required aggregate CI missing or unsuccessful")
     if api.request("GET", f"git/ref/tags/{version}", missing=True) is not None:

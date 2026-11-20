@@ -22,11 +22,11 @@ HP·상태·피해 팝업은 그 유닛의 실제 그림 높이를 기준으로 
 
 시트를 자르고 공통 배율로 nearest-neighbor 축소한다. 픽셀을 새로 그리는 후처리는 하지 않는다. 최종 프레임은64×64 RGBA다. 발밑 기준점은(32,56)이다. 새끼 거미는 최대48×30, 다른 유닛은 최대60×56 안에 들어간다. 같은 유닛은 모든 프레임에 같은 축소 배율을 쓴다. 개별 캔버스를 잘라내서 납품하지 않는다.
 
-사용자는2026-10-21에32px 결과의 가독성과 선명도 개선을 요청했다. [#194 결정](https://github.com/minjunkim-labs/BGLike/issues/194#issuecomment-6305982882)에 따라 원본에서64px로 재추출한다. 32px를 두 배로 확대한 파일을 납품하지 않는다. Sprite scale0.5로 기존 논리 표시 크기와 피벗(16,28)을 유지한다. 기본 레이아웃640×360, 창1280×720, Nearest와 정수 배율을 유지한다. `canvas_items`는2D와 글꼴을 실제 창 해상도에서 렌더한다. 따라서1280×720에서64px 이미지의 세부를 보존한다. 640×360의 축소 화면에서는 같은 세부를 모두 구분할 수 없다. 그래서 `개발 결정`([#263](https://github.com/minjunkim-labs/BGLike/issues/263))으로 최소 창은1280×720이다([해상도 ADR](../adr/0002-resolution.md)). [Godot 공식 렌더 설명](https://docs.godotengine.org/en/stable/tutorials/rendering/multiple_resolutions.html)을 따른다.
+사용자는2026-10-21에32px 결과의 가독성과 선명도 개선을 요청했다. [#194 결정](https://github.com/minjunkim-labs/BGLike/issues/194#issuecomment-6305982882)에 따라 원본에서64px로 재추출한다. 32px를 두 배로 확대한 파일을 납품하지 않는다. Sprite scale0.5로 기존 논리 표시 크기와 피벗(16,28)을 유지한다. 기본 레이아웃640×360, 창1280×720, Nearest와 정수 배율을 유지한다. `canvas_items`는2D와 글꼴을 실제 창 해상도에서 렌더한다. 따라서1280×720에서64px 이미지의 세부를 보존한다. 640×360의 축소 화면에서는 같은 세부를 모두 구분할 수 없다. 그래서 [#263](https://github.com/minjunkim-labs/BGLike/issues/263)에서 정한 최소 창은1280×720이다([해상도 ADR](../adr/0002-resolution.md)). [Godot 공식 렌더 설명](https://docs.godotengine.org/en/stable/tutorials/rendering/multiple_resolutions.html)을 따른다.
 
-`개발 결정`([#256](https://github.com/minjunkim-labs/BGLike/issues/256)): 유닛 윤곽 셰이더(`unit_outline.gdshader`)는 이웃 픽셀을 1텍셀과 1화면 픽셀 중 큰 간격으로 샘플한다. 640×360에서는 1텍셀이 0.5화면 픽셀이라 1텍셀 윤곽이 픽셀 사이로 빠져 끊긴 점으로 보였다. 이제 윤곽은 2텍셀(1화면 픽셀) 두께로 이어진다. 1280×720 이상에서는 1텍셀이 1화면 픽셀 이상이라 모양이 그대로다. 가림·선택·미리보기 윤곽과 사물 미리보기 윤곽이 같은 셰이더를 쓴다. 팀색과 윤곽 클릭 규칙은 바꾸지 않는다. 표시 두께만 화면 배율에 맞춘다. 기획자가 나중에 바꿀 수 있다.
+[#256](https://github.com/minjunkim-labs/BGLike/issues/256): 유닛 윤곽 셰이더(`unit_outline.gdshader`)는 이웃 픽셀을 1텍셀과 1화면 픽셀 중 큰 간격으로 샘플한다. 640×360에서는 1텍셀이 0.5화면 픽셀이라 1텍셀 윤곽이 픽셀 사이로 빠져 끊긴 점으로 보였다. 이제 윤곽은 2텍셀(1화면 픽셀) 두께로 이어진다. 1280×720 이상에서는 1텍셀이 1화면 픽셀 이상이라 모양이 그대로다. 가림·선택·미리보기 윤곽과 사물 미리보기 윤곽이 같은 셰이더를 쓴다. 팀색과 윤곽 클릭 규칙은 바꾸지 않는다. 표시 두께만 화면 배율에 맞춘다.
 
-`개발 결정`([#264](https://github.com/minjunkim-labs/BGLike/issues/264)): 유닛·지형·사물·아이콘은 sharp bilinear 셰이더로 그린다. 원본을 0.5배로 쓰므로(유닛·지형·사물 64px, 아이콘 48px) 1920×1080(정수 배율3)에서는 1텍셀이 1.5화면 px이다. Nearest만 쓰면 1px과 2px 도트가 섞인다. 셰이더는 텍셀 안쪽을 Nearest처럼 한 색으로 칠하고, 텍셀 경계만 화면 1픽셀(`fwidth`) 폭으로 섞는다. 1텍셀이 1화면 픽셀 이하면 섞지 않는다. 그래서 1280×720과 2560×1440의 모양은 그대로다. 공용 샘플은 `scenes/combat/art/pixel_art.gdshaderinc`의 `SHARP_TEXTURE`다. `pixel_art.tres`(유닛·사물 Sprite, 초상·스킬·아이템 아이콘), `unit_outline.gdshader`(#256 윤곽), `terrain_detail.gdshader`(지형 칸)가 함께 쓴다. 윤곽도 같은 샘플의 알파를 읽어 그림 가장자리와 맞는다. 두께(1텍셀과 1화면 픽셀 중 큰 쪽)와 팀색은 그대로다. `tests/combat_loot_test.gd`가 실제 전투·정비 화면에서 도트 아트를 그리는 노드와 지형 칸의 셰이더를 검사한다. 측정과 캡처는 [해상도 ADR](../adr/0002-resolution.md#1080p-도트-표시-264)에 있다. 도트 경계가 조금 부드러워지므로 기획자가 나중에 바꿀 수 있다.
+[#264](https://github.com/minjunkim-labs/BGLike/issues/264): 유닛·지형·사물·아이콘은 sharp bilinear 셰이더로 그린다. 원본을 0.5배로 쓰므로(유닛·지형·사물 64px, 아이콘 48px) 1920×1080(정수 배율3)에서는 1텍셀이 1.5화면 px이다. Nearest만 쓰면 1px과 2px 도트가 섞인다. 셰이더는 텍셀 안쪽을 Nearest처럼 한 색으로 칠하고, 텍셀 경계만 화면 1픽셀(`fwidth`) 폭으로 섞는다. 1텍셀이 1화면 픽셀 이하면 섞지 않는다. 그래서 1280×720과 2560×1440의 모양은 그대로다. 공용 샘플은 `scenes/combat/art/pixel_art.gdshaderinc`의 `SHARP_TEXTURE`다. `pixel_art.tres`(유닛·사물 Sprite, 초상·스킬·아이템 아이콘), `unit_outline.gdshader`(#256 윤곽), `terrain_detail.gdshader`(지형 칸)가 함께 쓴다. 윤곽도 같은 샘플의 알파를 읽어 그림 가장자리와 맞는다. 두께(1텍셀과 1화면 픽셀 중 큰 쪽)와 팀색은 그대로다. `tests/combat_loot_test.gd`가 실제 전투·정비 화면에서 도트 아트를 그리는 노드와 지형 칸의 셰이더를 검사한다. 측정과 캡처는 [해상도 ADR](../adr/0002-resolution.md#1080p-도트-표시-264)에 있다. 도트 경계가 조금 부드러워지므로
 
 1920×1080 원본 Viewport의 4배 확대: [변경 전(Nearest)](images/pixel_art_1080p_before.png), [변경 후](images/pixel_art_1080p_after.png).
 
@@ -111,19 +111,19 @@ Godot 리소스 경로는 앞에 `res://`를 붙인다.
 
 스킬 아이콘은 아군 스킬과 공용 동작11종이다. [#225](https://github.com/minjunkim-labs/BGLike/issues/225)의 임시 도형 아이콘을 [#384](https://github.com/minjunkim-labs/BGLike/issues/384)에서 도트 이미지로 다시 그렸다. 런타임 파일은 `scenes/combat/art/icons/skills/<동작 id>.png`다. 동작 id는 `CombatActionRules.NAMES`의 키다. `CombatActionRules.icon_of(id)`로 찾는다. 적 전용 스킬은 아이콘이 없어 null을 돌려준다. HUD 배치는 [#226](https://github.com/minjunkim-labs/BGLike/issues/226)에서 한다.
 
-개발 결정: 48×48 RGBA 원본을 0.5배로 쓴다. 유닛과 같은 2배 원본 규칙이다. 표시 크기는 아래 [표시 크기](#표시-크기-362)를 따른다. 테두리에 비용 자원 색을 넣지 않는다. 배경은 투명하다. 기획자가 나중에 바꿀 수 있다.
+48×48 RGBA 원본을 0.5배로 쓴다. 유닛과 같은 2배 원본 규칙이다. 표시 크기는 아래 [표시 크기](#표시-크기-362)를 따른다. 테두리에 비용 자원 색을 넣지 않는다. 배경은 투명하다.
 
-`개발 결정`([#384](https://github.com/minjunkim-labs/BGLike/issues/384)): `scenes/combat/art/sources/icons/draw_skill_icons.py`가 [아이템 아이콘](#아이템-아이콘)과 같은 방식으로 픽셀을 찍는다. 팔레트·2px 어두운 윤곽·윤곽 함수를 `draw_item_icons.py`에서 가져오고, 광원은 왼쪽 위다. 안티앨리어싱·축소·생성 모델을 쓰지 않으며 같은 명령은 같은 파일을 만든다. 공격과 물약은 장비의 검·물약과 같은 그림이다. 나머지는 효과를 그림으로 옮긴다.
+[#384](https://github.com/minjunkim-labs/BGLike/issues/384): `scenes/combat/art/sources/icons/draw_skill_icons.py`가 [아이템 아이콘](#아이템-아이콘)과 같은 방식으로 픽셀을 찍는다. 팔레트·2px 어두운 윤곽·윤곽 함수를 `draw_item_icons.py`에서 가져오고, 광원은 왼쪽 위다. 안티앨리어싱·축소·생성 모델을 쓰지 않으며 같은 명령은 같은 파일을 만든다. 공격과 물약은 장비의 검·물약과 같은 그림이다. 나머지는 효과를 그림으로 옮긴다.
 
 | 동작 | 효과 | 그림 |
 |---|---|---|
 | 숨 고르기 | HP 회복 | 붉은 하트와 흰 숨결 |
 | 휩쓸기 | 정면 반달 5칸 공격 | 오른쪽 위로 든 짧은 검과 왼쪽에서 넘어오는 흰 반달 궤적 |
-| 십자 베기 | 기본 공격 2회 | 엇갈린 두 짧은 검 |
+| 십자 베기 | 기본 공격 2회 | 네 모서리로 뻗는 큰 X로 엇갈린 두 짧은 검 |
 | 강철 돌진 | 공격 뒤 밀치고 전진 | 오른쪽으로 찌르는 짧은 검과 흰 속도선 |
 | 성스러운 장막 | 방어막 | 강철 테두리의 남색 방패와 금색 십자 |
 | 전투의 함성 | 아군 명중 보너스 | 나무 깃대의 붉은 깃발과 흰 함성선 |
-| 기회 공격 | 떠나는 적을 침 | 지켜보는 눈과 내리치는 검 |
+| 기회 공격 | 떠나는 적을 침 | 위쪽 절반을 채우는 큰 눈과 그 아래의 작은 검 |
 | 애기살 급조 | 기본 공격 피해 굴림 2번 중 높은 값 | 나란히 날아가는 짧은 화살 두 발과 금색 통아 |
 | 활 후려치기 | 인접한 적을 쳐서 1칸 밀침 | 금색 손잡이의 활 몸체와 흰 타격선 |
 | 밀치기 | 1칸 밀기 | 펼친 장갑 손바닥과 미는 선 |
@@ -131,9 +131,13 @@ Godot 리소스 경로는 앞에 `res://`를 붙인다.
 | 기름병 던지기 | 칸 하나에 기름 장판 생성 | 기울어져 기름이 흐르는 유리병, 떨어지는 기름 줄기와 바닥의 기름 얼룩 |
 | 반격 | 빗나간 기회 공격에 되받아침 ([#435](https://github.com/minjunkim-labs/BGLike/issues/435)) | 붉은 손잡이의 검과 되돌아오는 흰 화살표 |
 
-아이콘별 설명은 `skill_icon_generation.json`에 기록한다. 기획자가 나중에 바꿀 수 있다. [#528](https://github.com/minjunkim-labs/BGLike/issues/528)의 궁수 재디자인으로 표식·충격 화살·물러서며 쏘기 아이콘을 지우고 애기살 급조·활 후려치기를 더했다(풋내기 궁수의 물러서며 쏘기는 적 전용이라 아이콘이 없다). 아래 두 그림은 #384 당시의 11종이다.
+아이콘별 설명은 `skill_icon_generation.json`에 기록한다. [#528](https://github.com/minjunkim-labs/BGLike/issues/528)의 궁수 재디자인으로 표식·충격 화살·물러서며 쏘기 아이콘을 지우고 애기살 급조·활 후려치기를 더했다(풋내기 궁수의 물러서며 쏘기는 적 전용이라 아이콘이 없다). 아래 두 그림은 #384 당시의 11종이다.
 
-2026-11-15 현재 아이콘 파일은 18개다(위 표의 12종과 공격·물약, 기름병 던지기, 장난스러운 화살, 폭죽 화살, 효시). 숨 고르기는 #528 뒤 풋내기 야만인 전용이 되었지만 파일을 남긴다. `개발 결정`(2026-11-15, [#560](https://github.com/minjunkim-labs/BGLike/issues/560)): 적 동작을 HUD에 보일 때 다시 쓰므로 지우지 않는다. 대안은 적 전용 아이콘을 모두 지우는 것이다. `개발 결정`(2026-11-15, [#560](https://github.com/minjunkim-labs/BGLike/issues/560)): 궁수의 기름병 던지기는 전용 아이콘(기름이 흐르는 병과 바닥의 기름 얼룩)을 그린다. `oil_throw.png`로 그렸고 물약 아이콘 대체(`CombatActionRules.ICON_ALIASES`)는 지웠다. 기름병 아이템(#500 4단계)도 같은 그림을 쓴다. 근거는 동작마다 아이콘이 하나라는 이 절의 원칙이다. 대안은 물약 아이콘을 계속 쓰는 것이다. 기획자가 나중에 바꿀 수 있다.
+2026-11-15 현재 아이콘 파일은 18개다(위 표의 12종과 공격·물약, 기름병 던지기, 장난스러운 화살, 폭죽 화살, 효시). 숨 고르기는 #528 뒤 풋내기 야만인 전용이 되었지만 파일을 남긴다. [#560](https://github.com/minjunkim-labs/BGLike/issues/560), 2026-11-15: 적 동작을 HUD에 보일 때 다시 쓰므로 지우지 않는다. 대안은 적 전용 아이콘을 모두 지우는 것이다. [#560](https://github.com/minjunkim-labs/BGLike/issues/560), 2026-11-15: 궁수의 기름병 던지기는 전용 아이콘(기름이 흐르는 병과 바닥의 기름 얼룩)을 그린다. `oil_throw.png`로 그렸고 물약 아이콘 대체(`CombatActionRules.ICON_ALIASES`)는 지웠다. 기름병 아이템(#500 4단계)도 같은 그림을 쓴다. 근거는 동작마다 아이콘이 하나라는 이 절의 원칙이다. 대안은 물약 아이콘을 계속 쓰는 것이다.
+
+스킬 아이콘은 32×32 유닛과 같은 배율의 칸에서 읽히도록 윤곽색 `#120d16`이 아닌 불투명 픽셀이 48×48의 10% 이상이다([#517](https://github.com/minjunkim-labs/BGLike/issues/517)). 공격은 장비 검 그림 그대로이고, 십자 베기·기회 공격·반격은 공격과 실루엣이 갈린다. `tests/combat_hud_test.gd`가 칠 비율, 공격·십자 베기·기회 공격·반격의 마스크 겹침(0.5 이하), 공격과 장비 검의 같음을 검사한다. 칸의 면·비용 기호·배지는 [스킬 바](combat/combat.md)를 따른다. 아이콘 생성기는 Pillow가 필요하며 `python3 scenes/combat/art/sources/icons/draw_skill_icons.py scenes/combat/art/icons/skills`로 같은 그림을 다시 만든다(Pillow 버전이 다르면 PNG 바이트가 달라도 픽셀은 같다). 바꾸기 전·후 화면(1280×720)과 바꾼 뒤 화면(1920×1080. 바꾸기 전 캡처는 없다)은 아래와 같다. 둘 다 Linux llvmpipe 화면 밖 캡처다.
+
+![스킬 칸 바꾸기 전·후: 1280×720의 준비 상태와 보조 행동을 쓴 상태, 1920×1080](images/skill_slots_517.png)
 
 ![스킬 아이콘11종: 위 #225 도형, 아래 #384 도트, 2배 확대](images/skill_icons_384.png)
 
@@ -141,9 +145,9 @@ Godot 리소스 경로는 앞에 `res://`를 붙인다.
 
 ## 패시브 아이콘
 
-`개발 결정`([#517](https://github.com/minjunkim-labs/BGLike/issues/517)): 전투 HUD 패시브 칸은 이름 첫 글자 대신 32×32 RGBA 원본을 0.5배로 쓴 16 논리px 아이콘을 보인다. 칸이 22×34라 스킬 아이콘(24)은 들어가지 않는다. 칸 크기와 위치는 그대로 두고 좌우 여백만 4에서 3으로 줄여 내용 폭을 16으로 만든다. 같은 0.5배 규칙이라 배율 2·4에서 텍셀이 1·2 화면 px이고 배율 3은 #264 셰이더가 처리한다([표시 크기](#표시-크기-362)의 정비 물약 칸과 같다). 런타임 파일은 `scenes/combat/art/icons/passives/<패시브 id>.png`이고 `CombatActionRules.passive_icon_of(id)`로 찾는다. 파일이 없으면 null이라 칸은 이름 첫 글자로 돌아간다. 꺼짐·조건 미충족도 어둡게 하지 않는다.
+[#517](https://github.com/minjunkim-labs/BGLike/issues/517): 전투 HUD 패시브 칸은 이름 첫 글자 대신 32×32 RGBA 원본을 0.5배로 쓴 16 논리px 아이콘을 보인다. 칸이 22×34라 스킬 아이콘(24)은 들어가지 않는다. 칸 크기와 위치는 그대로 두고 좌우 여백만 4에서 3으로 줄여 내용 폭을 16으로 만든다. 같은 0.5배 규칙이라 배율 2·4에서 텍셀이 1·2 화면 px이고 배율 3은 #264 셰이더가 처리한다([표시 크기](#표시-크기-362)의 정비 물약 칸과 같다). 런타임 파일은 `scenes/combat/art/icons/passives/<패시브 id>.png`이고 `CombatActionRules.passive_icon_of(id)`로 찾는다. 파일이 없으면 null이라 칸은 이름 첫 글자로 돌아간다. 꺼짐·조건 미충족도 어둡게 하지 않는다.
 
-`scenes/combat/art/sources/icons/draw_passive_icons.py`가 [아이템 아이콘](#아이템-아이콘)과 같은 방식으로 픽셀을 찍는다(팔레트·2px 윤곽·왼쪽 위 광원, 안티앨리어싱·축소·생성 모델 없음, Pillow 필요). 같은 명령은 같은 파일을 만든다. 아이콘별 설명과 명령은 `passive_icon_generation.json`에 기록한다. 기획자가 나중에 바꿀 수 있다.
+`scenes/combat/art/sources/icons/draw_passive_icons.py`가 [아이템 아이콘](#아이템-아이콘)과 같은 방식으로 픽셀을 찍는다(팔레트·2px 윤곽·왼쪽 위 광원, 안티앨리어싱·축소·생성 모델 없음, Pillow 필요). 같은 명령은 같은 파일을 만든다. 아이콘별 설명과 명령은 `passive_icon_generation.json`에 기록한다.
 
 | 패시브 | 효과 | 그림 |
 |---|---|---|
@@ -155,9 +159,9 @@ Godot 리소스 경로는 앞에 `res://`를 붙인다.
 
 ## 아이템 아이콘
 
-`개발 결정`([#224](https://github.com/minjunkim-labs/BGLike/issues/224)): 임시 아이템 아이콘은48×48 RGBA 원본을 0.5배로 쓴다. 표시 크기는 [표시 크기](#표시-크기-362)를 따른다. 유닛 프레임과 같은 팔레트·어두운2px(논리1px) 윤곽·왼쪽 위 광원을 쓴다. 도형은 64px 설계 격자에 두고 48px 캔버스의 픽셀 중심에서 찍는다. 그림은 가운데44×44 안에 둔다. 기획자가 나중에 바꿀 수 있다.
+[#224](https://github.com/minjunkim-labs/BGLike/issues/224): 임시 아이템 아이콘은48×48 RGBA 원본을 0.5배로 쓴다. 표시 크기는 [표시 크기](#표시-크기-362)를 따른다. 유닛 프레임과 같은 팔레트·어두운2px(논리1px) 윤곽·왼쪽 위 광원을 쓴다. 도형은 64px 설계 격자에 두고 48px 캔버스의 픽셀 중심에서 찍는다. 그림은 가운데44×44 안에 둔다.
 
-`개발 결정`([#224](https://github.com/minjunkim-labs/BGLike/issues/224)): 무기 아이템은 하나이고 직업 제한은 보류다. 그래서 같은 무기에 공용·전사 `sword`와 궁수 `bow`를 연결한다. 대안인 직업 전용 무기 아이템은 아이템 규칙을 바꾸므로 택하지 않았다. 제작은 생성 모델 대신 코드로 픽셀을 찍는다. 같은 결과를 다시 만들 수 있고 외부 권리 조건이 없다. 대안인 내장 `image_gen`은 이 작업 환경에 없었다.
+[#224](https://github.com/minjunkim-labs/BGLike/issues/224): 무기 아이템은 하나이고 직업 제한은 보류다. 그래서 같은 무기에 공용·전사 `sword`와 궁수 `bow`를 연결한다. 대안인 직업 전용 무기 아이템은 아이템 규칙을 바꾸므로 택하지 않았다. 제작은 생성 모델 대신 코드로 픽셀을 찍는다. 같은 결과를 다시 만들 수 있고 외부 권리 조건이 없다. 대안인 내장 `image_gen`은 이 작업 환경에 없었다.
 
 아이콘은 `scenes/combat/art/icons/items/<icon_id>.png`에 둔다. 무기는 `sword`(공용·전사)와 `bow`(궁수), 방어구는 `armor`, 회복 물약은 `potion`이다. `item_data.json`의 `icon`과 `unit_icons`가 파일을 정한다. `CombatLoot.icon_path(item, unit_id)`로 경로를 얻는다. 정비 화면은 장착 칸에 `unit.get_art_id()`를 넘기고 보상·가방 칸은 소유자 없이 부른다([정비 화면 배치](growth/items-loot.md#정비-화면-배치)).
 
@@ -169,18 +173,18 @@ Godot 리소스 경로는 앞에 `res://`를 붙인다.
 
 ## 타격 이펙트 (#559)
 
-`개발 결정`(2026-11-15 프로젝트 소유자 위임, [#559](https://github.com/minjunkim-labs/BGLike/issues/559)): 이펙트는 1 타격 섬광·빗나감 잔상, 2 스킬별 효과, 3 상태 이상, 4 전투 불능 순서로 만든다. 이번에는 1순위만 구현한다. 타격감은 히트스톱만 쓰고 화면 흔들림은 넣지 않는다(#306 결정 유지). 1순위 섬광은 스크립트로 직접 찍었다. 대안은 화면 흔들림을 절대성공에만 넣는 것이다. 기획자가 나중에 바꿀 수 있다.
+2026-11-15 프로젝트 소유자 위임, [#559](https://github.com/minjunkim-labs/BGLike/issues/559): 이펙트는 1 타격 섬광·빗나감 잔상, 2 스킬별 효과, 3 상태 이상, 4 전투 불능 순서로 만든다. 이번에는 1순위만 구현한다. 타격감은 히트스톱만 쓰고 화면 흔들림은 넣지 않는다(#306 결정 유지). 1순위 섬광은 스크립트로 직접 찍었다. 대안은 화면 흔들림을 절대성공에만 넣는 것이다.
 
-`개발 결정`(2026-11-17 프로젝트 소유자 결정, [PR #639](https://github.com/minjunkim-labs/BGLike/pull/639)): 외부 에셋(pixelfx 같은 이펙트 모음, 도트 이미지, 사운드)은 이 게임의 장르(2D 도트 SRPG)와 방향에 맞으면 쓸 수 있다. 억지로 쓰지 않는다. 쓸 때는 라이선스가 상업 배포를 허락하는지 확인하고 [외부 자산 기록](../../THIRD_PARTY_NOTICES.md)에 출처와 조건을 남긴다. 이 결정은 외부 무료 에셋을 들이지 않던 [#193](https://github.com/minjunkim-labs/BGLike/issues/193)의 출처 규칙을 대체한다. 2~4순위 이펙트는 이 규칙으로 외부 에셋과 직접 제작을 비교해 고른다(2순위 결론은 [스킬 효과](#스킬-효과-634)).
+2026-11-17 프로젝트 소유자 결정, [PR #639](https://github.com/minjunkim-labs/BGLike/pull/639): 외부 에셋(pixelfx 같은 이펙트 모음, 도트 이미지, 사운드)은 이 게임의 장르(2D 도트 SRPG)와 방향에 맞으면 쓸 수 있다. 억지로 쓰지 않는다. 쓸 때는 라이선스가 상업 배포를 허락하는지 확인하고 [외부 자산 기록](../../THIRD_PARTY_NOTICES.md)에 출처와 조건을 남긴다. 이 결정은 외부 무료 에셋을 들이지 않던 [#193](https://github.com/minjunkim-labs/BGLike/issues/193)의 출처 규칙을 대체한다. 2~4순위 이펙트는 이 규칙으로 외부 에셋과 직접 제작을 비교해 고른다(2순위 결론은 [스킬 효과](#스킬-효과-634)).
 
-`개발 결정`(#559): 구현 세부는 아래와 같다.
+[#559](https://github.com/minjunkim-labs/BGLike/issues/559): 구현 세부는 아래와 같다.
 
 | 항목 | 값 |
 |---|---|
 | 타격 섬광 | 48×48 RGBA 3프레임을 0.5배(24 논리px)로 12fps에 한 번(0.25초) 재생한다. `pixel_art.tres`(#264)로 그린다. 위치는 화살이 닿는 점과 같은 대상 몸통, 나무 상자는 상자 칸 표면 −8 |
 | 히트스톱 | 명중 순간 대상 그림 애니메이션을 0.05초(60fps의 3프레임) 멈춘다. 그 뒤 공격자 반대쪽으로 2 논리px 밀렸다(0.04초) 돌아온다(0.04초). 그림만 옮기고 `position`·칸은 바꾸지 않는다. 전투 진행은 기다리지 않는다 |
 | 빗나감 잔상 | 새 그림 없이 대상의 현재 프레임을 복제해 알파 0.55 푸른 기로, 공격자 반대쪽 3 논리px에 놓고 0.25초에 걸쳐 사라지게 한다. 대상은 움직이지 않는다 |
-| 대상 | 피해를 주는 모든 공격: 기본·스킬·반응·내성굴림형·장난스러운 화살·폭죽 화살·나무 상자. 화상 틱·낙하·밀치기·반사신경 회피는 공격이 아니라 보이지 않는다 |
+| 대상 | 피해를 주는 모든 공격: 기본·스킬·반응·내성굴림형·장난스러운 화살·폭죽 화살·나무 상자. 화상 틱·낙하·밀치기·반사신경 회피는 공격이 아니라 섬광으로 보이지 않는다(화상·독 틱은 [상태 이상 효과](#상태-이상-효과-635)로 보인다) |
 | 빠르게 보기 | 모든 시간이 게임 시간(`Engine.time_scale`을 따른다)이라 4배속에서 1/4로 준다. 히트스톱 0.05초는 사실상 사라진다 |
 | 건너뛰기 | 건너뛰기 기능은 아직 없다. 이어하기 재실행(`_replaying()`)에서는 피해 팝업·피격음과 같이 이펙트를 만들지 않는다. 건너뛰기를 만들면 `battle.gd`의 같은 조건에 더한다 |
 
@@ -194,7 +198,7 @@ python3 scenes/combat/art/sources/effects/draw_hit_effects.py scenes/combat/art/
 
 ## 스킬 효과 (#634)
 
-`개발 결정`(2026-11-18, [#634](https://github.com/minjunkim-labs/BGLike/issues/634)): 스킬 효과는 pixelfx(MIT)와 직접 찍기를 비교해 **직접 찍기**로 만들었다. pixelfx는 30fps·88×84 같은 큰 캔버스에 반투명과 별도 빛 층을 쓰고 Node로 시트를 뽑는다. 이 게임의 12fps·유닛과 같은 64px 캔버스·알파 0/255·게임 팔레트로 줄이면 원래 장점이 대부분 사라지고, Node 의존과 출처 화면 수정이 따라온다. 직접 찍으면 표준 라이브러리 Python 하나로 같은 바이트를 다시 만들 수 있고 외부 권리 조건이 없다. 외부 자산을 쓰지 않으므로 Credits와 번역 파일은 바꾸지 않았다. 대안인 pixelfx 효과 가공은 택하지 않았다. 나중에 다시 비교할 수 있다.
+2026-11-18, [#634](https://github.com/minjunkim-labs/BGLike/issues/634): 스킬 효과는 pixelfx(MIT)와 직접 찍기를 비교해 **직접 찍기**로 만들었다. pixelfx는 30fps·88×84 같은 큰 캔버스에 반투명과 별도 빛 층을 쓰고 Node로 시트를 뽑는다. 이 게임의 12fps·유닛과 같은 64px 캔버스·알파 0/255·게임 팔레트로 줄이면 원래 장점이 대부분 사라지고, Node 의존과 출처 화면 수정이 따라온다. 직접 찍으면 표준 라이브러리 Python 하나로 같은 바이트를 다시 만들 수 있고 외부 권리 조건이 없다. 외부 자산을 쓰지 않으므로 Credits와 번역 파일은 바꾸지 않았다. 대안인 pixelfx 효과 가공은 택하지 않았다. 나중에 다시 비교할 수 있다.
 
 모든 효과는 `pixel_art.tres`로 0.5배, 12fps로 한 번 재생한다. 시간이 게임 시간이라 4배속에서 1/4로 줄고, 이어하기 재실행(`_replaying()`)에서는 만들지 않는다. 전투 진행은 기다리지 않는다.
 
@@ -213,13 +217,41 @@ python3 scenes/combat/art/sources/effects/draw_skill_effects.py scenes/combat/ar
 
 모양·길이·색이 보기 좋은지, 실제 플레이에서 겹침이 거슬리지 않는지는 사람이 판단한다. 이 작업에서는 원본 화면 캡처를 만들지 못했다.
 
+## 상태 이상 효과 (#635)
+
+[#635](https://github.com/minjunkim-labs/BGLike/issues/635), 2026-11-18: 상태 이상 효과(불꽃·거품·별)는 [스킬 효과](#스킬-효과-634)와 같이 직접 찍어 만든다. 12fps·64px 캔버스·알파 0/255·게임 팔레트를 쓰고, 표준 라이브러리 Python 하나로 같은 바이트를 다시 만든다. 외부 자산을 쓰지 않으므로 `THIRD_PARTY_NOTICES.md`, Credits, 번역 파일은 바꾸지 않았다.
+
+모든 효과는 `pixel_art.tres`로 0.5배, 12fps로 한 번 재생한다. 시간이 게임 시간이라 4배속에서 1/4로 줄고, 이어하기 재실행(`_replaying()`)에서는 만들지 않는다. 전투 진행은 기다리지 않는다. 표시용 신호 셋을 `CombatActions`에 더했다. 판정은 바꾸지 않는다.
+
+| 효과 | 언제(신호) | 캔버스·프레임 | 놓는 곳 |
+|---|---|---|---|
+| 기절 `stun` | 기절이 걸릴 때(`status_applied`) | 64×64, 4 | 대상 유닛, 머리 위에서 도는 별 세 개. 스킬 효과와 같은 기준(발 기준점 (32, 56)) |
+| 화상 `burn` | 화상이 걸릴 때(`status_applied`)와 화상 틱(`status_ticked`) | 64×64, 4 | 대상 유닛, 몸에서 오르는 불꽃 |
+| 독 `poison` | 독이 걸릴 때(독안개 내성 실패 포함)와 독 틱 | 64×64, 4 | 대상 유닛, 발치 웅덩이와 오르는 거품 |
+| 넘어짐 `fallen` | 기름 미끌거림에 실패해 넘어질 때(`status_applied`) | 64×64, 3 | 대상 유닛, 발치에서 퍼지는 먼지 |
+| 점화 `ignite` | 기름이 점화될 때(`oil_ignited`) | 64×64, 4 | 탄 기름 칸마다 칸 표면에 불기둥 |
+
+- `status_applied(target, kind)`: kind는 `stun`·`burn`·`poison`·`fallen`. 거부된 부여(보스 기절, 물 칸 화상, 3중첩 초과)에서는 나오지 않는다.
+- `status_ticked(unit, kind, amount)`: 턴 시작 화상·독 틱마다 한 번. 대상과 굴린 피해량이 있다. 독 내성에 성공해 지워진 독에는 나오지 않는다. 기존 `hit_landed`·`damaged`·`feedback`은 그대로다.
+- `oil_ignited(cells)`: 이어진 기름 칸 목록으로 한 번.
+- 점화는 유닛마다 화상을 두 번 부여하므로 `burn` 효과가 같은 자리에 두 개 겹쳐 하나처럼 보인다. 판정을 건드리지 않으려고 그대로 둔다.
+- 상태가 풀릴 때, 기름 장판이 깔릴 때의 효과는 만들지 않았다.
+
+팔레트는 `draw_skill_effects.py`의 값이다. 규격은 `status_effect_generation.json`에 기록한다.
+
+```sh
+python3 scenes/combat/art/sources/effects/draw_status_effects.py scenes/combat/art/effects
+```
+
+모양·길이·색이 보기 좋은지, 실제 플레이에서 겹침이 거슬리지 않는지는 사람이 판단한다. 이 작업에서는 원본 화면 캡처를 만들지 못했다.
+
 ## 주사위
 
-`개발 결정`([#519](https://github.com/minjunkim-labs/BGLike/issues/519)): 판정 주사위 그림은 48×48 RGBA 원본을 0.5배로 쓴다(24 논리px). 2px 어두운 윤곽과 왼쪽 위 광원을 쓰고 그림 안에는 숫자를 넣지 않는다. 면 수(d4~d20)×다섯 상태 그림과 액체 마스크를 `scenes/combat/art/dice/`에 둔다. `python3 scenes/combat/art/sources/dice/draw_dice.py scenes/combat/art/dice`가 같은 파일을 만들고, 규격은 `sources/dice/dice_generation.json`에 있다. 상태·게이지·숫자 배치의 결정은 [주사위 굴림 연출](combat/dice-presentation.md#도트-디자인-519)에 있다.
+[#519](https://github.com/minjunkim-labs/BGLike/issues/519): 판정 주사위 그림은 48×48 RGBA 원본을 0.5배로 쓴다(24 논리px). 2px 어두운 윤곽과 왼쪽 위 광원을 쓰고 그림 안에는 숫자를 넣지 않는다. 면 수(d4~d20)×다섯 상태 그림과 액체 마스크를 `scenes/combat/art/dice/`에 둔다. `python3 scenes/combat/art/sources/dice/draw_dice.py scenes/combat/art/dice`가 같은 파일을 만들고, 규격은 `sources/dice/dice_generation.json`에 있다. 상태·게이지·숫자 배치의 결정은 [주사위 굴림 연출](combat/dice-presentation.md#도트-디자인-519)에 있다.
 
 ## 표시 크기 (#362)
 
-`개발 결정`([#362](https://github.com/minjunkim-labs/BGLike/issues/362), 2026-10-27 사용자 위임): 스킬·아이템 그림은48×48 원본을 0.5배로 써서24 논리px로 표시한다. 전투 HUD 스킬 버튼, 정비의 장비·보상·가방 칸, 선택 상세, 드래그 미리보기가 `CombatActionRules.ICON_SIZE` 하나를 쓴다. 입력 영역은 줄이지 않는다. 스킬 버튼은52×34, 정비 칸은36×36이다. 턴 순서 초상(32)과 정비 카드 초상(64)은 이 범위 밖이다. 전투 HUD 패시브 칸(22×34)도 같은 16 논리px·32px 원본이다([패시브 아이콘](#패시브-아이콘)). 정비 카드의 작은 물약 칸(그림 16)은 크기를 그대로 두고, 같은 0.5배 규칙으로 물약류마다 32px 원본 `<icon>_pip.png`(`potion_pip.png`, `oil_bottle_pip.png`)를 함께 찍는다. 칸의 입력 영역은 20×20이다([#577](https://github.com/minjunkim-labs/BGLike/issues/577)). 기획자가 나중에 바꿀 수 있다.
+[#362](https://github.com/minjunkim-labs/BGLike/issues/362), 2026-10-27 사용자 위임: 스킬·아이템 그림은48×48 원본을 0.5배로 써서24 논리px로 표시한다. 전투 HUD 스킬 버튼, 정비의 장비·보상·가방 칸, 선택 상세, 드래그 미리보기가 `CombatActionRules.ICON_SIZE` 하나를 쓴다. 입력 영역은 줄이지 않는다. 스킬 버튼은52×34, 정비 칸은36×36이다. 턴 순서 초상(32)과 정비 카드 초상(64)은 이 범위 밖이다. 전투 HUD 패시브 칸(22×34)도 같은 16 논리px·32px 원본이다([패시브 아이콘](#패시브-아이콘)). 정비 카드의 작은 물약 칸(그림 16)은 크기를 그대로 두고, 같은 0.5배 규칙으로 물약류마다 32px 원본 `<icon>_pip.png`(`potion_pip.png`, `oil_bottle_pip.png`)를 함께 찍는다. 칸의 입력 영역은 20×20이다([#577](https://github.com/minjunkim-labs/BGLike/issues/577)).
 
 원본을 48로 줄여 기존 0.5배 규칙과 [해상도 ADR](../adr/0002-resolution.md#결정) 결정3을 지킨다. 두 생성기는 64px 설계 격자의 도형을 48px 캔버스에서 다시 찍는다. 64px 그림을 줄이지 않는다.
 
@@ -247,14 +279,14 @@ python3 scenes/combat/art/sources/effects/draw_skill_effects.py scenes/combat/ar
 
 ## UI
 
-`개발 결정`: 화면 UI도 도트 기준을 따른다. 테마 값의 원본은 `scenes/ui_theme.tres`다.
+화면 UI도 도트 기준을 따른다. 테마 값의 원본은 `scenes/ui_theme.tres`다.
 
 - 글꼴: Galmuri11 하나(`scenes/ui/fonts/Galmuri11.ttf`, OFL-1.1). 테마 기본 크기 11. 11px 격자라 창 배율 2·3에서 정수 배율이 된다. 9·14는 쓰지 않는다. 값을 유지한 14 예외는 `scenes/ui_theme.tres`의 `Window/font_sizes/title_font_size`, `scenes/main.tscn` 출처 소제목(`FontHeading`과 같은 화면의 게임 규칙·엔진·그림·효과음), `scenes/help.tscn` 도움말 소제목, `scenes/combat/battle.gd`의 전투 시작 버튼이다. 라이선스 고지는 [THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES.md#현재-추적된-글꼴)에 있다.
 - UI 색: 아이템 팔레트(`draw_item_icons.py`)에서 고른다. 패널 면 `#21223D`, 강조 외곽선 `#CC8E4D`, 버튼 기본 `#223940`·호버 `#365D61`·눌림 `#18292D`·비활성 `#464254`, 본문 글자 `#F5EBDB`, 보조 글자 `#C5B29F`, 강조 글자 `#EBBA84`, 비활성 글자 `#85736C`, 포커스 테두리 `#EBBA84`. 본문 글자와 패널 면은 약 13:1이다.
 - 9-slice 프레임: 16×16 RGBA 3종(`scenes/ui/art/frames/panel.png`, `accent_panel.png`, `button.png`). 바깥 1px 외곽선, 안쪽 1px 면, 왼쪽 위 1px 밝은 모서리, 모서리 2×2 깎기, 여백 4px. 원본은 회색조이고 색은 `StyleBoxTexture.modulate_color`로 정한다. 같은 명령은 같은 파일을 만든다(`scenes/ui/art/sources/draw_ui_frames.py`, 설명은 `ui_frame_generation.json`).
 - 1배 예외: `StyleBoxTexture`에는 0.5배 축척이 없어 프레임은 텍셀과 논리 px가 1:1이다. 배율 2·3에서 정수로 찍혀 셰이더가 필요 없다. 유닛·지형의 0.5배 규칙(#264)과 다른 예외다.
 - HUD 패널 변형: 공용 테마에 `HudPanel`(`panel.png`, 면 #21223D, 여백 4/3)과 `HudAccentFrame`(`accent_panel.png`, #CC8E4D, 면을 칠하지 않는 선택 표시)이 있다. 전투 HUD(로그·스킬 묶음·순서 묶음·유닛 정보·결과)·호버 설명·정비 패널이 쓴다. 체크박스는 UI 팔레트 색이다. 전투 HUD는 `scenes/ui_theme.tres`를 직접 지정하고, `CanvasLayer` 아래의 정비 화면도 `theme`을 직접 준다.
-- `StyleBoxFlat`로 남긴 것: 초상·스킬·패시브 칸·횟수 배지(테두리 색이 차례·선택·켜짐을 뜻한다), 정비 아이템 칸·빈 가방 칸·드래그 강조(보상·선택·놓을 수 있음), 5px 높이의 HP 바, 포커스 테두리. 9-slice 한 장은 면과 테두리를 따로 칠하지 못한다. 스킬·패시브 칸의 모양은 #517 몫이라 칸 안 기호 크기(10·12·8·6)도 그때까지 둔다. 패시브 칸은 그림이 있으면 글자 대신 [아이콘](#패시브-아이콘)을 쓰고, 12는 그림이 없을 때의 첫 글자다. 정비 제목 16과 결과 글자 20도 14 예외와 같이 남긴다.
+- `StyleBoxFlat`로 남긴 것: 초상·스킬·패시브 칸·횟수 배지(테두리 색이 차례·선택·켜짐을 뜻한다), 정비 아이템 칸·빈 가방 칸·드래그 강조(보상·선택·놓을 수 있음), 5px 높이의 HP 바, 포커스 테두리. 9-slice 한 장은 면과 테두리를 따로 칠하지 못한다. 스킬 칸의 모양은 #517이 정했다. 칸 안 비용 기호(10)와 횟수 배지(8)의 글자 크기는 #517이 지금 값으로 확정했고, 패시브 칸의 12·6은 그대로 둔다([스킬 바](combat/combat.md)). 패시브 칸은 그림이 있으면 글자 대신 [아이콘](#패시브-아이콘)을 쓰고, 12는 그림이 없을 때의 첫 글자다. 정비 제목 16과 결과 글자 20도 14 예외와 같이 남긴다.
 - 메뉴 화면(#557): 설정은 `MenuPanel`(`PanelContainer` 변형, `panel.png`, 면 #21223D, 여백 좌우 12·위아래 10)이 내용 전체를 감싼다. 볼륨 슬라이더(`HSlider`)는 막대(`slider_track.png`, 8×8 회색조 9-slice 여백 2, 안쪽 윗줄 밝은 가장자리)와 손잡이(`slider_grabber.png`·`slider_grabber_highlight.png`, 8×12 색 포함)를 쓴다. 막대 면 #18292D, 채운 부분 #365D61, 포커스·호버로 강조한 채운 부분 #CC8E4D이고 색은 `StyleBoxTexture.modulate_color`다. 손잡이는 아이콘이라 modulate가 없어 색을 원본에 넣는다(외곽선 #18292D, 면 #C5B29F, 밝은 가장자리 #F5EBDB, 강조 손잡이 면 #EBBA84). 도움말 탭(`TabBar`)은 버튼 규칙을 따른다. 고르지 않은 탭은 버튼 기본색, 호버와 고른 탭은 버튼 호버색이고 고른 탭 글자만 강조 글자색 #EBBA84다. 모두 텍셀이 논리 px와 1:1이다.
 - 타이틀(#557): 로고는 `scenes/ui/art/title/logo.png`(108×24)다. 5×7 칸 글자 `BGLike`를 칸당 3×3 px로 찍고 1px 외곽선과 오른쪽 아래 1px 그림자를 둔다. 면 #EBBA84, 윗변 #F5EBDB, 외곽선 #18292D, 그림자 #0B1215다. 임시 이름이라 정식 이름이 정해지면 바꾼다. 배경은 새 그림 없이 `scenes/title_backdrop.gd`가 1막 1스테이지의 실제 맵(`CombatMap`)과 전사·궁수 오른쪽 대기 그림 한 장씩을 2배로 키워 어둡게(`modulate` `Color(0.38, 0.38, 0.48)`) 깐 정지 그림이다. 지형·유닛 원본이 0.5배라 2배면 텍셀이 논리 px와 1:1이다. 맵 칸 표면의 가운데를 논리 화면 가운데에 두고 정수 논리 px로 반올림한다.
 - 생성: `python3 scenes/ui/art/sources/draw_menu_art.py scenes/ui/art`가 슬라이더 그림 셋과 로고를 만든다(표준 라이브러리만, 같은 명령은 같은 파일). 규격은 `scenes/ui/art/sources/menu_art_generation.json`에 있다.

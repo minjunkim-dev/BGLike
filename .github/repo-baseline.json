@@ -1,0 +1,27 @@
+{
+  "files": {
+    ".github/pull_request_template.md": {
+      "source": ".github/pull_request_template.md",
+      "sha256": "2743f77ecf254d76a7f6cf01089eef1aa323cda5595b75a64f770de2eeb0122d"
+    },
+    "scripts/reviewed_head.py": {
+      "source": "profiles/pr-conventions/reviewed_head.py",
+      "sha256": "f6228264aa82335685a3fd48c9f36dcca5a0a2dfb1a6d024fa271a82a71644b4"
+    },
+    "scripts/test_reviewed_head.py": {
+      "source": "profiles/pr-conventions/test_reviewed_head.py",
+      "sha256": "22bbc0be7f56742496ca6b2872952db01a9dfdb4e5a30cbb777c04a0333447ff"
+    }
+  },
+  "blocks": {
+    "ops": {
+      "target": "AGENTS.md",
+      "exclude": {
+        "Cloudflare": "웹 도메인이 없는 데스크톱 게임"
+      },
+      "sha256": "9e162ae0ef3679c596d7a0f2389e3521c24b4b02ae18a7a28e6fb45ca1281233"
+    }
+  },
+  "source": "minjunkim-labs/repo-baseline",
+  "source_commit": "7660f53cd36604a68add2760b79bd2ea817fb743"
+}

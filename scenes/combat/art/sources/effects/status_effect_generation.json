@@ -1,0 +1,266 @@
+{
+  "issue": "https://github.com/minjunkim-labs/BGLike/issues/635",
+  "generator": {
+    "tool": "draw_status_effects.py",
+    "mode": "pixels placed by code; no generative model, no input image, no external effect pack. pixelfx (MIT) was compared and not used (docs/design/pixel-art.md, \uc0c1\ud0dc \uc774\uc0c1 \ud6a8\uacfc \uc808)",
+    "date": "2026-11-18",
+    "command": "python3 scenes/combat/art/sources/effects/draw_status_effects.py scenes/combat/art/effects"
+  },
+  "spec": {
+    "display_scale": 0.5,
+    "fps": 12,
+    "loop": false,
+    "margin": 2,
+    "alpha": "0 or 255 only",
+    "filter": "nearest; no resampling after drawing",
+    "palette_source": "draw_skill_effects.py (outline, white, brass, light, red, steel, green)"
+  },
+  "effects": {
+    "stun": {
+      "canvas": [
+        64,
+        64
+      ],
+      "palette": [
+        [
+          18,
+          13,
+          22
+        ],
+        [
+          204,
+          142,
+          77
+        ],
+        [
+          235,
+          186,
+          132
+        ],
+        [
+          245,
+          235,
+          219
+        ]
+      ],
+      "frames": [
+        {
+          "file": "stun/000.png",
+          "brief": "Three stars circle over the head, first star white."
+        },
+        {
+          "file": "stun/001.png",
+          "brief": "Stars move a quarter turn, second star white."
+        },
+        {
+          "file": "stun/002.png",
+          "brief": "Stars move another quarter turn, third star white."
+        },
+        {
+          "file": "stun/003.png",
+          "brief": "Stars complete the turn, first star white again."
+        }
+      ]
+    },
+    "burn": {
+      "canvas": [
+        64,
+        64
+      ],
+      "palette": [
+        [
+          18,
+          13,
+          22
+        ],
+        [
+          174,
+          76,
+          46
+        ],
+        [
+          200,
+          110,
+          66
+        ],
+        [
+          235,
+          186,
+          132
+        ],
+        [
+          245,
+          235,
+          219
+        ]
+      ],
+      "frames": [
+        {
+          "file": "burn/000.png",
+          "brief": "Three small flames low on the body."
+        },
+        {
+          "file": "burn/001.png",
+          "brief": "Middle flame drops, side flames rise; a spark lifts."
+        },
+        {
+          "file": "burn/002.png",
+          "brief": "Middle flame is tallest; spark lifts higher."
+        },
+        {
+          "file": "burn/003.png",
+          "brief": "Flames shorten and flicker back down."
+        }
+      ]
+    },
+    "poison": {
+      "canvas": [
+        64,
+        64
+      ],
+      "palette": [
+        [
+          18,
+          13,
+          22
+        ],
+        [
+          60,
+          128,
+          72
+        ],
+        [
+          112,
+          199,
+          109
+        ],
+        [
+          176,
+          230,
+          150
+        ],
+        [
+          245,
+          235,
+          219
+        ]
+      ],
+      "frames": [
+        {
+          "file": "poison/000.png",
+          "brief": "Dark puddle ring at the feet and four green bubbles."
+        },
+        {
+          "file": "poison/001.png",
+          "brief": "Bubbles rise one step."
+        },
+        {
+          "file": "poison/002.png",
+          "brief": "Bubbles rise higher."
+        },
+        {
+          "file": "poison/003.png",
+          "brief": "Puddle gone; bubbles shrink as they leave the head."
+        }
+      ]
+    },
+    "fallen": {
+      "canvas": [
+        64,
+        64
+      ],
+      "palette": [
+        [
+          18,
+          13,
+          22
+        ],
+        [
+          133,
+          115,
+          108
+        ],
+        [
+          197,
+          178,
+          159
+        ],
+        [
+          245,
+          235,
+          219
+        ]
+      ],
+      "frames": [
+        {
+          "file": "fallen/000.png",
+          "brief": "Small puffs of dust and white flecks burst at the feet."
+        },
+        {
+          "file": "fallen/001.png",
+          "brief": "Dust puffs spread sideways."
+        },
+        {
+          "file": "fallen/002.png",
+          "brief": "Dust spreads wide and thins out."
+        }
+      ]
+    },
+    "ignite": {
+      "canvas": [
+        64,
+        64
+      ],
+      "palette": [
+        [
+          18,
+          13,
+          22
+        ],
+        [
+          174,
+          76,
+          46
+        ],
+        [
+          200,
+          110,
+          66
+        ],
+        [
+          204,
+          142,
+          77
+        ],
+        [
+          235,
+          186,
+          132
+        ],
+        [
+          245,
+          235,
+          219
+        ]
+      ],
+      "frames": [
+        {
+          "file": "ignite/000.png",
+          "brief": "Low fire base on the oil tile with a white core."
+        },
+        {
+          "file": "ignite/001.png",
+          "brief": "Fire pillar climbs."
+        },
+        {
+          "file": "ignite/002.png",
+          "brief": "Tall pillar with sparks rising."
+        },
+        {
+          "file": "ignite/003.png",
+          "brief": "Pillar breaks into gaps; sparks drift upward."
+        }
+      ]
+    }
+  }
+}

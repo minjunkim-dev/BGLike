@@ -79,8 +79,11 @@ class GodotCheckTests(unittest.TestCase):
     def test_clean_output_passes_every_step(self):
         result, calls = self.run_check()
         self.assertEqual(result.returncode, 0, result.stderr)
-        # --version, --import, --quit-after, the seventeen combat tests, and save, title, pause, continue, ui_theme, music.
-        self.assertEqual(len(calls), 26)
+        # --version, --import, --quit-after, the seventeen combat tests (save in two halves),
+        # and save, title, pause, continue, ui_theme, music.
+        self.assertEqual(len(calls), 27)
+        for share in ("0/2", "1/2"):
+            self.assertIn(f"--headless --path . --script tests/combat_save_test.gd -- {share}", calls)
         self.assertTrue(any("title_test.gd" in call for call in calls))
         self.assertTrue(any("combat_capture_test.gd" in call for call in calls))
         self.assertTrue(any("combat_feedback_test.gd" in call for call in calls))
@@ -265,7 +268,7 @@ esac
                 binary = root / "godot"
                 binary.write_text(FAKE_GODOT + """
 case "$*" in
-  *combat_save_test*) echo 'save stage 1'; echo $$ > "$PROBE/save.pid"; exec sleep 30 ;;
+  *combat_save_test*) echo 'save stage 1'; echo $$ >> "$PROBE/save.pid"; exec sleep 30 ;;
   *combat_hud_test*) echo $$ > "$PROBE/hud.pid"; exec sleep 30 ;;
 esac
 """)
@@ -287,9 +290,13 @@ esac
                     while not all((root / f"{name}.pid").exists() for name in ("save", "hud")):
                         self.assertLess(time.monotonic(), deadline, "Parallel tests did not start")
                         time.sleep(0.02)
-                    children = [int((root / f"{name}.pid").read_text()) for name in ("save", "hud")]
+                    # Both save halves append their pid, so every owned process is checked.
+                    while len((root / "save.pid").read_text().split()) < 2:
+                        self.assertLess(time.monotonic(), deadline, "Both save halves did not start")
+                        time.sleep(0.02)
+                    children = [int(pid) for name in ("save", "hud") for pid in (root / f"{name}.pid").read_text().split()]
                     # Output is relayed as it arrives, so a cancelled run still shows how far each test got.
-                    while not any(re.search(r"\[combat_save_test \d+s\] save stage 1", line) for line in lines):
+                    while not any(re.search(r"\[combat_save_test 0/2 \d+s\] save stage 1", line) for line in lines):
                         self.assertLess(time.monotonic(), deadline, "Running test output was not relayed")
                         time.sleep(0.02)
                     os.kill(process.pid, signum)

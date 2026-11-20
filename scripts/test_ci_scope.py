@@ -13,7 +13,8 @@ from ci_scope import game_required, main, select_game
 class ScopeTests(unittest.TestCase):
     def test_document_and_known_maintenance_changes(self):
         self.assertFalse(select_game(["README.md", "COPYRIGHT.md", "docs/design/images/example.png",
-                                     ".github/workflows/discord-pr.yml", ".github/ISSUE_TEMPLATE/task.md"]))
+                                     ".github/workflows/discord-pr.yml", ".github/ISSUE_TEMPLATE/task.md",
+                                     ".github/repo-baseline.json"]))
 
     def test_game_and_unknown_changes(self):
         for path in ["project.godot", "scenes/combat/main.tscn", "tests/combat_hud_test.gd",
@@ -41,7 +42,9 @@ class ScopeTests(unittest.TestCase):
             self.assertTrue(game_required({"before": "a" * 40}))
 
     def test_full_pull_request_diff_uses_no_renames(self):
-        with patch("ci_scope.subprocess.check_output", return_value="README.md\n") as run:
+        # CI checks out a test merge; say HEAD has no second parent so the event base is used
+        with patch("ci_scope.subprocess.run", return_value=subprocess.CompletedProcess([], 1)), \
+                patch("ci_scope.subprocess.check_output", return_value="README.md\n") as run:
             self.assertFalse(game_required({"pull_request": {"base": {"sha": "b" * 40}}}))
             self.assertEqual(run.call_args.args[0], ["git", "diff", "--no-renames", "--name-only", "b" * 40, "HEAD"])
 
@@ -64,6 +67,35 @@ class ScopeTests(unittest.TestCase):
                 git("mv", "scenes/example.gd", "docs/example.md")
                 git("commit", "-m", "move game to docs")
                 self.assertTrue(game_required({"before": base}))
+            finally:
+                os.chdir(original)
+
+    def test_pull_request_behind_main_counts_only_its_own_changes(self):
+        original = Path.cwd()
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                os.chdir(directory)
+                def git(*args):
+                    return subprocess.check_output(["git", "-c", "user.name=CI Test",
+                        "-c", "user.email=ci@example.invalid", "-c", "commit.gpgsign=false", *args],
+                        text=True, stderr=subprocess.DEVNULL).strip()
+                git("init", "-b", "main")
+                Path("README.md").write_text("baseline\n")
+                git("add", ".")
+                git("commit", "-m", "baseline")
+                base = git("rev-parse", "HEAD")
+                git("checkout", "-b", "feature")
+                Path("AGENTS.md").write_text("docs only\n")
+                git("add", ".")
+                git("commit", "-m", "docs")
+                git("checkout", "main")
+                Path(".coderabbit.yaml").write_text("language: ko-KR\n")
+                git("add", ".")
+                git("commit", "-m", "main moved on")
+                git("merge", "--no-ff", "feature", "-m", "GitHub test merge")
+                # The event still names the old base, as GitHub did for BGLike#681
+                self.assertFalse(game_required({"pull_request": {"base": {"sha": base}}}))
+                self.assertTrue(game_required({"before": base}))  # a push still counts everything since before
             finally:
                 os.chdir(original)
 

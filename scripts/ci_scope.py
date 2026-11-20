@@ -10,7 +10,7 @@ import subprocess
 
 MAINTENANCE = {
     ".gitignore", ".editorconfig", ".github/dependabot.yml", ".github/ISSUE_TEMPLATE/task.md",
-    ".github/workflows/discord-pr.yml",
+    ".github/workflows/discord-pr.yml", ".github/repo-baseline.json",
 }
 
 
@@ -25,8 +25,19 @@ def base_sha(event):
     return base if isinstance(base, str) and re.fullmatch(r"[0-9a-f]{40}", base) and set(base) != {"0"} else None
 
 
-def game_required(event):
+def diff_base(event):
+    """The commit the event's changes start from. A pull request runs on GitHub's test merge, whose first
+    parent is the base branch now; the event's base SHA can be older, and main's newer files would count."""
     base = base_sha(event)
+    if base and "pull_request" in event and subprocess.run(
+            ["git", "rev-parse", "--verify", "-q", "HEAD^2"], stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL).returncode == 0:
+        return subprocess.check_output(["git", "rev-parse", "HEAD^1"], text=True).strip()
+    return base
+
+
+def game_required(event):
+    base = diff_base(event)
     if not base:
         return True
     try:
@@ -45,7 +56,7 @@ def main():
     game = os.environ["GITHUB_EVENT_NAME"] == "workflow_dispatch" or game_required(event)
     with open(os.environ["GITHUB_OUTPUT"], "a") as output:
         output.write(f"game={str(game).lower()}\n")
-    base = base_sha(event)
+    base = diff_base(event)
     if base and subprocess.run(["git", "cat-file", "-e", base], stdout=subprocess.DEVNULL,
                                stderr=subprocess.DEVNULL).returncode == 0:
         subprocess.run(["git", "diff", "--check", "--no-renames", base, "HEAD"], check=True)

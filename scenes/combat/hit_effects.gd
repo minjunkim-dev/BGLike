@@ -17,6 +17,8 @@ const FLASH_FRAMES: Array[String] = [
 ]
 ## 스킬 효과(#634): 폴더별 프레임 수. 그림은 draw_skill_effects.py가 찍는다.
 const SKILL_FRAME_COUNTS: Dictionary = {"shield": 4, "heal": 4, "buff": 4, "sweep_front": 3, "sweep_back": 3}
+## 상태 이상 효과(#635): 폴더별 프레임 수. 그림은 draw_status_effects.py가 찍는다. 재생 규칙은 스킬 효과와 같다.
+const STATUS_FRAME_COUNTS: Dictionary = {"stun": 4, "burn": 4, "poison": 4, "fallen": 3, "ignite": 4}
 const SKILL_FRAME_PATH: String = "res://scenes/combat/art/effects/%s/%03d.png"
 ## 효과 그림 안에서 유닛 발 기준점과 캔버스 중심(그림 px). 유닛 프레임과 같은 기준이다.
 const UNIT_EFFECT_ANCHOR: Vector2 = Vector2(32, 56)
@@ -82,6 +84,18 @@ func play_sweep(actor: CombatUnit, direction: Vector2) -> void:
 	_spawn("sweep_front" if front else "sweep_back", _unit_anchor(actor) + (SWEEP_CENTER - anchor) * 0.5, direction.x < 0.0)
 
 
+## 기절·화상·독·넘어짐이 걸렸거나 화상·독 틱이 났을 때. kind는 효과 폴더 이름과 같다.
+## at은 대상이 지금 선 칸의 표면이다. 밀려난 직후에는 unit.position이 아직 떠난 칸에 있어서 칸으로 놓는다.
+func play_status(at: Vector2, kind: String) -> void:
+	if STATUS_FRAME_COUNTS.has(kind) and kind != "ignite":
+		_spawn(kind, at + (UNIT_EFFECT_CENTER - UNIT_EFFECT_ANCHOR) * 0.5, false)
+
+
+## 기름이 탄 칸 하나의 불기둥. at은 칸 표면이다.
+func play_ignite(at: Vector2) -> void:
+	_spawn("ignite", at + (UNIT_EFFECT_CENTER - UNIT_EFFECT_ANCHOR) * 0.5, false)
+
+
 func _play_on_unit(folder: String, unit: CombatUnit) -> void:
 	_spawn(folder, _unit_anchor(unit) + (UNIT_EFFECT_CENTER - UNIT_EFFECT_ANCHOR) * 0.5, false)
 
@@ -109,7 +123,8 @@ func _skill_effect_frames(folder: String) -> SpriteFrames:
 		frames.add_animation(&"play")
 		frames.set_animation_speed(&"play", FLASH_FPS)
 		frames.set_animation_loop(&"play", false)
-		for index: int in range(SKILL_FRAME_COUNTS[folder]):
+		var count: int = SKILL_FRAME_COUNTS[folder] if SKILL_FRAME_COUNTS.has(folder) else STATUS_FRAME_COUNTS[folder]
+		for index: int in range(count):
 			frames.add_frame(&"play", load(SKILL_FRAME_PATH % [folder, index]) as Texture2D)
 		_skill_frames[folder] = frames
 	return _skill_frames[folder]
