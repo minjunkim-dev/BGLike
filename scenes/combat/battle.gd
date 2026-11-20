@@ -1127,9 +1127,9 @@ func _refresh_turn_tile() -> void:
 	_turn_tile_unit = unit
 
 
-## 카메라가 따라갈 행동 유닛을 알린다(#516 2절). 유닛이 바뀔 때만 카메라가 새로 시작한다.
+## 카메라가 따라갈 행동 유닛을 알린다(#516 2절). 유닛이나 순환이 바뀔 때만 카메라가 새로 시작한다.
 func _refresh_camera_follow() -> void:
-	camera.follow_turn(_acting_unit())
+	camera.follow_turn(_acting_unit(), turns.round_number)
 
 
 ## 이동·점프 한 칸이 도착하면 행동 유닛의 표시를 도착한 칸으로 옮긴다. 나타남은 다시 돌리지 않는다.

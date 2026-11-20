@@ -2076,7 +2076,7 @@ func _reset_units() -> void:
 	ScriptedDice.arrange_turns(turns, units, units)
 	# #624: 카메라가 턴마다 따라가므로 fixture는 카메라를 가운데에 세워 두고 시작한다. 행동 유닛만 따라간 것으로 알린다.
 	var camera: CombatCamera = battle.get_node("Camera") as CombatCamera
-	camera.follow_turn(turns.current_unit)
+	camera.follow_turn(turns.current_unit, turns.round_number)
 	camera.reset()
 
 
@@ -3119,10 +3119,13 @@ func _test_camera_follow_turn() -> void:
 	_check(camera.zoom == Vector2.ONE and _camera_snapped(camera), "배율은 그대로이고 화면 원점은 정수 논리 px")
 	# 이미 C 안인 유닛으로 넘어가면 움직이지 않는다.
 	var settled: Vector2 = camera.position
-	_check(turns.select_unit(units[1]), "같은 묶음의 다른 아군을 고를 수 있음")
 	camera.reset()
 	camera.advance(0.0)
 	var centered: Vector2 = camera.position
+	var offset: Vector2 = _unit_screen_point(units[1]) - focus
+	_check(absf(offset.x) <= CombatCamera.CENTER_SIZE.x / 2.0 and absf(offset.y) <= CombatCamera.CENTER_SIZE.y / 2.0,
+		"검사 fixture: 처음 화면에서 다음 유닛 칸이 C 안: %s" % offset)
+	_check(turns.select_unit(units[1]), "같은 묶음의 다른 아군을 고를 수 있음")
 	battle.call("_update_turn_ui")
 	camera.advance(0.5)
 	_check(units[1].cell == Vector2i(4, 4) and camera.position == centered and not camera.is_turning() and settled != centered,
@@ -3200,6 +3203,17 @@ func _test_camera_follow_hand() -> void:
 		camera.advance(0.3)
 		_check(camera.position == stopped, "손 조작 뒤 그 유닛이 걸어도 따라잡지 않음: " + kind)
 		_stop_walking(units[0])
+		# 혼자인 유닛은 다음 순환에도 같은 유닛으로 턴을 받는다. 새 턴이라 따라잡기가 다시 켜진다.
+		turns.round_number += 1
+		battle.call("_update_turn_ui")
+		camera.advance(0.4)
+		_walk_to(units[0], Vector2i(0, 9))
+		for step: int in range(3):
+			camera.advance(0.5)
+		_check(_unit_screen_point(units[0]).distance_to(focus) <= 1.0,
+			"같은 유닛이 다음 순환에 턴을 받으면 걸을 때 다시 따라잡음: " + kind)
+		_stop_walking(units[0])
+		turns.round_number -= 1
 		hud.unit_selected.emit(units[1])
 		_check(turns.current_unit == units[1] and camera.is_turning(), "다음 유닛에서는 다시 턴 이동이 돎: " + kind)
 		camera.advance(0.4)
@@ -3296,10 +3310,11 @@ func _test_camera_follow_idle() -> void:
 	_check(not camera.is_turning(), "행동 유닛이 전투 불능이 되면 따라가기가 멈춤")
 	camera.advance(0.5)
 	_check(camera.position == stopped, "전투 불능 유닛은 따라가지 않음")
-	_reset_units()
+	units[0].hit_points = units[0].get_max_hit_points()
 	battle.call("_update_turn_ui")
-	_check(camera.is_turning() or camera.position != stopped, "다시 살아난 행동 유닛으로 따라가기가 새로 돎")
-	camera.advance(0.1)
+	_check(camera.is_turning(), "다시 살아난 행동 유닛으로 턴 이동이 새로 돎")
+	camera.advance(0.4)
+	_check(_unit_screen_point(units[0]).distance_to(_camera_focus_screen()) <= 1.0, "다시 살아난 행동 유닛 칸이 F에 옴")
 	units[2].hit_points = 0
 	units[3].hit_points = 0
 	_check(actions.is_over(), "적이 모두 쓰러지면 전투가 끝남")

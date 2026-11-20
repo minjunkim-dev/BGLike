@@ -31,6 +31,8 @@ var _dragging: bool = false
 var _magnify: float = 1.0
 ## 따라가는 행동 유닛(#516). null이면 따라가지 않는다.
 var _followed: CombatUnit
+## 따라가는 턴의 순환 번호. 혼자인 유닛은 다음 순환에도 같은 유닛으로 턴을 받으므로 유닛과 함께 본다.
+var _followed_round: int = 0
 ## 플레이어가 화면을 직접 움직였다. 그 유닛의 턴이 끝날 때까지 따라잡기(2)를 끈다.
 var _hand_moved: bool = false
 ## 턴 이동(1)의 진행. 시작 화면 기준점·끝 목표·처음 목표 점(바뀌면 유닛이 움직이기 시작한 것)·지난 시간.
@@ -91,12 +93,14 @@ func zoom_at(screen_point: Vector2, step: int) -> void:
 	_apply()
 
 
-## 따라갈 행동 유닛을 알린다(#516 2절). 유닛이 바뀔 때만 새로 시작한다: 손 조작 표시를 지우고, 유닛이 C 밖이면 턴 이동(1)을 연다.
+## 따라갈 행동 유닛과 그 턴의 순환 번호(`CombatTurns.round_number`)를 알린다(#516 2절). 유닛이나 순환이 바뀔 때만 새로 시작한다:
+## 손 조작 표시를 지우고, 유닛이 C 밖이면 턴 이동(1)을 연다.
 ## null(전투 시작 전·전투 끝·전투 불능)이면 따라가지 않고 진행 중인 따라가기도 멈춘다.
-func follow_turn(unit: CombatUnit) -> void:
-	if unit == _followed:
+func follow_turn(unit: CombatUnit, round_number: int) -> void:
+	if unit == _followed and round_number == _followed_round:
 		return
 	_followed = unit
+	_followed_round = round_number
 	_hand_moved = false
 	_stop_following()
 	if unit != null and _outside_center(_target_point()):
