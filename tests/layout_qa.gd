@@ -77,7 +77,10 @@ func _run() -> void:
 		print("[LAYOUT_PREFLIGHT_PASS]" if failures == 0 else "[LAYOUT_PREFLIGHT_FAIL] %d failures;" % failures)
 	else:
 		print("[LAYOUT_QA_DONE] %d checks, %d failures;" % [checks, failures])
+	# 재생 중인 스트림이 남으면 종료 때 누수 오류를 내므로 모든 재생 노드를 멈추고 스트림을 놓는다.
+	_release_audio(root)
 	game.queue_free()
+	await process_frame
 	await process_frame
 	quit(0 if failures == 0 else 1)
 
@@ -168,3 +171,10 @@ func _capture(label: String) -> void:
 		return
 	await RenderingServer.frame_post_draw
 	ck(root.get_texture().get_image().save_png(output.path_join(label + ".png")) == OK, "원본 PNG 저장: " + label)
+
+func _release_audio(node: Node) -> void:
+	for child: Node in node.get_children():
+		_release_audio(child)
+	if node is AudioStreamPlayer:
+		(node as AudioStreamPlayer).stop()
+		(node as AudioStreamPlayer).stream = null
