@@ -36,7 +36,9 @@ GitHub 품질 운영은 1인 개발 기준입니다. 필수 승인 인원은 0�
 | 범위가 달라질 때 | 본문을 고치지 않고 코멘트에 "변경 전 → 후" 표를 적습니다. 크게 바뀌면 새 Issue를 열고, 옛 Issue는 새 Issue 링크를 남기고 닫습니다 | 기획 |
 | 마지막 PR 병합 | PR 본문의 `Closes #번호`로 Issue를 자동 종료합니다. 기획 검수 결과는 닫기 전에 코멘트로 남깁니다 | 개발 |
 
-- Projects 보드, 마일스톤, 제품 분류 라벨은 쓰지 않습니다. 라벨로 GitHub Claude를 실행하지 않습니다. 열린 Issue 목록이 곧 작업판입니다.
+- Projects 보드, 마일스톤, 제품 분류 라벨(기능·버그 등)은 쓰지 않습니다. 열린 Issue 목록이 곧 작업판입니다.
+- 상태 라벨 다섯 개(`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`)만 씁니다. 라벨은 시작할 준비가 됐는지만 뜻합니다. 진행은 PR과 Issue의 열림·닫힘이 보여 줍니다. 뜻은 [Triage Labels](../agents/triage-labels.md)에 있습니다.
+- 라벨로 GitHub Claude를 실행하지 않습니다.
 - Issue 본문은 처음 합의한 목표의 기록이므로 고치지 않습니다. 변경은 코멘트로 쌓습니다. 체크박스에 표시하는 것은 내용 변경이 아니므로 괜찮습니다.
 
 ## Discord 소통
