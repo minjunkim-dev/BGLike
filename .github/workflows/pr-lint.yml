@@ -6,6 +6,7 @@ name: PR lint
 # 본문만 고친 edited 이벤트는 건너뜁니다. 제목을 고친 edited 이벤트는 제목만 확인합니다.
 # 게임 검사 선택과 공백 검사는 godot.yml의 scope job이 합니다. smoke가 이 lint를 기다리지 않게 하려는 것입니다.
 # PR 제목은 squash merge 후 main의 커밋 제목이 됩니다.
+# merge_group에서는 큐에 들어간 PR head가 본문 Review 칸의 「리뷰한 head」와 같은지도 확인합니다.
 
 on:
   pull_request:
@@ -15,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read  # Reviewed head reads the queued PR's head and body
 
 jobs:
   lint:
@@ -60,6 +62,20 @@ jobs:
       - name: Queued PR title
         if: github.event_name == 'merge_group'
         run: python3 scripts/check_pr_title.py queue "$QUEUE_MESSAGE" "$QUEUE_AUTHOR"
+      - name: Reviewed head
+        # The queued head must be the head the PR body's Review records (POLICY §5). Run the base's copy so a
+        # PR cannot weaken the check it is judged by; only the PR that adds the script runs its own.
+        if: github.event_name == 'merge_group'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUEUE_REF: ${{ github.event.merge_group.head_ref }}
+          BASE_SHA: ${{ github.event.merge_group.base_sha }}
+        run: |
+          if git show "$BASE_SHA:scripts/reviewed_head.py" > "$RUNNER_TEMP/reviewed_head.py" 2>/dev/null; then
+            python3 "$RUNNER_TEMP/reviewed_head.py"
+          else
+            python3 scripts/reviewed_head.py
+          fi
       - name: Branch name
         # An edited event cannot rename the branch; opened and synchronize runs check it.
         if: github.event_name == 'pull_request' && github.event.action != 'edited'

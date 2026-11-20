@@ -3,6 +3,14 @@
     ".github/pull_request_template.md": {
       "source": ".github/pull_request_template.md",
       "sha256": "2743f77ecf254d76a7f6cf01089eef1aa323cda5595b75a64f770de2eeb0122d"
+    },
+    "scripts/reviewed_head.py": {
+      "source": "profiles/pr-conventions/reviewed_head.py",
+      "sha256": "f6228264aa82335685a3fd48c9f36dcca5a0a2dfb1a6d024fa271a82a71644b4"
+    },
+    "scripts/test_reviewed_head.py": {
+      "source": "profiles/pr-conventions/test_reviewed_head.py",
+      "sha256": "22bbc0be7f56742496ca6b2872952db01a9dfdb4e5a30cbb777c04a0333447ff"
     }
   },
   "blocks": {
@@ -15,5 +23,5 @@
     }
   },
   "source": "minjunkim-labs/repo-baseline",
-  "source_commit": "b50795af6188e5966d0b67ab72dfca0ac66c69f6"
+  "source_commit": "7660f53cd36604a68add2760b79bd2ea817fb743"
 }

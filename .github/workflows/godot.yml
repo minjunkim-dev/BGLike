@@ -25,6 +25,9 @@ permissions:
 jobs:
   policy:
     uses: ./.github/workflows/pr-lint.yml
+    permissions:
+      contents: read
+      pull-requests: read
 
   # smoke needs only this answer, so it starts without waiting for policy's script tests and lint.
   scope:
