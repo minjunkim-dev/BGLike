@@ -19,6 +19,12 @@ const FLASH_FRAMES: Array[String] = [
 const SKILL_FRAME_COUNTS: Dictionary = {"shield": 4, "heal": 4, "buff": 4, "sweep_front": 3, "sweep_back": 3}
 ## 상태 이상 효과(#635): 폴더별 프레임 수. 그림은 draw_status_effects.py가 찍는다. 재생 규칙은 스킬 효과와 같다.
 const STATUS_FRAME_COUNTS: Dictionary = {"stun": 4, "burn": 4, "poison": 4, "fallen": 3, "ignite": 4}
+## 전투 불능 효과(#636). 그림은 draw_down_effect.py가 찍는다. 유닛 자신의 연출이라 전체 속도 계수(#516)를 곱한다.
+const DOWN_FRAME_COUNT: int = 4
+const DOWN_FADE_TIME: float = 0.35
+const DOWN_SINK: float = 4.0
+const DOWN_FLASH_COLOR: Color = Color(2.0, 2.0, 2.0, 1.0)
+const DOWN_FLASH_TIME: float = 0.06
 const SKILL_FRAME_PATH: String = "res://scenes/combat/art/effects/%s/%03d.png"
 ## 효과 그림 안에서 유닛 발 기준점과 캔버스 중심(그림 px). 유닛 프레임과 같은 기준이다.
 const UNIT_EFFECT_ANCHOR: Vector2 = Vector2(32, 56)
@@ -96,6 +102,29 @@ func play_ignite(at: Vector2) -> void:
 	_spawn("ignite", at + (UNIT_EFFECT_CENTER - UNIT_EFFECT_ANCHOR) * 0.5, false)
 
 
+## 전투 불능. 유닛 그림을 복제한 잔상이 번쩍인 뒤 가라앉으며 사라지고, 발치에서 down 폭발이 한 번 재생된다.
+## downed 신호 때 불러야 한다(유닛이 숨기 전). 잔상은 유닛과 따로 서므로 유닛이 해제돼도 혼자 끝난다.
+func play_down(unit: CombatUnit) -> void:
+	var anchor: Vector2 = _unit_anchor(unit)
+	var ghost: Sprite2D = Sprite2D.new()
+	ghost.texture = unit.current_frame_texture()
+	ghost.material = PIXEL_ART
+	ghost.centered = false
+	ghost.offset = Vector2(-32, -56)
+	ghost.scale = Vector2.ONE * 0.5
+	ghost.position = anchor
+	ghost.modulate = DOWN_FLASH_COLOR
+	add_child(ghost)
+	var tween: Tween = ghost.create_tween()
+	tween.tween_property(ghost, "modulate", Color.WHITE, DOWN_FLASH_TIME)
+	tween.set_parallel(true)
+	tween.tween_property(ghost, "position:y", anchor.y + DOWN_SINK, CombatPresentation.duration(DOWN_FADE_TIME))
+	tween.tween_property(ghost, "modulate:a", 0.0, CombatPresentation.duration(DOWN_FADE_TIME))
+	tween.set_parallel(false)
+	tween.tween_callback(ghost.queue_free)
+	_play_on_unit("down", unit)
+
+
 func _play_on_unit(folder: String, unit: CombatUnit) -> void:
 	_spawn(folder, _unit_anchor(unit) + (UNIT_EFFECT_CENTER - UNIT_EFFECT_ANCHOR) * 0.5, false)
 
@@ -121,9 +150,9 @@ func _skill_effect_frames(folder: String) -> SpriteFrames:
 		var frames: SpriteFrames = SpriteFrames.new()
 		frames.remove_animation("default")
 		frames.add_animation(&"play")
-		frames.set_animation_speed(&"play", FLASH_FPS)
+		frames.set_animation_speed(&"play", CombatPresentation.fps(FLASH_FPS) if folder == "down" else FLASH_FPS)
 		frames.set_animation_loop(&"play", false)
-		var count: int = SKILL_FRAME_COUNTS[folder] if SKILL_FRAME_COUNTS.has(folder) else STATUS_FRAME_COUNTS[folder]
+		var count: int = DOWN_FRAME_COUNT if folder == "down" else (SKILL_FRAME_COUNTS[folder] if SKILL_FRAME_COUNTS.has(folder) else STATUS_FRAME_COUNTS[folder])
 		for index: int in range(count):
 			frames.add_frame(&"play", load(SKILL_FRAME_PATH % [folder, index]) as Texture2D)
 		_skill_frames[folder] = frames
