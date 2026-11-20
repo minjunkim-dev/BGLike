@@ -572,6 +572,9 @@ func _show_enemy_action() -> void:
 	if not _enemy_shown:
 		_enemy_shown = true
 		await get_tree().create_timer(CombatPresentation.duration(ENEMY_PAUSE_TIME), false).timeout
+		# 턴 이동(#516 2절)이 멈춤보다 길면 카메라가 닿을 때까지 더 기다린다. 일시정지 중에는 게임 시간이 멈춘다.
+		while camera.is_turning():
+			await get_tree().process_frame
 
 
 ## 행동이 끝나 연출·반응 확인 창을 기다리지 않는 순간. 확정 전 입력(선택·미리보기)은 상태를 바꾸지 않는다.
@@ -1106,15 +1109,28 @@ func _animate_attack_at(actor: CombatUnit, destination: Vector2) -> void:
 	arrow.queue_free()
 
 
-## 행동 유닛이 선 칸에 발밑 표시를 둔다(#516 1절). 전투 시작 전·전투 끝·전투 불능이면 숨긴다.
-func _refresh_turn_tile() -> void:
+## 발밑 칸 표시와 카메라가 따라가는 행동 유닛. 전투 시작 전·전투 끝·전투 불능이면 null이다.
+func _acting_unit() -> CombatUnit:
 	var unit: CombatUnit = turns.current_unit
 	if unit == null or unit.hit_points <= 0 or waiting_for_start or actions.is_over():
+		return null
+	return unit
+
+
+## 행동 유닛이 선 칸에 발밑 표시를 둔다(#516 1절). 전투 시작 전·전투 끝·전투 불능이면 숨긴다.
+func _refresh_turn_tile() -> void:
+	var unit: CombatUnit = _acting_unit()
+	if unit == null:
 		_turn_tile_unit = null
 		map.show_turn_tile(Vector2i(-1, -1), false)
 		return
 	map.show_turn_tile(unit.cell, unit != _turn_tile_unit)
 	_turn_tile_unit = unit
+
+
+## 카메라가 따라갈 행동 유닛을 알린다(#516 2절). 유닛이나 순환이 바뀔 때만 카메라가 새로 시작한다.
+func _refresh_camera_follow() -> void:
+	camera.follow_turn(_acting_unit(), turns.round_number)
 
 
 ## 이동·점프 한 칸이 도착하면 행동 유닛의 표시를 도착한 칸으로 옮긴다. 나타남은 다시 돌리지 않는다.
@@ -1190,6 +1206,7 @@ func _update_turn_ui() -> void:
 	map.show_props(actions.get_props(), selection.preview_prop)
 	_refresh_threat()
 	_refresh_turn_tile()
+	_refresh_camera_follow()
 	map.reveal_units(units)
 	# 가림 판정은 방금 그린 사물 위치를 사용한다.
 	for unit: CombatUnit in units:
