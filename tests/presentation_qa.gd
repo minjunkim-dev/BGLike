@@ -8,6 +8,8 @@ var battle: Node
 var shots: int = 0
 var preflight: bool
 var transitions: bool = "--transitions" in OS.get_cmdline_user_args()
+## fixture 전용 시작 칸. 2-1 ally_cells[0] (2, 7)에서 공격 칸 (7, 5)는 7걸음이라 전사 첫 턴 이동으로 닿지 않는다(#716).
+const ROCK_START: Vector2i = Vector2i(5, 5)
 class Inputs extends Node:
 	var tree: SceneTree
 	var dragging: bool = false
@@ -71,13 +73,15 @@ func _run() -> void:
 		var units: Array[CombatUnit] = battle.get("units")
 		var party: Array[CombatUnit] = battle.get("party")
 		var actions: CombatActions = battle.get("actions")
+		if kind == "rock":
+			party[0].cell = ROCK_START
 		ScriptedDice.arrange_turns(battle.get("turns"), units, party)
 		battle.call("_update_turn_ui")
 		assert(units.size() >= 3 and party.size() == 2 and battle.get("waiting_for_start"))
-		# 아군 시작 칸은 지금 스테이지의 ally_cells다(1-1은 14×14 재배치, rock 사례는 2-1).
+		# 아군 시작 칸은 지금 스테이지의 ally_cells다(1-1은 14×14 재배치). rock 사례만 fixture 전용 ROCK_START다.
 		var stage: CombatStage = (battle.get("stages") as Array[CombatStage])[(battle.get("progress") as CombatActProgress).stage_index]
-		assert(actions.grid.props.size() == 2 and party[0].cell == stage.ally_cells[0])
-		assert(party[0].movement_left == 6 and party[0].action_left == 1)
+		assert(actions.grid.props.size() == 2 and party[0].cell == (ROCK_START if kind == "rock" else stage.ally_cells[0]))
+		assert(party[0].movement_left == party[0].get_movement() and party[0].action_left == 1)
 		if kind == "prep":
 			var loot: CombatLoot = battle.get("loot")
 			for item_kind: String in ["weapon", "armor", "potion"]:
@@ -96,7 +100,7 @@ func _run() -> void:
 			actions.dice = ScriptedDice.new([sides], [sides]) if not preflight and not transitions else CombatDice.new()
 			print("[FIXTURE] crate current damage d%d +%d; transitions=%s" % [sides, party[0].get_damage_bonus(), transitions])
 		elif kind == "rock":
-			assert(not actions.grid.path_to(party[0], Vector2i(7, 5)).is_empty())
+			assert(actions.grid.reachable_cells(party[0]).has(Vector2i(7, 5)))
 			assert(_cell_point(battle.get("map"), Vector2i(7, 5)) != Vector2.INF)
 			assert(actions.grid.props[1].cell == Vector2i(8, 5))
 			actions.dice = ScriptedDice.new([])
