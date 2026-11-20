@@ -457,6 +457,25 @@ func _test_down_effect() -> void:
 	temporary.free()
 	await create_timer(0.7).timeout
 	_check(effects.get_child_count() == 0, "쓰러짐 효과 도중 유닛이 해제되어도 정리된다")
+	# #717: 밀림·낙하·낙사는 _land가 cell만 바꾸고 downed를 낸다. 표시 좌표는 아직 출발 칸이므로 효과는 착지 칸 표면에 떠야 한다.
+	var land_map: TileMapLayer = battle.get("map")
+	var origin_cell: Vector2i = unit.cell
+	var landing_cell: Vector2i = origin_cell + Vector2i(1, 0)
+	var origin_foot: Vector2 = unit.position + Vector2(0, unit.floor_offset_y + unit.body_offset_y)
+	var landing_surface: Vector2 = land_map.map_to_surface(landing_cell)
+	unit.cell = landing_cell
+	actions.downed.emit(unit)
+	await process_frame
+	var landed_bursts: Array[Node] = _sprites(effects)
+	var landed_ghosts: Array[Node] = _ghosts(effects)
+	_check(landed_ghosts.size() == 1 and landed_ghosts[0].position.distance_to(landing_surface) < 0.01
+		and landed_ghosts[0].position.distance_to(origin_foot) > 4.0,
+		"밀려 쓰러지면 잔상이 착지 칸 표면에 뜬다(출발 칸이 아니다)")
+	_check(landed_bursts.size() == 1 and landed_bursts[0].position.distance_to(landing_surface + Vector2(0, -12)) < 0.01
+		and landed_bursts[0].position.distance_to(origin_foot + Vector2(0, -12)) > 4.0,
+		"밀려 쓰러지면 down 폭발이 착지 칸 표면에 뜬다(출발 칸이 아니다)")
+	unit.cell = origin_cell
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.5)
 	# 실제 전투 불능 전환이 유닛을 숨기기 전에 그림을 잡는다. 전투 상태를 바꾸므로 맨 끝에 둔다.
 	var last: CombatUnit = units[units.size() - 1]
 	var seen: Array[bool] = [false]
