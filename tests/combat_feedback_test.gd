@@ -407,6 +407,7 @@ func _test_down_effect() -> void:
 	var unit: CombatUnit = units[0]
 	var foot: Vector2 = unit.position + Vector2(0, unit.floor_offset_y + unit.body_offset_y)
 	var frame: Texture2D = unit.current_frame_texture()
+	var down_started: int = Time.get_ticks_msec()
 	actions.downed.emit(unit)
 	await process_frame
 	var bursts: Array[Node] = _sprites(effects)
@@ -420,6 +421,14 @@ func _test_down_effect() -> void:
 	_check(ghosts.size() == 1 and (ghosts[0] as Sprite2D).texture == frame and (ghosts[0] as Sprite2D).material == shader
 		and ghosts[0].position.distance_to(foot) < 2.0,
 		"유닛 그림을 복제한 쓰러짐 잔상이 유닛 발 기준 자리에 하나 생긴다")
+	# 잔상은 번쩍인 뒤에야 가라앉기 시작한다(둘이 동시에 시작하면 안 된다).
+	var sink_msec: int = -1
+	while ghosts.size() == 1 and is_instance_valid(ghosts[0]) and Time.get_ticks_msec() - down_started < 1000:
+		if absf(ghosts[0].position.y - foot.y) > 0.001:
+			sink_msec = Time.get_ticks_msec() - down_started
+			break
+		await process_frame
+	_check(sink_msec >= 40, "잔상은 섬광(60ms)이 끝난 뒤에 가라앉기 시작한다: %dms" % sink_msec)
 	var finished: bool = await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.5)
 	_check(finished, "쓰러짐 폭발과 잔상은 한 번 재생하고 사라진다")
 	Engine.time_scale = 4.0

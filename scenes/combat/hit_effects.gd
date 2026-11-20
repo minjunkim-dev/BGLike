@@ -117,10 +117,8 @@ func play_down(unit: CombatUnit) -> void:
 	add_child(ghost)
 	var tween: Tween = ghost.create_tween()
 	tween.tween_property(ghost, "modulate", Color.WHITE, DOWN_FLASH_TIME)
-	tween.set_parallel(true)
 	tween.tween_property(ghost, "position:y", anchor.y + DOWN_SINK, CombatPresentation.duration(DOWN_FADE_TIME))
-	tween.tween_property(ghost, "modulate:a", 0.0, CombatPresentation.duration(DOWN_FADE_TIME))
-	tween.set_parallel(false)
+	tween.parallel().tween_property(ghost, "modulate:a", 0.0, CombatPresentation.duration(DOWN_FADE_TIME))
 	tween.tween_callback(ghost.queue_free)
 	_play_on_unit("down", unit)
 
