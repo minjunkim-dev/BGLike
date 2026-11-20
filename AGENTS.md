@@ -53,6 +53,17 @@ Godot 4 싱글 플레이 PC 게임입니다. 여러 사람이 함께 개발합�
 - 같은 실수가 두 번 나오면 린트·검사로 막고, 그다음 `REVIEW.md` 한 줄, 그다음 이 파일의 길잡이 순서로 고친다.
 - 작업 추적은 GitHub Issue 하나만 쓴다. 내부 트래커(예: Linear)는 쓰지 않는다. 일정·우선순위·기획 판단도 공개 Issue와 `docs/`에 적는다. repo-baseline 코어 `AGENTS.md`의 "우선순위·일정·내부 판단을 공개 이슈·PR·커밋에 적지 않는다" 줄은 이 저장소에 적용하지 않는다.
 
+### pstack
+
+pstack 스킬은 사람이 요청할 때만 쓴다. 이 저장소의 규칙이 pstack 기본 동작보다 먼저다.
+
+- `poteto-mode`의 Shipping playbook과 병합·auto-merge 단계는 쓰지 않는다. 병합은 POLICY §5대로 한다.
+- `correct`는 제안까지만 한다. 사람이 고른 것만 반영한다.
+- 판단 규칙은 `AGENTS.md`가 아니라 `REVIEW.md` 「배운 규칙」에 둔다.
+- `create-verification-skill`의 결과는 에이전트 도구가 읽는 저장소 스킬 경로(Claude `.claude/skills/`, Codex·Cursor `.agents/skills/`)에 두고, 실행 명령을 `AGENTS.md`의 check·test에 잇는다. 그 경로는 에이전트 설정 폴더라서 그 PR은 되돌리기 어려움이고 소유자가 병합한다(POLICY §4).
+- `interrogate`·`blast-radius`는 리뷰에 관점을 더할 뿐이다. 리뷰는 그대로 새 세션에서 `prompts/review.md`로 받는다.
+- 서로 다른 모델로 검토하지 않았으면 그 사실을 보고에 적는다.
+
 <!-- repo-baseline:ops -->
 ### ops
 
