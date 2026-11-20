@@ -80,8 +80,7 @@ func _run() -> void:
 	# 재생 중인 스트림이 남으면 종료 때 누수 오류를 내므로 모든 재생 노드를 멈추고 스트림을 놓는다.
 	_release_audio(root)
 	game.queue_free()
-	await process_frame
-	await process_frame
+	await create_timer(0.5).timeout
 	quit(0 if failures == 0 else 1)
 
 func _settle() -> void:
