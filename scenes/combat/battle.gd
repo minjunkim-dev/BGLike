@@ -121,7 +121,7 @@ func _ready() -> void:
 	actions.downed.connect(func(unit: CombatUnit) -> void:
 		if not _replaying():
 			sounds.play(&"downed")
-			hit_effects.play_down(unit))
+			hit_effects.play_down(unit, map.map_to_surface(unit.cell)))
 	actions.self_used.connect(func(actor: CombatUnit, action: String) -> void:
 		if _replaying():
 			return
