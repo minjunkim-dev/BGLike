@@ -188,9 +188,19 @@ func play(roll: CombatDiceRoll) -> void:
 	_turn_passed.emit()
 
 
+## 명중굴림의 절대성공·절대실패인가. 결과를 오래 보이고 배경음을 낮추는 굴림이다.
+static func is_absolute_hit(roll: CombatDiceRoll) -> bool:
+	return roll.category == CombatDiceRoll.Category.HIT and roll.result.face != CombatChecks.Face.NORMAL
+
+
+## 결과가 멈출 때 배경음을 낮추는 굴림(#632). 내성굴림의 절대면은 낮추지 않는다.
+static func ducks_music(roll: CombatDiceRoll) -> bool:
+	return is_absolute_hit(roll)
+
+
 ## 결과를 보이는 시간. 명중굴림의 절대면만 늘린다.
 static func hold_time(roll: CombatDiceRoll) -> float:
-	if roll.category == CombatDiceRoll.Category.HIT and roll.result.face != CombatChecks.Face.NORMAL:
+	if is_absolute_hit(roll):
 		return ABSOLUTE_HIT_HOLD_TIME
 	return HOLD_TIME
 
@@ -496,6 +506,8 @@ func _settle() -> void:
 	_summary.add_theme_color_override("font_color", color)
 	_summary.add_theme_font_size_override("font_size", ABSOLUTE_WORD_FONT_SIZE if absolute else WORD_FONT_SIZE)
 	(_success_player if result.success else _failure_player).play()
+	if ducks_music(_roll):
+		GameMusic.duck(get_tree())
 	_update_layout()
 	_art.queue_redraw()
 

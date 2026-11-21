@@ -162,6 +162,14 @@ func _test_bus_layout() -> void:
 		and AudioServer.get_bus_send(AudioServer.get_bus_index(GameSettings.BUS_SFX)) == GameSettings.BUS_MASTER
 		and AudioServer.get_bus_send(AudioServer.get_bus_index(GameSettings.BUS_UI)) == GameSettings.BUS_SFX,
 		"BGM·SFX는 Master로, UI는 SFX로 보냄")
+	# BGM 버스의 0번 효과는 중요한 순간의 배경음 낮추기(#632)이고 쉬는 값은 0dB다.
+	var bgm: int = AudioServer.get_bus_index(GameSettings.BUS_BGM)
+	var duck: AudioEffect = AudioServer.get_bus_effect(bgm, 0) if AudioServer.get_bus_effect_count(bgm) > 0 else null
+	_check(duck is AudioEffectAmplify and AudioServer.is_bus_effect_enabled(bgm, 0)
+		and (duck as AudioEffectAmplify).volume_db == 0.0, "BGM 버스 0번 효과는 켜진 Amplify이고 쉬는 값이 0dB")
+	_check(AudioServer.get_bus_effect_count(bgm) == 1 and AudioServer.get_bus_effect_count(AudioServer.get_bus_index(GameSettings.BUS_SFX)) == 0
+		and AudioServer.get_bus_effect_count(AudioServer.get_bus_index(GameSettings.BUS_UI)) == 0,
+		"효과는 BGM 버스에만 하나 있음")
 
 
 func _write_raw(target: String, bytes: PackedByteArray) -> void:
