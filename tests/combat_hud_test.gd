@@ -2341,9 +2341,6 @@ func _test_joined_group_hud() -> void:
 
 
 func _test_incapacitated_portrait_join() -> void:
-	# 짧은 이동 중 입력 접점을 느린 검사 시계로 고정한다.
-	var time_scale: float = Engine.time_scale
-	Engine.time_scale = 0.1
 	_reset_units()
 	var desired: Array[CombatUnit] = [units[0], units[2], units[1], units[3]]
 	ScriptedDice.arrange_turns(turns, units, desired)
@@ -2352,6 +2349,9 @@ func _test_incapacitated_portrait_join() -> void:
 	var before: float = ((hud.get("_portraits") as Dictionary)[units[1]] as Button).global_position.x
 	units[0].spend_movement(2)
 	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
+	# 긴 프레임이 0.25초 이동을 관찰 사이에 끝내지 않도록 시계를 멈추고 Tween을 직접 진행한다.
+	var time_scale: float = Engine.time_scale
+	Engine.time_scale = 0.0
 	actions.incapacitate(units[2])
 	var portraits: Dictionary = hud.get("_portraits")
 	_check(portraits.size() == 3 and not portraits.has(units[2])
@@ -2360,8 +2360,10 @@ func _test_incapacitated_portrait_join() -> void:
 	await process_frame
 	await process_frame
 	var archer: Button = portraits[units[1]]
+	var tween: Tween = hud.get("_order_tween")
 	var start: float = archer.global_position.x
-	await create_timer(0.1).timeout
+	if tween != null and tween.is_valid():
+		tween.custom_step(0.1)
 	var middle: float = archer.global_position.x
 	var first_panel: Control = hud.order_bar.get_child(0) as Control
 	var next_panel: Control = hud.order_bar.get_child(1) as Control
@@ -2380,13 +2382,14 @@ func _test_incapacitated_portrait_join() -> void:
 	_check(turns.current_unit == units[1] and turns.is_turn_started(units[1])
 		and units[0].movement_left == 2 and units[0].action_left == 0,
 		"합류 이동 중 초상을 선택해도 첫 턴만 시작하고 동료 자원을 회복하지 않음")
-	await create_timer(0.2).timeout
+	if tween != null and tween.is_valid():
+		tween.custom_step(0.2)
+	Engine.time_scale = time_scale
 	_check(start <= before + 1.0 and start > middle and middle > archer.global_position.x
 		and archer.get_parent() == (portraits[units[0]] as Button).get_parent()
 		and not archer.get_global_rect().intersects((portraits[units[0]] as Button).get_global_rect()),
 		"남은 초상은 즉시 새 위치로 뛰지 않고 0.25초 동안 합쳐져 겹침 없이 종료")
 	units[2].show()
-	Engine.time_scale = time_scale
 	_reset_units()
 
 
