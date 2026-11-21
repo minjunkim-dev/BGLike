@@ -128,7 +128,7 @@ _Avoid_: 근처, 붙음
 _Avoid_: 광역기, AoE
 
 **사거리**:
-공격이 닿는 최대 칸 수입니다. 전사는 인접한 칸, 아군 궁수는 1~4칸, 풋내기 궁수는 1~6칸에 공격합니다.
+공격이 닿는 최대 칸 수입니다. 전사는 인접한 칸, 아군 궁수는 1~6칸, 풋내기 궁수는 1~8칸에 공격합니다.
 _Avoid_: 범위, 거리
 
 **기회 공격**:
@@ -231,7 +231,7 @@ _Avoid_: 독 지형, 독 웅덩이
 _Avoid_: 기름 웅덩이
 
 **독안개**:
-독안개 거미의 스킬입니다. 자신에게서 맨해튼 거리 0~4칸의 칸을 지정해, 그 칸과 상하좌우 1칸에 독안개 장판을 만듭니다. [#461](https://github.com/minjunkim-labs/BGLike/issues/461)과 [#462](https://github.com/minjunkim-labs/BGLike/issues/462)에서 구현했습니다.
+독안개 거미의 스킬입니다. 자신에게서 맨해튼 거리 0~6칸의 칸을 지정해, 그 칸과 상하좌우 1칸에 독안개 장판을 만듭니다. [#461](https://github.com/minjunkim-labs/BGLike/issues/461)과 [#462](https://github.com/minjunkim-labs/BGLike/issues/462)에서 구현했습니다.
 _Avoid_: 독 구름
 
 **독안개 장판**:

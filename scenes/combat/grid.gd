@@ -223,14 +223,14 @@ func can_target(actor: CombatUnit, target: CombatUnit, action: String,
 			return (in_range(origin, target.cell, actor.get_attack_range())
 				and (actor.get_attack_range() > 1 or are_adjacent(origin, target.cell)))
 		"trick_arrow":
-			# 칸 조준 곡사 1~4. 같은 편도 겨눌 수 있어서 can_aim과 같은 거리만 본다.
+			# 칸 조준 곡사 1~6. 같은 편도 겨눌 수 있어서 can_aim과 같은 거리만 본다.
 			return in_range(origin, target.cell, CombatActionRules.aim_range(actor, action), CombatActionRules.aim_min_range(action))
 		"cross_slash", "steel_charge", "bow_bash":
 			return are_adjacent(origin, target.cell)
 		"shove":
 			return in_range(origin, target.cell, 1) and can_shove(actor, target)
 		"pull":
-			return in_range(origin, target.cell, 3, 2) and not pull_cells(actor, target, origin).is_empty()
+			return in_range(origin, target.cell, CombatActionRules.PULL_RANGE, CombatActionRules.PULL_MIN_RANGE) and not pull_cells(actor, target, origin).is_empty()
 	return false
 
 

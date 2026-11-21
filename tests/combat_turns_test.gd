@@ -136,7 +136,7 @@ func _test_spawned_turn_insertion() -> void:
 	for step: int in range(3):
 		turns.end_turn()
 	_check(turns.round_number == 2 and turns.current_unit == first
-		and first.action_left == 1 and first.movement_left == 6,
+		and first.action_left == 1 and first.movement_left == 8,
 		"다음 라운드부터 새끼는 엄마 직전에 자기 자원으로 행동")
 	turns.end_turn()
 	var second: CombatUnit = CombatUnit.new()
@@ -164,17 +164,17 @@ func _test_resources_and_groups() -> void:
 	_check(turns.get_current_group() == [units[0], units[1]], "아군 턴 묶음")
 	_check(turns.current_unit == units[0], "가장 높은 이니셔티브부터 선택")
 	_check(units[0].spend_movement(1) and units[0].spend_movement(1), "이동을 나누어 소비")
-	_check(units[0].movement_left == 1, "나눈 이동 비용 합계")
-	_check(not units[0].spend_movement(2), "남은 이동보다 큰 비용 거부")
+	_check(units[0].movement_left == 2, "나눈 이동 비용 합계")
+	_check(not units[0].spend_movement(3), "남은 이동보다 큰 비용 거부")
 	_check(not units[0].spend_movement(0) and not units[0].spend_movement(-1), "0과 음수 이동 거부")
 	for resource: CombatUnit.TurnResource in CombatUnit.TurnResource.values():
 		_check(units[0].spend_resource(resource), "각 자원을 한 번 소비")
 		_check(not units[0].spend_resource(resource), "각 자원을 중복 소비할 수 없음")
 	_check(turns.current_unit == units[0], "자원을 써도 자동 종료하지 않음")
 	_check(turns.select_unit(units[1]), "같은 묶음의 아군으로 전환")
-	_check(units[1].movement_left == 6 and units[1].action_left == 1, "다른 유닛 자원은 독립")
+	_check(units[1].movement_left == 8 and units[1].action_left == 1, "다른 유닛 자원은 독립")
 	_check(turns.select_unit(units[0]), "원래 유닛으로 복귀")
-	_check(units[0].movement_left == 1 and units[0].action_left == 0
+	_check(units[0].movement_left == 2 and units[0].action_left == 0
 		and units[0].bonus_action_left == 0 and units[0].reaction_left == 0, "선택 전환으로 자원 회복 없음")
 	_check(not turns.select_unit(units[2]), "다른 묶음 선택 거부")
 	turns.select_unit(units[1])
@@ -184,7 +184,7 @@ func _test_resources_and_groups() -> void:
 	_check(turns.current_unit == units[0], "현재 유닛만 종료하고 남은 아군으로 전환")
 	_check(turns.select_unit(units[1]) and not turns.is_turn_finished(units[1]),
 		"묶음 확정 전에는 종료한 아군을 다시 골라 종료 해제")
-	_check(units[1].movement_left == 4 and units[1].action_left == 0
+	_check(units[1].movement_left == 6 and units[1].action_left == 0
 		and units[1].bonus_action_left == 1 and units[1].reaction_left == 1,
 		"턴 종료 취소로 이미 쓴 자원을 회복하지 않음")
 	turns.end_turn()
@@ -199,7 +199,7 @@ func _test_resources_and_groups() -> void:
 	_check(not turns.select_unit(units[3]), "적 묶음은 임의 전환 없이 이니셔티브 순서")
 	units[3].spend_movement(2)
 	turns.end_turn()
-	_check(turns.current_unit == units[3] and units[3].movement_left == 4, "적 내부 전환도 자원 회복 없음")
+	_check(turns.current_unit == units[3] and units[3].movement_left == 6, "적 내부 전환도 자원 회복 없음")
 	_check(units[2].reaction_left == 0, "적 묶음 확정 전에는 적 반응을 회복하지 않음")
 	turns.end_turn()
 	_check(units[2].reaction_left == 1 and units[3].movement_left == units[3].get_movement(),
@@ -215,7 +215,7 @@ func _test_refill_split() -> void:
 	for resource: CombatUnit.TurnResource in CombatUnit.TurnResource.values():
 		unit.spend_resource(resource)
 	unit.begin_turn()
-	_check(unit.movement_left == 1 and unit.action_left == 0 and unit.bonus_action_left == 0
+	_check(unit.movement_left == 2 and unit.action_left == 0 and unit.bonus_action_left == 0
 		and unit.reaction_left == 0, "턴 시작 처리는 자원을 채우지 않음")
 	unit.refill_turn_resources()
 	_check(unit.movement_left == unit.get_movement() and unit.action_left == unit.action_capacity
@@ -325,7 +325,7 @@ func _test_available_actions() -> void:
 	var unit: CombatUnit = _make_units()[1]
 	_check(not unit.has_available_turn_action(false, false, false), "자원이 있어도 유효한 동작 대상 없으면 종료 강조")
 	_check(unit.has_available_turn_action(true, false, false), "이동 목적지가 있으면 동작 가능")
-	unit.spend_movement(6)
+	unit.spend_movement(8)
 	_check(not unit.has_available_turn_action(true, false, false), "이동력 없으면 이동 동작 불가")
 	_check(unit.has_available_turn_action(false, true, false), "행동 대상이 있으면 동작 가능")
 	unit.spend_resource(CombatUnit.TurnResource.ACTION)
@@ -341,7 +341,7 @@ func _test_removal() -> void:
 	var turns: CombatTurns = _ordered_fixture(units, [0, 1, 2, 3])
 	units[1].spend_movement(2)
 	turns.remove_unit(units[0])
-	_check(turns.current_unit == units[1] and units[1].movement_left == 4, "현재 유닛 탈락: 자원을 유지하고 남은 아군 선택")
+	_check(turns.current_unit == units[1] and units[1].movement_left == 6, "현재 유닛 탈락: 자원을 유지하고 남은 아군 선택")
 	turns.remove_unit(units[1])
 	_check(turns.current_unit == units[2], "현재 묶음이 비면 다음 묶음")
 	turns.remove_unit(units[3])
@@ -356,7 +356,7 @@ func _test_removal() -> void:
 	units[1].action_left = 0
 	turns.remove_unit(units[2])
 	_check(turns.get_current_group() == [units[0], units[1]], "중간 적 탈락 후 연속한 아군 묶음 결합")
-	_check(units[0].movement_left == 1 and units[1].movement_left == 2
+	_check(units[0].movement_left == 2 and units[1].movement_left == 2
 		and units[1].action_left == 0, "결합만으로 새 유닛의 턴을 시작하지 않음")
 	_check(turns.select_unit(units[1]) and turns.is_turn_started(units[1]) and units[1].movement_left == 2
 		and units[1].action_left == 0, "새로 합류한 아군은 처음 조작해도 자원을 다시 채우지 않음")
@@ -365,7 +365,7 @@ func _test_removal() -> void:
 	turns.end_turn()
 	units[3].spend_movement(2)
 	turns.remove_unit(units[0])
-	_check(turns.current_unit == units[3] and units[3].movement_left == 4, "지나간 유닛 탈락은 현재 적 자원 유지")
+	_check(turns.current_unit == units[3] and units[3].movement_left == 6, "지나간 유닛 탈락은 현재 적 자원 유지")
 	turns.remove_unit(units[3])
 	_check(turns.round_number == 2 and turns.current_unit == units[1], "마지막 묶음 탈락 후 다음 라운드")
 	units = _make_units()
@@ -433,7 +433,7 @@ func _test_boundary_prefix() -> void:
 	_check(turns.get_current_group() == [third, units[0], units[1]]
 		and turns.ordered_units == [units[2], units[3], third, units[0], units[1]],
 		"앞 유닛이 여럿이면 묶음 단위로 뒤에 옮기고 기존 내부 순서 유지")
-	_check(units[0].movement_left == CombatUnit.WARRIOR_MOVEMENT and units[1].movement_left == 6,
+	_check(units[0].movement_left == CombatUnit.WARRIOR_MOVEMENT and units[1].movement_left == 8,
 		"경계에 합류한 여러 유닛도 직전 확정 때 채운 자원 유지")
 	var allies: Array[CombatUnit] = [units[0], units[1]]
 	turns = _ordered_fixture(allies, [0, 1])

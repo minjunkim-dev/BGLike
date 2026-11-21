@@ -1822,9 +1822,9 @@ func _test_guidance() -> void:
 			_check(unit.hit_points == hp and [unit.action_left, unit.bonus_action_left, unit.shield_points] == uses,
 				"호버는 동작 실행·자원 소비 없음: " + action)
 	_check("사거리: 인접1칸\n피해: 힘 d6\n판정: 힘 d6 +0 대 AC, 명중하면 1칸 밀침" in (buttons["bow_bash"] as Button).tooltip_text
-		and "사거리: 1~4칸\n피해: 솜씨 d20\n판정: 솜씨 d20 +0 대 AC" in (buttons["attack"] as Button).tooltip_text
+		and "사거리: 1~6칸\n피해: 솜씨 d20\n판정: 솜씨 d20 +0 대 AC" in (buttons["attack"] as Button).tooltip_text
 		and "판정: 대상의 힘 내성 대 DC 4, 성공하면 버팀" in (buttons["shove"] as Button).tooltip_text,
-		"궁수 활 후려치기 호버에 힘 d6과 밀침, 기본 공격 사거리 1~4, 밀치기 호버에 대상의 힘 내성과 DC 표시")
+		"궁수 활 후려치기 호버에 힘 d6과 밀침, 기본 공격 사거리 1~6, 밀치기 호버에 대상의 힘 내성과 DC 표시")
 	await _test_focus_tooltips(buttons)
 	await _test_tooltip_column(buttons)
 	# 비활성 버튼은 비용 소진·횟수 소진·효과 없음의 이유를 호버에 유지한다.
@@ -2096,7 +2096,7 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check(units[0].cell == Vector2i(4, 4) and ((battle.get("selection") as CombatSelection).preview_path as Array).is_empty(),
 		"빈 칸 좌클릭은 이동을 준비하거나 실행하지 않음")
 	await _click(point, MOUSE_BUTTON_RIGHT)
-	_check((battle.get("selection") as CombatSelection).preview_cell == destination and units[0].movement_left == 3
+	_check((battle.get("selection") as CombatSelection).preview_cell == destination and units[0].movement_left == 4
 		and not (battle.get("movement_cells") as Array).is_empty(), "첫 우클릭만으로 이동 범위·경로 표시")
 	var other: Vector2i = Vector2i(4, 3)
 	var other_point: Vector2 = map.get_global_transform_with_canvas() * map.map_to_local(other)
@@ -2104,11 +2104,11 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check((battle.get("selection") as CombatSelection).preview_cell == other and units[0].cell == Vector2i(4, 4),
 		"다른 칸 우클릭은 이동하지 않고 목적지 변경")
 	await _click(other_point)
-	_check(units[0].movement_left == 3 and ((battle.get("selection") as CombatSelection).preview_path as Array).is_empty(),
+	_check(units[0].movement_left == 4 and ((battle.get("selection") as CombatSelection).preview_path as Array).is_empty(),
 		"이동 미리보기의 좌클릭은 이동 확정으로 처리하지 않음")
 	await _click(point, MOUSE_BUTTON_RIGHT)
 	await _click(point, MOUSE_BUTTON_RIGHT)
-	_check(units[0].cell == destination and units[0].movement_left == 2 and units[0].action_left == 1,
+	_check(units[0].cell == destination and units[0].movement_left == 3 and units[0].action_left == 1,
 		"같은 칸 두 번째 우클릭은 이동력만 소비")
 	units[0].cell = Vector2i(4, 4)
 	battle.call("_update_turn_ui")
@@ -2146,7 +2146,7 @@ func _test_mouse_controls_and_inspection() -> void:
 	_check(units[0].action_left == 0, "필드 적 두 번째 좌클릭은 공격 확정")
 	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
 	_check(turns.current_unit == units[1] and units[0].action_left == 0
-		and "힘 d6" in hud.resource_label.get_parsed_text() and "사거리 4칸" in hud.resource_label.get_parsed_text(),
+		and "힘 d6" in hud.resource_label.get_parsed_text() and "사거리 6칸" in hud.resource_label.get_parsed_text(),
 		"조작 가능한 아군 초상은 정보와 조작 전환, 기존 자원 유지")
 	turns.select_unit(units[0])
 	turns.end_turn()
@@ -2273,7 +2273,7 @@ func _test_group_keyboard() -> void:
 		and is_equal_approx(ended.bg_color.g, ended.bg_color.b), "턴 종료한 초상은 회색")
 	await _tab()
 	_check(turns.current_unit == units[0] and not turns.is_turn_finished(units[0])
-		and units[0].movement_left == 1 and units[0].action_left == 0,
+		and units[0].movement_left == 2 and units[0].action_left == 0,
 		"Tab은 종료한 아군도 포함하며 자원 회복 없이 종료를 해제")
 	var selected: StyleBoxFlat = (portraits[units[0]] as Button).get_theme_stylebox("normal")
 	var grouped: StyleBoxFlat = (portraits[units[1]] as Button).get_theme_stylebox("normal")
@@ -2329,7 +2329,7 @@ func _test_joined_group_hud() -> void:
 		and not warrior.get_global_rect().intersects(archer.get_global_rect()),
 		"1초 미만에 경계 초상이 묶음 뒤로 이동하고 겹침 없이 종료")
 	await _tab()
-	_check(turns.current_unit == units[0] and units[0].movement_left == 3
+	_check(turns.current_unit == units[0] and units[0].movement_left == 4
 		and units[0].action_left == 1 and pending != null and not pending.visible,
 		"Tab 첫 조작에서 턴을 시작하고 모래시계 제거")
 	units[0].spend_resource(CombatUnit.TurnResource.ACTION)
@@ -2378,7 +2378,7 @@ func _test_incapacitated_portrait_join() -> void:
 	_check(root.gui_get_hovered_control() == archer, "묶음 사이를 지나는 초상의 표시 영역이 포인터 입력을 받음")
 	await _click(point)
 	_check(turns.current_unit == units[1] and turns.is_turn_started(units[1])
-		and units[0].movement_left == 1 and units[0].action_left == 0,
+		and units[0].movement_left == 2 and units[0].action_left == 0,
 		"합류 이동 중 초상을 선택해도 첫 턴만 시작하고 동료 자원을 회복하지 않음")
 	await create_timer(0.2).timeout
 	_check(start <= before + 1.0 and start > middle and middle > archer.global_position.x
@@ -2681,7 +2681,7 @@ func _test_order_bar_input() -> void:
 		"턴 순서 바의 빈 영역 우클릭은 이동 미리보기·확정으로 통과")
 	var portraits: Dictionary = hud.get("_portraits")
 	await _click((portraits[units[1]] as Button).get_global_rect().get_center())
-	_check(turns.current_unit == units[1] and units[0].movement_left == 2,
+	_check(turns.current_unit == units[1] and units[0].movement_left == 3,
 		"빈 영역을 통과시켜도 자식 초상 클릭은 조작 전환만 수행")
 	destination = Vector2i(1, 0)
 	point = Vector2(80, 140)
@@ -3709,7 +3709,7 @@ func _test_action_animations() -> void:
 	var finished: Array[bool] = [false]
 	_animated_move(units[0], Vector2i(4, 2), finished)
 	_check(actions.busy and units[0].is_moving and units[0].cell == Vector2i(4, 4)
-		and units[0].movement_left == 3, "이동 연출 시작은 입력 잠금, 논리 칸·이동력 유지")
+		and units[0].movement_left == 4, "이동 연출 시작은 입력 잠금, 논리 칸·이동력 유지")
 	hud.end_button.pressed.emit()
 	hud.unit_selected.emit(units[1])
 	hud.restart_button.pressed.emit()
@@ -3724,7 +3724,7 @@ func _test_action_animations() -> void:
 		"이동 중 UI 갱신은 실제 중간 위치를 되돌리지 않음")
 	while not finished[0]:
 		await process_frame
-	_check(units[0].cell == Vector2i(4, 2) and units[0].movement_left == 1
+	_check(units[0].cell == Vector2i(4, 2) and units[0].movement_left == 2
 		and units[0].position == (battle.get_node("Map") as TileMapLayer).map_to_local(units[0].cell)
 		and not units[0].is_moving and units[0].body_offset_y == 0.0 and not actions.busy,
 		"두 사각 칸 이동은 도착 후 자원 갱신과 몸통·입력 복구")

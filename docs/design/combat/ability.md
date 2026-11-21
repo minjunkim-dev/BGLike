@@ -463,7 +463,7 @@
 
 피해량이 전반적으로 오르므로 `damage_bonus`와 HP는 시험하면서 조정합니다.
 
-- **독안개 거미** ([#462](https://github.com/minjunkim-labs/BGLike/issues/462)에서 구현, [#305 기획자 답](https://github.com/minjunkim-labs/BGLike/issues/305#issuecomment-6581920839)): 새 몬스터라 위 표에 처음 정한 시험값을 더했습니다. 최대 HP 12, 이동력 4이고 건강 d8이 독안개의 DC(건강 표준값 5 + 공격 가산 3 + 보정 0 = 8)를 정합니다. 몬스터 시트는 [독안개 거미](../monsters/fog-spider.md)입니다.
+- **독안개 거미** ([#462](https://github.com/minjunkim-labs/BGLike/issues/462)에서 구현, [#305 기획자 답](https://github.com/minjunkim-labs/BGLike/issues/305#issuecomment-6581920839)): 새 몬스터라 위 표에 처음 정한 시험값을 더했습니다. 최대 HP 12, 이동력 4(#616에서 6)이고 건강 d8이 독안개의 DC(건강 표준값 5 + 공격 가산 3 + 보정 0 = 8)를 정합니다. 몬스터 시트는 [독안개 거미](../monsters/fog-spider.md)입니다.
 - **독 면역**: 거미 계열(새끼·엄마·독안개 거미)은 독에 면역이라 건강 주사위가 독 내성굴림에 쓰이지 않습니다. 건강 주사위 값은 그대로 두고, 독안개 거미만 DC 계산에 씁니다. [#465](https://github.com/minjunkim-labs/BGLike/issues/465)에서 구현했습니다.
 
 ---

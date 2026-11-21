@@ -93,8 +93,8 @@ func _test_stats() -> void:
 	warrior.begin_turn()
 	archer.begin_turn()
 	barbarian.begin_turn()
-	_check(warrior.movement_left == 3 and archer.movement_left == 6 and barbarian.movement_left == 6,
-		"이동력: 전사 3, 궁수와 풋내기 야만인 6")
+	_check(warrior.movement_left == 4 and archer.movement_left == 8 and barbarian.movement_left == 8,
+		"이동력: 전사 4, 궁수와 풋내기 야만인 8")
 	_check(warrior.get_damage_bonus() == 0 and archer.get_damage_bonus() == 0,
 		"전사와 궁수(#528)의 기본 피해 보정 0")
 	warrior.armor = {"stats": {"max_hit_points": 2}}
@@ -192,7 +192,7 @@ func _test_steel_charge() -> void:
 	_check(await f.actions.steel_charge(warrior, barbarian), "인접한 적에게 강철 돌진")
 	_check(barbarian.hit_points == 6, "피해는 힘 d20 + 레벨이고 기타 가산치(장비 +2)를 더하지 않음")
 	_check(barbarian.cell == Vector2i(6, 4) and warrior.cell == Vector2i(5, 4), "대상을 1칸 밀고 비워진 칸으로 1칸 전진")
-	_check(warrior.movement_left == 2 and warrior.bonus_action_left == 0 and warrior.steel_charge_left == 0
+	_check(warrior.movement_left == 3 and warrior.bonus_action_left == 0 and warrior.steel_charge_left == 0
 		and warrior.action_left == 1, "보조 행동과 이동력 1만 소비하고 전진에는 이동력을 더 쓰지 않음")
 	for blocker: String in ["crate", "unit", "higher", "edge"]:
 		var blocked: Fixture = _fixture()
@@ -225,7 +225,7 @@ func _test_steel_charge() -> void:
 	_check(downed.units[2].hit_points == 0 and charger.cell == Vector2i(5, 4), "대상이 쓰러지면 대상이 있던 칸으로 1칸 전진")
 	_check(charger.hit_points == charger.get_max_hit_points() and watcher.reaction_left == 1
 		and downed.actions.pending_reactor == null, "전진은 기회 공격을 받지 않음")
-	_check(charger.movement_left == 2 and charger.bonus_action_left == 0, "전진에 이동력을 더 쓰지 않음")
+	_check(charger.movement_left == 3 and charger.bonus_action_left == 0, "전진에 이동력을 더 쓰지 않음")
 	var walled: Fixture = _fixture()
 	walled.actions.create_prop(Vector2i(6, 4), "crate")
 	walled.units[2].hit_points = 6
@@ -236,7 +236,7 @@ func _test_steel_charge() -> void:
 	missed.actions.dice = _dice([1], [20])
 	await missed.actions.steel_charge(missed.units[0], missed.units[2])
 	_check(missed.units[2].cell == Vector2i(5, 4) and missed.units[0].cell == Vector2i(4, 4)
-		and missed.units[0].steel_charge_left == 0 and missed.units[0].movement_left == 2,
+		and missed.units[0].steel_charge_left == 0 and missed.units[0].movement_left == 3,
 		"빗나가면 밀치거나 전진하지 않고 비용은 소비")
 
 
@@ -312,7 +312,7 @@ func _test_sweep() -> void:
 	_check(archer_hp - enemy_archer.hit_points == 4 and barbarian.hit_points == 12 - 5,
 		"대상마다 명중굴림 뒤 피해 ⌈힘 d20 ÷ 2⌉ + 0을 왼쪽 옆부터 차례로 굴림")
 	_check(archer.hit_points == archer.get_max_hit_points(), "반달 안의 아군은 맞지 않음")
-	_check(warrior.action_left == 0 and warrior.bonus_action_left == 1 and warrior.movement_left == 3, "행동만 소비")
+	_check(warrior.action_left == 0 and warrior.bonus_action_left == 1 and warrior.movement_left == 4, "행동만 소비")
 	_check(f.logs.any(func(line: String) -> bool: return "휩쓸기: 대상 2명" in line)
 		and f.logs.any(func(line: String) -> bool: return "(휩쓸기 ÷2 올림): 힘 d20 [7] → 4 +0 = 4" in line), "대상 수와 피해식을 로그에 기록")
 	_check(not f.actions.can_use(warrior, "sweep") and f.actions.unavailable_reason(warrior, "sweep") == "자원을 이미 씀",
@@ -691,14 +691,14 @@ func _test_brawn() -> void:
 	downed.actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: downed.actions.resolve_reaction(true))
 	downed.actions.dice = _dice([20, 1], ScriptedDice.attack_sides(downed.units[0]) + ScriptedDice.damage_sides(downed.units[0]))
 	_check(await downed.actions.jump_to(downed.units[2], Vector2i(5, 6)) and downed.units[2].hit_points == 0
-		and downed.units[2].cell == Vector2i(5, 4) and downed.units[2].movement_left < 6
+		and downed.units[2].cell == Vector2i(5, 4) and downed.units[2].movement_left < 8
 		and downed.units[2].bonus_action_left == 0, "기회 공격으로 쓰러진 점프도 이동력·보조 행동을 소비")
 	# 적 풋내기 야만인은 전사와 같은 Kind이지만 괴력의 사내가 없다.
 	var enemy: Fixture = _fixture()
 	enemy.units[2].reaction_left = 1
 	enemy.actions.dice = _dice([10, 1], ScriptedDice.attack_sides(enemy.units[2]) + ScriptedDice.damage_sides(enemy.units[2]))
 	_check(await enemy.actions.move_to(enemy.units[0], Vector2i(4, 6)) and enemy.units[2].reaction_left == 0
-		and enemy.units[0].hit_points == 9 and enemy.units[0].cell == Vector2i(4, 6) and enemy.units[0].movement_left == 1,
+		and enemy.units[0].hit_points == 9 and enemy.units[0].cell == Vector2i(4, 6) and enemy.units[0].movement_left == 2,
 		"적의 기회 공격은 명중해도 이동을 멈추지 않음")
 	_check("괴력의 사내" in CombatActionRules.effect(enemy.units[0], "opportunity")
 		and "괴력의 사내" not in CombatActionRules.effect(enemy.units[2], "opportunity"),
@@ -816,7 +816,7 @@ func _test_counter() -> void:
 		+ ScriptedDice.damage_sides(walking.units[0], "counter"))
 	_check(await walking.actions.move_to(walking.units[0], Vector2i(4, 6)), "전사가 야만인 곁에서 걷기")
 	_check(prompts.size() == 1 and walking.actions.is_victory() and walking.units[0].cell == Vector2i(4, 4)
-		and walking.units[0].movement_left == 3 and not walking.actions.busy, "반격으로 이긴 뒤 더 걷지 않음")
+		and walking.units[0].movement_left == 4 and not walking.actions.busy, "반격으로 이긴 뒤 더 걷지 않음")
 	# 점프를 노린 마지막 적이 반격으로 쓰러지면 점프는 멈추고 비용은 소비한다. 착지하지 않아 낙하 피해도 없다 (#407 답 7번).
 	prompts.clear()
 	var jumping: Fixture = _counter_fixture(true, prompts, [0, 1, 2, 3])
