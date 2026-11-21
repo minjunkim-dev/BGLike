@@ -108,14 +108,16 @@ func _test_range_and_damage() -> void:
 	var f: Fixture = _fixture()
 	var archer: CombatUnit = f.units[0]
 	var target: CombatUnit = f.units[3]
-	_check(archer.get_attack_range() == 4 and target.get_attack_range() == 6, "아군 궁수 사거리 4, 풋내기 궁수는 6 유지")
+	_check(archer.get_attack_range() == 6 and target.get_attack_range() == 8, "아군 궁수 사거리 6, 풋내기 궁수는 8(#616, 약 1.4배)")
 	_check(f.actions.can_target(archer, target, "attack"), "거리 4의 적은 기본 공격 대상")
-	target.cell = Vector2i(8, 4)
-	_check(not f.actions.can_target(archer, target, "attack"), "거리 5의 적은 사거리 밖")
+	target.cell = Vector2i(9, 4)
+	_check(f.actions.can_target(archer, target, "attack"), "거리 6의 적은 사거리 경계(#616)")
+	target.cell = Vector2i(9, 5)
+	_check(not f.actions.can_target(archer, target, "attack"), "거리 7의 적은 사거리 밖")
 	target.cell = Vector2i(7, 4)
 	_check(archer.get_damage_bonus() == 0 and target.get_damage_bonus() == 1, "아군 궁수 피해 보정 0, 풋내기 궁수 +1 유지")
-	_check("1~4칸" in CombatActionRules.effect(archer, "attack") and "1~4칸" in CombatActionRules.details(archer, "attack"),
-		"기본 공격 호버의 사거리 1~4칸")
+	_check("1~6칸" in CombatActionRules.effect(archer, "attack") and "1~6칸" in CombatActionRules.details(archer, "attack"),
+		"기본 공격 호버의 사거리 1~6칸")
 	f.actions.dice = _dice([15, 7], [20, 20])
 	_check(await f.actions.attack(archer, target), "거리 4의 적을 공격")
 	_check(target.hit_points == 14 - 7, "피해 = 솜씨 d20 굴림 7 + 레벨 0 + 기타 가산치 0")
@@ -277,7 +279,7 @@ func _test_moving_shot() -> void:
 		and Vector2i(3, 5) in cells and Vector2i(3, 3) not in cells, "첫 기본 공격 뒤 인접 빈 칸만 " + str(cells))
 	_check(not await f.actions.moving_shot(archer, Vector2i(5, 4)), "인접하지 않은 칸은 거부")
 	_check(await f.actions.moving_shot(archer, Vector2i(2, 4)), "무빙샷 도약")
-	_check(archer.cell == Vector2i(2, 4) and archer.movement_left == 6 and archer.bonus_action_left == 1,
+	_check(archer.cell == Vector2i(2, 4) and archer.movement_left == 8 and archer.bonus_action_left == 1,
 		"이동력과 보조 행동을 쓰지 않음")
 	_check(barbarian.reaction_left == 1 and archer.hit_points == archer.get_max_hit_points()
 		and f.actions.pending_reactor == null, "인접 적을 벗어나도 기회 공격 없음")
@@ -567,8 +569,8 @@ func _test_firework_arrow() -> void:
 	ally.cell = Vector2i(4, 5)
 	for unit: CombatUnit in f.units:
 		unit.hit_points = 40
-	_check(f.actions.can_aim(archer, "firework_arrow", archer.cell) and f.actions.can_aim(archer, "firework_arrow", Vector2i(7, 4))
-		and not f.actions.can_aim(archer, "firework_arrow", Vector2i(8, 4)), "사거리 0~4, 자기 발밑도 고름")
+	_check(f.actions.can_aim(archer, "firework_arrow", archer.cell) and f.actions.can_aim(archer, "firework_arrow", Vector2i(9, 4))
+		and not f.actions.can_aim(archer, "firework_arrow", Vector2i(9, 5)), "사거리 0~6, 자기 발밑도 고름")
 	_check(f.actions.aim_area(archer, "firework_arrow", Vector2i(4, 4)).size() == 5, "반경 1은 십자 5칸")
 	# 중심 (4,4): 궁수 자신, 아군 전사 (4,5), 적 (5,4)가 모두 맞는다. 유닛 순서대로 내성(민첩 d12, d8, d6)과 d20 두 번.
 	# 궁수 내성 12(성공) 뒤 피해 8,6 → 14 절반 7 / 전사 내성 5(성공) 피해 4,4 → 8 절반 4 / 적 내성 1(절대실패) 피해 3,2 → 5.
@@ -902,9 +904,9 @@ func _test_arrow_usability() -> void:
 	_check(CombatActionRules.belongs_to(archer, "trick_arrow") and CombatActionRules.belongs_to(archer, "firework_arrow")
 		and not CombatActionRules.belongs_to(f.units[1], "trick_arrow") and not CombatActionRules.belongs_to(f.units[1], "firework_arrow")
 		and not CombatActionRules.belongs_to(f.units[3], "firework_arrow"), "두 화살은 아군 궁수만의 동작")
-	_check(f.actions.can_aim(archer, "trick_arrow", Vector2i(7, 4)) and not f.actions.can_aim(archer, "trick_arrow", Vector2i(8, 4))
+	_check(f.actions.can_aim(archer, "trick_arrow", Vector2i(9, 4)) and not f.actions.can_aim(archer, "trick_arrow", Vector2i(9, 5))
 		and not f.actions.can_aim(archer, "trick_arrow", archer.cell) and f.actions.can_aim(archer, "trick_arrow", f.units[1].cell),
-		"장난스러운 화살 사거리 1~4")
+		"장난스러운 화살 사거리 1~6")
 	_check(f.actions.can_use(archer, "trick_arrow") and f.actions.can_use(archer, "firework_arrow"), "행동이 있으면 사용 가능")
 	archer.fallen = true
 	_check(not f.actions.can_use(archer, "trick_arrow") and not f.actions.can_use(archer, "firework_arrow")
@@ -1004,7 +1006,7 @@ func _test_reflex_dodge() -> void:
 	_check(f.actions.last_attack.success and prompts.size() == 1 and prompts[0][0] == "reflex"
 		and "명중했습니다" in prompts[0][1] and "이동력 1" in prompts[0][1], "명중 확정 뒤 반사신경 창: " + str(prompts))
 	_check(archer.cell == Vector2i(2, 4) and archer.hit_points == archer.get_max_hit_points()
-		and archer.reaction_left == 0 and archer.movement_left == 5 and f.actions.last_damage == 0,
+		and archer.reaction_left == 0 and archer.movement_left == 7 and f.actions.last_damage == 0,
 		"고른 칸으로 회피하고 피해 없음, 반응·이동력 1 소비")
 	_check(f.logs.any(func(line: String) -> bool: return "반사신경" in line and "회피" in line), "회피 로그: " + str(f.logs))
 	_check(not f.actions.busy and f.actions.pending_reactor == null, "회피 뒤 잠금·대기 해제")
@@ -1014,7 +1016,7 @@ func _test_reflex_dodge() -> void:
 	declined.actions.dice = _hit_dice(declined)
 	await declined.actions.attack(declined.units[2], declined.units[0])
 	_check(prompts.size() == 1 and declined.units[0].cell == Vector2i(3, 4) and declined.units[0].hit_points < 9
-		and declined.units[0].reaction_left == 1 and declined.units[0].movement_left == 6, "넘기면 피해, 반응·이동력 그대로")
+		and declined.units[0].reaction_left == 1 and declined.units[0].movement_left == 8, "넘기면 피해, 반응·이동력 그대로")
 	# 참으로만 답하면 첫 후보 칸으로 회피한다.
 	prompts.clear()
 	var first: Fixture = _reflex_fixture(true, prompts)
@@ -1088,7 +1090,7 @@ func _test_reflex_movement() -> void:
 	_check(await walk.actions.move_to(archer, Vector2i(5, 5)), "기회 공격을 받는 걷기")
 	_check(prompts.size() == 1 and prompts[0][0] == "reflex" and archer.cell == Vector2i(3, 5)
 		and archer.hit_points == archer.get_max_hit_points() and archer.reaction_left == 0
-		and archer.movement_left == 6 - 1 - 1 and walk.units[2].reaction_left == 0,
+		and archer.movement_left == 8 - 1 - 1 and walk.units[2].reaction_left == 0,
 		"한 칸 걷고 회피하면 회피 칸에서 멈춤, 이동력은 걸은 1 + 회피 1: " + str(archer.cell) + " " + str(archer.movement_left))
 	# 넘기면 피해를 받고 걷기를 이어 간다.
 	prompts.clear()
@@ -1105,7 +1107,7 @@ func _test_reflex_movement() -> void:
 	jump.actions.dice = _dice([rolled], ScriptedDice.attack_sides(jump.units[2]))
 	_check(await jump.actions.jump_to(jump.units[0], Vector2i(1, 4)), "기회 공격을 받는 점프")
 	_check(jump.units[0].cell == Vector2i(3, 5) and jump.units[0].bonus_action_left == 0
-		and jump.units[0].movement_left == 5 and jump.units[0].hit_points == 9 and not jump.actions.busy,
+		and jump.units[0].movement_left == 7 and jump.units[0].hit_points == 9 and not jump.actions.busy,
 		"회피하면 점프 취소, 보조 행동 소비, 이동력은 회피 1만: " + str(jump.units[0].cell) + " " + str(jump.units[0].movement_left))
 
 
@@ -1127,7 +1129,7 @@ func _test_reflex_oil() -> void:
 	await leave.actions.attack(leave.units[2], leave.units[0])
 	var archer: CombatUnit = leave.units[0]
 	_check(archer.cell == Vector2i(3, 4) and archer.fallen and archer.hit_points == archer.get_max_hit_points()
-		and archer.reaction_left == 0 and archer.movement_left == 5, "이탈 실패: 제자리에서 넘어지고 피해 없음, 반응·이동력 소비")
+		and archer.reaction_left == 0 and archer.movement_left == 7, "이탈 실패: 제자리에서 넘어지고 피해 없음, 반응·이동력 소비")
 	# 이탈에 성공하면 회피 칸으로 간다.
 	prompts.clear()
 	var pass_leave: Fixture = _reflex_fixture(Vector2i(3, 5), prompts)

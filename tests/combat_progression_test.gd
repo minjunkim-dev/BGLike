@@ -256,9 +256,9 @@ func _test_spiderling_placement_and_turns() -> void:
 		_check(actions.grid.is_floor(destination) and not actions.grid.is_blocked(destination),
 			"새끼 이동 fixture의 목적지는 장애물이 없는 바닥")
 		_check(await actions.move_to(units[index], destination)
-			and units[index].movement_left == 5, "새끼 거미는 자기 턴에 자기 이동력으로 이동")
+			and units[index].movement_left == 7, "새끼 거미는 자기 턴에 자기 이동력으로 이동")
 		for waiting: int in range(index + 1, 6):
-			_check(units[waiting].cell == cells[waiting - 2] and units[waiting].movement_left == 6,
+			_check(units[waiting].cell == cells[waiting - 2] and units[waiting].movement_left == 8,
 				"다른 새끼의 이동은 대기 중인 새끼의 위치·이동력을 바꾸지 않음")
 		turns.end_turn()
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
@@ -330,10 +330,10 @@ func _test_mother_stages() -> void:
 				"엄마·독안개·새끼의 종류·수·시작 좌표를 실제 스테이지에 연결")
 			if is_fog:
 				fog_spiders.append(unit)
-				_check(unit.movement_left == 4 and unit.hit_points == 12, "실제 독안개 거미는 이동력4·HP12에서 시작")
+				_check(unit.movement_left == 6 and unit.hit_points == 12, "실제 독안개 거미는 이동력6·HP12에서 시작")
 			if is_mother:
 				mothers.append(unit)
-				_check(unit.movement_left == 4 and unit.hit_points == 20, "실제 엄마는 이동력4·HP20에서 시작")
+				_check(unit.movement_left == 6 and unit.hit_points == 20, "실제 엄마는 이동력6·HP20에서 시작")
 		var turns: CombatTurns = battle.get("turns") as CombatTurns
 		var desired: Array[CombatUnit] = [units[0], units[1]]
 		desired.append_array(mothers)
@@ -1096,9 +1096,9 @@ func _test_large_map_battle() -> void:
 	actions.dice.seed = 394
 	ScriptedDice.arrange_turns(turns, units, party)
 	var warrior: CombatUnit = party[0]
-	# 전사 이동력3을 모두 쓰는 상자 옆 칸이다.
+	# 전사 이동력4 중 3을 쓰는 상자 옆 칸이다.
 	var destination: Vector2i = stage.crate_cells[0] + Vector2i(-1, 0)
-	_check(await actions.move_to(warrior, destination) and warrior.cell == destination and warrior.movement_left == 0,
+	_check(await actions.move_to(warrior, destination) and warrior.cell == destination and warrior.movement_left == 1,
 		label + " 아군이 상자 앞까지 걸어서 이동")
 	# 묶음 확정이 아군 반응을 다시 채우므로, 적 궁수가 아군 궁수를 맞히면 반사신경 창이 뜬다(#500). 이 검사는 이동을 보므로 넘긴다.
 	actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: actions.resolve_reaction(false))
