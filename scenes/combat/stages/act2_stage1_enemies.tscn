@@ -12,12 +12,12 @@ start_cell = Vector2i(12, 3)
 [node name="Spiderling2" parent="." instance=ExtResource("1_unit")]
 kind = 2
 is_ally = false
-start_cell = Vector2i(9, 5)
+start_cell = Vector2i(10, 5)
 
 [node name="Spiderling3" parent="." instance=ExtResource("1_unit")]
 kind = 2
 is_ally = false
-start_cell = Vector2i(10, 8)
+start_cell = Vector2i(11, 8)
 
 [node name="Spiderling4" parent="." instance=ExtResource("1_unit")]
 kind = 2

@@ -28,6 +28,7 @@ func _run() -> void:
 	await _test_spiderling_placement_and_turns()
 	await _test_mother_stages()
 	await _test_novice_placements()
+	await _test_first_turn_enemy_pressure()
 	await _test_scrap_robot_stage()
 	await _test_scrap_robot_2000_stage()
 	await _test_scrap_robot_3000_stage()
@@ -295,7 +296,7 @@ func _check_enemy_values(battle: Node2D, act: int) -> void:
 
 func _test_mother_stages() -> void:
 	var placements: Dictionary = {
-		3: [Vector2i(12, 3), Vector2i(9, 5), Vector2i(10, 8), Vector2i(9, 11), Vector2i(11, 1)],
+		3: [Vector2i(12, 3), Vector2i(10, 5), Vector2i(11, 8), Vector2i(9, 11), Vector2i(11, 1)],
 		6: [Vector2i(9, 4), Vector2i(9, 7), Vector2i(9, 10), Vector2i(11, 2), Vector2i(11, 9)]
 	}
 	for stage: int in [3, 6]:
@@ -386,8 +387,8 @@ func _test_novice_placements() -> void:
 	var expected: Dictionary = {
 		1: [[CombatUnit.Kind.WARRIOR, Vector2i(10, 2)]],
 		4: [[CombatUnit.Kind.WARRIOR, Vector2i(9, 3)], [CombatUnit.Kind.ARCHER, Vector2i(10, 6)]],
-		7: [[CombatUnit.Kind.WARRIOR, Vector2i(9, 5)], [CombatUnit.Kind.WARRIOR, Vector2i(8, 10)],
-			[CombatUnit.Kind.ARCHER, Vector2i(11, 7)]]
+		7: [[CombatUnit.Kind.WARRIOR, Vector2i(10, 5)], [CombatUnit.Kind.WARRIOR, Vector2i(10, 10)],
+			[CombatUnit.Kind.ARCHER, Vector2i(13, 4)]]
 	}
 	for index: int in range(9):
 		var party: Array[CombatUnit] = battle.get("party")
@@ -415,6 +416,77 @@ func _test_novice_placements() -> void:
 		for enemy: int in range(mini(enemies.size(), expected[index].size())):
 			_check(enemies[enemy].kind == expected[index][enemy][0]
 				and enemies[enemy].cell == expected[index][enemy][1], "2스테이지 풋내기 종류와 좌표")
+	main.queue_free()
+	await process_frame
+
+
+## #751: 2-1·3-2 조정 뒤 첫 턴 적 보행 근접 공격은 0명이고, 3-2 적 궁수만 6보 이동 후 전사를 사격한다.
+func _test_first_turn_enemy_pressure() -> void:
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
+	root.add_child(main)
+	var battle: Node2D = main.get_node("Battle") as Node2D
+	battle.set_process(false)
+	battle.call("start_battle")
+	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
+	progress.stage_index = 3
+	battle.call("_start_stage", true)
+	battle.call("start_battle")
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var party: Array[CombatUnit] = battle.get("party")
+	var units: Array[CombatUnit] = battle.get("units")
+	for unit: CombatUnit in units:
+		if unit.is_ally:
+			continue
+		var reach: Dictionary[Vector2i, int] = actions.grid.reachable_cells(unit)
+		_check(not reach.is_empty(), "2-1 %s의 첫 턴 이동 범위가 비어 있지 않음" % unit.get_display_name())
+		var cells: Array[Vector2i] = [unit.cell]
+		cells.append_array(reach.keys())
+		var hits_ally: bool = cells.any(func(cell: Vector2i) -> bool:
+			return party.any(func(ally: CombatUnit) -> bool:
+				return actions.grid.can_target(unit, ally, "attack", cell)))
+		_check(not hits_ally, "2-1 %s는 첫 턴 보행으로 아군을 기본 공격하지 않음" % unit.get_display_name())
+	progress.stage_index = 7
+	battle.call("_start_stage", true)
+	battle.call("start_battle")
+	actions = battle.get("actions") as CombatActions
+	party = battle.get("party")
+	units = battle.get("units")
+	var ally_archer_reach: Dictionary[Vector2i, int] = actions.grid.reachable_cells(party[1])
+	_check(not ally_archer_reach.is_empty(), "3-2 아군 궁수의 첫 턴 이동 범위가 비어 있지 않음")
+	var ally_archer_cells: Array[Vector2i] = [party[1].cell]
+	ally_archer_cells.append_array(ally_archer_reach.keys())
+	for unit: CombatUnit in units:
+		if unit.is_ally:
+			continue
+		var reach: Dictionary[Vector2i, int] = actions.grid.reachable_cells(unit)
+		_check(not reach.is_empty(), "3-2 %s의 첫 턴 이동 범위가 비어 있지 않음" % unit.get_display_name())
+		if unit.kind == CombatUnit.Kind.WARRIOR:
+			var warrior_cells: Array[Vector2i] = [unit.cell]
+			warrior_cells.append_array(reach.keys())
+			var melee_hit: bool = warrior_cells.any(func(cell: Vector2i) -> bool:
+				return party.any(func(ally: CombatUnit) -> bool:
+					return actions.grid.can_target(unit, ally, "attack", cell)))
+			_check(not melee_hit, "3-2 야만인 %s는 첫 턴 보행 근접 불가" % unit.cell)
+		elif unit.kind == CombatUnit.Kind.ARCHER:
+			_check(not party.any(func(ally: CombatUnit) -> bool:
+				return actions.grid.can_target(unit, ally, "attack", unit.cell)),
+				"3-2 적 궁수는 시작 칸에서 아군을 사격하지 않음")
+			var warrior_steps: int = unit.get_movement() + 1
+			var archer_steps: int = unit.get_movement() + 1
+			for cell: Vector2i in reach:
+				if actions.grid.can_target(unit, party[0], "attack", cell):
+					warrior_steps = mini(warrior_steps, reach[cell])
+				if actions.grid.can_target(unit, party[1], "attack", cell):
+					archer_steps = mini(archer_steps, reach[cell])
+			ScriptedDice.arrange_turns(battle.get("turns") as CombatTurns, units, [unit])
+			var ai_cell: Vector2i = (battle.get("enemy_ai") as CombatEnemyAi).approach_cell(unit, actions)
+			_check(warrior_steps == 6 and archer_steps == 8 and ai_cell != unit.cell
+				and actions.grid.can_target(unit, party[0], "attack", ai_cell)
+				and not actions.grid.can_target(unit, party[1], "attack", ai_cell),
+				"3-2 적 궁수는 첫 턴 6보 이동 후 전사만 사격 가능 (전사 %d보, 궁수 %d보, AI %s)" % [warrior_steps, archer_steps, ai_cell])
+			var counter_shot: bool = ally_archer_cells.any(func(cell: Vector2i) -> bool:
+				return actions.grid.can_target(party[1], unit, "attack", cell))
+			_check(not counter_shot, "3-2 아군 궁수는 첫 턴 적 궁수를 사격할 수 없음")
 	main.queue_free()
 	await process_frame
 
