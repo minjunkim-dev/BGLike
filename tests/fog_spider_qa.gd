@@ -112,10 +112,10 @@ func _check_layout() -> void:
 			counts[unit.kind] = int(counts.get(unit.kind, 0)) + 1
 	_check(counts == {CombatUnit.Kind.SPIDERLING: 3, CombatUnit.Kind.MOTHER_SPIDER: 1, CombatUnit.Kind.FOG_SPIDER: 1},
 		"3막 1스테이지 적 구성: 새끼 3·엄마 1·독안개 거미 1: %s" % str(counts))
-	_check(spider != null and spider.cell == Vector2i(9, 2), "독안개 거미는 (9,2)에서 시작")
+	_check(spider != null and spider.cell == Vector2i(11, 2), "독안개 거미는 (11,2)에서 시작")
 	for unit: CombatUnit in units:
 		if unit.kind == CombatUnit.Kind.MOTHER_SPIDER:
-			_check(unit.cell == Vector2i(9, 7), "엄마 거미는 (9,7)에 유지")
+			_check(unit.cell == Vector2i(11, 9), "엄마 거미는 (11,9)에 유지")
 
 
 ## 아군은 가만히 두고 거미 순서만 실제 AI로 돌린다. 다른 유닛의 순서는 그냥 넘긴다.

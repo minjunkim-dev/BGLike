@@ -394,7 +394,10 @@ func _restore(point: Dictionary, label: String) -> Node2D:
 		# 아군은 자기 묶음을 확정할 때 이미 채웠으므로 적 턴 저장에서도 이동력·행동·보조 행동이 가득 차 있다(3-3).
 		for unit: CombatUnit in battle.get("units"):
 			if unit.is_ally and unit.hit_points > 0:
-				_check(unit.movement_left == unit.get_movement() and unit.action_left == unit.action_capacity
+				# 이번 적 턴에 반사신경(반응 1, 이동력 1 소비)을 쓴 아군만 이동력이 1 모자라도 된다.
+				var reflexed: bool = unit.reaction_left == 0 and unit.movement_left == unit.get_movement() - 1
+				_check((unit.movement_left == unit.get_movement() or reflexed)
+					and unit.action_left == unit.action_capacity
 					and unit.bonus_action_left == unit.bonus_action_capacity,
 					label + " 적 턴 저장에서 아군 자원이 가득 찬 상태로 복원")
 	if point.save.get("replay", {}).get("actions", 0) == 0:
