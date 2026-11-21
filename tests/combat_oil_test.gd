@@ -390,7 +390,7 @@ func _test_oil_clock() -> void:
 		"시계 두 번째에 기름 장판이 사라짐(남은 기간 2)")
 
 
-## 기름병 던지기: 보조 행동, 전투마다 1, 사거리 = 힘 면 수 ÷ 2(궁수 3), 곡사, 십자 5칸.
+## 기름병 던지기: 보조 행동, 전투마다 1, 사거리 = 힘 면 수 × 0.7 반올림(궁수 4), 곡사, 십자 5칸.
 func _test_oil_throw() -> void:
 	var f: Fixture = _fixture()
 	var archer: CombatUnit = f.units[0]

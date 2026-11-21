@@ -48,6 +48,6 @@ static func connected(start: Vector2i, oil_cells: Array[Vector2i]) -> Array[Vect
 	return found
 
 
-## 일어서기 비용: 최대 이동력의 절반을 올림 (궁수 3, 전사 2).
+## 일어서기 비용: 최대 이동력의 절반을 올림 (궁수 4, 전사 2).
 static func standing_cost(max_movement: int) -> int:
 	return ceili(max_movement / 2.0)
