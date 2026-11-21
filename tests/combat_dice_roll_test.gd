@@ -503,9 +503,11 @@ func _test_scene() -> void:
 	_check(total.text == "18 = 15+3", "버린 주사위의 눈은 합계 식에 넣지 않는다: " + total.text)
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
 
+	_check(GameMusic.duck_level(self) == 0.0, "보통 굴림과 내성굴림은 배경음을 낮추지 않는다")
 	# 절대성공: 비교 대신 이름을 보이고 강조한다.
 	play.call(CombatDiceRoll.hit(ally, 20, _result([20], 20, 23, true, CombatChecks.Face.ABSOLUTE_SUCCESS), 3, 30))
 	await create_timer(CombatDiceRollView.TUMBLE_TIME + 0.1).timeout
+	_check(GameMusic.duck_level(self) < 0.0, "명중굴림의 절대성공이 멈추면 배경음을 낮춘다: %s" % GameMusic.duck_level(self))
 	dice = view.get("_dice")
 	_check(summary.text.ends_with(tr("절대성공")) and dice[0].state == "absolute_success" and total.text == "20",
 		"절대성공은 절대성공 그림과 굴린 눈만 보인다: " + summary.text + " / " + total.text)
@@ -665,6 +667,12 @@ func _test_grades() -> void:
 		and CombatDiceRollView.hold_time(save_absolute) == CombatDiceRollView.HOLD_TIME
 		and CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME > CombatDiceRollView.HOLD_TIME,
 		"표시 시간은 명중굴림의 절대면만 늘어난다")
+	var absolute_failure: CombatChecks.RollResult = _result([1], 1, 4, false, CombatChecks.Face.ABSOLUTE_FAILURE)
+	_check(CombatDiceRollView.ducks_music(hit_absolute)
+		and CombatDiceRollView.ducks_music(CombatDiceRoll.hit(null, 20, absolute_failure, 3, 2))
+		and not CombatDiceRollView.ducks_music(CombatDiceRoll.hit(null, 20, normal_result, 3, 12))
+		and not CombatDiceRollView.ducks_music(save_absolute),
+		"배경음은 명중굴림의 절대성공·절대실패에서만 낮춘다")
 
 
 ## 기다리지 않는 독 제거 둘이 연달아 오고 기다리는 명중굴림이 뒤따라도, 먼저 온 굴림부터 결과를 끝까지 보인다.
