@@ -4449,9 +4449,10 @@ func _test_presentation_move_time() -> void:
 ## #744: 9개 전투의 아군 전사 첫 턴 화면에서 스킬 패널이 맵 위 유닛(2-1 새끼 거미, 3-2 야만인 등)을 가리지 않는다.
 func _test_skills_panel_clear_of_units() -> void:
 	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
+	root.add_child(main)
 	var stage_battle: Node2D = main.get_node("Battle") as Node2D
 	stage_battle.set_process(false)
-	root.add_child(main)
+	_check(not stage_battle.is_processing(), "스킬 패널 검사 중 Battle._process 비활성")
 	stage_battle.call("start_battle")
 	await process_frame
 	var stage_hud: CombatTurnHud = stage_battle.get_node("UI/TurnHud") as CombatTurnHud
