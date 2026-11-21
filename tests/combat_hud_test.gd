@@ -2416,9 +2416,14 @@ func _test_portrait_join_interrupted_by_order_change(wait_for_start: bool, remov
 	await process_frame
 	await process_frame
 	var previous: Vector2 = ((hud.get("_portraits") as Dictionary)[units[1]] as Button).global_position
+	# 긴 프레임이 0.25초 이동을 관찰 사이에 끝내지 않도록 시계를 멈추고 Tween을 직접 진행한다.
+	var time_scale: float = Engine.time_scale
+	Engine.time_scale = 0.0
 	actions.incapacitate(units[2])
 	if wait_for_start:
-		await create_timer(0.1).timeout
+		await process_frame
+		await process_frame
+		(hud.get("_order_tween") as Tween).custom_step(0.1)
 		previous = ((hud.get("_portraits") as Dictionary)[units[1]] as Button).global_position
 	var inserted: CombatUnit
 	if remove_another:
@@ -2433,11 +2438,13 @@ func _test_portrait_join_interrupted_by_order_change(wait_for_start: bool, remov
 	await process_frame
 	await process_frame
 	var archer: Button = (hud.get("_portraits") as Dictionary)[units[1]]
+	var tween: Tween = hud.get("_order_tween")
 	var start: Vector2 = archer.global_position
-	await create_timer(0.1).timeout
+	tween.custom_step(0.1)
 	var middle: Vector2 = archer.global_position
-	await create_timer(0.2).timeout
+	tween.custom_step(0.2)
 	var destination: Vector2 = archer.global_position
+	Engine.time_scale = time_scale
 	_check(start.distance_to(destination) > middle.distance_to(destination)
 		and middle.distance_to(destination) > 0.0
 		and start.distance_to(previous) <= destination.distance_to(previous),
