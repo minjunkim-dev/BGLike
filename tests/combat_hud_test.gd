@@ -4480,7 +4480,7 @@ func _test_skills_panel_clear_of_units() -> void:
 			for unit: CombatUnit in stage_units:
 				if stage_index == 3 and not unit.is_ally and unit.cell == Vector2i(9, 11):
 					saw_2_1_spider = true
-				if stage_index == 7 and not unit.is_ally and unit.cell == Vector2i(8, 10):
+				if stage_index == 7 and not unit.is_ally and unit.cell == Vector2i(10, 10):
 					saw_3_2_barbarian = true
 				var foot: Vector2 = unit.get_global_transform_with_canvas() * Vector2(0, unit.floor_offset_y)
 				var unit_rect: Rect2 = Rect2(foot - Vector2(16, 28), Vector2(32, 32))
@@ -4488,7 +4488,7 @@ func _test_skills_panel_clear_of_units() -> void:
 					"%s 스테이지 %d: 스킬 패널 %s가 %s %s(%s)를 가리지 않음" % [
 						size, stage_index, skills_rect, unit.get_display_name(), unit.cell, unit_rect])
 		_check(saw_2_1_spider and saw_3_2_barbarian,
-			"%s: 2-1 새끼 거미(9,11)와 3-2 야만인(8,10) 확인" % size)
+			"%s: 2-1 새끼 거미(9,11)와 3-2 야만인(10,10) 확인" % size)
 	root.size = Vector2i(1280, 720)
 	(stage_battle.get("sounds") as CombatSounds).stop_all()
 	await create_timer(0.08).timeout
