@@ -543,11 +543,7 @@ func refresh(turns: CombatTurns, has_available_action: bool) -> void:
 	show_unit(current)
 	for unit: CombatUnit in _portraits:
 		var button: Button = _portraits[unit]
-		button.text = "%s\n%s" % [tr("아군") if unit.is_ally else tr("적"),
-			unit.get_display_name() if not unit.is_ally
-			else tr("전사") if unit.kind == CombatUnit.Kind.WARRIOR else tr("궁수")]
-		if unit.is_boss():
-			button.text = unit.get_display_name().replace("-", "\n")
+		button.text = _portrait_text(unit)
 		if unit.initiative_roll == 0:
 			button.tooltip_text = tr("%s: 엄마 거미 바로 앞 순서\n생성한 라운드에는 행동하지 않습니다.") % unit.get_display_name()
 		else:
@@ -736,6 +732,18 @@ func _animate_order_rotation(positions: Dictionary[CombatUnit, Vector2], revisio
 		button.position += positions[unit] - button.global_position
 		_order_tween.tween_property(button, "position", destination, 0.25).set_trans(
 			Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+## 턴 순서 초상 카드의 두 줄 이름. 적은 보스('고철로봇\n3000')처럼 구분자에서 두 줄로 나눈다(#743).
+func _portrait_text(unit: CombatUnit) -> String:
+	if unit.is_ally:
+		return "%s\n%s" % [tr("아군"), tr("전사") if unit.kind == CombatUnit.Kind.WARRIOR else tr("궁수")]
+	var display_name: String = unit.get_display_name()
+	for separator: String in ["-", " "]:
+		var split: int = display_name.find(separator)
+		if split > 0 and split < display_name.length() - 1:
+			return display_name.left(split) + "\n" + display_name.substr(split + 1)
+	return "%s\n%s" % [tr("적"), display_name]
 
 
 func _button_style(color: Color, border: Color = Color("61717e"), margin: int = 4) -> StyleBoxFlat:

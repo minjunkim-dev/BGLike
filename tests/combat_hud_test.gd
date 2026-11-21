@@ -69,6 +69,7 @@ func _run() -> void:
 	await _test_log_and_status()
 	await _test_hit_sound_mix()
 	await _test_layout()
+	await _test_portrait_card_names()
 	await _test_guidance()
 	_test_high_ground_guidance()
 	_test_water_guidance()
@@ -1608,6 +1609,52 @@ func _test_skill_panel_fixed() -> void:
 	_reset_units()
 	turns.select_unit(warrior)
 	battle.call("_update_turn_ui")
+	await process_frame
+
+
+## #743: 아군 둘 뒤 첫 적의 턴 순서 카드가 모든 적 종류와 해상도에서 잘리지 않는다.
+func _test_portrait_card_names() -> void:
+	var original_kind: CombatUnit.Kind = units[2].kind
+	var enemy_kinds: Array[CombatUnit.Kind] = [
+		CombatUnit.Kind.WARRIOR, CombatUnit.Kind.ARCHER, CombatUnit.Kind.SPIDERLING,
+		CombatUnit.Kind.MOTHER_SPIDER, CombatUnit.Kind.FOG_SPIDER,
+		CombatUnit.Kind.SCRAP_ROBOT_1000, CombatUnit.Kind.SCRAP_ROBOT_2000, CombatUnit.Kind.SCRAP_ROBOT_3000
+	]
+	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080)]:
+		root.size = size
+		for enemy_kind: CombatUnit.Kind in enemy_kinds:
+			units[2].kind = enemy_kind
+			hud.begin_stage(1, 1)
+			ScriptedDice.arrange_turns(turns, units, [units[0], units[1], units[2], units[3]])
+			battle.call("_update_turn_ui")
+			await process_frame
+			await process_frame
+			var scroll_rect: Rect2 = (hud.get_node("OrderScroll") as Control).get_global_rect()
+			var portraits: Dictionary = hud.get("_portraits")
+			for index: int in range(2):
+				var ally_button: Button = portraits[units[index]] as Button
+				var expected_ally: String = "아군\n전사" if index == 0 else "아군\n궁수"
+				_check(ally_button.text == expected_ally
+					and ally_button.size.x >= ally_button.get_combined_minimum_size().x
+					and ally_button.size.y >= ally_button.get_combined_minimum_size().y
+					and scroll_rect.encloses(ally_button.get_global_rect()),
+					"%s: 아군 초상 카드 전체가 보임 %s" % [size, ally_button.text.replace("\n", " ")])
+			var enemy_button: Button = portraits[units[2]] as Button
+			var display_name: String = units[2].get_display_name()
+			var separator: String = "-" if "-" in display_name else " "
+			_check(enemy_button.text.split("\n").size() == 2
+				and enemy_button.text.replace("\n", separator) == display_name
+				and enemy_button.size.x >= enemy_button.get_combined_minimum_size().x
+				and enemy_button.size.y >= enemy_button.get_combined_minimum_size().y
+				and scroll_rect.encloses(enemy_button.get_global_rect()),
+				"%s: 첫 적 초상 카드 '%s'가 바 안에서 잘리지 않음 (%s in %s)" % [
+					size, display_name, enemy_button.get_global_rect(), scroll_rect])
+	units[2].kind = original_kind
+	root.size = Vector2i(1280, 720)
+	hud.begin_stage(1, 1)
+	_reset_units()
+	battle.call("_update_turn_ui")
+	await process_frame
 	await process_frame
 
 
