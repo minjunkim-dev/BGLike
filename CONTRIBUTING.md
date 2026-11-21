@@ -15,6 +15,8 @@
    ```
 4. Discord BGLike 서버에 들어갑니다. 짧은 질문은 `#일반`, 알림은 `#github-알림`, 화면을 같이 볼 때는 음성 `플레이테스트`입니다.
 
+repo-baseline은 공통 규칙과 검사기의 원본이며 공개 저장소입니다. 개발, 빌드, PR, CI에는 필요 없고, 정식 리뷰를 할 때만 https://github.com/minjunkim-labs/repo-baseline 로컬 클론이 필요합니다.
+
 ## 2. 역할
 
 | 역할 | 하는 일 |
