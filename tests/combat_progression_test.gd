@@ -264,7 +264,7 @@ func _test_spiderling_placement_and_turns() -> void:
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var spiderling_portraits: int = 0
 	for portrait: Node in hud.order_bar.find_children("*", "Button", true, false):
-		if "새끼 거미" in (portrait as Button).text:
+		if "새끼 거미" in (portrait as Button).text.replace("\n", " "):
 			spiderling_portraits += 1
 	_check(spiderling_portraits == 4, "턴 순서 바는 새끼 거미4마리의 이름을 표시")
 	main.queue_free()
