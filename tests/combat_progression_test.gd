@@ -751,14 +751,18 @@ func _test_async_transition() -> void:
 	await process_frame
 	_check(battle.get("_enemy_turn_running"), "실제 적 턴 타이머가 실행 중")
 	_win(battle)
-	_check(hud.restart_button.disabled, "적 턴 타이머 처리 중 결과 버튼 잠금")
+	_check(battle.get("_victory_waiting") and not hud.get_node("Result").visible,
+		"적 턴 중 마지막 적 처치 직후에는 사라짐 연출과 승리 여운 동안 결과 창을 숨김(#728)")
 	hud.restart_button.pressed.emit()
-	_check(hud.progress_label.text == "1막 · 1스테이지", "실제 AI await 중 전환 신호 거부")
-	await create_timer(0.6).timeout
+	_check(hud.progress_label.text == "1막 · 1스테이지", "실제 AI await 및 승리 대기 중 전환 신호 거부")
+	var deadline: int = Time.get_ticks_msec() + 3000
+	while (battle.get("_enemy_turn_running") or battle.get("_victory_waiting")) and Time.get_ticks_msec() < deadline:
+		await create_timer(0.05).timeout
 	battle.set_process(false)
 	battle.call("start_battle")
-	_check(not battle.get("_enemy_turn_running") and not hud.restart_button.disabled,
-		"적 턴 await 완료 뒤 결과 버튼 잠금 해제")
+	_check(not battle.get("_enemy_turn_running") and not battle.get("_victory_waiting")
+		and hud.get_node("Result").visible and not hud.restart_button.disabled,
+		"적 턴 await와 승리 대기 완료 뒤 결과 창 표시 및 버튼 잠금 해제")
 	hud.restart_button.pressed.emit()
 	_finish_rewards(battle)
 	await process_frame
