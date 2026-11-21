@@ -2831,12 +2831,28 @@ func _test_camera() -> void:
 		_check(camera.zoom == Vector2(2, 2) and (cell_point.call(Vector2i(5, 4)) as Vector2).distance_to(anchor) <= 1.0
 			and _camera_snapped(camera), "휠 위는 포인터 아래 칸을 그대로 둔 채 2배: %s" % window_size)
 		await _wheel(anchor, MOUSE_BUTTON_WHEEL_UP)
-		_check(camera.zoom == Vector2(2, 2), "2배보다 더 확대하지 않음: %s" % window_size)
+		_check(camera.zoom == Vector2(3, 3) and (cell_point.call(Vector2i(5, 4)) as Vector2).distance_to(anchor) <= 1.0
+			and _camera_snapped(camera), "휠 위 두 번째는 포인터 아래 칸을 그대로 둔 채 3배: %s" % window_size)
+		await _wheel(anchor, MOUSE_BUTTON_WHEEL_UP)
+		_check(camera.zoom == Vector2(4, 4) and (cell_point.call(Vector2i(5, 4)) as Vector2).distance_to(anchor) <= 1.0
+			and _camera_snapped(camera), "휠 위 세 번째는 포인터 아래 칸을 그대로 둔 채 4배: %s" % window_size)
+		await _wheel(anchor, MOUSE_BUTTON_WHEEL_UP)
+		_check(camera.zoom == Vector2(4, 4), "4배보다 더 확대하지 않음: %s" % window_size)
 		var delta: Vector2 = Vector2(13.5, -7.25)
 		await _drag(anchor, delta)
 		_check((cell_point.call(Vector2i(5, 4)) as Vector2).distance_to(anchor + delta) <= 1.0 and _camera_snapped(camera),
 			"가운데 버튼 드래그는 맵을 포인터와 함께 옮기고 원점을 정수 px에 맞춤: %s" % window_size)
 		var destination: Vector2i = Vector2i(4, 5)
+		await _click(cell_point.call(destination), MOUSE_BUTTON_RIGHT)
+		_check(selection.preview_cell == destination and units[0].cell == Vector2i(4, 4),
+			"4배 확대·이동 뒤 우클릭은 포인터 아래 칸의 이동 미리보기: %s" % window_size)
+		await _wheel(anchor, MOUSE_BUTTON_WHEEL_DOWN)
+		_check(camera.zoom == Vector2(3, 3) and _camera_snapped(camera),
+			"휠 아래로 4배에서 3배로 한 단계 축소: %s" % window_size)
+		await _wheel(anchor, MOUSE_BUTTON_WHEEL_DOWN)
+		_check(camera.zoom == Vector2(2, 2) and _camera_snapped(camera),
+			"휠 아래로 3배에서 2배로 한 단계 축소: %s" % window_size)
+		selection.clear_preview()
 		await _click(cell_point.call(destination), MOUSE_BUTTON_RIGHT)
 		_check(selection.preview_cell == destination and units[0].cell == Vector2i(4, 4),
 			"확대·이동 뒤 우클릭은 포인터 아래 칸의 이동 미리보기: %s" % window_size)
