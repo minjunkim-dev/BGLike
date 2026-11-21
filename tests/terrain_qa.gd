@@ -43,6 +43,7 @@ func _run() -> void:
 	battle = game.get_node("Battle")
 	battle.set_process(false)
 	for index: int in range(9):
+		label = "%d-%d" % [index / 3 + 1, index % 3 + 1]
 		(battle.get("progress") as CombatActProgress).stage_index = index
 		battle.call("_start_stage", true)
 		battle.call("start_battle")
@@ -58,7 +59,6 @@ func _run() -> void:
 		if not ck(units.size() >= 3 and (battle.get("turns") as CombatTurns).current_unit == actor
 			and actions.grid.props.size() == 2 and actor.action_left == 1, "실제 로스터·아군 턴·물체2개·행동1"):
 			break
-		label = "%d-%d" % [index / 3 + 1, index % 3 + 1]
 		var row: Dictionary = {"stage": label, "window": str(root.size), "viewport": str(root.get_visible_rect()),
 			"crate": str(actions.grid.props[0].cell), "rock": str(actions.grid.props[1].cell)}
 		records.append(row)
