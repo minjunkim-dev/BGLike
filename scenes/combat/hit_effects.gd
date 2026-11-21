@@ -26,6 +26,13 @@ const DOWN_SINK: float = 4.0
 const DOWN_FLASH_COLOR: Color = Color(2.0, 2.0, 2.0, 1.0)
 const DOWN_FLASH_TIME: float = 0.06
 const SKILL_FRAME_PATH: String = "res://scenes/combat/art/effects/%s/%03d.png"
+
+
+## 전투 불능(사라짐) 애니메이션의 전체 게임 시간(초, #728). 잔상 번쩍임 뒤 가라앉는 페이드와 down 폭발 중 긴 쪽이다.
+static func down_duration() -> float:
+	var ghost_time: float = DOWN_FLASH_TIME + CombatPresentation.duration(DOWN_FADE_TIME)
+	var burst_time: float = float(DOWN_FRAME_COUNTS["down"]) / CombatPresentation.fps(FLASH_FPS)
+	return maxf(ghost_time, burst_time)
 ## 효과 그림 안에서 유닛 발 기준점과 캔버스 중심(그림 px). 유닛 프레임과 같은 기준이다.
 const UNIT_EFFECT_ANCHOR: Vector2 = Vector2(32, 56)
 ## 효과·잔상 그림은 유닛 프레임과 같은 0.5배로 그린다.

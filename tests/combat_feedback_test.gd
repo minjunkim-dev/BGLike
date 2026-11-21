@@ -477,14 +477,34 @@ func _test_down_effect() -> void:
 	unit.cell = origin_cell
 	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.5)
 	# 실제 전투 불능 전환이 유닛을 숨기기 전에 그림을 잡는다. 전투 상태를 바꾸므로 맨 끝에 둔다.
+	for enemy_unit: CombatUnit in units:
+		if not enemy_unit.is_ally and enemy_unit != units[units.size() - 1]:
+			enemy_unit.hit_points = 0
+	var saved_dice: CombatDice = actions.dice
+	actions.dice = CombatDice.new()
+	actions.dice.seed = 728
+	battle.set_process(true)
 	var last: CombatUnit = units[units.size() - 1]
+	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	var seen: Array[bool] = [false]
 	actions.downed.connect(func(_unit: CombatUnit) -> void: seen[0] = true, CONNECT_ONE_SHOT)
 	actions.incapacitate(last)
+	actions.changed.emit()
 	await process_frame
 	_check(seen[0] and not last.visible and _sprites(effects).size() == 1 and _ghosts(effects).size() == 1,
 		"incapacitate 한 번으로 효과가 생기고 유닛은 숨겨진다")
-	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.5)
+	_check(actions.is_over() and actions.is_victory() and battle.get("_victory_waiting")
+		and not hud.get_node("Result").visible and hud.end_button.disabled,
+		"마지막 적 처치 직후에는 사라짐 애니메이션과 여운 동안 승리 결과 창을 열지 않고 입력을 잠근다(#728)")
+	var down_finished: bool = await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.5)
+	_check(down_finished and battle.get("_victory_waiting") and not hud.get_node("Result").visible,
+		"사라짐 애니메이션이 끝난 직후에도 추가 여운(0.4초) 동안은 아직 승리 창을 열지 않는다(#728)")
+	var victory_shown: bool = await _wait_for(func() -> bool:
+		return not battle.get("_victory_waiting") and hud.get_node("Result").visible, 1.0)
+	_check(victory_shown and hud.result_label.text == "승리" and not (battle.get("progress") as CombatActProgress).rewards.is_empty(),
+		"사라짐 애니메이션과 승리 여운이 끝난 뒤 승리 결과 창이 열리고 보상은 한 번만 기록된다(#728)")
+	battle.set_process(false)
+	actions.dice = saved_dice
 
 
 ## 스킬 효과(#634). 신호를 직접 보내 전투 장면의 연결을 본다.
