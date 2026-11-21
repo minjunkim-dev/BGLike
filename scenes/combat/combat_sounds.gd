@@ -1,6 +1,7 @@
 class_name CombatSounds
 extends Node
 ## 전투 사건의 효과음(#628). 사건 이름(cue)마다 플레이어 하나를 SFX 버스로 내보낸다.
+## 적 턴 4배속(Engine.time_scale > 1)에서는 갈래가 있는 소리가 같은 소리끼리 FAST_MIN_INTERVAL 안에 다시 오면 건너뛴다(#633).
 ## 재생은 전투 진행을 기다리지 않는다. 무엇이 났는지는 played 신호로 알 수 있다(headless는 Dummy 오디오).
 
 const AUDIO_DIR: String = "res://scenes/combat/audio/"
@@ -11,6 +12,8 @@ const MAX_POLYPHONY: int = 4
 ## 갈래 3개(#630). 높낮이 폭은 배율 1/p~p. 실제 소리와 잡음 합성은 ±7~8%, 칩튠 음은 ±6%.
 const VARIANTS: int = 3
 const PITCH: float = 1.08
+## 4배속에서 같은 갈래 소리 사이의 최소 간격(실제 초). 1배속 한 칸 이동 시간(약 0.129초)이다. 처음 값은 임시이며 사람이 듣고 조정한다.
+const FAST_MIN_INTERVAL: float = 0.13
 ## cue → 파일과 음량. "variants"가 있으면 `<파일>_2.ogg`… 갈래를 더해 반복 없이 고르고 "pitch"만큼 높낮이를 흔든다.
 ## 처음 음량은 임시이며 사람이 듣고 조정한다.
 const CUES: Dictionary = {
@@ -48,6 +51,8 @@ var _players: Dictionary[StringName, AudioStreamPlayer] = {}
 ## 마지막에 신호를 낸 진영. -1 없음, 0 적, 1 아군.
 var _last_side: int = -1
 var _ambient: StringName = &""
+## cue마다 마지막으로 실제 재생한 시각(마이크로초). 4배속에서 건너뛴 재생은 적지 않는다.
+var _last_played_usec: Dictionary[StringName, int] = {}
 
 
 func _ready() -> void:
@@ -82,6 +87,13 @@ func play(cue: StringName) -> void:
 	var sound: AudioStreamPlayer = _players.get(cue)
 	if sound == null:
 		return
+	var now: int = Time.get_ticks_usec()
+	var since_last: float = INF
+	if _last_played_usec.has(cue):
+		since_last = float(now - _last_played_usec[cue]) / 1000000.0
+	if fast_skips(cue, since_last, Engine.time_scale):
+		return
+	_last_played_usec[cue] = now
 	sound.play()
 	played.emit(cue)
 
@@ -121,6 +133,7 @@ func start_ambient(grid: CombatGrid) -> void:
 ## 재생 중인 소리를 모두 멈춘다. 장면을 지우기 전에 쓴다.
 func stop_all() -> void:
 	_ambient = &""
+	_last_played_usec.clear()
 	for sound: AudioStreamPlayer in _players.values():
 		sound.stop()
 
@@ -133,6 +146,14 @@ func stop_ambient() -> void:
 
 func is_ambient_playing() -> bool:
 	return _ambient != &"" and _players[_ambient].playing
+
+
+## 4배속(time_scale > 1)에서 갈래가 있는 cue가 마지막 재생 뒤 FAST_MIN_INTERVAL(실제 초)이 지나기 전에 오면 true.
+## 신호음·환경음·없는 cue는 건너뛰지 않는다. since_last는 처음 나는 cue면 INF다.
+static func fast_skips(cue: StringName, since_last: float, time_scale: float) -> bool:
+	if time_scale <= 1.0 or not CUES.has(cue):
+		return false
+	return int(CUES[cue].get("variants", 1)) > 1 and since_last < FAST_MIN_INTERVAL
 
 
 static func hit_cue(target: Object) -> StringName:
