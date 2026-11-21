@@ -148,7 +148,7 @@ func _ready() -> void:
 		_containers.append(panel)
 		# 컨테이너마다 한 줄이다. 버튼이 줄을 넘치면 줄바꿈하지 않고 칸 폭을 줄인다(#554, 옛 줄바꿈은 #438).
 		var row: HBoxContainer = HBoxContainer.new()
-		# Galmuri11 제목이 대체 글꼴보다 넓어, 버튼 다섯 개가 한 줄에 들어가도록 제목과 버튼 사이를 줄였다.
+		# Galmuri11 제목이 대체 글꼴보다 넓어, 제목과 버튼 사이를 1로 줄여 한 줄에 8칸(최소 폭 28)이 들어가게 한다.
 		row.add_theme_constant_override("separation", TITLE_GAP)
 		panel.add_child(row)
 		var title: Label = Label.new()

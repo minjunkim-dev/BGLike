@@ -126,6 +126,7 @@ func _run() -> void:
 	await process_frame
 	await _test_spawned_portrait_input()
 	await _test_overload_and_water_guidance()
+	await _test_skills_panel_clear_of_units()
 	var dice_problems: Array[String] = ScriptedDice.finish()
 	_check(dice_problems.is_empty(), "준비한 주사위 값을 요청대로 모두 굴림 " + str(dice_problems))
 	print("Combat HUD: %d checks, %d failures" % [checks, failures])
@@ -4443,3 +4444,53 @@ func _test_presentation_move_time() -> void:
 	await process_frame
 	await process_frame
 	_check(Engine.time_scale == 1.0, "전체 속도는 Engine.time_scale을 바꾸지 않음")
+
+
+## #744: 9개 전투의 아군 전사 첫 턴 화면에서 스킬 패널이 맵 위 유닛(2-1 새끼 거미, 3-2 야만인 등)을 가리지 않는다.
+func _test_skills_panel_clear_of_units() -> void:
+	var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
+	var stage_battle: Node2D = main.get_node("Battle") as Node2D
+	stage_battle.set_process(false)
+	root.add_child(main)
+	stage_battle.call("start_battle")
+	await process_frame
+	var stage_hud: CombatTurnHud = stage_battle.get_node("UI/TurnHud") as CombatTurnHud
+	var camera: CombatCamera = stage_battle.get_node("Camera") as CombatCamera
+	var skills: Control = stage_hud.get_node("Skills") as Control
+	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080)]:
+		root.size = size
+		await process_frame
+		await process_frame
+		var saw_2_1_spider: bool = false
+		var saw_3_2_barbarian: bool = false
+		for stage_index: int in range(9):
+			(stage_battle.get("progress") as CombatActProgress).stage_index = stage_index
+			stage_battle.call("_start_stage", true)
+			stage_battle.call("start_battle")
+			var stage_units: Array[CombatUnit] = stage_battle.get("units")
+			var party: Array[CombatUnit] = stage_battle.get("party")
+			var stage_turns: CombatTurns = stage_battle.get("turns") as CombatTurns
+			ScriptedDice.arrange_turns(stage_turns, stage_units, party)
+			stage_battle.call("_update_turn_ui")
+			camera.advance(CombatCamera.TURN_FOCUS_TIME + 0.01)
+			await process_frame
+			await process_frame
+			_check(not camera.is_turning(), "%s 스테이지 %d: 턴 카메라 이동 완료" % [size, stage_index])
+			var skills_rect: Rect2 = skills.get_global_rect()
+			for unit: CombatUnit in stage_units:
+				if stage_index == 3 and not unit.is_ally and unit.cell == Vector2i(9, 11):
+					saw_2_1_spider = true
+				if stage_index == 7 and not unit.is_ally and unit.cell == Vector2i(8, 10):
+					saw_3_2_barbarian = true
+				var foot: Vector2 = unit.get_global_transform_with_canvas() * Vector2(0, unit.floor_offset_y)
+				var unit_rect: Rect2 = Rect2(foot - Vector2(16, 28), Vector2(32, 32))
+				_check(not skills_rect.intersects(unit_rect),
+					"%s 스테이지 %d: 스킬 패널 %s가 %s %s(%s)를 가리지 않음" % [
+						size, stage_index, skills_rect, unit.get_display_name(), unit.cell, unit_rect])
+		_check(saw_2_1_spider and saw_3_2_barbarian,
+			"%s: 2-1 새끼 거미(9,11)와 3-2 야만인(8,10) 확인" % size)
+	root.size = Vector2i(1280, 720)
+	(stage_battle.get("sounds") as CombatSounds).stop_all()
+	await create_timer(0.08).timeout
+	main.queue_free()
+	await process_frame
