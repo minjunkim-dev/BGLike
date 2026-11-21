@@ -548,7 +548,7 @@ func _update_layout() -> void:
 	_offscreen = is_offscreen(_head, footprint(_dice.size()), screen, BACKDROP_PAD.y)
 	_origin = panel_origin(Vector2.INF if _offscreen else _head, PANEL_SIZE, screen)
 	_backdrop_rect = _layout_elements(_origin - Vector2(0.0, _lift))
-	if not _offscreen and _lift == 0 and not screen.encloses(_backdrop_rect):
+	if not _offscreen and not screen.encloses(Rect2(_backdrop_rect.position + Vector2(0.0, _lift), _backdrop_rect.size)):
 		_offscreen = true
 		_origin = panel_origin(Vector2.INF, PANEL_SIZE, screen)
 		_backdrop_rect = _layout_elements(_origin - Vector2(0.0, _lift))

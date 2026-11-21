@@ -615,6 +615,17 @@ func _test_overhead(battle: Node2D, view: CombatDiceRollView, ally: CombatUnit, 
 	_check(view.get("_offscreen") == true and screen.encloses(bottom_backdrop),
 		"화면 하단 근처에서 배경 아래 여백이 잘리면 화면 밖 자리로 옮긴다(#727): screen=%s head=%s backdrop=%s"
 			% [screen, view.get("_head"), bottom_backdrop])
+	var canvas_scale_x: float = maxf(0.001, absf(ally.get_global_transform_with_canvas().get_scale().x))
+	view.set("_summary_text", "아주 긴 판정 문구가 화면 왼쪽 경계를 넘는 경우  +12")
+	ally.position = home + Vector2((screen.position.x + 100.0 - current_head.x) / canvas_scale_x, 0.0)
+	await process_frame
+	var fade_was_offscreen: bool = view.get("_offscreen")
+	view.set("_lift", 1)
+	await process_frame
+	_check(fade_was_offscreen and view.get("_offscreen") == true and screen.encloses(view.get("_backdrop_rect")),
+		"긴 요약이 화면 밖 자리에 있을 때 페이드 떠오름 중에도 화면 밖 자리를 유지한다(#727)")
+	view.set("_lift", 0)
+	view.set("_summary_text", saved_summary)
 	ally.position = home
 	await process_frame
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
