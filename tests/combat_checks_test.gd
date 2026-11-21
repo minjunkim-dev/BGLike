@@ -455,7 +455,7 @@ func _test_battle_rolls() -> void:
 ## 4-9: 명중하면 피해 능력치 주사위를 새로 굴린다. 유리/불리는 피해에 적용하지 않는다.
 func _test_damage_rolls() -> void:
 	var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 4))
-	# 궁수 사거리 4(#528) 안에 둔다.
+	# 궁수 사거리 6(#528, #616) 안에 둔다.
 	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(5, 8))
 	var robot: CombatUnit = _unit(CombatUnit.Kind.SCRAP_ROBOT_1000, false, Vector2i(5, 4))
 	var units: Array[CombatUnit] = [warrior, archer, robot]
