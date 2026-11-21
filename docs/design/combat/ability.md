@@ -279,7 +279,7 @@
 - 광역은 대상마다 따로 굴립니다. 내성에 성공한 대상은 그 값의 절반(내림, 최소 1)을 받습니다 (4-1 기본값).
 - 유리/불리는 피해 굴림에 적용하지 않고, 절대면은 숫자값(절대성공은 최댓값, 절대실패는 1)으로 셉니다.
 - 기존 피해 주사위(`damage_sides`)는 없어집니다. 7장의 몬스터 피해는 능력치 주사위와 기존 `damage_bonus`로 환산합니다.
-- 스킬이 피해식을 조정할 수 있습니다. 예: 휩쓸기는 `⌈힘 d20 굴림값 ÷ 2⌉ + 기타 가산치`(굴림값 = max(1, 눈 + 레벨 + 힘 가감)이라 레벨은 한 번만 더하고, 가산치는 ÷2 뒤에 더함, [#407 답 4](https://github.com/minjunkim-labs/BGLike/issues/407#issuecomment-6568715948)), 강철 돌진은 기타 가산치를 더하지 않습니다. 캐릭터는 기본 피해 보정(기타 가산치)을 갖지 않고 장비로만 더합니다. 전사는 0이고, 궁수는 궁수 재디자인 전까지 +1 예외로 남깁니다 (2026-10-30, 2026-11-02).
+- 스킬이 피해식을 조정할 수 있습니다. 예: 휩쓸기는 `⌈힘 d20 굴림값 ÷ 2⌉ + 기타 가산치`(굴림값 = max(1, 눈 + 레벨 + 힘 가감)이라 레벨은 한 번만 더하고, 가산치는 ÷2 뒤에 더함, [#407 답 4](https://github.com/minjunkim-labs/BGLike/issues/407#issuecomment-6568715948)), 강철 돌진은 기타 가산치를 더하지 않습니다. 캐릭터는 기본 피해 보정(기타 가산치)을 갖지 않고 장비로만 더합니다. 전사와 궁수 모두 0입니다(2026-10-30, 2026-11-09 궁수 재디자인).
 
 **회복**
 
@@ -463,7 +463,7 @@
 
 피해량이 전반적으로 오르므로 `damage_bonus`와 HP는 시험하면서 조정합니다.
 
-- **독안개 거미** ([#462](https://github.com/minjunkim-labs/BGLike/issues/462)에서 구현, [#305 기획자 답](https://github.com/minjunkim-labs/BGLike/issues/305#issuecomment-6581920839)): 새 몬스터라 위 표에 처음 정한 시험값을 더했습니다. 최대 HP 12, 이동력 4이고 건강 d8이 독안개의 DC(건강 표준값 5 + 공격 가산 3 + 보정 0 = 8)를 정합니다. 몬스터 시트는 [독안개 거미](../monsters/fog-spider.md)입니다.
+- **독안개 거미** ([#462](https://github.com/minjunkim-labs/BGLike/issues/462)에서 구현, [#305 기획자 답](https://github.com/minjunkim-labs/BGLike/issues/305#issuecomment-6581920839)): 새 몬스터라 위 표에 처음 정한 시험값을 더했습니다. 최대 HP 12, 이동력 4(#616에서 6)이고 건강 d8이 독안개의 DC(건강 표준값 5 + 공격 가산 3 + 보정 0 = 8)를 정합니다. 몬스터 시트는 [독안개 거미](../monsters/fog-spider.md)입니다.
 - **독 면역**: 거미 계열(새끼·엄마·독안개 거미)은 독에 면역이라 건강 주사위가 독 내성굴림에 쓰이지 않습니다. 건강 주사위 값은 그대로 두고, 독안개 거미만 DC 계산에 씁니다. [#465](https://github.com/minjunkim-labs/BGLike/issues/465)에서 구현했습니다.
 
 ---
@@ -533,9 +533,9 @@
 
 | 항목 | 임시 규칙 | 결정 Issue |
 |---|---|---|
-| 절대성공면 획득 | 개발 금지. [주사위 육성 논의](../growth/dice-growth.md) 5-3 | 개발 요청 전 |
-| d12·d20 절대성공면을 최대치까지 미리 채운 것(시험용)을 성장으로 얻는 원래 기획으로 되돌릴지와 그때 얻는 방법 | 최대치까지 미리 채워 시작하고 성장 획득은 만들지 않음 (4-11) | 성장 논의 |
-| 레벨업과 몬스터 비강화의 밸런스 점검 | 레벨업은 [#477](https://github.com/minjunkim-labs/BGLike/issues/477)에서 구현([#322 답](https://github.com/minjunkim-labs/BGLike/issues/322#issuecomment-6714895396)). 밸런스 점검은 아직 하지 않음. [주사위 육성 논의](../growth/dice-growth.md) | 성장 논의 |
+| 절대성공면 획득 | 개발 금지. [주사위 육성 논의](../growth/dice-growth.md) 5-3 | [#322](https://github.com/minjunkim-labs/BGLike/issues/322) |
+| d12·d20 절대성공면을 최대치까지 미리 채운 것(시험용)을 성장으로 얻는 원래 기획으로 되돌릴지와 그때 얻는 방법 | 최대치까지 미리 채워 시작하고 성장 획득은 만들지 않음 (4-11) | [#322](https://github.com/minjunkim-labs/BGLike/issues/322) |
+| 레벨업과 몬스터 비강화의 밸런스 점검 | 레벨업은 [#477](https://github.com/minjunkim-labs/BGLike/issues/477)에서 구현([#322 답](https://github.com/minjunkim-labs/BGLike/issues/322#issuecomment-6714895396)). 밸런스 점검은 아직 하지 않음. [주사위 육성 논의](../growth/dice-growth.md) | [#322](https://github.com/minjunkim-labs/BGLike/issues/322) |
 | 무기별 능력치 배정 | 현행 지정을 유지하고 궁수의 기본 공격은 임시로 솜씨 (4-2) | 무기 기획 |
 | 스킬별 내성 능력치, 지능·솜씨의 내성 용도 | 지금 쓰는 능력치를 유지 (8장). 솜씨는 기름 장판 미끌거림이 첫 사례 | 스킬 제작 때 |
 | 소환·지형 생성은 지능, 회복량은 건강, 버프·사기는 의지가 맡는 방향 (3-2) | 이 방향을 따름 | 스킬 제작 때 |
@@ -545,7 +545,7 @@
 | 방어구 종류별 규칙 | 단일 가산 | 기획 논의 |
 | 장비 수치 범위(능력치 가감 포함), 몬스터 값 조정 | 시험용 임시값 | [#205](https://github.com/minjunkim-labs/BGLike/issues/205) |
 | 의지 주 직업의 화력 | 스킬 제작 때 점검 (5-3의 4번) | 스킬 제작 때 |
-| 마법 피해 경감(저항) | 도입하지 않음. 폐지 후보 | 기획 논의 |
-| 속성(피해 유형) 시스템 | 원소 속성 화염·물은 정함(2026-11-09, [동작 유형 기획서](skill-types.md)의 ⑦ 축). 물리/마법, 저항·취약·면역은 보류 | 기획 논의 |
+| 마법 피해 경감(저항) | 도입하지 않음. 폐지 후보 | [#357](https://github.com/minjunkim-labs/BGLike/issues/357) |
+| 속성(피해 유형) 시스템 | 원소 속성 화염·물은 정함(2026-11-09, [동작 유형 기획서](skill-types.md)의 ⑦ 축). 물리/마법, 저항·취약·면역은 보류 | [#357](https://github.com/minjunkim-labs/BGLike/issues/357) |
 | 능력치 모양 배분 원칙 | 전사·궁수 외 직업 기획 때 | 직업 기획 |
 | 장비 데이터 필드의 의미 (4-6) | `attack_bonus`는 공격 가산, `defense_bonus`는 방어 가산. 구현은 [#321](https://github.com/minjunkim-labs/BGLike/issues/321)에서 이 의미로 옮김 | 기획자 확인 |

@@ -59,6 +59,8 @@ func _run() -> void:
 	_test_material_cues()
 	_test_ground_cues()
 	await _test_battle_events()
+	_test_fast_skips()
+	_test_fast_play()
 	_test_ui_cue_table()
 	await _test_ui_sounds()
 	sounds.stop_all()
@@ -130,14 +132,56 @@ func _test_cue_table() -> void:
 		"UI 버스는 SFX로 나감")
 
 
+## seam 4(#633): 적 턴 4배속에서 자주 나는 소리를 건너뛰는 규칙표.
+func _test_fast_skips() -> void:
+	var inside: float = CombatSounds.FAST_MIN_INTERVAL * 0.5
+	var outside: float = CombatSounds.FAST_MIN_INTERVAL
+	for cue: StringName in [&"step_dirt", &"hit_flesh", &"miss", &"jump", &"land"]:
+		_check(CombatSounds.fast_skips(cue, inside, 4.0), "4배속 간격 안의 갈래 cue는 건너뜀: %s" % cue)
+		_check(not CombatSounds.fast_skips(cue, outside, 4.0), "4배속 간격 뒤의 갈래 cue는 남: %s" % cue)
+		_check(not CombatSounds.fast_skips(cue, inside, 1.0), "1배속은 건너뛰지 않음: %s" % cue)
+		_check(not CombatSounds.fast_skips(cue, INF, 4.0), "처음 나는 cue는 건너뛰지 않음: %s" % cue)
+	for cue: StringName in [&"turn_enemy", &"turn_ally", &"downed", &"heal", &"shield", &"shout", &"critical"]:
+		_check(not CombatSounds.fast_skips(cue, inside, 4.0), "신호음은 4배속에서도 남: %s" % cue)
+	_check(not CombatSounds.fast_skips(&"no_such_cue", inside, 4.0), "없는 cue는 건너뛰지 않음")
+
+
+## seam 5(#633): 실제 play()와 played 신호.
+func _test_fast_play() -> void:
+	var previous_scale: float = Engine.time_scale
+	sounds.stop_all()
+	heard.clear()
+	Engine.time_scale = 4.0
+	sounds.play(&"step_dirt")
+	sounds.play(&"step_dirt")
+	sounds.play(&"step_stone")
+	sounds.play(&"turn_enemy")
+	sounds.play(&"turn_enemy")
+	_expect("4배속: 같은 갈래 cue는 한 번, 다른 cue와 신호음은 그대로",
+		[&"step_dirt", &"step_stone", &"turn_enemy", &"turn_enemy"])
+	Engine.time_scale = 1.0
+	sounds.stop_all()
+	sounds.play(&"step_dirt")
+	sounds.play(&"step_dirt")
+	_expect("1배속: 같은 갈래 cue도 모두 남", [&"step_dirt", &"step_dirt"])
+	Engine.time_scale = previous_scale
+	sounds.stop_all()
+
+
 ## seam 3: UI cue(호버·클릭만 갈래, 칩튠이라 1.06).
 func _test_ui_cue_table() -> void:
+	# UiSounds.MAX_POLYPHONY는 스크립트 상수라 상수 표로 읽는다(없으면 null이라 검사가 실패한다).
+	var ui_polyphony: Variant = ui_sounds.get_script().get_script_constant_map().get("MAX_POLYPHONY")
+	_check(ui_polyphony is int and ui_polyphony >= 1 and ui_polyphony <= 4,
+		"UI 동시 재생 상한은 1~4: %s" % [ui_polyphony])
 	for cue: StringName in ui_sounds.CUES:
 		var player: AudioStreamPlayer = ui_sounds.player(cue)
 		var varied: bool = cue in VARIANT_UI_CUES
 		_check(player != null and player.bus == GameSettings.BUS_UI and not player.autoplay
 			and SoundVariants.longest(player.stream) < MAX_SHORT_SECONDS,
 			"UI cue는 UI 버스의 짧은 소리: %s" % cue)
+		_check(player != null and player.max_polyphony == ui_polyphony,
+			"UI cue는 같은 소리 동시 재생 상한을 가짐: %s" % cue)
 		if varied:
 			_check(player.stream is AudioStreamRandomizer, "UI 갈래 cue는 Randomizer: %s" % cue)
 			_test_variant_stream(cue, player.stream as AudioStreamRandomizer, 1.06)

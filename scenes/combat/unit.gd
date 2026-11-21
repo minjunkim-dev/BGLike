@@ -15,9 +15,9 @@ const ABILITY_MODIFIER_KEYS: Array[String] = ["strength_modifier", "agility_modi
 static var ABILITY_NAMES: Array[String] = [TranslationServer.tr("힘"), TranslationServer.tr("민첩"),
 	TranslationServer.tr("솜씨"), TranslationServer.tr("지능"), TranslationServer.tr("의지"), TranslationServer.tr("건강")]
 
-const MOVEMENT_PER_TURN: int = 6
+const MOVEMENT_PER_TURN: int = 8
 ## 전사의 이동력. 궁수와 이동력을 정하지 않은 몬스터는 MOVEMENT_PER_TURN이다.
-const WARRIOR_MOVEMENT: int = 3
+const WARRIOR_MOVEMENT: int = 4
 const FEEDBACK_RISE: float = 12.0
 ## 팝업이 먼저 찾는 범위: 기준 자리에서 팝업 왼쪽 위까지의 최대 논리px(#260). 기준 자리는 대상 상태 줄 기준점이다.
 ## 같은 대상의 이전 팝업이 그보다 높으면 그 팝업 바로 위다. 붐빌 때 옆 유닛 팝업 하나를 비켜 갈 만큼이다.
@@ -292,7 +292,7 @@ func _equipment_stat(stat: String) -> int:
 func get_attack_range() -> int:
 	if not is_ally:
 		return int(CombatEnemyDefinitions.for_kind(kind)["attack_range"])
-	return 1 if kind == Kind.WARRIOR else 4
+	return 1 if kind == Kind.WARRIOR else 6
 
 
 ## 민첩 굴림값. 눈(initiative_roll)에 민첩 가감을 더한다. 0은 아직 굴리지 않은 소환 유닛이라 그대로 둔다.

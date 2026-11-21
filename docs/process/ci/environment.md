@@ -23,7 +23,7 @@ GODOT=/Applications/Godot.app/Contents/MacOS/Godot make check
 ```
 
 검사는 다른 버전의 엔진을 차단합니다.
-Godot headless import, 메인 장면 실행과 전투 테스트 다섯 개를 수행합니다.
+Godot headless import, 메인 장면 실행과 `scripts/check_godot.sh`에 등록한 회귀 테스트를 수행합니다.
 Python 검사와 `git diff --check`도 실행합니다.
 워크플로 변경은 `actionlint`로 추가 검사합니다.
 

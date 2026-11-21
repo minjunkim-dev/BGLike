@@ -1,0 +1,71 @@
+{
+  "issue": "https://github.com/minjunkim-labs/BGLike/issues/636",
+  "generator": {
+    "tool": "draw_down_effect.py",
+    "mode": "pixels placed by code; no generative model, no input image, no external effect pack. pixelfx (MIT) was compared and not used (docs/design/pixel-art.md, \uc804\ud22c \ubd88\ub2a5 \ud6a8\uacfc \uc808)",
+    "date": "2026-11-20",
+    "command": "python3 scenes/combat/art/sources/effects/draw_down_effect.py scenes/combat/art/effects"
+  },
+  "spec": {
+    "display_scale": 0.5,
+    "fps": "12 * PRESENTATION_SPEED (CombatPresentation.fps)",
+    "loop": false,
+    "margin": 2,
+    "alpha": "0 or 255 only",
+    "filter": "nearest; no resampling after drawing",
+    "palette_source": "draw_skill_effects.py (outline, white, light, steel)"
+  },
+  "effects": {
+    "down": {
+      "canvas": [
+        64,
+        64
+      ],
+      "palette": [
+        [
+          18,
+          13,
+          22
+        ],
+        [
+          133,
+          115,
+          108
+        ],
+        [
+          197,
+          178,
+          159
+        ],
+        [
+          235,
+          186,
+          132
+        ],
+        [
+          245,
+          235,
+          219
+        ]
+      ],
+      "frames": [
+        {
+          "file": "down/000.png",
+          "brief": "Small dust puffs and white flecks burst at the feet; first shards appear."
+        },
+        {
+          "file": "down/001.png",
+          "brief": "Dust ring spreads sideways; shards rise."
+        },
+        {
+          "file": "down/002.png",
+          "brief": "Dust ring is wide and smaller; shards drift apart."
+        },
+        {
+          "file": "down/003.png",
+          "brief": "Thin dust puffs; a few shards fade out high."
+        }
+      ]
+    }
+  }
+}

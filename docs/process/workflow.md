@@ -36,7 +36,9 @@ GitHub 품질 운영은 1인 개발 기준입니다. 필수 승인 인원은 0�
 | 범위가 달라질 때 | 본문을 고치지 않고 코멘트에 "변경 전 → 후" 표를 적습니다. 크게 바뀌면 새 Issue를 열고, 옛 Issue는 새 Issue 링크를 남기고 닫습니다 | 기획 |
 | 마지막 PR 병합 | PR 본문의 `Closes #번호`로 Issue를 자동 종료합니다. 기획 검수 결과는 닫기 전에 코멘트로 남깁니다 | 개발 |
 
-- Projects 보드, 마일스톤, 제품 분류 라벨은 쓰지 않습니다. 라벨로 GitHub Claude를 실행하지 않습니다. 열린 Issue 목록이 곧 작업판입니다.
+- Projects 보드, 마일스톤, 제품 분류 라벨(기능·버그 등)은 쓰지 않습니다. 열린 Issue 목록이 곧 작업판입니다.
+- 상태 라벨 다섯 개(`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`)만 씁니다. 라벨은 시작할 준비가 됐는지만 뜻합니다. 진행은 PR과 Issue의 열림·닫힘이 보여 줍니다. 뜻은 [Triage Labels](../agents/triage-labels.md)에 있습니다.
+- 라벨로 GitHub Claude를 실행하지 않습니다.
 - Issue 본문은 처음 합의한 목표의 기록이므로 고치지 않습니다. 변경은 코멘트로 쌓습니다. 체크박스에 표시하는 것은 내용 변경이 아니므로 괜찮습니다.
 
 ## Discord 소통
@@ -59,7 +61,7 @@ GitHub 품질 운영은 1인 개발 기준입니다. 필수 승인 인원은 0�
 
 조기 공유가 필요 없는 작업은 로컬 검사를 마친 뒤 일반 PR로 생성합니다. 구현 중 방향 확인이나 조기 피드백이 필요하면 Draft를 씁니다. 생성 전에 [Godot workflow](../../.github/workflows/godot.yml)의 실행 조건을 확인합니다. Draft에서 ready로 바꾸면 같은 head도 새 CI가 시작되어 이전 실행이 취소될 수 있습니다.
 
-로컬 에이전트의 검사·CI 대기 명령은 `~/.agents/skills-docs/agent-workflow.md`를 따릅니다. 실행마다 watcher 하나를 유지하고 비동기 세션을 이어 읽어 진척을 확인합니다. 새 head나 ready 전환으로 실행이 바뀌면 이전 결과와 구분해 최종 대상 실행을 기다립니다.
+로컬 에이전트는 CI를 기다릴 때 실행마다 watcher 하나를 유지하고 비동기 세션을 이어 읽어 진척을 확인합니다. 새 head나 ready 전환으로 실행이 바뀌면 이전 결과와 구분해 최종 대상 실행을 기다립니다.
 
 watcher 오류나 로그와 API 상태의 불일치가 있으면 해당 실행의 상태·로그와 GitHub 공식 장애 상태를 추가로 대조합니다. 정상 대기 중 진척은 watcher에서 받습니다. watcher나 로그의 성공은 [병합 직전 head·base·필수 체크 확인](../agents/review.md#병합-실행)을 대신하지 않습니다.
 
@@ -140,8 +142,8 @@ GitHub Claude workflow와 전용 스크립트는 사용하지 않습니다. 댓�
 2026-10-04 저장소를 공개로 전환하고 main 보호를 적용했습니다. GitHub API로 설정을 확인했습니다.
 PR과 미해결 리뷰 대화 해결을 요구합니다. 기준선 기대값은 최신 기준 브랜치 요구(`strict`)를 끕니다. 머지 큐가 최신 main과 합친 결과로 필수 CI를 다시 돌립니다.
 2026-10-04 사용자 요청으로 필수 승인 수를 1명에서 0명으로 변경하고 GitHub API로 확인했습니다. 동료 승인과 코드 소유자 승인은 필수가 아닙니다.
-필수 상태 검사 기대값은 판정 job `ci` 하나입니다. 소유자가 기준선을 적용하기 전까지 서버는 `policy / PR conventions and scope`, `smoke`, `CI`를 요구합니다. 문서 전용 smoke skipped는 정상입니다.
-`ci`는 `policy`와 기존 판정 job `CI`의 결과를 모읍니다. 기존 세 검사는 세부 job으로 남깁니다. 서버 적용 여부는 GitHub 보호 API 결과로 확인하고, 이 문장만으로 적용을 완료했다고 보고하지 않습니다.
+필수 상태 검사는 판정 job `ci` 하나입니다. 문서 전용 smoke skipped는 정상입니다.
+`ci`는 policy·scope·smoke의 결과를 모아 판정합니다([CI 구성](ci/ci.md)). 서버 적용 여부는 repo-baseline의 `apply_github_settings.py` 읽기 결과로 확인합니다.
 `.github/repository-settings.json`의 필수 체크 기대값은 `ci`입니다(App 15368, `strict` false). 그 파일은 GitHub branch protection을 바꾸지 않습니다.
 서버의 필수 승인 수는 0입니다. 병합은 머지 큐(`merge-queue` ruleset, SQUASH)로 하고 `Allow auto-merge`는 끕니다(기대값 `false`).
 관리자에게도 규칙을 적용합니다. 선형 이력을 요구하며 강제 push와 main 삭제를 금지합니다.

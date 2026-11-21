@@ -5,10 +5,10 @@ Godot 워크플로는 main push, main 대상 PR, 머지 큐(`merge_group`)와 �
 
 ## 검사 선택
 
-게임 검사 선택과 공백 검사는 `scope` job(`Select checks`)이 합니다. smoke는 이 job만 기다리고, 재사용 PR lint `policy / PR conventions and scope`(Python 테스트·actionlint·제목·브랜치)와 동시에 돕니다. 예전에는 smoke가 policy 전체(약 50초)를 기다렸습니다. policy의 job 이름은 아직 서버가 이 이름으로 요구해서 바꾸지 않습니다.
+게임 검사 선택과 공백 검사는 `scope` job(`Select checks`)이 합니다. smoke는 이 job만 기다리고, 재사용 PR lint `policy / PR conventions and lint`(Python 테스트·actionlint·제목·브랜치)와 동시에 돕니다. 예전에는 smoke가 policy 전체(약 50초)를 기다렸습니다.
 선택기는 PR 기준 SHA, 머지 큐의 `merge_group.base_sha` 또는 main push의 before SHA에서 가져옵니다. PR의 바뀐 파일은 GitHub이 만든 시험 병합 커밋의 첫 부모(지금의 main)와 비교합니다. PR 이벤트의 기준 SHA는 브랜치가 갈라진 지점일 수 있고, 그 뒤 main에 들어온 파일이 PR의 변경으로 잡혀 문서 PR도 smoke를 돌렸기 때문입니다([#681](https://github.com/minjunkim-labs/BGLike/pull/681)). PR이 수정한 선택기로 자신의 엔진 검사를 생략하지 않습니다.
 기준 선택기가 없으면 엔진 검사를 선택합니다. 새 선택기 규칙은 main 반영 뒤 후속 변경부터 사용합니다.
-`scope`는 전체 PR diff, 머지 큐의 base SHA와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인합니다. policy는 Python 회귀 테스트를 실행하고, PR에서는 제목과 브랜치 규칙도 검사합니다. 머지 큐 실행은 PR에서 본 제목·브랜치 단계를 건너뜁니다.
+`scope`는 전체 PR diff, 머지 큐의 base SHA와 main push의 before SHA를 기준으로 공백과 변경 범위를 확인합니다. policy는 Python 회귀 테스트를 실행하고, PR에서는 제목과 브랜치 규칙도 검사합니다. 머지 큐 실행은 브랜치 단계를 건너뛰고, 제목은 큐 커밋의 첫 줄(`<PR 제목> (#번호)`)에서 번호를 떼고 다시 검사합니다. PR을 연 뒤 제목만 고치면 `ci`가 다시 돌지 않으므로, 형식에 맞지 않는 제목은 머지 큐에서 막힙니다. 머지 큐 실행은 큐에 들어간 PR head가 PR 본문 Review 칸의 마지막 「리뷰한 head와 되돌리기:」 SHA와 같은지도 확인합니다(`scripts/reviewed_head.py`, repo-baseline에서 해시 복사). 리뷰 뒤 커밋이 올라간 head나 그 줄이 없는 PR은 큐에서 빠집니다. Dependabot과 repo-baseline 동기화 PR은 통과합니다. PR이 실수로 스크립트를 약하게 고쳐도 자기 판정은 바뀌지 않도록 base 커밋의 스크립트를 돌립니다. base 커밋을 읽지 못하면 실패하고, base에 스크립트가 없을 때만 PR 쪽 사본을 돌립니다. 이 검사는 보안 경계가 아닙니다. 큐 실행의 workflow와 앞 단계는 PR 쪽 판이고, PR 본문은 고칠 수 있는 사람이면 누구나 고칠 수 있습니다.
 
 로컬 `make repository-check`와 `make check`는 `scripts/check_whitespace.py`로
 `origin/main`과 HEAD의 공통 기준점부터 커밋된 변경, 스테이징, 미스테이징 변경을 각각 검사합니다.
@@ -28,7 +28,7 @@ policy와 `make repository-check`는 전체 scripts 탐색으로 Python 테스�
 
 제목 수정만으로 재사용 policy 검사의 과거 실패가 바뀌지는 않습니다.
 제목 수정 후 새 커밋을 push하여 최신 제목의 policy 검사를 실행합니다. 기존 실행의 재실행은 과거 이벤트의 제목을 사용합니다.
-edited 전용 lint 검사는 제목 변경을 빠르게 확인하는 보조 검사입니다.
+edited 전용 lint 검사는 제목 변경을 빠르게 확인하는 보조 검사입니다. 제목을 바꾼 edited 이벤트는 제목만 검사합니다. 본문만 바꾼 edited 이벤트는 이 검사를 건너뜁니다.
 
 Godot 작업은 headless import, 메인 장면 시작과 기존 전투·저장 회귀 테스트를 모두 수행합니다.
 import와 메인 장면 검사 뒤 전투·저장 테스트를 세 자리에서 병렬 실행합니다.
@@ -42,20 +42,19 @@ Godot는 스크립트 파싱 오류에도 0으로 끝납니다. 그래서 각 �
 빠른 로컬 확인은 등록된 회귀 스크립트 한 개를 같은 검사기로 선택합니다.
 
 ```sh
-python3 ~/.agents/tools/agent_workflow.py check -- env GODOT=/Applications/Godot.app/Contents/MacOS/Godot bash scripts/check_godot.sh tests/combat_ai_test.gd
+GODOT=/Applications/Godot.app/Contents/MacOS/Godot bash scripts/check_godot.sh tests/combat_ai_test.gd
 ```
 
 엔진 확인·import·메인 장면 검사는 유지하고 선택한 회귀 검사만 실행합니다. 오류 로그·종료 코드·취소 정리도 전체 검사와 같습니다. 알려지지 않은 경로와 둘 이상의 인자는 Godot 실행 전에 거부합니다. `make check`와 CI는 인자 없이 기존 전체 검사를 실행합니다.
 
 Ubuntu 24.04에서 로컬과 같은 `make godot-install`, `make godot-check`를 호출합니다.
 엔진 버전·해시는 `scripts/godot.env`를 따릅니다. [공통 환경](environment.md)에 새 환경 설치와 캐시 없는 실행을 기록합니다.
-검사 실패를 통과로 처리하지 않습니다. PR 병합 전에 `PR conventions and scope`와 선택된 `smoke` 결과를 함께 확인합니다.
-`CI` 작업은 `always()`로 policy·scope·smoke의 결과를 확인합니다.
+검사 실패를 통과로 처리하지 않습니다. PR 병합 전에 판정 job `ci`를 확인합니다.
+`ci` 작업은 `always()`로 policy·scope·smoke의 결과를 확인합니다. 먼저 policy와 scope가 성공인지 workflow 안에서 보고, 그다음 `scripts/ci_gate.py`가 smoke를 판정합니다. 그래서 PR이 `ci_gate.py`를 고쳐도 policy·scope 실패를 통과시키지 못합니다.
 policy·scope 성공과 `game=true`·smoke 성공 조합만 게임 검사를 통과합니다.
-policy·scope 성공과 `game=false`·smoke skipped 조합만 문서 검사 생략을 허용합니다. scope는 `game`을 먼저 쓰고 공백 검사를 하므로, 공백 검사가 실패해도 `game=false`가 남습니다. 그래서 `CI`는 scope 결과도 성공이어야 통과시킵니다.
-실패·취소·누락·알 수 없는 scope 또는 결과는 `CI`를 실패 처리합니다.
-판정 job `ci`는 `policy`, `scope`와 `CI` 작업의 결과를 받아 모두 성공일 때만 통과합니다. `CI`는 `scope`가 고른 `game` 값으로 smoke 결과를 판정합니다. `smoke`는 문서 변경에서 skipped가 정상이라 `CI`가 판정합니다. 필수 체크 기대값은 `ci` 하나입니다([저장소 설정](repository-setup.md)).
-`policy / PR conventions and scope`, `smoke`, `CI`의 이름은 세부 job으로 유지합니다. 실제 required check 등록 여부는 GitHub 보호 API로 따로 확인합니다.
+policy·scope 성공과 `game=false`·smoke skipped 조합만 문서 검사 생략을 허용합니다. scope는 `game`을 먼저 쓰고 공백 검사를 하므로, 공백 검사가 실패해도 `game=false`가 남습니다. 그래서 `ci`는 scope 결과도 성공이어야 통과시킵니다.
+실패·취소·누락·알 수 없는 scope 또는 결과는 `ci`를 실패 처리합니다.
+`smoke`는 문서 변경에서 skipped가 정상이라 `ci`가 `scope`가 고른 `game` 값으로 판정합니다. 서버의 필수 체크는 `ci` 하나입니다([저장소 설정](repository-setup.md)). 예전 판정 job `CI`는 서버가 `ci`만 요구하게 된 뒤 `ci`에 합쳤습니다.
 재사용 작업의 실제 check 이름은 호출 작업 이름을 포함할 수 있습니다. GitHub의 해당 실행에서 이름을 확인한 뒤 보호 규칙에 지정합니다.
 policy는 Python 회귀 검사 뒤 전체 workflow에 actionlint 1.7.12를 실행합니다.
 공식 Linux x86_64 배포 파일의 SHA-256을 검사한 뒤 실행합니다.

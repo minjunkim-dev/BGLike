@@ -31,7 +31,7 @@ func _check(condition: bool, message: String) -> void:
 
 
 func _run() -> void:
-	create_timer(180.0 if manual else 20.0).timeout.connect(func() -> void:
+	create_timer(180.0 if manual else 30.0).timeout.connect(func() -> void:
 		if not finished:
 			push_error("Combat feedback watchdog expired")
 			quit(1))
@@ -111,6 +111,7 @@ func _run() -> void:
 	await _test_hit_effects()
 	await _test_skill_effects()
 	await _test_status_effects()
+	await _test_down_effect()
 	monitoring = false
 	if observer != null:
 		_check(observer.last_error == OK and observer.frame_count > 0, "Forward+ 원본 프레임 저장")
@@ -394,6 +395,98 @@ func _test_status_effects() -> void:
 	battle.set("_turn_actions", turn_actions)
 
 
+## 전투 불능 효과(#636): downed 신호에 유닛 그림 복제 잔상과 down 폭발이 한 번 생기고, 전체 속도 계수를 따르며, 4배속에서 줄고, 이어하기 재실행에서는 없다.
+func _test_down_effect() -> void:
+	var units: Array[CombatUnit] = battle.get("units")
+	var actions: CombatActions = battle.get("actions") as CombatActions
+	var effects: Node = battle.get_node_or_null("HitEffects")
+	_check(effects != null, "전투 불능 효과 시험: HitEffects 노드가 있다")
+	if effects == null:
+		return
+	var shader: Material = load("res://scenes/combat/art/pixel_art.tres")
+	var unit: CombatUnit = units[0]
+	var foot: Vector2 = unit.position + Vector2(0, unit.floor_offset_y + unit.body_offset_y)
+	var frame: Texture2D = unit.current_frame_texture()
+	var down_started: int = Time.get_ticks_msec()
+	actions.downed.emit(unit)
+	await process_frame
+	var bursts: Array[Node] = _sprites(effects)
+	var ghosts: Array[Node] = _ghosts(effects)
+	var path: String = bursts[0].sprite_frames.get_frame_texture(&"play", 0).resource_path if bursts.size() == 1 else ""
+	_check(bursts.size() == 1 and "/down/" in path and bursts[0].material == shader and absf(bursts[0].scale.x - 0.5) < 0.001,
+		"전투 불능은 pixel_art 재질의 0.5배 down 폭발 하나: %s" % path)
+	_check(bursts.size() == 1 and absf(bursts[0].sprite_frames.get_animation_speed(&"play") - CombatPresentation.fps(12.0)) < 0.001
+		and not bursts[0].sprite_frames.get_animation_loop(&"play"),
+		"down 폭발 속도는 전체 속도 계수를 따르고 반복하지 않는다")
+	_check(ghosts.size() == 1 and (ghosts[0] as Sprite2D).texture == frame and (ghosts[0] as Sprite2D).material == shader
+		and ghosts[0].position.distance_to(foot) < 2.0,
+		"유닛 그림을 복제한 쓰러짐 잔상이 유닛 발 기준 자리에 하나 생긴다")
+	# 잔상은 번쩍인 뒤에야 가라앉기 시작한다(둘이 동시에 시작하면 안 된다).
+	var sink_msec: int = -1
+	while ghosts.size() == 1 and is_instance_valid(ghosts[0]) and Time.get_ticks_msec() - down_started < 1000:
+		if absf(ghosts[0].position.y - foot.y) > 0.001:
+			sink_msec = Time.get_ticks_msec() - down_started
+			break
+		await process_frame
+	_check(sink_msec >= 40, "잔상은 섬광(60ms)이 끝난 뒤에 가라앉기 시작한다: %dms" % sink_msec)
+	var finished: bool = await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.5)
+	_check(finished, "쓰러짐 폭발과 잔상은 한 번 재생하고 사라진다")
+	Engine.time_scale = 4.0
+	var started: int = Time.get_ticks_msec()
+	actions.downed.emit(unit)
+	await process_frame
+	var fast_spawned: bool = _sprites(effects).size() == 1 and _ghosts(effects).size() == 1
+	while effects.get_child_count() > 0 and Time.get_ticks_msec() - started < 2000:
+		await process_frame
+	var fast_msec: int = Time.get_ticks_msec() - started
+	Engine.time_scale = 1.0
+	_check(fast_spawned and fast_msec < 350, "4배속에서는 1배속 길이(약 0.5초)보다 짧은 실제 시간에 끝난다: %dms" % fast_msec)
+	await create_timer(0.1).timeout
+	var turn_actions: int = battle.get("_turn_actions")
+	battle.set("_turn_actions", 0)
+	battle.set("_replay_actions", 1)
+	actions.downed.emit(unit)
+	await process_frame
+	_check(effects.get_child_count() == 0, "이어하기 재실행 중에는 전투 불능 효과를 만들지 않는다")
+	battle.set("_replay_actions", 0)
+	battle.set("_turn_actions", turn_actions)
+	var temporary: CombatUnit = CombatUnit.new()
+	battle.get_node("Units").add_child(temporary)
+	actions.downed.emit(temporary)
+	await process_frame
+	temporary.free()
+	await create_timer(0.7).timeout
+	_check(effects.get_child_count() == 0, "쓰러짐 효과 도중 유닛이 해제되어도 정리된다")
+	# #717: 밀림·낙하·낙사는 _land가 cell만 바꾸고 downed를 낸다. 표시 좌표는 아직 출발 칸이므로 효과는 착지 칸 표면에 떠야 한다.
+	var land_map: TileMapLayer = battle.get("map")
+	var origin_cell: Vector2i = unit.cell
+	var landing_cell: Vector2i = origin_cell + Vector2i(1, 0)
+	var origin_foot: Vector2 = unit.position + Vector2(0, unit.floor_offset_y + unit.body_offset_y)
+	var landing_surface: Vector2 = land_map.map_to_surface(landing_cell)
+	unit.cell = landing_cell
+	actions.downed.emit(unit)
+	await process_frame
+	var landed_bursts: Array[Node] = _sprites(effects)
+	var landed_ghosts: Array[Node] = _ghosts(effects)
+	_check(landed_ghosts.size() == 1 and landed_ghosts[0].position.distance_to(landing_surface) < 0.01
+		and landed_ghosts[0].position.distance_to(origin_foot) > 4.0,
+		"밀려 쓰러지면 잔상이 착지 칸 표면에 뜬다(출발 칸이 아니다)")
+	_check(landed_bursts.size() == 1 and landed_bursts[0].position.distance_to(landing_surface + Vector2(0, -12)) < 0.01
+		and landed_bursts[0].position.distance_to(origin_foot + Vector2(0, -12)) > 4.0,
+		"밀려 쓰러지면 down 폭발이 착지 칸 표면에 뜬다(출발 칸이 아니다)")
+	unit.cell = origin_cell
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.5)
+	# 실제 전투 불능 전환이 유닛을 숨기기 전에 그림을 잡는다. 전투 상태를 바꾸므로 맨 끝에 둔다.
+	var last: CombatUnit = units[units.size() - 1]
+	var seen: Array[bool] = [false]
+	actions.downed.connect(func(_unit: CombatUnit) -> void: seen[0] = true, CONNECT_ONE_SHOT)
+	actions.incapacitate(last)
+	await process_frame
+	_check(seen[0] and not last.visible and _sprites(effects).size() == 1 and _ghosts(effects).size() == 1,
+		"incapacitate 한 번으로 효과가 생기고 유닛은 숨겨진다")
+	await _wait_for(func() -> bool: return effects.get_child_count() == 0, 1.5)
+
+
 ## 스킬 효과(#634). 신호를 직접 보내 전투 장면의 연결을 본다.
 func _test_skill_effects() -> void:
 	var units: Array[CombatUnit] = battle.get("units")
@@ -502,6 +595,14 @@ func _sprites(effects: Node) -> Array[Node]:
 	var found: Array[Node] = []
 	for child: Node in effects.get_children():
 		if child is AnimatedSprite2D:
+			found.append(child)
+	return found
+
+
+func _ghosts(effects: Node) -> Array[Node]:
+	var found: Array[Node] = []
+	for child: Node in effects.get_children():
+		if child is Sprite2D:
 			found.append(child)
 	return found
 

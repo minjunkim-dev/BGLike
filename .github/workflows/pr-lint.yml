@@ -1,9 +1,12 @@
 name: PR lint
 
 # PR 제목과 브랜치 이름이 docs/process/git-conventions.md 형식인지 확인합니다.
-# merge_group(godot.yml이 부름)에서는 PR에서 이미 본 제목·브랜치 단계를 건너뛰고 코드 검사만 합니다.
+# merge_group(godot.yml이 부름)에서는 브랜치 단계를 건너뛰고, 제목은 큐 커밋의 첫 줄로 다시 확인합니다.
+# PR을 연 뒤 제목만 고치면 ci가 다시 돌지 않으므로 큐에서 막습니다.
+# 본문만 고친 edited 이벤트는 건너뜁니다. 제목을 고친 edited 이벤트는 제목만 확인합니다.
 # 게임 검사 선택과 공백 검사는 godot.yml의 scope job이 합니다. smoke가 이 lint를 기다리지 않게 하려는 것입니다.
 # PR 제목은 squash merge 후 main의 커밋 제목이 됩니다.
+# merge_group에서는 큐에 들어간 PR head가 본문 Review 칸의 「리뷰한 head」와 같은지도 확인합니다.
 
 on:
   pull_request:
@@ -13,27 +16,32 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read  # Reviewed head reads the queued PR's head and body
 
 jobs:
   lint:
-    # The server still requires this check by name (docs/process/workflow.md), so it keeps "and scope".
-    name: PR conventions and scope
+    name: PR conventions and lint
+    if: github.event.action != 'edited' || github.event.changes.title
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
       TITLE: ${{ github.event.pull_request.title }}
       BRANCH: ${{ github.head_ref }}
       AUTHOR: ${{ github.event.pull_request.user.login }}
+      QUEUE_MESSAGE: ${{ github.event.merge_group.head_commit.message }}
+      QUEUE_AUTHOR: ${{ github.event.merge_group.head_commit.author.email }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Test scripts
+        if: github.event.action != 'edited'
         env:
           PYTHONDONTWRITEBYTECODE: "1"
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - name: Check workflows and shell scripts
+        if: github.event.action != 'edited'
         shell: bash
         run: |
           # Ubuntu hosted runners provide ShellCheck; fail if the tool is missing.
@@ -50,20 +58,29 @@ jobs:
           shellcheck -x scripts/*.sh
       - name: PR title
         if: github.event_name == 'pull_request'
+        run: python3 scripts/check_pr_title.py pr "$TITLE" "$AUTHOR"
+      - name: Queued PR title
+        if: github.event_name == 'merge_group'
+        run: python3 scripts/check_pr_title.py queue "$QUEUE_MESSAGE" "$QUEUE_AUTHOR"
+      - name: Reviewed head
+        # The queued head must be the head the PR body's Review records (POLICY §5). Run the base's copy so a
+        # PR that edits the script by mistake is still judged by the old one; only the PR that adds the script
+        # runs its own. Not a security boundary: the queued commit supplies this workflow and earlier steps.
+        if: github.event_name == 'merge_group'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUEUE_REF: ${{ github.event.merge_group.head_ref }}
+          BASE_SHA: ${{ github.event.merge_group.base_sha }}
         run: |
-          types='feat|fix|refactor|perf|test|docs|build|ci|chore|revert'
-          if ! printf '%s' "$TITLE" | grep -Eq "^($types)(\([a-z0-9_-]+\))?!?: [a-z]"; then
-            echo "::error::PR 제목이 '<type>(<scope>): <소문자 설명>' 형식이 아닙니다: '$TITLE'"
-            echo "type: $types. 예: feat(combat): add initiative turn order. 규칙: docs/process/git-conventions.md"
-            exit 1
+          # Only a base without the script may fall back; an unreadable base fails the step.
+          git cat-file -e "$BASE_SHA^{commit}"
+          if git cat-file -e "$BASE_SHA:scripts/reviewed_head.py" 2>/dev/null; then
+            git show "$BASE_SHA:scripts/reviewed_head.py" > "$RUNNER_TEMP/reviewed_head.py"
+            python3 "$RUNNER_TEMP/reviewed_head.py"
+          else
+            python3 scripts/reviewed_head.py
           fi
-          # Dependabot names long actions in full, e.g. anthropics/claude-code-action/base-action.
-          # Gate on the GitHub-set author; anyone can name a branch dependabot/.
-          if [ "${#TITLE}" -gt 72 ] && [ "$AUTHOR" != 'dependabot[bot]' ]; then
-            echo "::error::PR 제목이 72자를 넘습니다 (${#TITLE}자)."
-            exit 1
-          fi
-          case "$TITLE" in *.) echo "::error::PR 제목 끝에 마침표를 찍지 않습니다."; exit 1;; esac
       - name: Branch name
-        if: github.event_name == 'pull_request'
+        # An edited event cannot rename the branch; opened and synchronize runs check it.
+        if: github.event_name == 'pull_request' && github.event.action != 'edited'
         run: python3 scripts/check_branch_name.py "$BRANCH"

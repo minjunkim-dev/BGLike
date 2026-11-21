@@ -262,7 +262,7 @@ func _test_ability_modifier_units() -> void:
 		and warrior.get_ability_modifier(CombatUnit.Ability.AGILITY) == -1
 		and warrior.get_ability_modifier(CombatUnit.Ability.WILL) == 0, "장비의 능력치 가감을 합침")
 	_check(warrior.get_armor_class() == CombatChecks.standard_value(8) - 1 + 3, "AC에 민첩 가감과 방어 가산")
-	_check(warrior.get_movement() == 2, "최대 이동 가감 −1: 전사 3 → 2")
+	_check(warrior.get_movement() == 3, "최대 이동 가감 −1: 전사 4 → 3")
 	warrior.armor["stats"]["max_movement"] = -9
 	warrior.armor["stats"]["agility_modifier"] = -20
 	_check(warrior.get_movement() == 1, "최대 이동은 최소 1칸")
@@ -273,7 +273,7 @@ func _test_ability_modifier_units() -> void:
 	_check(warrior.get_initiative() == 7, "이니셔티브에 민첩 가감")
 	warrior.armor = {}
 	warrior.weapon = {}
-	_check(warrior.get_ability_modifier(CombatUnit.Ability.STRENGTH) == 0 and warrior.get_movement() == 3,
+	_check(warrior.get_ability_modifier(CombatUnit.Ability.STRENGTH) == 0 and warrior.get_movement() == 4,
 		"장비 없으면 가감 0")
 	var robot: CombatUnit = _unit(CombatUnit.Kind.SCRAP_ROBOT_1000, false, Vector2i.ONE)
 	_check(robot.get_ability_modifier(CombatUnit.Ability.STRENGTH) == 0, "몬스터는 장비가 없어 가감 0")
@@ -455,7 +455,7 @@ func _test_battle_rolls() -> void:
 ## 4-9: 명중하면 피해 능력치 주사위를 새로 굴린다. 유리/불리는 피해에 적용하지 않는다.
 func _test_damage_rolls() -> void:
 	var warrior: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, true, Vector2i(4, 4))
-	# 궁수 사거리 4(#528) 안에 둔다.
+	# 궁수 사거리 6(#528, #616) 안에 둔다.
 	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(5, 8))
 	var robot: CombatUnit = _unit(CombatUnit.Kind.SCRAP_ROBOT_1000, false, Vector2i(5, 4))
 	var units: Array[CombatUnit] = [warrior, archer, robot]
@@ -546,7 +546,7 @@ func _test_spin_saves() -> void:
 				and archer.hit_points == archer.get_max_hit_points() - 3,
 				"내성에 실패한 대상마다 피해를 따로 굴림")
 			_check(boss.action_left == 0 and boss.bonus_action_left == 1 and boss.reaction_left == 1
-				and boss.movement_left == 4 and not actions.busy and actions.pending_reactor == null,
+				and boss.movement_left == 6 and not actions.busy and actions.pending_reactor == null,
 				"광역은 행동 하나만 쓰고 반응·이동·연출 잠금을 해제")
 			_check((actions.dice as ScriptedDice).unused().is_empty(), "준비한 대상별 내성·피해를 정확히 소비")
 			actions.logged.disconnect(observe)
@@ -583,7 +583,7 @@ func _test_shove_pull_preview() -> void:
 	var archer: CombatUnit = _unit(CombatUnit.Kind.ARCHER, true, Vector2i(4, 7))
 	var barbarian: CombatUnit = _unit(CombatUnit.Kind.WARRIOR, false, Vector2i(5, 7))
 	_check(CombatActionRules.details(robot, "pull") == "\n".join([
-			"사거리: 2~3칸", "판정: 대상의 힘 내성 대 DC 10, 성공하면 버팀"]),
+			"사거리: 2~4칸", "판정: 대상의 힘 내성 대 DC 10, 성공하면 버팀"]),
 		"만능팔 호버는 DC 10(힘 d12 표준값 7 + 공격 가산 3) " + CombatActionRules.details(robot, "pull"))
 	_check(is_equal_approx(CombatActionRules.save_chance(robot, warrior, "pull"), 0.55)
 		and CombatActionRules.save_chance(robot, archer, "pull") == 0.0,
@@ -657,12 +657,12 @@ func _test_preview_conditions() -> void:
 	archer.is_stunned = false
 	target.is_stunned = false
 	nearby.cell = Vector2i(0, 0)
-	target.cell = Vector2i(4, 8)
+	target.cell = Vector2i(4, 10)
 	preview = grid.attack_preview(archer, target)
-	_check(preview.in_range, "아군 궁수 사거리4 경계 포함(#528)")
-	target.cell = Vector2i(4, 9)
+	_check(preview.in_range, "아군 궁수 사거리6 경계 포함(#528)")
+	target.cell = Vector2i(4, 11)
 	preview = grid.attack_preview(archer, target)
-	_check(not preview.in_range and preview.chance == 0.0, "아군 궁수 사거리5 밖이면0%")
+	_check(not preview.in_range and preview.chance == 0.0, "아군 궁수 사거리7 밖이면0%")
 	archer.kind = CombatUnit.Kind.WARRIOR
 	target.cell = Vector2i(4, 5)
 	preview = grid.attack_preview(archer, target)
@@ -972,6 +972,8 @@ func _test_scene_input() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	# #624: 화면 좌표로 누르는 검사라 카메라가 행동 유닛을 따라 움직이지 않게 한다(따라가기는 combat_hud_test가 본다).
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	var units: Array[CombatUnit] = battle.get("units")
@@ -1039,6 +1041,7 @@ func _test_scene_spin() -> void:
 	root.add_child(battle)
 	battle.set_process(false)
 	battle.call("start_battle")
+	(battle.get_node("Camera") as CombatCamera).set_process(false)
 	await process_frame
 	var units: Array[CombatUnit] = battle.get("units")
 	var actions: CombatActions = battle.get("actions")

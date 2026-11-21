@@ -29,7 +29,7 @@ class API:
             f"actions/workflows/godot.yml/runs?event=push&branch=main&head_sha={SHA}&per_page=100":
                 {"total_count": 1, "workflow_runs": [{"id": 3, "run_number": 5, "workflow_id": 2,
                     "head_sha": SHA, "head_branch": "main", "event": "push", "status": "completed", "conclusion": "success"}]},
-            "actions/runs/3/jobs?filter=latest&per_page=100": {"total_count": 1, "jobs": [{"name": "CI", "status": "completed", "conclusion": "success"}]},
+            "actions/runs/3/jobs?filter=latest&per_page=100": {"total_count": 1, "jobs": [{"name": "ci", "status": "completed", "conclusion": "success"}]},
             f"git/ref/tags/{VERSION}": None, f"releases/tags/{VERSION}": None}
         self.releases = []
         self.release = None
@@ -110,7 +110,7 @@ class DraftTests(unittest.TestCase):
         cases = [("invalid SHA", "main", None, None),
                  ("outside main", SHA, f"compare/{SHA}...main", {"status": "diverged"}),
                  ("failed CI", SHA, "actions/runs/3/jobs?filter=latest&per_page=100",
-                  {"jobs": [{"name": "CI", "status": "completed", "conclusion": "failure"}]})]
+                  {"jobs": [{"name": "ci", "status": "completed", "conclusion": "failure"}]})]
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "output"
             for name, sha, path, response in cases:

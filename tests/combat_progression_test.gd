@@ -3,8 +3,6 @@ extends SceneTree
 
 const ScriptedDice = preload("res://tests/scripted_dice.gd")
 const LargeMapBattle = preload("res://tests/large_map_battle.gd")
-## 북고남저 검사를 켠 맵 이름(#515). 맵을 14×14로 다시 배치한 티켓이 자기 맵을 더한다.
-const NORTH_HIGH_STAGES: Array[String] = ["1-1", "1-2", "1-3"]
 
 var checks: int = 0
 var failures: int = 0
@@ -106,8 +104,6 @@ func _north_high_violations(stage: CombatStage) -> Array[Vector2i]:
 
 
 func _test_terrain_layouts() -> void:
-	for name: String in NORTH_HIGH_STAGES:
-		_check(name in ["1-1", "1-2", "1-3", "2-1", "2-2", "2-3", "3-1", "3-2", "3-3"], "북고남저 검사 목록의 맵 이름 " + name)
 	var sample: CombatStage = CombatStage.new()
 	if sample.has_method("get_blocked_cells"):
 		sample.blocked_cells = [Vector2i(1, 1), Vector2i(9, 9)]
@@ -121,12 +117,9 @@ func _test_terrain_layouts() -> void:
 			var stage: CombatStage = load("res://scenes/combat/stages/act%d_stage%d.tres" % [act, number]) as CombatStage
 			var label: String = "%d-%d" % [act, number]
 			var violations: Array[Vector2i] = _north_high_violations(stage)
-			if NORTH_HIGH_STAGES.has(label):
-				_check(violations.is_empty(), label + " 북고남저: 바로 뒤 칸보다 높은 칸 " + str(violations))
-				_check(stage.map_size == Vector2i(14, 14), label + " 14×14 맵")
-				_check_behind_props_clear(stage, label)
-			else:
-				print("북고남저 검사 꺼짐 %s: 위반 %d칸" % [label, violations.size()])
+			_check(violations.is_empty(), label + " 북고남저: 바로 뒤 칸보다 높은 칸 " + str(violations))
+			_check(stage.map_size == Vector2i(14, 14), label + " 14×14 맵")
+			_check_behind_props_clear(stage, label)
 			_check(stage.heights.values().any(func(height: int) -> bool: return height >= 2),
 				label + " 실제 높이2 이상 고지대")
 			var paths: Variant = stage.get("path_cells")
@@ -263,9 +256,9 @@ func _test_spiderling_placement_and_turns() -> void:
 		_check(actions.grid.is_floor(destination) and not actions.grid.is_blocked(destination),
 			"새끼 이동 fixture의 목적지는 장애물이 없는 바닥")
 		_check(await actions.move_to(units[index], destination)
-			and units[index].movement_left == 5, "새끼 거미는 자기 턴에 자기 이동력으로 이동")
+			and units[index].movement_left == 7, "새끼 거미는 자기 턴에 자기 이동력으로 이동")
 		for waiting: int in range(index + 1, 6):
-			_check(units[waiting].cell == cells[waiting - 2] and units[waiting].movement_left == 6,
+			_check(units[waiting].cell == cells[waiting - 2] and units[waiting].movement_left == 8,
 				"다른 새끼의 이동은 대기 중인 새끼의 위치·이동력을 바꾸지 않음")
 		turns.end_turn()
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
@@ -302,8 +295,8 @@ func _check_enemy_values(battle: Node2D, act: int) -> void:
 
 func _test_mother_stages() -> void:
 	var placements: Dictionary = {
-		3: [Vector2i(6, 1), Vector2i(7, 3), Vector2i(7, 6), Vector2i(6, 8), Vector2i(9, 4)],
-		6: [Vector2i(7, 2), Vector2i(7, 4), Vector2i(7, 7), Vector2i(9, 2), Vector2i(9, 7)]
+		3: [Vector2i(12, 3), Vector2i(9, 5), Vector2i(10, 8), Vector2i(9, 11), Vector2i(11, 1)],
+		6: [Vector2i(9, 4), Vector2i(9, 7), Vector2i(9, 10), Vector2i(11, 2), Vector2i(11, 9)]
 	}
 	for stage: int in [3, 6]:
 		var main: Node = (load("res://scenes/game.tscn") as PackedScene).instantiate()
@@ -325,7 +318,7 @@ func _test_mother_stages() -> void:
 		var fog_spiders: Array[CombatUnit] = []
 		for index: int in range(5):
 			var unit: CombatUnit = units[index + 2]
-			# 3막 1스테이지는 (9,2)가 독안개 거미(#463)이고 (9,7)이 엄마다.
+			# 3막 1스테이지는 (11,2)가 독안개 거미(#463)이고 (11,9)가 엄마다.
 			var is_fog: bool = stage == 6 and index == 3
 			var is_mother: bool = index >= (4 if stage == 3 else 3) and not is_fog
 			var expected_kind: CombatUnit.Kind = CombatUnit.Kind.SPIDERLING
@@ -337,10 +330,10 @@ func _test_mother_stages() -> void:
 				"엄마·독안개·새끼의 종류·수·시작 좌표를 실제 스테이지에 연결")
 			if is_fog:
 				fog_spiders.append(unit)
-				_check(unit.movement_left == 4 and unit.hit_points == 12, "실제 독안개 거미는 이동력4·HP12에서 시작")
+				_check(unit.movement_left == 6 and unit.hit_points == 12, "실제 독안개 거미는 이동력6·HP12에서 시작")
 			if is_mother:
 				mothers.append(unit)
-				_check(unit.movement_left == 4 and unit.hit_points == 20, "실제 엄마는 이동력4·HP20에서 시작")
+				_check(unit.movement_left == 6 and unit.hit_points == 20, "실제 엄마는 이동력6·HP20에서 시작")
 		var turns: CombatTurns = battle.get("turns") as CombatTurns
 		var desired: Array[CombatUnit] = [units[0], units[1]]
 		desired.append_array(mothers)
@@ -392,9 +385,9 @@ func _test_novice_placements() -> void:
 	var progress: CombatActProgress = battle.get("progress") as CombatActProgress
 	var expected: Dictionary = {
 		1: [[CombatUnit.Kind.WARRIOR, Vector2i(10, 2)]],
-		4: [[CombatUnit.Kind.WARRIOR, Vector2i(6, 3)], [CombatUnit.Kind.ARCHER, Vector2i(8, 6)]],
-		7: [[CombatUnit.Kind.WARRIOR, Vector2i(6, 2)], [CombatUnit.Kind.WARRIOR, Vector2i(6, 7)],
-			[CombatUnit.Kind.ARCHER, Vector2i(9, 4)]]
+		4: [[CombatUnit.Kind.WARRIOR, Vector2i(9, 3)], [CombatUnit.Kind.ARCHER, Vector2i(10, 6)]],
+		7: [[CombatUnit.Kind.WARRIOR, Vector2i(9, 5)], [CombatUnit.Kind.WARRIOR, Vector2i(8, 10)],
+			[CombatUnit.Kind.ARCHER, Vector2i(11, 7)]]
 	}
 	for index: int in range(9):
 		var party: Array[CombatUnit] = battle.get("party")
@@ -403,18 +396,14 @@ func _test_novice_placements() -> void:
 		progress.stage_index = index
 		battle.call("_start_stage", true)
 		battle.call("start_battle")
-		# 14×14로 재배치한 맵(#612, #613)은 자기 아군 시작 칸이 있다. 나머지는 아직 (1,4)/(0,5).
-		var label: String = "%d-%d" % [progress.act_number(), progress.stage_in_act()]
-		var allies_start: Array[Vector2i] = [Vector2i(1, 4), Vector2i(0, 5)]
+		# 9개 맵 모두 14×14로 재배치했다(#612~#615). 1-1만 아군 시작 칸이 다르다.
+		var allies_start: Array[Vector2i] = [Vector2i(2, 7), Vector2i(1, 8)]
 		if index == 0:
 			allies_start = [Vector2i(2, 8), Vector2i(1, 9)]
-		elif index == 1 or index == 2:
-			allies_start = [Vector2i(2, 7), Vector2i(1, 8)]
 		_check(party[0].cell == allies_start[0] and party[1].cell == allies_start[1]
 			and not party[0].facing_left and not party[1].facing_left,
 			"모든 스테이지에서 아군이 왼쪽 두 칸에서 오른쪽을 보고 시작")
-		_check(battle.get("map_size") == (Vector2i(14, 14) if NORTH_HIGH_STAGES.has(label) else Vector2i(10, 10)),
-			"재배치한 맵(NORTH_HIGH_STAGES)은 14×14, 나머지 스테이지는 기존 10×10 크기를 사각 맵으로 유지")
+		_check(battle.get("map_size") == Vector2i(14, 14), "9개 맵 모두 14×14 사각 맵")
 		_check_enemy_values(battle, progress.act_number())
 		if not expected.has(index):
 			continue
@@ -584,7 +573,7 @@ func _test_scrap_robot_2000_stage() -> void:
 	battle.call("start_battle")
 	var units: Array[CombatUnit] = battle.get("units")
 	_check(units.size() == 3 and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_2000
-		and units[2].cell == Vector2i(8, 4) and units[2].hit_points == 45,
+		and units[2].cell == Vector2i(12, 3) and units[2].hit_points == 45,
 		"2막 3스테이지에 HP45 고철로봇-2000 한 마리 배치")
 	if units.size() != 3 or units[2].kind != CombatUnit.Kind.SCRAP_ROBOT_2000:
 		main.queue_free()
@@ -630,7 +619,7 @@ func _test_scrap_robot_3000_stage() -> void:
 	battle.call("start_battle")
 	var units: Array[CombatUnit] = battle.get("units")
 	_check(units.size() == 3 and units[2].kind == CombatUnit.Kind.SCRAP_ROBOT_3000
-		and units[2].cell == Vector2i(8, 4) and units[2].hit_points == 50,
+		and units[2].cell == Vector2i(12, 5) and units[2].hit_points == 50,
 		"3막 3스테이지에 HP50 고철로봇-3000 한 마리 배치")
 	if units.size() != 3 or units[2].kind != CombatUnit.Kind.SCRAP_ROBOT_3000:
 		main.queue_free()
@@ -638,8 +627,8 @@ func _test_scrap_robot_3000_stage() -> void:
 		return
 	var boss: CombatUnit = units[2]
 	boss.hit_points = 25
-	units[0].cell = Vector2i(8, 3)
-	units[1].cell = Vector2i(8, 5)
+	units[0].cell = Vector2i(12, 4)
+	units[1].cell = Vector2i(12, 6)
 	var turns: CombatTurns = battle.get("turns") as CombatTurns
 	ScriptedDice.arrange_turns(turns, units, [units[2], units[0], units[1]])
 	var actions: CombatActions = battle.get("actions") as CombatActions
@@ -1107,9 +1096,9 @@ func _test_large_map_battle() -> void:
 	actions.dice.seed = 394
 	ScriptedDice.arrange_turns(turns, units, party)
 	var warrior: CombatUnit = party[0]
-	# 전사 이동력3을 모두 쓰는 상자 옆 칸이다.
+	# 전사 이동력4 중 3을 쓰는 상자 옆 칸이다.
 	var destination: Vector2i = stage.crate_cells[0] + Vector2i(-1, 0)
-	_check(await actions.move_to(warrior, destination) and warrior.cell == destination and warrior.movement_left == 0,
+	_check(await actions.move_to(warrior, destination) and warrior.cell == destination and warrior.movement_left == 1,
 		label + " 아군이 상자 앞까지 걸어서 이동")
 	# 묶음 확정이 아군 반응을 다시 채우므로, 적 궁수가 아군 궁수를 맞히면 반사신경 창이 뜬다(#500). 이 검사는 이동을 보므로 넘긴다.
 	actions.reaction_requested.connect(func(_kind: String, _prompt: String) -> void: actions.resolve_reaction(false))

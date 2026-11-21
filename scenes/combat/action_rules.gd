@@ -36,7 +36,7 @@ static var EFFECTS: Dictionary[String, String] = {
 	"battle_cry": TranslationServer.tr("의지 굴림값을 모든 아군의\n명중굴림에 더합니다. 2턴.\n전사가 쓰러져도 유지됩니다."),
 	"aegisal": TranslationServer.tr("애기살 남은 발수 +2(누적).\n기본 공격마다 1발을 쓰고\n피해 굴림을 2번 해 높은 값을 씁니다.\n전투가 끝나면 사라집니다."),
 	"bow_bash": TranslationServer.tr("인접한 적을 활로 후려칩니다.\n명중하면 1칸 밀칩니다(내성 없음).\n밀 수 없으면 피해만."),
-	"pull": TranslationServer.tr("2~3칸 대상을 끌어옵니다. 대상이 힘 내성굴림에\n성공하면 버팁니다. 피해와 기회 공격 없음.\n다음 턴에는 쓸 수 없습니다."),
+	"pull": TranslationServer.tr("%d~%d칸 대상을 끌어옵니다. 대상이 힘 내성굴림에\n성공하면 버팁니다. 피해와 기회 공격 없음.\n다음 턴에는 쓸 수 없습니다.") % [PULL_MIN_RANGE, PULL_RANGE],
 	"disengage": TranslationServer.tr("이번 턴의 남은 이동에서\n기회 공격을 받지 않습니다.\n공격을 실행하지 않습니다."),
 	"shove": TranslationServer.tr("대상이 힘 내성굴림.\n실패하면 1칸 밀리고, 성공하면 버팁니다.\n기절 대상은 내성 없이 밀림.\n아군은 판정 없이 밀림."),
 	"potion": TranslationServer.tr("HP 2d4+2 회복.\n최대 HP를 넘지 않습니다."),
@@ -107,10 +107,13 @@ const STEALTH_BREAKERS: Array[String] = ["attack", "trick_arrow", "firework_arro
 ## 칸 조준 동작의 사거리와 반경 (skill-types.md 5-2). 최소 사거리는 기본 0, 기름병 던지기는 1(궁수 문서). 곡사·기준점(목표 칸)은 기본값이라 필드가 없다.
 ## 화염 속성 동작. 나무 칸을 목표로 고를 수 있고 닿으면 나무가 탄다(환경요소 5장).
 const FIRE_ACTIONS: Array[String] = ["trick_arrow", "firework_arrow"]
-const AIM_RANGES: Dictionary[String, int] = {"fog": 4, "trick_arrow": 4, "firework_arrow": 4}
+const AIM_RANGES: Dictionary[String, int] = {"fog": 6, "trick_arrow": 6, "firework_arrow": 6}
+## 만능팔의 사거리 (몬스터 문서). 인접한 대상은 끌어올 필요가 없어 최소 2다.
+const PULL_MIN_RANGE: int = 2
+const PULL_RANGE: int = 4
 const AIM_MIN_RANGES: Dictionary[String, int] = {"oil_throw": 1, "oil_bottle": 1, "trick_arrow": 1}
 const AIM_RADII: Dictionary[String, int] = {"fog": 1, "oil_throw": 1, "oil_bottle": 1, "firework_arrow": 1}
-## 사거리가 시전자의 힘 주사위 면 수 ÷ 2인 칸 조준 동작 (궁수 문서, 기름병 던지기).
+## 사거리가 시전자의 힘 주사위 면 수 × 0.7 반올림인 칸 조준 동작 (궁수 문서, 기름병 던지기. #616에서 ÷ 2의 1.4배로 바꿈).
 const AIM_BY_STRENGTH: Array[String] = ["oil_throw", "oil_bottle"]
 ## 기름 장판을 까는 동작. 기름병 던지기(스킬)와 기름병 아이템은 칸 규칙이 같다(#576).
 const OIL_ACTIONS: Array[String] = ["oil_throw", "oil_bottle"]
@@ -124,7 +127,7 @@ static func aim_min_range(action: String) -> int:
 ## 칸 조준 동작의 사거리. 칸 조준이 아니면 -1이다.
 static func aim_range(actor: CombatUnit, action: String) -> int:
 	if action in AIM_BY_STRENGTH:
-		return actor.get_ability_sides(CombatUnit.Ability.STRENGTH) / 2
+		return (actor.get_ability_sides(CombatUnit.Ability.STRENGTH) * 7 + 5) / 10
 	return AIM_RANGES.get(action, -1)
 
 
@@ -343,7 +346,7 @@ static func details(actor: CombatUnit, action: String, units: Array[CombatUnit] 
 			lines = [TranslationServer.tr("사거리: 인접1칸"), TranslationServer.tr("판정: 대상의 %s 내성 대 DC %d, 성공하면 버팀") % [
 				CombatUnit.ability_name(SAVE_ABILITIES[action]), save_dc(actor, action)]]
 		"pull":
-			lines = [TranslationServer.tr("사거리: 2~3칸"), TranslationServer.tr("판정: 대상의 %s 내성 대 DC %d, 성공하면 버팀") % [
+			lines = [TranslationServer.tr("사거리: %d~%d칸") % [PULL_MIN_RANGE, PULL_RANGE], TranslationServer.tr("판정: 대상의 %s 내성 대 DC %d, 성공하면 버팀") % [
 				CombatUnit.ability_name(SAVE_ABILITIES[action]), save_dc(actor, action)]]
 		"jump":
 			lines = [TranslationServer.tr("사거리: 1~2칸"), TranslationServer.tr("판정: 없음")]

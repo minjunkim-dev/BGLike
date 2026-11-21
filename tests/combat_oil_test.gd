@@ -223,7 +223,7 @@ func _test_leaving_slip() -> void:
 	_single_oil(f, Vector2i(3, 4), archer)
 	f.actions.dice = _dice([1], [20])
 	_check(await f.actions.move_to(archer, Vector2i(3, 2)) and archer.cell == Vector2i(3, 4)
-		and archer.movement_left == 6 and archer.fallen and archer.oil_slipped,
+		and archer.movement_left == 8 and archer.fallen and archer.oil_slipped,
 		"떠나기 굴림 실패: 칸을 떠나지 않고 이동력도 쓰지 않으며 넘어짐")
 	_check(f.logs.any(func(message: String) -> bool: return "넘어짐" in message), "넘어짐을 로그에 남김")
 	# 떠나기 성공 뒤 다음 칸이 기름이어도 같은 턴에는 굴리지 않는다(기름 장판 전체에 1회).
@@ -233,7 +233,7 @@ func _test_leaving_slip() -> void:
 	_single_oil(g, Vector2i(3, 3), walker)
 	g.actions.dice = _dice([10], [20])
 	_check(await g.actions.move_to(walker, Vector2i(3, 2)) and walker.cell == Vector2i(3, 2)
-		and not walker.fallen and walker.movement_left == 4,
+		and not walker.fallen and walker.movement_left == 6,
 		"떠나기 성공은 이동을 진행하고, 이어서 기름 칸을 밟아도 두 번째로 굴리지 않음")
 	# 인접한 적이 기회 공격을 할 수 있어도 떠나기 굴림을 먼저 하고, 실패하면 칸을 떠나지 않아 기회 공격이 없다.
 	# 준비한 주사위는 미끌거림 1개뿐이라 기회 공격을 굴리면 주사위 부족으로 실패한다.
@@ -253,7 +253,7 @@ func _test_entering_slip() -> void:
 	_single_oil(f, Vector2i(3, 3), archer)
 	f.actions.dice = _dice([1], [20])
 	_check(await f.actions.move_to(archer, Vector2i(3, 2)) and archer.cell == Vector2i(3, 3)
-		and archer.fallen and archer.movement_left == 5 and archer.oil_slipped,
+		and archer.fallen and archer.movement_left == 7 and archer.oil_slipped,
 		"들어가기 실패: 기름 칸에서 넘어지고 이동 정지, 걸음 1칸 비용")
 	var g: Fixture = _fixture()
 	_single_oil(g, Vector2i(3, 3), g.units[0])
@@ -306,7 +306,7 @@ func _test_turn_start_release() -> void:
 	archer.oil_slipped = true
 	f.actions.dice = _dice([], [])
 	f.actions._on_turn_started(archer)
-	_check(not archer.fallen and not archer.oil_slipped and archer.movement_left == 6,
+	_check(not archer.fallen and not archer.oil_slipped and archer.movement_left == 8,
 		"자기 턴 시작에 넘어짐과 기름 기록을 비용 없이 해제")
 
 
@@ -325,15 +325,15 @@ func _test_fallen_limits_and_stand_up() -> void:
 	_check(not f.actions.stand_up(archer) and archer.fallen and not f.actions.can_move(archer, Vector2i(3, 2))
 		and not f.actions.can_use(archer, "move"),
 		"이동력이 비용보다 적으면 일어나지 못하고 이동도 못함")
-	archer.movement_left = 6
-	_check(f.actions.stand_up(archer) and not archer.fallen and archer.movement_left == 3
-		and f.actions.can_use(archer, "attack"), "일어서면 비용 3을 내고 행동을 다시 씀")
+	archer.movement_left = 8
+	_check(f.actions.stand_up(archer) and not archer.fallen and archer.movement_left == 4
+		and f.actions.can_use(archer, "attack"), "일어서면 비용 4를 내고 행동을 다시 씀")
 	var g: Fixture = _fixture()
 	g.units[0].fallen = true
 	g.actions.dice = _dice([], [])
 	_check(await g.actions.move_to(g.units[0], Vector2i(3, 2)) and not g.units[0].fallen
-		and g.units[0].cell == Vector2i(3, 2) and g.units[0].movement_left == 1,
-		"이동 시도로 일어서면 비용 3을 먼저 내고 남은 이동력(3)으로 2칸 걸음")
+		and g.units[0].cell == Vector2i(3, 2) and g.units[0].movement_left == 2,
+		"이동 시도로 일어서면 비용 4를 먼저 내고 남은 이동력(4)으로 2칸 걸음")
 
 
 ## 넘어진 유닛은 남은 이동력이 일어서기 비용 이상이면 할 수 있는 동작이 있다(#560). 일어나기 조건과 같다.
@@ -390,14 +390,14 @@ func _test_oil_clock() -> void:
 		"시계 두 번째에 기름 장판이 사라짐(남은 기간 2)")
 
 
-## 기름병 던지기: 보조 행동, 전투마다 1, 사거리 = 힘 면 수 ÷ 2(궁수 3), 곡사, 십자 5칸.
+## 기름병 던지기: 보조 행동, 전투마다 1, 사거리 = 힘 면 수 × 0.7 반올림(궁수 4), 곡사, 십자 5칸.
 func _test_oil_throw() -> void:
 	var f: Fixture = _fixture()
 	var archer: CombatUnit = f.units[0]
 	_check(CombatActionRules.belongs_to(archer, "oil_throw") and not CombatActionRules.belongs_to(f.units[3], "oil_throw"),
 		"기름병 던지기는 궁수만 씀")
-	_check(f.actions.can_aim(archer, "oil_throw", Vector2i(6, 4)) and not f.actions.can_aim(archer, "oil_throw", Vector2i(7, 4))
-		and f.actions.can_aim(archer, "oil_throw", Vector2i(4, 4)), "사거리 1~3(맨해튼 거리)")
+	_check(f.actions.can_aim(archer, "oil_throw", Vector2i(7, 4)) and not f.actions.can_aim(archer, "oil_throw", Vector2i(8, 4))
+		and f.actions.can_aim(archer, "oil_throw", Vector2i(4, 4)), "사거리 1~4(맨해튼 거리)")
 	_check(not f.actions.can_aim(archer, "oil_throw", Vector2i(3, 4)) and not f.actions.throw_oil(archer, Vector2i(3, 4))
 		and archer.bonus_action_left == 1 and archer.oil_throw_left == 1 and _grounds_of(f, "oil") == 0,
 		"자기 칸(거리 0)은 고를 수 없고 던지면 거부되어 자원을 쓰지 않음")
@@ -439,13 +439,13 @@ func _test_oil_throw() -> void:
 		"기름병을 던지면 무빙샷 준비가 사라짐")
 
 
-## 기름병 아이템(#576): 사거리는 사용자의 힘 면 수 ÷ 2, 물약 칸 하나를 쓰고 스킬 횟수는 건드리지 않는다.
+## 기름병 아이템(#576): 사거리는 사용자의 힘 면 수 × 0.7 반올림, 물약 칸 하나를 쓰고 스킬 횟수는 건드리지 않는다.
 func _test_oil_bottle_item() -> void:
 	var f: Fixture = _fixture()
 	var archer: CombatUnit = f.units[0]
 	var warrior: CombatUnit = f.units[1]
-	_check(CombatActionRules.aim_range(archer, "oil_bottle") == 3 and CombatActionRules.aim_range(warrior, "oil_bottle") == 10,
-		"기름병 아이템 사거리는 힘 주사위 면 수 ÷ 2(궁수 3, 전사 10)")
+	_check(CombatActionRules.aim_range(archer, "oil_bottle") == 4 and CombatActionRules.aim_range(warrior, "oil_bottle") == 14,
+		"기름병 아이템 사거리는 힘 주사위 면 수 × 0.7 반올림(궁수 4, 전사 14, #616)")
 	_check(CombatActionRules.belongs_to(archer, "oil_bottle") and CombatActionRules.belongs_to(warrior, "oil_bottle")
 		and not CombatActionRules.belongs_to(f.units[2], "oil_bottle") and not CombatActionRules.belongs_to(f.units[3], "oil_bottle"),
 		"기름병 아이템은 아군 둘 다 쓰고 적은 쓰지 않음")
@@ -455,8 +455,9 @@ func _test_oil_bottle_item() -> void:
 		and CombatActionRules.uses_left(archer, "oil_bottle") == 0, "남은 수는 그 종류의 칸 수")
 	_check(not f.actions.can_use(archer, "oil_bottle") and not f.actions.throw_oil(archer, Vector2i(6, 4), "oil_bottle")
 		and archer.bonus_action_left == 1 and _grounds_of(f, "oil") == 0, "기름병이 없으면 쓸 수 없고 자원을 쓰지 않음")
-	_check(f.actions.can_aim(warrior, "oil_bottle", Vector2i(9, 6)) and f.actions.can_aim(warrior, "oil_bottle", Vector2i(9, 3))
-		and not f.actions.can_aim(warrior, "oil_bottle", Vector2i(9, 0)), "사거리 10(맨해튼 거리)")
+	f.actions.grid.map_size = Vector2i(14, 14)
+	_check(f.actions.can_aim(warrior, "oil_bottle", Vector2i(13, 6)) and f.actions.can_aim(warrior, "oil_bottle", Vector2i(13, 10))
+		and not f.actions.can_aim(warrior, "oil_bottle", Vector2i(13, 11)), "사거리 14(맨해튼 거리)")
 	_check(f.actions.throw_oil(warrior, Vector2i(8, 6), "oil_bottle") and _grounds_of(f, "oil") == 5 and warrior.bonus_action_left == 0
 		and warrior.potions == ["oil_bottle", "healing_potion"] and warrior.oil_throw_left == 1,
 		"전사가 사거리 6에 던지면 십자 5칸, 보조 행동 1과 기름병 한 칸만 소비")

@@ -127,8 +127,7 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 2. 도우미로 다음 미완료 사례 하나를 실행한다. 도우미가 실행 중일 때 파일을 수정하거나 다른 검사를 시작하지 않는다.
 
    ```sh
-   python3 ~/.agents/tools/agent_workflow.py check -- \
-     python3 scripts/manual_qa.py run /tmp/plan.json /tmp/bglike-qa-session-01
+   python3 scripts/manual_qa.py run /tmp/plan.json /tmp/bglike-qa-session-01
    ```
 
    macOS 창 실행은 모든 명령(`run`·`status`·`accept`·`reject`)에 `--mode macos`를 붙인다. 한 세션 폴더는 한 실행 방법만 쓴다. 다른 방법은 새 세션 폴더를 사용한다.
@@ -173,6 +172,7 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 | `presentation_qa.gd --transitions` | #351의 실제 Mac 입력 관찰. 정상 RNG seed351·자동 저장·실제 적 `_process`를 켠다. `--case=resume --save-path=<검수 저장>`은 새 프로세스 타이틀에서 이어하기를 기다린다. resume 사전 검사는 체크포인트의 복사본으로 실제 타이틀 복원 경로를 확인한다. 장면 전환 뒤 현재 장면을 다시 찾아 상태·원본·모달 버튼을 기록한다. 창 관리/OS 입력 도우미는 실행 입력 fingerprint와 함께 보존한다. 사용자 저장과 설정은 사용하지 않는다. |
 | `soak_qa.gd` | #351의 3-1 장기 관찰. 현재 loot 데이터의 최대 허용 장비·정상 최대 HP·물약 한도와 고정 seed를 사용한다. 첫 전투 시작은 실제 입력, 이후 아군은 가까운 적 자동 정책·반응 승인이다. 적 AI는 실제 전투 `_process`가 시작하며 정상 연출/속도를 유지한다. 첫 시작 입력 뒤 300초는 관찰 종료일 뿐 게임 규칙/성능 통과선이 아니다. CSV 프레임·정적 메모리·동시 생존 수, 누적 생성·저장 비용을 기록한다. 반복 전투의 기존 장비는 다시 받지 않는다. 사람 플레이/승률로 해석하지 않는다. |
 | `terrain_qa.gd` | #347의 실제9맵 초기/우클릭 이동 미리보기와1-1 상자 파괴·1-2 바위 충돌. 아군 차례/공격 위치만 통제하고 스크립트 GUI 입력·피해 능력치 주사위 면수를 사용. `--fixture-precheck`로 같은 초기화/입력을 먼저 확인. 자연 진행·OS 입력은 제외. |
+| `layout_qa.gd` | #621의 14×14 1-1 전투 화면 배치 측정. 아군 전사 차례만 고정하고 카메라는 턴 시작의 행동 유닛 따라가기가 끝난 처음 화면이다. 처음 화면·가장 긴 스킬 설명 호버·초상 호버 원본 PNG 3장과 `measurements.json`(HUD 영역, 맵 중앙 영역 C, 바닥 네 끝, 호버 설명 영역)을 남긴다. `--fixture-precheck`는 같은 초기화를 headless로 확인한다. 스크립트 마우스 입력이고 OS 입력·Retina·macOS 글꼴은 제외. 기록은 [전투 화면 배치 #621](../design/combat/combat-ui.md#14x14-화면-기록-621). |
 | `preparation_qa.gd` | #366의 보상 2개·정비 상세·제품 한도까지 채운 가방·공간 부족·버리기 확인. 실제 아이템 정의와 `is_valid_item()`을 사용한다. 스크립트 포인터 입력·확인 창 신호로 취소 기본 선택과 아이템 수 보존을 확인하고 원본 PNG 6장을 남긴다. |
 | `combat_capture_test.gd` | 3-3의 전사·궁수·고철로봇 3000, 초상 3개, 정상 HP·아군 턴 자원. 자동 모드의 반응 0과 직접 확인 모드의 정상 반응을 구분한다. |
 | `combat_feedback_test.gd` | 유닛 3개와 초상 3개, 과부하 HP 25(행동 2는 보스 턴 시작에 받음), 인접 아군과 반응 0. 주사위·배치·HP를 고정한 재현이다. 자연 플레이나 정상 HP 표시의 증거로 사용하지 않는다. 밀집 사례는 3-1 유닛 7개, 새끼 거미 차례와 궁수 대상을 확인한다. |
@@ -212,12 +212,11 @@ headless 실행은 차례 복귀와 이벤트 파일을 검사한다. headless �
 먼저 [Draft 검증](ci/draft-release.md)의 `verify_draft.py`로 대상 artifact를 확인한다. 그 출력의 `assets/`와 전체 source SHA를 전달한다. 하네스는 기존 `verify_bundle()`로 bundle을 다시 확인하고 `manual_qa.load_plan()`으로 하네스 checkout·입력의 fingerprint를 기록한다. artifact source와 하네스 HEAD는 별도 식별자다.
 
 ```sh
-python3 ~/.agents/tools/agent_workflow.py check -- \
-  python3 scripts/qa_movement.py \
-    --bundle /path/to/verified-draft/assets \
-    --version v0.1.0-alpha.3 --source-sha <artifact의 전체 SHA> \
-    --output /path/to/new-movement-evidence \
-    --godot /Applications/Godot.app/Contents/MacOS/Godot
+python3 scripts/qa_movement.py \
+  --bundle /path/to/verified-draft/assets \
+  --version v0.1.0-alpha.3 --source-sha <artifact의 전체 SHA> \
+  --output /path/to/new-movement-evidence \
+  --godot /Applications/Godot.app/Contents/MacOS/Godot
 ```
 
 출력은 checkout 밖의 새 폴더만 받으며 기존 기록을 덮어쓰지 않는다. 복사한 하네스와 PCK를 headless·임시 HOME/XDG에서 실행한다. `inputs.json`, 엔진·문법·실행 로그, `fixtures.json`을 남기고, 다섯 사례와 negative control까지 통과해야 `result.json`을 만든다. 실패 원인과 로그는 보존하고 다른 폴더로 재시도한다. 고정 `/tmp` 경로나 원래 세션의 파일은 필요 없다.

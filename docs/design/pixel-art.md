@@ -245,6 +245,29 @@ python3 scenes/combat/art/sources/effects/draw_status_effects.py scenes/combat/a
 
 모양·길이·색이 보기 좋은지, 실제 플레이에서 겹침이 거슬리지 않는지는 사람이 판단한다. 이 작업에서는 원본 화면 캡처를 만들지 못했다.
 
+## 전투 불능 효과 (#636)
+
+[#636](https://github.com/minjunkim-labs/BGLike/issues/636), 2026-11-20: 전투 불능 효과는 pixelfx(MIT)와 직접 찍기를 비교해 **직접 찍기**로 만들었다. 이유는 [스킬 효과](#스킬-효과-634)와 같다(pixelfx는 30fps·큰 캔버스·반투명 층이라 12fps·64px·알파 0/255로 줄이면 장점이 사라지고 Node 의존과 출처 수정이 따른다). 게다가 이번 효과의 중심은 유닛 그림 복제라 외부 그림이 맞지 않는다. 외부 자산을 쓰지 않으므로 `THIRD_PARTY_NOTICES.md`에 자체 제작물 한 줄만 더했고 Credits와 번역 파일은 바꾸지 않았다.
+
+`CombatActions.downed`(`incapacitate`가 유닛을 숨기기 전에 낸다)에 `battle.gd`가 `CombatHitEffects.play_down`을 잇는다. 피해로 쓰러질 때와 전투 포기가 모두 이 신호를 지난다. 판정과 신호 순서는 바꾸지 않는다. 밀림·낙하·낙사는 `_land`가 칸만 바꾸고 이 신호를 내서 그 순간 유닛의 표시 좌표가 아직 떠난 칸에 있다. 그래서 `play_down`은 유닛 좌표 대신 `battle.gd`가 넘기는 유닛이 선 칸의 표면(`map_to_surface(unit.cell)`)을 기준으로 삼아 효과가 착지 칸에 뜬다([#717](https://github.com/minjunkim-labs/BGLike/issues/717)).
+
+| 효과 | 내용 | 놓는 곳 |
+|---|---|---|
+| 쓰러짐 잔상 | 유닛의 현재 프레임을 복제한 `Sprite2D`. 0.06초 흰빛으로 번쩍인 뒤 4 논리px 가라앉으며 알파 0으로 사라진다(`DOWN_FADE_TIME` 0.35초) | 유닛이 선 칸의 표면(밀림·낙하·낙사 뒤에는 착지 칸) 발 기준. 유닛과 따로 서므로 유닛이 숨거나 해제돼도 혼자 끝난다 |
+| 폭발 `down` | 64×64, 4프레임. 발치에서 퍼지는 먼지 고리와 위로 흩어지는 조각 | 스킬·상태 효과와 같은 발 기준점 (32, 56). 잔상과 같은 칸 표면 |
+
+- 시간: 쓰러짐은 유닛 자신의 연출이라 유닛 공격 fps와 같이 [전체 속도 계수](combat/combat-ui.md#5-전체-속도)(`CombatPresentation.PRESENTATION_SPEED`)를 곱한다. 폭발은 `CombatPresentation.fps(12.0)`(0.7에서 8.4fps, 4프레임 약 0.48초), 잔상 사라짐은 `CombatPresentation.duration(DOWN_FADE_TIME)`(0.5초)이다. 플레이로 고칠 곳은 계수와 `DOWN_FADE_TIME`이다. 이미 있는 타격 섬광·스킬·상태 효과의 12fps와 계수 값은 바꾸지 않았다.
+- 게임 시간이라 4배속에서는 그 위에 1/4로 준다. 이어하기 재실행(`_replaying()`)에서는 만들지 않는다. 전투 진행은 기다리지 않는다.
+- 같은 순간 틱으로 쓰러진 유닛에 화상·독 효과가 겹칠 수 있다([상태 이상 효과](#상태-이상-효과-635)의 남은 지적). 정리하지 않았다.
+
+규격은 `down_effect_generation.json`에 기록한다.
+
+```sh
+python3 scenes/combat/art/sources/effects/draw_down_effect.py scenes/combat/art/effects
+```
+
+모양·길이·색이 보기 좋은지, 0.7 계수에서 답답하지 않은지는 사람이 판단한다. 이 작업에서는 원본 화면 캡처를 만들지 못했다.
+
 ## 주사위
 
 [#519](https://github.com/minjunkim-labs/BGLike/issues/519): 판정 주사위 그림은 48×48 RGBA 원본을 0.5배로 쓴다(24 논리px). 2px 어두운 윤곽과 왼쪽 위 광원을 쓰고 그림 안에는 숫자를 넣지 않는다. 면 수(d4~d20)×다섯 상태 그림과 액체 마스크를 `scenes/combat/art/dice/`에 둔다. `python3 scenes/combat/art/sources/dice/draw_dice.py scenes/combat/art/dice`가 같은 파일을 만들고, 규격은 `sources/dice/dice_generation.json`에 있다. 상태·게이지·숫자 배치의 결정은 [주사위 굴림 연출](combat/dice-presentation.md#도트-디자인-519)에 있다.
@@ -294,7 +317,7 @@ python3 scenes/combat/art/sources/effects/draw_status_effects.py scenes/combat/a
 
 ## 검증과 현재 상태
 
-#194의 유닛9종과108개 프레임(독안개 거미는 [#462](https://github.com/minjunkim-labs/BGLike/issues/462)에서 더해 지금은 10종)·애니메이션·초상 연결을 포함한다. #195의 [실제 도트 지형과9개 맵](stages/terrain-maps.md)을 함께 통합한다. 각 티켓의 최종 Evidence가 직접 확인·독립 리뷰·CI·병합의 근거다. 파일 존재만으로 그 절차를 완료했다고 판단하지 않는다.
+#194의 유닛10종과120개 프레임(`scenes/combat/art/units/`의 10종 × 12프레임. 독안개 거미는 [#462](https://github.com/minjunkim-labs/BGLike/issues/462)에서 더한 열 번째다)·애니메이션·초상 연결을 포함한다. #195의 [실제 도트 지형과9개 맵](stages/terrain-maps.md)을 함께 통합한다. 각 티켓의 최종 Evidence가 직접 확인·독립 리뷰·CI·병합의 근거다. 파일 존재만으로 그 절차를 완료했다고 판단하지 않는다.
 
 자동 검사는 실제 로드한 프레임 크기·투명 여백·서로 다른 애니메이션 프레임과 실제 전투 동작을 확인한다. 직접 검수는 [해상도 ADR](../adr/0002-resolution.md#결정)의 검증 해상도에서 수행한다. #194·#195의640×360 캡처는 당시 기록이다. 비활성 Godot 창에 연결한 입력만 보낸다. 원본 Viewport를 `RenderingServer.frame_post_draw` 뒤에 저장한다. 움직임·발밑·선택·HP·가림 윤곽·화살을 확인한다. 9개 맵의 표시와 이동·점프·환경 상호작용도 확인한다. 자동 검사 성공을 시각 검수로 대신하지 않는다.
 

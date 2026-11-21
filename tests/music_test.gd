@@ -22,6 +22,8 @@ func _run() -> void:
 	_check_same_track_continues()
 	_check_switching()
 	await _check_survives_scene_change()
+	_check_duck_curve()
+	await _check_duck_on_bus()
 	_finish()
 
 
@@ -96,6 +98,44 @@ func _check_survives_scene_change() -> void:
 	GameMusic.play(self, GameMusic.CALM)
 	_check(GameMusic.player(self) == player and player.is_inside_tree() and player.get_stream_playback() == playback
 		and player.playing, "장면을 바꿔도 같은 곡이 이어짐")
+
+
+## 낮추기 곡선(#632): 0.05초에 −8dB로 내려가 1.5초 머물고 0.5초에 0dB로 돌아온다. 기대값은 설계의 숫자다.
+func _check_duck_curve() -> void:
+	for case: Array in [
+		[-1.0, 0.0], [0.0, 0.0], [0.025, -4.0], [0.05, -8.0], [0.8, -8.0], [1.55, -8.0],
+		[1.8, -4.0], [2.05, 0.0], [3.0, 0.0],
+	]:
+		var got: float = GameMusic.duck_db(case[0])
+		_check(is_equal_approx(got, case[1]), "낮추기 곡선 %s초 → %s dB: %s" % [case[0], case[1], got])
+
+
+## 실제 BGM 버스 효과(#632): 실제 시간으로 내려가 머물고 돌아온다. 다른 음량은 그대로이고 4배속에서도 같다.
+func _check_duck_on_bus() -> void:
+	var bgm: int = AudioServer.get_bus_index(GameSettings.BUS_BGM)
+	var sfx: int = AudioServer.get_bus_index(GameSettings.BUS_SFX)
+	var player: AudioStreamPlayer = GameMusic.player(self)
+	GameMusic.play(self, GameMusic.BATTLE)
+	var player_db: float = player.volume_db
+	var bgm_bus_db: float = AudioServer.get_bus_volume_db(bgm)
+	var sfx_bus_db: float = AudioServer.get_bus_volume_db(sfx)
+	_check(GameMusic.duck_level(self) == 0.0, "낮추기 전에는 0dB")
+	Engine.time_scale = 4.0
+	GameMusic.duck(self)
+	await create_timer(0.3, true, false, true).timeout
+	_check(is_equal_approx(GameMusic.duck_level(self), GameMusic.DUCK_DB), "머무는 동안 −8dB(4배속에서도 실제 시간): %s" % GameMusic.duck_level(self))
+	_check(player.volume_db == player_db and AudioServer.get_bus_volume_db(bgm) == bgm_bus_db
+		and AudioServer.get_bus_volume_db(sfx) == sfx_bus_db, "낮춰도 재생기·BGM 버스·SFX 버스 음량은 그대로")
+	GameMusic.play(self, GameMusic.CALM)
+	_check(is_equal_approx(GameMusic.duck_level(self), GameMusic.DUCK_DB), "낮춘 동안 곡을 바꿔도 낮춘 값이 유지됨")
+	await create_timer(1.2, true, false, true).timeout
+	GameMusic.duck(self)
+	_check(is_equal_approx(GameMusic.duck_level(self), GameMusic.DUCK_DB), "머무는 동안 다시 불러도 더 깊어지지 않음")
+	await create_timer(1.0, true, false, true).timeout
+	_check(is_equal_approx(GameMusic.duck_level(self), GameMusic.DUCK_DB), "다시 부르면 머물기를 새로 시작해 처음 끝 시각 뒤에도 낮춤")
+	await create_timer(GameMusic.DUCK_HOLD + GameMusic.DUCK_RELEASE, true, false, true).timeout
+	Engine.time_scale = 1.0
+	_check(GameMusic.duck_level(self) == 0.0, "끝나면 0dB로 돌아옴: %s" % GameMusic.duck_level(self))
 
 
 func _finish() -> void:

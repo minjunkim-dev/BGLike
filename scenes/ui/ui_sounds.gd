@@ -8,6 +8,8 @@ const AUDIO_DIR: String = "res://scenes/ui/audio/"
 const VARIANTS: int = 3
 const PITCH: float = 1.06
 const VARIANT_CUES: Array[StringName] = [&"ui_hover", &"ui_click"]
+## 같은 소리를 겹쳐 내는 수의 상한(#631). 입력 하나에 소리 하나라 전투(4)보다 작게 둔다. 값은 사람이 듣고 조정한다.
+const MAX_POLYPHONY: int = 2
 const CUES: Dictionary = {
 	&"ui_hover": -14.0,
 	&"ui_click": -10.0,
@@ -31,6 +33,7 @@ func _ready() -> void:
 		else:
 			player.stream = load(AUDIO_DIR + String(cue) + ".ogg") as AudioStream
 		player.volume_db = float(CUES[cue])
+		player.max_polyphony = MAX_POLYPHONY
 		player.bus = GameSettings.BUS_UI
 		add_child(player)
 		_players[cue] = player
