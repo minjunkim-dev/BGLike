@@ -113,8 +113,13 @@ func _test_panel_placement() -> void:
 		and CombatDiceRollView.is_offscreen(Vector2(569, 200), CombatDiceRollView.footprint(1), screen)
 		and CombatDiceRollView.footprint(1).x == 150.0 + 2.0 * CombatDiceRollView.BACKDROP_PAD.x
 		and CombatDiceRollView.footprint(2).x == 178.0 + 2.0 * CombatDiceRollView.BACKDROP_PAD.x
-		and not CombatDiceRollView.is_offscreen(Vector2(320, 200), CombatDiceRollView.footprint(2), screen),
-		"화면 밖 판정은 기준값·합계 글자 폭과 배경 패널 여백까지 본다")
+		and CombatDiceRollView.is_offscreen(Vector2(320, 359), CombatDiceRollView.footprint(1), screen,
+			CombatDiceRollView.BACKDROP_PAD.y)
+		and not CombatDiceRollView.is_offscreen(Vector2(320, 357), CombatDiceRollView.footprint(1), screen,
+			CombatDiceRollView.BACKDROP_PAD.y)
+		and not CombatDiceRollView.is_offscreen(Vector2(320, 200), CombatDiceRollView.footprint(2), screen,
+			CombatDiceRollView.BACKDROP_PAD.y),
+		"화면 밖 판정은 기준값·합계 글자 폭과 배경 패널 상하좌우 여백까지 본다")
 	_check(screen.encloses(spot) and spot.position == spot.position.round()
 		and absf(spot.get_center().x - 320.0) <= 0.5
 		and spot.position.y >= 86.0 and not spot.intersects(Rect2(256, 128, 128, 64)),
@@ -587,10 +592,31 @@ func _test_overhead(battle: Node2D, view: CombatDiceRollView, ally: CombatUnit, 
 		and spot == CombatDiceRollView.panel_origin(Vector2.INF, panel, screen)
 		and summary.text.begins_with(ally.get_display_name() + " · "),
 		"유닛이 화면 밖이면 정해진 자리에 유닛 이름과 함께 보인다: %s %s" % [spot, summary.text])
+	var saved_summary: String = view.get("_summary_text")
+	view.set("_summary_text", "아주 긴 판정 문구가 들어가는 경우  +12")
+	await process_frame
+	var off_backdrop: Rect2 = view.get("_backdrop_rect")
+	_check(summary.size.x > panel.x
+		and absf(summary.position.x + summary.size.x * 0.5 - (spot.x + panel.x * 0.5)) <= 1.0
+		and off_backdrop.position.x <= summary.position.x
+		and off_backdrop.end.x >= summary.position.x + summary.size.x,
+		"140px을 넘는 긴 요약 글자도 패널 가운데에 놓이고 배경 패널 안에 들어간다(#727): summary=%s/%s backdrop=%s"
+			% [summary.position, summary.size, off_backdrop])
+	view.set("_summary_text", saved_summary)
 	ally.position = home
 	await process_frame
 	_check(view.get("_offscreen") == false and not summary.text.begins_with(ally.get_display_name() + " · ")
 		and view.get("_origin") != spot, "카메라나 유닛이 돌아와 화면 안이 되면 다시 머리 위로 간다")
+	var current_head: Vector2 = view.get("_head")
+	var canvas_scale_y: float = maxf(0.001, absf(ally.get_global_transform_with_canvas().get_scale().y))
+	ally.position = home + Vector2(0.0, (screen.end.y - 1.0 - current_head.y) / canvas_scale_y)
+	await process_frame
+	var bottom_backdrop: Rect2 = view.get("_backdrop_rect")
+	_check(view.get("_offscreen") == true and screen.encloses(bottom_backdrop),
+		"화면 하단 근처에서 배경 아래 여백이 잘리면 화면 밖 자리로 옮긴다(#727): screen=%s head=%s backdrop=%s"
+			% [screen, view.get("_head"), bottom_backdrop])
+	ally.position = home
+	await process_frame
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
 
 

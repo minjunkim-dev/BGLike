@@ -372,10 +372,10 @@ static func footprint(dice_count: int) -> Vector2:
 		PANEL_SIZE.y + 2.0 * BACKDROP_PAD.y)
 
 
-static func is_offscreen(head: Vector2, panel: Vector2, screen: Rect2) -> bool:
+static func is_offscreen(head: Vector2, panel: Vector2, screen: Rect2, bottom_margin: float = 0.0) -> bool:
 	if not head.is_finite():
 		return true
-	return not screen.encloses(Rect2((head - Vector2(panel.x * 0.5, panel.y)).round(), panel))
+	return not screen.encloses(Rect2((head - Vector2(panel.x * 0.5, panel.y - bottom_margin)).round(), panel))
 
 
 static func _load_texture(path: String) -> Texture2D:
@@ -545,10 +545,20 @@ func _update_layout() -> void:
 		return
 	_head = _head_point()
 	var screen: Rect2 = get_viewport_rect()
-	_offscreen = is_offscreen(_head, footprint(_dice.size()), screen)
+	_offscreen = is_offscreen(_head, footprint(_dice.size()), screen, BACKDROP_PAD.y)
 	_origin = panel_origin(Vector2.INF if _offscreen else _head, PANEL_SIZE, screen)
+	_backdrop_rect = _layout_elements(_origin - Vector2(0.0, _lift))
+	if not _offscreen and _lift == 0 and not screen.encloses(_backdrop_rect):
+		_offscreen = true
+		_origin = panel_origin(Vector2.INF, PANEL_SIZE, screen)
+		_backdrop_rect = _layout_elements(_origin - Vector2(0.0, _lift))
+	_backdrop.queue_redraw()
+	_art.queue_redraw()
+	_pointer.queue_redraw()
+
+
+func _layout_elements(base: Vector2) -> Rect2:
 	var group: float = _group_width()
-	var base: Vector2 = _origin - Vector2(0.0, _lift)
 	var left: float = base.x + PANEL_SIZE.x * 0.5 - group * 0.5
 	var rows: Vector2i = liquid_rows(_roll.sides)
 	var line_y: float = base.y + ((rows.x + rows.y + 1) >> 1) * TEXTURE_SCALE
@@ -565,15 +575,28 @@ func _update_layout() -> void:
 		var owner_name: String = _roll.roller.get_display_name()
 		word = owner_name if word.is_empty() else "%s · %s" % [owner_name, word]
 	_summary.text = word
-	_summary.position = Vector2(base.x, roundf(base.y + WORD_ROW_Y + (WORD_ROW_HEIGHT - _summary.size.y) * 0.5))
-	_backdrop_rect = _compute_backdrop_rect(base, left, group)
-	_backdrop.queue_redraw()
-	_art.queue_redraw()
-	_pointer.queue_redraw()
+	var summary_width: float = _summary_text_width()
+	var summary_box_width: float = maxf(PANEL_SIZE.x, ceilf(summary_width))
+	var summary_box_height: float = maxf(WORD_ROW_HEIGHT, ceilf(_summary.get_minimum_size().y))
+	_summary.size = Vector2(summary_box_width, summary_box_height)
+	_summary.position = Vector2(roundf(base.x + (PANEL_SIZE.x - summary_box_width) * 0.5),
+		roundf(base.y + WORD_ROW_Y + (WORD_ROW_HEIGHT - summary_box_height) * 0.5))
+	return _compute_backdrop_rect(base, left, group, summary_width)
+
+
+func _summary_text_width() -> float:
+	if _summary.text.is_empty():
+		return 0.0
+	var width: float = _summary.get_minimum_size().x
+	var font: Font = _summary.get_theme_font("font")
+	if font != null:
+		width = maxf(width, font.get_string_size(_summary.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			_summary.get_theme_font_size("font_size")).x)
+	return width
 
 
 ## 주사위·기준값·합계·판정 단어 줄을 모두 감싸는 배경 패널 사각형(정수 논리 px, #727).
-func _compute_backdrop_rect(base: Vector2, left: float, group: float) -> Rect2:
+func _compute_backdrop_rect(base: Vector2, left: float, group: float, summary_width: float) -> Rect2:
 	var font: Font = get_theme_default_font()
 	var target_width: float = _target.get_minimum_size().x
 	if font != null and not _target.text.is_empty():
@@ -588,13 +611,9 @@ func _compute_backdrop_rect(base: Vector2, left: float, group: float) -> Rect2:
 	var min_y: float = minf(base.y, minf(_target.position.y, _total.position.y))
 	var max_y: float = maxf(base.y + DIE_SIZE, maxf(_target.position.y + _target.size.y, _total.position.y + _total.size.y))
 	if not _summary.text.is_empty():
-		var summary_size: int = _summary.get_theme_font_size("font_size")
-		var summary_width: float = _summary.get_minimum_size().x
-		if font != null:
-			summary_width = maxf(summary_width, font.get_string_size(_summary.text, HORIZONTAL_ALIGNMENT_LEFT, -1, summary_size).x)
-		var center_x: float = base.x + PANEL_SIZE.x * 0.5
-		min_x = minf(min_x, center_x - summary_width * 0.5)
-		max_x = maxf(max_x, center_x + summary_width * 0.5)
+		var summary_left: float = _summary.position.x + (_summary.size.x - summary_width) * 0.5
+		min_x = minf(min_x, summary_left)
+		max_x = maxf(max_x, summary_left + summary_width)
 		max_y = maxf(max_y, maxf(base.y + PANEL_SIZE.y, _summary.position.y + _summary.size.y))
 	var top_left: Vector2 = Vector2(floorf(min_x - BACKDROP_PAD.x), floorf(min_y - BACKDROP_PAD.y))
 	var bottom_right: Vector2 = Vector2(ceilf(max_x + BACKDROP_PAD.x), ceilf(max_y + BACKDROP_PAD.y))
