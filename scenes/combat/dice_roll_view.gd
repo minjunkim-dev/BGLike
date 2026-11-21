@@ -16,10 +16,10 @@ const FAILURE_SOUND: AudioStream = preload("res://scenes/combat/audio/roll_fail.
 
 ## 굴림 하나의 시간. 매우 빠르게 끝나야 하며 정확한 값은 직접 플레이로 정한다.
 const TUMBLE_TIME: float = 0.45
-const HOLD_TIME: float = 0.5
-## 명중굴림에서 절대성공·절대실패면이 나왔을 때 결과를 보이는 시간(#488). 임시값이며 플레이 후 정한다.
+const HOLD_TIME: float = 0.8
+## 명중굴림에서 절대성공·절대실패면이 나왔을 때 결과를 보이는 시간(#488, #727). 임시값이며 플레이 후 정한다.
 ## 내성굴림의 절대면은 강조만 두고 시간은 늘리지 않는다.
-const ABSOLUTE_HIT_HOLD_TIME: float = 0.9
+const ABSOLUTE_HIT_HOLD_TIME: float = 1.1
 ## 결과 표시가 끝난 뒤 사라지는 시간(#514). 임시값이며 플레이 후 정한다.
 ## 차례는 페이드를 기다리지 않고 넘기며, 다음 굴림이 오면 페이드를 끊는다.
 const FADE_TIME: float = 0.3
@@ -67,6 +67,10 @@ const SIDE_LABEL_GAP: float = 3.0
 const SIDE_LABEL_WIDTH: float = 60.0
 const POINTER_SIZE: float = 5.0
 const OUTLINE_SIZE: int = 2
+## 주사위·글자 묶음을 감싸는 반투명 배경 패널 여백과 색(#727).
+const BACKDROP_PAD: Vector2 = Vector2(5.0, 3.0)
+const BACKDROP_FILL: Color = Color(0.07058824, 0.10196079, 0.13333334, 0.84)
+const BACKDROP_BORDER: Color = Color(0.38039216, 0.44313726, 0.49411765, 0.9)
 const DIE_FILL: Color = Color("202b35")
 const NEUTRAL_COLOR: Color = Color("f4ead1")
 const SUCCESS_COLOR: Color = CombatUnit.HEAL_COLOR
@@ -138,6 +142,8 @@ var _visual_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _summary: Label
 var _target: Label
 var _total: Label
+var _backdrop: Control
+var _backdrop_rect: Rect2 = Rect2()
 var _art: Control
 var _pointer: Control
 var _roll_player: AudioStreamPlayer
@@ -153,6 +159,8 @@ func _ready() -> void:
 	set_process(false)
 	hidden.connect(set_process.bind(false))
 	_visual_rng.randomize()
+	_backdrop = _make_layer("Backdrop")
+	_backdrop.draw.connect(_draw_backdrop)
 	_art = _make_layer("Art")
 	_art.material = PIXEL_ART
 	_art.draw.connect(_draw_art)
@@ -357,16 +365,17 @@ static func panel_origin(head: Vector2, panel: Vector2, screen: Rect2) -> Vector
 	return (head - Vector2(panel.x * 0.5, panel.y)).round()
 
 
-## 화면 안에 있어야 하는 폭. 기준값·합계 글자는 주사위 묶음 양옆으로 패널 밖까지 나가므로 그 폭을 더한다.
+## 화면 안에 있어야 하는 폭. 기준값·합계 글자와 배경 패널 여백(#727)은 주사위 묶음 양옆으로 패널 밖까지 나가므로 그 폭을 더한다.
 static func footprint(dice_count: int) -> Vector2:
 	var group: float = dice_count * DIE_SIZE + maxi(0, dice_count - 1) * DIE_SPACING
-	return Vector2(maxf(PANEL_SIZE.x, group + 2.0 * (SIDE_LABEL_GAP + SIDE_LABEL_WIDTH)), PANEL_SIZE.y)
+	return Vector2(maxf(PANEL_SIZE.x, group + 2.0 * (SIDE_LABEL_GAP + SIDE_LABEL_WIDTH)) + 2.0 * BACKDROP_PAD.x,
+		PANEL_SIZE.y + 2.0 * BACKDROP_PAD.y)
 
 
-static func is_offscreen(head: Vector2, panel: Vector2, screen: Rect2) -> bool:
+static func is_offscreen(head: Vector2, panel: Vector2, screen: Rect2, bottom_margin: float = 0.0) -> bool:
 	if not head.is_finite():
 		return true
-	return not screen.encloses(Rect2((head - Vector2(panel.x * 0.5, panel.y)).round(), panel))
+	return not screen.encloses(Rect2((head - Vector2(panel.x * 0.5, panel.y - bottom_margin)).round(), panel))
 
 
 static func _load_texture(path: String) -> Texture2D:
@@ -536,10 +545,20 @@ func _update_layout() -> void:
 		return
 	_head = _head_point()
 	var screen: Rect2 = get_viewport_rect()
-	_offscreen = is_offscreen(_head, footprint(_dice.size()), screen)
+	_offscreen = is_offscreen(_head, footprint(_dice.size()), screen, BACKDROP_PAD.y)
 	_origin = panel_origin(Vector2.INF if _offscreen else _head, PANEL_SIZE, screen)
+	_backdrop_rect = _layout_elements(_origin - Vector2(0.0, _lift))
+	if not _offscreen and not screen.encloses(Rect2(_backdrop_rect.position + Vector2(0.0, _lift), _backdrop_rect.size)):
+		_offscreen = true
+		_origin = panel_origin(Vector2.INF, PANEL_SIZE, screen)
+		_backdrop_rect = _layout_elements(_origin - Vector2(0.0, _lift))
+	_backdrop.queue_redraw()
+	_art.queue_redraw()
+	_pointer.queue_redraw()
+
+
+func _layout_elements(base: Vector2) -> Rect2:
 	var group: float = _group_width()
-	var base: Vector2 = _origin - Vector2(0.0, _lift)
 	var left: float = base.x + PANEL_SIZE.x * 0.5 - group * 0.5
 	var rows: Vector2i = liquid_rows(_roll.sides)
 	var line_y: float = base.y + ((rows.x + rows.y + 1) >> 1) * TEXTURE_SCALE
@@ -556,9 +575,56 @@ func _update_layout() -> void:
 		var owner_name: String = _roll.roller.get_display_name()
 		word = owner_name if word.is_empty() else "%s · %s" % [owner_name, word]
 	_summary.text = word
-	_summary.position = Vector2(base.x, roundf(base.y + WORD_ROW_Y + (WORD_ROW_HEIGHT - _summary.size.y) * 0.5))
-	_art.queue_redraw()
-	_pointer.queue_redraw()
+	var summary_width: float = _summary_text_width()
+	var summary_box_width: float = maxf(PANEL_SIZE.x, ceilf(summary_width))
+	var summary_box_height: float = maxf(WORD_ROW_HEIGHT, ceilf(_summary.get_minimum_size().y))
+	_summary.size = Vector2(summary_box_width, summary_box_height)
+	_summary.position = Vector2(roundf(base.x + (PANEL_SIZE.x - summary_box_width) * 0.5),
+		roundf(base.y + WORD_ROW_Y + (WORD_ROW_HEIGHT - summary_box_height) * 0.5))
+	return _compute_backdrop_rect(base, left, group, summary_width)
+
+
+func _summary_text_width() -> float:
+	if _summary.text.is_empty():
+		return 0.0
+	var width: float = _summary.get_minimum_size().x
+	var font: Font = _summary.get_theme_font("font")
+	if font != null:
+		width = maxf(width, font.get_string_size(_summary.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			_summary.get_theme_font_size("font_size")).x)
+	return width
+
+
+## 주사위·기준값·합계·판정 단어 줄을 모두 감싸는 배경 패널 사각형(정수 논리 px, #727).
+func _compute_backdrop_rect(base: Vector2, left: float, group: float, summary_width: float) -> Rect2:
+	var font: Font = get_theme_default_font()
+	var target_width: float = _target.get_minimum_size().x
+	if font != null and not _target.text.is_empty():
+		target_width = maxf(target_width, font.get_string_size(_target.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			get_theme_default_font_size()).x)
+	var total_width: float = _total.get_minimum_size().x
+	if font != null and not _total.text.is_empty():
+		total_width = maxf(total_width, font.get_string_size(_total.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			get_theme_default_font_size()).x)
+	var min_x: float = left - SIDE_LABEL_GAP - target_width
+	var max_x: float = left + group + SIDE_LABEL_GAP + total_width
+	var min_y: float = minf(base.y, minf(_target.position.y, _total.position.y))
+	var max_y: float = maxf(base.y + DIE_SIZE, maxf(_target.position.y + _target.size.y, _total.position.y + _total.size.y))
+	if not _summary.text.is_empty():
+		var summary_left: float = _summary.position.x + (_summary.size.x - summary_width) * 0.5
+		min_x = minf(min_x, summary_left)
+		max_x = maxf(max_x, summary_left + summary_width)
+		max_y = maxf(max_y, maxf(base.y + PANEL_SIZE.y, _summary.position.y + _summary.size.y))
+	var top_left: Vector2 = Vector2(floorf(min_x - BACKDROP_PAD.x), floorf(min_y - BACKDROP_PAD.y))
+	var bottom_right: Vector2 = Vector2(ceilf(max_x + BACKDROP_PAD.x), ceilf(max_y + BACKDROP_PAD.y))
+	return Rect2(top_left, bottom_right - top_left)
+
+
+func _draw_backdrop() -> void:
+	if _roll == null or _dice.is_empty() or _backdrop_rect.size == Vector2.ZERO:
+		return
+	_backdrop.draw_rect(_backdrop_rect, BACKDROP_FILL, true)
+	_backdrop.draw_rect(_backdrop_rect, BACKDROP_BORDER, false, 1.0)
 
 
 func _group_width() -> float:
@@ -640,11 +706,12 @@ func _draw_vector_die(rect: Rect2, die: Die) -> void:
 func _draw_pointer() -> void:
 	if _roll == null or not _offscreen or not _head.is_finite():
 		return
-	var center: Vector2 = _origin + PANEL_SIZE * 0.5
+	var box: Rect2 = _backdrop_rect if _backdrop_rect.size != Vector2.ZERO else Rect2(_origin, PANEL_SIZE)
+	var center: Vector2 = box.get_center()
 	var direction: Vector2 = (_head - center).normalized()
 	if direction == Vector2.ZERO:
 		return
-	var half: Vector2 = PANEL_SIZE * 0.5
+	var half: Vector2 = box.size * 0.5
 	var reach: float = minf(half.x / maxf(absf(direction.x), 0.001), half.y / maxf(absf(direction.y), 0.001))
 	var base: Vector2 = center + direction * (reach + 1.0)
 	var side: Vector2 = direction.orthogonal() * POINTER_SIZE * 0.6

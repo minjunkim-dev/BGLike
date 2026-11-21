@@ -108,12 +108,18 @@ func _test_panel_placement() -> void:
 		and CombatDiceRollView.is_offscreen(Vector2(700, 200), panel, screen)
 		and CombatDiceRollView.is_offscreen(Vector2.INF, panel, screen),
 		"패널이 화면을 벗어나면 화면 밖이다")
-	# 합계 글자는 패널 오른쪽 밖까지 나간다. 오른쪽 가장자리 근처 유닛은 글자가 잘리지 않게 화면 밖 자리로 간다(PR #646 리뷰).
+	# 합계 글자는 패널 오른쪽 밖까지 나간다. 오른쪽 가장자리 근처 유닛은 글자가 잘리지 않게 화면 밖 자리로 간다(PR #646 리뷰, #727 배경 여백 포함).
 	_check(not CombatDiceRollView.is_offscreen(Vector2(569, 200), panel, screen)
 		and CombatDiceRollView.is_offscreen(Vector2(569, 200), CombatDiceRollView.footprint(1), screen)
-		and CombatDiceRollView.footprint(1).x == 150.0 and CombatDiceRollView.footprint(2).x == 178.0
-		and not CombatDiceRollView.is_offscreen(Vector2(320, 200), CombatDiceRollView.footprint(2), screen),
-		"화면 밖 판정은 기준값·합계 글자 폭까지 본다")
+		and CombatDiceRollView.footprint(1).x == 150.0 + 2.0 * CombatDiceRollView.BACKDROP_PAD.x
+		and CombatDiceRollView.footprint(2).x == 178.0 + 2.0 * CombatDiceRollView.BACKDROP_PAD.x
+		and CombatDiceRollView.is_offscreen(Vector2(320, 359), CombatDiceRollView.footprint(1), screen,
+			CombatDiceRollView.BACKDROP_PAD.y)
+		and not CombatDiceRollView.is_offscreen(Vector2(320, 357), CombatDiceRollView.footprint(1), screen,
+			CombatDiceRollView.BACKDROP_PAD.y)
+		and not CombatDiceRollView.is_offscreen(Vector2(320, 200), CombatDiceRollView.footprint(2), screen,
+			CombatDiceRollView.BACKDROP_PAD.y),
+		"화면 밖 판정은 기준값·합계 글자 폭과 배경 패널 상하좌우 여백까지 본다")
 	_check(screen.encloses(spot) and spot.position == spot.position.round()
 		and absf(spot.get_center().x - 320.0) <= 0.5
 		and spot.position.y >= 86.0 and not spot.intersects(Rect2(256, 128, 128, 64)),
@@ -466,6 +472,12 @@ func _test_scene() -> void:
 	var origin: Vector2 = view.get("_origin")
 	_check(not view.get("_offscreen") and origin == origin.round(),
 		"유닛이 화면 안이면 머리 위 정수 위치에 둔다: " + str(origin))
+	var backdrop_rect: Rect2 = view.get("_backdrop_rect")
+	_check(view.has_node("Backdrop") and backdrop_rect.size.x > CombatDiceRollView.DIE_SIZE
+		and backdrop_rect.position.x <= origin.x + CombatDiceRollView.PANEL_SIZE.x * 0.5 - CombatDiceRollView.DIE_SIZE * 0.5 - CombatDiceRollView.SIDE_LABEL_GAP
+		and backdrop_rect.end.x >= total.position.x + total.get_minimum_size().x
+		and backdrop_rect.position.y <= origin.y and backdrop_rect.end.y >= summary.position.y + summary.size.y,
+		"배경 패널은 주사위·기준값·합계·판정 단어 줄을 감싼다(#727): " + str(backdrop_rect))
 	_check((view.get_node("SuccessSound") as AudioStreamPlayer).playing
 		and not (view.get_node("FailureSound") as AudioStreamPlayer).playing, "성공 결과음을 쓴다")
 	for _frame: int in range(120):
@@ -501,6 +513,10 @@ func _test_scene() -> void:
 		and dice[0].shown == 4 and dice[1].shown == 15 and dice[0].state == dice[1].state,
 		"적용되는 쪽만 액체를 받고 버려지는 쪽은 같은 그림을 흐리게 한다")
 	_check(total.text == "18 = 15+3", "버린 주사위의 눈은 합계 식에 넣지 않는다: " + total.text)
+	var adv_backdrop: Rect2 = view.get("_backdrop_rect")
+	_check(adv_backdrop.size.x >= 2.0 * CombatDiceRollView.DIE_SIZE + CombatDiceRollView.DIE_SPACING + 2.0 * CombatDiceRollView.BACKDROP_PAD.x
+		and adv_backdrop.end.x >= total.position.x + total.get_minimum_size().x,
+		"유리·불리 주사위 2개와 합계도 배경 패널 안에 들어간다(#727): " + str(adv_backdrop))
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
 
 	_check(GameMusic.duck_level(self) == 0.0, "보통 굴림과 내성굴림은 배경음을 낮추지 않는다")
@@ -576,10 +592,42 @@ func _test_overhead(battle: Node2D, view: CombatDiceRollView, ally: CombatUnit, 
 		and spot == CombatDiceRollView.panel_origin(Vector2.INF, panel, screen)
 		and summary.text.begins_with(ally.get_display_name() + " · "),
 		"유닛이 화면 밖이면 정해진 자리에 유닛 이름과 함께 보인다: %s %s" % [spot, summary.text])
+	var saved_summary: String = view.get("_summary_text")
+	view.set("_summary_text", "아주 긴 판정 문구가 들어가는 경우  +12")
+	await process_frame
+	var off_backdrop: Rect2 = view.get("_backdrop_rect")
+	_check(summary.size.x > panel.x
+		and absf(summary.position.x + summary.size.x * 0.5 - (spot.x + panel.x * 0.5)) <= 1.0
+		and off_backdrop.position.x <= summary.position.x
+		and off_backdrop.end.x >= summary.position.x + summary.size.x,
+		"140px을 넘는 긴 요약 글자도 패널 가운데에 놓이고 배경 패널 안에 들어간다(#727): summary=%s/%s backdrop=%s"
+			% [summary.position, summary.size, off_backdrop])
+	view.set("_summary_text", saved_summary)
 	ally.position = home
 	await process_frame
 	_check(view.get("_offscreen") == false and not summary.text.begins_with(ally.get_display_name() + " · ")
 		and view.get("_origin") != spot, "카메라나 유닛이 돌아와 화면 안이 되면 다시 머리 위로 간다")
+	var current_head: Vector2 = view.get("_head")
+	var canvas_scale_y: float = maxf(0.001, absf(ally.get_global_transform_with_canvas().get_scale().y))
+	ally.position = home + Vector2(0.0, (screen.end.y - 1.0 - current_head.y) / canvas_scale_y)
+	await process_frame
+	var bottom_backdrop: Rect2 = view.get("_backdrop_rect")
+	_check(view.get("_offscreen") == true and screen.encloses(bottom_backdrop),
+		"화면 하단 근처에서 배경 아래 여백이 잘리면 화면 밖 자리로 옮긴다(#727): screen=%s head=%s backdrop=%s"
+			% [screen, view.get("_head"), bottom_backdrop])
+	var canvas_scale_x: float = maxf(0.001, absf(ally.get_global_transform_with_canvas().get_scale().x))
+	view.set("_summary_text", "아주 긴 판정 문구가 화면 왼쪽 경계를 넘는 경우  +12")
+	ally.position = home + Vector2((screen.position.x + 100.0 - current_head.x) / canvas_scale_x, 0.0)
+	await process_frame
+	var fade_was_offscreen: bool = view.get("_offscreen")
+	view.set("_lift", 1)
+	await process_frame
+	_check(fade_was_offscreen and view.get("_offscreen") == true and screen.encloses(view.get("_backdrop_rect")),
+		"긴 요약이 화면 밖 자리에 있을 때 페이드 떠오름 중에도 화면 밖 자리를 유지한다(#727)")
+	view.set("_lift", 0)
+	view.set("_summary_text", saved_summary)
+	ally.position = home
+	await process_frame
 	await create_timer(CombatDiceRollView.HOLD_TIME + 0.1).timeout
 
 
@@ -665,8 +713,10 @@ func _test_grades() -> void:
 	_check(CombatDiceRollView.hold_time(hit_absolute) == CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME
 		and CombatDiceRollView.hold_time(CombatDiceRoll.hit(null, 20, normal_result, 3, 12)) == CombatDiceRollView.HOLD_TIME
 		and CombatDiceRollView.hold_time(save_absolute) == CombatDiceRollView.HOLD_TIME
+		and is_equal_approx(CombatDiceRollView.HOLD_TIME, 0.8)
+		and is_equal_approx(CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME, 1.1)
 		and CombatDiceRollView.ABSOLUTE_HIT_HOLD_TIME > CombatDiceRollView.HOLD_TIME,
-		"표시 시간은 명중굴림의 절대면만 늘어난다")
+		"표시 시간은 일반 0.8초·명중 절대면 1.1초이며 명중굴림의 절대면만 늘어난다(#727)")
 	var absolute_failure: CombatChecks.RollResult = _result([1], 1, 4, false, CombatChecks.Face.ABSOLUTE_FAILURE)
 	_check(CombatDiceRollView.ducks_music(hit_absolute)
 		and CombatDiceRollView.ducks_music(CombatDiceRoll.hit(null, 20, absolute_failure, 3, 2))
