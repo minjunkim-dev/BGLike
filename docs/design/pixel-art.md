@@ -317,7 +317,7 @@ python3 scenes/combat/art/sources/effects/draw_down_effect.py scenes/combat/art/
 
 ## 검증과 현재 상태
 
-#194의 유닛9종과108개 프레임(독안개 거미는 [#462](https://github.com/minjunkim-labs/BGLike/issues/462)에서 더해 지금은 10종)·애니메이션·초상 연결을 포함한다. #195의 [실제 도트 지형과9개 맵](stages/terrain-maps.md)을 함께 통합한다. 각 티켓의 최종 Evidence가 직접 확인·독립 리뷰·CI·병합의 근거다. 파일 존재만으로 그 절차를 완료했다고 판단하지 않는다.
+#194의 유닛10종과120개 프레임(`scenes/combat/art/units/`의 10종 × 12프레임. 독안개 거미는 [#462](https://github.com/minjunkim-labs/BGLike/issues/462)에서 더한 열 번째다)·애니메이션·초상 연결을 포함한다. #195의 [실제 도트 지형과9개 맵](stages/terrain-maps.md)을 함께 통합한다. 각 티켓의 최종 Evidence가 직접 확인·독립 리뷰·CI·병합의 근거다. 파일 존재만으로 그 절차를 완료했다고 판단하지 않는다.
 
 자동 검사는 실제 로드한 프레임 크기·투명 여백·서로 다른 애니메이션 프레임과 실제 전투 동작을 확인한다. 직접 검수는 [해상도 ADR](../adr/0002-resolution.md#결정)의 검증 해상도에서 수행한다. #194·#195의640×360 캡처는 당시 기록이다. 비활성 Godot 창에 연결한 입력만 보낸다. 원본 Viewport를 `RenderingServer.frame_post_draw` 뒤에 저장한다. 움직임·발밑·선택·HP·가림 윤곽·화살을 확인한다. 9개 맵의 표시와 이동·점프·환경 상호작용도 확인한다. 자동 검사 성공을 시각 검수로 대신하지 않는다.
 
