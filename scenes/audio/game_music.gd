@@ -94,7 +94,7 @@ static func duck_db(elapsed: float) -> float:
 	return 0.0
 
 
-## 배경음을 낮춘다. 낮추는 중에 다시 부르면 더 깊어지지 않고 지금 깊이에서 머물기를 새로 시작한다.
+## 배경음을 낮춘다. 낮추는 중에 다시 부르면 −8dB보다 깊어지지 않고 머물기를 새로 시작한다. 내려가는 중이나 돌아오는 중이면 지금 깊이에서 −8dB까지 이어 내려간다.
 static func duck(tree: SceneTree) -> void:
 	var music: GameMusic = _instance(tree)
 	var elapsed: float = 0.0
