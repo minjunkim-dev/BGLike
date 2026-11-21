@@ -257,7 +257,7 @@ python3 scenes/combat/art/sources/effects/draw_status_effects.py scenes/combat/a
 | 폭발 `down` | 64×64, 4프레임. 발치에서 퍼지는 먼지 고리와 위로 흩어지는 조각 | 스킬·상태 효과와 같은 발 기준점 (32, 56). 잔상과 같은 칸 표면 |
 
 - 시간: 쓰러짐은 유닛 자신의 연출이라 유닛 공격 fps와 같이 [전체 속도 계수](combat/combat-ui.md#5-전체-속도)(`CombatPresentation.PRESENTATION_SPEED`)를 곱한다. 폭발은 `CombatPresentation.fps(12.0)`(0.7에서 8.4fps, 4프레임 약 0.48초), 잔상 사라짐은 `CombatPresentation.duration(DOWN_FADE_TIME)`(0.5초)이다. 플레이로 고칠 곳은 계수와 `DOWN_FADE_TIME`이다. 이미 있는 타격 섬광·스킬·상태 효과의 12fps와 계수 값은 바꾸지 않았다.
-- 게임 시간이라 4배속에서는 그 위에 1/4로 준다. 이어하기 재실행(`_replaying()`)에서는 만들지 않는다. 전투 진행은 기다리지 않는다.
+- 게임 시간이라 4배속에서는 그 위에 1/4로 준다. 이어하기 재실행(`_replaying()`)에서는 만들지 않는다. 일반 적 처치 때는 전투 진행을 기다리지 않으며, 마지막 적을 처치해 승리할 때만 사라짐 연출(`CombatHitEffects.down_duration()`)이 끝나고 추가 여운(`VICTORY_DELAY = 0.4`초)이 지난 뒤에 승리 결과 창과 승리곡을 연다([#728](https://github.com/minjunkim-labs/BGLike/issues/728)).
 - 같은 순간 틱으로 쓰러진 유닛에 화상·독 효과가 겹칠 수 있다([상태 이상 효과](#상태-이상-효과-635)의 남은 지적). 정리하지 않았다.
 
 규격은 `down_effect_generation.json`에 기록한다.

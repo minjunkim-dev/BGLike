@@ -109,6 +109,12 @@ func _test_preparation_screens() -> void:
 			actions.incapacitate(unit)
 	actions.changed.emit()
 	await process_frame
+	_check(battle.get("_victory_waiting") and GameMusic.current(self) == GameMusic.BATTLE,
+		"마지막 적 사라짐 연출과 승리 대기 중에는 전투 곡을 유지(#728)")
+	var deadline: int = Time.get_ticks_msec() + 3000
+	while battle.get("_victory_waiting") and Time.get_ticks_msec() < deadline:
+		await create_timer(0.05).timeout
+	await process_frame
 	_check(GameMusic.current(self) == GameMusic.VICTORY, "이긴 결과 화면은 승리 곡")
 	var hud: CombatTurnHud = battle.get_node("UI/TurnHud") as CombatTurnHud
 	hud.restart_button.pressed.emit()

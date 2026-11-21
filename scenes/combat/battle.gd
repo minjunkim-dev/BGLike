@@ -12,6 +12,8 @@ const ENEMY_PAUSE_TIME: float = 0.35
 const MELEE_ATTACK_TIME: float = 1.0 / 6.0
 ## 적 턴에 Space를 누르고 있는 동안의 시간 배율. 규칙이 아니라 표시 속도다.
 const ENEMY_FAST_SPEED: float = 4.0
+## 마지막 적 처치 시 전투 불능(사라짐) 애니메이션이 끝난 뒤 승리 화면을 띄우기 전 기다리는 게임 시간(초, #728).
+const VICTORY_DELAY: float = 0.4
 
 ## 자동 저장을 마친 뒤. 검사가 저장한 순간의 상태를 비교한다.
 signal autosaved
@@ -47,6 +49,9 @@ var _replay_actions: int = 0
 var waiting_for_start: bool = true
 ## 발밑 칸 표시가 지금 따라가는 유닛(#623). 숨김이면 null이다. 바뀔 때만 나타남을 다시 돌린다.
 var _turn_tile_unit: CombatUnit
+## 마지막 적 처치 시 사라짐 애니메이션과 승리 여운을 기다리는 중인지(#728).
+var _victory_waiting: bool = false
+var _victory_revision: int = 0
 var staging: HBoxContainer
 var start_button: Button
 
@@ -121,7 +126,9 @@ func _ready() -> void:
 	actions.downed.connect(func(unit: CombatUnit) -> void:
 		if not _replaying():
 			sounds.play(&"downed")
-			hit_effects.play_down(unit, map.map_to_surface(unit.cell)))
+			hit_effects.play_down(unit, map.map_to_surface(unit.cell))
+			if is_processing() and not unit.is_ally and actions.is_over() and actions.is_victory():
+				_begin_victory_wait())
 	actions.self_used.connect(func(actor: CombatUnit, action: String) -> void:
 		if _replaying():
 			return
@@ -211,6 +218,7 @@ func _reflex_arrow(cell: Vector2i) -> String:
 
 
 func _exit_tree() -> void:
+	_cancel_victory_wait()
 	if sounds != null:
 		sounds.stop_ambient()
 	actions.movement_animation = Callable()
@@ -266,6 +274,7 @@ func start_battle() -> void:
 
 ## 지금 스테이지의 지도와 처음 배치의 적을 새로 만든다. 아군 상태와 턴 순서는 건드리지 않는다.
 func _build_stage() -> CombatStage:
+	_cancel_victory_wait()
 	progress.begin_stage()
 	var stage: CombatStage = stages[progress.stage_index]
 	assert(stage != null, "스테이지 데이터가 비어 있습니다: %d" % (progress.stage_index + 1))
@@ -318,7 +327,7 @@ func combat_state() -> Dictionary:
 ## 값은 GameSave.read()의 sections.combat을 그대로 받는다.
 ## 적 턴 중간의 저장이면 그 적 턴이 시작한 상태로 되돌리고, 다음 프레임에 끝낸 적 행동까지 연출 없이 다시 실행한다.
 func restore_combat(state: Variant) -> bool:
-	if actions.busy or _enemy_turn_running or preparation.visible or not (state is Dictionary and _is_valid_state(state)):
+	if actions.busy or _enemy_turn_running or _victory_waiting or preparation.visible or not (state is Dictionary and _is_valid_state(state)):
 		push_warning("전투 저장을 읽을 수 없음")
 		return false
 	progress.stage_index = state.stage
@@ -473,7 +482,7 @@ func _valid_items(items: Variant) -> bool:
 
 
 func _restart() -> void:
-	if not actions.is_over() or actions.busy or _enemy_turn_running:
+	if not actions.is_over() or actions.busy or _enemy_turn_running or _victory_waiting:
 		return
 	if actions.is_victory():
 		# 졸업 화면의 버튼은 `타이틀로` 하나다 (#209 9번).
@@ -502,7 +511,7 @@ func _give_up() -> void:
 
 
 func _finish_preparation() -> void:
-	if not actions.is_over() or actions.busy or _enemy_turn_running or not actions.is_victory():
+	if not actions.is_over() or actions.busy or _enemy_turn_running or _victory_waiting or not actions.is_victory():
 		return
 	progress.advance()
 	if progress.graduated:
@@ -599,7 +608,7 @@ func _replaying() -> bool:
 
 
 func _on_unit_selected(unit: CombatUnit) -> void:
-	if actions.busy or actions.is_over() or unit not in units or unit.hit_points <= 0:
+	if actions.busy or actions.is_over() or _victory_waiting or unit not in units or unit.hit_points <= 0:
 		return
 	selection.clear_preview()
 	if waiting_for_start:
@@ -613,13 +622,13 @@ func _on_unit_selected(unit: CombatUnit) -> void:
 
 func _end_turn() -> void:
 	if (not waiting_for_start and turns.current_unit != null and turns.current_unit.is_ally
-		and not actions.busy and not actions.is_over()):
+		and not actions.busy and not actions.is_over() and not _victory_waiting):
 		turns.end_turn()
 
 
 func _on_action_selected(action: String) -> void:
 	var actor: CombatUnit = turns.current_unit
-	if waiting_for_start or actor == null or not actor.is_ally:
+	if waiting_for_start or actor == null or not actor.is_ally or actions.busy or actions.is_over() or _victory_waiting:
 		return
 	if action == "stand_up":
 		actions.stand_up(actor)
@@ -768,6 +777,7 @@ func _input(event: InputEvent) -> void:
 func _ally_input_open() -> bool:
 	var actor: CombatUnit = turns.current_unit
 	return (not waiting_for_start and actor != null and actor.is_ally and not actions.busy and not actions.is_over()
+		and not _victory_waiting
 		and not hud.reaction_dialog.visible and not hud.get_node("Result").visible and not preparation.visible)
 
 
@@ -797,7 +807,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if (event is not InputEventMouseButton or not event.pressed
 		or event.button_index not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]):
 		return
-	if actions.busy or actions.is_over():
+	if actions.busy or actions.is_over() or _victory_waiting:
 		return
 	var world_position: Vector2 = get_canvas_transform().affine_inverse() * event.position
 	var cell: Vector2i = map.surface_to_map(map.to_local(world_position))
@@ -984,11 +994,28 @@ func _sync_party_level() -> void:
 		unit.dice_level = progress.level
 
 
-## 화면에 맞는 배경음을 고른다(#629). 정비·보상 확인은 차분한 곡, 끝난 전투는 승리·패배 곡, 그 밖은 전투 곡이다.
+## 마지막 적 처치 시 사라짐 애니메이션과 짧은 여운을 기다린 뒤 승리 화면과 승리곡을 연다(#728).
+func _begin_victory_wait() -> void:
+	_victory_revision += 1
+	var revision: int = _victory_revision
+	_victory_waiting = true
+	await get_tree().create_timer(CombatHitEffects.down_duration() + VICTORY_DELAY, false).timeout
+	if not is_inside_tree() or revision != _victory_revision:
+		return
+	_victory_waiting = false
+	_update_turn_ui()
+
+
+func _cancel_victory_wait() -> void:
+	_victory_revision += 1
+	_victory_waiting = false
+
+
+## 화면에 맞는 배경음을 고른다(#629). 정비·보상 확인은 차분한 곡, 끝난 전투는 승리·패배 곡(승리 연출 대기 중에는 전투 곡 유지, #728), 그 밖은 전투 곡이다.
 func _sync_music() -> void:
 	if preparation.visible:
 		GameMusic.play(get_tree(), GameMusic.CALM)
-	elif actions.is_over():
+	elif actions.is_over() and not _victory_waiting:
 		GameMusic.play(get_tree(), GameMusic.VICTORY if actions.is_victory() else GameMusic.DEFEAT)
 	else:
 		GameMusic.play(get_tree(), GameMusic.BATTLE)
@@ -1361,7 +1388,7 @@ func _update_turn_ui() -> void:
 			and selection.selected_action not in ["jump", "sweep", "whistle", "oil_throw", "oil_bottle", "moving_shot", "trick_arrow", "firework_arrow"]):
 		hud.show_move_mode(false)
 		hud.show_target_note(tr("바닥 아이템 · %s") % CombatLoot.describe(hovered))
-	if actions.is_over():
+	if actions.is_over() and not _victory_waiting:
 		hud.show_outcome(actions.is_victory())
 		if not preparation.visible:
 			hud.show_result(actions.is_victory(), progress.graduated, _enemy_turn_running or actions.busy)

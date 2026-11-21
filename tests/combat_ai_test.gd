@@ -1176,7 +1176,7 @@ func _test_scene() -> void:
 	_check(prompts[0] > 0, "실제 AI 공격에서 아군 반응 확인 창 연결")
 	# 아군 입력은 합법 동작 API로 자동화하고 적은 실제 프레임 루프로 진행한다.
 	for step: int in range(10000):
-		if actions.is_over():
+		if actions.is_over() and not battle.get("_victory_waiting"):
 			break
 		var actor: CombatUnit = turns.current_unit
 		if actor != null and actor.is_ally and not actions.busy:
@@ -1243,7 +1243,7 @@ func _test_default_scene() -> void:
 	)
 	battle.set_process(true)
 	for step: int in range(10000):
-		if actions.is_over():
+		if actions.is_over() and not battle.get("_victory_waiting"):
 			break
 		var actor: CombatUnit = turns.current_unit
 		if actor != null and actor.is_ally and not actions.busy:
