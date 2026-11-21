@@ -49,7 +49,7 @@ Standards와 Spec은 작성자와 분리한 각각의 컨텍스트에서 수행�
 
 필수가 아닌 검사의 실패는 병합을 막지 않는다. 필수 체크 이름은 `.github/repository-settings.json`의 기대값이다. 서버 실제값은 소유자가 [설정 기준선](../process/ci/repository-setup.md#기준선-검증)의 읽기 전용 명령으로 확인한다. 에이전트의 `gh api *protection*`은 `.claude/settings.json`이 막는다.
 
-담당 로컬 에이전트는 맡은 PR의 CI가 완료될 때까지 결과를 확인한다.
+담당 로컬 에이전트는 맡은 PR의 CI가 완료될 때까지 결과를 확인한다. 반복 출력으로 컨텍스트를 채우는 `gh pr checks --watch` 대신 `gh event listen --resource <PR_URL> --event com.github.pull_request.check_suite.status.changed.v1,com.github.pull_request.state.changed.v1 --timeout 30m`으로 상태 변화 이벤트를 기다린 뒤 `gh pr checks`로 확인한다.
 
 1. PR의 head·base SHA와 실패한 run·attempt를 기록한다. `gh run view <RUN_ID> --repo <OWNER/REPO> --log-failed`로 실패 로그를 확인한다.
 2. 코드 결함과 인프라 장애를 구분한다. 가능한 실패는 로컬에서 재현한다. 재현하지 못한 범위는 기록한다.
