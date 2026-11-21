@@ -3015,7 +3015,7 @@ func _test_camera_during_enemy_turn() -> void:
 		await create_timer(0.05).timeout
 		waited += 0.05
 	_check(turns.current_unit.is_ally and not battle.get("_enemy_turn_running")
-		and units[2].cell != Vector2i(9, 9) and units[3].cell != Vector2i(8, 9)
+		and units[2].cell != Vector2i(8, 9) and units[3].cell != Vector2i(9, 9)
 		and units[0].cell == Vector2i(0, 0) and selection.preview_cell == Vector2i(-1, -1),
 		"카메라를 옮겨도 적 턴은 끝까지 진행하고 아군 차례로 돌아옴")
 	battle.set_process(false)
@@ -3371,7 +3371,7 @@ func _test_camera_follow_enemy_turn(fast: bool) -> void:
 	began = Time.get_ticks_msec()
 	while (battle.get("_enemy_turn_running") or not turns.current_unit.is_ally) and Time.get_ticks_msec() - began < 15000:
 		await process_frame
-	_check(turns.current_unit.is_ally and not battle.get("_enemy_turn_running") and units[2].cell != Vector2i(9, 9),
+	_check(turns.current_unit.is_ally and not battle.get("_enemy_turn_running") and units[2].cell != Vector2i(8, 9),
 		"카메라를 따라 움직여도 적 턴은 끝까지 진행해 아군 차례로 돌아옴")
 	if fast:
 		space = space.duplicate() as InputEventKey
