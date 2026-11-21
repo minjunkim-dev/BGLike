@@ -2955,8 +2955,8 @@ func _test_camera_during_enemy_turn() -> void:
 	# 적이 닿지 못하는 거리라 공격·반응 확인 창 없이 이동만 한다.
 	units[0].cell = Vector2i(0, 0)
 	units[1].cell = Vector2i(1, 0)
-	units[2].cell = Vector2i(9, 9)
-	units[3].cell = Vector2i(8, 9)
+	units[2].cell = Vector2i(8, 9)
+	units[3].cell = Vector2i(9, 9)
 	battle.call("_update_turn_ui")
 	camera.reset()
 	turns.end_turn()
@@ -3339,8 +3339,8 @@ func _test_camera_follow_enemy_turn(fast: bool) -> void:
 	# 적이 닿지 못하는 거리라 공격·반응 확인 창 없이 이동만 한다. 첫 적은 C 밖이다.
 	units[0].cell = Vector2i(0, 0)
 	units[1].cell = Vector2i(1, 0)
-	units[2].cell = Vector2i(9, 9)
-	units[3].cell = Vector2i(8, 9)
+	units[2].cell = Vector2i(8, 9)
+	units[3].cell = Vector2i(9, 9)
 	battle.call("_update_turn_ui")
 	camera.reset()
 	var space: InputEventKey = InputEventKey.new()

@@ -2724,9 +2724,11 @@ func _test_square_rules() -> void:
 	ranged.units[2].cell = Vector2i(4, 3)
 	_check(not ranged.actions.can_target(ranged.units[0], ranged.units[2], "attack"), "평면 거리7 공격 불가")
 	ranged.units[2].cell = Vector2i(4, 3)
-	_check(ranged.actions.grid.path_to(ranged.units[0], Vector2i(3, 3)).size() == 6
-		and ranged.actions.can_move(ranged.units[0], Vector2i(3, 3))
-		and not ranged.actions.can_move(ranged.units[0], Vector2i(4, 3)), "이동력6 경계도 사각 최단 경로 기준")
+	# (4, 3)은 적이 있어 막히므로 이동력 경계는 빈 칸 (0, 8)·(0, 9)로 본다.
+	_check(ranged.actions.grid.path_to(ranged.units[0], Vector2i(0, 8)).size() == 8
+		and ranged.actions.can_move(ranged.units[0], Vector2i(0, 8))
+		and ranged.actions.grid.path_to(ranged.units[0], Vector2i(0, 9)).size() == 9
+		and not ranged.actions.can_move(ranged.units[0], Vector2i(0, 9)), "이동력8 경계도 사각 최단 경로 기준")
 
 
 func _test_attacks() -> void:
