@@ -132,7 +132,7 @@ func _settle() -> void:
 
 ## 통제 위치로 옮긴 뒤 카메라 따라가기(#516)가 멈출 때까지 기다린다. 움직이는 중에 잰 입력점은 빗나간다.
 func _settle_camera() -> void:
-	var camera: Camera2D = battle.get("camera") as Camera2D
+	var camera: CombatCamera = battle.get("camera") as CombatCamera
 	var still: int = 0
 	var last: Vector2 = camera.get_screen_center_position()
 	for frame: int in range(240):
@@ -140,7 +140,9 @@ func _settle_camera() -> void:
 		var now: Vector2 = camera.get_screen_center_position()
 		still = still + 1 if now.is_equal_approx(last) else 0
 		last = now
-		if still >= 3:
+		# 표시 위치는 정수 픽셀로 반올림되므로 따라잡기 끝자락에서도 몇 프레임 같을 수 있다.
+		var moving: bool = camera.is_turning() or camera.get("_catching_up")
+		if still >= 3 and not moving:
 			return
 	ck(false, "카메라 따라가기 정지 제한 시간")
 
