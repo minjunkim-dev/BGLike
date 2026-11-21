@@ -122,10 +122,40 @@ class ManualQATests(unittest.TestCase):
         with patch.object(qa.subprocess, "check_output", return_value="4.7.2.stable.official.fixture"), \
                 patch.object(qa.subprocess, "Popen", side_effect=[parse, runtime]), \
                 patch.object(qa.os, "killpg") as kill, patch.object(qa, "launch") as launch:
-            with self.assertRaises(subprocess.TimeoutExpired):
+            with self.assertRaisesRegex(ValueError, r"timed out after 30 seconds; game launch blocked: .*fixture-preflight\.log$"):
                 qa.run_case(self.app, self.case, self.directory, self.state)
             kill.assert_called_once_with(runtime.pid, signal.SIGKILL)
             launch.assert_not_called()
+        self.assertEqual(self.state["cases"]["compact"]["status"], "failed")
+
+    def test_fixture_timeout_reports_script_error_from_log(self):
+        self.case.update(preflight_args=["--fixture-precheck"], preflight_success_marker="FIXTURE_SETUP_PASS")
+        parse, runtime = Mock(pid=123), Mock(pid=456)
+        parse.wait.return_value, parse.poll.return_value = 0, 0
+        runtime.wait.side_effect = [subprocess.TimeoutExpired("Godot", 30), 0]
+        runtime.poll.return_value = None
+        processes = iter([parse, runtime])
+
+        def popen(_command, stdout, **_options):
+            process = next(processes)
+            if process is runtime:
+                # Godot keeps running after a runtime script error, so only the log shows the cause.
+                stdout.write("Godot Engine v4.7.2\nSCRIPT ERROR: Trying to assign an array of type \"Array\" "
+                             "to a variable of type \"Array[int]\".\n   at: _run (res://tests/fixture.gd:49)\n")
+                stdout.flush()
+            return process
+
+        with patch.object(qa.subprocess, "check_output", return_value="4.7.2.stable.official.fixture"), \
+                patch.object(qa.subprocess, "Popen", side_effect=popen), \
+                patch.object(qa.os, "killpg") as kill, patch.object(qa, "launch") as launch:
+            with self.assertRaises(ValueError) as raised:
+                qa.run_case(self.app, self.case, self.directory, self.state)
+            kill.assert_called_once_with(runtime.pid, signal.SIGKILL)
+            launch.assert_not_called()
+        message = str(raised.exception)
+        self.assertIn("fixture-preflight.log", message)
+        self.assertTrue(message.endswith('first error: SCRIPT ERROR: Trying to assign an array of type "Array" '
+                                         'to a variable of type "Array[int]".'), message)
         self.assertEqual(self.state["cases"]["compact"]["status"], "failed")
 
     def test_success_needs_visual_review_and_stops_launcher(self):

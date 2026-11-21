@@ -141,6 +141,9 @@ def preflight(godot, project, case, log):
             process = subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
             try:
                 result = process.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                # A runtime script error skips quit(), so a hang usually hides the real cause in the log.
+                result = None
             finally:
                 if process.poll() is None:
                     try:
@@ -149,6 +152,10 @@ def preflight(godot, project, case, log):
                         pass
                     process.wait()
         text = output_path.read_text(errors="replace")
+        if result is None:
+            error = ERROR.search(text)
+            cause = f"; first error: {text[text.rfind(chr(10), 0, error.start()) + 1:].splitlines()[0]}" if error else ""
+            raise ValueError(f"Preflight timed out after 30 seconds; game launch blocked: {output_path}{cause}")
         if result or ERROR.search(text) or (marker is not None and marker not in text):
             raise ValueError(f"Preflight failed; game launch blocked: {output_path}")
 
